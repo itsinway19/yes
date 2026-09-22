@@ -1,6 +1,6 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "itsinway19/builderad",
+    "name": "42huss/builderad",
     "type": "project",
     "description": "Builderad advertising intelligence application.",
     "keywords": ["builderad", "laravel"],

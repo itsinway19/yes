@@ -35,12 +35,12 @@ class BaselineContractTest extends TestCase
         $this->assertStringContainsString('FROM pg_auth_members', $bootstrap);
     }
 
-    public function test_repository_package_metadata_identifies_builderad(): void
+    public function test_composer_and_npm_package_metadata_identifies_builderad(): void
     {
         $composer = json_decode(file_get_contents(base_path('composer.json')), true, flags: JSON_THROW_ON_ERROR);
         $package = json_decode(file_get_contents(base_path('package.json')), true, flags: JSON_THROW_ON_ERROR);
 
-        $this->assertSame('itsinway19/builderad', $composer['name']);
+        $this->assertSame('42huss/builderad', $composer['name']);
         $this->assertSame('Builderad advertising intelligence application.', $composer['description']);
         $this->assertSame(['builderad', 'laravel'], $composer['keywords']);
         $this->assertSame('builderad', $package['name']);
