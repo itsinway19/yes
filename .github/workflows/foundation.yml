@@ -1,0 +1,110 @@
+name: Foundation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    name: Foundation
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: builderad_test
+      DB_USERNAME: builderad_app
+      DB_OWNER_CONNECTION: pgsql_migrations
+      DB_OWNER_DATABASE: builderad_test
+      DB_OWNER_USERNAME: builderad_owner
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: '6379'
+      REDIS_CLIENT: predis
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: intl, mbstring, pdo_pgsql
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci
+
+      - name: Generate job-lifetime role credentials
+        run: |
+          owner_password="$(openssl rand -hex 32)"
+          app_password="$(openssl rand -hex 32)"
+          printf '::add-mask::%s\n' "$owner_password"
+          printf '::add-mask::%s\n' "$app_password"
+          printf 'DB_OWNER_PASSWORD=%s\n' "$owner_password" >> "$GITHUB_ENV"
+          printf 'DB_PASSWORD=%s\n' "$app_password" >> "$GITHUB_ENV"
+
+      - name: Bootstrap PostgreSQL 18 authority
+        env:
+          PGPASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres -f database/bootstrap/postgresql.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres <<SQL
+          ALTER ROLE builderad_owner PASSWORD '$DB_OWNER_PASSWORD';
+          ALTER ROLE builderad_app PASSWORD '$DB_PASSWORD';
+          SQL
+
+      - name: Prepare test environment and migrate as owner
+        run: |
+          cp .env.example .env.testing
+          php artisan key:generate --env=testing --no-interaction
+          php artisan about --only=environment
+          php artisan migrate --database=pgsql_migrations --force
+
+      - name: Verify Foundation
+        run: |
+          composer validate --strict
+          composer audit
+          npm audit --audit-level=high
+          php artisan test --compact
+          php vendor/bin/pint --test
+          npm run build
