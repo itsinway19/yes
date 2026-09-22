@@ -14,6 +14,8 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        $this->withoutVite();
+
         if (! self::$databasePrepared) {
             Artisan::call('migrate:fresh', [
                 '--database' => 'pgsql_migrations',
