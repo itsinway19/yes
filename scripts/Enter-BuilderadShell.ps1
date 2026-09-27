@@ -6,10 +6,11 @@ $builderadRunner = Join-Path $PSScriptRoot 'builderad.ps1'
 if ($LASTEXITCODE -ne 0) { throw 'Builderad toolchain preflight failed; shell aliases were not installed.' }
 
 $global:BuilderadPhpExe = if ($env:BUILDERAD_PHP) { $env:BUILDERAD_PHP } else { 'C:\tools\php85\php.exe' }
-$global:BuilderadNodeExe = if ($env:BUILDERAD_NODE) { $env:BUILDERAD_NODE } else { 'C:\Users\stoma\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' }
+$global:BuilderadNodeExe = if ($env:BUILDERAD_NODE) { $env:BUILDERAD_NODE } else { 'C:\tools\node24\node.exe' }
 $global:BuilderadPsqlExe = if ($env:BUILDERAD_PSQL) { $env:BUILDERAD_PSQL } else { 'C:\Program Files\PostgreSQL\18\bin\psql.exe' }
 $global:BuilderadComposerPhar = if ($env:BUILDERAD_COMPOSER_PHAR) { $env:BUILDERAD_COMPOSER_PHAR } else { 'C:\composer\composer.phar' }
-$global:BuilderadNpmCli = if ($env:BUILDERAD_NPM_CLI) { $env:BUILDERAD_NPM_CLI } else { 'C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js' }
+$global:BuilderadNpmCli = if ($env:BUILDERAD_NPM_CLI) { $env:BUILDERAD_NPM_CLI } else { 'C:\tools\node24\node_modules\npm\bin\npm-cli.js' }
+$env:OPENSSL_CONF = Join-Path (Split-Path -Parent $global:BuilderadPhpExe) 'extras/ssl/openssl.cnf'
 
 $scratch = Join-Path $builderadRoot 'storage/framework/testing/toolchain-tmp'
 New-Item -ItemType Directory -Force -Path $scratch | Out-Null
