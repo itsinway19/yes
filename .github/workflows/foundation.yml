@@ -122,5 +122,7 @@ jobs:
           composer audit
           npm audit --audit-level=high
           php artisan test --compact
+          npm run test:password
+          npm run test:passkey-client
           php vendor/bin/pint --test
           npm run build
