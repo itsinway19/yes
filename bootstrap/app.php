@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ResolveLocale;
 use App\Http\Middleware\SelectSessionContext;
 use App\Security\BreachCheckUnavailable;
 use Illuminate\Foundation\Application;
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo(fn (Request $request) => $request->is('internal/*')
             ? route('internal.security.devices') : route('dashboard'));
         $middleware->web(append: [
+            ResolveLocale::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);

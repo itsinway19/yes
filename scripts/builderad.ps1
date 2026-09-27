@@ -53,10 +53,14 @@ if ($postgresContract -notmatch "current_setting\('server_version_num'\)::intege
 $postgresMaximum = [int] $Matches[1]
 
 $php = Resolve-Tool $env:BUILDERAD_PHP 'C:\tools\php85\php.exe' 'PHP'
-$node = Resolve-Tool $env:BUILDERAD_NODE 'C:\Users\stoma\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' 'Node'
+$node = Resolve-Tool $env:BUILDERAD_NODE 'C:\tools\node24\node.exe' 'Node'
 $psql = Resolve-Tool $env:BUILDERAD_PSQL 'C:\Program Files\PostgreSQL\18\bin\psql.exe' 'PostgreSQL'
 $composer = Resolve-Tool $env:BUILDERAD_COMPOSER_PHAR 'C:\composer\composer.phar' 'Composer'
-$npm = Resolve-Tool $env:BUILDERAD_NPM_CLI 'C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js' 'npm'
+$npm = Resolve-Tool $env:BUILDERAD_NPM_CLI 'C:\tools\node24\node_modules\npm\bin\npm-cli.js' 'npm'
+$expectedNpm = Join-Path (Split-Path -Parent $node) 'node_modules/npm/bin/npm-cli.js'
+if ($npm -ine $expectedNpm) {
+    throw "npm CLI must belong to the selected Node installation: $expectedNpm"
+}
 $opensslConfig = Join-Path (Split-Path -Parent $php) 'extras/ssl/openssl.cnf'
 if (-not (Test-Path -LiteralPath $opensslConfig -PathType Leaf)) {
     throw "Approved PHP OpenSSL configuration is unavailable: $opensslConfig"
@@ -71,6 +75,10 @@ $nodeVersionText = & $node -p 'process.versions.node'
 $nodeVersion = [version] $nodeVersionText
 if ($LASTEXITCODE -ne 0 -or $nodeVersion.Major -lt $nodeMinimum -or $nodeVersion.Major -ge $nodeMaximum) {
     throw "Node version $nodeVersion is outside repository requirement $nodeRule."
+}
+$runningNode = & $node -p 'process.execPath'
+if ($LASTEXITCODE -ne 0 -or $runningNode -ine $node) {
+    throw "Node executable mismatch: expected $node, got $runningNode."
 }
 $psqlVersionText = & $psql --version
 if ($LASTEXITCODE -ne 0 -or $psqlVersionText -notmatch '(\d+)\.(\d+)') {
@@ -91,8 +99,11 @@ $env:Path = ((Split-Path -Parent $php), (Split-Path -Parent $node), (Split-Path 
 
 if ($Action -eq 'preflight') {
     $npmVersion = & $node $npm --version
+    $npmExitCode = $LASTEXITCODE
     $composerVersion = & $php $composer --version --no-ansi
-    if ($LASTEXITCODE -ne 0 -or [int] (($npmVersion -split '\.')[0]) -lt 9 -or $composerVersion -notmatch 'Composer version 2\.') {
+    $composerExitCode = $LASTEXITCODE
+    if ($npmExitCode -ne 0 -or $composerExitCode -ne 0 -or
+        [int] (($npmVersion -split '\.')[0]) -lt 9 -or $composerVersion -notmatch 'Composer version 2\.') {
         throw 'Composer or npm cannot execute with the approved runtimes.'
     }
     Write-Output "PHP $phpVersion | $php"

@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\InternalAuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasskeySessionController;
 use App\Http\Controllers\InternalAdministrationController;
 use App\Http\Controllers\InternalServiceController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PasskeyManagementController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SecurityDevicesController;
@@ -27,6 +28,9 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+Route::post('/locale', LocaleController::class)->name('locale.update');
+Route::post('/internal/locale', LocaleController::class)->name('internal.locale.update');
 
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');

@@ -118,6 +118,30 @@ class SecurityMailTest extends TestCase
         $this->assertCount(0, Mail::mailer('array')->getSymfonyTransport()->messages());
     }
 
+    public function test_queued_security_notice_keeps_its_locale_after_browser_language_changes(): void
+    {
+        $user = User::factory()->create();
+        foreach ([
+            ['ar', 'en', 'أُضيف مفتاح مرور إلى حسابك', 'rtl'],
+            ['en', 'ar', 'A passkey was added to your account', 'ltr'],
+        ] as [$queuedLocale, $browserLocale, $subject, $direction]) {
+            Mail::mailer('array')->getSymfonyTransport()->flush();
+            app()->setLocale($queuedLocale);
+            $user->notify(new SecurityNotice('passkey_added'));
+
+            $this->post('/locale', ['locale' => $browserLocale])->assertRedirect('/login');
+            $this->get('/login')->assertOk();
+            $this->assertSame($browserLocale, app()->getLocale());
+
+            $this->workOne();
+            $messages = Mail::mailer('array')->getSymfonyTransport()->messages();
+            $this->assertCount(1, $messages);
+            $email = $messages->first()->getOriginalMessage();
+            $this->assertSame($subject, $email->getSubject());
+            $this->assertStringContainsString('dir="'.$direction.'"', $email->getHtmlBody());
+        }
+    }
+
     public function test_transport_failure_retries_are_bounded_and_visible_in_failed_jobs(): void
     {
         $user = User::factory()->create();

@@ -124,5 +124,6 @@ jobs:
           php artisan test --compact
           npm run test:password
           npm run test:passkey-client
+          npm run test:localization
           php vendor/bin/pint --test
           npm run build

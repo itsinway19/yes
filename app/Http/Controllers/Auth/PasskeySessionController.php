@@ -42,7 +42,7 @@ final class PasskeySessionController extends Controller
         $issuedAt = (int) $request->session()->pull('builderad.passkey_verification_issued_at', 0);
         if ($issuedAt < time() - 60 || $issuedAt > time()) {
             PasskeyCeremonyTrace::record($request, 'login_challenge_expired');
-            throw ValidationException::withMessages(['credential' => 'انتهت صلاحية محاولة تسجيل الدخول. ابدأ من جديد.']);
+            throw ValidationException::withMessages(['credential' => __('login.passkey_expired')]);
         }
 
         $verificationOptions = $request->verificationOptions();
@@ -55,7 +55,7 @@ final class PasskeySessionController extends Controller
                     ->where('user_id', $user->id)->sharedLock()->first();
                 if (! $lifecycle || $lifecycle->status !== 'current' || ! $user->hasVerifiedEmail() ||
                     $lifecycle->principal_class !== ($internal ? 'staff' : 'advertiser')) {
-                    throw ValidationException::withMessages(['credential' => 'يتعذر تسجيل الدخول بهذا الحساب.']);
+                    throw ValidationException::withMessages(['credential' => __('login.passkey_ineligible')]);
                 }
 
                 Auth::guard($internal ? 'internal' : 'web')->login($user);
@@ -105,8 +105,8 @@ final class PasskeySessionController extends Controller
 
                 return response()->json([
                     'message' => $missingUv && $exception->getMessage() === 'User authentication required.'
-                        ? 'لم يؤكد مُوثِّق مفتاح المرور التحقق بالبصمة أو PIN في الاستجابة. اختر مُوثِّقًا يدعم التحقق من المستخدم ثم حاول مجددًا.'
-                        : 'تعذّر التحقق من مفتاح المرور. حاول مجددًا بمفتاح صالح لهذا الموقع.',
+                        ? __('login.passkey_user_verification')
+                        : __('login.passkey_invalid'),
                 ], 422);
             }
             throw $exception;

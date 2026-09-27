@@ -1,37 +1,36 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
 import { Passkeys } from '@laravel/passkeys';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 import { cancelPasskeyOperation, runPasskeyOperation } from '@/security/passkeyCeremony';
+import { passkeyLoginErrorKey } from '@/localization/passkeyError';
 import Checkbox from '@/Components/Checkbox.vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import LanguageSwitcher from '@/Components/LanguageSwitcher.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
 
-defineProps<{
-    canResetPassword?: boolean;
-    status?: string;
-}>();
-
-const form = useForm({
-    email: '',
-    password: '',
-    remember: false,
-});
+defineProps<{ canResetPassword?: boolean; status?: string }>();
+const { t } = useI18n({ useScope: 'global' });
+const form = useForm({ email: '', password: '', remember: false });
 const passkeySupported = ref(false);
+const supportChecked = ref(false);
 const passkeyBusy = ref(false);
-const passkeyError = ref('');
+const passkeyErrorKey = ref('');
 let operationId: string | null = null;
-const cancelPending = () => {
+
+function cancelPending() {
     if (!operationId) return;
     cancelPasskeyOperation(operationId);
-    passkeyError.value = 'طُلب إلغاء التحقق من المتصفح. ستبقى المحاولات الجديدة متوقفة حتى تنتهي العملية الحالية.';
-};
+    passkeyErrorKey.value = 'login.passkeyCancelRequested';
+}
 
 onMounted(() => {
     passkeySupported.value = Passkeys.isSupported();
+    supportChecked.value = true;
     window.addEventListener('pagehide', cancelPending);
 });
 onUnmounted(() => {
@@ -41,7 +40,7 @@ onUnmounted(() => {
 
 async function signInWithPasskey() {
     if (passkeyBusy.value) return;
-    passkeyError.value = '';
+    passkeyErrorKey.value = '';
     passkeyBusy.value = true;
     try {
         const operation = runPasskeyOperation('login',
@@ -51,106 +50,79 @@ async function signInWithPasskey() {
         const result = await operation.promise;
         window.location.assign(result.redirect || route('dashboard'));
     } catch (error) {
-        passkeyError.value = error instanceof Error && error.name === 'UserCancelledError'
-            ? 'لم يكتمل اختيار مفتاح المرور في المتصفح. تأكد من توفر المفتاح المسجّل في هذا الجهاز أو ملف المتصفح، ثم حاول مجددًا.'
-            : error instanceof Error ? error.message : 'تعذّر تسجيل الدخول بمفتاح المرور.';
+        passkeyErrorKey.value = passkeyLoginErrorKey(error);
     } finally {
         operationId = null;
         passkeyBusy.value = false;
     }
 }
 
-const submit = () => {
-    form.post(route('login'), {
-        onFinish: () => {
-            form.reset('password');
-        },
-    });
-};
+function submit() {
+    form.post(route('login'), { onFinish: () => form.reset('password') });
+}
 </script>
 
 <template>
     <GuestLayout>
-        <Head title="تسجيل الدخول" />
+        <Head :title="t('login.title')" />
+        <LanguageSwitcher route-name="locale.update" :disabled="passkeyBusy || form.processing" />
 
-        <div v-if="status" dir="rtl" role="status" class="mb-4 text-sm font-medium text-green-600">
-            {{ status }}
-        </div>
+        <div v-if="status" role="status" class="mb-4 text-sm font-medium text-green-600">{{ status }}</div>
 
-        <form dir="rtl" @submit.prevent="submit">
+        <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="البريد الإلكتروني" />
-
-                <TextInput
-                    id="email"
-                    type="email"
-                    class="mt-1 block w-full"
-                    v-model="form.email"
-                    required
-                    autofocus
-                    autocomplete="username"
-                />
-
-                <InputError class="mt-2" :message="form.errors.email" />
+                <InputLabel for="email" :value="t('login.email')" />
+                <TextInput id="email" v-model="form.email" type="email" dir="ltr"
+                    :aria-invalid="Boolean(form.errors.email)" aria-describedby="email-error"
+                    class="mt-1 block w-full" required autofocus autocomplete="username" />
+                <InputError id="email-error" class="mt-2" :message="form.errors.email" />
             </div>
 
             <div class="mt-4">
-                <InputLabel for="password" value="كلمة المرور" />
-
-                <TextInput
-                    id="password"
-                    type="password"
-                    class="mt-1 block w-full"
-                    v-model="form.password"
-                    required
-                    autocomplete="current-password"
-                />
-
-                <InputError class="mt-2" :message="form.errors.password" />
+                <InputLabel for="password" :value="t('login.password')" />
+                <TextInput id="password" v-model="form.password" type="password"
+                    :aria-invalid="Boolean(form.errors.password)" aria-describedby="password-error"
+                    class="mt-1 block w-full" required autocomplete="current-password" />
+                <InputError id="password-error" class="mt-2" :message="form.errors.password" />
             </div>
 
             <div class="mt-4 block">
                 <label class="flex items-center">
-                    <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 text-sm text-gray-600"
-                        >تذكرني</span
-                    >
+                    <Checkbox v-model:checked="form.remember" name="remember" />
+                    <span class="ms-2 text-sm text-gray-600">{{ t('login.remember') }}</span>
                 </label>
             </div>
 
             <div class="mt-4 flex flex-wrap items-center justify-end gap-4">
                 <div class="flex items-center gap-4">
-                    <Link
-                        v-if="canResetPassword"
-                        :href="route('password.request')"
-                        class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >
-                        نسيت كلمة المرور؟
+                    <Link v-if="canResetPassword" :href="route('password.request')"
+                        class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                        {{ t('login.forgotPassword') }}
                     </Link>
-                    <Link
-                        :href="route('register')"
-                        class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >
-                        ليس لديك حساب؟
+                    <Link :href="route('register')"
+                        class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                        {{ t('login.register') }}
                     </Link>
                 </div>
-
-                <PrimaryButton
-                    :class="{ 'opacity-25': form.processing }"
-                    :disabled="form.processing"
-                >
-                    {{ form.processing ? 'جارٍ الدخول…' : 'تسجيل الدخول' }}
+                <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing || passkeyBusy">
+                    {{ t(form.processing ? 'login.submitting' : 'login.submit') }}
                 </PrimaryButton>
             </div>
         </form>
-        <div v-if="passkeySupported" class="mt-6 border-t border-gray-200 pt-6" dir="rtl">
-            <p v-if="passkeyError" role="alert" class="mb-3 text-sm text-red-700">{{ passkeyError }}</p>
-            <button type="button" :disabled="passkeyBusy || form.processing" @click="signInWithPasskey"
-                class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50">
-                {{ passkeyBusy ? 'جارٍ التحقق…' : 'الدخول بمفتاح المرور' }}
-            </button>
-            <button v-if="passkeyBusy" type="button" @click="cancelPending"
-                class="mt-2 w-full rounded px-3 py-2 text-sm text-slate-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">إلغاء محاولة مفتاح المرور</button>
+
+        <div v-if="supportChecked" class="mt-6 border-t border-gray-200 pt-6">
+            <p v-if="passkeyErrorKey" role="alert" class="mb-3 text-sm text-red-700">{{ t(passkeyErrorKey) }}</p>
+            <p v-if="!passkeySupported" role="status" class="text-sm text-slate-600">{{ t('login.passkeyUnsupported') }}</p>
+            <template v-else>
+                <button type="button" :disabled="passkeyBusy || form.processing" @click="signInWithPasskey"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50">
+                    {{ t(passkeyBusy ? 'login.passkeyLoading' : 'login.passkey') }}
+                </button>
+                <button v-if="passkeyBusy" type="button" @click="cancelPending"
+                    class="mt-2 w-full rounded px-3 py-2 text-sm text-slate-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                    {{ t('login.passkeyCancel') }}
+                </button>
+            </template>
         </div>
     </GuestLayout>
 </template>
