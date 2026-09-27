@@ -159,8 +159,9 @@ class PasskeyAssertionTest extends TestCase
         $this->assertInstanceOf(\OpenSSLAsymmetricKey::class, $key);
         $details = openssl_pkey_get_details($key);
         $this->assertIsArray($details);
-        $x = $details['ec']['x'];
-        $y = $details['ec']['y'];
+        // OpenSSL may omit leading zero bytes; P-256 COSE coordinates are 32 bytes.
+        $x = str_pad($details['ec']['x'], 32, "\0", STR_PAD_LEFT);
+        $y = str_pad($details['ec']['y'], 32, "\0", STR_PAD_LEFT);
         $credentialId = random_bytes(32);
         $cosePublicKey = "\xA5\x01\x02\x03\x26\x20\x01\x21\x58\x20".$x."\x22\x58\x20".$y;
         $record = CredentialRecord::create(
