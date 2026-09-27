@@ -59,15 +59,15 @@ class InternalAuthorityTest extends TestCase
             ->assertSessionHasErrors('email');
         $this->assertGuest();
 
-        $this->actingAs($employee)->get('/dashboard')->assertOk();
+        $this->actingAsInternal($employee)->get('/internal/security/devices')->assertOk();
         DB::connection('pgsql_migrations')->table('internal_personnel')->where('user_id', $employee->id)->update(['status' => 'revoked']);
-        $this->get('/dashboard')->assertForbidden();
+        $this->get('/internal/security/devices')->assertForbidden();
     }
 
     public function test_internal_administration_requires_an_explicit_current_grant(): void
     {
         $advertiser = User::factory()->create();
-        $this->actingAs($advertiser)->get('/internal/administration')->assertForbidden();
+        $this->actingAs($advertiser)->get('/internal/administration')->assertRedirect(route('internal.login'));
         DB::connection('pgsql_migrations')->table('internal_personnel')->insert([
             'user_id' => $advertiser->id, 'kind' => 'employee', 'status' => 'active',
             'attested_by' => $advertiser->id, 'attested_at' => now(),
@@ -80,10 +80,10 @@ class InternalAuthorityTest extends TestCase
             'reason' => 'invalid class fixture', 'status' => 'active',
             'created_at' => now(), 'updated_at' => now(),
         ]);
-        $this->get('/internal/administration')->assertForbidden();
+        $this->get('/internal/administration')->assertRedirect(route('internal.login'));
 
         $founder = $this->staff('active', 'founder');
-        $this->actingAs($founder)->get('/internal/administration')->assertForbidden();
+        $this->actingAsInternal($founder)->get('/internal/administration')->assertForbidden();
 
         DB::connection('pgsql_migrations')->table('security_action_grants')->insert([
             'subject_user_id' => $founder->id,
@@ -105,7 +105,7 @@ class InternalAuthorityTest extends TestCase
     public function test_active_staff_request_preserves_fifteen_minute_idle_limit(): void
     {
         $employee = $this->staff('active');
-        $this->actingAs($employee)->get('/dashboard')->assertOk();
+        $this->actingAsInternal($employee)->get('/internal/security/devices')->assertOk();
 
         $session = DB::table('security_sessions')->where('user_id', $employee->id)->first();
         $remainingSeconds = now()->diffInSeconds(Carbon::parse($session->idle_expires_at));
@@ -118,8 +118,8 @@ class InternalAuthorityTest extends TestCase
         foreach (['employee', 'founder'] as $kind) {
             $person = $this->staff('active', $kind);
             $keyId = DB::table('passkeys')->where('user_id', $person->id)->orderBy('id')->value('id');
-            $this->actingAs($person)->withCredentials()
-                ->deleteJson('/security/passkeys/'.$keyId)->assertUnprocessable();
+            $this->actingAsInternal($person)->withCredentials()
+                ->deleteJson('/internal/security/passkeys/'.$keyId)->assertUnprocessable();
             $this->assertSame($kind === 'founder' ? 2 : 1,
                 DB::table('passkeys')->where('user_id', $person->id)->count());
         }
@@ -137,7 +137,7 @@ class InternalAuthorityTest extends TestCase
                 'status' => 'active', 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
-        $this->actingAs($founder);
+        $this->actingAsInternal($founder);
         $this->post('/internal/staff', ['name' => 'New Employee', 'email' => 'employee@example.test'])
             ->assertRedirect();
         $employee = User::query()->where('email', 'employee@example.test')->firstOrFail();
@@ -179,10 +179,10 @@ class InternalAuthorityTest extends TestCase
         $grantId = DB::table('security_action_grants')
             ->where('subject_user_id', $employee->id)->where('action', 'staff.view')->value('id');
         $this->assertNotNull($grantId);
-        $this->actingAs($employee)->get('/internal/administration')->assertOk();
-        $this->actingAs($founder)->delete('/internal/grants/'.$grantId)->assertRedirect();
-        $this->actingAs($employee)->get('/internal/administration')->assertForbidden();
-        $this->actingAs($founder);
+        $this->actingAsInternal($employee)->get('/internal/administration')->assertOk();
+        $this->actingAsInternal($founder)->delete('/internal/grants/'.$grantId)->assertRedirect();
+        $this->actingAsInternal($employee)->get('/internal/administration')->assertForbidden();
+        $this->actingAsInternal($founder);
         $this->post('/internal/staff/'.$employee->public_id.'/revoke')->assertRedirect();
         $this->assertDatabaseHas('principal_lifecycles', [
             'user_id' => $employee->id, 'status' => 'disabled', 'generation' => 2,
@@ -229,7 +229,7 @@ class InternalAuthorityTest extends TestCase
                 ->where('source', 'founder_bootstrap')->count());
         $this->assertSame(1, DB::table('security_sessions')->where('user_id', $founder->id)
             ->whereNotNull('revoked_at')->count());
-        $this->get('/internal/administration')->assertRedirect('/login');
+        $this->get('/internal/administration')->assertRedirect('/internal/login');
         $this->assertGuest();
         $this->assertSame(1, Artisan::call('security:bootstrap-founder', $input));
         $this->assertSame(1, DB::table('internal_personnel')->where('kind', 'founder')->count());
@@ -258,7 +258,7 @@ class InternalAuthorityTest extends TestCase
             'factor_independence_attested_by' => $founder->id,
         ]);
 
-        $this->actingAs($founder)->post('/internal/grants', [
+        $this->actingAsInternal($founder)->post('/internal/grants', [
             'staff' => $admin->public_id, 'action' => 'grant.manage',
             'reason' => 'Ordinary staff grant administration',
         ])->assertRedirect();
@@ -274,7 +274,7 @@ class InternalAuthorityTest extends TestCase
         $sensitiveGrant = DB::table('security_action_grants')
             ->where('subject_user_id', $target->id)->where('action', 'service.manage')->value('id');
 
-        $this->actingAs($admin)->post('/internal/grants', [
+        $this->actingAsInternal($admin)->post('/internal/grants', [
             'staff' => $target->public_id, 'action' => 'grant.manage',
             'reason' => 'Forbidden privilege delegation',
         ])->assertForbidden();

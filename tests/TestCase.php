@@ -8,6 +8,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
@@ -17,6 +18,15 @@ abstract class TestCase extends BaseTestCase
 
     public function actingAs(Authenticatable $user, $guard = null)
     {
+        $guard ??= 'web';
+        $cookie = config($guard === 'internal' ? 'session.internal_cookie' : 'session.advertiser_cookie');
+        if (config('session.cookie') !== $cookie) {
+            config()->set('session.cookie', $cookie);
+            $this->app['session']->forgetDrivers();
+            $this->app->forgetInstance('session.store');
+            Auth::forgetGuards();
+        }
+        config()->set('session.path', $guard === 'internal' ? '/internal' : '/');
         parent::actingAs($user, $guard);
         $generation = DB::table('principal_lifecycles')->where('user_id', $user->getAuthIdentifier())->value('generation');
         $this->withSession(['a001_generation' => (int) ($generation ?? 0)]);
@@ -29,16 +39,23 @@ abstract class TestCase extends BaseTestCase
         }
         unset($this->unencryptedCookies[$session->getName()]);
         $this->withCookie($session->getName(), $session->getId());
-        $request = Request::create('/', 'GET');
+        $request = Request::create($guard === 'internal' ? '/internal/administration' : '/', 'GET');
         $request->setLaravelSession($session);
         if (! $existing) {
             $staff = DB::table('principal_lifecycles')->where('user_id', $user->getAuthIdentifier())
                 ->where('principal_class', 'staff')->exists();
-            app(SessionAuthority::class)->issue($request, $user, $staff ? 'passkey' : 'password');
+            app(SessionAuthority::class)->issue($request, $user,
+                $guard === 'internal' ? 'internal_passkey' : ($staff ? 'staff_enrollment' : 'password'));
         }
         $session->save();
 
         return $this;
+    }
+
+    /** Synthetic administrative session fixture for authorization tests, not a WebAuthn proof. */
+    public function actingAsInternal(Authenticatable $user): static
+    {
+        return $this->actingAs($user, 'internal');
     }
 
     public function call($method, $uri, $parameters = [], $cookies = [], $files = [], $server = [], $content = null)

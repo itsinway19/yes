@@ -34,11 +34,17 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
-                'canInternalAdministration' => fn () => $request->user() &&
+                'canInternalAdministration' => fn () => $request->is('internal/*') && $request->user() &&
                     app(GrantAuthority::class)->has(
                         $request->user(),
                         (int) $request->session()->get('a001_generation', 0),
                         'staff.view',
+                    ),
+                'canManageServices' => fn () => $request->is('internal/*') && $request->user() &&
+                    app(GrantAuthority::class)->has(
+                        $request->user(),
+                        (int) $request->session()->get('a001_generation', 0),
+                        'service.manage',
                     ),
             ],
         ];

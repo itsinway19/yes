@@ -11,5 +11,6 @@ export type PageProps<
     auth: {
         user: User;
         canInternalAdministration: boolean;
+        canManageServices: boolean;
     };
 };

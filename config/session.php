@@ -132,6 +132,16 @@ return [
         Str::slug((string) env('APP_NAME', 'Builderad')).'-session'
     ),
 
+    'advertiser_cookie' => env(
+        'SESSION_COOKIE',
+        Str::slug((string) env('APP_NAME', 'Builderad')).'-session'
+    ),
+
+    'internal_cookie' => env(
+        'INTERNAL_SESSION_COOKIE',
+        Str::slug((string) env('APP_NAME', 'Builderad')).'-internal-session'
+    ),
+
     /*
     |--------------------------------------------------------------------------
     | Session Cookie Path

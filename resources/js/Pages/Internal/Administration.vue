@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import InternalLayout from '@/Layouts/InternalLayout.vue';
 
 type Person = {
     public_id: string;
@@ -71,7 +71,7 @@ const statusLabel: Record<Person['status'], string> = {
 
 <template>
     <Head title="إدارة Builderad الداخلية" />
-    <AuthenticatedLayout>
+    <InternalLayout>
         <template #header>
             <h1 class="text-xl font-semibold text-slate-900">إدارة Builderad الداخلية</h1>
         </template>
@@ -136,5 +136,5 @@ const statusLabel: Record<Person['status'], string> = {
                 </ul>
             </section>
         </div>
-    </AuthenticatedLayout>
+    </InternalLayout>
 </template>

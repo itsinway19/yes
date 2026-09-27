@@ -25,7 +25,7 @@ final class EnsureCurrentPrincipal
         }
 
         if (! $user->hasVerifiedEmail()) {
-            if ($request->expectsJson()) {
+            if ($request->expectsJson() || $request->is('internal/*')) {
                 abort(403);
             }
 

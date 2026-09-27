@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { Passkeys } from '@laravel/passkeys';
 import { cancelPasskeyOperation, runPasskeyOperation } from '@/security/passkeyCeremony';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import GuestLayout from '@/Layouts/GuestLayout.vue';
 
 const props = defineProps<{
     verified: boolean;
@@ -48,8 +48,8 @@ async function enroll() {
 
 <template>
     <Head title="تهيئة الحساب الداخلي" />
-    <AuthenticatedLayout>
-        <template #header><h1 class="text-xl font-semibold text-slate-900">تهيئة الحساب الداخلي</h1></template>
+    <GuestLayout>
+        <h1 class="mb-4 text-xl font-semibold text-slate-900">تهيئة الحساب الداخلي</h1>
         <main dir="rtl" class="mx-auto max-w-3xl px-4 py-8 sm:px-6">
             <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
                 <h2 class="text-lg font-semibold text-slate-900">إكمال وسائل الدخول</h2>
@@ -75,5 +75,5 @@ async function enroll() {
                 <p class="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">{{ attested ? 'أُقرّت أهليتك، وسيظهر الدخول الداخلي بعد التفعيل.' : 'بانتظار إقرار الأهلية من إدارة Builderad.' }}</p>
             </section>
         </main>
-    </AuthenticatedLayout>
+    </GuestLayout>
 </template>

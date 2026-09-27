@@ -25,11 +25,12 @@ final class EnsureFreshAuthentication
                 ->where('principal_class', 'staff')->exists();
             if ($staff) {
                 DB::transaction(fn () => $this->sessions->revokeCurrent($request));
-                Auth::guard('web')->logout();
+                Auth::guard($request->is('internal/*') ? 'internal' : 'web')->logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
-                return redirect()->route('login')->with('status', __('security.session.reauthenticate'));
+                return redirect()->route($request->is('internal/*') ? 'internal.login' : 'login')
+                    ->with('status', __('security.session.reauthenticate'));
             }
 
             return redirect()->guest(route('password.confirm'));

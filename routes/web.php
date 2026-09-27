@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\InternalAuthenticatedSessionController;
+use App\Http\Controllers\Auth\PasskeySessionController;
 use App\Http\Controllers\InternalAdministrationController;
 use App\Http\Controllers\InternalServiceController;
 use App\Http\Controllers\PasskeyManagementController;
@@ -67,6 +69,34 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
     Route::get('/security/passkeys/options', [PasskeyManagementController::class, 'options'])->middleware(EnsureFreshAuthentication::class)->name('security.passkeys.options');
     Route::post('/security/passkeys', [PasskeyManagementController::class, 'store'])->middleware(EnsureFreshAuthentication::class)->name('security.passkeys.store');
     Route::delete('/security/passkeys/{passkey}', [PasskeyManagementController::class, 'destroy'])->middleware(EnsureFreshAuthentication::class)->whereNumber('passkey')->name('security.passkeys.destroy');
+});
+
+Route::middleware('guest:internal')->group(function () {
+    Route::get('/internal/login', [InternalAuthenticatedSessionController::class, 'create'])->name('internal.login');
+    Route::get('/internal/auth/passkey/options', [PasskeySessionController::class, 'options'])
+        ->middleware('throttle:12,1')->name('internal.auth.passkey.options');
+    Route::post('/internal/auth/passkey', [PasskeySessionController::class, 'store'])
+        ->middleware('throttle:6,1')->name('internal.auth.passkey.store');
+});
+
+Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->group(function () {
+    Route::post('/internal/logout', [InternalAuthenticatedSessionController::class, 'destroy'])
+        ->name('internal.logout');
+    Route::get('/internal/security/devices', [SecurityDevicesController::class, 'index'])
+        ->name('internal.security.devices');
+    Route::delete('/internal/security/sessions/{session}', [SecurityDevicesController::class, 'destroy'])
+        ->middleware(EnsureFreshAuthentication::class)->whereNumber('session')->name('internal.security.sessions.destroy');
+    Route::post('/internal/security/sessions/revoke-others', [SecurityDevicesController::class, 'destroyOthers'])
+        ->middleware(EnsureFreshAuthentication::class)->name('internal.security.sessions.revoke-others');
+    Route::post('/internal/security/sessions/sign-out-this-device', [SecurityDevicesController::class, 'destroyCurrent'])
+        ->name('internal.security.sessions.sign-out-current');
+    Route::get('/internal/security/passkeys/options', [PasskeyManagementController::class, 'options'])
+        ->middleware(EnsureFreshAuthentication::class)->name('internal.security.passkeys.options');
+    Route::post('/internal/security/passkeys', [PasskeyManagementController::class, 'store'])
+        ->middleware(EnsureFreshAuthentication::class)->name('internal.security.passkeys.store');
+    Route::delete('/internal/security/passkeys/{passkey}', [PasskeyManagementController::class, 'destroy'])
+        ->middleware(EnsureFreshAuthentication::class)->whereNumber('passkey')->name('internal.security.passkeys.destroy');
+
     Route::get('/internal/administration', [InternalAdministrationController::class, 'index'])
         ->middleware(RequireActionGrant::class.':staff.view')->name('internal.administration');
     Route::post('/internal/staff', [InternalAdministrationController::class, 'invite'])
