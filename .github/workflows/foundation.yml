@@ -21,7 +21,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd "pg_isready -U postgres -d postgres"
           --health-interval 10s
@@ -42,11 +42,12 @@ jobs:
       APP_DEBUG: 'false'
       DB_CONNECTION: pgsql
       DB_HOST: 127.0.0.1
-      DB_PORT: '5432'
-      DB_DATABASE: builderad_test
+      DB_PORT: '5433'
+      DB_DATABASE: builderad_test_disposable
       DB_USERNAME: builderad_app
+      DB_AUTHORITY_USERNAME: builderad_authority
       DB_OWNER_CONNECTION: pgsql_migrations
-      DB_OWNER_DATABASE: builderad_test
+      DB_OWNER_DATABASE: builderad_test_disposable
       DB_OWNER_USERNAME: builderad_owner
       REDIS_HOST: 127.0.0.1
       REDIS_PORT: '6379'
@@ -81,27 +82,39 @@ jobs:
         run: |
           owner_password="$(openssl rand -hex 32)"
           app_password="$(openssl rand -hex 32)"
+          authority_password="$(openssl rand -hex 32)"
+          isolation_token="$(python3 -c 'import uuid; print(uuid.uuid4())')"
           printf '::add-mask::%s\n' "$owner_password"
           printf '::add-mask::%s\n' "$app_password"
+          printf '::add-mask::%s\n' "$authority_password"
           printf 'DB_OWNER_PASSWORD=%s\n' "$owner_password" >> "$GITHUB_ENV"
           printf 'DB_PASSWORD=%s\n' "$app_password" >> "$GITHUB_ENV"
+          printf 'DB_AUTHORITY_PASSWORD=%s\n' "$authority_password" >> "$GITHUB_ENV"
+          printf 'BUILDERAD_TEST_ISOLATION_TOKEN=%s\n' "$isolation_token" >> "$GITHUB_ENV"
 
       - name: Bootstrap PostgreSQL 18 authority
         env:
           PGPASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
         run: |
-          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres -f database/bootstrap/postgresql.sql
-          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres <<SQL
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d postgres -f database/bootstrap/postgresql.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d builderad_test -f database/bootstrap/test-authority-role.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d postgres \
+            -v ci_docker_service=1 -v "isolation_token=$BUILDERAD_TEST_ISOLATION_TOKEN" \
+            -f database/bootstrap/disposable-test.sql
+          server_host="$(psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d builderad_test_disposable -Atqc 'select host(inet_server_addr())')"
+          test -n "$server_host"
+          printf 'BUILDERAD_TEST_SERVER_HOST=%s\n' "$server_host" >> "$GITHUB_ENV"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d postgres <<SQL
           ALTER ROLE builderad_owner PASSWORD '$DB_OWNER_PASSWORD';
           ALTER ROLE builderad_app PASSWORD '$DB_PASSWORD';
+          ALTER ROLE builderad_authority PASSWORD '$DB_AUTHORITY_PASSWORD';
           SQL
 
-      - name: Prepare test environment and migrate as owner
+      - name: Verify disposable test environment before migrations
         run: |
           cp .env.example .env.testing
           php artisan key:generate --env=testing --no-interaction
-          php artisan about --only=environment
-          php artisan migrate --database=pgsql_migrations --force
+          php artisan security:assert-disposable-test-db
 
       - name: Verify Foundation
         run: |

@@ -48,8 +48,17 @@ final class DisposableTestDatabaseGuard
                     (SELECT shobj_description(oid, 'pg_database') FROM pg_database
                      WHERE datname = current_database()) AS database_marker
                 SQL);
+            // GitHub's PostgreSQL service listens on 5432 inside Docker even
+            // when its host endpoint is mapped to 127.0.0.1:5433.
+            $serverMatches = env('GITHUB_ACTIONS') === true
+                ? $identity?->server_host === env('BUILDERAD_TEST_SERVER_HOST') &&
+                    filter_var($identity?->server_host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false &&
+                    $identity?->server_host !== '127.0.0.1' &&
+                    (int) $identity?->server_port === 5432
+                : $identity?->server_host === '127.0.0.1' &&
+                    (int) $identity?->server_port === self::PORT;
             if ($identity?->database_name !== self::DATABASE || $identity?->role_name !== $role ||
-                $identity?->server_host !== '127.0.0.1' || (int) $identity?->server_port !== self::PORT ||
+                ! $serverMatches ||
                 (int) $identity?->server_version < 180000 || (int) $identity?->server_version >= 190000 ||
                 (bool) $identity?->unsafe_role ||
                 $identity?->database_marker !== 'builderad-disposable-test:v1:'.$token) {
