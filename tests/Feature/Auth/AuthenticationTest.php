@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -37,6 +38,20 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertGuest();
+    }
+
+    public function test_disabled_advertiser_login_fails_without_retaining_a_web_session(): void
+    {
+        $user = User::factory()->create();
+        DB::connection('pgsql_migrations')->table('principal_lifecycles')->where('user_id', $user->id)
+            ->update(['status' => 'disabled', 'generation' => 2, 'cause' => 'security_hold']);
+
+        $this->post('/login', [
+            'email' => $user->email, 'password' => 'password',
+        ])->assertSessionHasErrors('email');
+
+        $this->assertGuest();
+        $this->assertSame(0, DB::table('security_sessions')->where('user_id', $user->id)->count());
     }
 
     public function test_users_can_logout(): void

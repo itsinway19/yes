@@ -39,6 +39,18 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Dashboard
                                 </NavLink>
+                                <NavLink
+                                    :href="route('security.devices')"
+                                    :active="route().current('security.devices')"
+                                >
+                                    الأمان والأجهزة
+                                </NavLink>
+                                <NavLink :href="route('workspaces.index')" :active="route().current('workspaces.index')">مساحات العمل</NavLink>
+                                <NavLink v-if="$page.props.auth.canInternalAdministration"
+                                    :href="route('internal.administration')"
+                                    :active="route().current('internal.administration')">
+                                    الإدارة الداخلية
+                                </NavLink>
                             </div>
                         </div>
 
@@ -75,6 +87,9 @@ const showingNavigationDropdown = ref(false);
                                             :href="route('profile.edit')"
                                         >
                                             Profile
+                                        </DropdownLink>
+                                        <DropdownLink :href="route('security.devices')">
+                                            الأمان والأجهزة
                                         </DropdownLink>
                                         <DropdownLink
                                             :href="route('logout')"
@@ -145,6 +160,18 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('dashboard')"
                         >
                             Dashboard
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('security.devices')"
+                            :active="route().current('security.devices')"
+                        >
+                            الأمان والأجهزة
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('workspaces.index')" :active="route().current('workspaces.index')">مساحات العمل</ResponsiveNavLink>
+                        <ResponsiveNavLink v-if="$page.props.auth.canInternalAdministration"
+                            :href="route('internal.administration')"
+                            :active="route().current('internal.administration')">
+                            الإدارة الداخلية
                         </ResponsiveNavLink>
                     </div>
 

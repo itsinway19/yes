@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Security\SessionAuthority;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -15,16 +17,19 @@ class ConfirmablePasswordController extends Controller
     /**
      * Show the confirm password view.
      */
-    public function show(): Response
+    public function show(Request $request): Response
     {
+        $this->denyStaff($request);
+
         return Inertia::render('Auth/ConfirmPassword');
     }
 
     /**
      * Confirm the user's password.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, SessionAuthority $sessions): RedirectResponse
     {
+        $this->denyStaff($request);
         if (! Auth::guard('web')->validate([
             'email' => $request->user()->email,
             'password' => $request->password,
@@ -34,8 +39,17 @@ class ConfirmablePasswordController extends Controller
             ]);
         }
 
+        $sessions->markFreshPasswordAuthentication($request, $request->user());
         $request->session()->put('auth.password_confirmed_at', time());
 
         return redirect()->intended(route('dashboard', absolute: false));
+    }
+
+    private function denyStaff(Request $request): void
+    {
+        if (DB::table('principal_lifecycles')->where('user_id', $request->user()->id)
+            ->where('principal_class', 'staff')->exists()) {
+            abort(403);
+        }
     }
 }

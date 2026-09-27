@@ -35,12 +35,17 @@ final class PrincipalContext
             throw new LogicException('Principal context requires a persisted user identifier.');
         }
 
-        $connection->selectOne(
-            "select set_config('app.principal_user_id', ?, true)",
-            [(string) $principalId],
-        );
-        $connection->selectOne(
-            "select set_config('app.authorization_phase', 'principal', true)",
-        );
+        $transaction = $connection->selectOne('SELECT pg_backend_pid() AS backend_pid, pg_current_xact_id()::text AS transaction_id');
+        $ticket = bin2hex(random_bytes(32));
+        DB::connection('pgsql_authority')->table('builderad_context_tickets')
+            ->whereRaw('expires_at <= clock_timestamp()')->delete();
+        DB::connection('pgsql_authority')->table('builderad_context_tickets')->insert([
+            'token_hash' => hash('sha256', $ticket),
+            'actor_user_id' => $principalId,
+            'backend_pid' => $transaction->backend_pid,
+            'transaction_id' => $transaction->transaction_id,
+            'expires_at' => DB::raw("clock_timestamp() + interval '20 seconds'"),
+        ]);
+        $connection->selectOne('SELECT builderad_activate_principal_context(?)', [$ticket]);
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ProfileTest extends TestCase
@@ -31,13 +32,18 @@ class ProfileTest extends TestCase
 
         $response
             ->assertSessionHasNoErrors()
-            ->assertRedirect('/profile');
+            ->assertRedirect(route('login'));
 
         $user->refresh();
 
         $this->assertSame('Test User', $user->name);
         $this->assertSame('test@example.com', $user->email);
         $this->assertNull($user->email_verified_at);
+        $this->assertGuest();
+        $this->assertSame('pending', DB::table('principal_lifecycles')
+            ->where('user_id', $user->id)->value('status'));
+        $this->assertSame(0, DB::table('security_sessions')
+            ->where('user_id', $user->id)->whereNull('revoked_at')->count());
     }
 
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void

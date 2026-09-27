@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Notifications\SecurityResetPassword;
+use App\Notifications\SecurityVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -10,14 +12,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Passkeys\Contracts\PasskeyUser;
+use Laravel\Passkeys\PasskeyAuthenticatable;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret_encrypted', 'two_factor_recovery_codes_encrypted'])]
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, PasskeyAuthenticatable;
 
     protected static function booted(): void
     {
@@ -38,6 +43,20 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->belongsToMany(Workspace::class, 'workspace_memberships')
             ->using(WorkspaceMembership::class)
             ->withPivot(['role', 'status', 'created_at', 'revoked_at']);
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $updatedAt = DB::table('principal_lifecycles')
+            ->where('user_id', $this->id)->where('status', 'pending')->value('updated_at');
+        if ($updatedAt !== null && ! $this->hasVerifiedEmail()) {
+            $this->notify(new SecurityVerifyEmail($this->email, (string) $updatedAt));
+        }
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new SecurityResetPassword($token, $this->email));
     }
 
     /**

@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -12,6 +13,26 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
+    public function newModel(array $attributes = []): User
+    {
+        return parent::newModel($attributes)->setConnection('pgsql_authority');
+    }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $current = $user->hasVerifiedEmail();
+            DB::connection('pgsql_authority')->table('principal_lifecycles')->insert([
+                'user_id' => $user->id,
+                'status' => $current ? 'current' : 'pending',
+                'generation' => $current ? 1 : 0,
+                'cause' => $current ? null : 'primary_email_unverified',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+    }
+
     /**
      * The current password being used by the factory.
      */

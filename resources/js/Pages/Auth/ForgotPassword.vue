@@ -21,24 +21,22 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Forgot Password" />
+        <Head title="استعادة كلمة المرور" />
 
-        <div class="mb-4 text-sm text-gray-600">
-            Forgot your password? No problem. Just let us know your email
-            address and we will email you a password reset link that will allow
-            you to choose a new one.
+        <div dir="rtl" class="mb-4 text-sm leading-6 text-gray-600">
+            أدخل بريد حسابك. إذا كان الحساب مؤهلًا، سنجهّز رابطًا مؤقتًا لإعادة تعيين كلمة المرور.
         </div>
 
         <div
             v-if="status"
-            class="mb-4 text-sm font-medium text-green-600"
+            dir="rtl" role="status" class="mb-4 text-sm font-medium text-green-700"
         >
             {{ status }}
         </div>
 
-        <form @submit.prevent="submit">
+        <form dir="rtl" @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" value="البريد الإلكتروني" />
 
                 <TextInput
                     id="email"
@@ -48,6 +46,7 @@ const submit = () => {
                     required
                     autofocus
                     autocomplete="username"
+                    dir="ltr"
                 />
 
                 <InputError class="mt-2" :message="form.errors.email" />
@@ -58,7 +57,7 @@ const submit = () => {
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Email Password Reset Link
+                    {{ form.processing ? 'جارٍ الطلب…' : 'طلب رابط الاستعادة' }}
                 </PrimaryButton>
             </div>
         </form>

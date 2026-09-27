@@ -21,6 +21,7 @@ final class WorkspaceFoundationController
                     'slug' => $activeWorkspace->slug,
                 ],
             ]),
+            $request,
         );
     }
 }

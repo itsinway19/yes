@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'pwned_passwords' => [
+        'ca_bundle' => env('PWNED_PASSWORDS_CA_BUNDLE'),
+    ],
+
 ];

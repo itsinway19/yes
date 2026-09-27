@@ -21,16 +21,15 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Confirm Password" />
+        <Head title="تأكيد كلمة المرور" />
 
-        <div class="mb-4 text-sm text-gray-600">
-            This is a secure area of the application. Please confirm your
-            password before continuing.
+        <div dir="rtl" class="mb-4 text-sm leading-6 text-gray-600">
+            أدخل كلمة مرورك مجددًا لتأكيد هويتك قبل إجراء التغيير الحساس.
         </div>
 
-        <form @submit.prevent="submit">
+        <form dir="rtl" @submit.prevent="submit">
             <div>
-                <InputLabel for="password" value="Password" />
+                <InputLabel for="password" value="كلمة المرور" />
                 <TextInput
                     id="password"
                     type="password"
@@ -49,7 +48,7 @@ const submit = () => {
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Confirm
+                    {{ form.processing ? 'جارٍ التحقق…' : 'تأكيد' }}
                 </PrimaryButton>
             </div>
         </form>
