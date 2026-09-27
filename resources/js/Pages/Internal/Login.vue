@@ -2,23 +2,29 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { Passkeys } from '@laravel/passkeys';
+import { useI18n } from 'vue-i18n';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
+import LanguageSwitcher from '@/Components/LanguageSwitcher.vue';
+import { passkeyLoginErrorKey } from '@/localization/passkeyError';
 import { cancelPasskeyOperation, runPasskeyOperation } from '@/security/passkeyCeremony';
 
 defineProps<{ status?: string }>();
+const { t } = useI18n({ useScope: 'global' });
 const supported = ref(false);
+const supportChecked = ref(false);
 const busy = ref(false);
-const error = ref('');
+const errorKey = ref('');
 let operationId: string | null = null;
 
 function cancelPending() {
     if (!operationId) return;
     cancelPasskeyOperation(operationId);
-    error.value = 'طُلب إلغاء التحقق من المتصفح. انتظر انتهاء العملية الحالية.';
+    errorKey.value = 'login.passkeyCancelRequested';
 }
 
 onMounted(() => {
     supported.value = Passkeys.isSupported();
+    supportChecked.value = true;
     window.addEventListener('pagehide', cancelPending);
 });
 onUnmounted(() => {
@@ -29,7 +35,7 @@ onUnmounted(() => {
 async function signIn() {
     if (busy.value) return;
     busy.value = true;
-    error.value = '';
+    errorKey.value = '';
     try {
         const operation = runPasskeyOperation('internal-login', {
             options: route('internal.auth.passkey.options'),
@@ -39,9 +45,7 @@ async function signIn() {
         const result = await operation.promise as { redirect?: string };
         window.location.assign(result.redirect || route('internal.administration'));
     } catch (failure) {
-        error.value = failure instanceof Error && failure.name === 'UserCancelledError'
-            ? 'لم يكتمل اختيار مفتاح المرور. اختر مفتاحًا مسجّلًا وأكمل التحقق في المتصفح.'
-            : failure instanceof Error ? failure.message : 'تعذّر الدخول بمفتاح المرور.';
+        errorKey.value = passkeyLoginErrorKey(failure);
     } finally {
         operationId = null;
         busy.value = false;
@@ -51,18 +55,26 @@ async function signIn() {
 
 <template>
     <GuestLayout>
-        <Head title="دخول الإدارة الداخلية" />
-        <div dir="rtl">
-            <h1 class="text-xl font-semibold text-slate-900">دخول الإدارة الداخلية</h1>
-            <p class="mt-3 text-sm leading-6 text-slate-600">هذا الدخول مخصص للحسابات الداخلية المفعّلة. استخدم مفتاح المرور المسجّل لحسابك الداخلي.</p>
+        <Head :title="t('login.internalTitle')" />
+        <LanguageSwitcher route-name="internal.locale.update" :disabled="busy" />
+        <div>
+            <h1 class="text-xl font-semibold text-slate-900">{{ t('login.internalTitle') }}</h1>
+            <p class="mt-3 text-sm leading-6 text-slate-600">{{ t('login.internalIntro') }}</p>
             <p v-if="status" role="status" class="mt-4 text-sm text-green-700">{{ status }}</p>
-            <p v-if="error" role="alert" class="mt-4 text-sm text-red-700">{{ error }}</p>
-            <p v-if="!supported" role="alert" class="mt-4 text-sm text-red-700">هذا المتصفح لا يدعم مفاتيح المرور. افتح الصفحة عبر متصفح مدعوم على localhost.</p>
-            <button type="button" :disabled="busy || !supported" @click="signIn" class="mt-6 w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50">
-                {{ busy ? 'جارٍ التحقق…' : 'الدخول بمفتاح المرور' }}
+            <p v-if="errorKey" role="alert" class="mt-4 text-sm text-red-700">{{ t(errorKey) }}</p>
+            <p v-if="supportChecked && !supported" role="alert" class="mt-4 text-sm text-red-700">
+                {{ t('login.passkeyUnsupported') }}
+            </p>
+            <button type="button" :disabled="busy || !supported" @click="signIn"
+                class="mt-6 w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50">
+                {{ t(busy ? 'login.passkeyLoading' : 'login.passkey') }}
             </button>
-            <button v-if="busy" type="button" @click="cancelPending" class="mt-3 w-full rounded px-3 py-2 text-sm underline">إلغاء المحاولة</button>
-            <Link :href="route('login')" class="mt-6 block text-center text-sm text-slate-600 underline">دخول المعلنين</Link>
+            <button v-if="busy" type="button" @click="cancelPending" class="mt-3 w-full rounded px-3 py-2 text-sm underline">
+                {{ t('login.passkeyCancel') }}
+            </button>
+            <Link :href="route('login')" class="mt-6 block text-center text-sm text-slate-600 underline">
+                {{ t('login.advertiserLogin') }}
+            </Link>
         </div>
     </GuestLayout>
 </template>

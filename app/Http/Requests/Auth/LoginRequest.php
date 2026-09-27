@@ -8,6 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -80,8 +81,8 @@ class LoginRequest extends FormRequest
 
         throw ValidationException::withMessages([
             'email' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
+                'seconds' => Number::format($seconds, locale: app()->getLocale()),
+                'minutes' => Number::format(ceil($seconds / 60), locale: app()->getLocale()),
             ]),
         ]);
     }
