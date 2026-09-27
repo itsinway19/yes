@@ -6,6 +6,7 @@ use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -48,6 +49,15 @@ class LoginRequest extends FormRequest
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
+        }
+
+        $lifecycle = DB::table('principal_lifecycles')->where('user_id', Auth::id())->first();
+        $pendingEnrollment = $lifecycle?->principal_class === 'staff' && $lifecycle->status === 'pending' &&
+            DB::table('internal_personnel')->where('user_id', Auth::id())->where('status', 'pending')->exists();
+        if ($lifecycle?->principal_class === 'staff' && ! $pendingEnrollment) {
+            Auth::guard('web')->logout();
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages(['email' => trans('auth.failed')]);
         }
 
         RateLimiter::clear($this->throttleKey());

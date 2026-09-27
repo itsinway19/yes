@@ -4,7 +4,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const passwordInput = ref<HTMLInputElement | null>(null);
 const currentPasswordInput = ref<HTMLInputElement | null>(null);
@@ -14,6 +14,7 @@ const form = useForm({
     password: '',
     password_confirmation: '',
 });
+const serviceError = computed(() => (form.errors as Record<string, string>).service);
 
 const updatePassword = () => {
     form.put(route('password.update'), {
@@ -36,21 +37,21 @@ const updatePassword = () => {
 </script>
 
 <template>
-    <section>
+    <section dir="rtl">
         <header>
             <h2 class="text-lg font-medium text-gray-900">
-                Update Password
+                تغيير كلمة المرور
             </h2>
 
             <p class="mt-1 text-sm text-gray-600">
-                Ensure your account is using a long, random password to stay
-                secure.
+                استخدم كلمة مرور طويلة وفريدة. ستنتهي الجلسات الأخرى بعد تغييرها.
             </p>
         </header>
 
         <form @submit.prevent="updatePassword" class="mt-6 space-y-6">
+            <InputError role="alert" :message="serviceError" />
             <div>
-                <InputLabel for="current_password" value="Current Password" />
+                <InputLabel for="current_password" value="كلمة المرور الحالية" />
 
                 <TextInput
                     id="current_password"
@@ -68,7 +69,7 @@ const updatePassword = () => {
             </div>
 
             <div>
-                <InputLabel for="password" value="New Password" />
+                <InputLabel for="password" value="كلمة المرور الجديدة" />
 
                 <TextInput
                     id="password"
@@ -85,7 +86,7 @@ const updatePassword = () => {
             <div>
                 <InputLabel
                     for="password_confirmation"
-                    value="Confirm Password"
+                    value="تأكيد كلمة المرور"
                 />
 
                 <TextInput
@@ -103,7 +104,7 @@ const updatePassword = () => {
             </div>
 
             <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Save</PrimaryButton>
+                <PrimaryButton :disabled="form.processing">{{ form.processing ? 'جارٍ الحفظ…' : 'حفظ' }}</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
@@ -115,7 +116,7 @@ const updatePassword = () => {
                         v-if="form.recentlySuccessful"
                         class="text-sm text-gray-600"
                     >
-                        Saved.
+                        تغيّرت كلمة المرور.
                     </p>
                 </Transition>
             </div>

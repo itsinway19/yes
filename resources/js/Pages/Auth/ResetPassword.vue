@@ -5,6 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const props = defineProps<{
     email: string;
@@ -17,10 +18,11 @@ const form = useForm({
     password: '',
     password_confirmation: '',
 });
+const serviceError = computed(() => (form.errors as Record<string, string>).service);
 
 const submit = () => {
     form.post(route('password.store'), {
-        onFinish: () => {
+        onSuccess: () => {
             form.reset('password', 'password_confirmation');
         },
     });
@@ -29,11 +31,12 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Reset Password" />
+        <Head title="إعادة تعيين كلمة المرور" />
 
-        <form @submit.prevent="submit">
+        <form dir="rtl" @submit.prevent="submit">
+            <InputError role="alert" class="mb-4" :message="serviceError" />
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" value="البريد الإلكتروني" />
 
                 <TextInput
                     id="email"
@@ -43,13 +46,14 @@ const submit = () => {
                     required
                     autofocus
                     autocomplete="username"
+                    dir="ltr"
                 />
 
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
             <div class="mt-4">
-                <InputLabel for="password" value="Password" />
+                <InputLabel for="password" value="كلمة المرور الجديدة" />
 
                 <TextInput
                     id="password"
@@ -66,7 +70,7 @@ const submit = () => {
             <div class="mt-4">
                 <InputLabel
                     for="password_confirmation"
-                    value="Confirm Password"
+                    value="تأكيد كلمة المرور"
                 />
 
                 <TextInput
@@ -89,7 +93,7 @@ const submit = () => {
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Reset Password
+                    {{ form.processing ? 'جارٍ الحفظ…' : 'إعادة تعيين كلمة المرور' }}
                 </PrimaryButton>
             </div>
         </form>

@@ -7,6 +7,7 @@ import { Link, useForm, usePage } from '@inertiajs/vue3';
 
 defineProps<{
     mustVerifyEmail?: Boolean;
+    canChangeEmail: Boolean;
     status?: String;
 }>();
 
@@ -19,14 +20,14 @@ const form = useForm({
 </script>
 
 <template>
-    <section>
+    <section dir="rtl">
         <header>
             <h2 class="text-lg font-medium text-gray-900">
-                Profile Information
+                معلومات الحساب
             </h2>
 
             <p class="mt-1 text-sm text-gray-600">
-                Update your account's profile information and email address.
+                حدّث اسمك وبريدك الأساسي. تغيير البريد يُنهي الجلسات ويتطلب تسجيل دخول جديدًا وتأكيد العنوان الجديد.
             </p>
         </header>
 
@@ -35,7 +36,7 @@ const form = useForm({
             class="mt-6 space-y-6"
         >
             <div>
-                <InputLabel for="name" value="Name" />
+                <InputLabel for="name" value="الاسم" />
 
                 <TextInput
                     id="name"
@@ -51,7 +52,7 @@ const form = useForm({
             </div>
 
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" value="البريد الإلكتروني" />
 
                 <TextInput
                     id="email"
@@ -60,21 +61,24 @@ const form = useForm({
                     v-model="form.email"
                     required
                     autocomplete="username"
+                    :readonly="!canChangeEmail"
+                    dir="ltr"
                 />
+                <p v-if="!canChangeEmail" class="mt-2 text-xs text-gray-600">تغيير البريد الداخلي يتطلب صلاحية مستقلة.</p>
 
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
             <div v-if="mustVerifyEmail && user.email_verified_at === null">
                 <p class="mt-2 text-sm text-gray-800">
-                    Your email address is unverified.
+                    بريدك الإلكتروني غير مؤكد.
                     <Link
                         :href="route('verification.send')"
                         method="post"
                         as="button"
                         class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     >
-                        Click here to re-send the verification email.
+                        اطلب رابط تأكيد جديدًا.
                     </Link>
                 </p>
 
@@ -82,12 +86,12 @@ const form = useForm({
                     v-show="status === 'verification-link-sent'"
                     class="mt-2 text-sm font-medium text-green-600"
                 >
-                    A new verification link has been sent to your email address.
+                    طُلب إرسال رابط تأكيد جديد إلى بريدك.
                 </div>
             </div>
 
             <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Save</PrimaryButton>
+                <PrimaryButton :disabled="form.processing">{{ form.processing ? 'جارٍ الحفظ…' : 'حفظ' }}</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
@@ -99,7 +103,7 @@ const form = useForm({
                         v-if="form.recentlySuccessful"
                         class="text-sm text-gray-600"
                     >
-                        Saved.
+                        حُفظت التغييرات.
                     </p>
                 </Transition>
             </div>

@@ -3,7 +3,9 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\SecurityResetPassword as ResetPassword;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -56,8 +58,8 @@ class PasswordResetTest extends TestCase
             $response = $this->post('/reset-password', [
                 'token' => $notification->token,
                 'email' => $user->email,
-                'password' => 'password',
-                'password_confirmation' => 'password',
+                'password' => 'new unique password 2026',
+                'password_confirmation' => 'new unique password 2026',
             ]);
 
             $response
@@ -66,5 +68,65 @@ class PasswordResetTest extends TestCase
 
             return true;
         });
+    }
+
+    public function test_successful_password_reset_revokes_existing_sessions_without_reactivating_the_account(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+        $this->actingAs($user)->get('/dashboard')->assertOk();
+        $this->app['auth']->logout();
+        $this->flushSession();
+        $this->assertSame(1, DB::table('security_sessions')->where('user_id', $user->id)->whereNull('revoked_at')->count());
+
+        $this->post('/forgot-password', ['email' => $user->email]);
+        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
+            $this->post('/reset-password', [
+                'token' => $notification->token,
+                'email' => $user->email,
+                'password' => 'new unique password 2026',
+                'password_confirmation' => 'new unique password 2026',
+            ])->assertRedirect(route('login'));
+
+            return true;
+        });
+
+        $this->assertSame(0, DB::table('security_sessions')->where('user_id', $user->id)->whereNull('revoked_at')->count());
+        $this->assertSame('current', DB::table('principal_lifecycles')->where('user_id', $user->id)->value('status'));
+    }
+
+    public function test_reset_token_is_single_use_and_cannot_change_password_twice(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+        $this->post('/forgot-password', ['email' => $user->email]);
+        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user): bool {
+            $input = [
+                'token' => $notification->token,
+                'email' => $user->email,
+                'password' => 'new unique password 2026',
+                'password_confirmation' => 'new unique password 2026',
+            ];
+            $this->post('/reset-password', $input)->assertRedirect(route('login'));
+            $this->post('/reset-password', $input)->assertSessionHasErrors('email');
+            $this->assertTrue(Hash::check('new unique password 2026', $user->refresh()->password));
+
+            return true;
+        });
+    }
+
+    public function test_reset_request_does_not_reveal_unknown_or_active_staff_email(): void
+    {
+        Notification::fake();
+        $staff = User::factory()->create();
+        DB::connection('pgsql_migrations')->table('principal_lifecycles')->where('user_id', $staff->id)
+            ->update(['principal_class' => 'staff']);
+
+        $unknown = $this->post('/forgot-password', ['email' => 'absent@example.test']);
+        $activeStaff = $this->post('/forgot-password', ['email' => $staff->email]);
+        $unknown->assertSessionHas('status', __('security.reset.requested'));
+        $activeStaff->assertSessionHas('status', __('security.reset.requested'));
+        Notification::assertNothingSent();
+        $this->assertSame(0, DB::table('password_reset_tokens')->count());
     }
 }

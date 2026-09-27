@@ -1,0 +1,16 @@
+{
+  "php.validate.executablePath": "C:\\tools\\php85\\php.exe",
+  "terminal.integrated.profiles.windows": {
+    "Builderad verified": {
+      "path": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+      "args": [
+        "-NoLogo",
+        "-NoExit",
+        "-NoProfile",
+        "-Command",
+        ". '${workspaceFolder}\\scripts\\Enter-BuilderadShell.ps1'"
+      ]
+    }
+  },
+  "terminal.integrated.defaultProfile.windows": "Builderad verified"
+}

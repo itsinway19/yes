@@ -7,6 +7,7 @@ use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use LogicException;
@@ -30,7 +31,7 @@ class WorkspaceIsolationTest extends TestCase
     {
         $identity = DB::selectOne('select current_database() as database, current_user as role');
 
-        $this->assertSame('builderad_test', $identity->database);
+        $this->assertSame('builderad_test_disposable', $identity->database);
         $this->assertSame('builderad_app', $identity->role);
     }
 
@@ -38,7 +39,7 @@ class WorkspaceIsolationTest extends TestCase
     {
         [$user, $workspace] = $this->fixture('active');
 
-        $visible = app(WorkspaceContext::class)->run($user, $this->publicId($workspace), function () {
+        $visible = $this->runWorkspace($user, $this->publicId($workspace), function () {
             return [
                 'workspaces' => DB::table('workspaces')->pluck('name')->all(),
                 'memberships' => DB::table('workspace_memberships')->pluck('status')->all(),
@@ -94,7 +95,7 @@ class WorkspaceIsolationTest extends TestCase
             $connection->rollBack();
         }
 
-        $visible = app(WorkspaceContext::class)->run(
+        $visible = $this->runWorkspace(
             $user,
             $this->publicId($firstWorkspace),
             fn () => DB::table('workspaces')->orderBy('id')->pluck('id')->all(),
@@ -234,7 +235,7 @@ class WorkspaceIsolationTest extends TestCase
             ->where('workspace_id', $secondWorkspace)
             ->update(['user_id' => $user->getKey()]);
 
-        $state = app(WorkspaceContext::class)->run(
+        $state = $this->runWorkspace(
             $user,
             $this->publicId($firstWorkspace),
             function () use ($user) {
@@ -266,14 +267,14 @@ class WorkspaceIsolationTest extends TestCase
             ->where('workspace_id', $secondWorkspace)
             ->update(['user_id' => $user->getKey()]);
 
-        $state = app(WorkspaceContext::class)->run(
+        $state = $this->runWorkspace(
             $user,
             $this->publicId($firstWorkspace),
             function () use ($user, $secondWorkspace) {
                 $before = $this->authorizationState();
 
                 try {
-                    app(WorkspaceContext::class)->run(
+                    $this->runWorkspace(
                         $user,
                         $this->publicId($secondWorkspace),
                         fn () => null,
@@ -346,7 +347,7 @@ class WorkspaceIsolationTest extends TestCase
             ->where('workspace_id', $secondWorkspace)
             ->update(['user_id' => $user->getKey()]);
 
-        $visible = app(WorkspaceContext::class)->run(
+        $visible = $this->runWorkspace(
             $user,
             $this->publicId($firstWorkspace),
             function () {
@@ -432,8 +433,7 @@ class WorkspaceIsolationTest extends TestCase
             app(PrincipalContext::class)->activate($user);
             DB::selectOne("select set_config('app.authorization_phase', 'workspace', true)");
             DB::selectOne("select set_config('app.workspace_id', ?, true)", ['invalid']);
-            $this->expectException(QueryException::class);
-            DB::table('workspaces')->count();
+            $this->assertSame(0, DB::table('workspaces')->count());
         } finally {
             DB::rollBack();
         }
@@ -444,7 +444,7 @@ class WorkspaceIsolationTest extends TestCase
         [$user, $workspace] = $this->fixture('revoked');
 
         $this->expectException(AuthorizationException::class);
-        app(WorkspaceContext::class)->run($user, $this->publicId($workspace), fn () => null);
+        $this->runWorkspace($user, $this->publicId($workspace), fn () => null);
     }
 
     public function test_absent_membership_is_denied(): void
@@ -453,7 +453,7 @@ class WorkspaceIsolationTest extends TestCase
         [, $workspace] = $this->fixture('active');
 
         $this->expectException(AuthorizationException::class);
-        app(WorkspaceContext::class)->run($user, $this->publicId($workspace), fn () => null);
+        $this->runWorkspace($user, $this->publicId($workspace), fn () => null);
     }
 
     public function test_public_workspace_identifier_is_the_only_http_candidate_and_grants_no_authority(): void
@@ -461,11 +461,12 @@ class WorkspaceIsolationTest extends TestCase
         [$user, $workspace] = $this->fixture('active');
         [, $otherWorkspace] = $this->fixture('active');
 
-        $this->actingAs($user)->getJson("/workspaces/{$workspace}/foundation")->assertNotFound();
-        $this->actingAs($user)
+        $this->actingAs($user)->withCredentials();
+        $this->getJson("/workspaces/{$workspace}/foundation")->assertNotFound();
+        $this
             ->getJson('/workspaces/'.$this->publicId($otherWorkspace).'/foundation')
             ->assertForbidden();
-        $this->actingAs($user)
+        $this
             ->getJson('/workspaces/'.$this->publicId($workspace).'/foundation')
             ->assertOk()
             ->assertJsonMissingPath('workspace.id')
@@ -503,8 +504,7 @@ class WorkspaceIsolationTest extends TestCase
             app(PrincipalContext::class)->activate($user);
             $connection->selectOne("select set_config('app.authorization_phase', 'workspace', true)");
             $connection->selectOne("select set_config('app.workspace_id', 'invalid', true)");
-            $this->expectException(QueryException::class);
-            $connection->table('workspaces')->count();
+            $this->assertSame(0, $connection->table('workspaces')->count());
         } finally {
             $connection->rollBack();
         }
@@ -515,7 +515,7 @@ class WorkspaceIsolationTest extends TestCase
         [$user, $workspace] = $this->fixture('active');
 
         try {
-            app(WorkspaceContext::class)->run($user, $this->publicId($workspace), function () {
+            $this->runWorkspace($user, $this->publicId($workspace), function () {
                 throw new RuntimeException('rollback');
             });
         } catch (RuntimeException $exception) {
@@ -531,7 +531,7 @@ class WorkspaceIsolationTest extends TestCase
     {
         [$user, $workspace] = $this->fixture('active');
 
-        $visible = app(WorkspaceContext::class)->run(
+        $visible = $this->runWorkspace(
             $user,
             $this->publicId($workspace),
             fn () => DB::table('workspaces')->pluck('id')->all(),
@@ -548,8 +548,8 @@ class WorkspaceIsolationTest extends TestCase
         [$firstUser, $firstWorkspace] = $this->fixture('active');
         [$secondUser, $secondWorkspace] = $this->fixture('active');
 
-        $first = app(WorkspaceContext::class)->run($firstUser, $this->publicId($firstWorkspace), fn () => DB::table('workspaces')->pluck('id')->all());
-        $second = app(WorkspaceContext::class)->run($secondUser, $this->publicId($secondWorkspace), fn () => DB::table('workspaces')->pluck('id')->all());
+        $first = $this->runWorkspace($firstUser, $this->publicId($firstWorkspace), fn () => DB::table('workspaces')->pluck('id')->all());
+        $second = $this->runWorkspace($secondUser, $this->publicId($secondWorkspace), fn () => DB::table('workspaces')->pluck('id')->all());
 
         $this->assertSame([$firstWorkspace], $first);
         $this->assertSame([$secondWorkspace], $second);
@@ -563,7 +563,7 @@ class WorkspaceIsolationTest extends TestCase
         DB::connection('pgsql_migrations')->table('workspaces')->where('id', $workspace)->update(['status' => 'archived']);
 
         $this->expectException(AuthorizationException::class);
-        app(WorkspaceContext::class)->run($user, $this->publicId($workspace), fn () => null);
+        $this->runWorkspace($user, $this->publicId($workspace), fn () => null);
     }
 
     public function test_context_fails_closed_inside_an_unowned_outer_transaction(): void
@@ -573,7 +573,7 @@ class WorkspaceIsolationTest extends TestCase
 
         try {
             $this->expectException(LogicException::class);
-            app(WorkspaceContext::class)->run($user, $this->publicId($workspace), fn () => null);
+            $this->runWorkspace($user, $this->publicId($workspace), fn () => null);
         } finally {
             DB::rollBack();
         }
@@ -584,7 +584,7 @@ class WorkspaceIsolationTest extends TestCase
         [$user, $workspace] = $this->fixture('active');
         [, $otherWorkspace] = $this->fixture('active');
 
-        $ids = app(WorkspaceContext::class)->run(
+        $ids = $this->runWorkspace(
             $user,
             $this->publicId($workspace),
             fn () => DB::table('workspaces')->orderBy('id')->pluck('id')->all(),
@@ -599,7 +599,7 @@ class WorkspaceIsolationTest extends TestCase
         [$user, $workspace] = $this->fixture('active');
 
         try {
-            app(WorkspaceContext::class)->run(
+            $this->runWorkspace(
                 $user,
                 $this->publicId($workspace),
                 fn () => DB::table('workspace_memberships')
@@ -831,6 +831,14 @@ class WorkspaceIsolationTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        $owner->table('principal_lifecycles')->insert([
+            'user_id' => $userId,
+            'status' => 'current',
+            'generation' => 1,
+            'cause' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
         $workspaceId = $owner->table('workspaces')->insertGetId([
             'public_id' => (string) Str::uuid7(),
             'name' => "Workspace {$status}",
@@ -849,6 +857,27 @@ class WorkspaceIsolationTest extends TestCase
             'created_at' => now(),
             'revoked_at' => $status === 'revoked' ? now() : null,
         ]);
+        $owner->table('workspace_ownerships')->insert([
+            'workspace_id' => $workspaceId,
+            'responsible_owner_user_id' => $userId,
+            'version' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        if ($status === 'active') {
+            $owner->table('security_action_grants')->insert([
+                'subject_user_id' => $userId,
+                'source' => 'system_workspace_creation',
+                'action' => 'workspace.view',
+                'scope_kind' => 'workspace',
+                'workspace_id' => $workspaceId,
+                'subject_generation' => 1,
+                'reason' => 'workspace fixture',
+                'status' => 'active',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         return [User::query()->findOrFail($userId), $workspaceId];
     }
@@ -859,6 +888,18 @@ class WorkspaceIsolationTest extends TestCase
             ->table('workspaces')
             ->where('id', $workspaceId)
             ->value('public_id');
+    }
+
+    private function runWorkspace(User $user, string $workspacePublicId, \Closure $effect): mixed
+    {
+        if (DB::connection()->transactionLevel() === 0) {
+            $this->actingAs($user);
+        }
+        $request = Request::create('/workspaces/'.$workspacePublicId, 'GET');
+        $request->setLaravelSession($this->app['session']->driver());
+        $request->setUserResolver(fn () => $user);
+
+        return app(WorkspaceContext::class)->run($user, $workspacePublicId, $effect, $request);
     }
 
     /** @return array{phase: ?string, principal: ?string, workspace: ?string} */

@@ -8,7 +8,9 @@
     "type": "module",
     "scripts": {
         "build": "vue-tsc && vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test:password": "node --test tests/password-generator.test.mjs",
+        "test:passkey-client": "node --test tests/passkey-ceremony.test.mjs"
     },
     "devDependencies": {
         "@inertiajs/vue3": "^3.7.1",
@@ -25,6 +27,7 @@
         "vue-tsc": "^2.0.24"
     },
     "dependencies": {
+        "@laravel/passkeys": "^0.4.0",
         "@lucide/vue": "^1.47.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",

@@ -6,19 +6,20 @@ import { Head } from '@inertiajs/vue3';
 
 defineProps<{
     mustVerifyEmail?: boolean;
+    canChangeEmail: boolean;
     status?: string;
 }>();
 </script>
 
 <template>
-    <Head title="Profile" />
+    <Head title="الملف الشخصي" />
 
     <AuthenticatedLayout>
         <template #header>
             <h2
                 class="text-xl font-semibold leading-tight text-gray-800"
             >
-                Profile
+                الملف الشخصي
             </h2>
         </template>
 
@@ -29,6 +30,7 @@ defineProps<{
                 >
                     <UpdateProfileInformationForm
                         :must-verify-email="mustVerifyEmail"
+                        :can-change-email="canChangeEmail"
                         :status="status"
                         class="max-w-xl"
                     />

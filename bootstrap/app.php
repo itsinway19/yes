@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Security\BreachCheckUnavailable;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -21,5 +23,13 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (BreachCheckUnavailable $exception, Request $request) {
+            $message = 'تعذّر التحقق من أمان كلمة المرور مؤقتًا. احتفظ بكلمة المرور وحاول مجددًا بعد قليل.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 503);
+            }
+
+            return back()->withErrors(['service' => $message]);
+        });
     })->create();
