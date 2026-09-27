@@ -3,6 +3,7 @@
 namespace Tests\Feature\Security;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Laravel\Passkeys\Actions\StorePasskey;
 use ParagonIE\ConstantTime\Base64UrlSafe;
@@ -14,6 +15,58 @@ use Webauthn\TrustPath\EmptyTrustPath;
 
 class PasskeyAssertionTest extends TestCase
 {
+    public function test_staff_passkey_issues_only_an_internal_session_and_rotates_the_session_id(): void
+    {
+        [$user, $key, $credentialId] = $this->createCredential(staff: true);
+        $options = $this->getJson('/internal/auth/passkey/options')->assertOk()->json('options');
+        $oldSessionHash = hash('sha256', $this->app['session']->driver()->getId());
+
+        $this->postJson('/internal/auth/passkey', ['credential' => $this->assertion(
+            $options, $key, $credentialId, $user,
+            AuthenticatorData::FLAG_UP | AuthenticatorData::FLAG_UV,
+        )])->assertOk()->assertJsonPath('redirect', '/internal/security/devices');
+        $this->assertDatabaseHas('security_sessions', [
+            'user_id' => $user->id, 'auth_method' => 'internal_passkey',
+        ], 'pgsql_migrations');
+        $this->assertDatabaseMissing('security_sessions', ['session_key_hash' => $oldSessionHash], 'pgsql_migrations');
+        $this->assertDatabaseHas('security_audit_events', [
+            'subject_user_id' => $user->id, 'event' => 'passkey_login_verified',
+        ], 'pgsql_migrations');
+        Auth::forgetGuards();
+        $this->app['session']->forgetDrivers();
+        $this->app->forgetInstance('session.store');
+        $this->get('/internal/security/devices')->assertOk();
+        $this->get('/dashboard')->assertRedirect(route('login'));
+        $this->get('/internal/security/devices')->assertOk();
+        $this->post('/internal/logout')->assertRedirect(route('internal.login'));
+        $this->get('/internal/security/devices')->assertRedirect(route('internal.login'));
+    }
+
+    public function test_advertiser_passkey_cannot_issue_an_internal_session(): void
+    {
+        [$user, $key, $credentialId] = $this->createCredential();
+        $options = $this->getJson('/internal/auth/passkey/options')->assertOk()->json('options');
+
+        $this->postJson('/internal/auth/passkey', ['credential' => $this->assertion(
+            $options, $key, $credentialId, $user,
+            AuthenticatorData::FLAG_UP | AuthenticatorData::FLAG_UV,
+        )])->assertUnprocessable();
+        $this->assertSame(0, DB::table('security_sessions')->count());
+        $this->get('/internal/security/devices')->assertRedirect(route('internal.login'));
+    }
+
+    public function test_staff_passkey_cannot_issue_an_advertiser_session(): void
+    {
+        [$user, $key, $credentialId] = $this->createCredential(staff: true);
+        $options = $this->getJson('/auth/passkey/options')->assertOk()->json('options');
+
+        $this->postJson('/auth/passkey', ['credential' => $this->assertion(
+            $options, $key, $credentialId, $user,
+            AuthenticatorData::FLAG_UP | AuthenticatorData::FLAG_UV,
+        )])->assertUnprocessable();
+        $this->assertSame(0, DB::table('security_sessions')->count());
+    }
+
     public function test_signed_uv_assertion_issues_a_passkey_session_and_cannot_be_replayed(): void
     {
         [$user, $key, $credentialId] = $this->createCredential();
@@ -99,7 +152,7 @@ class PasskeyAssertionTest extends TestCase
     }
 
     /** @return array{User, \OpenSSLAsymmetricKey, string} */
-    private function createCredential(): array
+    private function createCredential(bool $staff = false): array
     {
         $user = User::factory()->create();
         $key = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
@@ -125,6 +178,15 @@ class PasskeyAssertionTest extends TestCase
         DB::connection('pgsql_authority')->transaction(fn () => app(StorePasskey::class)->createPasskey(
             User::on('pgsql_authority')->findOrFail($user->id), 'Test authenticator', $record,
         ));
+        if ($staff) {
+            DB::connection('pgsql_migrations')->table('principal_lifecycles')->where('user_id', $user->id)
+                ->update(['principal_class' => 'staff']);
+            DB::connection('pgsql_migrations')->table('internal_personnel')->insert([
+                'user_id' => $user->id, 'kind' => 'employee', 'status' => 'active',
+                'attested_by' => $user->id, 'attested_at' => now(),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
 
         return [$user, $key, $credentialId];
     }

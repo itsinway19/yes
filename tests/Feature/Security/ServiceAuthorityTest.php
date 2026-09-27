@@ -9,6 +9,7 @@ use App\Security\ServiceWorkspaceContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class ServiceAuthorityTest extends TestCase
@@ -23,9 +24,11 @@ class ServiceAuthorityTest extends TestCase
         $workspace = DB::connection('pgsql_migrations')->table('workspaces')->first();
 
         $manager = $this->serviceManager();
-        $this->actingAs($manager)->post('/internal/services', ['name' => 'Report Reader'])
+        $this->actingAsInternal($manager)->get('/internal/security/devices')->assertOk();
+        $created = $this->post('/internal/services', ['name' => 'Report Reader'])
             ->assertRedirect();
-        $secret = $this->app['session']->get('serviceCredential');
+        $this->assertDatabaseCount('service_identities', 1);
+        $secret = $this->serviceCredentialFrom($created);
         $this->assertNotEmpty($secret['credential']);
         $service = DB::table('service_identities')->where('public_id', $secret['public_id'])->first();
         $this->assertNotSame($secret['credential'], $service->credential_hash);
@@ -41,7 +44,7 @@ class ServiceAuthorityTest extends TestCase
         $this->assertDenied(fn () => $context->run($secret['public_id'], $secret['credential'],
             $workspace->public_id, fn () => null));
 
-        $this->actingAs($manager)->post('/internal/service-grants', [
+        $this->actingAsInternal($manager)->post('/internal/service-grants', [
             'service' => $secret['public_id'],
             'workspace' => $workspace->public_id,
             'reason' => 'Owner approved metadata reporting',
@@ -66,17 +69,17 @@ class ServiceAuthorityTest extends TestCase
 
         $grantId = DB::table('service_action_grants')->where('service_identity_id', $service->id)
             ->where('workspace_id', $workspace->id)->where('status', 'active')->value('id');
-        $this->actingAs($manager)->delete('/internal/service-grants/'.$grantId)->assertRedirect();
+        $this->actingAsInternal($manager)->delete('/internal/service-grants/'.$grantId)->assertRedirect();
         $this->assertDenied(fn () => $context->run($secret['public_id'], $secret['credential'],
             $workspace->public_id, fn () => null));
-        $this->actingAs($manager)->post('/internal/service-grants', [
+        $this->actingAsInternal($manager)->post('/internal/service-grants', [
             'service' => $secret['public_id'], 'workspace' => $workspace->public_id,
             'reason' => 'Owner approved metadata reporting',
         ])->assertRedirect();
 
-        $this->actingAs($manager)->post('/internal/services/'.$secret['public_id'].'/rotate')
+        $rotatedResponse = $this->actingAsInternal($manager)->post('/internal/services/'.$secret['public_id'].'/rotate')
             ->assertRedirect();
-        $rotated = $this->app['session']->get('serviceCredential');
+        $rotated = $this->serviceCredentialFrom($rotatedResponse);
         $this->assertNotSame($secret['credential'], $rotated['credential']);
         $this->assertDenied(fn () => $context->run($secret['public_id'], $secret['credential'],
             $workspace->public_id, fn () => null));
@@ -110,13 +113,15 @@ class ServiceAuthorityTest extends TestCase
         ])->assertRedirect();
         $workspace = DB::connection('pgsql_migrations')->table('workspaces')->first();
         $manager = $this->serviceManager();
-        $this->actingAs($manager)->post('/internal/services', ['name' => 'Revocable Reader'])
+        $this->actingAsInternal($manager)->get('/internal/security/devices')->assertOk();
+        $created = $this->post('/internal/services', ['name' => 'Revocable Reader'])
             ->assertRedirect();
-        $secret = $this->app['session']->get('serviceCredential');
+        $this->assertDatabaseCount('service_identities', 1);
+        $secret = $this->serviceCredentialFrom($created);
         $this->actingAs($owner)->post('/workspaces/'.$workspace->public_id.'/services', [
             'service' => $secret['public_id'], 'purpose' => 'Owner-approved metadata read',
         ])->assertRedirect();
-        $this->actingAs($manager)->post('/internal/service-grants', [
+        $this->actingAsInternal($manager)->post('/internal/service-grants', [
             'service' => $secret['public_id'], 'workspace' => $workspace->public_id,
             'reason' => 'Owner approved metadata reporting',
         ])->assertRedirect();
@@ -140,7 +145,7 @@ class ServiceAuthorityTest extends TestCase
         DB::connection('pgsql_migrations')->table('principal_lifecycles')->where('user_id', $owner->id)
             ->update(['principal_class' => 'advertiser']);
 
-        $this->actingAs($manager)->post('/internal/services/'.$secret['public_id'].'/revoke')
+        $this->actingAsInternal($manager)->post('/internal/services/'.$secret['public_id'].'/revoke')
             ->assertRedirect();
         $this->assertDenied(fn () => $context->run($secret['public_id'], $secret['credential'],
             $workspace->public_id, fn () => null));
@@ -196,6 +201,15 @@ class ServiceAuthorityTest extends TestCase
         ]);
 
         return $manager;
+    }
+
+    /** @return array{public_id: string, credential: string} */
+    private function serviceCredentialFrom(TestResponse $response): array
+    {
+        $credential = $response->baseResponse->getSession()?->get('serviceCredential');
+        $this->assertIsArray($credential);
+
+        return $credential;
     }
 
     private function assertDenied(callable $effect): void

@@ -4,6 +4,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { Passkeys } from '@laravel/passkeys';
 import { cancelPasskeyOperation, runPasskeyOperation } from '@/security/passkeyCeremony';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import InternalLayout from '@/Layouts/InternalLayout.vue';
 
 type Session = {
     id: number;
@@ -14,7 +15,9 @@ type Session = {
 };
 type Passkey = { id: number; name: string; provider: string | null; created_at: string; last_used_at: string | null };
 
-defineProps<{ sessions: Session[]; passkeys: Passkey[] }>();
+const props = defineProps<{ sessions: Session[]; passkeys: Passkey[]; internalContext: boolean }>();
+const securityRoute = (name: string) => `security.${name}`;
+const contextRoute = (name: string) => route(props.internalContext ? `internal.${securityRoute(name)}` : securityRoute(name));
 
 const busy = ref<number | 'others' | 'current' | null>(null);
 const error = ref('');
@@ -44,7 +47,7 @@ async function addPasskey() {
     passkeyBusy.value = true;
     try {
         const operation = runPasskeyOperation('device-registration',
-            { options: route('security.passkeys.options'), submit: route('security.passkeys.store') },
+            { options: contextRoute('passkeys.options'), submit: contextRoute('passkeys.store') },
             routes => Passkeys.register({ name: passkeyName.value.trim(), routes }));
         operationId = operation.id;
         await operation.promise;
@@ -55,7 +58,9 @@ async function addPasskey() {
             passkeyError.value = 'لم يُكمل المتصفح إنشاء مفتاح المرور. قد يكون الطلب أُلغي أو انتهت مهلته أو تعذّر تشغيل مزوّد المفاتيح. يمكنك المحاولة بمُوثِّق آخر متاح، مثل الهاتف أو مفتاح أمان.';
         } else if (error instanceof Error && error.message === 'Fresh authentication is required.') {
             passkeyReauthRequired.value = true;
-            passkeyError.value = 'انتهت مدة التوثيق الحديث. أكّد كلمة مرورك ثم عُد لإضافة مفتاح المرور.';
+            passkeyError.value = props.internalContext
+                ? 'انتهت مدة التوثيق الحديث. سجّل الدخول مجددًا بمفتاح المرور ثم عُد لإضافة المفتاح.'
+                : 'انتهت مدة التوثيق الحديث. أكّد كلمة مرورك ثم عُد لإضافة مفتاح المرور.';
         } else if (error instanceof Error && error.name === 'InvalidDomainError' && window.location.hostname === '127.0.0.1') {
             const url = new URL(window.location.href);
             url.hostname = 'localhost';
@@ -72,7 +77,7 @@ async function addPasskey() {
 
 function removePasskey(id: number) {
     passkeyError.value = '';
-    router.delete(route('security.passkeys.destroy', id), {
+    router.delete(route(props.internalContext ? 'internal.security.passkeys.destroy' : 'security.passkeys.destroy', id), {
         preserveScroll: true,
         onError: () => { passkeyError.value = 'تعذّر حذف مفتاح المرور.'; },
     });
@@ -81,7 +86,7 @@ function removePasskey(id: number) {
 function endSession(id: number) {
     error.value = '';
     busy.value = id;
-    router.delete(route('security.sessions.destroy', id), {
+    router.delete(route(props.internalContext ? 'internal.security.sessions.destroy' : 'security.sessions.destroy', id), {
         preserveScroll: true,
         onError: () => { error.value = 'تعذّر إنهاء الجلسة. حاول مرة أخرى.'; },
         onFinish: () => { busy.value = null; },
@@ -91,7 +96,7 @@ function endSession(id: number) {
 function endOthers() {
     error.value = '';
     busy.value = 'others';
-    router.post(route('security.sessions.revoke-others'), {}, {
+    router.post(contextRoute('sessions.revoke-others'), {}, {
         preserveScroll: true,
         onError: () => { error.value = 'تعذّر إنهاء الجلسات الأخرى.'; },
         onFinish: () => { busy.value = null; },
@@ -101,7 +106,7 @@ function endOthers() {
 function endCurrent() {
     error.value = '';
     busy.value = 'current';
-    router.post(route('security.sessions.sign-out-current'), {}, {
+    router.post(contextRoute('sessions.sign-out-current'), {}, {
         onError: () => { error.value = 'تعذّر تسجيل الخروج من هذا المتصفح.'; },
         onFinish: () => { busy.value = null; },
     });
@@ -114,7 +119,7 @@ function seenAt(value: string) {
 
 <template>
     <Head title="الأمان والأجهزة" />
-    <AuthenticatedLayout>
+    <component :is="internalContext ? InternalLayout : AuthenticatedLayout">
         <template #header>
             <h1 class="text-xl font-semibold text-slate-900">الأمان والأجهزة</h1>
         </template>
@@ -157,7 +162,7 @@ function seenAt(value: string) {
 
                 <div class="mt-8 rounded-xl bg-slate-50 p-5">
                     <h3 class="font-semibold text-slate-900">تسجيل الخروج من هذه الجلسة</h3>
-                    <p class="mt-1 text-sm text-slate-600">ينهي جلسة هذا المتصفح أيضًا ويعيدك إلى الصفحة الرئيسية.</p>
+                    <p class="mt-1 text-sm text-slate-600">ينهي جلسة هذا المتصفح ويعيدك إلى صفحة الدخول.</p>
                     <button type="button" :disabled="busy !== null"
                         class="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:opacity-50"
                         @click="endCurrent">
@@ -171,9 +176,9 @@ function seenAt(value: string) {
                 <p class="mt-2 text-sm leading-6 text-slate-600">استخدم مفتاح مرور مسجلًا لتسجيل الدخول دون كتابة كلمة المرور. احتفظ بوسيلة دخول أخرى قبل حذف مفتاحك الأخير.</p>
                 <p v-if="passkeys.length" class="mt-2 text-sm leading-6 text-slate-600">يظهر مزوّد كل مفتاح معروف أدناه. إذا كان لديك مفتاح من المزوّد الذي تريد استخدامه، جرّب الدخول بالمفتاح المسجّل بدل إنشاء نسخة ثانية.</p>
                 <p v-if="passkeyError" role="alert" class="mt-4 text-sm text-red-700">{{ passkeyError }}</p>
-                <a v-if="passkeyReauthRequired" :href="route('password.confirm')"
+                <a v-if="passkeyReauthRequired" :href="route(internalContext ? 'internal.login' : 'password.confirm')"
                     class="mt-2 inline-block text-sm font-medium text-indigo-700 underline hover:text-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
-                    تأكيد كلمة المرور
+                    {{ internalContext ? 'الدخول مجددًا بمفتاح المرور' : 'تأكيد كلمة المرور' }}
                 </a>
                 <a v-if="passkeyLocalhostUrl" :href="passkeyLocalhostUrl"
                     class="mt-2 inline-block text-sm font-medium text-indigo-700 underline hover:text-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
@@ -204,5 +209,5 @@ function seenAt(value: string) {
                 <p v-else class="mt-5 text-sm text-slate-600">لم تضف مفاتيح مرور بعد.</p>
             </section>
         </div>
-    </AuthenticatedLayout>
+    </component>
 </template>

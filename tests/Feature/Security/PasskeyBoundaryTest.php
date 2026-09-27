@@ -114,11 +114,11 @@ class PasskeyBoundaryTest extends TestCase
             'credential_id' => 'staff-security-'.$staff->id, 'credential' => '{}',
             'created_at' => now(), 'updated_at' => now(),
         ]);
-        $this->actingAs($staff);
+        $this->actingAsInternal($staff);
         $owner->table('internal_personnel')->where('user_id', $staff->id)
             ->update(['status' => 'revoked', 'revoked_at' => now()]);
 
-        $this->post('/security/sessions/revoke-others')->assertForbidden();
+        $this->post('/internal/security/sessions/revoke-others')->assertForbidden();
         $this->assertDatabaseMissing('security_audit_events', [
             'actor_user_id' => $staff->id, 'event' => 'sessions_revoked',
         ], 'pgsql_migrations');

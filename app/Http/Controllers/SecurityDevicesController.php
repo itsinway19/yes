@@ -13,6 +13,7 @@ final class SecurityDevicesController extends Controller
     public function index(Request $request, SessionAuthority $sessions): Response
     {
         return Inertia::render('Security/Devices', [
+            'internalContext' => $request->is('internal/*'),
             'sessions' => $sessions->activeFor($request, $request->user()),
             'passkeys' => $request->user()->passkeys()
                 ->orderByDesc('created_at')
@@ -44,10 +45,11 @@ final class SecurityDevicesController extends Controller
     public function destroyCurrent(Request $request, SessionAuthority $sessions): RedirectResponse
     {
         $sessions->revokeCurrent($request);
-        auth('web')->logout();
+        $internal = $request->is('internal/*');
+        auth($internal ? 'internal' : 'web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect()->route($internal ? 'internal.login' : 'login');
     }
 }

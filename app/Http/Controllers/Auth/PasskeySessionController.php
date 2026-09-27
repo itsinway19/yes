@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Security\AuthorityVerifyPasskey;
+use App\Security\GrantAuthority;
 use App\Security\PasskeyCeremonyTrace;
 use App\Security\SessionAuthority;
 use Illuminate\Http\JsonResponse;
@@ -36,6 +37,7 @@ final class PasskeySessionController extends Controller
 
     public function store(PasskeyVerificationRequest $request, AuthorityVerifyPasskey $verify, SessionAuthority $sessions): JsonResponse
     {
+        $internal = $request->is('internal/*');
         PasskeyCeremonyTrace::record($request, 'login_assertion_submitted');
         $issuedAt = (int) $request->session()->pull('builderad.passkey_verification_issued_at', 0);
         if ($issuedAt < time() - 60 || $issuedAt > time()) {
@@ -46,18 +48,19 @@ final class PasskeySessionController extends Controller
         $verificationOptions = $request->verificationOptions();
 
         try {
-            DB::connection('pgsql_authority')->transaction(function () use ($request, $verify, $sessions, $verificationOptions): void {
+            DB::connection('pgsql_authority')->transaction(function () use ($request, $verify, $sessions, $verificationOptions, $internal): void {
                 $passkey = $verify($request->credential(), $verificationOptions);
                 $user = $passkey->user;
                 $lifecycle = DB::connection('pgsql_authority')->table('principal_lifecycles')
                     ->where('user_id', $user->id)->sharedLock()->first();
-                if (! $lifecycle || $lifecycle->status !== 'current' || ! $user->hasVerifiedEmail()) {
+                if (! $lifecycle || $lifecycle->status !== 'current' || ! $user->hasVerifiedEmail() ||
+                    $lifecycle->principal_class !== ($internal ? 'staff' : 'advertiser')) {
                     throw ValidationException::withMessages(['credential' => 'يتعذر تسجيل الدخول بهذا الحساب.']);
                 }
 
-                Auth::guard('web')->login($user);
+                Auth::guard($internal ? 'internal' : 'web')->login($user);
                 $request->session()->regenerate();
-                $sessions->issue($request, $user, 'passkey');
+                $sessions->issue($request, $user, $internal ? 'internal_passkey' : 'passkey');
                 $authority = DB::connection('pgsql_authority');
                 $sessionId = $authority->table('security_sessions')
                     ->where('session_key_hash', SessionAuthority::sessionKey($request))->value('id');
@@ -73,7 +76,7 @@ final class PasskeySessionController extends Controller
                 ]);
             });
         } catch (Throwable $exception) {
-            Auth::guard('web')->logout();
+            Auth::guard($internal ? 'internal' : 'web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
             if ($exception instanceof AuthenticatorResponseVerificationException) {
@@ -111,6 +114,10 @@ final class PasskeySessionController extends Controller
 
         PasskeyCeremonyTrace::record($request, 'login_assertion_accepted');
 
-        return response()->json(['redirect' => route('dashboard', absolute: false)]);
+        $destination = $internal && ! app(GrantAuthority::class)->has(
+            $request->user(), (int) $request->session()->get('a001_generation', 0), 'staff.view',
+        ) ? 'internal.security.devices' : ($internal ? 'internal.administration' : 'dashboard');
+
+        return response()->json(['redirect' => route($destination, absolute: false)]);
     }
 }

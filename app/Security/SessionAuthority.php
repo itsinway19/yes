@@ -29,11 +29,13 @@ final class SessionAuthority
                 return;
             }
             $minimumFactors = $personnel?->kind === 'founder' ? 2 : 1;
-            if ($method !== 'passkey' || ! $personnel || $personnel->status !== 'active' ||
+            if ($method !== 'internal_passkey' || ! $personnel || $personnel->status !== 'active' ||
                 ($personnel->kind === 'founder' && ! $personnel->factor_independence_attested_at) ||
                 $lifecycle->status !== 'current' || $user->passkeys()->count() < $minimumFactors) {
                 throw new AuthorizationException('Staff passkey eligibility is required.');
             }
+        } elseif ($method === 'internal_passkey') {
+            throw new AuthorizationException('Internal authentication requires active personnel.');
         }
 
         DB::connection('pgsql_authority')->transaction(fn () => $this->insertSession(
@@ -99,13 +101,15 @@ final class SessionAuthority
             Carbon::parse($session->absolute_expires_at)->lessThanOrEqualTo($now)) {
             throw new ExpiredSecuritySession;
         }
-        $staff = DB::table('principal_lifecycles')->where('user_id', $user->id)
-            ->where('principal_class', 'staff')->exists();
-        if ($staff && $session->auth_method !== 'passkey') {
-            throw new AuthorizationException('A staff passkey session is required.');
+        $lifecycle = DB::table('principal_lifecycles')->where('user_id', $user->id)->first();
+        $internal = $request->is('internal/*');
+        if ($internal ? ($lifecycle?->principal_class !== 'staff' || $session->auth_method !== 'internal_passkey' ||
+            ! DB::table('internal_personnel')->where('user_id', $user->id)->where('status', 'active')->exists())
+            : ($lifecycle?->principal_class !== 'advertiser' || $session->auth_method === 'internal_passkey')) {
+            throw new ExpiredSecuritySession;
         }
 
-        $this->touchAfterCommit((int) $session->id, $generation, $staff ? 15 : 60, $now);
+        $this->touchAfterCommit((int) $session->id, $generation, $internal ? 15 : 60, $now);
     }
 
     public function assertCurrentAuthority(Request $request, User $user, int $generation): void
@@ -119,12 +123,13 @@ final class SessionAuthority
         ]);
         $lifecycle = $authority->table('principal_lifecycles')->where('user_id', $user->id)
             ->sharedLock()->first();
+        $internal = $request->is('internal/*');
         if (! $lifecycle || $lifecycle->status !== 'current' ||
             (int) $lifecycle->generation !== $generation ||
-            ! in_array($lifecycle->principal_class, ['advertiser', 'staff'], true)) {
+            $lifecycle->principal_class !== ($internal ? 'staff' : 'advertiser')) {
             throw new AuthorizationException('Current lifecycle authority is required.');
         }
-        if ($lifecycle->principal_class === 'staff' &&
+        if ($internal &&
             ! $authority->table('internal_personnel')->where('user_id', $user->id)
                 ->where('status', 'active')->sharedLock()->first()) {
             throw new AuthorizationException('Current staff eligibility is required.');
@@ -137,10 +142,11 @@ final class SessionAuthority
             (int) $session->lifecycle_generation !== $generation ||
             Carbon::parse($session->idle_expires_at)->lessThanOrEqualTo($now) ||
             Carbon::parse($session->absolute_expires_at)->lessThanOrEqualTo($now) ||
-            ($lifecycle->principal_class === 'staff' && $session->auth_method !== 'passkey')) {
+            ($internal ? $session->auth_method !== 'internal_passkey'
+                : $session->auth_method === 'internal_passkey')) {
             throw new ExpiredSecuritySession;
         }
-        $idleMinutes = $lifecycle->principal_class === 'staff' ? 15 : 60;
+        $idleMinutes = $internal ? 15 : 60;
         $authority->update(<<<'SQL'
             UPDATE security_sessions
             SET last_seen_at = ?, idle_expires_at = LEAST(absolute_expires_at, ?)
@@ -202,6 +208,9 @@ final class SessionAuthority
     {
         return DB::connection('pgsql_authority')->transaction(function () use ($request, $user): int {
             $changed = DB::connection('pgsql_authority')->table('security_sessions')->where('user_id', $user->id)
+                ->when($request->is('internal/*'),
+                    fn ($query) => $query->where('auth_method', 'internal_passkey'),
+                    fn ($query) => $query->where('auth_method', '!=', 'internal_passkey'))
                 ->where('session_key_hash', '<>', self::sessionKey($request))
                 ->whereNull('revoked_at')->update(['revoked_at' => now()]);
             if ($changed) {
@@ -217,6 +226,9 @@ final class SessionAuthority
     {
         return DB::table('security_sessions')
             ->where('user_id', $user->id)
+            ->when($request->is('internal/*'),
+                fn ($query) => $query->where('auth_method', 'internal_passkey'),
+                fn ($query) => $query->where('auth_method', '!=', 'internal_passkey'))
             ->whereNull('revoked_at')
             ->where('idle_expires_at', '>', now())
             ->where('absolute_expires_at', '>', now())
@@ -254,6 +266,9 @@ final class SessionAuthority
     {
         DB::connection('pgsql_authority')->transaction(function () use ($request, $user, $id): void {
             $session = DB::connection('pgsql_authority')->table('security_sessions')->where('id', $id)->where('user_id', $user->id)
+                ->when($request->is('internal/*'),
+                    fn ($query) => $query->where('auth_method', 'internal_passkey'),
+                    fn ($query) => $query->where('auth_method', '!=', 'internal_passkey'))
                 ->lockForUpdate()->first();
             if (! $session) {
                 abort(404);

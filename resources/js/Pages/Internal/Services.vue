@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import InternalLayout from '@/Layouts/InternalLayout.vue';
 
 type Service = { public_id: string; name: string; status: 'enabled' | 'revoked'; version: number };
 type Scope = { service_public_id: string; service_name: string; workspace_public_id: string; purpose: string };
@@ -56,10 +56,10 @@ function selectScope(scope: Scope) {
 
 <template>
     <Head title="الخدمات المستقلة" />
-    <AuthenticatedLayout>
+    <InternalLayout>
         <template #header><h1 class="text-xl font-semibold text-slate-900">الخدمات المستقلة</h1></template>
         <main dir="rtl" class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
-            <Link :href="route('internal.administration')" class="text-sm font-medium text-indigo-700 underline">إدارة الفريق الداخلي</Link>
+            <Link v-if="$page.props.auth.canInternalAdministration" :href="route('internal.administration')" class="text-sm font-medium text-indigo-700 underline">إدارة الفريق الداخلي</Link>
             <p v-if="error" role="alert" class="rounded-xl bg-red-50 p-4 text-sm text-red-700">{{ error }}</p>
             <section v-if="newCredential && showSecret" class="rounded-2xl border border-amber-300 bg-amber-50 p-6" aria-labelledby="credential-title">
                 <h2 id="credential-title" class="font-semibold text-amber-950">اعتماد الخدمة — يظهر مرة واحدة</h2>
@@ -98,5 +98,5 @@ function selectScope(scope: Scope) {
                 <ul class="mt-6 divide-y divide-slate-100 border-t border-slate-100"><li v-for="item in grants" :key="item.id" class="flex flex-col gap-2 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"><div><strong>{{ item.service_name }}</strong><p class="text-xs text-slate-600" dir="ltr">{{ item.workspace_public_id }}</p><p class="text-slate-600">{{ item.reason }}</p></div><button type="button" :disabled="!!busy" class="self-start text-red-700 underline disabled:opacity-50" @click="revokeGrant(item.id)">سحب المنحة</button></li><li v-if="!grants.length" class="py-4 text-sm text-slate-600">لا توجد منح خدمة نشطة.</li></ul>
             </section>
         </main>
-    </AuthenticatedLayout>
+    </InternalLayout>
 </template>

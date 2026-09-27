@@ -1,6 +1,6 @@
 import { Passkeys } from '@laravel/passkeys';
 
-type CeremonyKind = 'login' | 'device-registration' | 'staff-registration';
+type CeremonyKind = 'login' | 'internal-login' | 'device-registration' | 'staff-registration';
 type Ceremony = { id: string; kind: CeremonyKind; startedAt: number; cancelling: boolean };
 
 let active: Ceremony | null = null;

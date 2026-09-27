@@ -17,7 +17,8 @@ final class ExpiredSecuritySession extends AuthorizationException
     public function render(Request $request): Response
     {
         // Clear this browser only, after the rejected transaction has unwound.
-        Auth::guard('web')->logoutCurrentDevice();
+        $internal = $request->is('internal/*');
+        Auth::guard($internal ? 'internal' : 'web')->logoutCurrentDevice();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
@@ -27,6 +28,6 @@ final class ExpiredSecuritySession extends AuthorizationException
             return response()->json(['message' => $message], 403);
         }
 
-        return redirect()->route('login')->with('status', $message);
+        return redirect()->route($internal ? 'internal.login' : 'login')->with('status', $message);
     }
 }
