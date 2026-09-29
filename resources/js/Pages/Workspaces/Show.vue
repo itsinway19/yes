@@ -7,6 +7,7 @@ const props = defineProps<{
     workspace: { public_id: string; name: string; slug: string };
     canManageServices: boolean;
     services: { public_id: string; name: string; purpose: string }[];
+    commercial: { state: string; context: { scope_id: string; market_label: string; configuration_id: string; catalog_identity: string; catalog_version: string; denomination_code: string; effective_at: string } | null; agreement_state: string; amount_state: string };
 }>();
 const form = useForm({ service: '', purpose: '' });
 const busy = ref('');
@@ -57,6 +58,12 @@ function revokeService(service: string) {
                     </li>
                     <li v-if="!services.length" class="py-4 text-sm text-slate-600">لا توجد خدمات مرتبطة بهذه المساحة.</li>
                 </ul>
+            </section>
+            <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-6" aria-labelledby="commercial-context-heading">
+                <h2 id="commercial-context-heading" class="text-lg font-semibold">السياق التجاري</h2>
+                <p v-if="!commercial.context" class="mt-3 text-sm text-slate-600">السياق التجاري غير متاح ضمن صلاحيتك الحالية. عضوية المساحة لا تمنح عرض السياق التجاري.</p>
+                <dl v-else class="mt-4 grid gap-3 text-sm sm:grid-cols-2"><div><dt>النطاق التجاري</dt><dd dir="ltr" class="break-all">{{ commercial.context.scope_id }}</dd></div><div><dt>السوق المسند</dt><dd>{{ commercial.context.market_label }}</dd></div><div><dt>إصدار الإعدادات المثبت</dt><dd dir="ltr" class="break-all">{{ commercial.context.configuration_id }}</dd></div><div><dt>سياق العملة المستقل</dt><dd dir="ltr">{{ commercial.context.denomination_code }}</dd></div><div><dt>مرجع Catalog وإصداره</dt><dd dir="ltr" class="break-all">{{ commercial.context.catalog_identity }} / {{ commercial.context.catalog_version }}</dd></div></dl>
+                <p v-if="commercial.context" class="mt-4 text-sm text-slate-600">تم تسجيل السياق. الاتفاقية والمبلغ غير مثبتين؛ هذا السجل لا يقرر صلاحية الوصول إلى المنتج.</p>
             </section>
         </main>
     </AuthenticatedLayout>

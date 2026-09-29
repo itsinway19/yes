@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\InternalAuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasskeySessionController;
+use App\Http\Controllers\CommercialController;
 use App\Http\Controllers\InternalAdministrationController;
 use App\Http\Controllers\InternalServiceController;
 use App\Http\Controllers\LocaleController;
@@ -144,6 +145,24 @@ Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->group(funct
     Route::delete('/internal/service-grants/{grant}', [InternalServiceController::class, 'revokeGrant'])
         ->middleware([RequireActionGrant::class.':service.manage', EnsureFreshAuthentication::class])
         ->whereNumber('grant')->name('internal.service-grants.destroy');
+});
+
+Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.')->group(function () {
+    Route::get('/', [CommercialController::class, 'index'])->name('index');
+    Route::get('/workspace-reference', [CommercialController::class, 'workspace'])->name('workspace');
+    Route::get('/receipts/{command}', [CommercialController::class, 'receipt'])->whereUuid('command')->name('receipt');
+    Route::get('/contexts/{scope}', [CommercialController::class, 'context'])->whereUuid('scope')->name('context');
+    Route::middleware(EnsureFreshAuthentication::class)->group(function () {
+        Route::post('/markets', [CommercialController::class, 'market'])->name('market');
+        Route::post('/catalog-references', [CommercialController::class, 'catalog'])->name('catalog');
+        Route::post('/configurations', [CommercialController::class, 'configuration'])->name('configuration');
+        Route::post('/assignability', [CommercialController::class, 'assignability'])->name('assignability');
+        Route::post('/registrations', [CommercialController::class, 'register'])->name('register');
+        Route::post('/audit/{obligation}/recover', [CommercialController::class, 'recover'])->whereUuid('obligation')->name('recover');
+        Route::post('/grants', [CommercialController::class, 'grant'])->name('grant');
+        Route::delete('/grants/{grant}', [CommercialController::class, 'revokeGrant'])->whereNumber('grant')->name('revoke-grant');
+        Route::post('/owner-mandate', [CommercialController::class, 'mandate'])->name('mandate');
+    });
 });
 
 require __DIR__.'/auth.php';
