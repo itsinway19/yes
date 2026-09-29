@@ -73,14 +73,29 @@ class WorkspaceIsolationTest extends TestCase
         $this->assertContains(DB::scalar("select current_setting('app.principal_user_id', true)"), [null, '']);
     }
 
-    public function test_principal_context_discovers_two_active_workspaces_then_workspace_context_narrows_to_one(): void
+    public function test_signed_context_discovers_own_memberships_then_isolates_each_workspace(): void
     {
         [$user, $firstWorkspace] = $this->fixture('active');
-        [, $secondWorkspace] = $this->fixture('active');
+        [$otherUser, $secondWorkspace] = $this->fixture('active');
 
-        DB::connection('pgsql_migrations')->table('workspace_memberships')
-            ->where('workspace_id', $secondWorkspace)
-            ->update(['user_id' => $user->getKey()]);
+        $owner = DB::connection('pgsql_migrations');
+        $owner->table('workspace_memberships')->insert([
+            ['workspace_id' => $secondWorkspace, 'user_id' => $user->getKey(),
+                'role' => 'owner', 'status' => 'active', 'created_at' => now()],
+            ['workspace_id' => $firstWorkspace, 'user_id' => $otherUser->getKey(),
+                'role' => 'member', 'status' => 'active', 'created_at' => now()],
+        ]);
+        $owner->table('workspace_memberships')->where('workspace_id', $secondWorkspace)
+            ->where('user_id', $otherUser->getKey())->update(['role' => 'member']);
+        $owner->table('workspace_ownerships')->where('workspace_id', $secondWorkspace)
+            ->update(['responsible_owner_user_id' => $user->getKey()]);
+        $owner->table('security_action_grants')->insert([
+            'subject_user_id' => $user->getKey(), 'source' => 'system_workspace_creation',
+            'action' => 'workspace.view', 'scope_kind' => 'workspace',
+            'workspace_id' => $secondWorkspace, 'subject_generation' => 1,
+            'reason' => 'workspace fixture', 'status' => 'active',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
 
         $connection = DB::connection();
         $connection->beginTransaction();
@@ -91,18 +106,23 @@ class WorkspaceIsolationTest extends TestCase
                 [$firstWorkspace, $secondWorkspace],
                 $connection->table('workspaces')->orderBy('id')->pluck('id')->all(),
             );
+            $this->assertSame(
+                [$firstWorkspace, $secondWorkspace],
+                $connection->table('workspace_memberships')->orderBy('workspace_id')->pluck('workspace_id')->all(),
+            );
+            $this->assertSame(0, $connection->table('workspace_memberships')->where('user_id', $otherUser->getKey())->count());
         } finally {
             $connection->rollBack();
         }
 
-        $visible = $this->runWorkspace(
-            $user,
-            $this->publicId($firstWorkspace),
-            fn () => DB::table('workspaces')->orderBy('id')->pluck('id')->all(),
-        );
-
-        $this->assertSame([$firstWorkspace], $visible);
-        $this->assertNotContains($secondWorkspace, $visible);
+        foreach ([$firstWorkspace, $secondWorkspace] as $selectedWorkspace) {
+            $this->runWorkspace($user, $this->publicId($selectedWorkspace), function () use ($selectedWorkspace, $otherUser): void {
+                $this->assertSame([$selectedWorkspace], DB::table('workspaces')->pluck('id')->all());
+                $this->assertSame([$selectedWorkspace], DB::table('workspace_memberships')->pluck('workspace_id')->all());
+                $this->assertSame([$selectedWorkspace], DB::table('workspace_ownerships')->pluck('workspace_id')->all());
+                $this->assertSame(0, DB::table('workspace_memberships')->where('user_id', $otherUser->getKey())->count());
+            });
+        }
     }
 
     public function test_principal_context_discovers_only_active_membership_workspaces(): void
