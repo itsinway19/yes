@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use App\Commercial\CommercialEffects;
 use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -19,6 +20,231 @@ final class GrantAuthority
     ];
 
     private const SENSITIVE_STAFF_ACTIONS = ['grant.manage', 'service.manage'];
+
+    /** A-003 is the sole writer, including commercial administration. No STAFF_ACTION inheritance. */
+    public function issueCommercialGrant(Request $request, User $target, string $effect,
+        string $targetId, ?int $workspaceId, ?string $versionId, string $reason, ?string $expiresAt = null): int
+    {
+        $this->assertCommercialExecutor($request);
+
+        return DB::connection('pgsql_authority')->transaction(fn () => $this->issueCommercialGrantLocally(
+            $request, $target, $effect, $targetId, $workspaceId, $versionId, $reason, $expiresAt));
+    }
+
+    private function issueCommercialGrantLocally(Request $request, User $target, string $effect,
+        string $targetId, ?int $workspaceId, ?string $versionId, string $reason, ?string $expiresAt): int
+    {
+        $db = DB::connection('pgsql_authority');
+        $this->assertCommercialExecutor($request);
+        if ($request->user()->id === $target->id || ! in_array($effect, CommercialEffects::OPERATIONAL, true)) {
+            throw new AuthorizationException('Self-grant or effect expansion denied.');
+        }
+        $marketEffects = ['ReadCommercialMarketRegistry', 'ConfigureCommercialMarket', 'EnableCommercialMarket', 'DisableCommercialMarket'];
+        $resultEffects = ['ReadCommercialRegistrationReceipt', 'ReadCommercialAuditDeliveryState', 'RetryOrRecoverExistingAuditDelivery'];
+        if ((in_array($effect, $marketEffects, true) && ($workspaceId !== null || $versionId !== null)) ||
+            ($effect === 'RecordOrVerifyApprovedMarketReference' && ($workspaceId !== null || $versionId === null)) ||
+            ($effect === 'AssignCommercialMarket' && ($workspaceId === null || $versionId === null)) ||
+            (in_array($effect, $resultEffects, true) && $versionId !== null) ||
+            (! in_array($effect, [...$marketEffects, ...$resultEffects, 'RecordOrVerifyApprovedMarketReference', 'AssignCommercialMarket'], true) &&
+                ($workspaceId === null || $versionId !== null))) {
+            throw new AuthorizationException('Exact effect target shape required.');
+        }
+        $this->requireCommercialAdministration($request, $targetId, $workspaceId, $versionId);
+        $lifecycle = $this->commercialGrantee($target, $effect);
+        $existing = $db->table('security_action_grants')->where('subject_user_id', $target->id)
+            ->where('subject_generation', $lifecycle->generation)->where('scope_kind', 'commercial')
+            ->where('action', $effect)->where('commercial_target_id', $targetId)
+            ->where('workspace_id', $workspaceId)->where('commercial_version_id', $versionId)
+            ->where('status', 'active')->lockForUpdate()->first();
+        if ($existing) {
+            if ($existing->expires_at !== null && $existing->expires_at <= now()) {
+                throw new AuthorizationException('Expired authority cannot be revived implicitly.');
+            }
+
+            $this->assertCommercialExecutor($request);
+            $this->requireCommercialAdministration($request, $targetId, $workspaceId, $versionId);
+
+            return (int) $existing->id;
+        }
+
+        $this->assertCommercialExecutor($request);
+        $this->requireCommercialAdministration($request, $targetId, $workspaceId, $versionId);
+        $grantId = $this->writeCommercialGrant($request, $target, $effect, $targetId, $workspaceId,
+            $versionId, $reason, (int) $lifecycle->generation, $expiresAt);
+        // Recheck on the authority DB clock after grantee/uniqueness/audit waits.
+        $this->assertCommercialExecutor($request);
+        $this->requireCommercialAdministration($request, $targetId, $workspaceId, $versionId);
+
+        return $grantId;
+    }
+
+    public function revokeCommercialGrant(Request $request, int $grantId): void
+    {
+        $this->assertCommercialExecutor($request);
+        DB::connection('pgsql_authority')->transaction(fn () => $this->revokeCommercialGrantLocally($request, $grantId));
+    }
+
+    private function revokeCommercialGrantLocally(Request $request, int $grantId): void
+    {
+        $this->assertCommercialExecutor($request);
+        $db = DB::connection('pgsql_authority');
+        $grant = $db->table('security_action_grants')->where('id', $grantId)
+            ->where('scope_kind', 'commercial')->lockForUpdate()->first();
+        if (! $grant || ! in_array($grant->action, CommercialEffects::OPERATIONAL, true) ||
+            (int) $grant->subject_user_id === $request->user()->id) {
+            throw new AuthorizationException('Operational commercial revocation target denied.');
+        }
+        $this->requireCommercialAdministration($request, $grant->commercial_target_id,
+            $grant->workspace_id, $grant->commercial_version_id);
+        $this->writeCommercialRevocation($request, $grant);
+        $this->assertCommercialExecutor($request);
+        $this->requireCommercialAdministration($request, $grant->commercial_target_id,
+            $grant->workspace_id, $grant->commercial_version_id);
+    }
+
+    /** Only an exact trusted Owner mandate may assign/revoke exceptional administration. */
+    public function executeCommercialOwnerMandate(Request $request, string $mandateId): int
+    {
+        $this->assertCommercialExecutor($request);
+
+        return DB::connection('pgsql_authority')->transaction(fn () => $this->executeCommercialOwnerMandateLocally($request, $mandateId));
+    }
+
+    private function executeCommercialOwnerMandateLocally(Request $request, string $mandateId): int
+    {
+        $this->assertCommercialExecutor($request);
+        $mandate = config('commercial_authority.owner_mandates.'.$mandateId);
+        if (! is_array($mandate) || ($mandate['executor'] ?? null) !== $request->user()->public_id ||
+            ! in_array($mandate['action'] ?? null, ['assign', 'revoke'], true) ||
+            ! isset($mandate['expires_at'], $mandate['approval_reference'], $mandate['grantee'], $mandate['target_id'],
+                $mandate['executor_generation'], $mandate['grantee_generation']) ||
+            $mandate['expires_at'] <= now()->toIso8601String() ||
+            (int) $mandate['executor_generation'] !== (int) $request->session()->get('a001_generation', 0)) {
+            throw new AuthorizationException('Exact current Owner-approved exceptional mandate required.');
+        }
+        $db = DB::connection('pgsql_authority');
+        $db->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', ['sa01.mandate.'.$mandateId]);
+        $target = User::on('pgsql_authority')->where('public_id', $mandate['grantee'])->first();
+        if (! $target || $target->id === $request->user()->id) {
+            throw new AuthorizationException('Distinct eligible executor and grantee required.');
+        }
+        $lifecycle = $this->commercialGrantee($target, CommercialEffects::ADMINISTRATOR);
+        if ((int) $lifecycle->generation !== (int) $mandate['grantee_generation']) {
+            throw new AuthorizationException('Exact grantee generation required.');
+        }
+        $fingerprint = hash('sha256', json_encode($mandate, JSON_THROW_ON_ERROR));
+        $prior = $db->table('security_commercial_mandate_executions')->where('mandate_id', $mandateId)->first();
+        if ($prior) {
+            if (! hash_equals($prior->fingerprint, $fingerprint)) {
+                throw new AuthorizationException('Owner mandate identity conflict.');
+            }
+            $this->requireCurrentCommercialMandate($request, $mandate);
+
+            return (int) $prior->grant_id;
+        }
+        if ($mandate['action'] === 'assign') {
+            $this->requireCurrentCommercialMandate($request, $mandate);
+            $grantId = $this->writeCommercialGrant($request, $target, CommercialEffects::ADMINISTRATOR,
+                $mandate['target_id'], $mandate['workspace_id'] ?? null, $mandate['version_id'] ?? null,
+                $mandate['approval_reference'], (int) $lifecycle->generation, $mandate['grant_expires_at'] ?? null);
+        } else {
+            $grant = $db->table('security_action_grants')->where('id', $mandate['grant_id'] ?? 0)
+                ->where('action', CommercialEffects::ADMINISTRATOR)->where('scope_kind', 'commercial')
+                ->where('subject_user_id', $target->id)->where('subject_generation', $lifecycle->generation)
+                ->where('commercial_target_id', $mandate['target_id'])
+                ->where('workspace_id', $mandate['workspace_id'] ?? null)
+                ->where('commercial_version_id', $mandate['version_id'] ?? null)->lockForUpdate()->first();
+            if (! $grant) {
+                throw new AuthorizationException('Exact exceptional revocation target required.');
+            }
+            $this->requireCurrentCommercialMandate($request, $mandate);
+            $this->writeCommercialRevocation($request, $grant);
+            $grantId = (int) $grant->id;
+        }
+        $db->table('security_commercial_mandate_executions')->insert([
+            'mandate_id' => $mandateId, 'fingerprint' => $fingerprint, 'grant_id' => $grantId,
+        ]);
+        $this->requireCurrentCommercialMandate($request, $mandate);
+
+        return $grantId;
+    }
+
+    private function assertCommercialExecutor(Request $request): void
+    {
+        $db = DB::connection('pgsql_authority');
+        if ($db->transactionLevel() < 1 || ! $request->is('internal/*') || ! $request->user()?->hasVerifiedEmail()) {
+            throw new AuthorizationException('Protected internal A-003 transaction required.');
+        }
+        app(SessionAuthority::class)->assertCurrentAuthority($request, $request->user(),
+            (int) $request->session()->get('a001_generation', 0));
+        if (! app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user())) {
+            throw new AuthorizationException('Fresh phishing-resistant internal authentication required.');
+        }
+    }
+
+    private function requireCurrentCommercialMandate(Request $request, array $mandate): void
+    {
+        $this->assertCommercialExecutor($request);
+        if (! DB::connection('pgsql_authority')->scalar('SELECT ?::timestamptz > clock_timestamp()', [$mandate['expires_at']])) {
+            throw new AuthorizationException('Owner mandate expired before the authoritative effect.');
+        }
+    }
+
+    private function requireCommercialAdministration(Request $request, string $targetId, ?int $workspaceId, ?string $versionId): void
+    {
+        $grant = DB::connection('pgsql_authority')->table('security_action_grants')
+            ->where('subject_user_id', $request->user()->id)->where('subject_generation', $request->session()->get('a001_generation'))
+            ->where('scope_kind', 'commercial')->where('action', CommercialEffects::ADMINISTRATOR)
+            ->where('commercial_target_id', $targetId)->where('workspace_id', $workspaceId)
+            ->where('commercial_version_id', $versionId)->where('status', 'active')->whereNull('revoked_at')
+            ->whereRaw('(expires_at IS NULL OR expires_at > clock_timestamp())')->sharedLock()->first();
+        if (! $grant) {
+            throw new AuthorizationException('Exact bounded commercial administration grant required.');
+        }
+    }
+
+    private function commercialGrantee(User $target, string $effect): object
+    {
+        $db = DB::connection('pgsql_authority');
+        $class = $effect === 'ReadCommercialContextAdvertiser' ? 'advertiser' : 'staff';
+        $lifecycle = $db->table('principal_lifecycles')->where('user_id', $target->id)
+            ->where('principal_class', $class)->where('status', 'current')->sharedLock()->first();
+        if (! $lifecycle || ! $target->hasVerifiedEmail() || ($class === 'staff' &&
+            (! $db->table('internal_personnel')->where('user_id', $target->id)->where('status', 'active')->sharedLock()->first() ||
+                $target->passkeys()->count() < 1))) {
+            throw new AuthorizationException('Qualified current explicit commercial grantee required.');
+        }
+
+        return $lifecycle;
+    }
+
+    private function writeCommercialGrant(Request $request, User $target, string $effect, string $targetId,
+        ?int $workspaceId, ?string $versionId, string $reason, int $generation, ?string $expiresAt): int
+    {
+        $grantId = DB::connection('pgsql_authority')->table('security_action_grants')->insertGetId([
+            'subject_user_id' => $target->id, 'granted_by' => $request->user()->id, 'source' => 'human',
+            'action' => $effect, 'scope_kind' => 'commercial', 'commercial_target_id' => $targetId,
+            'commercial_version_id' => $versionId, 'workspace_id' => $workspaceId,
+            'subject_generation' => $generation, 'reason' => $reason, 'expires_at' => $expiresAt,
+            'status' => 'active', 'version' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->auditStaffGrant($request->user()->id, $target->id,
+            $effect.':'.$targetId, 'active', $generation);
+
+        return $grantId;
+    }
+
+    private function writeCommercialRevocation(Request $request, object $grant): void
+    {
+        if ($grant->status === 'revoked') {
+            return;
+        }
+        DB::connection('pgsql_authority')->table('security_action_grants')->where('id', $grant->id)->update([
+            'status' => 'revoked', 'revoked_at' => now(), 'version' => (int) $grant->version + 1, 'updated_at' => now(),
+        ]);
+        $this->auditStaffGrant($request->user()->id, $grant->subject_user_id,
+            $grant->action.':'.$grant->commercial_target_id, 'revoked', (int) $grant->subject_generation);
+    }
 
     /** @return array<int, array{public_id: string, name: string, slug: string}> */
     public function reassessableOwnerWorkspaces(Request $request): array

@@ -17,6 +17,7 @@ const menuOpen = ref(false);
                     </Link>
                     <button type="button" class="rounded-lg border px-3 py-2 text-sm sm:hidden" :aria-expanded="menuOpen" aria-controls="internal-menu" @click="menuOpen = !menuOpen">القائمة</button>
                     <div class="hidden items-center gap-5 text-sm sm:flex">
+                        <Link :href="route('internal.commercial.index')" class="hover:underline">السياق التجاري والأسواق</Link>
                         <Link v-if="$page.props.auth.canInternalAdministration" :href="route('internal.administration')" :aria-current="route().current('internal.administration') ? 'page' : undefined" class="hover:underline">الإدارة</Link>
                         <Link v-if="$page.props.auth.canManageServices" :href="route('internal.services.index')" :aria-current="route().current('internal.services.index') ? 'page' : undefined" class="hover:underline">الخدمات</Link>
                         <Link :href="route('internal.security.devices')" :aria-current="route().current('internal.security.devices') ? 'page' : undefined" class="hover:underline">الأمان والأجهزة</Link>
@@ -24,6 +25,7 @@ const menuOpen = ref(false);
                     </div>
                 </div>
                 <div v-if="menuOpen" id="internal-menu" class="flex flex-col gap-3 border-t py-4 text-sm sm:hidden">
+                    <Link :href="route('internal.commercial.index')">السياق التجاري والأسواق</Link>
                     <Link v-if="$page.props.auth.canInternalAdministration" :href="route('internal.administration')">الإدارة</Link>
                     <Link v-if="$page.props.auth.canManageServices" :href="route('internal.services.index')">الخدمات</Link>
                     <Link :href="route('internal.security.devices')">الأمان والأجهزة</Link>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Commercial\RegisterCommercialScope;
 use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\Workspace;
 use App\Security\GrantAuthority;
@@ -53,6 +54,7 @@ final class WorkspaceController extends Controller
                     ->where('responsible_owner_user_id', $request->user()->id)->exists();
 
                 return Inertia::render('Workspaces/Show', [
+                    'commercial' => app(RegisterCommercialScope::class)->advertiserProjection($activeWorkspace->id),
                     'workspace' => [
                         'public_id' => $activeWorkspace->public_id,
                         'name' => $activeWorkspace->name,
