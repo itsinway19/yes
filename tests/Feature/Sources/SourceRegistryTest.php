@@ -67,6 +67,17 @@ class SourceRegistryTest extends TestCase
         $this->command([...$this->input, 'token' => 'never_store'])->assertUnprocessable();
     }
 
+    public function test_workspace_presents_stable_opaque_session_binding_without_granting_source_authority(): void
+    {
+        $sessionId = $this->app['session']->driver()->getId();
+        $expected = hash_hmac('sha256', $sessionId, (string) config('app.key'));
+        $this->get('/workspaces/'.$this->workspace)->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('auth.sessionContextId', $expected)->where('sources.state', 'NO_VISIBLE_SOURCE_AUTHORITY'));
+        $this->get('/workspaces/'.$this->workspace)->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('auth.sessionContextId', $expected));
+        $this->assertNotSame($sessionId, $expected);
+    }
+
     public function test_versioned_corrections_scopes_and_revocation_preserve_history(): void
     {
         $this->command($this->input)->assertOk();
