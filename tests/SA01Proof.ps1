@@ -143,6 +143,8 @@ ALTER ROLE builderad_authority SET lock_timeout='3s';
     $env:PGPASSWORD = $ownerSecret
     & "$pg/psql.exe" -X -h 127.0.0.1 -p 5433 -U builderad_owner -d builderad_test_disposable -v ON_ERROR_STOP=1 -f (Join-Path $PSScriptRoot 'sa01-catalog-proof.sql')
     Assert-Exit 'actual database catalog evidence'
+    & "$pg/psql.exe" -X -h 127.0.0.1 -p 5433 -U builderad_owner -d builderad_test_disposable -v ON_ERROR_STOP=1 -f (Join-Path $PSScriptRoot 'source-catalog-proof.sql')
+    Assert-Exit 'actual BB1 source database catalog evidence'
     Write-Output "DISPOSABLE_RUN=$token; DATA=$dataRoot; GUARD=PASS; SERVICE_5432_CONNECTIONS=0; SERVICE_5432_WRITES=0"
 } finally {
     if ($webProcess -and -not $webProcess.HasExited) { Stop-Process -Id $webProcess.Id; Write-Output 'TASK_HTTP_PROCESS=STOPPED' }

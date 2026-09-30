@@ -94,7 +94,7 @@ abstract class TestCase extends BaseTestCase
         );
         DB::purge('pgsql');
         DB::connection('pgsql_migrations')->statement(
-            'TRUNCATE TABLE commercial_markets, commercial_scopes, commercial_command_results, security_commercial_audit_custody, security_commercial_mandate_executions CASCADE'
+            'TRUNCATE TABLE commercial_markets, commercial_scopes, commercial_command_results, security_commercial_audit_custody, security_commercial_mandate_executions, security_source_audit_custody CASCADE'
         );
     }
 }

@@ -46,7 +46,7 @@ final class EnsureCurrentPrincipal
         };
 
         // WorkspaceContext checks lifecycle and session inside its own outer RLS transaction.
-        if ($request->routeIs('workspaces.foundation', 'workspaces.show', 'workspaces.services.*')) {
+        if ($request->routeIs('workspaces.foundation', 'workspaces.show', 'workspaces.services.*', 'workspaces.sources.*')) {
             return $next($request);
         }
 

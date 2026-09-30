@@ -21,6 +21,74 @@ final class GrantAuthority
 
     private const SENSITIVE_STAFF_ACTIONS = ['grant.manage', 'service.manage'];
 
+    /** Explicit fresh Owner request only. Source facts never issue their own grants. */
+    public function requestSourceGrant(Request $request, int $workspaceId, array $input): void
+    {
+        if (DB::connection()->transactionLevel() !== 1 ||
+            ! in_array($input['action'], ['source.register', 'source.manage', 'source.read', 'source.audit.recover'], true)) {
+            throw new AuthorizationException('Guarded exact source grant request required.');
+        }
+        $evidence = fn () => DB::selectOne('SELECT * FROM builderad_source_owner_evidence(?, ?)', [
+            $workspaceId, SessionAuthority::sessionKey($request),
+        ]);
+        $owner = $evidence();
+        if (! $owner || (int) $owner->actor_id !== $request->user()->id ||
+            (int) $owner->generation !== (int) $request->session()->get('a001_generation', 0)) {
+            throw new AuthorizationException('Exact current responsible Owner required.');
+        }
+        DB::connection('pgsql_authority')->transaction(function () use ($request, $workspaceId, $input, $owner, $evidence): void {
+            $db = DB::connection('pgsql_authority');
+            $key = json_encode([$owner->actor_id, $owner->generation, $workspaceId, $input['source_id'],
+                $input['resource'], $input['operation'], $input['purpose'], $input['action']], JSON_THROW_ON_ERROR);
+            $db->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', ['bb1.grant.'.$key]);
+            $query = $db->table('security_action_grants')->where('subject_user_id', $owner->actor_id)
+                ->where('subject_generation', $owner->generation)->where('scope_kind', 'source')
+                ->where('workspace_id', $workspaceId)->where('source_target_id', $input['source_id'])
+                ->where('source_resource', $input['resource'])->where('source_operation', $input['operation'])
+                ->where('source_purpose', $input['purpose'])->where('action', $input['action'])->where('status', 'active');
+            $existing = (clone $query)->lockForUpdate()->first();
+            if ($input['decision'] === 'revoke') {
+                if ($existing) {
+                    $query->update(['status' => 'revoked', 'revoked_at' => DB::raw('clock_timestamp()'),
+                        'version' => (int) $existing->version + 1, 'updated_at' => DB::raw('clock_timestamp()')]);
+                }
+            } elseif ($existing) {
+                if ($existing->revoked_at !== null || ($existing->expires_at !== null &&
+                    ! $db->scalar('SELECT ?::timestamptz > clock_timestamp()', [$existing->expires_at]))) {
+                    throw new AuthorizationException('Expired source grant must be explicitly revoked before reissue.');
+                }
+            } else {
+                if ($input['expires_at'] !== null && ! $db->scalar('SELECT ?::timestamptz > clock_timestamp()', [$input['expires_at']])) {
+                    throw new AuthorizationException('Future grant expiry required.');
+                }
+                $db->table('security_action_grants')->insert([
+                    'subject_user_id' => $owner->actor_id, 'subject_generation' => $owner->generation,
+                    'granted_by' => $owner->actor_id, 'source' => 'source_owner_request', 'scope_kind' => 'source',
+                    'workspace_id' => $workspaceId, 'source_target_id' => $input['source_id'],
+                    'source_resource' => $input['resource'], 'source_operation' => $input['operation'],
+                    'source_purpose' => $input['purpose'], 'action' => $input['action'], 'reason' => $input['reason'],
+                    'status' => 'active', 'version' => 1, 'expires_at' => $input['expires_at'],
+                    'created_at' => DB::raw('clock_timestamp()'), 'updated_at' => DB::raw('clock_timestamp()'),
+                ]);
+            }
+            if (($input['decision'] === 'revoke' && $existing) || ($input['decision'] === 'authorize' && ! $existing)) {
+                $db->table('security_audit_events')->insert([
+                    'actor_user_id' => $request->user()->id, 'subject_user_id' => $owner->actor_id, 'workspace_id' => $workspaceId,
+                    'event' => 'source_grant_'.$input['decision'], 'reason' => $input['action'].':'.$input['source_id'],
+                    'prior_status' => $existing?->status, 'new_status' => $input['decision'] === 'revoke' ? 'revoked' : 'active',
+                    'new_generation' => $owner->generation, 'occurred_at' => DB::raw('clock_timestamp()'),
+                ]);
+            }
+            // Locks above can wait. Database clock and signed Owner evidence fence actual grant commit.
+            $current = $evidence();
+            if (! $current || (int) $current->generation !== (int) $owner->generation ||
+                ($input['decision'] === 'authorize' && $input['expires_at'] !== null &&
+                    ! $db->scalar('SELECT ?::timestamptz > clock_timestamp()', [$input['expires_at']]))) {
+                throw new AuthorizationException('Source grant evidence expired before effect.');
+            }
+        });
+    }
+
     /** A-003 is the sole writer, including commercial administration. No STAFF_ACTION inheritance. */
     public function issueCommercialGrant(Request $request, User $target, string $effect,
         string $targetId, ?int $workspaceId, ?string $versionId, string $reason, ?string $expiresAt = null): int

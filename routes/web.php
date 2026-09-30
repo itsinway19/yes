@@ -13,6 +13,7 @@ use App\Http\Controllers\StaffOnboardingController;
 use App\Http\Controllers\WorkspaceController;
 use App\Http\Controllers\WorkspaceFoundationController;
 use App\Http\Controllers\WorkspaceServiceController;
+use App\Http\Controllers\WorkspaceSourceController;
 use App\Http\Middleware\EnsureCurrentPrincipal;
 use App\Http\Middleware\EnsureFreshAuthentication;
 use App\Http\Middleware\EnsurePendingStaffEnrollment;
@@ -64,6 +65,15 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
     Route::get('/workspaces/{workspace}/foundation', WorkspaceFoundationController::class)
         ->whereUuid('workspace')
         ->name('workspaces.foundation');
+
+    Route::middleware(EnsureFreshAuthentication::class)->group(function () {
+        Route::post('/workspaces/{workspace}/source-grants', [WorkspaceSourceController::class, 'grant'])
+            ->whereUuid('workspace')->name('workspaces.sources.grant');
+        Route::post('/workspaces/{workspace}/sources', [WorkspaceSourceController::class, 'command'])
+            ->whereUuid('workspace')->name('workspaces.sources.command');
+        Route::post('/workspaces/{workspace}/source-audit/{obligation}/recover', [WorkspaceSourceController::class, 'recover'])
+            ->whereUuid('workspace')->whereUuid('obligation')->name('workspaces.sources.recover');
+    });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
