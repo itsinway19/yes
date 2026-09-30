@@ -2,12 +2,13 @@
 import { ref } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import SourceCapabilityStatus from './SourceCapabilityStatus.vue';
+import DeclareSourceScope from './DeclareSourceScope.vue';
 
 type Scope = { resource: string; operation: string; purpose: string };
 type Item = Scope & { id: string; family: string; namespace: string; declared_external_id: string; label: string;
     version: number; status: string; identity_verification: string; axes: Record<string, string>;
-    capability: { state: string; reason: string; last_verified_at: string | null }; can_manage: boolean; can_recover: boolean;
-    next_repair: string; audit_delivery: { id: string; state: string; attempts: number }[] };
+    capability: { state: string; reason: string; last_verified_at: string | null }; can_manage: boolean; scope_choices: Scope[];
+    next_repair: string; audit_delivery: (Scope & { id: string; command_id: string; receipt_version: number; state: string; attempts: number; can_recover: boolean; recovery_reason: string | null })[] };
 type Authority = { source_target_id: string; source_resource: string; source_operation: string; source_purpose: string };
 const props = defineProps<{ workspaceId: string; candidateId: string; canRequestAuthority: boolean;
     sources: { state: string; items: Item[]; registration_authorities: Authority[] } }>();
@@ -38,6 +39,7 @@ function manage(item: Item, effect: 'rename' | 'revoke') {
         onFinish: () => { busy.value = false; } });
 }
 function recover(obligation: string) {
+    if (busy.value) return;
     busy.value = true;
     router.post(route('workspaces.sources.recover', [props.workspaceId, obligation]), {}, {
         preserveScroll: true, onError: () => { failure.value = 'تعذّر تسليم التدقيق؛ تبقى حالة التسليم مستقلة عن التسجيل.'; },
@@ -80,7 +82,12 @@ function recover(obligation: string) {
             <p class="mt-2 text-sm">الإجراء التالي: {{ item.next_repair === 'source_revoked' ? 'المصدر مسحوب؛ لا يسمح بالاستخدام المحمي' : 'يلزم تحقق المزوّد المستقل قبل الاستخدام' }}</p>
             <dl class="mt-3 grid gap-1 text-xs" dir="ltr"><div v-for="(state, axis) in item.axes" :key="axis">{{ axis }}: {{ state }}</div></dl>
             <div v-if="item.can_manage" class="mt-3 flex gap-4"><button :disabled="busy" class="text-sm text-indigo-700 underline" @click="manage(item, 'rename')">تصحيح الاسم</button><button :disabled="busy" class="text-sm text-red-700 underline" @click="manage(item, 'revoke')">سحب المصدر</button></div>
-            <ul class="mt-3 text-xs"><li v-for="d in item.audit_delivery" :key="d.id" class="mt-2">تسليم التدقيق: <span dir="ltr">{{ d.state }}</span><button v-if="item.can_recover && d.state !== 'ACKNOWLEDGED'" :disabled="busy" class="ms-3 text-indigo-700 underline" @click="recover(d.id)">إعادة تسليم الالتزام نفسه</button></li></ul>
+            <DeclareSourceScope v-if="sources.items.findIndex(s => s.id === item.id) === sources.items.indexOf(item)" :workspace-id="workspaceId" :source-id="item.id" :version="item.version" :choices="item.scope_choices" />
+            <ul class="mt-3 text-xs"><li v-for="d in item.audit_delivery" :key="d.id" class="mt-2">تسليم التدقيق: <span dir="ltr">{{ d.state }}</span>
+                <p dir="ltr" class="mt-1 break-all">{{ d.resource }} / {{ d.operation }} / {{ d.purpose }} — {{ d.command_id }} (v{{ d.receipt_version }})</p>
+                <button v-if="d.can_recover" :disabled="busy" class="ms-3 text-indigo-700 underline" @click="recover(d.id)">إعادة تسليم الالتزام نفسه</button>
+                <p v-else-if="d.state !== 'ACKNOWLEDGED'" class="mt-1 text-slate-600">{{ d.recovery_reason === 'fresh_authentication_required' ? 'يلزم تجديد المصادقة لإعادة التسليم.' : d.recovery_reason === 'responsible_owner_required' ? 'إعادة التسليم تتطلب المالك المسؤول.' : 'لا توجد صلاحية استرداد مطابقة لنطاق هذا الالتزام.' }}</p>
+            </li></ul>
         </article>
         <p v-if="failure" role="alert" class="mt-4 text-sm text-red-700">{{ failure }}</p>
     </section>

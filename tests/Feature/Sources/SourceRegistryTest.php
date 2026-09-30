@@ -400,7 +400,276 @@ class SourceRegistryTest extends TestCase
         $this->assertSame(0, $this->owner()->table('source_registry')->count());
     }
 
-    private function race(array $inputs, bool $sameSource = true): array
+    public function test_mixed_scope_recovery_projects_each_receipt_and_preserves_revoked_source_history(): void
+    {
+        $a = $this->command($this->input)->assertOk()->json();
+        $this->grantFixture('source.manage', ['source_operation' => 'discovery.read']);
+        $this->grantFixture('source.read', ['source_operation' => 'discovery.read']);
+        $this->grantFixture('source.audit.recover', ['source_operation' => 'discovery.read']);
+        $b = $this->command($this->transition('declare_scope', 1, ['operation' => 'discovery.read']))->assertOk()->json();
+        $this->owner()->table('security_action_grants')->where('action', 'source.audit.recover')->where('source_operation', 'report.read')
+            ->update(['status' => 'revoked', 'revoked_at' => now()]);
+        $this->get('/workspaces/'.$this->workspace)->assertOk()->assertInertia(function (Assert $p) use ($a, $b): void {
+            $p->has('sources.items', 2);
+            foreach ([0, 1] as $index) {
+                $p->where("sources.items.$index.audit_delivery.0.id", $a['obligation_id'])
+                    ->where("sources.items.$index.audit_delivery.0.operation", 'report.read')
+                    ->where("sources.items.$index.audit_delivery.0.receipt_version", 1)
+                    ->where("sources.items.$index.audit_delivery.0.can_recover", false)
+                    ->where("sources.items.$index.audit_delivery.0.recovery_reason", 'exact_recovery_authority_required')
+                    ->where("sources.items.$index.audit_delivery.1.id", $b['obligation_id'])
+                    ->where("sources.items.$index.audit_delivery.1.operation", 'discovery.read')
+                    ->where("sources.items.$index.audit_delivery.1.receipt_version", 2)
+                    ->where("sources.items.$index.audit_delivery.1.can_recover", true);
+            }
+        });
+        $this->postJson($this->recoveryUrl($a['obligation_id']))->assertForbidden();
+        $this->command($this->transition('revoke', 2))->assertOk();
+        // Recovery concerns historical local audit, not use of the revoked source.
+        $this->postJson($this->recoveryUrl($b['obligation_id']))->assertOk()->assertJsonPath('delivery_state', 'ACKNOWLEDGED');
+        $this->postJson($this->recoveryUrl($b['obligation_id']))->assertOk();
+        $this->assertSame(1, $this->owner()->table('security_source_audit_custody')->count());
+        $this->assertSame(1, $this->owner()->table('source_audit_delivery')->where('obligation_id', $b['obligation_id'])->value('attempts'));
+        $this->get('/workspaces/'.$this->workspace)->assertInertia(fn (Assert $p) => $p
+            ->where('sources.items.0.audit_delivery.1.can_recover', false)
+            ->where('sources.items.0.audit_delivery.1.recovery_reason', 'already_acknowledged')
+            ->where('sources.items.0.capability.state', 'REVOKED')->has('sources.items.0.scope_choices', 0));
+    }
+
+    public function test_recovery_projection_does_not_authorize_effect_or_leak_across_workspaces(): void
+    {
+        $receipt = $this->command($this->input)->assertOk()->json();
+        $this->get('/workspaces/'.$this->workspace)->assertInertia(fn (Assert $p) => $p->where('sources.items.0.audit_delivery.0.can_recover', true));
+        foreach (['source_resource' => 'wrong-resource', 'source_operation' => 'wrong.operation', 'source_purpose' => 'wrong_purpose'] as $field => $value) {
+            $this->owner()->table('security_action_grants')->where('action', 'source.audit.recover')->update([$field => $value]);
+            $this->postJson($this->recoveryUrl($receipt['obligation_id']))->assertForbidden();
+            $this->owner()->table('security_action_grants')->where('action', 'source.audit.recover')->update([$field => $this->input[substr($field, 7)]]);
+        }
+        $this->owner()->table('security_action_grants')->where('action', 'source.audit.recover')->update(['expires_at' => now()->subSecond()]);
+        $this->postJson($this->recoveryUrl($receipt['obligation_id']))->assertForbidden();
+        $this->owner()->table('security_action_grants')->where('action', 'source.audit.recover')->update(['expires_at' => null, 'status' => 'revoked', 'revoked_at' => now()]);
+        $this->postJson($this->recoveryUrl($receipt['obligation_id']))->assertForbidden();
+        [$other, $wid, $public] = $this->workspaceFixture();
+        $this->actingAs($other);
+        $this->get('/workspaces/'.$public)->assertInertia(fn (Assert $p) => $p->has('sources.items', 0));
+        $this->postJson('/workspaces/'.$public.'/source-audit/'.$receipt['obligation_id'].'/recover')->assertForbidden();
+        $this->actingAs($this->actor);
+        $this->owner()->table('principal_lifecycles')->where('user_id', $this->actor->id)->update(['generation' => 2]);
+        $this->assertContains($this->postJson($this->recoveryUrl($receipt['obligation_id']))->status(), [401, 403]);
+        $this->assertSame(0, $this->owner()->table('security_source_audit_custody')->count());
+        $this->assertSame(0, $this->owner()->table('source_audit_delivery')->value('attempts'));
+    }
+
+    public function test_scope_choices_use_exact_current_server_grants_and_declaration_refreshes_truth(): void
+    {
+        $this->command($this->input)->assertOk();
+        $scope = ['resource' => 'allowed-resource', 'operation' => 'discovery.read', 'purpose' => 'diagnostic_review'];
+        $this->grantFixture('source.manage', ['source_resource' => $scope['resource'], 'source_operation' => $scope['operation'], 'source_purpose' => $scope['purpose']]);
+        $this->grantFixture('source.manage', ['source_resource' => 'expired', 'expires_at' => now()->subSecond()]);
+        $this->grantFixture('source.manage', ['source_resource' => 'revoked', 'status' => 'revoked', 'revoked_at' => now()]);
+        $this->grantFixture('source.manage', ['source_resource' => 'other-source', 'source_target_id' => (string) Str::uuid7()]);
+        $this->get('/workspaces/'.$this->workspace)->assertInertia(fn (Assert $p) => $p
+            ->where('sources.items.0.scope_choices', [$scope])->where('sources.items.0.version', 1));
+        $this->grantFixture('source.read', ['source_resource' => $scope['resource'], 'source_operation' => $scope['operation'], 'source_purpose' => $scope['purpose']]);
+        $input = $this->transition('declare_scope', 1, $scope);
+        $receipt = $this->command($input)->assertOk()->assertJsonPath('version', 2)->json();
+        $this->command($input)->assertExactJson($receipt);
+        $this->command([...$input, 'reason' => 'changed_payload'])->assertConflict();
+        $this->get('/workspaces/'.$this->workspace)->assertInertia(fn (Assert $p) => $p
+            ->has('sources.items', 2)->where('sources.items', fn ($items) => collect($items)->contains('resource', $scope['resource']))
+            ->where('sources.items.1.version', 2)->where('sources.items.1.capability.state', 'UNKNOWN')
+            ->where('sources.items.1.identity_verification', 'UNVERIFIED')->has('sources.items.0.scope_choices', 0));
+        $this->assertSame(2, $this->owner()->table('source_command_receipts')->count());
+        $this->assertSame(2, $this->owner()->table('source_versions')->count());
+        $this->assertSame(2, $this->owner()->table('source_audit_obligations')->count());
+    }
+
+    public function test_declare_scope_negative_authority_validation_version_and_revocation(): void
+    {
+        $this->command($this->input)->assertOk();
+        $input = $this->transition('declare_scope', 1, ['operation' => 'discovery.read']);
+        $this->command($input)->assertForbidden();
+        $this->grantFixture('source.manage', ['source_operation' => 'discovery.read']);
+        foreach ([['resource' => 'wrong'], ['operation' => 'wrong.operation'], ['purpose' => 'wrong_purpose'], ['source_id' => (string) Str::uuid7()]] as $change) {
+            $this->command([...$input, ...$change])->assertForbidden();
+        }
+        foreach ([['operation' => 'INVALID'], ['purpose' => 'INVALID'], ['resource' => str_repeat('r', 181)],
+            ['expected_version' => -1], ['provider_permission' => 'VERIFIED'], ['token' => 'asserted'], ['label' => 'not_allowed']] as $change) {
+            $this->command([...$input, ...$change])->assertUnprocessable();
+        }
+        $this->command([...$input, 'expected_version' => 0])->assertConflict();
+        [$other, $wid, $public] = $this->workspaceFixture();
+        $this->actingAs($other)->postJson('/workspaces/'.$public.'/sources', $input)->assertForbidden();
+        $this->actingAs($this->actor);
+        $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['authenticated_at' => now()->subHour()]);
+        $this->get('/workspaces/'.$this->workspace)->assertInertia(fn (Assert $p) => $p->has('sources.items.0.scope_choices', 0)
+            ->where('sources.items.0.audit_delivery.0.recovery_reason', 'fresh_authentication_required'));
+        $this->command($input)->assertForbidden();
+        $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['authenticated_at' => now()]);
+        $this->command($this->transition('revoke', 1))->assertOk();
+        $this->command([...$input, 'expected_version' => 2])->assertUnprocessable();
+        $this->assertSame(1, $this->owner()->table('source_capabilities')->count());
+    }
+
+    public function test_real_concurrent_scope_declarations_same_and_different_tuples(): void
+    {
+        $this->command($this->input)->assertOk();
+        foreach (['discovery.read', 'diagnostic.read'] as $op) {
+            $this->grantFixture('source.manage', ['source_operation' => $op]);
+        }
+        $a = $this->transition('declare_scope', 1, ['operation' => 'discovery.read']);
+        $outputs = $this->race([$a, $a]);
+        $this->assertSame($outputs[0], $outputs[1]);
+        $this->assertStringStartsWith('RESULT=', $outputs[0]);
+        $outputs = $this->race([$this->transition('declare_scope', 2, ['operation' => 'diagnostic.read']),
+            $this->transition('declare_scope', 2, ['operation' => 'diagnostic.read'])]);
+        $this->assertCount(1, array_filter($outputs, fn ($o) => str_starts_with($o, 'RESULT=')));
+        $this->assertCount(1, array_filter($outputs, fn ($o) => $o === 'DENIED=23505'));
+        $this->assertSame(3, $this->owner()->table('source_capabilities')->count());
+        // Two distinct, valid new scopes use optimistic version concurrency: one must refresh/retry.
+        foreach (['fresh.read', 'another.read'] as $op) {
+            $this->grantFixture('source.manage', ['source_operation' => $op]);
+        }
+        $outputs = $this->race([$this->transition('declare_scope', 3, ['operation' => 'fresh.read']),
+            $this->transition('declare_scope', 3, ['operation' => 'another.read'])]);
+        $this->assertCount(1, array_filter($outputs, fn ($o) => str_starts_with($o, 'RESULT=')));
+        $this->assertCount(1, array_filter($outputs, fn ($o) => $o === 'DENIED=23505'));
+        $this->assertSame(4, $this->owner()->table('source_registry')->value('version'));
+        $this->assertSame(4, $this->owner()->table('source_audit_obligations')->count());
+    }
+
+    public function test_declare_scope_revoke_or_expiry_while_workers_wait_denies_every_effect(): void
+    {
+        $this->command($this->input)->assertOk();
+        $this->grantFixture('source.manage', ['source_operation' => 'discovery.read']);
+        foreach ([['status' => 'revoked', 'revoked_at' => now()], ['status' => 'active', 'revoked_at' => null, 'expires_at' => now()->subSecond()]] as $change) {
+            $this->owner()->table('security_action_grants')->where('source_operation', 'discovery.read')->update(['status' => 'active', 'revoked_at' => null, 'expires_at' => null]);
+            $outputs = $this->race([$this->transition('declare_scope', 1, ['operation' => 'discovery.read']),
+                $this->transition('declare_scope', 1, ['operation' => 'discovery.read'])], true,
+                fn () => $this->owner()->table('security_action_grants')->where('source_operation', 'discovery.read')->update($change));
+            $this->assertSame(['DENIED=42501', 'DENIED=42501'], $outputs);
+            $this->assertSame(1, $this->owner()->table('source_registry')->value('version'));
+            $this->assertSame(1, $this->owner()->table('source_audit_obligations')->count());
+        }
+    }
+
+    private function recoveryUrl(string $obligation): string
+    {
+        return '/workspaces/'.$this->workspace.'/source-audit/'.$obligation.'/recover';
+    }
+
+    public function test_declare_scope_local_audit_rollback_and_independent_custody_outage(): void
+    {
+        $this->command($this->input)->assertOk();
+        $this->grantFixture('source.manage', ['source_operation' => 'discovery.read']);
+        $this->grantFixture('source.read', ['source_operation' => 'discovery.read']);
+        $this->grantFixture('source.audit.recover', ['source_operation' => 'discovery.read']);
+        $input = $this->transition('declare_scope', 1, ['operation' => 'discovery.read']);
+        $this->owner()->unprepared("CREATE FUNCTION bb1_scope_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'required local audit failure' USING ERRCODE='23514'; END $$;
+            CREATE TRIGGER bb1_scope_fail BEFORE INSERT ON source_audit_obligations FOR EACH ROW EXECUTE FUNCTION bb1_scope_audit_failure()");
+        try {
+            $this->command($input)->assertUnprocessable();
+            foreach (['source_capabilities', 'source_command_receipts', 'source_audit_obligations', 'source_versions'] as $table) {
+                $this->assertSame(1, $this->owner()->table($table)->count());
+            }
+            $this->assertSame(1, $this->owner()->table('source_registry')->value('version'));
+        } finally {
+            $this->owner()->unprepared('DROP TRIGGER bb1_scope_fail ON source_audit_obligations; DROP FUNCTION bb1_scope_audit_failure()');
+        }
+        $receipt = $this->command($input)->assertOk()->json();
+        $this->app->instance(SourceAuditCustody::class, new class extends SourceAuditCustody
+        {
+            public function accept(string $obligation, string $fingerprint, string $envelope): string
+            {
+                throw new RuntimeException('Synthetic custody outage');
+            }
+        });
+        $this->postJson($this->recoveryUrl($receipt['obligation_id']))->assertOk()->assertJsonPath('delivery_state', 'FAILED');
+        $this->command($input)->assertExactJson($receipt);
+        $this->assertSame(2, $this->owner()->table('source_capabilities')->count());
+        $this->assertSame(2, $this->owner()->table('source_registry')->value('version'));
+        $this->assertSame(2, $this->owner()->table('source_audit_obligations')->count());
+        $this->app->instance(SourceAuditCustody::class, new SourceAuditCustody);
+        $this->postJson($this->recoveryUrl($receipt['obligation_id']))->assertOk()->assertJsonPath('delivery_state', 'ACKNOWLEDGED');
+        $this->assertSame(1, $this->owner()->table('security_source_audit_custody')->count());
+    }
+
+    public function test_declare_scope_expiry_after_source_row_wait_rolls_back_every_local_fact(): void
+    {
+        $this->command($this->input)->assertOk();
+        $this->grantFixture('source.manage', ['source_operation' => 'discovery.read']);
+        $this->withObservedRowWait('source_registry', 'id', $this->input['source_id'], false, function (): void {
+            $this->owner()->table('security_action_grants')->where('action', 'source.manage')->where('source_operation', 'discovery.read')
+                ->update(['expires_at' => DB::raw("clock_timestamp()+interval '2 seconds'")]);
+            $this->command($this->transition('declare_scope', 1, ['operation' => 'discovery.read']))->assertForbidden();
+        });
+        foreach (['source_capabilities', 'source_command_receipts', 'source_audit_obligations', 'source_versions'] as $table) {
+            $this->assertSame(1, $this->owner()->table($table)->count());
+        }
+        $this->assertSame(1, $this->owner()->table('source_registry')->value('version'));
+    }
+
+    public function test_recovery_expiry_after_delivery_wait_keeps_independent_custody_and_local_state_separate(): void
+    {
+        $receipt = $this->command($this->input)->assertOk()->json();
+        $this->withObservedRowWait('source_audit_delivery', 'obligation_id', $receipt['obligation_id'], false, function () use ($receipt): void {
+            $this->owner()->table('security_action_grants')->where('action', 'source.audit.recover')
+                ->update(['expires_at' => DB::raw("clock_timestamp()+interval '2 seconds'")]);
+            $this->postJson($this->recoveryUrl($receipt['obligation_id']))->assertForbidden();
+        });
+        $this->assertSame('PENDING', $this->owner()->table('source_audit_delivery')->value('state'));
+        $this->assertSame(0, $this->owner()->table('source_audit_delivery')->value('attempts'));
+        $this->assertSame(1, $this->owner()->table('security_source_audit_custody')->count());
+        $this->owner()->table('security_action_grants')->where('action', 'source.audit.recover')->update(['expires_at' => null]);
+        $this->postJson($this->recoveryUrl($receipt['obligation_id']))->assertOk()->assertJsonPath('delivery_state', 'ACKNOWLEDGED');
+        $this->assertSame(1, $this->owner()->table('security_source_audit_custody')->count());
+    }
+
+    public function test_recovery_revocation_while_waiting_on_actual_grant_denies_before_custody(): void
+    {
+        $receipt = $this->command($this->input)->assertOk()->json();
+        $grantId = $this->owner()->table('security_action_grants')->where('action', 'source.audit.recover')->value('id');
+        $this->withObservedRowWait('security_action_grants', 'id', (string) $grantId, true,
+            fn () => $this->postJson($this->recoveryUrl($receipt['obligation_id']))->assertForbidden());
+        $this->assertSame(0, $this->owner()->table('security_source_audit_custody')->count());
+        $this->assertSame(0, $this->owner()->table('source_audit_delivery')->value('attempts'));
+    }
+
+    private function withObservedRowWait(string $table, string $column, string $id, bool $revoke, callable $effect): void
+    {
+        $code = <<<'PHP'
+        require 'vendor/autoload.php'; $app=require 'bootstrap/app.php'; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+        app(App\Security\DisposableTestDatabaseGuard::class)->assertSafe();
+        $db=Illuminate\Support\Facades\DB::connection('pgsql_migrations')->getPdo(); $db->beginTransaction();
+        $allowed=['source_registry'=>'id','source_audit_delivery'=>'obligation_id','security_action_grants'=>'id'];
+        if(($allowed[$argv[1]]??null)!==$argv[2]) exit(2);
+        $q=$db->prepare('SELECT '.$argv[2].' FROM '.$argv[1].' WHERE '.$argv[2].'=? FOR UPDATE'); $q->execute([$argv[3]]);
+        $xid=$db->query('SELECT pg_current_xact_id()::text')->fetchColumn(); echo 'LOCK_READY'; fflush(STDOUT);
+        $q=$db->prepare("SELECT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='transactionid' AND transactionid=?::xid AND pid=? AND NOT granted)");
+        $deadline=microtime(true)+6; $wait=false;
+        do { $q->execute([$xid,$argv[4]]); $wait=in_array($q->fetchColumn(),[true,1,'1','t'],true); if($wait) break; usleep(20000); } while(microtime(true)<$deadline);
+        if(!$wait) { $db->rollBack(); exit(1); } echo 'WAIT_OBSERVED'; fflush(STDOUT);
+        if($argv[5]==='revoke') { $q=$db->prepare("UPDATE security_action_grants SET status='revoked',revoked_at=clock_timestamp() WHERE id=?"); $q->execute([$argv[3]]); }
+        else $db->query('SELECT pg_sleep(2.2)');
+        $db->commit();
+        PHP;
+        $holder = new Process([PHP_BINARY, '-r', $code, $table, $column, $id, (string) DB::scalar('SELECT pg_backend_pid()'), $revoke ? 'revoke' : 'expire'], base_path());
+        $holder->setTimeout(12);
+        $holder->start();
+        try {
+            $holder->waitUntil(fn ($type, $text) => str_contains($text, 'LOCK_READY'));
+            $effect();
+            $holder->wait();
+            $this->assertTrue($holder->isSuccessful(), $holder->getErrorOutput());
+            $this->assertStringContainsString('WAIT_OBSERVED', $holder->getOutput());
+        } finally {
+            if ($holder->isRunning()) {
+                $holder->stop();
+            }
+        }
+    }
+
+    private function race(array $inputs, bool $sameSource = true, ?callable $whileBlocked = null): array
     {
         $run = 'bb1-race-'.Str::uuid();
         $holder = DB::build(config('database.connections.pgsql_migrations'));
@@ -431,6 +700,9 @@ class SourceRegistryTest extends TestCase
             } while (microtime(true) < $deadline);
             $diagnostics = implode('\n', array_map(fn ($p) => $p->getOutput().' '.$p->getErrorOutput(), $processes));
             $this->assertSame(2, $waiters, 'Both real worker transactions must overlap at database locks. '.$diagnostics);
+            if ($whileBlocked) {
+                $whileBlocked();
+            }
             $holder->commit();
             $outputs = [];
             foreach ($processes as $p) {

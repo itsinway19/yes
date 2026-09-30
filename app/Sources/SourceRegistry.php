@@ -35,6 +35,19 @@ final class SourceRegistry
             'c.resource', 'c.operation', 'c.purpose',
         ]);
         $items = [];
+        $isOwner = DB::table('workspace_ownerships')->where('workspace_id', $workspace->id)
+            ->where('responsible_owner_user_id', $request->user()->id)->exists();
+        $fresh = app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user())
+            && (bool) DB::scalar("SELECT EXISTS (SELECT 1 FROM security_sessions WHERE user_id=? AND session_key_hash=?
+                AND authenticated_at BETWEEN clock_timestamp()-interval '15 minutes' AND clock_timestamp())", [
+                $request->user()->id, SessionAuthority::sessionKey($request),
+            ]);
+        $manageGrants = DB::table('security_action_grants')->where('subject_user_id', $request->user()->id)
+            ->where('subject_generation', $request->session()->get('a001_generation'))
+            ->where('scope_kind', 'source')->where('workspace_id', $workspace->id)->where('action', 'source.manage')
+            ->where('status', 'active')->whereNull('revoked_at')->whereRaw('(expires_at IS NULL OR expires_at > clock_timestamp())')
+            ->orderBy('source_resource')->orderBy('source_operation')->orderBy('source_purpose')
+            ->get(['source_target_id', 'source_resource', 'source_operation', 'source_purpose']);
         foreach ($capabilities as $c) {
             DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [
                 $workspace->id, SessionAuthority::sessionKey($request), $c->id, $c->resource, $c->operation, $c->purpose,
@@ -42,18 +55,43 @@ final class SourceRegistry
             $has = fn (string $action): bool => (bool) DB::scalar('SELECT builderad_source_has(?, ?::uuid, ?, ?, ?, ?)', [
                 $action, $c->id, $workspace->id, $c->resource, $c->operation, $c->purpose,
             ]);
-            $isOwner = DB::table('workspace_ownerships')->where('workspace_id', $workspace->id)
-                ->where('responsible_owner_user_id', $request->user()->id)->exists();
-            $fresh = app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user());
             // BB1 has no independently authorized provider verifier; all provider axes remain unknown.
             $axes = array_fill_keys(EffectiveCapability::AXES, 'UNKNOWN');
             $effective = app(EffectiveCapability::class)->derive($c->status, $has('source.read'), [], new DateTimeImmutable);
             $deliveries = DB::table('source_audit_obligations as o')->join('source_audit_delivery as d', 'd.obligation_id', '=', 'o.id')
+                ->join('source_command_receipts as r', function ($join): void {
+                    $join->on('r.workspace_id', '=', 'o.workspace_id')->on('r.command_id', '=', 'o.command_id')
+                        ->on('r.source_id', '=', 'o.source_id');
+                })
                 ->where('o.workspace_id', $workspace->id)->where('o.source_id', $c->id)
-                ->orderBy('o.recorded_at')->get(['o.id', 'd.state', 'd.attempts']);
+                ->orderBy('o.recorded_at')->get(['o.id', 'o.command_id', 'r.resource', 'r.operation', 'r.purpose', 'r.result', 'd.state', 'd.attempts'])
+                ->map(function ($delivery) use ($workspace, $c, $isOwner, $fresh): array {
+                    $authorized = (bool) DB::scalar('SELECT builderad_source_has(?, ?::uuid, ?, ?, ?, ?)', [
+                        'source.audit.recover', $c->id, $workspace->id, $delivery->resource, $delivery->operation, $delivery->purpose,
+                    ]);
+                    $reason = $delivery->state === 'ACKNOWLEDGED' ? 'already_acknowledged'
+                        : (! $isOwner ? 'responsible_owner_required' : (! $fresh ? 'fresh_authentication_required'
+                            : (! $authorized ? 'exact_recovery_authority_required' : null)));
+                    $result = json_decode($delivery->result, true, flags: JSON_THROW_ON_ERROR);
+                    unset($delivery->result);
+
+                    return [...(array) $delivery, 'receipt_version' => $result['version'],
+                        'can_recover' => $reason === null, 'recovery_reason' => $reason];
+                });
+            // Choices are current exact A-003 grants, never a browser/provider capability catalog.
+            // RLS may hide a previously declared tuple; the canonical writer still rejects duplicates.
+            $scopeChoices = $manageGrants->filter(fn ($g) => $isOwner && $fresh && $c->status !== 'REVOKED'
+                && $g->source_target_id === $c->id
+                && ! $capabilities->contains(fn ($existing) => $existing->id === $c->id
+                    && $existing->resource === $g->source_resource && $existing->operation === $g->source_operation
+                    && $existing->purpose === $g->source_purpose)
+                && DB::scalar('SELECT builderad_source_has(?, ?::uuid, ?, ?, ?, ?)', [
+                    'source.manage', $c->id, $workspace->id, $g->source_resource, $g->source_operation, $g->source_purpose,
+                ]))->map(fn ($g) => ['resource' => $g->source_resource, 'operation' => $g->source_operation,
+                    'purpose' => $g->source_purpose])->values();
             $items[] = [...(array) $c, 'identity_verification' => 'UNVERIFIED', 'axes' => $axes,
                 'capability' => $effective, 'can_manage' => $isOwner && $fresh && $has('source.manage') && $c->status !== 'REVOKED',
-                'can_recover' => $isOwner && $fresh && $has('source.audit.recover'), 'audit_delivery' => $deliveries,
+                'scope_choices' => $scopeChoices, 'audit_delivery' => $deliveries,
                 'next_repair' => $c->status === 'REVOKED' ? 'source_revoked' : 'provider_verification_needed'];
         }
 
