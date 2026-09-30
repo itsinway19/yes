@@ -35,6 +35,9 @@ class HandleInertiaRequests extends Middleware
             'locale' => app()->getLocale(),
             'auth' => [
                 'user' => $request->user(),
+                // Presentation-only binding for tab-local unfinished commands. Never an authority token.
+                'sessionContextId' => $request->user()
+                    ? hash_hmac('sha256', $request->session()->getId(), (string) config('app.key')) : null,
                 'canInternalAdministration' => fn () => $request->is('internal/*') && $request->user() &&
                     app(GrantAuthority::class)->has(
                         $request->user(),

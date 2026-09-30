@@ -74,18 +74,11 @@ final class WorkspaceContext
                 throw new AuthorizationException('Current Workspace authority is required.', previous: $exception);
             }
 
-            $ownership = $connection->table('workspace_ownerships')
-                ->where('workspace_id', $workspace->getKey())
-                ->first();
-            if (! $ownership || (int) $ownership->version < 1 ||
-                ! $connection->table('workspace_memberships')
-                    ->where('workspace_id', $workspace->getKey())
-                    ->where('user_id', $ownership->responsible_owner_user_id)
-                    ->where('role', 'owner')
-                    ->where('status', 'active')->exists() ||
-                ! $connection->table('principal_lifecycles')
-                    ->where('user_id', $ownership->responsible_owner_user_id)
-                    ->where('status', 'current')->exists()) {
+            // The signed selector above verifies and locks the current responsible Owner,
+            // their identity/lifecycle and active owner membership until this transaction ends.
+            // Runtime RLS deliberately hides another user's membership; repeating that
+            // privileged proof here incorrectly denies an otherwise authorized member.
+            if (! $connection->scalar('SELECT builderad_has_valid_workspace_owner(?)', [$workspace->getKey()])) {
                 throw new AuthorizationException('A current responsible Workspace Owner is required.');
             }
             if (! $this->grants->has(

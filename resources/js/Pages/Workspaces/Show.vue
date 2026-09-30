@@ -2,10 +2,14 @@
 import { ref } from 'vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import SourceRegistryPanel from './SourceRegistryPanel.vue';
 
 const props = defineProps<{
     workspace: { public_id: string; name: string; slug: string };
     canManageServices: boolean;
+    canRequestSourceAuthority: boolean;
+    sourceCandidateId: string;
+    sources: InstanceType<typeof SourceRegistryPanel>['$props']['sources'];
     services: { public_id: string; name: string; purpose: string }[];
     commercial: { state: string; context: { scope_id: string; market_label: string; configuration_id: string; catalog_identity: string; catalog_version: string; denomination_code: string; effective_at: string } | null; agreement_state: string; amount_state: string };
 }>();
@@ -36,6 +40,7 @@ function revokeService(service: string) {
     <AuthenticatedLayout>
         <template #header><h1 class="text-xl font-semibold text-slate-900">{{ workspace.name }}</h1></template>
         <main dir="rtl" class="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+            <SourceRegistryPanel :workspace-id="workspace.public_id" :candidate-id="sourceCandidateId" :can-request-authority="canRequestSourceAuthority" :sources="sources" />
             <Link :href="route('workspaces.index')" class="text-sm font-medium text-indigo-700 underline hover:text-indigo-900">العودة إلى مساحات العمل</Link>
             <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="workspace-heading">
                 <h2 id="workspace-heading" class="text-xl font-semibold text-slate-900">{{ workspace.name }}</h2>

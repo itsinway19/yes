@@ -6,7 +6,9 @@ use App\Commercial\RegisterCommercialScope;
 use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\Workspace;
 use App\Security\GrantAuthority;
+use App\Security\SessionAuthority;
 use App\Security\WorkspaceAuthority;
+use App\Sources\SourceRegistry;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -55,6 +57,9 @@ final class WorkspaceController extends Controller
 
                 return Inertia::render('Workspaces/Show', [
                     'commercial' => app(RegisterCommercialScope::class)->advertiserProjection($activeWorkspace->id),
+                    'sources' => app(SourceRegistry::class)->projection($request, $activeWorkspace),
+                    'canRequestSourceAuthority' => $isOwner && app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user()),
+                    'sourceCandidateId' => (string) Str::uuid7(),
                     'workspace' => [
                         'public_id' => $activeWorkspace->public_id,
                         'name' => $activeWorkspace->name,

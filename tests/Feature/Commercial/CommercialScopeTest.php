@@ -426,19 +426,27 @@ class CommercialScopeTest extends TestCase
         $target = $this->staff();
         $market = $this->id();
         $this->grant($this->operator, 'SA01CommercialGrantAdministrator', $market);
-        $holder = $this->blockingHolder('SELECT 1 FROM principal_lifecycles WHERE user_id = ? FOR UPDATE', [$target->id], 'pgsql_authority');
+        $grant = $this->owner()->table('security_action_grants')->where('subject_user_id', $this->operator->id)
+            ->where('action', 'SA01CommercialGrantAdministrator')->where('commercial_target_id', $market);
+        $grantId = (int) $grant->value('id');
+        $this->assertGreaterThan(0, $grantId);
+        $this->assertSame(1, $grant->update(['expires_at' => DB::raw("clock_timestamp() + interval '10 seconds'")]));
+        $consumer = DB::connection('pgsql_authority');
+        $consumer->statement("SET lock_timeout = '20s'");
         try {
-            $this->owner()->table('security_action_grants')->where('subject_user_id', $this->operator->id)
-                ->where('action', 'SA01CommercialGrantAdministrator')->update(['expires_at' => DB::raw("clock_timestamp() + interval '2 seconds'")]);
-            $started = microtime(true);
-            $this->postJson('/internal/commercial/grants', ['grantee' => $target->public_id, 'effect' => 'ConfigureCommercialMarket',
-                'target_id' => $market, 'reason_code' => 'synthetic_expiry'])->assertForbidden();
-            $this->assertGreaterThan(0.4, microtime(true) - $started);
-            $this->assertFalse($this->owner()->table('security_action_grants')->where('subject_user_id', $target->id)->where('commercial_target_id', $market)->exists());
+            $holder = $this->blockingHolder('SELECT 1 FROM principal_lifecycles WHERE user_id = ? FOR UPDATE',
+                [$target->id], 'pgsql_authority', $grantId);
+            try {
+                $this->postJson('/internal/commercial/grants', ['grantee' => $target->public_id, 'effect' => 'ConfigureCommercialMarket',
+                    'target_id' => $market, 'reason_code' => 'synthetic_expiry'])->assertForbidden();
+                $this->assertFalse($this->owner()->table('security_action_grants')->where('subject_user_id', $target->id)->where('commercial_target_id', $market)->exists());
+            } finally {
+                $holder->wait();
+                $this->assertTrue($holder->isSuccessful(), $holder->getErrorOutput());
+                $this->assertMatchesRegularExpression('/WAIT_OBSERVED.*EXPIRY_OBSERVED/s', $holder->getOutput());
+            }
         } finally {
-            $holder->wait();
-            $this->assertTrue($holder->isSuccessful(), $holder->getErrorOutput());
-            $this->assertStringContainsString('WAIT_OBSERVED', $holder->getOutput());
+            $consumer->statement('RESET lock_timeout');
         }
     }
 
@@ -578,19 +586,29 @@ class CommercialScopeTest extends TestCase
         $sa = $this->market('Saudi Arabia', 'SAR');
         $configuration = $this->id();
         $command = $this->id();
-        $holder = $this->blockingHolder('SELECT 1 FROM commercial_market_assignability WHERE market_id = ? FOR UPDATE', [$sa['market']]);
+        $grant = $this->owner()->table('security_action_grants')->where('subject_user_id', $this->operator->id)
+            ->where('commercial_target_id', $sa['market'])->where('action', 'ConfigureCommercialMarket');
+        $grantId = (int) $grant->value('id');
+        $this->assertGreaterThan(0, $grantId);
+        $this->assertSame(1, $grant->update(['expires_at' => DB::raw("clock_timestamp() + interval '10 seconds'")]));
+        $consumer = DB::connection('pgsql');
+        $consumer->statement("SET lock_timeout = '20s'");
         try {
-            $this->owner()->table('security_action_grants')->where('commercial_target_id', $sa['market'])
-                ->where('action', 'ConfigureCommercialMarket')->update(['expires_at' => DB::raw("clock_timestamp() + interval '2 seconds'")]);
-            $this->postCommand('configurations', ['command_id' => $command, 'market_id' => $sa['market'],
-                'configuration_id' => $configuration, 'catalog_reference_id' => $sa['catalog'], 'denomination_code' => 'SAR'])->assertForbidden();
-            $this->assertFalse($this->owner()->table('commercial_market_configuration_versions')->where('id', $configuration)->exists());
-            $this->assertFalse($this->owner()->table('commercial_command_results')->where('command_id', $command)->exists());
-            $this->assertFalse($this->owner()->table('commercial_audit_obligations')->where('command_id', $command)->exists());
+            $holder = $this->blockingHolder('SELECT 1 FROM commercial_market_assignability WHERE market_id = ? FOR UPDATE',
+                [$sa['market']], 'pgsql', $grantId);
+            try {
+                $this->postCommand('configurations', ['command_id' => $command, 'market_id' => $sa['market'],
+                    'configuration_id' => $configuration, 'catalog_reference_id' => $sa['catalog'], 'denomination_code' => 'SAR'])->assertForbidden();
+                $this->assertFalse($this->owner()->table('commercial_market_configuration_versions')->where('id', $configuration)->exists());
+                $this->assertFalse($this->owner()->table('commercial_command_results')->where('command_id', $command)->exists());
+                $this->assertFalse($this->owner()->table('commercial_audit_obligations')->where('command_id', $command)->exists());
+            } finally {
+                $holder->wait();
+                $this->assertTrue($holder->isSuccessful(), $holder->getErrorOutput());
+                $this->assertMatchesRegularExpression('/WAIT_OBSERVED.*EXPIRY_OBSERVED/s', $holder->getOutput());
+            }
         } finally {
-            $holder->wait();
-            $this->assertTrue($holder->isSuccessful(), $holder->getErrorOutput());
-            $this->assertStringContainsString('WAIT_OBSERVED', $holder->getOutput());
+            $consumer->statement('RESET lock_timeout');
         }
     }
 
@@ -617,7 +635,7 @@ class CommercialScopeTest extends TestCase
             ->where('catalogReferences.0.catalog_version', '1')->missing('catalogReferences.0.producer_transaction'));
     }
 
-    private function blockingHolder(string $sql, array $bindings, string $consumerConnection = 'pgsql'): Process
+    private function blockingHolder(string $sql, array $bindings, string $consumerConnection = 'pgsql', ?int $expiryGrantId = null): Process
     {
         // Real second process/transaction. Readiness is emitted only after its row lock exists.
         $consumerPid = (int) DB::connection($consumerConnection)->scalar('SELECT pg_backend_pid()');
@@ -633,10 +651,27 @@ class CommercialScopeTest extends TestCase
         do { $probe->execute([$xid,$argv[3]]); $raw=$probe->fetchColumn(); $waiting=in_array($raw,[true,1,'1','t'],true); if($waiting) break; usleep(20000); } while(microtime(true)<$deadline);
         if(!$waiting) { $db->rollBack(); fwrite(STDERR,'No real waiter observed'); exit(1); }
         echo 'WAIT_OBSERVED; CONSUMER_PID='.$argv[3].'; BOOLEAN_TYPE='.get_debug_type($raw); fflush(STDOUT);
-        $db->query('SELECT pg_sleep(2.2)'); $db->commit();
+        if ((int)$argv[4] > 0) {
+            // Non-locking read of the exact persisted grant; the request already owns FOR SHARE.
+            $expiry=$db->prepare('SELECT expires_at, CASE WHEN clock_timestamp() > expires_at THEN 1 ELSE 0 END AS expired FROM security_action_grants WHERE id = ?');
+            $deadline=microtime(true)+20; $expired=false;
+            do {
+                $expiry->execute([(int)$argv[4]]); $row=$expiry->fetch(PDO::FETCH_ASSOC);
+                if (!$row || $row['expires_at'] === null) { $db->rollBack(); fwrite(STDERR,'Exact persisted expiry missing'); exit(1); }
+                $expired=(int)$row['expired'] === 1;
+                if ($expired) break;
+                usleep(20000);
+            } while (microtime(true)<$deadline);
+            if (!$expired) { $db->rollBack(); fwrite(STDERR,'Database-clock expiry not observed'); exit(1); }
+            echo 'EXPIRY_OBSERVED; GRANT_ID='.$argv[4].'; EXPIRES_AT='.$row['expires_at']; fflush(STDOUT);
+        } else {
+            $db->query('SELECT pg_sleep(2.2)');
+        }
+        $db->commit();
         PHP;
-        $holder = new Process([PHP_BINARY, '-r', $code, $sql, json_encode($bindings, JSON_THROW_ON_ERROR), (string) $consumerPid]);
-        $holder->setTimeout(10);
+        $holder = new Process([PHP_BINARY, '-r', $code, $sql, json_encode($bindings, JSON_THROW_ON_ERROR), (string) $consumerPid,
+            (string) ($expiryGrantId ?? 0)]);
+        $holder->setTimeout($expiryGrantId === null ? 10 : 30);
         $holder->start();
         $holder->waitUntil(fn ($type, $output) => str_contains($output, 'LOCK_READY'));
         $this->assertTrue($holder->isRunning(), $holder->getErrorOutput());
