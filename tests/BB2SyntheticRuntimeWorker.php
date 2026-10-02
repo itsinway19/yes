@@ -11,6 +11,7 @@ use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Request;
 use Illuminate\Session\ArraySessionHandler;
 use Illuminate\Session\Store;
+use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -44,8 +45,8 @@ if ($fixture['mode'] === 'queue') {
 }
 
 // Use the actual configured Redis, with a unique test prefix on both cache and locks.
-$env = Dotenv\Dotenv::parse(file_get_contents('C:/dev/builderad/.env'));
-$value = static fn ($name, $fallback = null) => in_array($env[$name] ?? null, ['', 'null', '(null)'], true) ? null : ($env[$name] ?? $fallback);
+$env = is_file('C:/dev/builderad/.env') ? Dotenv\Dotenv::parse(file_get_contents('C:/dev/builderad/.env')) : [];
+$value = static fn ($name, $fallback = null) => in_array($env[$name] ?? null, ['', 'null', '(null)'], true) ? null : ($env[$name] ?? Env::get($name, $fallback));
 config()->set('database.redis.client', $value('REDIS_CLIENT', 'predis'));
 foreach (['default', 'cache'] as $connection) {
     foreach (['host' => 'REDIS_HOST', 'port' => 'REDIS_PORT', 'password' => 'REDIS_PASSWORD', 'username' => 'REDIS_USERNAME', 'url' => 'REDIS_URL'] as $key => $name) {

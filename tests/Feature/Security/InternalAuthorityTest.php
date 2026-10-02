@@ -98,6 +98,8 @@ class InternalAuthorityTest extends TestCase
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
+        config()->set('services.google_ads.privacy_url', '');
+        config()->set('services.google_ads.notice_revision', '');
         $this->get('/internal/administration')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Internal/Administration')->where('metaOperatorStatus', null)
             ->where('googleOperatorStatus', null)->where('tiktokOperatorStatus', null)->where('snapchatOperatorStatus', null)->where('xOperatorStatus', null));

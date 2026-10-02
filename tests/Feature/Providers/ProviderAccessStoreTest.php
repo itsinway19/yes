@@ -81,6 +81,7 @@ use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Request;
 use Illuminate\Session\ArraySessionHandler;
 use Illuminate\Session\Store;
+use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -3169,7 +3170,8 @@ class ProviderAccessStoreTest extends TestCase
             ->assertStatus(502)->assertJsonPath('reason', 'snapchat_reconnect_required');
         $this->assertStringNotContainsString('synthetic-private-error', $denied->getContent());
         $this->assertSame($old, $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->value('encrypted_credentials'));
-        $this->getJson($base)->assertOk()->assertJsonPath('connections.0.access.connection', 'REAUTHORIZATION_REQUIRED');
+        $connections = $this->getJson($base)->assertOk()->json('connections');
+        $this->assertSame('REAUTHORIZATION_REQUIRED', collect($connections)->firstWhere('source_id', $scope->sourceId)['access']['connection']);
         $http->assertSentCount(1);
     }
 
@@ -3185,7 +3187,8 @@ class ProviderAccessStoreTest extends TestCase
         $command = ['command_id' => (string) Str::uuid(), 'expected_version' => 1];
         $this->postJson($base.'/'.$scope->sourceId.'/renew', $command)->assertStatus(502)
             ->assertJsonPath('reason', 'snapchat_reconnect_required');
-        $this->getJson($base)->assertOk()->assertJsonPath('connections.0.access.connection', 'REAUTHORIZATION_REQUIRED');
+        $connections = $this->getJson($base)->assertOk()->json('connections');
+        $this->assertSame('REAUTHORIZATION_REQUIRED', collect($connections)->firstWhere('source_id', $scope->sourceId)['access']['connection']);
         $this->getJson($base.'/'.$scope->sourceId.'/report?start_date=2026-09-01&end_date=2026-09-02')->assertForbidden();
         $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
         $this->postJson($base.'/'.$scope->sourceId.'/renew', $command)->assertStatus(502)
@@ -3227,7 +3230,8 @@ class ProviderAccessStoreTest extends TestCase
         $http->assertSentCount(2);
         $this->postJson($base.'/'.$scope->sourceId.'/renew', ['command_id' => (string) Str::uuid(), 'expected_version' => 1])
             ->assertOk()->assertJsonPath('receipt.version', 2)->assertJsonPath('access.connection', 'CONNECTED');
-        $this->getJson($base)->assertOk()->assertJsonPath('connections.0.access.connection', 'CONNECTED');
+        $connections = $this->getJson($base)->assertOk()->json('connections');
+        $this->assertSame('CONNECTED', collect($connections)->firstWhere('source_id', $scope->sourceId)['access']['connection']);
         $this->postJson($base.'/'.$scope->sourceId.'/renew', $command)->assertForbidden();
         $http->assertSentCount(5);
         $this->assertSame(1, $this->owner()->table('snapchat_renewal_failures')->where('source_id', $scope->sourceId)->count());
@@ -3478,8 +3482,8 @@ class ProviderAccessStoreTest extends TestCase
 
     public function test_real_redis_independent_consumers_fence_replay_expiry_wrong_binding_and_sql_rollback_for_all_five(): void
     {
-        $env = Dotenv::parse(file_get_contents('C:/dev/builderad/.env'));
-        $value = static fn ($name, $fallback = null) => in_array($env[$name] ?? null, ['', 'null', '(null)'], true) ? null : ($env[$name] ?? $fallback);
+        $env = is_file('C:/dev/builderad/.env') ? Dotenv::parse(file_get_contents('C:/dev/builderad/.env')) : [];
+        $value = static fn ($name, $fallback = null) => in_array($env[$name] ?? null, ['', 'null', '(null)'], true) ? null : ($env[$name] ?? Env::get($name, $fallback));
         config()->set('database.redis.client', $value('REDIS_CLIENT', 'predis'));
         foreach (['default', 'cache'] as $connection) {
             foreach (['host' => 'REDIS_HOST', 'port' => 'REDIS_PORT', 'password' => 'REDIS_PASSWORD', 'username' => 'REDIS_USERNAME', 'url' => 'REDIS_URL'] as $key => $name) {
