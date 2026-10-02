@@ -22,6 +22,11 @@ const props = defineProps<{
     grantableActions: string[];
     canAttestFactors: boolean;
     permissions: Record<string, boolean>;
+    metaOperatorStatus: { application_configured: boolean; notice_links_configured: boolean } | null;
+    googleOperatorStatus: { application_configured: boolean; notice_links_configured: boolean } | null;
+    tiktokOperatorStatus: { application_configured: boolean; notice_links_configured: boolean } | null;
+    xOperatorStatus: { application_configured: boolean; notice_links_configured: boolean } | null;
+    snapchatOperatorStatus: { application_configured: boolean; notice_links_configured: boolean } | null;
 }>();
 const invite = useForm({ name: '', email: '' });
 const grant = useForm({ staff: '', action: '', reason: '' });
@@ -77,6 +82,41 @@ const statusLabel: Record<Person['status'], string> = {
         </template>
         <div dir="rtl" class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
             <Link v-if="props.permissions['service.manage']" :href="route('internal.services.index')" class="mb-5 inline-block text-sm font-medium text-indigo-700 underline">إدارة الخدمات المستقلة</Link>
+            <section v-if="metaOperatorStatus" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="meta-operator-title">
+                <h2 id="meta-operator-title" class="text-lg font-semibold text-slate-900">إعداد ربط Meta</h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600">هذه حالة إعداد الخدمة المحلية فقط. لا تثبت موافقة Meta أو اعتماد سياسات البيانات أو اتصال حساب معلن أو جاهزية بياناته للتحليل.</p>
+                <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                    <div class="rounded-xl bg-slate-50 p-4"><dt class="font-medium text-slate-800">إعداد التطبيق وعنوان العودة</dt><dd class="mt-1 text-slate-600">{{ metaOperatorStatus.application_configured ? 'مضبوط تقنيًا' : 'غير مكتمل' }}</dd></div>
+                    <div class="rounded-xl bg-slate-50 p-4"><dt class="font-medium text-slate-800">صيغة روابط الإشعار والحذف</dt><dd class="mt-1 text-slate-600">{{ metaOperatorStatus.notice_links_configured ? 'صالحة تقنيًا؛ الاعتماد غير مثبت' : 'غير مكتملة' }}</dd></div>
+                </dl>
+            </section>
+            <section v-if="googleOperatorStatus" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="google-operator-title">
+                <h2 id="google-operator-title" class="text-lg font-semibold text-slate-900">إعداد ربط Google Ads</h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600">هذه حالة إعداد الخدمة المحلية فقط. لا تثبت موافقة Google أو اعتماد سياسة الخصوصية أو اتصال حساب معلن أو جاهزية بياناته للتحليل.</p>
+                <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                    <div class="rounded-xl bg-slate-50 p-4"><dt class="font-medium text-slate-800">إعداد تطبيق OAuth وعنوان العودة</dt><dd class="mt-1 text-slate-600">{{ googleOperatorStatus.application_configured ? 'مضبوط تقنيًا' : 'غير مكتمل' }}</dd></div>
+                    <div class="rounded-xl bg-slate-50 p-4"><dt class="font-medium text-slate-800">رابط الخصوصية ونسخة الإشعار</dt><dd class="mt-1 text-slate-600">{{ googleOperatorStatus.notice_links_configured ? 'صالحة تقنيًا؛ الاعتماد غير مثبت' : 'غير مكتملة' }}</dd></div>
+                </dl>
+                <p class="mt-4 text-sm leading-6 text-slate-600">تُضبط المفاتيح على الخادم في متغيرات البيئة. لا تعرض هذه اللوحة الأسرار، ويبدأ المعلن الربط من مساحة عمله.</p>
+            </section>
+            <section v-if="tiktokOperatorStatus" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="tiktok-operator-title">
+                <h2 id="tiktok-operator-title" class="text-lg font-semibold text-slate-900">ربط TikTok</h2>
+                <p class="mt-3 rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-700">هذه حالة إعداد الخدمة المحلية فقط. لا تثبت موافقة TikTok أو اعتماد السياسات أو اتصال حساب المعلن.</p>
+                <dl class="mt-4 grid gap-4 sm:grid-cols-2"><div><dt class="font-semibold">إعداد التطبيق والتفويض وعنوان العودة</dt><dd class="mt-2 text-sm text-slate-700">{{ tiktokOperatorStatus.application_configured ? 'مكتمل محليًا' : 'غير مكتمل' }}</dd></div><div><dt class="font-semibold">صيغة رابط الخصوصية وإصدار الإشعار</dt><dd class="mt-2 text-sm text-slate-700">{{ tiktokOperatorStatus.notice_links_configured ? 'مكتملة محليًا' : 'غير مكتملة' }}</dd></div></dl>
+                <p class="mt-4 text-sm leading-7 text-slate-600">توضع مفاتيح TikTok على الخادم في متغيرات البيئة. الربط الفعلي والتحقق من سياسات المنصة مؤجلان.</p>
+            </section>
+            <section v-if="xOperatorStatus" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="x-operator-title">
+                <h2 id="x-operator-title" class="text-lg font-semibold text-slate-900">ربط X</h2>
+                <p class="mt-3 rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-700">هذه حالة إعداد الخدمة المحلية فقط. لا تثبت موافقة X أو اعتماد السياسات أو اتصال حساب المعلن.</p>
+                <dl class="mt-4 grid gap-4 sm:grid-cols-2"><div><dt class="font-semibold">إعداد تطبيق OAuth وعنوان العودة</dt><dd class="mt-2 text-sm text-slate-700">{{ xOperatorStatus.application_configured ? 'مكتمل محليًا' : 'غير مكتمل' }}</dd></div><div><dt class="font-semibold">صيغة رابط الخصوصية وإصدار الإشعار</dt><dd class="mt-2 text-sm text-slate-700">{{ xOperatorStatus.notice_links_configured ? 'مكتملة محليًا' : 'غير مكتملة' }}</dd></div></dl>
+                <p class="mt-4 text-sm leading-7 text-slate-600">توضع مفاتيح X على الخادم: BB2_X_CONSUMER_KEY وBB2_X_CONSUMER_SECRET، مع BB2_X_REDIRECT_URI وBB2_X_PRIVACY_URL وBB2_X_NOTICE_REVISION. الربط الفعلي والتحقق من سياسات المنصة مؤجلان.</p>
+            </section>
+            <section v-if="snapchatOperatorStatus" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="snapchat-operator-title">
+                <h2 id="snapchat-operator-title" class="text-lg font-semibold text-slate-900">ربط Snapchat</h2>
+                <p class="mt-3 rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-700">هذه حالة إعداد الخدمة المحلية فقط. لا تثبت موافقة Snapchat أو اعتماد السياسات أو اتصال حساب المعلن.</p>
+                <dl class="mt-4 grid gap-4 sm:grid-cols-2"><div><dt class="font-semibold">إعداد تطبيق OAuth وعنوان العودة</dt><dd class="mt-2 text-sm text-slate-700">{{ snapchatOperatorStatus.application_configured ? 'مكتمل محليًا' : 'غير مكتمل' }}</dd></div><div><dt class="font-semibold">صيغة رابط الخصوصية وإصدار الإشعار</dt><dd class="mt-2 text-sm text-slate-700">{{ snapchatOperatorStatus.notice_links_configured ? 'مكتملة محليًا' : 'غير مكتملة' }}</dd></div></dl>
+                <p class="mt-4 text-sm leading-7 text-slate-600">توضع مفاتيح Snapchat على الخادم في متغيرات البيئة. الربط الفعلي والتحقق من سياسات المنصة مؤجلان.</p>
+            </section>
             <section v-if="props.permissions['staff.invite']" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="invite-title">
                 <h2 id="invite-title" class="text-lg font-semibold text-slate-900">دعوة موظف</h2>
                 <p class="mt-2 text-sm text-slate-600">تُنشئ الدعوة حسابًا معلّقًا فقط. يبدأ الموظف من رسالة تهيئة كلمة المرور، ثم يثبت بريده ويسجل مفتاح مرور.</p>

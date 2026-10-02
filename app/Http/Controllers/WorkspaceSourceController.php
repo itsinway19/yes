@@ -26,7 +26,7 @@ final class WorkspaceSourceController extends Controller
     public function grant(Request $request, string $workspace, WorkspaceContext $context, GrantAuthority $grants): JsonResponse|RedirectResponse
     {
         $input = $request->validate([...$this->scopeRules(),
-            'action' => ['required', Rule::in(['source.register', 'source.manage', 'source.read', 'source.audit.recover'])],
+            'action' => ['required', Rule::in(GrantAuthority::SOURCE_ACTIONS)],
             'decision' => ['required', Rule::in(['authorize', 'revoke'])], 'expires_at' => ['nullable', 'date']]);
         $input['expires_at'] ??= null;
         $this->guarded(fn () => $context->run($request->user(), $workspace,

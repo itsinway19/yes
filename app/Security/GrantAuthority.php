@@ -21,11 +21,14 @@ final class GrantAuthority
 
     private const SENSITIVE_STAFF_ACTIONS = ['grant.manage', 'service.manage'];
 
+    public const SOURCE_ACTIONS = ['source.register', 'source.manage', 'source.read', 'source.audit.recover',
+        'provider.connect', 'provider.read', 'provider.revoke'];
+
     /** Explicit fresh Owner request only. Source facts never issue their own grants. */
     public function requestSourceGrant(Request $request, int $workspaceId, array $input): void
     {
         if (DB::connection()->transactionLevel() !== 1 ||
-            ! in_array($input['action'], ['source.register', 'source.manage', 'source.read', 'source.audit.recover'], true)) {
+            ! in_array($input['action'], self::SOURCE_ACTIONS, true)) {
             throw new AuthorizationException('Guarded exact source grant request required.');
         }
         $evidence = fn () => DB::selectOne('SELECT * FROM builderad_source_owner_evidence(?, ?)', [

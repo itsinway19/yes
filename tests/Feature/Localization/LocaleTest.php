@@ -90,6 +90,7 @@ class LocaleTest extends TestCase
 
     public function test_both_guest_routes_keep_csrf_and_separate_session_tokens(): void
     {
+        $this->usePersistentTestSessions();
         $middleware = app('router')->getMiddlewareGroups()['web'];
         $this->assertContains(PreventRequestForgery::class, $middleware);
         $this->assertLessThan(array_search(ResolveLocale::class, $middleware, true),

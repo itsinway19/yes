@@ -3,6 +3,11 @@ import { ref } from 'vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import SourceRegistryPanel from './SourceRegistryPanel.vue';
+import MetaConnectionPanel from './MetaConnectionPanel.vue';
+import GoogleConnectionPanel from './GoogleConnectionPanel.vue';
+import TikTokConnectionPanel from './TikTokConnectionPanel.vue';
+import SnapchatConnectionPanel from './SnapchatConnectionPanel.vue';
+import XConnectionPanel from './XConnectionPanel.vue';
 
 const props = defineProps<{
     workspace: { public_id: string; name: string; slug: string };
@@ -40,6 +45,11 @@ function revokeService(service: string) {
     <AuthenticatedLayout>
         <template #header><h1 class="text-xl font-semibold text-slate-900">{{ workspace.name }}</h1></template>
         <main dir="rtl" class="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+            <MetaConnectionPanel :key="workspace.public_id" :workspace-id="workspace.public_id" :can-manage="canRequestSourceAuthority" />
+            <GoogleConnectionPanel :key="`google-${workspace.public_id}`" :workspace-id="workspace.public_id" :can-manage="canRequestSourceAuthority" />
+            <TikTokConnectionPanel :key="`tiktok-${workspace.public_id}`" :workspace-id="workspace.public_id" :can-manage="canRequestSourceAuthority" />
+            <XConnectionPanel :key="`x-${workspace.public_id}`" :workspace-id="workspace.public_id" :can-manage="canRequestSourceAuthority" />
+            <SnapchatConnectionPanel :key="`snapchat-${workspace.public_id}`" :workspace-id="workspace.public_id" :can-manage="canRequestSourceAuthority" />
             <SourceRegistryPanel :workspace-id="workspace.public_id" :candidate-id="sourceCandidateId" :can-request-authority="canRequestSourceAuthority" :sources="sources" />
             <Link :href="route('workspaces.index')" class="text-sm font-medium text-indigo-700 underline hover:text-indigo-900">العودة إلى مساحات العمل</Link>
             <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="workspace-heading">

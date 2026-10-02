@@ -3,17 +3,27 @@
 use App\Http\Controllers\Auth\InternalAuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasskeySessionController;
 use App\Http\Controllers\CommercialController;
+use App\Http\Controllers\GoogleConnectionController;
+use App\Http\Controllers\GoogleReportController;
 use App\Http\Controllers\InternalAdministrationController;
 use App\Http\Controllers\InternalServiceController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\MetaConnectionController;
+use App\Http\Controllers\MetaReportController;
 use App\Http\Controllers\PasskeyManagementController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SecurityDevicesController;
+use App\Http\Controllers\SnapchatConnectionController;
+use App\Http\Controllers\SnapchatReportController;
 use App\Http\Controllers\StaffOnboardingController;
+use App\Http\Controllers\TikTokConnectionController;
+use App\Http\Controllers\TikTokReportController;
 use App\Http\Controllers\WorkspaceController;
 use App\Http\Controllers\WorkspaceFoundationController;
 use App\Http\Controllers\WorkspaceServiceController;
 use App\Http\Controllers\WorkspaceSourceController;
+use App\Http\Controllers\XConnectionController;
+use App\Http\Controllers\XReportController;
 use App\Http\Middleware\EnsureCurrentPrincipal;
 use App\Http\Middleware\EnsureFreshAuthentication;
 use App\Http\Middleware\EnsurePendingStaffEnrollment;
@@ -49,6 +59,91 @@ Route::middleware(['auth', EnsurePendingStaffEnrollment::class.':true'])->group(
 });
 
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
+    Route::get('/providers/x/callback', [XConnectionController::class, 'callback'])->name('providers.x.callback');
+    Route::get('/workspaces/{workspace}/providers/x/{source}/campaigns', [XReportController::class, 'campaigns'])
+        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.x.campaigns');
+    Route::get('/workspaces/{workspace}/providers/x/{source}/report', [XReportController::class, 'status'])
+        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.x.report.status');
+    Route::post('/workspaces/{workspace}/providers/x/{source}/report', [XReportController::class, 'store'])
+        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.x.report.store');
+    Route::get('/workspaces/{workspace}/providers/x', [XConnectionController::class, 'index'])
+        ->whereUuid('workspace')->name('workspaces.providers.x.index');
+    Route::get('/workspaces/{workspace}/providers/x/discovery/{flow}', [XConnectionController::class, 'discovery'])
+        ->whereUuid('workspace')->where('flow', '[A-Za-z0-9_-]{43}')->name('workspaces.providers.x.discovery');
+    Route::post('/workspaces/{workspace}/providers/x/connect', [XConnectionController::class, 'connect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.x.connect');
+    Route::post('/workspaces/{workspace}/providers/x/select', [XConnectionController::class, 'select'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.x.select');
+    Route::post('/workspaces/{workspace}/providers/x/{source}/disconnect', [XConnectionController::class, 'disconnect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.x.disconnect');
+    Route::get('/providers/snapchat/callback', [SnapchatConnectionController::class, 'callback'])->name('providers.snapchat.callback');
+    Route::get('/workspaces/{workspace}/providers/snapchat/{source}/report', [SnapchatReportController::class, 'status'])
+        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.snapchat.report.status');
+    Route::post('/workspaces/{workspace}/providers/snapchat/{source}/report', [SnapchatReportController::class, 'store'])
+        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.snapchat.report.store');
+    Route::get('/workspaces/{workspace}/providers/snapchat', [SnapchatConnectionController::class, 'index'])
+        ->whereUuid('workspace')->name('workspaces.providers.snapchat.index');
+    Route::get('/workspaces/{workspace}/providers/snapchat/discovery/{flow}', [SnapchatConnectionController::class, 'discovery'])
+        ->whereUuid('workspace')->where('flow', '[A-Za-z0-9_-]{43}')->name('workspaces.providers.snapchat.discovery');
+    Route::post('/workspaces/{workspace}/providers/snapchat/connect', [SnapchatConnectionController::class, 'connect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.snapchat.connect');
+    Route::post('/workspaces/{workspace}/providers/snapchat/select', [SnapchatConnectionController::class, 'select'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.snapchat.select');
+    Route::post('/workspaces/{workspace}/providers/snapchat/{source}/disconnect', [SnapchatConnectionController::class, 'disconnect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.snapchat.disconnect');
+    Route::post('/workspaces/{workspace}/providers/snapchat/{source}/renew', [SnapchatConnectionController::class, 'renew'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.snapchat.renew');
+    Route::get('/providers/google/callback', [GoogleConnectionController::class, 'callback'])->name('providers.google.callback');
+    Route::get('/providers/tiktok/callback', [TikTokConnectionController::class, 'callback'])->name('providers.tiktok.callback');
+    Route::get('/workspaces/{workspace}/providers/tiktok/{source}/report', [TikTokReportController::class, 'status'])
+        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.tiktok.report.status');
+    Route::post('/workspaces/{workspace}/providers/tiktok/{source}/report', [TikTokReportController::class, 'store'])
+        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.tiktok.report.store');
+    Route::get('/workspaces/{workspace}/providers/tiktok', [TikTokConnectionController::class, 'index'])
+        ->whereUuid('workspace')->name('workspaces.providers.tiktok.index');
+    Route::get('/workspaces/{workspace}/providers/tiktok/discovery/{flow}', [TikTokConnectionController::class, 'discovery'])
+        ->whereUuid('workspace')->where('flow', '[A-Za-z0-9_-]{43}')->name('workspaces.providers.tiktok.discovery');
+    Route::post('/workspaces/{workspace}/providers/tiktok/connect', [TikTokConnectionController::class, 'connect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.tiktok.connect');
+    Route::post('/workspaces/{workspace}/providers/tiktok/select', [TikTokConnectionController::class, 'select'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.tiktok.select');
+    Route::post('/workspaces/{workspace}/providers/tiktok/{source}/disconnect', [TikTokConnectionController::class, 'disconnect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.tiktok.disconnect');
+    Route::get('/workspaces/{workspace}/providers/google/{source}/report', [GoogleReportController::class, 'status'])
+        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.google.report.status');
+    Route::get('/workspaces/{workspace}/providers/meta/{source}/report', [MetaReportController::class, 'status'])
+        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.meta.report.status');
+    Route::post('/workspaces/{workspace}/providers/meta/{source}/report', [MetaReportController::class, 'store'])
+        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.meta.report.store');
+    Route::get('/workspaces/{workspace}/providers/google/{source}/report/{generation}/download', [GoogleReportController::class, 'download'])
+        ->whereUuid('workspace')->whereUuid('source')->where('generation', '[1-9][0-9]{0,17}')->name('workspaces.providers.google.report.download');
+    Route::post('/workspaces/{workspace}/providers/google/{source}/report', [GoogleReportController::class, 'store'])
+        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.google.report.store');
+    Route::get('/workspaces/{workspace}/providers/google', [GoogleConnectionController::class, 'index'])
+        ->whereUuid('workspace')->name('workspaces.providers.google.index');
+    Route::get('/workspaces/{workspace}/providers/google/discovery/{flow}', [GoogleConnectionController::class, 'discovery'])
+        ->whereUuid('workspace')->where('flow', '[A-Za-z0-9_-]{43}')->name('workspaces.providers.google.discovery');
+    Route::get('/workspaces/{workspace}/providers/google/hierarchy/{flow}', [GoogleConnectionController::class, 'hierarchy'])
+        ->whereUuid('workspace')->where('flow', '[A-Za-z0-9_-]{43}')->name('workspaces.providers.google.hierarchy');
+    Route::post('/workspaces/{workspace}/providers/google/connect', [GoogleConnectionController::class, 'connect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.google.connect');
+    Route::post('/workspaces/{workspace}/providers/google/select', [GoogleConnectionController::class, 'select'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.google.select');
+    Route::post('/workspaces/{workspace}/providers/google/{source}/disconnect', [GoogleConnectionController::class, 'disconnect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.google.disconnect');
+    Route::post('/workspaces/{workspace}/providers/google/{source}/renew', [GoogleConnectionController::class, 'renew'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.google.renew');
+    Route::get('/providers/meta/callback', [MetaConnectionController::class, 'callback'])->name('providers.meta.callback');
+    Route::get('/workspaces/{workspace}/providers/meta', [MetaConnectionController::class, 'index'])
+        ->whereUuid('workspace')->name('workspaces.providers.meta.index');
+    Route::get('/workspaces/{workspace}/providers/meta/discovery/{flow}', [MetaConnectionController::class, 'discovery'])
+        ->whereUuid('workspace')->where('flow', '[A-Za-z0-9_-]{43}')->name('workspaces.providers.meta.discovery');
+    Route::post('/workspaces/{workspace}/providers/meta/connect', [MetaConnectionController::class, 'connect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.meta.connect');
+    Route::post('/workspaces/{workspace}/providers/meta/select', [MetaConnectionController::class, 'select'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.meta.select');
+    Route::post('/workspaces/{workspace}/providers/meta/{source}/disconnect', [MetaConnectionController::class, 'disconnect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.meta.disconnect');
     Route::get('/workspaces', [WorkspaceController::class, 'index'])->name('workspaces.index');
     Route::post('/workspaces', [WorkspaceController::class, 'store'])->name('workspaces.store');
     Route::post('/workspaces/{workspace}/reassess-owner-grant', [WorkspaceController::class, 'reassessOwnerGrant'])

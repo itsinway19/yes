@@ -9,6 +9,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class InternalAuthorityTest extends TestCase
@@ -97,7 +98,55 @@ class InternalAuthorityTest extends TestCase
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        $this->get('/internal/administration')->assertOk();
+        $this->get('/internal/administration')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Internal/Administration')->where('metaOperatorStatus', null)
+            ->where('googleOperatorStatus', null)->where('tiktokOperatorStatus', null)->where('snapchatOperatorStatus', null)->where('xOperatorStatus', null));
+        DB::connection('pgsql_migrations')->table('security_action_grants')->insert([
+            'subject_user_id' => $founder->id, 'granted_by' => null, 'source' => 'founder_bootstrap',
+            'action' => 'service.manage', 'scope_kind' => 'platform', 'subject_generation' => 1,
+            'reason' => 'Meta operator projection fixture', 'status' => 'active',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->get('/internal/administration')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Internal/Administration')
+            ->where('metaOperatorStatus.application_configured', false)
+            ->where('metaOperatorStatus.notice_links_configured', false)
+            ->where('googleOperatorStatus.application_configured', false)
+            ->where('googleOperatorStatus.notice_links_configured', false)
+            ->where('tiktokOperatorStatus.application_configured', false)->where('tiktokOperatorStatus.notice_links_configured', false)
+            ->where('snapchatOperatorStatus.application_configured', false)->where('snapchatOperatorStatus.notice_links_configured', false)
+            ->where('xOperatorStatus.application_configured', false)->where('xOperatorStatus.notice_links_configured', false));
+        config()->set('app.url', 'https://builderad.example');
+        config()->set('services.google_ads', ['version' => 'v25', 'client_id' => 'synthetic.apps.googleusercontent.com',
+            'client_secret' => 'synthetic-private-client-secret',
+            'redirect_uri' => 'https://builderad.example/providers/google/callback',
+            'privacy_url' => 'https://builderad.example/privacy', 'notice_revision' => '1']);
+        $configured = $this->get('/internal/administration')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('googleOperatorStatus', ['application_configured' => true, 'notice_links_configured' => true]));
+        foreach (['synthetic-private-client-secret', 'synthetic.apps.googleusercontent.com',
+            'https://builderad.example/privacy'] as $private) {
+            $this->assertStringNotContainsString($private, $configured->getContent());
+        }
+        config()->set('services.google_ads.redirect_uri', 'https://another.example/providers/google/callback');
+        $this->get('/internal/administration')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('googleOperatorStatus.application_configured', false)
+            ->where('googleOperatorStatus.notice_links_configured', true));
+        config()->set('services.snapchat_ads', ['client_id' => 'synthetic-snap-client', 'client_secret' => 'synthetic-private-snap-secret',
+            'redirect_uri' => 'https://builderad.example/providers/snapchat/callback',
+            'privacy_url' => 'https://builderad.example/snap-privacy', 'notice_revision' => 'synthetic-notice-v1']);
+        $snapchatConfigured = $this->get('/internal/administration')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('snapchatOperatorStatus', ['application_configured' => true, 'notice_links_configured' => true]));
+        foreach (['synthetic-private-snap-secret', 'synthetic-snap-client', 'https://builderad.example/snap-privacy'] as $private) {
+            $this->assertStringNotContainsString($private, $snapchatConfigured->getContent());
+        }
+        config()->set('services.x_ads', ['consumer_key' => 'synthetic-x-key', 'consumer_secret' => 'synthetic-private-x-secret',
+            'redirect_uri' => 'https://builderad.example/providers/x/callback',
+            'privacy_url' => 'https://builderad.example/x-privacy', 'notice_revision' => 'synthetic-notice-v1']);
+        $xConfigured = $this->get('/internal/administration')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('xOperatorStatus', ['application_configured' => true, 'notice_links_configured' => true]));
+        foreach (['synthetic-private-x-secret', 'synthetic-x-key', 'https://builderad.example/x-privacy'] as $private) {
+            $this->assertStringNotContainsString($private, $xConfigured->getContent());
+        }
         DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $founder->id)->update(['status' => 'revoked', 'revoked_at' => now()]);
         $this->get('/internal/administration')->assertForbidden();
     }
