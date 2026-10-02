@@ -3497,6 +3497,8 @@ class ProviderAccessStoreTest extends TestCase
         Cache::forgetDriver('redis');
         app('redis')->purge('default');
         app('redis')->purge('cache');
+        // RedisManager snapshots configuration at construction; purging connections alone retains it.
+        app()->forgetInstance('redis');
         $redis = Cache::store('redis');
         $keys = [];
         $workers = [];

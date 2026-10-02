@@ -55,6 +55,8 @@ foreach (['default', 'cache'] as $connection) {
 }
 config()->set('database.redis.options.prefix', $fixture['prefix']);
 config()->set('cache.prefix', $fixture['prefix']);
+Cache::forgetDriver('redis');
+app()->forgetInstance('redis');
 $s = $fixture['scope'];
 $scope = new ProviderScope($s['workspace_id'], $s['source_id'], Provider::from($s['provider']), $s['account_id'], $s['operation'], $s['purpose']);
 $actor = User::findOrFail($fixture['actor']);
