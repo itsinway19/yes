@@ -1,4 +1,4 @@
-param([string]$Filter = 'CommercialScopeTest|WorkspaceIsolationTest|DatabaseAuthorityBoundaryTest|InternalAuthorityTest|OwnerGrantReassessmentTest', [switch]$Browser,
+param([string]$Filter = 'CommercialScopeTest|WorkspaceIsolationTest|DatabaseAuthorityBoundaryTest|InternalAuthorityTest|OwnerGrantReassessmentTest', [switch]$Browser, [switch]$FullRegression,
     [ValidateSet('','source','target')][string]$N1DurabilityPhase = '', [string]$N1PreservationFile = '')
 
 $ErrorActionPreference = 'Stop'
@@ -39,6 +39,10 @@ try {
     & "$pg/initdb.exe" -D $dataRoot -U postgres --pwfile=$pwFile --auth-host=scram-sha-256 --auth-local=scram-sha-256 --encoding=UTF8 --locale=C
     Assert-Exit 'fresh initdb'
     Add-Content -LiteralPath (Join-Path $dataRoot 'postgresql.conf') -Value "`nlisten_addresses='127.0.0.1'`nport=5433`n"
+    if ($FullRegression) {
+        # Bound disposable database memory on this constrained host; retain all concurrent test clients.
+        Add-Content -LiteralPath (Join-Path $dataRoot 'postgresql.conf') -Value "shared_buffers='32MB'`nwork_mem='1MB'`nmaintenance_work_mem='16MB'`n"
+    }
     & "$pg/pg_ctl.exe" -D $dataRoot -l (Join-Path $runRoot 'postgres.log') -w start
     Assert-Exit 'disposable PostgreSQL start'
     $started = $true
@@ -126,8 +130,21 @@ ALTER ROLE builderad_authority SET lock_timeout='3s';
     Assert-Exit 'real DisposableTestDatabaseGuard'
     & $php artisan migrate --database=pgsql_migrations --force
     Assert-Exit 'zero-to-head full migration'
-    & $php artisan test --filter=$Filter
-    Assert-Exit 'focused proof tests'
+    if ($FullRegression) {
+        # Execute every PHPUnit path without filters/skips. Separate processes release test mock/session memory.
+        $regressionPaths = @((Join-Path $PSScriptRoot 'Unit'))
+        $regressionPaths += @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'Feature') -Directory | Sort-Object Name | ForEach-Object FullName)
+        $regressionPaths += @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'Feature') -File -Filter '*Test.php' | Sort-Object Name | ForEach-Object FullName)
+        foreach ($regressionPath in $regressionPaths) {
+            Write-Output ('FULL_REGRESSION_PATH=' + [IO.Path]::GetRelativePath($taskRoot, $regressionPath))
+            & $php artisan test $regressionPath
+            Assert-Exit 'complete regression path'
+        }
+        Write-Output 'FULL_REGRESSION_ALL_PATHS=PASS; FILTERS=NONE; SKIPS_ADDED=NONE'
+    } else {
+        & $php artisan test --filter=$Filter
+        Assert-Exit 'focused proof tests'
+    }
     if ($Browser) {
         $env:SESSION_DRIVER = 'file'
         $env:APP_URL = 'http://127.0.0.1:8765'
@@ -148,12 +165,30 @@ ALTER ROLE builderad_authority SET lock_timeout='3s';
     Write-Output "DISPOSABLE_RUN=$token; DATA=$dataRoot; GUARD=PASS; SERVICE_5432_CONNECTIONS=0; SERVICE_5432_WRITES=0"
 } finally {
     if ($webProcess -and -not $webProcess.HasExited) { Stop-Process -Id $webProcess.Id; Write-Output 'TASK_HTTP_PROCESS=STOPPED' }
-    if ($started) {
-        & "$pg/pg_ctl.exe" -D $dataRoot -m fast -w stop
-        if ($LASTEXITCODE -ne 0) { throw 'Disposable PostgreSQL shutdown failed.' }
-        Write-Output 'TASK_POSTGRESQL_PROCESS=STOPPED'
+    try {
+        if ($started) {
+            # Request shutdown once, then observe this exact task cluster instead of relying on pg_ctl's 60s default.
+            & "$pg/pg_ctl.exe" -D $dataRoot -m fast -W stop
+            $shutdownStarted = Get-Date
+            $shutdownDeadline = $shutdownStarted.AddSeconds(120)
+            $nextShutdownReport = $shutdownStarted.AddSeconds(15)
+            $clusterStopped = $false
+            do {
+                $clusterStatus = & "$pg/pg_ctl.exe" -D $dataRoot status 2>&1
+                if ($LASTEXITCODE -eq 3) { $clusterStopped = $true; break }
+                if ($LASTEXITCODE -ne 0) { throw 'Disposable PostgreSQL shutdown status could not be verified.' }
+                if ((Get-Date) -ge $nextShutdownReport) {
+                    Write-Output ('TASK_POSTGRESQL_STOPPING; ELAPSED_SECONDS=' + [int]((Get-Date) - $shutdownStarted).TotalSeconds)
+                    $nextShutdownReport = (Get-Date).AddSeconds(15)
+                }
+                Start-Sleep -Milliseconds 250
+            } while ((Get-Date) -lt $shutdownDeadline)
+            if (-not $clusterStopped) { throw 'Disposable PostgreSQL shutdown failed within the bounded observation window.' }
+            Write-Output 'TASK_POSTGRESQL_PROCESS=STOPPED'
+        }
+    } finally {
+        # Clear runner-created process state even when exact-cluster shutdown reports a failure.
+        Remove-Item Env:PGPASSWORD,Env:DB_PASSWORD,Env:DB_OWNER_PASSWORD,Env:DB_AUTHORITY_PASSWORD -ErrorAction SilentlyContinue
+        if ($createdEnvironmentFile) { Remove-Item -LiteralPath $testingEnvironmentFile }
     }
-    # All secrets stay in this ignored disposable lifecycle directory/process; no output includes them.
-    Remove-Item Env:PGPASSWORD,Env:DB_PASSWORD,Env:DB_OWNER_PASSWORD,Env:DB_AUTHORITY_PASSWORD -ErrorAction SilentlyContinue
-    if ($createdEnvironmentFile) { Remove-Item -LiteralPath $testingEnvironmentFile }
 }

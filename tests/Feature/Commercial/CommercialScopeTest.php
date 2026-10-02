@@ -405,19 +405,27 @@ class CommercialScopeTest extends TestCase
     {
         $sa = $this->market('Saudi Arabia', 'SAR');
         $input = $this->registration($sa);
-        $holder = $this->blockingHolder('SELECT 1 FROM commercial_market_assignability WHERE market_id = ? FOR UPDATE', [$sa['market']]);
+        $grant = $this->owner()->table('security_action_grants')->where('commercial_target_id', $input['scope_id'])
+            ->where('action', 'RegisterCommercialScope');
+        $grantId = (int) $grant->value('id');
+        $this->assertGreaterThan(0, $grantId);
+        $consumer = DB::connection('pgsql');
+        $consumer->statement("SET lock_timeout = '20s'");
         try {
-            $this->owner()->table('security_action_grants')->where('commercial_target_id', $input['scope_id'])
-                ->where('action', 'RegisterCommercialScope')->update(['expires_at' => DB::raw("clock_timestamp() + interval '2 seconds'")]);
-            $started = microtime(true);
-            $this->postJson('/internal/commercial/registrations', $input)->assertForbidden();
-            $this->assertGreaterThan(0.4, microtime(true) - $started);
-            $this->assertFalse($this->owner()->table('commercial_scopes')->where('id', $input['scope_id'])->exists());
-            $this->assertFalse($this->owner()->table('commercial_command_results')->where('command_id', $input['command_id'])->exists());
+            $holder = $this->blockingHolder('SELECT 1 FROM commercial_market_assignability WHERE market_id = ? FOR UPDATE',
+                [$sa['market']], 'pgsql', $grantId);
+            try {
+                $this->assertSame(1, $grant->update(['expires_at' => DB::raw("clock_timestamp() + interval '10 seconds'")]));
+                $this->postJson('/internal/commercial/registrations', $input)->assertForbidden();
+                $this->assertFalse($this->owner()->table('commercial_scopes')->where('id', $input['scope_id'])->exists());
+                $this->assertFalse($this->owner()->table('commercial_command_results')->where('command_id', $input['command_id'])->exists());
+            } finally {
+                $holder->wait();
+                $this->assertTrue($holder->isSuccessful(), $holder->getErrorOutput());
+                $this->assertMatchesRegularExpression('/WAIT_OBSERVED.*EXPIRY_OBSERVED/s', $holder->getOutput());
+            }
         } finally {
-            $holder->wait();
-            $this->assertTrue($holder->isSuccessful(), $holder->getErrorOutput());
-            $this->assertStringContainsString('WAIT_OBSERVED', $holder->getOutput());
+            $consumer->statement('RESET lock_timeout');
         }
     }
 

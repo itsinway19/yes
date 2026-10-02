@@ -46,7 +46,10 @@ final class EnsureCurrentPrincipal
         };
 
         // WorkspaceContext checks lifecycle and session inside its own outer RLS transaction.
-        if ($request->routeIs('workspaces.foundation', 'workspaces.show', 'workspaces.services.*', 'workspaces.sources.*')) {
+        if ($request->routeIs('workspaces.foundation', 'workspaces.show', 'workspaces.services.*', 'workspaces.sources.*',
+            'workspaces.providers.meta.*', 'providers.meta.callback', 'workspaces.providers.google.*', 'providers.google.callback',
+            'workspaces.providers.tiktok.*', 'providers.tiktok.callback', 'workspaces.providers.snapchat.*', 'providers.snapchat.callback',
+            'workspaces.providers.x.*', 'providers.x.callback')) {
             return $next($request);
         }
 

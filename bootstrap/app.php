@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ResolveLocale;
+use App\Http\Middleware\SanitizeProviderCallback;
 use App\Http\Middleware\SelectSessionContext;
 use App\Security\BreachCheckUnavailable;
 use Illuminate\Foundation\Application;
@@ -17,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(prepend: [SelectSessionContext::class]);
+        $middleware->web(prepend: [SanitizeProviderCallback::class, SelectSessionContext::class]);
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('internal/*')
             ? route('internal.login') : route('login'));
         $middleware->redirectUsersTo(fn (Request $request) => $request->is('internal/*')

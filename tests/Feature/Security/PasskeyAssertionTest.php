@@ -17,6 +17,7 @@ class PasskeyAssertionTest extends TestCase
 {
     public function test_staff_passkey_issues_only_an_internal_session_and_rotates_the_session_id(): void
     {
+        $this->usePersistentTestSessions();
         [$user, $key, $credentialId] = $this->createCredential(staff: true);
         $options = $this->getJson('/internal/auth/passkey/options')->assertOk()->json('options');
         $oldSessionHash = hash('sha256', $this->app['session']->driver()->getId());

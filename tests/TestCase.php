@@ -97,4 +97,25 @@ abstract class TestCase extends BaseTestCase
             'TRUNCATE TABLE commercial_markets, commercial_scopes, commercial_command_results, security_commercial_audit_custody, security_commercial_mandate_executions, security_source_audit_custody CASCADE'
         );
     }
+
+    /** Context switching recreates drivers; array sessions cannot survive that boundary. */
+    protected function usePersistentTestSessions(): void
+    {
+        $directory = sys_get_temp_dir().'/bb2-sessions-'.bin2hex(random_bytes(16));
+        if (! mkdir($directory, 0700)) {
+            throw new \RuntimeException('Unable to create isolated session storage.');
+        }
+        config()->set('session.driver', 'file');
+        config()->set('session.files', $directory);
+        $this->app['session']->forgetDrivers();
+        $this->app->forgetInstance('session.store');
+        $this->beforeApplicationDestroyed(static function () use ($directory): void {
+            foreach (glob($directory.'/*') as $file) {
+                if (is_file($file)) {
+                    unlink($file);
+                }
+            }
+            rmdir($directory);
+        });
+    }
 }

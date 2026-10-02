@@ -55,6 +55,12 @@ $sessionFixture = function (User $user, bool $internal) use ($app): array {
     return [$request, ['name' => $session->getName(), 'value' => $cookie, 'path' => $internal ? '/internal' : '/']];
 };
 [$request, $internalCookie] = $sessionFixture($operator, true);
+// Explicit disposable operator permissions for BB2 setup projections; no real account is altered.
+foreach (['staff.view', 'service.manage'] as $action) {
+    $owner->table('security_action_grants')->insert(['subject_user_id' => $operator->id, 'granted_by' => $issuer->id,
+        'source' => 'human', 'action' => $action, 'scope_kind' => 'platform', 'subject_generation' => 1,
+        'reason' => 'synthetic_browser_fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+}
 $public = [];
 foreach (['Saudi Arabia' => 'SAR', 'Jordan' => 'JOD'] as $label => $denomination) {
     $market = (string) Str::uuid7();

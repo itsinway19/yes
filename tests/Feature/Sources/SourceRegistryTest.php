@@ -343,9 +343,15 @@ class SourceRegistryTest extends TestCase
         $deadline=microtime(true)+5; $wait=false;
         do { $q->execute([$xid,$argv[2]]); $wait=in_array($q->fetchColumn(),[true,1,'1','t'],true); if($wait) break; usleep(20000); } while(microtime(true)<$deadline);
         if(!$wait) { $db->rollBack(); exit(1); } echo 'WAIT_OBSERVED'; fflush(STDOUT);
-        $db->query('SELECT pg_sleep(2.2)'); $db->commit();
+        $expiry=$db->prepare('SELECT expires_at IS NOT NULL AND expires_at <= clock_timestamp() FROM security_action_grants WHERE id=?');
+        $deadline=microtime(true)+5; $expired=false;
+        do { $expiry->execute([$argv[3]]); $expired=in_array($expiry->fetchColumn(),[true,1,'1','t'],true); if($expired) break; usleep(20000); } while(microtime(true)<$deadline);
+        if(!$expired) { $db->rollBack(); exit(3); } echo 'EXPIRED_BEFORE_RELEASE'; fflush(STDOUT); $db->commit();
         PHP;
-        $holder = new Process([PHP_BINARY, '-r', $code, $this->input['source_id'], (string) $pid]);
+        $grantId = $this->owner()->table('security_action_grants')->where('source_target_id', $this->input['source_id'])
+            ->where('action', 'source.manage')->where('source_operation', 'report.read')->value('id');
+        $this->assertNotNull($grantId);
+        $holder = new Process([PHP_BINARY, '-r', $code, $this->input['source_id'], (string) $pid, (string) $grantId]);
         $holder->setTimeout(10);
         $holder->start();
         try {
@@ -359,6 +365,7 @@ class SourceRegistryTest extends TestCase
             $holder->wait();
             $this->assertTrue($holder->isSuccessful(), $holder->getErrorOutput());
             $this->assertStringContainsString('WAIT_OBSERVED', $holder->getOutput());
+            $this->assertStringContainsString('EXPIRED_BEFORE_RELEASE', $holder->getOutput());
             if ($holder->isRunning()) {
                 $holder->stop();
             }
@@ -648,6 +655,13 @@ class SourceRegistryTest extends TestCase
 
     private function withObservedRowWait(string $table, string $column, string $id, bool $revoke, callable $effect): void
     {
+        $expiryGrant = $revoke ? null : $this->owner()->table('security_action_grants')
+            ->where('action', $table === 'source_registry' ? 'source.manage' : 'source.audit.recover')
+            ->when($table === 'source_registry', fn ($query) => $query->where('source_operation', 'discovery.read'))
+            ->where('source_target_id', $this->input['source_id'])->value('id');
+        if (! $revoke) {
+            $this->assertNotNull($expiryGrant, 'The exact expiry fixture grant must exist.');
+        }
         $code = <<<'PHP'
         require 'vendor/autoload.php'; $app=require 'bootstrap/app.php'; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
         app(App\Security\DisposableTestDatabaseGuard::class)->assertSafe();
@@ -661,10 +675,15 @@ class SourceRegistryTest extends TestCase
         do { $q->execute([$xid,$argv[4]]); $wait=in_array($q->fetchColumn(),[true,1,'1','t'],true); if($wait) break; usleep(20000); } while(microtime(true)<$deadline);
         if(!$wait) { $db->rollBack(); exit(1); } echo 'WAIT_OBSERVED'; fflush(STDOUT);
         if($argv[5]==='revoke') { $q=$db->prepare("UPDATE security_action_grants SET status='revoked',revoked_at=clock_timestamp() WHERE id=?"); $q->execute([$argv[3]]); }
-        else $db->query('SELECT pg_sleep(2.2)');
+        else {
+            $expiry=$db->prepare('SELECT expires_at IS NOT NULL AND expires_at <= clock_timestamp() FROM security_action_grants WHERE id=?');
+            $deadline=microtime(true)+6; $expired=false;
+            do { $expiry->execute([$argv[6]]); $expired=in_array($expiry->fetchColumn(),[true,1,'1','t'],true); if($expired) break; usleep(20000); } while(microtime(true)<$deadline);
+            if(!$expired) { $db->rollBack(); exit(3); } echo 'EXPIRED_BEFORE_RELEASE'; fflush(STDOUT);
+        }
         $db->commit();
         PHP;
-        $holder = new Process([PHP_BINARY, '-r', $code, $table, $column, $id, (string) DB::scalar('SELECT pg_backend_pid()'), $revoke ? 'revoke' : 'expire'], base_path());
+        $holder = new Process([PHP_BINARY, '-r', $code, $table, $column, $id, (string) DB::scalar('SELECT pg_backend_pid()'), $revoke ? 'revoke' : 'expire', (string) $expiryGrant], base_path());
         $holder->setTimeout(12);
         $holder->start();
         try {
@@ -673,6 +692,9 @@ class SourceRegistryTest extends TestCase
             $holder->wait();
             $this->assertTrue($holder->isSuccessful(), $holder->getErrorOutput());
             $this->assertStringContainsString('WAIT_OBSERVED', $holder->getOutput());
+            if (! $revoke) {
+                $this->assertStringContainsString('EXPIRED_BEFORE_RELEASE', $holder->getOutput());
+            }
         } finally {
             if ($holder->isRunning()) {
                 $holder->stop();
