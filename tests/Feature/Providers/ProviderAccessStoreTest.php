@@ -3493,6 +3493,10 @@ class ProviderAccessStoreTest extends TestCase
         $prefix = 'bb2-remediation-'.Str::uuid().':';
         config()->set('database.redis.options.prefix', $prefix);
         config()->set('cache.prefix', $prefix);
+        // Redis-backed setup sessions may have resolved stores before this proof's isolated prefix.
+        Cache::forgetDriver('redis');
+        app('redis')->purge('default');
+        app('redis')->purge('cache');
         $redis = Cache::store('redis');
         $keys = [];
         $workers = [];
