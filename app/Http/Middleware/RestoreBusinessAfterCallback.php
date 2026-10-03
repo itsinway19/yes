@@ -21,6 +21,7 @@ final class RestoreBusinessAfterCallback
                 $request->session()->put('business.callback_resume', ['workspace' => $matches[1], 'expires_at' => time() + 60]);
             }
         }
+
         return $response;
     }
 }

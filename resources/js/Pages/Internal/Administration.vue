@@ -31,6 +31,13 @@ const props = defineProps<{
     snapchatOperatorStatus: { application_configured: boolean; notice_links_configured: boolean } | null;
 }>();
 const { t, locale } = useI18n({ useScope: 'global' });
+const actionLabelKeys: Record<string, string> = {
+    'staff.view': 'actionStaffView', 'staff.invite': 'actionStaffInvite',
+    'staff.attest': 'actionStaffAttest', 'staff.activate': 'actionStaffActivate',
+    'staff.revoke': 'actionStaffRevoke', 'grant.manage': 'actionGrantManage',
+    'service.manage': 'actionServiceManage', 'business.manage': 'actionBusinessManage',
+};
+function actionLabel(action: string) { return t(`admin.${actionLabelKeys[action] ?? 'actionUnknown'}`); }
 const invite = useForm({ name: '', email: '' });
 const grant = useForm({ staff: '', action: '', reason: '' });
 const busy = ref('');
@@ -89,6 +96,7 @@ const xEnvironmentNames = ['BB2_X_CONSUMER_KEY', 'BB2_X_CONSUMER_SECRET', 'BB2_X
             <p class="admin-heading-description">{{ t('admin.pageIntro') }}</p>
         </template>
         <div class="admin-administration">
+            <Link v-if="$page.props.auth.canManageCommercialPreparation" :href="route('internal.commercial-market-preparation.index')" class="admin-action">{{ locale === 'en' ? 'Add a commercial market' : 'إضافة سوق تجاري' }}</Link>
             <p v-if="actionError" role="alert" class="admin-error admin-action-error">{{ t(`admin.${actionError}`) }}</p>
             <section class="admin-section" aria-labelledby="staff-title">
                 <header class="admin-section-heading"><div><h2 id="staff-title">{{ t('admin.staffTitle') }}</h2><p class="admin-description">{{ t('admin.staffContext') }}</p></div></header>
@@ -126,12 +134,12 @@ const xEnvironmentNames = ['BB2_X_CONSUMER_KEY', 'BB2_X_CONSUMER_SECRET', 'BB2_X
                 <details class="admin-disclosure admin-form-disclosure"><summary>{{ t('admin.issueGrant') }}<span class="admin-disclosure-hint">{{ t('admin.namedEmployee') }}</span></summary><div class="admin-disclosure-body">
                     <p class="admin-description">{{ locale === 'ar' ? 'لمراجعة أنواع النشاط، امنح «إدارة أنواع النشاط» لموظف نشط من هذا النموذج. إن لم يوجد موظف نشط، أكمل دعوته وتحقق أهليته أولًا. المنحة لا تُمنح للنفس أو لحساب مؤسس.' : 'To review business types, grant “Manage business types” to an active employee using this form. If none exists, complete their invitation and eligibility first. Grants cannot be issued to yourself or a founder account.' }}</p><form class="admin-form admin-grant-form" @submit.prevent="issueGrant">
                         <div class="admin-field"><label for="grant-staff">{{ t('admin.employee') }}</label><select id="grant-staff" v-model="grant.staff" required :aria-invalid="!!grant.errors.staff" :aria-describedby="grant.errors.staff ? 'grant-staff-error' : undefined"><option value="">{{ t('admin.chooseStaff') }}</option><option v-for="person in people.filter(p => p.kind === 'employee' && p.status === 'active')" :key="person.public_id" :value="person.public_id">{{ person.name }}</option></select><p v-if="grant.errors.staff" id="grant-staff-error" role="alert" class="admin-error">{{ grant.errors.staff }}</p></div>
-                        <div class="admin-field"><label for="grant-action">{{ t('admin.action') }}</label><select id="grant-action" v-model="grant.action" required dir="ltr" :aria-invalid="!!grant.errors.action" :aria-describedby="grant.errors.action ? 'grant-action-error' : undefined"><option value="">{{ t('admin.chooseAction') }}</option><option v-for="action in grantableActions" :key="action" :value="action">{{ action === 'business.manage' ? (locale === 'ar' ? 'إدارة أنواع النشاط — business.manage' : 'Manage business types — business.manage') : action }}</option></select><p v-if="grant.errors.action" id="grant-action-error" role="alert" class="admin-error">{{ grant.errors.action }}</p></div>
+                        <div class="admin-field"><label for="grant-action">{{ t('admin.action') }}</label><select id="grant-action" v-model="grant.action" required :aria-invalid="!!grant.errors.action" :aria-describedby="grant.errors.action ? 'grant-action-error' : undefined"><option value="">{{ t('admin.chooseAction') }}</option><option v-for="action in grantableActions" :key="action" :value="action">{{ actionLabel(action) }}</option></select><p v-if="grant.errors.action" id="grant-action-error" role="alert" class="admin-error">{{ grant.errors.action }}</p></div>
                         <div class="admin-field"><label for="grant-reason">{{ t('admin.reason') }}</label><input id="grant-reason" v-model="grant.reason" required minlength="10" maxlength="128" :aria-invalid="!!grant.errors.reason" :aria-describedby="grant.errors.reason ? 'grant-reason-error' : undefined" /><p v-if="grant.errors.reason" id="grant-reason-error" role="alert" class="admin-error">{{ grant.errors.reason }}</p></div>
                         <button type="submit" :disabled="grant.processing" class="admin-action admin-action-primary">{{ t(grant.processing ? 'admin.granting' : 'admin.issueGrant') }}</button>
                     </form>
                 </div></details>
-                <ul class="admin-grant-list"><li v-for="item in staffGrants" :key="item.id" class="admin-grant-row"><div><h3>{{ item.name }}</h3><bdi dir="ltr" class="admin-code">{{ item.action }}</bdi><p class="admin-grant-reason">{{ item.reason }}</p><details class="admin-detail"><summary>{{ t('admin.recordId') }}</summary><code dir="ltr">{{ item.public_id }}</code></details></div><button type="button" :disabled="!!busy" class="admin-action admin-action-danger" @click="revokeGrant(item.id)">{{ t('admin.revokeGrant') }}</button></li><li v-if="!staffGrants.length" class="admin-empty">{{ t('admin.noGrants') }}</li></ul>
+                <ul class="admin-grant-list"><li v-for="item in staffGrants" :key="item.id" class="admin-grant-row"><div><h3>{{ item.name }}</h3><p>{{ actionLabel(item.action) }}</p><p class="admin-grant-reason">{{ item.reason }}</p><details class="admin-detail"><summary>{{ t('admin.recordId') }}</summary><code dir="ltr">{{ item.public_id }}</code><p><code dir="ltr">{{ item.action }}</code></p></details></div><button type="button" :disabled="!!busy" class="admin-action admin-action-danger" @click="revokeGrant(item.id)">{{ t('admin.revokeGrant') }}</button></li><li v-if="!staffGrants.length" class="admin-empty">{{ t('admin.noGrants') }}</li></ul>
             </section>
             <section v-if="providers.length" class="admin-section admin-providers" aria-labelledby="providers-title">
                 <header class="admin-section-heading"><div><h2 id="providers-title">{{ t('admin.providersTitle') }}</h2><p class="admin-description">{{ t('admin.providersContext') }}</p></div></header>

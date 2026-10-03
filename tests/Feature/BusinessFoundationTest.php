@@ -2,12 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Http\Middleware\RestoreBusinessAfterCallback;
-use Illuminate\Http\Request;
+use App\Models\User;
 use App\Security\GrantAuthority;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -32,6 +33,7 @@ class BusinessFoundationTest extends TestCase
             app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
         }
         $this->actingAs($user)->post('/workspaces', ['name' => 'Original business', 'slug' => $slug])->assertRedirect();
+
         return DB::connection('pgsql_migrations')->table('workspaces')->where('slug', $slug)->first();
     }
 
@@ -57,6 +59,7 @@ class BusinessFoundationTest extends TestCase
         }
         app(GrantAuthority::class)->issueFounderBootstrapGrants($user, 1);
         $this->actingAsInternal($user);
+
         return $user;
     }
 
@@ -113,7 +116,7 @@ class BusinessFoundationTest extends TestCase
     {
         $workspace = $this->business(User::factory()->create());
         $db = DB::connection('pgsql_migrations');
-        $source = (string) \Illuminate\Support\Str::uuid7();
+        $source = (string) Str::uuid7();
         $db->table('source_registry')->insert(['id' => $source, 'workspace_id' => $workspace->id, 'family' => 'meta',
             'namespace' => 'ad_account', 'declared_external_id' => 'existing-account', 'label' => 'Existing source',
             'version' => 1, 'status' => 'UNVERIFIED', 'created_at' => now()]);
@@ -264,7 +267,7 @@ class BusinessFoundationTest extends TestCase
             fn () => redirect()->route('workspaces.show', $workspace->public_id));
         $this->get('/workspaces/'.$workspace->public_id)->assertOk();
         $this->get('/workspaces/'.$workspace->public_id)->assertRedirect(route('workspaces.business.edit', $workspace->public_id));
-        $this->withSession(['business.callback_resume' => ['workspace' => $workspace->public_id, 'expires_at' => time()+60]])
+        $this->withSession(['business.callback_resume' => ['workspace' => $workspace->public_id, 'expires_at' => time() + 60]])
             ->actingAs(User::factory()->create())->get('/workspaces/'.$workspace->public_id)->assertForbidden();
     }
 

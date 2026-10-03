@@ -23,8 +23,10 @@ final class EnsureBusinessContext
         }
         if ($missing) {
             $request->session()->put('business.intended.'.$workspace, $request->getRequestUri());
+
             return redirect()->route('workspaces.business.edit', $workspace);
         }
+
         return $next($request);
     }
 }

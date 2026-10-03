@@ -35,6 +35,7 @@ final class BusinessContext
     {
         $type = $workspace->business_type_id ? DB::table('business_types')->where('id', $workspace->business_type_id)
             ->first(['id', 'key', 'name_ar', 'name_en', 'active']) : null;
+
         return ['type' => $type, 'version' => $workspace->business_context_version, 'canManage' => $this->canManage($request, $workspace)];
     }
 
@@ -46,6 +47,7 @@ final class BusinessContext
             ->where('active', true)->get()->keyBy('provider') : collect();
         $sources = collect(Provider::cases())->map(function (Provider $provider) use ($configured, $locale): array {
             $row = $configured->get($provider->value);
+
             return ['provider' => $provider->value, 'label' => $provider === Provider::Google ? 'Google Ads' : $provider->name,
                 'priority' => $row?->priority ?? 1001, 'rationale' => $row?->{'rationale_'.$locale}];
         })->sortBy(fn ($row) => [$row['priority'], $row['provider']])->values()->all();
@@ -56,6 +58,7 @@ final class BusinessContext
             ->map(fn ($row) => ['id' => $row->id, 'provider' => $row->provider, 'product' => $row->product,
                 'basis' => $row->basis, 'label' => PromotionProduct::from($row->product)->labels()[$locale],
                 'rationale' => $row->{'rationale_'.$locale}, 'applicability' => $row->applicability, 'limits' => $row->limits])->values()->all() : [];
+
         return ['sources' => $sources, 'priors' => $priors];
     }
 }

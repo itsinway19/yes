@@ -56,7 +56,7 @@ final class EnsureCurrentPrincipal
         // Business configuration owns its signed runtime transaction and locks
         // current staff/session/grant evidence in its SQL writer. Do not hold an
         // authority session UPDATE lock while that writer takes its SHARE lock.
-        if ($request->routeIs('profile.update') || (! $request->isMethod('GET') && $request->routeIs('internal.business-types.*'))) {
+        if ($request->routeIs('profile.update') || (! $request->isMethod('GET') && $request->routeIs('internal.business-types.*', 'internal.customers.*'))) {
             DB::transaction($authorize);
 
             return $next($request);

@@ -15,11 +15,13 @@ final class MarketRegistry
         return $this->context->run($request, fn () => [
             'markets' => DB::table('commercial_markets as m')
                 ->join('commercial_market_assignability as a', 'a.market_id', '=', 'm.id')
-                ->orderBy('m.label')->get(['m.id', 'm.label', 'a.configuration_id', 'a.revision'])->all(),
+                ->leftJoin('commercial_market_countries as country', 'country.market_id', '=', 'm.id')
+                ->orderBy('m.label')->get(['m.id', 'm.label', 'country.country_code', 'a.configuration_id', 'a.revision'])->all(),
             'configurations' => DB::table('commercial_market_configuration_versions')->orderBy('version')->get()
                 ->map(CommercialMarketConfigurationVersion::fromRecord(...))->all(),
             'catalogReferences' => DB::table('commercial_catalog_references')->orderBy('recorded_at')
                 ->get(['id', 'market_id', 'catalog_identity', 'catalog_version', 'approval_reference', 'source_sha256', 'recorded_at'])->all(),
+            'founderWorkspaces' => DB::select('SELECT * FROM builderad_sa01_founder_workspaces()'),
         ]);
     }
 
@@ -27,6 +29,21 @@ final class MarketRegistry
     {
         return $this->execute($request, 'builderad_configure_commercial_market', [
             $input['command_id'], $input['market_id'], $input['label'], $input['reason_code'],
+        ]);
+    }
+
+    public function configureAsFounder(Request $request, array $input): array
+    {
+        return $this->execute($request, 'builderad_founder_configure_market', [
+            $input['command_id'], $input['market_id'], $input['label'], $input['reason'],
+        ]);
+    }
+
+    public function configureCountryAsFounder(Request $request, array $input): array
+    {
+        return $this->execute($request, 'builderad_founder_configure_country_market', [
+            $input['command_id'], $input['market_id'], $input['label'], $input['reason'],
+            $input['country_code'], $input['denomination_code'], $input['configuration_command_id'], $input['configuration_id'],
         ]);
     }
 

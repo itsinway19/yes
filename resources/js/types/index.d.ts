@@ -10,8 +10,11 @@ export type PageProps<
 > = T & {
     auth: {
         user: User;
+        sessionContextId?: string | null;
         canInternalAdministration: boolean;
         canManageServices: boolean;
+        canManageCustomers: boolean;
         canManageBusinessTypes: boolean;
+        canManageCommercialPreparation: boolean;
     };
 };

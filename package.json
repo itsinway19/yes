@@ -11,6 +11,7 @@
         "dev": "vite",
         "test:password": "node --test tests/password-generator.test.mjs",
         "test:passkey-client": "node --test tests/passkey-ceremony.test.mjs",
+        "test:commercial-operator": "node --test tests/commercial-operator.test.mjs",
         "test:localization": "node --test tests/localization.test.mjs"
     },
     "devDependencies": {

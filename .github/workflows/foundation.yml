@@ -125,5 +125,6 @@ jobs:
           npm run test:password
           npm run test:passkey-client
           npm run test:localization
+          npm run test:commercial-operator
           php vendor/bin/pint --test
           npm run build

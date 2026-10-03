@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Security\GrantAuthority;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -53,6 +54,14 @@ class HandleInertiaRequests extends Middleware
                 'canManageBusinessTypes' => fn () => $request->is('internal/*') && $request->user() &&
                     app(GrantAuthority::class)->has($request->user(),
                         (int) $request->session()->get('a001_generation', 0), 'business.manage'),
+                'canManageCommercialPreparation' => fn () => $request->is('internal/*') && $request->user() &&
+                    app(GrantAuthority::class)->canManageCommercialPreparation($request),
+                'canManageCustomers' => fn () => $request->is('internal/*') && $request->user() &&
+                    DB::table('internal_personnel as p')
+                        ->join('principal_lifecycles as l', 'l.user_id', '=', 'p.user_id')
+                        ->where('p.user_id', $request->user()->id)->where('p.kind', 'founder')->where('p.status', 'active')
+                        ->where('l.principal_class', 'staff')->where('l.status', 'current')
+                        ->where('l.generation', $request->session()->get('a001_generation'))->exists(),
             ],
         ];
     }

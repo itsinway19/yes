@@ -2,12 +2,14 @@
 
 use App\Http\Controllers\Auth\InternalAuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasskeySessionController;
-use App\Http\Controllers\CommercialController;
 use App\Http\Controllers\BusinessContextController;
-use App\Http\Controllers\InternalBusinessTypeController;
+use App\Http\Controllers\CommercialController;
+use App\Http\Controllers\CommercialMarketPreparationController;
 use App\Http\Controllers\GoogleConnectionController;
 use App\Http\Controllers\GoogleReportController;
 use App\Http\Controllers\InternalAdministrationController;
+use App\Http\Controllers\InternalBusinessTypeController;
+use App\Http\Controllers\InternalCustomerAdministrationController;
 use App\Http\Controllers\InternalServiceController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MetaConnectionController;
@@ -26,12 +28,12 @@ use App\Http\Controllers\WorkspaceServiceController;
 use App\Http\Controllers\WorkspaceSourceController;
 use App\Http\Controllers\XConnectionController;
 use App\Http\Controllers\XReportController;
-use App\Http\Middleware\EnsureCurrentPrincipal;
 use App\Http\Middleware\EnsureBusinessContext;
-use App\Http\Middleware\RestoreBusinessAfterCallback;
+use App\Http\Middleware\EnsureCurrentPrincipal;
 use App\Http\Middleware\EnsureFreshAuthentication;
 use App\Http\Middleware\EnsurePendingStaffEnrollment;
 use App\Http\Middleware\RequireActionGrant;
+use App\Http\Middleware\RestoreBusinessAfterCallback;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -230,6 +232,17 @@ Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->group(funct
 
     Route::get('/internal/administration', [InternalAdministrationController::class, 'index'])
         ->middleware(RequireActionGrant::class.':staff.view')->name('internal.administration');
+    Route::get('/internal/administration/customers', [InternalCustomerAdministrationController::class, 'index'])->name('internal.customers.index');
+    Route::post('/internal/administration/customers/status', [InternalCustomerAdministrationController::class, 'status'])
+        ->middleware(EnsureFreshAuthentication::class)->name('internal.customers.status');
+    Route::get('/internal/administration/commercial-markets', [CommercialMarketPreparationController::class, 'index'])
+        ->name('internal.commercial-market-preparation.index');
+    Route::middleware(EnsureFreshAuthentication::class)->group(function () {
+        Route::post('/internal/administration/commercial-markets', [CommercialMarketPreparationController::class, 'store'])->name('internal.commercial-market-preparation.store');
+        Route::post('/internal/administration/commercial-markets/delegate', [CommercialMarketPreparationController::class, 'delegate'])->name('internal.commercial-market-preparation.delegate');
+        Route::post('/internal/administration/commercial-markets/new-intent', [CommercialMarketPreparationController::class, 'newIntent'])->name('internal.commercial-market-preparation.new-intent');
+        Route::post('/internal/administration/commercial-markets/{approval}/operator', [CommercialMarketPreparationController::class, 'operator'])->whereUuid('approval')->name('internal.commercial-market-preparation.operator');
+    });
     Route::post('/internal/staff', [InternalAdministrationController::class, 'invite'])
         ->middleware([RequireActionGrant::class.':staff.invite', EnsureFreshAuthentication::class])
         ->name('internal.staff.invite');

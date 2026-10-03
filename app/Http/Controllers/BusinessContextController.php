@@ -6,7 +6,6 @@ use App\Business\BusinessContext;
 use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\Workspace;
 use App\Security\GrantAuthority;
-use App\Security\SessionAuthority;
 use App\Security\WorkspaceAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
@@ -25,6 +24,7 @@ final class BusinessContextController
         if (count($businesses) === 1) {
             return redirect()->route('workspaces.show', $businesses[0]['public_id']);
         }
+
         return redirect()->route($businesses ? 'workspaces.index' : 'business.start');
     }
 
@@ -40,6 +40,7 @@ final class BusinessContextController
             $key = (string) Str::uuid();
             $request->session()->put('business.creation_key', $key);
         }
+
         return Inertia::render('Business/Context', ['workspace' => null, 'types' => $business->types(),
             'canManage' => true, 'canRequestAuthority' => false, 'creationKey' => $key, 'version' => 0]);
     }
@@ -55,9 +56,11 @@ final class BusinessContextController
             DB::selectOne('SELECT builderad_select_workspace_context(?)', [$result['id']]);
             $workspace = Workspace::query()->findOrFail($result['id']);
             $business->write($request, $workspace, [...$input, 'version' => 0, 'name' => Str::squish($input['name'])]);
+
             return $workspace;
         });
         $request->session()->put('business.creation_completed', $input['creation_key']);
+
         return redirect()->route('workspaces.show', $workspace->public_id);
     }
 
@@ -69,6 +72,7 @@ final class BusinessContextController
                 ->where('workspace_id', $w->id)->where('action', 'business.context.manage')->exists();
             $requestable = ! $existingGrant && DB::table('workspace_ownerships')->where('workspace_id', $w->id)
                 ->where('responsible_owner_user_id', $request->user()->id)->exists();
+
             return Inertia::render('Business/Context', [
                 'workspace' => $w->only(['public_id', 'name', 'business_type_id', 'business_context_version']),
                 'types' => $business->types(), 'canManage' => $business->canManage($request, $w),
@@ -91,6 +95,7 @@ final class BusinessContextController
         if (is_string($destination) && $this->safeDestination($destination, $workspace)) {
             return redirect()->to($destination);
         }
+
         return redirect()->route('workspaces.show', $workspace);
     }
 
@@ -99,12 +104,14 @@ final class BusinessContextController
         $request->validate(['decision' => ['required', 'in:authorize'], 'reason' => ['required', 'in:complete_business_context']]);
         $this->mutate(fn () => $context->run($request->user(), $workspace,
             fn (Workspace $w) => $grants->requestBusinessContextGrant($request, $w->id), $request));
+
         return redirect()->route('workspaces.business.edit', $workspace);
     }
 
     public function safeDestination(string $destination, string $workspace): bool
     {
         $path = parse_url($destination, PHP_URL_PATH);
+
         return ! preg_match('/[\x00-\x20\\\\]/', $destination) &&
             parse_url($destination, PHP_URL_HOST) === null &&
             is_string($path) && ($path === '/workspaces/'.$workspace || $path === '/workspaces/'.$workspace.'/foundation');

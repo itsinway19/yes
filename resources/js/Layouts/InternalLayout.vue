@@ -11,13 +11,14 @@ const locale = computed(() => supportedLocale(page.props.locale));
 const menuOpen = ref(false);
 const menuButton = ref<HTMLButtonElement | null>(null);
 const navigation = computed(() => [
-    { key: 'administration', route: 'internal.administration', visible: page.props.auth.canInternalAdministration },
+    { key: 'administration', route: page.props.auth.canInternalAdministration ? 'internal.administration' : 'internal.commercial-market-preparation.index', visible: page.props.auth.canInternalAdministration || page.props.auth.canManageCommercialPreparation },
     { key: 'services', route: 'internal.services.index', visible: page.props.auth.canManageServices },
+    { key: 'customers', route: 'internal.customers.index', visible: page.props.auth.canManageCustomers },
     { key: 'businessTypes', route: 'internal.business-types.index', visible: page.props.auth.canManageBusinessTypes },
     { key: 'commercial', route: 'internal.commercial.index', visible: true },
     { key: 'security', route: 'internal.security.devices', visible: true },
 ].filter(item => item.visible));
-const context = computed(() => navigation.value.find(item => route().current(item.route))?.key ?? 'workspace');
+const context = computed(() => route().current('internal.commercial-market-preparation.*') ? 'administration' : navigation.value.find(item => route().current(item.route))?.key ?? 'workspace');
 const removeNavigationListener = router.on('navigate', () => { menuOpen.value = false; });
 onBeforeUnmount(removeNavigationListener);
 function closeMenu() {

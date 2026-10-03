@@ -22,6 +22,7 @@ final class InternalBusinessTypeController
         $db = DB::connection('pgsql_authority');
         $guidance = $db->table('business_source_guidance')->get()->groupBy('business_type_id');
         $priors = $db->table('business_promotion_priors')->get()->groupBy('business_type_id');
+
         return Inertia::render('Internal/BusinessTypes', [
             'types' => $db->table('business_types')->orderBy('id')->get()->map(fn ($type) => [
                 ...(array) $type, 'source_guidance' => $guidance->get($type->id, collect())->values(),
@@ -69,6 +70,7 @@ final class InternalBusinessTypeController
         if (PromotionProduct::from($input['product'])->provider()->value !== $input['provider']) {
             throw ValidationException::withMessages(['product' => 'المنتج الإعلاني لا يتبع هذا المزود.']);
         }
+
         return $this->write($request, 'prior', $type, $input);
     }
 
@@ -97,6 +99,7 @@ final class InternalBusinessTypeController
             }
             throw $error;
         }
+
         return redirect()->route('internal.business-types.index');
     }
 }

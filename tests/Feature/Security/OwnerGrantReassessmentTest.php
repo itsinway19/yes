@@ -43,7 +43,7 @@ class OwnerGrantReassessmentTest extends TestCase
         $this->assertGreaterThanOrEqual($changedAt, $authenticatedAt);
         $this->get('/workspaces/'.$workspace->public_id)->assertForbidden();
         $this->get('/workspaces')->assertInertia(fn (Assert $page) => $page
-            ->component('Workspaces/Index')
+            ->component('Business/Index')
             ->has('workspaces', 0)
             ->has('reassessableWorkspaces', 1)
             ->where('reassessableWorkspaces.0.public_id', $workspace->public_id));
@@ -132,7 +132,7 @@ class OwnerGrantReassessmentTest extends TestCase
         $this->assertSame(3, (int) DB::table('principal_lifecycles')
             ->where('user_id', $owner->id)->value('generation'));
         $this->get('/workspaces')->assertInertia(fn (Assert $page) => $page
-            ->component('Workspaces/Index')
+            ->component('Business/Index')
             ->has('reassessableWorkspaces', 0));
         $this->post('/workspaces/'.$workspace->public_id.'/reassess-owner-grant')
             ->assertForbidden();
@@ -151,6 +151,10 @@ class OwnerGrantReassessmentTest extends TestCase
         ])->assertRedirect();
         $workspace = DB::connection('pgsql_migrations')->table('workspaces')
             ->where('slug', $slug)->first();
+        // The existing Business prerequisite applies after authority reassessment too.
+        DB::connection('pgsql_migrations')->table('workspaces')->where('id', $workspace->id)
+            ->update(['business_type_id' => DB::connection('pgsql_migrations')->table('business_types')
+                ->where('key', 'real_estate')->value('id')]);
 
         return [$owner, $workspace];
     }

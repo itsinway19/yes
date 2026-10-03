@@ -438,13 +438,14 @@ class CommercialScopeTest extends TestCase
             ->where('action', 'SA01CommercialGrantAdministrator')->where('commercial_target_id', $market);
         $grantId = (int) $grant->value('id');
         $this->assertGreaterThan(0, $grantId);
-        $this->assertSame(1, $grant->update(['expires_at' => DB::raw("clock_timestamp() + interval '10 seconds'")]));
         $consumer = DB::connection('pgsql_authority');
         $consumer->statement("SET lock_timeout = '20s'");
         try {
             $holder = $this->blockingHolder('SELECT 1 FROM principal_lifecycles WHERE user_id = ? FOR UPDATE',
                 [$target->id], 'pgsql_authority', $grantId);
             try {
+                // Start the expiry window only after the independent holder owns its lock.
+                $this->assertSame(1, $grant->update(['expires_at' => DB::raw("clock_timestamp() + interval '10 seconds'")]));
                 $this->postJson('/internal/commercial/grants', ['grantee' => $target->public_id, 'effect' => 'ConfigureCommercialMarket',
                     'target_id' => $market, 'reason_code' => 'synthetic_expiry'])->assertForbidden();
                 $this->assertFalse($this->owner()->table('security_action_grants')->where('subject_user_id', $target->id)->where('commercial_target_id', $market)->exists());
@@ -735,7 +736,7 @@ class CommercialScopeTest extends TestCase
     private function workspace(): array
     {
         $user = User::factory()->create();
-        $workspace = $this->owner()->table('workspaces')->insertGetId(['name' => 'Synthetic beneficiary', 'slug' => 'synthetic-'.$this->id(), 'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
+        $workspace = $this->owner()->table('workspaces')->insertGetId(['business_type_id' => $this->owner()->table('business_types')->where('key', 'professional_services')->value('id'), 'name' => 'Synthetic beneficiary', 'slug' => 'synthetic-'.$this->id(), 'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
         $this->owner()->table('workspace_memberships')->insert(['workspace_id' => $workspace, 'user_id' => $user->id, 'role' => 'owner', 'status' => 'active', 'created_at' => now()]);
         $this->owner()->table('workspace_ownerships')->insert(['workspace_id' => $workspace, 'responsible_owner_user_id' => $user->id, 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
         $this->owner()->table('security_action_grants')->insert(['subject_user_id' => $user->id, 'source' => 'system_workspace_creation', 'action' => 'workspace.view', 'scope_kind' => 'workspace', 'workspace_id' => $workspace, 'subject_generation' => 1, 'reason' => 'synthetic_fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

@@ -46,7 +46,8 @@ class LifecycleActivationTest extends TestCase
             'action' => 'workspace.create',
             'subject_generation' => 1,
         ]);
-        $this->get('/dashboard')->assertOk();
+        $this->get('/dashboard')->assertRedirect(route('business.start'));
+        $this->get('/business/start')->assertOk();
 
         $this->get($url)->assertRedirect();
         $this->assertSame(1, (int) DB::table('principal_lifecycles')->where('user_id', $user->id)->value('generation'));

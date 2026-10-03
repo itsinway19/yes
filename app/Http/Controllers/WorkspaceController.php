@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Business\BusinessContext;
 use App\Commercial\RegisterCommercialScope;
 use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\Workspace;
@@ -56,8 +57,8 @@ final class WorkspaceController extends Controller
                     ->where('responsible_owner_user_id', $request->user()->id)->exists();
 
                 return Inertia::render('Business/Sources', [
-                    'business' => app(\App\Business\BusinessContext::class)->projection($request, $activeWorkspace),
-                    'guidance' => app(\App\Business\BusinessContext::class)->guidance($activeWorkspace),
+                    'business' => app(BusinessContext::class)->projection($request, $activeWorkspace),
+                    'guidance' => app(BusinessContext::class)->guidance($activeWorkspace),
                     'commercial' => app(RegisterCommercialScope::class)->advertiserProjection($activeWorkspace->id),
                     'sources' => app(SourceRegistry::class)->projection($request, $activeWorkspace),
                     'canRequestSourceAuthority' => $isOwner && app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user()),
