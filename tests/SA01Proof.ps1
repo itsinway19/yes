@@ -1,4 +1,4 @@
-param([string]$Filter = 'CommercialScopeTest|WorkspaceIsolationTest|DatabaseAuthorityBoundaryTest|InternalAuthorityTest|OwnerGrantReassessmentTest', [switch]$Browser, [switch]$FullRegression,
+param([string]$Filter = 'CommercialScopeTest|WorkspaceIsolationTest|DatabaseAuthorityBoundaryTest|InternalAuthorityTest|OwnerGrantReassessmentTest', [switch]$Browser, [switch]$FullRegression, [switch]$TestOwnedMigration,
     [ValidateSet('','source','target')][string]$N1DurabilityPhase = '', [string]$N1PreservationFile = '')
 
 $ErrorActionPreference = 'Stop'
@@ -128,8 +128,10 @@ ALTER ROLE builderad_authority SET lock_timeout='3s';
     $env:Path = "$pg;C:\tools\php85;" + $env:Path
     & $php artisan security:assert-disposable-test-db
     Assert-Exit 'real DisposableTestDatabaseGuard'
-    & $php artisan migrate --database=pgsql_migrations --force
-    Assert-Exit 'zero-to-head full migration'
+    if (-not $TestOwnedMigration) {
+        & $php artisan migrate --database=pgsql_migrations --force
+        Assert-Exit 'zero-to-head full migration'
+    }
     if ($FullRegression) {
         # Execute every PHPUnit path without filters/skips. Separate processes release test mock/session memory.
         $regressionPaths = @((Join-Path $PSScriptRoot 'Unit'))

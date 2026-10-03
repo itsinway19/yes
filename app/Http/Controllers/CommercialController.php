@@ -8,6 +8,7 @@ use App\Commercial\MarketRegistry;
 use App\Commercial\RegisterCommercialScope;
 use App\Models\User;
 use App\Security\GrantAuthority;
+use App\Security\SessionAuthority;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -18,19 +19,42 @@ final class CommercialController
     public function index(Request $request, MarketRegistry $markets)
     {
         $registry = $markets->inspect($request);
+        $founder = app(GrantAuthority::class)->canPrepareCommercialMarket($request);
         $targets = DB::table('security_action_grants')->where('subject_user_id', $request->user()->id)
             ->where('subject_generation', $request->session()->get('a001_generation'))
             ->where('scope_kind', 'commercial')->where('status', 'active')->whereNull('revoked_at')
             ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->get(['action', 'commercial_target_id as target_id', 'commercial_version_id as version_id',
                 DB::raw('builderad_workspace_public_by_id(workspace_id) AS workspace_public_id')]);
+        if ($founder) {
+            $scopeIds = $request->session()->get('commercial_founder_scope_ids', []);
+            foreach ($registry['founderWorkspaces'] as $workspace) {
+                $scope = $workspace->scope_id ?? ($scopeIds[$workspace->workspace_public_id] ??= (string) Str::uuid7());
+                $targets->push((object) ['action' => 'RegisterCommercialScope', 'target_id' => $scope,
+                    'version_id' => null, 'workspace_public_id' => $workspace->workspace_public_id]);
+            }
+            $request->session()->put('commercial_founder_scope_ids', $scopeIds);
+        }
+        unset($registry['founderWorkspaces']);
+        $referenceId = $request->session()->get('commercial_founder_reference_id');
+        if (! $referenceId || collect($registry['catalogReferences'])->contains('id', $referenceId)) {
+            $referenceId = (string) Str::uuid7();
+            $request->session()->put('commercial_founder_reference_id', $referenceId);
+        }
         $obligations = DB::table('commercial_audit_obligations as o')
             ->join('commercial_audit_delivery as d', 'd.obligation_id', '=', 'o.id')
-            ->get(['o.id', 'o.command_id', 'd.state', 'd.attempts']);
+            ->get(['o.id', 'o.command_id', 'o.target_id', 'd.state', 'd.attempts', 'd.acknowledgment_id',
+                DB::raw('builderad_workspace_public_by_id(o.workspace_id) AS workspace_public_id')]);
 
         return Inertia::render('Internal/Commercial', [
-            ...$registry, 'targets' => $targets, 'obligations' => $obligations,
+            ...$registry, 'countryOptions' => config('commercial.countries'), 'currencyOptions' => config('commercial.currencies'), 'currencyNames' => config('commercial.currency_names'), 'targets' => $targets, 'obligations' => $obligations,
+            'founderAccess' => $founder, 'newCatalogReferenceId' => $referenceId,
+            'newMarketTargets' => $targets->where('action', 'ConfigureCommercialMarket')->filter(fn ($t) => ! DB::connection('pgsql_authority')->scalar('SELECT builderad_commercial_preparation_consumed(?::uuid)', [$t->target_id]))
+                ->map(fn ($t) => [...(array) $t, 'label' => DB::connection('pgsql_authority')->table('security_commercial_market_approvals')
+                    ->where('target_id', $t->target_id)->value('label')])->values(),
             'newConfigurationId' => (string) Str::uuid7(), 'result' => $request->session()->get('commercialResult'),
+            // Presentation evidence only; every effect still performs its existing fresh/current checks.
+            'freshAuthentication' => app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user()),
         ]);
     }
 

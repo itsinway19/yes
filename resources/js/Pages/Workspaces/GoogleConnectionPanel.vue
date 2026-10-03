@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import axios from 'axios';
+import ProviderBrand from '@/Components/ProviderBrand.vue';
+import { useProviderPresentation, type ProviderSummary } from '@/Components/Business/providerPresentation';
 import ProviderReportRequest from './ProviderReportRequest.vue';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
@@ -9,11 +11,13 @@ type Snapshot = { connections: Connection[]; availability: string; connect_inten
 type Account = { account_id: string; label: string; existing_source_label: string | null; selection_handle: string | null; hierarchy_handle: string | null; manager: boolean | null };
 type Page = { accounts: Account[]; continuation: string | null; coverage: string };
 const props = defineProps<{ workspaceId: string; canManage: boolean }>();
+const emit = defineEmits<{ summary: [summary: ProviderSummary] }>();
 const snapshot = ref<Snapshot | null>(null);
 const accounts = ref<Account[]>([]);
 const next = ref<string | null>(null);
 const busy = ref(false);
 const error = ref('');
+useProviderPresentation(snapshot, busy, error, emit);
 const result = ref('');
 const offlineGrantMissing = ref(false);
 const currentPage = ref<string | null>(null);
@@ -187,7 +191,7 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
     <section dir="rtl" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="google-connection-heading" :aria-busy="busy">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
-                <h2 id="google-connection-heading" class="text-xl font-semibold text-slate-900">ربط Google Ads</h2>
+                <h2 id="google-connection-heading" class="text-xl font-semibold text-slate-900 flex items-center gap-3"><ProviderBrand provider="google" :size="40" />ربط Google Ads</h2>
                 <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-600">اربط عبر صفحة Google الرسمية، ثم اختر الحساب الذي تريد استخدام بياناته في هذه المساحة.</p>
             </div>
             <button v-if="snapshot?.availability === 'CONNECT_AVAILABLE' && canManage" type="button" :disabled="busy" @click="connect()"

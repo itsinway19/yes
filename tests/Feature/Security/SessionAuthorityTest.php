@@ -26,10 +26,10 @@ class SessionAuthorityTest extends TestCase
             'reason' => 'password', 'new_status' => 'active',
         ]);
         $this->assertLessThanOrEqual(now()->addHours(24)->addSeconds(2), Carbon::parse($session->absolute_expires_at));
-        $this->get('/dashboard')->assertOk();
+        $this->get('/security/devices')->assertOk();
 
         DB::connection('pgsql_migrations')->table('security_sessions')->where('id', $session->id)->update(['revoked_at' => now()]);
-        $this->get('/dashboard')->assertRedirect('/login');
+        $this->get('/security/devices')->assertRedirect('/login');
         $this->assertGuest();
         $this->get('/login')->assertOk();
     }
@@ -40,7 +40,7 @@ class SessionAuthorityTest extends TestCase
         $this->actingAs($user);
         DB::connection('pgsql_migrations')->table('security_sessions')->where('user_id', $user->id)->update(['idle_expires_at' => now()->subSecond()]);
 
-        $this->get('/dashboard')->assertRedirect('/login');
+        $this->get('/security/devices')->assertRedirect('/login');
         $this->assertGuest();
     }
 }

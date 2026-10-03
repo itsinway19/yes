@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import axios from 'axios';
+import ProviderBrand from '@/Components/ProviderBrand.vue';
+import { useProviderPresentation, type ProviderSummary } from '@/Components/Business/providerPresentation';
 import ProviderReportRequest from './ProviderReportRequest.vue';
 
 import { onBeforeUnmount, onMounted, ref } from 'vue';
@@ -9,6 +11,7 @@ type Connection = { source_id: string; label: string; declared_account_id: strin
 type Snapshot = { availability: string; connections: Connection[]; connect_intent: string | null; notice: { privacy_url: string } | null };
 type Account = { account_id: string; label: string; selection_handle: string };
 const props = defineProps<{ workspaceId: string; canManage: boolean }>();
+const emit = defineEmits<{ summary: [summary: ProviderSummary] }>();
 const snapshot = ref<Snapshot | null>(null);
 const accounts = ref<Account[]>([]);
 const current = ref<string | null>(null);
@@ -16,6 +19,7 @@ const next = ref<string | null>(null);
 const coverage = ref<string | null>(null);
 const busy = ref(false);
 const error = ref('');
+useProviderPresentation(snapshot, busy, error, emit);
 const result = ref('');
 const confirming = ref<string | null>(null);
 const commands = new Map<string, string>();
@@ -144,7 +148,7 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
 
 <template>
     <section dir="rtl" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="snapchat-connection-heading" :aria-busy="busy">
-        <h2 id="snapchat-connection-heading" class="text-xl font-semibold text-slate-900">ربط Snapchat Ads</h2>
+        <h2 id="snapchat-connection-heading" class="text-xl font-semibold text-slate-900 flex items-center gap-3"><ProviderBrand provider="snapchat" :size="40" />ربط Snapchat Ads</h2>
         <p class="mt-2 text-sm leading-7 text-slate-600">ابدأ التفويض عبر منصة Snapchat الرسمية، ثم اختر حساب المعلن لهذه المساحة.</p>
         <button v-if="canManage && snapshot?.availability === 'CONNECT_AVAILABLE'" type="button" :disabled="busy" @click="connect()" class="mt-4 rounded-lg bg-indigo-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">ربط حساب Snapchat</button>
         <p v-if="snapshot?.availability === 'CONFIGURATION_REQUIRED'" class="mt-4 text-sm text-slate-600">إعداد التطبيق وعنوان التفويض والعودة وإشعار الخصوصية غير مكتمل.</p>

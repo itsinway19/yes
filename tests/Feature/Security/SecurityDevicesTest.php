@@ -54,7 +54,7 @@ class SecurityDevicesTest extends TestCase
 
         $this->delete('/security/sessions/'.$otherId)->assertRedirect();
         $this->assertNotNull(DB::table('security_sessions')->where('id', $otherId)->value('revoked_at'));
-        $this->get('/dashboard')->assertOk();
+        $this->get('/security/devices')->assertOk();
     }
 
     public function test_sign_out_other_sessions_keeps_current_session(): void
@@ -65,7 +65,7 @@ class SecurityDevicesTest extends TestCase
 
         $this->post('/security/sessions/revoke-others')->assertRedirect();
         $this->assertNotNull(DB::table('security_sessions')->where('id', $otherId)->value('revoked_at'));
-        $this->get('/dashboard')->assertOk();
+        $this->get('/security/devices')->assertOk();
     }
 
     public function test_session_revocation_rolls_back_if_required_audit_fails(): void

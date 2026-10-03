@@ -14,7 +14,7 @@ function flatten(value, prefix = '') {
     });
 }
 
-test('both login dictionaries have complete, nonempty matching keys used by the slice', () => {
+test('both dictionaries have complete, nonempty matching keys used by the login and admin slices', () => {
     const arabic = new Map(flatten(messages.ar));
     const english = new Map(flatten(messages.en));
     assert.deepEqual([...arabic.keys()].sort(), [...english.keys()].sort());
@@ -28,10 +28,12 @@ test('both login dictionaries have complete, nonempty matching keys used by the 
         'resources/js/Components/LanguageSwitcher.vue',
         'resources/js/Layouts/GuestLayout.vue',
         'resources/js/localization/passkeyError.ts',
+        'resources/js/Layouts/InternalLayout.vue',
+        'resources/js/Pages/Internal/Administration.vue',
     ];
     for (const file of files) {
         const source = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
-        for (const [, key] of source.matchAll(/['"]((?:login|language)\.[A-Za-z]+)['"]/g)) {
+        for (const [, key] of source.matchAll(/['"]((?:login|language|admin)\.[A-Za-z.]+)['"]/g)) {
             assert.ok(arabic.has(key), `${file} uses missing key ${key}`);
         }
     }

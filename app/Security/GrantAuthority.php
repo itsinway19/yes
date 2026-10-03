@@ -8,7 +8,9 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use LogicException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 final class GrantAuthority
 {
@@ -16,10 +18,174 @@ final class GrantAuthority
 
     public const STAFF_ACTIONS = [
         'staff.view', 'staff.invite', 'staff.attest', 'staff.activate', 'staff.revoke',
-        'grant.manage', 'service.manage',
+        'grant.manage', 'service.manage', 'business.manage',
     ];
 
+    /** Owner-authorized Founder role; current/fresh checks still guard every effect. */
+    public function canPrepareCommercialMarket(Request $request): bool
+    {
+        return $request->user() && DB::connection('pgsql_authority')->table('internal_personnel')
+            ->where('user_id', $request->user()->id)->where('kind', 'founder')->where('status', 'active')->exists();
+    }
+
+    public function prepareCommercialMarket(Request $request, array $input): object
+    {
+        $this->assertCommercialExecutor($request);
+        $db = DB::connection('pgsql_authority');
+
+        return $db->transaction(function () use ($request, $input, $db): object {
+            $this->requireCommercialFounder($request);
+            if ($input['intent_id'] !== $request->session()->get('commercial_market_preparation_intent')) {
+                throw new AuthorizationException('Server-issued preparation intent required.');
+            }
+            $db->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', ['sa01.prepare.'.$input['intent_id']]);
+            $this->requireCommercialFounder($request);
+            $fingerprint = hash('sha256', json_encode([$request->user()->id,
+                $request->session()->get('a001_generation'), $input['administrator'], $input['label'],
+                $input['reason'], $input['expires_at']], JSON_THROW_ON_ERROR));
+            $prior = $db->table('security_commercial_market_approvals')->where('id', $input['intent_id'])->first();
+            if ($prior) {
+                if (! hash_equals($prior->fingerprint, $fingerprint)) {
+                    throw new ConflictHttpException('Preparation intent payload changed.');
+                }
+                $this->requireCommercialAdministrationFor($prior);
+
+                return $prior;
+            }
+            $admin = User::on('pgsql_authority')->where('public_id', $input['administrator'])->first();
+            if (! $admin || $admin->id === $request->user()->id) {
+                throw new AuthorizationException('Distinct eligible administrator required.');
+            }
+            $lifecycle = $this->commercialGrantee($admin, CommercialEffects::ADMINISTRATOR);
+            if (! $db->scalar('SELECT ?::timestamptz > clock_timestamp()', [$input['expires_at']])) {
+                throw new AuthorizationException('Future approval expiry required.');
+            }
+            $targetId = (string) Str::uuid7();
+            $grantId = $this->writeCommercialGrant($request, $admin, CommercialEffects::ADMINISTRATOR,
+                $targetId, null, null, $input['reason'], (int) $lifecycle->generation, $input['expires_at']);
+            $db->table('security_commercial_market_approvals')->insert([
+                'id' => $input['intent_id'], 'target_id' => $targetId, 'founder_id' => $request->user()->id,
+                'founder_generation' => $request->session()->get('a001_generation'),
+                'administrator_id' => $admin->id, 'administrator_generation' => $lifecycle->generation,
+                'label' => $input['label'], 'reason' => $input['reason'], 'expires_at' => $input['expires_at'],
+                'fingerprint' => $fingerprint, 'grant_id' => $grantId,
+            ]);
+            $this->requireCommercialFounder($request);
+            $approval = $db->table('security_commercial_market_approvals')->where('id', $input['intent_id'])->first();
+            $this->requireCommercialAdministrationFor($approval);
+
+            return $approval;
+        });
+    }
+
+    public function canManageCommercialPreparation(Request $request): bool
+    {
+        if ($this->canPrepareCommercialMarket($request)) {
+            return true;
+        }
+
+        return $request->user() && DB::connection('pgsql_authority')->table('security_action_grants')
+            ->where('subject_user_id', $request->user()->id)->where('subject_generation', $request->session()->get('a001_generation'))
+            ->where('scope_kind', 'commercial')->where('action', CommercialEffects::ADMINISTRATOR)
+            ->whereNull('workspace_id')->whereNull('commercial_version_id')->where('status', 'active')->whereNull('revoked_at')
+            ->whereRaw('(expires_at IS NULL OR expires_at > clock_timestamp())')->exists();
+    }
+
+    public function requireCommercialFounder(Request $request): void
+    {
+        $this->assertCommercialExecutor($request);
+        if (! DB::connection('pgsql_authority')->table('internal_personnel')->where('user_id', $request->user()->id)
+            ->where('kind', 'founder')->where('status', 'active')->sharedLock()->first()) {
+            throw new AuthorizationException('Current active Founder approval required.');
+        }
+    }
+
+    private function requireCommercialAdministrationFor(object $approval): void
+    {
+        $db = DB::connection('pgsql_authority');
+        if (! $db->table('security_action_grants as g')->join('principal_lifecycles as p', 'p.user_id', '=', 'g.subject_user_id')
+            ->where('g.id', $approval->grant_id)->where('g.subject_user_id', $approval->administrator_id)
+            ->where('g.subject_generation', $approval->administrator_generation)->whereColumn('p.generation', 'g.subject_generation')
+            ->where('p.status', 'current')->where('g.action', CommercialEffects::ADMINISTRATOR)
+            ->where('g.commercial_target_id', $approval->target_id)->whereNull('g.workspace_id')->whereNull('g.commercial_version_id')
+            ->where('g.status', 'active')->whereNull('g.revoked_at')->whereRaw('g.expires_at > clock_timestamp()')->sharedLock()->first()) {
+            throw new AuthorizationException('Approval authority expired or was revoked; retry cannot restore it.');
+        }
+    }
+
+    public function authorizePreparedMarketOperator(Request $request, string $approvalId, User $operator, string $reason): void
+    {
+        $this->assertCommercialExecutor($request);
+        DB::connection('pgsql_authority')->transaction(function () use ($request, $approvalId, $operator, $reason): void {
+            $db = DB::connection('pgsql_authority');
+            $db->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', ['sa01.operator.'.$approvalId]);
+            $approval = $db->table('security_commercial_market_approvals')->where('id', $approvalId)->first();
+            if (! $approval) {
+                throw new AuthorizationException('Approved exact market required.');
+            }
+            $this->requireCommercialAdministration($request, $approval->target_id, null, null);
+            if ($operator->id === (int) $approval->founder_id) {
+                throw new AuthorizationException('Preparation does not grant Founder operational authority.');
+            }
+            if ($db->scalar('SELECT builderad_commercial_preparation_consumed(?::uuid)', [$approval->target_id])) {
+                throw new ConflictHttpException('Market already recorded; preparation cannot be reused.');
+            }
+            foreach (['ConfigureCommercialMarket', 'ReadCommercialMarketRegistry'] as $effect) {
+                $this->issueCommercialGrant($request, $operator, $effect, $approval->target_id, null, null, $reason, $approval->expires_at);
+            }
+        });
+    }
+
     private const SENSITIVE_STAFF_ACTIONS = ['grant.manage', 'service.manage'];
+
+    /** Existing fresh responsible-Owner evidence issues a narrow grant; mutation itself is grant-based. */
+    public function requestBusinessContextGrant(Request $request, int $workspaceId): void
+    {
+        $owner = DB::selectOne('SELECT * FROM builderad_source_owner_evidence(?, ?)', [
+            $workspaceId, SessionAuthority::sessionKey($request),
+        ]);
+        if (! $owner || (int) $owner->actor_id !== $request->user()->id ||
+            (int) $owner->generation !== (int) $request->session()->get('a001_generation', 0)) {
+            throw new AuthorizationException('Current responsible Owner evidence required.');
+        }
+        DB::connection('pgsql_authority')->transaction(function () use ($request, $workspaceId, $owner): void {
+            $db = DB::connection('pgsql_authority');
+            $db->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', [
+                'business.context.grant.'.$owner->actor_id.'.'.$owner->generation.'.'.$workspaceId,
+            ]);
+            $existing = $db->table('security_action_grants')->where('subject_user_id', $owner->actor_id)
+                ->where('subject_generation', $owner->generation)->where('workspace_id', $workspaceId)
+                ->where('action', 'business.context.manage')->lockForUpdate()->first();
+            // An explicitly revoked or expired grant must never be silently restored.
+            if ($existing) {
+                if ($existing->status !== 'active' || $existing->revoked_at !== null ||
+                    ($existing->expires_at !== null && ! $db->scalar('SELECT ?::timestamptz > clock_timestamp()', [$existing->expires_at]))) {
+                    throw new AuthorizationException('Business context authority was revoked or expired.');
+                }
+
+                return;
+            }
+            $db->table('security_action_grants')->insert([
+                'subject_user_id' => $owner->actor_id, 'subject_generation' => $owner->generation,
+                'granted_by' => $owner->actor_id, 'source' => 'business_owner_request',
+                'action' => 'business.context.manage', 'scope_kind' => 'workspace', 'workspace_id' => $workspaceId,
+                'reason' => 'explicit_business_context_authority_request', 'status' => 'active', 'version' => 1,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $db->table('security_audit_events')->insert([
+                'actor_user_id' => $owner->actor_id, 'subject_user_id' => $owner->actor_id,
+                'workspace_id' => $workspaceId, 'event' => 'business_context_granted',
+                'reason' => 'explicit_business_context_authority_request', 'new_status' => 'active',
+                'new_generation' => $owner->generation, 'occurred_at' => now(),
+            ]);
+            $current = DB::selectOne('SELECT * FROM builderad_source_owner_evidence(?, ?)', [
+                $workspaceId, SessionAuthority::sessionKey($request),
+            ]);
+            if (! $current || (int) $current->generation !== (int) $owner->generation) {
+                throw new AuthorizationException('Authority expired before grant issuance.');
+            }
+        });
+    }
 
     public const SOURCE_ACTIONS = ['source.register', 'source.manage', 'source.read', 'source.audit.recover',
         'provider.connect', 'provider.read', 'provider.revoke'];
@@ -263,6 +429,11 @@ final class GrantAuthority
 
     private function requireCommercialAdministration(Request $request, string $targetId, ?int $workspaceId, ?string $versionId): void
     {
+        if ($this->canPrepareCommercialMarket($request)) {
+            $this->requireCommercialFounder($request);
+
+            return;
+        }
         $grant = DB::connection('pgsql_authority')->table('security_action_grants')
             ->where('subject_user_id', $request->user()->id)->where('subject_generation', $request->session()->get('a001_generation'))
             ->where('scope_kind', 'commercial')->where('action', CommercialEffects::ADMINISTRATOR)
@@ -654,7 +825,7 @@ final class GrantAuthority
         }
         if ($lifecycle->principal_class === 'advertiser') {
             $allowedAdvertiserAction = ($action === 'workspace.create' && $scope === 'platform' && $workspaceId === null) ||
-                (in_array($action, ['workspace.view', 'service.scope'], true) && $scope === 'workspace' && $workspaceId !== null);
+                (in_array($action, ['workspace.view', 'service.scope', 'business.context.manage'], true) && $scope === 'workspace' && $workspaceId !== null);
             if (! $allowedAdvertiserAction) {
                 return false;
             }

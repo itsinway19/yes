@@ -23,12 +23,20 @@ $owner = DB::connection('pgsql_migrations');
 $owner->statement('TRUNCATE TABLE users, workspaces, commercial_markets, commercial_scopes, commercial_command_results, security_commercial_audit_custody, security_commercial_mandate_executions RESTART IDENTITY CASCADE');
 $operator = User::factory()->create(['name' => 'Synthetic SA-01 operator']);
 $issuer = User::factory()->create(['name' => 'Synthetic distinct grant issuer']);
+$founder = User::factory()->create(['name' => 'Synthetic Founder']);
 foreach ([$operator, $issuer] as $staff) {
     $owner->table('principal_lifecycles')->where('user_id', $staff->id)->update(['principal_class' => 'staff']);
     $owner->table('internal_personnel')->insert(['user_id' => $staff->id, 'kind' => 'employee', 'status' => 'active',
         'attested_at' => now(), 'attested_by' => $staff->id, 'created_at' => now(), 'updated_at' => now()]);
     $owner->table('passkeys')->insert(['user_id' => $staff->id, 'name' => 'Synthetic session eligibility fixture',
         'credential_id' => 'synthetic-browser-'.$staff->id, 'credential' => '{}', 'created_at' => now(), 'updated_at' => now()]);
+}
+$owner->table('principal_lifecycles')->where('user_id', $founder->id)->update(['principal_class' => 'staff']);
+$owner->table('internal_personnel')->insert(['user_id' => $founder->id, 'kind' => 'founder', 'status' => 'active',
+    'attested_at' => now(), 'attested_by' => $founder->id, 'factor_independence_attested_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+foreach ([1, 2] as $factor) {
+    $owner->table('passkeys')->insert(['user_id' => $founder->id, 'name' => 'Synthetic independent factor '.$factor,
+        'credential_id' => 'synthetic-founder-'.$factor, 'credential' => '{}', 'created_at' => now(), 'updated_at' => now()]);
 }
 $grant = function (User $user, string $effect, string $target, ?int $workspace = null, ?string $version = null) use ($owner, $issuer): void {
     $owner->table('security_action_grants')->insert(['subject_user_id' => $user->id, 'granted_by' => $issuer->id,
@@ -92,6 +100,8 @@ foreach (['Saudi Arabia' => 'SAR', 'Jordan' => 'JOD'] as $label => $denomination
         'action' => 'workspace.view', 'scope_kind' => 'workspace', 'workspace_id' => $workspace, 'subject_generation' => 1,
         'reason' => 'synthetic_browser_fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
     $scope = (string) Str::uuid7();
+    // An unused exact identity exercises the reference writer's authority-bound selection.
+    $grant($operator, 'RecordOrVerifyApprovedMarketReference', $market, null, (string) Str::uuid7());
     foreach (['RegisterCommercialScope', 'RecordBeneficiaryBinding', 'ReadCommercialContextInternal', 'ReadCommercialRegistrationReceipt', 'ReadCommercialAuditDeliveryState', 'RetryOrRecoverExistingAuditDelivery'] as $effect) {
         $grant($operator, $effect, $scope, $workspace);
     }
@@ -104,15 +114,17 @@ foreach (['Saudi Arabia' => 'SAR', 'Jordan' => 'JOD'] as $label => $denomination
     }
 }
 [, $advertiserCookie] = $sessionFixture($advertiser, false);
+[, $founderCookie] = $sessionFixture($founder, true);
+[, $administratorCookie] = $sessionFixture($issuer, true);
 $token = bin2hex(random_bytes(16));
-file_put_contents($runRoot.'/browser-cookies.json', json_encode(['internal' => $internalCookie, 'advertiser' => $advertiserCookie], JSON_THROW_ON_ERROR));
+file_put_contents($runRoot.'/browser-cookies.json', json_encode(['internal' => $internalCookie, 'advertiser' => $advertiserCookie, 'founder' => $founderCookie, 'administrator' => $administratorCookie], JSON_THROW_ON_ERROR));
 $router = <<<'PHP'
 <?php
 // Disposable-only cookie delivery for sessions issued by the real SessionAuthority fixture.
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $run = __DIR__;
 $token = trim(file_get_contents($run.'/browser-token'));
-foreach (['internal' => '/internal/commercial', 'advertiser' => '/workspaces/'] as $kind => $destination) {
+foreach (['internal' => '/internal/commercial', 'advertiser' => '/workspaces/', 'founder' => '/internal/administration/commercial-markets', 'administrator' => '/internal/administration/commercial-markets'] as $kind => $destination) {
     if ($path === '/__sa01/'.$token.'/'.$kind) {
         $cookie = json_decode(file_get_contents($run.'/browser-cookies.json'), true)[$kind];
         setcookie($cookie['name'], $cookie['value'], ['path' => $cookie['path'], 'httponly' => true, 'samesite' => 'Lax']);
@@ -128,4 +140,5 @@ file_put_contents($runRoot.'/browser-router.php', $router);
 file_put_contents($runRoot.'/browser-token', $token);
 file_put_contents($runRoot.'/browser-workspace', $public['Saudi Arabia']['workspace']);
 echo json_encode(['fixtures' => $public, 'internal_url' => 'http://127.0.0.1:8765/__sa01/'.$token.'/internal',
+    'founder_url' => 'http://127.0.0.1:8765/__sa01/'.$token.'/founder', 'administrator_url' => 'http://127.0.0.1:8765/__sa01/'.$token.'/administrator',
     'advertiser_url' => 'http://127.0.0.1:8765/__sa01/'.$token.'/advertiser'], JSON_THROW_ON_ERROR).PHP_EOL;

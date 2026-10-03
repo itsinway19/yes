@@ -74,7 +74,7 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
         $user = User::factory()->create();
-        $this->actingAs($user)->get('/dashboard')->assertOk();
+        $this->actingAs($user)->get('/dashboard')->assertRedirect(route('business.start'));
         $this->app['auth']->logout();
         $this->flushSession();
         $this->assertSame(1, DB::table('security_sessions')->where('user_id', $user->id)->whereNull('revoked_at')->count());

@@ -46,14 +46,17 @@ final class EnsureCurrentPrincipal
         };
 
         // WorkspaceContext checks lifecycle and session inside its own outer RLS transaction.
-        if ($request->routeIs('workspaces.foundation', 'workspaces.show', 'workspaces.services.*', 'workspaces.sources.*',
+        if ($request->routeIs('workspaces.foundation', 'workspaces.show', 'workspaces.business.*', 'workspaces.services.*', 'workspaces.sources.*',
             'workspaces.providers.meta.*', 'providers.meta.callback', 'workspaces.providers.google.*', 'providers.google.callback',
             'workspaces.providers.tiktok.*', 'providers.tiktok.callback', 'workspaces.providers.snapchat.*', 'providers.snapchat.callback',
             'workspaces.providers.x.*', 'providers.x.callback')) {
             return $next($request);
         }
 
-        if ($request->routeIs('profile.update')) {
+        // Business configuration owns its signed runtime transaction and locks
+        // current staff/session/grant evidence in its SQL writer. Do not hold an
+        // authority session UPDATE lock while that writer takes its SHARE lock.
+        if ($request->routeIs('profile.update') || (! $request->isMethod('GET') && $request->routeIs('internal.business-types.*', 'internal.customers.*'))) {
             DB::transaction($authorize);
 
             return $next($request);

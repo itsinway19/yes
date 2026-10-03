@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import ProviderBrand from '@/Components/ProviderBrand.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import SourceCapabilityStatus from './SourceCapabilityStatus.vue';
 import DeclareSourceScope from './DeclareSourceScope.vue';
@@ -74,7 +75,7 @@ function recover(obligation: string) {
         </form>
         <p v-if="!sources.items.length" class="mt-5 text-sm text-slate-600">لا توجد مصادر قابلة للعرض بصلاحية المصدر الحالية. منح عرض المساحة وحده لا يكفي.</p>
         <article v-for="item in sources.items" :key="item.id + item.resource + item.operation + item.purpose" class="mt-5 border-t border-slate-200 pt-5">
-            <h3 class="font-medium">{{ item.label }} — {{ item.family }}</h3>
+            <h3 class="font-medium flex items-center gap-3"><ProviderBrand v-if="/^(meta|google|snapchat|tiktok|x)$/.test(item.family)" :provider="item.family" :size="32" />{{ item.label }} — {{ item.family }}</h3>
             <p dir="ltr" class="mt-1 break-all text-xs">{{ item.id }}</p>
             <p class="mt-2 text-sm">هوية معلنة غير متحققة: {{ item.namespace }} / {{ item.declared_external_id }}</p>
             <p class="mt-2 text-sm">{{ item.resource }} / {{ item.operation }} / {{ item.purpose }}</p>
