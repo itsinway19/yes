@@ -135,4 +135,3 @@ Screenshots, temporary migration helper, synthetic credentials, test databases a
 # Subsequent Owner decision — 2026-10-03
 
 The Owner superseded Founder-preparation-only authority: the Founder now operates Commercial directly without self-grants or another employee; employee delegation is optional and separate. Earlier assertions below describe the previous checkpoint. Current policy, verification and remaining gaps are recorded in `FOUNDER_DIRECT_COMMERCIAL_REVIEW.md`.
-

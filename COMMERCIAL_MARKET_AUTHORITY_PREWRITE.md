@@ -74,4 +74,3 @@ The explicit stop comes from section 14 of the Owner directive: “If an archite
 # Subsequent Owner decision — 2026-10-03
 
 The Owner later explicitly authorized direct Founder Commercial operation without delegation, with employee delegation optional and separate. The preparation-only policy below is historical and has been superseded for Founder operational authority. See `FOUNDER_DIRECT_COMMERCIAL_REVIEW.md` for implementation and validation.
-

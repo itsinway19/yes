@@ -140,8 +140,8 @@ test('Founder direct market creation needs neither another employee nor a delega
     stored.clear(); const v = mountPreparation({ people: [] });
     await change(v, 'market-country', 'SA');
     await fillInput(v, 'approval-reason', 'Founder decision');
-    assert.ok(!byId(v, 'market-administrator')); 
-    assert.ok(!byId(v, 'approval-expiry')); 
+    assert.ok(!byId(v, 'market-administrator'));
+    assert.ok(!byId(v, 'approval-expiry'));
     assert.equal(nodes(v.root, n => n.tag === 'button' && n.props.type === 'submit')[0].props.disabled, false);
     await submit(v); await nextTick();
     assert.deepEqual(transport.requests[0][1], { intent_id: 'server-issued-intent', mode: 'direct', country_code: 'SA', denomination_code: 'SAR', reason: 'Founder decision' });
