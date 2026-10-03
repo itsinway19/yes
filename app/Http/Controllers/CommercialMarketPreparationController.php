@@ -6,7 +6,9 @@ use App\Commercial\MarketRegistry;
 use App\Models\User;
 use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -49,6 +51,7 @@ final class CommercialMarketPreparationController
 
         return Inertia::render('Internal/CommercialMarketPreparation', [
             'canPrepare' => $canPrepare, 'intentId' => $canPrepare ? $request->session()->get('commercial_market_preparation_intent') : null,
+            'intentBinding' => $canPrepare ? $this->issueIntentBinding($request) : null,
             'people' => $people, 'approvals' => $approvals,
             'countryOptions' => config('commercial.countries'), 'currencyOptions' => config('commercial.currencies'), 'currencyNames' => config('commercial.currency_names'),
             'freshAuthentication' => app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user()),
@@ -59,6 +62,7 @@ final class CommercialMarketPreparationController
 
     public function store(Request $request, GrantAuthority $grants, MarketRegistry $markets)
     {
+        $this->restoreIntentBinding($request, $grants);
         if ($request->input('mode') === 'direct') {
             $input = $request->validate(['mode' => ['required', 'in:direct'], 'intent_id' => ['required', 'uuid'],
                 'label' => ['required_without:country_code', Rule::prohibitedIf($request->filled('country_code')), 'string', 'max:120'],
@@ -98,6 +102,46 @@ final class CommercialMarketPreparationController
         $approval = $grants->prepareCommercialMarket($request, $input);
 
         return response()->json(['state' => 'MARKET_AUTHORITY_APPROVED', 'target_id' => $approval->target_id, 'approval_id' => $approval->id, 'label' => $approval->label]);
+    }
+
+    /** Carries generated identities only; current/fresh Founder authority is checked independently. */
+    private function issueIntentBinding(Request $request): string
+    {
+        $intent = $request->session()->get('commercial_market_preparation_intent');
+        $children = $request->session()->get('commercial_market_country_children', []);
+        $child = $children[$intent] ??= ['command_id' => (string) Str::uuid7(), 'configuration_id' => (string) Str::uuid7()];
+        $request->session()->put('commercial_market_country_children', $children);
+
+        return Crypt::encryptString(json_encode([
+            'version' => 1, 'actor_id' => $request->user()->id, 'intent_id' => $intent,
+            'target_id' => $request->session()->get('commercial_market_direct_target'),
+            'configuration_command_id' => $child['command_id'], 'configuration_id' => $child['configuration_id'],
+        ], JSON_THROW_ON_ERROR));
+    }
+
+    private function restoreIntentBinding(Request $request, GrantAuthority $grants): void
+    {
+        $input = $request->validate(['intent_binding' => ['nullable', 'string', 'max:4096']]);
+        if (empty($input['intent_binding'])) {
+            return;
+        }
+        $grants->requireCommercialFounder($request);
+        try {
+            $binding = json_decode(Crypt::decryptString($input['intent_binding']), true, flags: JSON_THROW_ON_ERROR);
+        } catch (DecryptException|\JsonException $error) {
+            abort(403, 'Invalid market identity binding.');
+        }
+        abort_unless(is_array($binding) && ! validator($binding, [
+            'version' => ['required', 'in:1'], 'actor_id' => ['required', 'integer'],
+            'intent_id' => ['required', 'uuid'], 'target_id' => ['required', 'uuid'],
+            'configuration_command_id' => ['required', 'uuid'], 'configuration_id' => ['required', 'uuid'],
+        ])->fails() && (int) $binding['actor_id'] === (int) $request->user()->id
+            && $binding['intent_id'] === $request->input('intent_id'), 403);
+        $request->session()->put('commercial_market_preparation_intent', $binding['intent_id']);
+        $request->session()->put('commercial_market_direct_target', $binding['target_id']);
+        $children = $request->session()->get('commercial_market_country_children', []);
+        $children[$binding['intent_id']] = ['command_id' => $binding['configuration_command_id'], 'configuration_id' => $binding['configuration_id']];
+        $request->session()->put('commercial_market_country_children', $children);
     }
 
     public function newIntent(Request $request, GrantAuthority $grants)

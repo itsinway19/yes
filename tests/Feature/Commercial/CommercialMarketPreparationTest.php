@@ -3,6 +3,7 @@
 namespace Tests\Feature\Commercial;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -11,6 +12,46 @@ use Tests\TestCase;
 
 class CommercialMarketPreparationTest extends TestCase
 {
+    public function test_country_command_replays_after_new_login_with_same_generated_identities(): void
+    {
+        $this->usePersistentTestSessions();
+        $founder = $this->staff('founder');
+        $this->actingAsInternal($founder)->withCredentials();
+        $page = $this->get('/internal/administration/commercial-markets')->assertOk()->viewData('page')['props'];
+        $input = ['mode' => 'direct', 'intent_id' => $page['intentId'], 'intent_binding' => $page['intentBinding'],
+            'country_code' => 'JO', 'denomination_code' => 'USD'];
+        $original = $this->postJson('/internal/administration/commercial-markets', $input)->assertOk()->json();
+        $this->post('/internal/logout')->assertRedirect(route('internal.login'));
+        $this->actingAsInternal($founder)->withCredentials();
+        $newPage = $this->get('/internal/administration/commercial-markets')->assertOk()->viewData('page')['props'];
+        $this->assertNotSame($page['intentId'], $newPage['intentId']);
+        $replayed = $this->postJson('/internal/administration/commercial-markets', $input)->assertOk()->json();
+        $this->assertSame($original['market_id'], $replayed['market_id']);
+        $this->assertSame($original['configuration_id'], $replayed['configuration_id']);
+        $this->assertSame(1, DB::connection('pgsql_migrations')->table('commercial_markets')->count());
+        $this->postJson('/internal/administration/commercial-markets', [...$input, 'denomination_code' => 'JOD'])->assertConflict();
+    }
+
+    public function test_uncommitted_market_identity_can_resume_only_for_same_current_founder_and_authentic_binding(): void
+    {
+        $this->usePersistentTestSessions();
+        $founder = $this->staff('founder');
+        $this->actingAsInternal($founder)->withCredentials();
+        $page = $this->get('/internal/administration/commercial-markets')->assertOk()->viewData('page')['props'];
+        $input = ['mode' => 'direct', 'intent_id' => $page['intentId'], 'intent_binding' => $page['intentBinding'],
+            'country_code' => 'SA', 'denomination_code' => 'SAR'];
+        $binding = json_decode(Crypt::decryptString($page['intentBinding']), true);
+        $this->postJson('/internal/administration/commercial-markets', [...$input, 'intent_binding' => 'forged'])->assertForbidden();
+        $this->actingAsInternal($this->staff('founder'))->withCredentials();
+        $this->postJson('/internal/administration/commercial-markets', $input)->assertForbidden();
+        $this->actingAsInternal($founder)->withCredentials();
+        $this->post('/internal/logout')->assertRedirect();
+        $this->actingAsInternal($founder)->withCredentials();
+        $this->postJson('/internal/administration/commercial-markets', $input)->assertOk()
+            ->assertJsonPath('market_id', $binding['target_id'])->assertJsonPath('configuration_id', $binding['configuration_id']);
+        $this->assertSame(1, DB::connection('pgsql_migrations')->table('commercial_markets')->count());
+    }
+
     public function test_founder_creates_and_manages_market_without_any_delegation(): void
     {
         $founder = $this->staff('founder');

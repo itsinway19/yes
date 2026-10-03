@@ -258,14 +258,14 @@ class BusinessFoundationTest extends TestCase
         $this->post('/internal/business-types', ['key' => 'invalid', 'name_ar' => 'نشاط', 'name_en' => 'Activity', 'active' => true])->assertForbidden();
     }
 
-    public function test_callback_restoration_is_one_use_and_cannot_cross_workspace_authority(): void
+    public function test_callback_restoration_keeps_business_prerequisite_and_cannot_cross_workspace_authority(): void
     {
         $workspace = $this->business(User::factory()->create());
         $request = Request::create('/providers/google/callback');
         $request->setLaravelSession($this->app['session']->driver());
         app(RestoreBusinessAfterCallback::class)->handle($request,
             fn () => redirect()->route('workspaces.show', $workspace->public_id));
-        $this->get('/workspaces/'.$workspace->public_id)->assertOk();
+        $this->get('/workspaces/'.$workspace->public_id)->assertRedirect(route('workspaces.business.edit', $workspace->public_id));
         $this->get('/workspaces/'.$workspace->public_id)->assertRedirect(route('workspaces.business.edit', $workspace->public_id));
         $this->withSession(['business.callback_resume' => ['workspace' => $workspace->public_id, 'expires_at' => time() + 60]])
             ->actingAs(User::factory()->create())->get('/workspaces/'.$workspace->public_id)->assertForbidden();

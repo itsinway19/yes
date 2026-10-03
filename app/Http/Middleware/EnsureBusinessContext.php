@@ -16,11 +16,9 @@ final class EnsureBusinessContext
         $workspace = (string) $request->route('workspace');
         $missing = app(WorkspaceContext::class)->run($request->user(), $workspace,
             fn (Workspace $w) => $w->business_type_id === null || trim($w->name) === '', $request);
-        $callbackResume = $request->session()->pull('business.callback_resume');
-        if (is_array($callbackResume) && ($callbackResume['workspace'] ?? null) === $workspace &&
-            ($callbackResume['expires_at'] ?? 0) >= time()) {
-            return $next($request);
-        }
+        // OAuth ingress remains reachable, but its restored GET must satisfy the
+        // same Business prerequisite as every other normal workspace visit.
+        $request->session()->forget('business.callback_resume');
         if ($missing) {
             $request->session()->put('business.intended.'.$workspace, $request->getRequestUri());
 

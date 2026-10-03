@@ -8,6 +8,9 @@ import { createRenderer, nextTick, reactive, h } from 'vue';
 // Real compiled Vue components/directives mounted on Vue's native custom renderer.
 // Only HTTP/navigation and host elements are test doubles; component handlers are not exposed/mocked.
 const transport = { requests: [], reloads: [], posts: [], send: async () => ({ data: {} }) };
+const navigationGuards = new Set();
+globalThis.__bb1NavigationGuards = navigationGuards;
+globalThis.window = { location: { origin: 'http://localhost:8140', href: 'http://localhost:8140/internal/commercial' }, addEventListener() {}, removeEventListener() {} };
 globalThis.__bb1Transport = transport;
 globalThis.__bb1Page = reactive({ auth: { user: { id: 7 }, sessionContextId: 'a'.repeat(64) } });
 const stored = new Map();
@@ -22,7 +25,7 @@ globalThis.route = (name, args) => name + '/' + (Array.isArray(args) ? args.join
 globalThis.document = { getElementById: () => null }; globalThis.Document = class {};
 globalThis.ShadowRoot = class {};
 const inertia = 'data:text/javascript;base64,' + Buffer.from(`import { reactive } from ${JSON.stringify(import.meta.resolve('vue'))};
-export const Head = () => null; export const Link = (_, { slots }) => slots.default?.(); export const router = { reload: o => globalThis.__bb1Transport.reloads.push(o), post: (...a) => globalThis.__bb1Transport.posts.push(a) };
+export const Head = () => null; export const Link = (_, { slots }) => slots.default?.(); export const router = { on: (_, callback) => { globalThis.__bb1NavigationGuards.add(callback); return () => globalThis.__bb1NavigationGuards.delete(callback); }, reload: o => globalThis.__bb1Transport.reloads.push(o), post: (...a) => globalThis.__bb1Transport.posts.push(a) };
 export const useForm = input => reactive({ ...input, errors: {}, processing: false, post() {} });
 export const usePage = () => ({ props: globalThis.__bb1Page });`).toString('base64');
 const http = 'data:text/javascript;base64,' + Buffer.from(`export default {
@@ -65,7 +68,7 @@ const countryOptions = { SA: { ar: 'السعودية', en: 'Saudi Arabia', curre
 const currencyOptions = ['SAR', 'AED', 'KWD', 'QAR', 'BHD', 'OMR', 'JOD', 'USD'];
 const currencyNames = { USD: { ar: 'الدولار الأمريكي', en: 'US dollar' }, SAR: { ar: 'الريال السعودي', en: 'Saudi riyal' } };
 const initial = { countryOptions, currencyOptions, currencyNames, markets: [{id:'sa',label:'Saudi',configuration_id:'sa-config',revision:2},{id:'jo',label:'Jordan',configuration_id:'jo-config',revision:4}], configurations:[{id:'sa-config',market_id:'sa',version:1,catalog_reference_id:'sa-ref',denomination_code:'SAR'},{id:'jo-config',market_id:'jo',version:1,catalog_reference_id:'jo-ref',denomination_code:'JOD'}],catalogReferences:[{id:'jo-ref',market_id:'jo',catalog_identity:'jo-catalog',catalog_version:'1',approval_reference:'approved:jo',source_sha256:'b'.repeat(64)},{id:'sa-ref',market_id:'sa',catalog_identity:'catalog',catalog_version:'1',approval_reference:'approved',source_sha256:'a'.repeat(64)}],targets:[...['ConfigureCommercialMarket','EnableCommercialMarket','DisableCommercialMarket'].flatMap(action=>['sa','jo'].map(target_id=>({action,target_id,version_id:null,workspace_public_id:null}))),{action:'RecordOrVerifyApprovedMarketReference',target_id:'sa',version_id:'authorized-ref',workspace_public_id:null}],obligations:[],newConfigurationId:'generated-config',result:null,freshAuthentication:true};
-function mount() { transport.requests=[]; transport.send=async()=>({data:{market_id:'sa'}}); const props=reactive(structuredClone(initial)); const root=element('root'); const app=renderer.createApp({render:()=>h(component,props)});app.mount(root);return {root,props,unmount:()=>app.unmount()}; }
+function mount(overrides = {}) { transport.requests=[]; transport.send=async()=>({data:{market_id:'sa'}}); const props=reactive({ ...structuredClone(initial), ...overrides }); const root=element('root'); const app=renderer.createApp({render:()=>h(component,props)});app.mount(root);return {root,props,unmount:()=>app.unmount()}; }
 function nodes(root,predicate){return [root,...root.children.flatMap(child=>nodes(child,()=>true))].filter(predicate);}
 function byId(view,id){return nodes(view.root,n=>n.props.id===id)[0];}
 async function change(view,id,value){
@@ -131,7 +134,7 @@ test('only a receipt for the original uncertain command permits explicit reconci
 const { component: preparationComponent } = await compile('CommercialMarketPreparation', { '@/Layouts/InternalLayout.vue': layout });
 function mountPreparation(overrides = {}) {
     transport.requests = []; transport.send = async () => ({ data: {} });
-    const props = reactive({ countryOptions, currencyOptions, currencyNames, canPrepare: true, intentId: 'server-issued-intent', people: [{ public_id: 'eligible-admin', name: 'Eligible administrator', kind: 'employee' }], approvals: [], freshAuthentication: true, ...overrides });
+    const props = reactive({ countryOptions, currencyOptions, currencyNames, canPrepare: true, intentBinding: 'server-encrypted-intent-binding', intentId: '11111111-1111-4111-8111-111111111111', people: [{ public_id: '44444444-4444-4444-8444-444444444444', name: 'Eligible administrator', kind: 'employee' }], approvals: [], freshAuthentication: true, ...overrides });
     const root = element('root'); const app = renderer.createApp({ render: () => h(preparationComponent, props) }); app.config.globalProperties.route = globalThis.route; app.mount(root);
     return { root, props, unmount: () => app.unmount() };
 }
@@ -144,21 +147,21 @@ test('Founder direct market creation needs neither another employee nor a delega
     assert.ok(!byId(v, 'approval-expiry'));
     assert.equal(nodes(v.root, n => n.tag === 'button' && n.props.type === 'submit')[0].props.disabled, false);
     await submit(v); await nextTick();
-    assert.deepEqual(transport.requests[0][1], { intent_id: 'server-issued-intent', mode: 'direct', country_code: 'SA', denomination_code: 'SAR', reason: 'Founder decision' });
+    assert.deepEqual(transport.requests[0][1], { intent_id: '11111111-1111-4111-8111-111111111111', intent_binding: 'server-encrypted-intent-binding', mode: 'direct', country_code: 'SA', denomination_code: 'SAR', reason: 'Founder decision' });
     v.unmount(); stored.clear();
 });
 test('existing-market delegation is a separate optional form with bounded human permissions', async () => {
     stored.clear(); const v = mountPreparation({ recordedMarkets: [{ id: 'recorded-market', label: 'Saudi market' }] });
     assert.ok(byId(v, 'market-delegation'));
     await change(v, 'delegate-market', 'recorded-market');
-    await change(v, 'delegate-employee', 'eligible-admin');
+    await change(v, 'delegate-employee', '44444444-4444-4444-8444-444444444444');
     await change(v, 'delegate-permission', 'manage');
     await fillInput(v, 'delegate-reason', 'Optional employee work');
     await fillInput(v, 'delegate-expiry', '2030-01-01T12:00');
     await byId(v, 'market-delegation').props.onSubmit({ preventDefault() {} }); await nextTick();
     assert.equal(transport.requests[0][1].market_id, 'recorded-market');
     assert.equal(transport.requests[0][1].permission, 'manage');
-    assert.equal(transport.requests[0][1].operator, 'eligible-admin');
+    assert.equal(transport.requests[0][1].operator, '44444444-4444-4444-8444-444444444444');
     assert.equal(Object.hasOwn(transport.requests[0][1], 'effect'), false);
     v.unmount(); stored.clear();
 });
@@ -177,10 +180,10 @@ test('fresh-login renewal saves human market draft and restores it after a new s
     const renew = byId(v, 'renew-market-login'); assert.ok(renew);
     renew.props.onClick(); assert.equal(transport.posts.at(-1)[0], 'internal.logout/undefined');
     v.unmount(); globalThis.__bb1Page.auth.sessionContextId = 'new-authenticated-session';
-    v = mountPreparation({ freshAuthentication: true, intentId: 'new-server-intent' });
+    v = mountPreparation({ freshAuthentication: true, intentId: '33333333-3333-4333-8333-333333333333' });
     assert.equal(byId(v, 'market-country').value, 'KW'); assert.equal(byId(v, 'market-currency').value, 'USD');
     assert.equal(byId(v, 'approval-reason').value, 'Optional note');
-    await submit(v); assert.equal(transport.requests[0][1].intent_id, 'new-server-intent');
+    await submit(v); assert.equal(transport.requests[0][1].intent_id, '33333333-3333-4333-8333-333333333333');
     v.unmount(); stored.clear(); globalThis.__bb1Page.auth.sessionContextId = 'a'.repeat(64);
 });
 test('new market choices use server consumption truth even when an existing market is unreadable', async () => {
@@ -191,11 +194,11 @@ test('new market choices use server consumption truth even when an existing mark
 });
 test('Founder preparation has human decisions only and retries the retained server intent after remount', async () => {
     stored.clear(); let v = mountPreparation();
-    await change(v, 'preparation-mode', 'delegated'); await fillInput(v, 'market-name', 'Approved market'); await change(v, 'market-administrator', 'eligible-admin');
+    await change(v, 'preparation-mode', 'delegated'); await fillInput(v, 'market-name', 'Approved market'); await change(v, 'market-administrator', '44444444-4444-4444-8444-444444444444');
     await fillInput(v, 'approval-reason', 'Owner decision'); await fillInput(v, 'approval-expiry', '2030-01-01T12:00');
     transport.send = async () => { throw { isAxiosError: true }; }; await submit(v); await nextTick();
     const original = structuredClone(transport.requests[0][1]);
-    assert.equal(original.intent_id, 'server-issued-intent'); assert.equal(original.label, 'Approved market');
+    assert.equal(original.intent_id, '11111111-1111-4111-8111-111111111111'); assert.equal(original.label, 'Approved market');
     assert.equal(Object.hasOwn(original, 'target_id'), false);
     assert.equal(nodes(v.root, n => n.tag === 'input' && /id|uuid|revision/.test(n.props.id ?? '')).length, 0);
     assert.ok(nodes(v.root, n => n.tag === 'fieldset').every(n => n.props.disabled));
@@ -212,24 +215,24 @@ test('read-only approval does not expose an operator authorization form', async 
 
 test('a first definitive denied preparation remains editable', async () => {
     stored.clear(); const v = mountPreparation();
-    await change(v, 'preparation-mode', 'delegated'); await fillInput(v, 'market-name', 'Market'); await change(v, 'market-administrator', 'eligible-admin');
+    await change(v, 'preparation-mode', 'delegated'); await fillInput(v, 'market-name', 'Market'); await change(v, 'market-administrator', '44444444-4444-4444-8444-444444444444');
     await fillInput(v, 'approval-reason', 'Decision'); await fillInput(v, 'approval-expiry', '2030-01-01T12:00');
     transport.send = async () => { throw { isAxiosError: true, response: { status: 403 } }; };
     await submit(v); await nextTick(); assert.equal(nodes(v.root, n => n.tag === 'fieldset')[0].props.disabled, false); v.unmount(); stored.clear();
 });
 test('changed server intent persists the new uncertain request across remount', async () => {
-    stored.clear(); let v = mountPreparation(); v.props.intentId = 'next-server-intent'; await nextTick();
-    await change(v, 'preparation-mode', 'delegated'); await fillInput(v, 'market-name', 'Next market'); await change(v, 'market-administrator', 'eligible-admin');
+    stored.clear(); let v = mountPreparation(); v.props.intentId = '22222222-2222-4222-8222-222222222222'; await nextTick();
+    await change(v, 'preparation-mode', 'delegated'); await fillInput(v, 'market-name', 'Next market'); await change(v, 'market-administrator', '44444444-4444-4444-8444-444444444444');
     await fillInput(v, 'approval-reason', 'Next decision'); await fillInput(v, 'approval-expiry', '2030-01-01T12:00');
     transport.send = async () => { throw { isAxiosError: true }; }; await submit(v); await nextTick(); v.unmount();
-    v = mountPreparation({ intentId: 'next-server-intent' });
+    v = mountPreparation({ intentId: '22222222-2222-4222-8222-222222222222' });
     assert.ok(nodes(v.root, n => n.tag === 'button' && (n.text.includes('إعادة المحاولة بنفس الطلب') || n.children.some(x => x.text.includes('إعادة المحاولة بنفس الطلب')))).length);
     v.unmount(); stored.clear();
 });
 
 test('uncertain operator request may be explicitly retired only after consumed-target refresh', async () => {
     stored.clear(); const v = mountPreparation({ canPrepare: false, intentId: null, approvals: [{ id: 'approved-target', target_id: 'target', label: 'Market', administrator_name: 'Administrator', active: true, consumed: false, canAuthorize: true }] });
-    await change(v, 'approved-market', 'approved-target'); await change(v, 'market-operator', 'eligible-admin'); await fillInput(v, 'operator-reason', 'Operator decision');
+    await change(v, 'approved-market', 'approved-target'); await change(v, 'market-operator', '44444444-4444-4444-8444-444444444444'); await fillInput(v, 'operator-reason', 'Operator decision');
     transport.send = async () => { throw { isAxiosError: true }; }; await submit(v); await nextTick();
     const findReview = () => nodes(v.root, n => n.tag === 'button' && (n.text.includes('راجعت السوق المسجّل') || n.children.some(x => x.text.includes('راجعت السوق المسجّل'))))[0];
     assert.equal(findReview(), undefined); v.props.approvals[0].consumed = true; await nextTick(); assert.ok(findReview());
@@ -344,4 +347,52 @@ test('uncertain result and unchanged retry remain outside closed advanced and au
     while(parent){ assert.notEqual(parent.tag, 'details'); parent=parent.parent; }
     const retry = nodes(result, n => n.tag === 'button' && n.text.includes('إعادة الطلب الأصلي'))[0]; assert.ok(retry);
     const original = structuredClone(transport.requests[0][1]); await retry.props.onClick(); assert.deepEqual(transport.requests[1][1], original); v.unmount();
+});
+
+function buttonWithText(view, text) { return nodes(view.root, n => n.tag === 'button' && (n.text.includes(text) || n.children.some(child => child.text.includes(text))))[0]; }
+function navigationDenied(method, url) {
+    let prevented = false;
+    for (const guard of navigationGuards) guard({ detail: { visit: { method, url: new URL(url, window.location.origin) } }, preventDefault() { prevented = true; } });
+    return prevented;
+}
+test('preparation resumes original bound intent across login and retains it after an authentication denial', async () => {
+    stored.clear(); let v = mountPreparation(); await change(v, 'market-country', 'KW'); await change(v, 'market-currency', 'USD');
+    transport.send = async () => { throw { isAxiosError: true }; }; await submit(v);
+    const original = structuredClone(transport.requests[0][1]);
+    assert.equal(navigationDenied('get', '/internal/administration'), true);
+    byId(v, 'renew-market-login').props.onClick(); assert.equal(navigationDenied('post', 'internal.logout/undefined'), false);
+    v.unmount(); globalThis.__bb1Page.auth.sessionContextId = 'fresh-login-session';
+    v = mountPreparation({ intentId: '55555555-5555-4555-8555-555555555555', intentBinding: 'different-new-intent-binding' });
+    transport.send = async () => { throw { isAxiosError: true, response: { status: 403 } }; };
+    await buttonWithText(v, 'إعادة المحاولة بنفس الطلب').props.onClick();
+    assert.deepEqual(transport.requests[0][1], original); assert.ok(buttonWithText(v, 'إعادة المحاولة بنفس الطلب'));
+    v.unmount(); stored.clear(); globalThis.__bb1Page.auth.sessionContextId = 'a'.repeat(64);
+});
+test('preparation storage validates retry destinations and never loads another principal intent', async () => {
+    stored.clear(); let v = mountPreparation(); await change(v, 'market-country', 'SA'); transport.send = async () => { throw { isAxiosError: true }; }; await submit(v); v.unmount();
+    const key = 'commercial-market-approval:v2:7'; const saved = stored.get(key);
+    globalThis.__bb1Page.auth.user.id = 8; v = mountPreparation(); assert.equal(buttonWithText(v, 'إعادة المحاولة بنفس الطلب'), undefined); v.unmount();
+    globalThis.__bb1Page.auth.user.id = 7; const malicious = JSON.parse(saved); malicious.url = 'https://untrusted.example/collect'; stored.set(key, JSON.stringify(malicious));
+    v = mountPreparation(); assert.equal(buttonWithText(v, 'إعادة المحاولة بنفس الطلب'), undefined); assert.equal(transport.requests.length, 0); v.unmount(); stored.clear();
+});
+test('Commercial preserves the exact command across remount and stale authentication without restoring authority', async () => {
+    stored.clear(); const marketId = '66666666-6666-4666-8666-666666666666'; const configurationId = '77777777-7777-4777-8777-777777777777';
+    const overrides = { markets: [{ id: marketId, label: 'Saudi', configuration_id: null, revision: 0 }], configurations: [], catalogReferences: [], founderAccess: true, newConfigurationId: configurationId };
+    let v = mount(overrides); await change(v, 'commercial-market_id', marketId); await change(v, 'commercial-operation', 'configuration');
+    transport.send = async () => { throw { isAxiosError: true }; }; await submit(v);
+    const original = structuredClone(transport.requests[0][1]); assert.equal(JSON.parse(stored.get('commercial-command:v1:7')).payload.command_id, original.command_id); v.unmount();
+    globalThis.__bb1Page.auth.sessionContextId = 'new-session';
+    v = mount({ ...overrides, founderAccess: false, freshAuthentication: false, newConfigurationId: '88888888-8888-4888-8888-888888888888' });
+    assert.equal(nodes(v.root, n => n.tag === 'fieldset')[0].props.disabled, true); assert.equal(navigationDenied('get', '/internal/administration'), true);
+    transport.send = async () => { throw { isAxiosError: true, response: { status: 419 } }; };
+    await buttonWithText(v, 'إعادة الطلب الأصلي دون تغيير').props.onClick(); assert.deepEqual(transport.requests[0][1], original);
+    assert.equal(nodes(v.root, n => n.tag === 'fieldset')[0].props.disabled, true);
+    buttonWithText(v, 'تسجيل الدخول مجددًا').props.onClick(); assert.equal(navigationDenied('post', 'internal.logout/undefined'), false);
+    v.unmount(); stored.clear(); globalThis.__bb1Page.auth.sessionContextId = 'a'.repeat(64);
+});
+test('storage failure prevents a Commercial mutation before its original intent is retained', async () => {
+    stored.clear(); const v = mount(); await change(v, 'commercial-market_id', 'sa'); await change(v, 'commercial-operation', 'configuration');
+    const save = sessionStorage.setItem; sessionStorage.setItem = () => { throw new Error('Storage unavailable'); };
+    try { await submit(v); assert.equal(transport.requests.length, 0); assert.ok(byId(v, 'commercial-alert')); }
+    finally { sessionStorage.setItem = save; v.unmount(); stored.clear(); }
 });

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 
@@ -10,7 +10,7 @@ import InternalLayout from '@/Layouts/InternalLayout.vue';
 
 type Approval = { id: string; target_id: string; label: string; reason: string; expires_at: string; approved_at: string; administrator_name: string; administrator_public_id: string; founder_id: number; consumed: boolean; active: boolean; canAuthorize: boolean };
 
-const props = defineProps<{ canPrepare: boolean; intentId: string | null; people: { public_id: string; name: string; kind: string }[]; approvals: Approval[]; freshAuthentication: boolean; countryOptions?: Record<string, { ar: string; en: string; currency: string }>; currencyOptions?: string[]; currencyNames?: Record<string, { ar: string; en: string }>; directRecorded?: boolean; recordedMarkets?: { id: string; label: string }[] }>();
+const props = defineProps<{ canPrepare: boolean; intentId: string | null; intentBinding: string | null; people: { public_id: string; name: string; kind: string }[]; approvals: Approval[]; freshAuthentication: boolean; countryOptions?: Record<string, { ar: string; en: string; currency: string }>; currencyOptions?: string[]; currencyNames?: Record<string, { ar: string; en: string }>; directRecorded?: boolean; recordedMarkets?: { id: string; label: string }[] }>();
 
 const page = usePage();
 
@@ -43,11 +43,45 @@ const errors = ref<Record<string, string[]>>({});
 
 type Attempt = { kind: 'prepare' | 'operator' | 'delegate'; url: string; payload: Record<string, string>; uncertain?: boolean; approvalId?: string };
 
-const storageKey = `commercial-market-approval:${page.props.auth.sessionContextId}`;
+const storageKey = `commercial-market-approval:v2:${page.props.auth.user.id}`;
+const legacyStorageKey = `commercial-market-approval:${page.props.auth.sessionContextId}`;
 
 const pending = ref<Attempt | null>(null);
 
-try { const saved = sessionStorage.getItem(storageKey); if (saved) pending.value = JSON.parse(saved); } catch { /* malformed tab evidence never grants authority */ }
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function parseAttempt(saved: string | null): Attempt | null {
+    if (!saved || saved.length > 32768) return null;
+    const candidate = JSON.parse(saved);
+    if (!candidate || !['prepare', 'operator', 'delegate'].includes(candidate.kind) || !candidate.payload || typeof candidate.payload !== 'object' || Array.isArray(candidate.payload)) return null;
+    const payload = candidate.payload;
+    if (Object.values(payload).some(value => typeof value !== 'string')) return null;
+    let expectedUrl: string;
+    let allowed: string[];
+    if (candidate.kind === 'prepare') {
+        expectedUrl = route('internal.commercial-market-preparation.store');
+        allowed = payload.mode === 'direct' ? ['intent_id','intent_binding','mode','country_code','denomination_code','reason'] : ['intent_id','intent_binding','administrator','label','reason','expires_at'];
+        if (!uuidPattern.test(payload.intent_id ?? '') || typeof payload.intent_binding !== 'string' || !payload.intent_binding || payload.intent_binding.length > 8192) return null;
+        if (payload.mode === 'direct') {
+            if (!/^[A-Z]{2}$/.test(payload.country_code ?? '') || !/^[A-Z]{3}$/.test(payload.denomination_code ?? '')) return null;
+        } else if (!uuidPattern.test(payload.administrator ?? '') || !payload.label || payload.label.length > 120 || !Number.isFinite(Date.parse(payload.expires_at ?? ''))) return null;
+    } else if (candidate.kind === 'operator') {
+        if (typeof candidate.approvalId !== 'string' || !uuidPattern.test(candidate.approvalId) || !uuidPattern.test(payload.operator ?? '')) return null;
+        expectedUrl = route('internal.commercial-market-preparation.operator', candidate.approvalId); allowed = ['operator','reason'];
+    } else {
+        if (!uuidPattern.test(payload.market_id ?? '') || !uuidPattern.test(payload.operator ?? '') || !['read','manage'].includes(payload.permission) || !Number.isFinite(Date.parse(payload.expires_at ?? ''))) return null;
+        expectedUrl = route('internal.commercial-market-preparation.delegate'); allowed = ['market_id','operator','permission','reason','expires_at'];
+    }
+    if (candidate.url !== expectedUrl || Object.keys(payload).some(key => !allowed.includes(key)) || typeof payload.reason !== 'string' || payload.reason.length > 120 || Object.entries(payload).some(([key,value]) => key !== 'intent_binding' && (value as string).length > 255)) return null;
+    return { kind: candidate.kind, url: expectedUrl, payload: { ...payload }, uncertain: true, ...(candidate.kind === 'operator' ? { approvalId: candidate.approvalId } : {}) };
+}
+try {
+    const current = sessionStorage.getItem(storageKey);
+    const saved = current ?? sessionStorage.getItem(legacyStorageKey);
+    pending.value = parseAttempt(saved);
+    if (!current && pending.value) { sessionStorage.setItem(storageKey, JSON.stringify(pending.value)); sessionStorage.removeItem(legacyStorageKey); }
+} catch { error.value = c('تعذر استعادة الطلب المحفوظ في هذا التبويب.', 'The saved request could not be restored in this tab.'); }
+const renewing = ref(false);
+const refreshing = ref(false);
 
 const approvedIntent = computed(() => props.approvals.find(a => a.id === props.intentId));
 
@@ -70,18 +104,17 @@ const selectedApproval = computed(() => eligibleApprovals.value.find(a => a.id =
 const operatorPeople = computed(() => props.people.filter(p => p.kind !== 'founder'));
 
 function retain(attempt: Attempt | null) {
-
-    pending.value = attempt;
-
-    if (attempt) sessionStorage.setItem(storageKey, JSON.stringify(attempt)); else sessionStorage.removeItem(storageKey);
-
+    try {
+        if (attempt) sessionStorage.setItem(storageKey, JSON.stringify(attempt)); else sessionStorage.removeItem(storageKey);
+        pending.value = attempt; return true;
+    } catch { error.value = c('تعذر حفظ الطلب الأصلي في هذا التبويب. تحقق من إتاحة التخزين قبل المتابعة.', 'The original request could not be saved in this tab. Check browser storage before continuing.'); return false; }
 }
 
 async function send(attempt: Attempt) {
 
     if (busy.value) return;
 
-    retain(attempt); busy.value = true; error.value = ''; errors.value = {};
+    if (!retain(attempt)) return; busy.value = true; error.value = ''; errors.value = {};
 
     try {
 
@@ -92,7 +125,7 @@ async function send(attempt: Attempt) {
 
         message.value = attempt.kind === 'delegate' ? c('حُفظ تفويض الموظف للسوق المحدد. صلاحية المؤسس المباشرة مستقلة عنه.', 'Employee authorization saved for the selected market. Founder direct authority remains independent.') : attempt.payload.mode === 'direct' ? c('حُفظت الدولة والعملة. أكمل المرجع المعتمد والإعداد في الإعداد التجاري قبل تفعيل الاستخدام الجديد.', 'Country and currency saved. Complete the approved reference and configuration in Commercial before activating new usage.') : attempt.kind === 'prepare' ? c('اعتُمدت الهوية وفُوِّض المسؤول. تسجيل السوق خطوة منفصلة لدى المشغّل المخوّل.', 'Identity approved and administrator authorized. Recording the market is a separate operator action.') : c('أصبح المشغّل مخوّلًا لتسجيل هذا السوق وقراءة سجله.', 'The operator may now record this market and read its registry.');
 
-        router.reload();
+        busy.value = false; refreshState();
 
     } catch (failure) {
 
@@ -112,9 +145,9 @@ async function send(attempt: Attempt) {
 
 function prepare() {
 
-    if (!props.intentId || pending.value || approvedIntent.value || props.directRecorded || (preparationMode.value === 'direct' && (!props.countryOptions?.[preparation.country_code] || !props.currencyOptions?.includes(preparation.denomination_code)))) return;
+    if (!props.intentId || !props.intentBinding || pending.value || approvedIntent.value || props.directRecorded || (preparationMode.value === 'direct' && (!props.countryOptions?.[preparation.country_code] || !props.currencyOptions?.includes(preparation.denomination_code)))) return;
 
-    send({ kind: 'prepare', url: route('internal.commercial-market-preparation.store'), payload: preparationMode.value === 'direct' ? { intent_id: props.intentId, mode: 'direct', country_code: preparation.country_code, denomination_code: preparation.denomination_code, reason: preparation.reason } : { intent_id: props.intentId, administrator: preparation.administrator, label: preparation.label, reason: preparation.reason, expires_at: new Date(preparation.expires_at).toISOString() } });
+    send({ kind: 'prepare', url: route('internal.commercial-market-preparation.store'), payload: preparationMode.value === 'direct' ? { intent_id: props.intentId, intent_binding: props.intentBinding ?? '', mode: 'direct', country_code: preparation.country_code, denomination_code: preparation.denomination_code, reason: preparation.reason } : { intent_id: props.intentId, intent_binding: props.intentBinding ?? '', administrator: preparation.administrator, label: preparation.label, reason: preparation.reason, expires_at: new Date(preparation.expires_at).toISOString() } });
 
 }
 
@@ -132,10 +165,22 @@ function delegate() {
 }
 
 function renewLogin() {
-    if (busy.value || pending.value) return;
-    sessionStorage.setItem(draftKey, JSON.stringify({ label: preparation.label, reason: preparation.reason, country_code: preparation.country_code, denomination_code: preparation.denomination_code }));
-    router.post(route('internal.logout'));
+    if (busy.value || renewing.value || (pending.value && !retain(pending.value))) return;
+    try { sessionStorage.setItem(draftKey, JSON.stringify({ label: preparation.label, reason: preparation.reason, country_code: preparation.country_code, denomination_code: preparation.denomination_code })); }
+    catch { error.value = c('تعذر حفظ البيانات قبل تجديد الدخول.', 'Details could not be saved before renewing sign-in.'); return; }
+    renewing.value = true;
+    router.post(route('internal.logout'), {}, { onFinish: () => { renewing.value = false; } });
 }
+function refreshState() { refreshing.value = true; router.reload({ onFinish: () => { refreshing.value = false; } }); }
+const removeBefore = router.on?.('before', event => {
+    const visit = event.detail.visit;
+    const logout = renewing.value && visit.method === 'post' && visit.url.href === new URL(route('internal.logout'), window.location.origin).href;
+    const readRefresh = refreshing.value && visit.method === 'get' && visit.url.href === window.location.href;
+    if ((busy.value || pending.value) && !logout && !readRefresh) event.preventDefault();
+});
+function beforeUnload(event: BeforeUnloadEvent) { if ((busy.value || pending.value) && !renewing.value) { event.preventDefault(); event.returnValue = ''; } }
+if (typeof window !== 'undefined') window.addEventListener('beforeunload', beforeUnload);
+onBeforeUnmount(() => { removeBefore?.(); if (typeof window !== 'undefined') window.removeEventListener('beforeunload', beforeUnload); });
 function reviewRetiredTarget() {
 
     if (!retiredPending.value || !pending.value) return;
@@ -162,11 +207,11 @@ function reviewRetiredTarget() {
 
         <div class="admin-administration preparation-workflow">
 
-            <section v-if="!freshAuthentication" class="admin-section preparation-section"><p role="status" class="admin-description">{{ c('زر التنفيذ متوقف لأن التحقق الحديث بمفتاح المرور انتهت صلاحيته. هذا لا يغيّر صلاحيتك كمؤسس. يمكنك تعبئة البيانات ثم تجديد الدخول.', 'Execution is paused because recent passkey authentication has expired. Your Founder authority is unchanged. You may fill in the details and renew sign-in.') }}</p><button v-if="!pending" id="renew-market-login" type="button" class="admin-action" :disabled="busy" @click="renewLogin">{{ c('تجديد الدخول مع حفظ بيانات السوق', 'Renew sign-in and retain market details') }}</button></section>
+            <section v-if="!freshAuthentication || pending" class="admin-section preparation-section"><p v-if="pending" class="admin-description">{{ c('الطلب الأصلي محفوظ في هذا التبويب. يمكنك تجديد الدخول ثم العودة لإعادة محاولة الطلب نفسه، دون حفظ صلاحيات الدخول.', 'The original request is preserved in this tab. Renew sign-in and return to retry that same request, without preserving authentication authority.') }}</p><p v-if="!freshAuthentication" role="status" class="admin-description">{{ c('زر التنفيذ متوقف لأن التحقق الحديث بمفتاح المرور انتهت صلاحيته. هذا لا يغيّر صلاحيتك كمؤسس. يمكنك تعبئة البيانات ثم تجديد الدخول.', 'Execution is paused because recent passkey authentication has expired. Your Founder authority is unchanged. You may fill in the details and renew sign-in.') }}</p><button id="renew-market-login" type="button" class="admin-action" :disabled="busy" @click="renewLogin">{{ c('تجديد الدخول مع حفظ بيانات السوق', 'Renew sign-in and retain market details') }}</button></section>
 
             <p v-if="error" role="alert" class="admin-error">{{ error }}</p><p v-if="message" role="status" class="admin-success">{{ message }}</p>
 
-            <section v-if="pending" class="admin-section preparation-section"><h2>{{ c('طلب بانتظار تأكيد النتيجة', 'Request awaiting confirmation') }}</h2><p class="admin-description">{{ c('حُفظ الطلب الأصلي. إعادة المحاولة تحافظ على الهوية والاختيارات نفسها.', 'The original request is retained. Retrying preserves the same identity and choices.') }}</p><dl><template v-for="(value, key) in pending.payload" :key="key"><template v-if="['label','reason','expires_at'].includes(key)"><dt>{{ key === 'label' ? c('اسم السوق', 'Market name') : key === 'reason' ? c('سبب الاعتماد أو التفويض', 'Approval or authorization reason') : c('نهاية التفويض', 'Authorization expiry') }}</dt><dd>{{ value }}</dd></template></template></dl><button class="admin-action" :disabled="busy || !freshAuthentication" @click="send(pending)">{{ c('إعادة المحاولة بنفس الطلب', 'Retry the same request') }}</button><button v-if="retiredPending" class="admin-action" :disabled="busy" @click="reviewRetiredTarget">{{ c('راجعت السوق المسجّل؛ إنهاء متابعة التسجيل الجديد', 'Reviewed recorded market; close new-market follow-up') }}</button><button v-if="confirmedPending" class="admin-action" :disabled="busy" @click="retain(null)">{{ c('راجعت الاعتماد المطابق للطلب', 'I reviewed the matching approval') }}</button><button class="admin-action" :disabled="busy" @click="router.reload()">{{ c('تحديث الحالة', 'Refresh state') }}</button></section>
+            <section v-if="pending" class="admin-section preparation-section"><h2>{{ c('طلب بانتظار تأكيد النتيجة', 'Request awaiting confirmation') }}</h2><p class="admin-description">{{ c('حُفظ الطلب الأصلي. إعادة المحاولة تحافظ على الهوية والاختيارات نفسها.', 'The original request is retained. Retrying preserves the same identity and choices.') }}</p><dl><template v-for="(value, key) in pending.payload" :key="key"><template v-if="['label','reason','expires_at'].includes(key)"><dt>{{ key === 'label' ? c('اسم السوق', 'Market name') : key === 'reason' ? c('سبب الاعتماد أو التفويض', 'Approval or authorization reason') : c('نهاية التفويض', 'Authorization expiry') }}</dt><dd>{{ value }}</dd></template></template></dl><button class="admin-action" :disabled="busy || !freshAuthentication" @click="send(pending)">{{ c('إعادة المحاولة بنفس الطلب', 'Retry the same request') }}</button><button v-if="retiredPending" class="admin-action" :disabled="busy" @click="reviewRetiredTarget">{{ c('راجعت السوق المسجّل؛ إنهاء متابعة التسجيل الجديد', 'Reviewed recorded market; close new-market follow-up') }}</button><button v-if="confirmedPending" class="admin-action" :disabled="busy" @click="retain(null)">{{ c('راجعت الاعتماد المطابق للطلب', 'I reviewed the matching approval') }}</button><button class="admin-action" :disabled="busy" @click="refreshState">{{ c('تحديث الحالة', 'Refresh state') }}</button></section>
 
             <section v-if="canPrepare" class="admin-section preparation-section"><h2>{{ c('إضافة السوق', 'Add market') }}</h2><p class="admin-description">{{ c('لا تحتاج إلى تفويض نفسك أو اختيار موظف آخر لإضافة السوق. يولّد النظام هوية السوق ويحفظ سجل العملية.', 'No self-grant or other employee is needed to add a market. The system generates the market identity and records the operation.') }}</p>
 

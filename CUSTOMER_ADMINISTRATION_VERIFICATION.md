@@ -53,5 +53,25 @@ The wider run recorded **1 failed / 49 passed / 311 assertions**. This unrelated
 expectation was not hidden or changed. This report does not claim a green full suite,
 release acceptance, or physical passkey testing.
 
-No push, merge or commit was performed. Earlier Commercial review gaps remain in their
-existing review documents.
+At the time of the preceding verification, no push, merge or commit had been performed.
+Earlier Commercial review gaps remain in their existing review documents.
+
+## PR #12 verification update (2026-10-04)
+
+- The lifecycle fixture now asserts the required Business onboarding redirect; it
+  passed in the subsequent focused 18-test run (290 assertions).
+- The first GitHub full PHP run recorded 650 passed and one failed PasswordResetTest
+  fixture with the same obsolete dashboard expectation. Its session-revocation
+  assertions remain intact; the fixture now expects Business onboarding.
+- Review identified and corrected an OAuth-restored GET Business prerequisite bypass
+  and uncertain Commercial requests lost across reload or authentication renewal.
+  Encrypted same-actor preparation bindings retain generated identities while fresh
+  Founder authority remains independently required. Tab storage retains validated
+  original requests, not authority; explicit login renewal remains available.
+- Fresh disposable backend verification: 31 tests passed / 389 assertions, including
+  authentic same-Founder replay, cross-principal/forged-binding denial and immutable
+  payload conflict. The disposable runner reported zero connections/writes to 5432.
+- Commercial operator and localization checks: 52 passed, including remount, exact
+  retry after authentication refusal, principal isolation and storage failure.
+- Latest full CI and final review must pass before merging. These focused results
+  do not establish physical passkey ceremony or independent-installation durability.

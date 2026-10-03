@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { Head, router, usePage, Link } from '@inertiajs/vue3';
 import axios from 'axios';
 import InternalLayout from '@/Layouts/InternalLayout.vue';
@@ -63,6 +63,7 @@ const marketOptions = computed(() => operation.value === 'market' ? (props.newMa
 const configurations = computed(() => props.configurations.filter(c => c.market_id === fields.market_id));
 const catalogs = computed(() => props.catalogReferences.filter(c => c.market_id === fields.market_id));
 function selectMarket(reset = true) {
+    if (lifecycle.value === 'uncertain' && !conflictReview.value) return;
     if (fields.market_id && !marketOptions.value.some(m => m.id === fields.market_id)) fields.market_id = '';
     const market = props.markets.find(m => m.id === fields.market_id);
     fields.expected_revision = String(market?.revision ?? '');
@@ -85,6 +86,44 @@ watch(assignabilityDecision, () => { fields.configuration_id = ''; });
 const authorizedReferences = computed(() => props.founderAccess && props.newCatalogReferenceId ? [{ action: 'RecordOrVerifyApprovedMarketReference', target_id: fields.market_id, version_id: props.newCatalogReferenceId, workspace_public_id: null, label: c('مرجع جديد', 'New reference') }] : props.targets.filter(t => t.action === 'RecordOrVerifyApprovedMarketReference' && t.target_id === fields.market_id && t.version_id && !props.catalogReferences.some(r => r.id === t.version_id)));
 const lifecycle = ref<'idle' | 'inflight' | 'uncertain' | 'completed'>('idle');
 let original: { operation: Operation; input: Record<string, unknown> } | null = null;
+const pendingKey = `commercial-command:v1:${page.props.auth.user.id}`;
+const renewing = ref(false);
+const refreshing = ref(false);
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function parseCommand(saved: string | null): { operation: Operation; input: Record<string, unknown> } | null {
+    if (!saved || saved.length > 16384) return null;
+    const draft = JSON.parse(saved);
+    if (!draft || !Object.hasOwn(operations, draft.action) || !draft.payload || typeof draft.payload !== 'object' || Array.isArray(draft.payload)) return null;
+    const action = draft.action as Operation;
+    const payload = draft.payload as Record<string, unknown>;
+    const keys = ['command_id','reason_code', ...operations[action].fields];
+    if (Object.keys(payload).length !== keys.length || Object.keys(payload).some(key => !keys.includes(key)) || payload.reason_code !== reasonCodes[action] || typeof payload.command_id !== 'string' || !uuidPattern.test(payload.command_id)) return null;
+    for (const [key, value] of Object.entries(payload)) {
+        if (key === 'expected_revision') { if (!Number.isSafeInteger(value) || Number(value) < 0) return null; }
+        else if (value !== null && (typeof value !== 'string' || value.length > 1024)) return null;
+        if (value !== null && (key.endsWith('_id') || key === 'workspace_public_id') && (typeof value !== 'string' || !uuidPattern.test(value))) return null;
+    }
+    return { operation: action, input: { ...payload } };
+}
+function preserveCommand() {
+    if (!original) return true;
+    try { sessionStorage.setItem(pendingKey, JSON.stringify({ action: original.operation, payload: original.input })); return true; }
+    catch { error.value = c('تعذر حفظ الطلب الأصلي في هذا التبويب. تحقق من إتاحة التخزين قبل المتابعة.', 'The original request could not be saved in this tab. Check browser storage before continuing.'); return false; }
+}
+function clearCommand() { try { sessionStorage.removeItem(pendingKey); } catch { /* Replaying confirmed evidence remains safe. */ } }
+function renewLogin() {
+    if (busy.value || renewing.value || !preserveCommand()) return;
+    renewing.value = true; router.post(route('internal.logout'), {}, { onFinish: () => { renewing.value = false; } });
+}
+const removeBefore = router.on?.('before', event => {
+    const visit = event.detail.visit;
+    const logout = renewing.value && visit.method === 'post' && visit.url.href === new URL(route('internal.logout'), window.location.origin).href;
+    const readRefresh = refreshing.value && visit.method === 'get' && visit.url.href === window.location.href;
+    if ((busy.value || lifecycle.value === 'uncertain') && !logout && !readRefresh) event.preventDefault();
+});
+function beforeUnload(event: BeforeUnloadEvent) { if ((busy.value || lifecycle.value === 'uncertain') && !renewing.value) { event.preventDefault(); event.returnValue = ''; } }
+if (typeof window !== 'undefined') window.addEventListener('beforeunload', beforeUnload);
+onBeforeUnmount(() => { removeBefore?.(); if (typeof window !== 'undefined') window.removeEventListener('beforeunload', beforeUnload); });
 watch(() => fields.market_id, () => selectMarket());
 watch(() => [props.markets, props.configurations, props.catalogReferences, props.targets, props.newMarketTargets, props.newConfigurationId], () => selectMarket(false), { deep: true });
 async function selectScope(event: Event) {
@@ -106,22 +145,25 @@ async function execute() {
         if (operation.value === 'assignability') { input.expected_revision = Number(fields.expected_revision); if (assignabilityDecision.value === 'disable') input.configuration_id = null; }
         original = { operation: operation.value, input: structuredClone(input) };
     }
-    if (!original) return;
+    if (!original || !preserveCommand()) return;
     const wasUncertain = lifecycle.value === 'uncertain';
     receipt.value = command.value; reconciled.value = false; busy.value = true; lifecycle.value = 'inflight';
     try {
         result.value = (await axios.post(route(`internal.commercial.${original.operation}`), original.input)).data;
         lifecycle.value = 'completed';
+        clearCommand(); busy.value = false;
         queueMicrotask(focusResult);
         router.reload({ only: ['markets', 'configurations', 'catalogReferences', 'obligations', 'newConfigurationId', 'targets', 'newMarketTargets', 'founderAccess', 'newCatalogReferenceId', 'freshAuthentication'] });
     } catch (failure) {
         const status = axios.isAxiosError(failure) ? failure.response?.status : undefined;
         lifecycle.value = !wasUncertain && (status === 403 || status === 422) ? 'idle' : 'uncertain';
+        if (lifecycle.value === 'idle') clearCommand();
         handleFailure(failure); queueMicrotask(() => document.getElementById('commercial-alert')?.focus());
         if (status === 409) {
             conflictReview.value = true;
             conflictReviewReady.value = false;
-            router.reload({ only: ['markets', 'configurations', 'catalogReferences', 'targets', 'newMarketTargets', 'founderAccess', 'newCatalogReferenceId', 'freshAuthentication'], onSuccess: () => { conflictReviewReady.value = !wasUncertain; } });
+            refreshing.value = true;
+            router.reload({ only: ['markets', 'configurations', 'catalogReferences', 'targets', 'newMarketTargets', 'founderAccess', 'newCatalogReferenceId', 'freshAuthentication'], onSuccess: () => { conflictReviewReady.value = !wasUncertain; }, onFinish: () => { refreshing.value = false; } });
         }
     } finally { busy.value = false; }
 }
@@ -134,8 +176,8 @@ const conflictReview = ref(false);
 const conflictReviewReady = ref(false);
 const contextScope = ref('');
 async function lookupContext() { busy.value = true; error.value = ''; try { contextResult.value = (await axios.get(route('internal.commercial.context', contextScope.value))).data; } catch { error.value = 'السياق الداخلي غير متاح ضمن صلاحيتك الحالية لهذا الهدف.'; } finally { busy.value = false; } }
-function newCommand() { if (busy.value || lifecycle.value === 'uncertain') return; original = null; result.value = null; lifecycle.value = 'idle'; command.value = crypto.randomUUID(); if (operation.value === 'configuration') fields.configuration_id = props.newConfigurationId; selectMarket(false); }
-watch(operation, () => { scopeSelection.value = ''; workspace.value = null; fields.scope_id = ''; fields.workspace_public_id = ''; fieldErrors.value = {}; error.value = ''; if (operation.value === 'configuration') fields.configuration_id = props.newConfigurationId; selectMarket(); });
+function newCommand() { if (busy.value || lifecycle.value === 'uncertain') return; clearCommand(); original = null; result.value = null; lifecycle.value = 'idle'; command.value = crypto.randomUUID(); if (operation.value === 'configuration') fields.configuration_id = props.newConfigurationId; selectMarket(false); }
+watch(operation, () => { if (lifecycle.value === 'uncertain') return; scopeSelection.value = ''; workspace.value = null; fields.scope_id = ''; fields.workspace_public_id = ''; fieldErrors.value = {}; error.value = ''; if (operation.value === 'configuration') fields.configuration_id = props.newConfigurationId; selectMarket(); });
 async function lookup() { busy.value = true; error.value = ''; try { receiptResult.value = (await axios.get(route('internal.commercial.receipt', receipt.value))).data; if (receiptResult.value?.command_id === command.value && lifecycle.value === 'uncertain') { reconciled.value = true; } } catch { error.value = 'الإيصال غير متاح ضمن صلاحيتك الحالية؛ لا تفترض فشل التسجيل.'; } finally { busy.value = false; } }
 async function recover(id: string) { busy.value = true; error.value = ''; try { deliveryResult.value = (await axios.post(route('internal.commercial.recover', id))).data; router.reload({ only: ['obligations'] }); } catch { error.value = 'تعذّرت الاستعادة ضمن صلاحيتك الحالية.'; } finally { busy.value = false; } }
 const selectedMarket = computed(() => props.markets.find(m => m.id === fields.market_id));
@@ -224,15 +266,23 @@ function canRecover(item: typeof props.obligations[number]) { return props.fresh
 function descriptions(field: string) { return fieldErrors.value[field] ? `error-${field}` : undefined; }
 function acknowledgeReconciliation() { if (!reconciled.value || busy.value) return; lifecycle.value = 'completed'; conflictReview.value = false; error.value = ''; newCommand(); }
 function acknowledgeConflict() { if (!conflictReviewReady.value || busy.value) return; lifecycle.value = 'completed'; conflictReview.value = false; conflictReviewReady.value = false; error.value = ''; newCommand(); }
-function refreshRecords() { router.reload({ only: ['markets','configurations','catalogReferences','targets','obligations','newConfigurationId','newMarketTargets','founderAccess','newCatalogReferenceId','freshAuthentication'] }); }
+function refreshRecords() { refreshing.value = true; router.reload({ only: ['markets','configurations','catalogReferences','targets','obligations','newConfigurationId','newMarketTargets','founderAccess','newCatalogReferenceId','freshAuthentication'], onFinish: () => { refreshing.value = false; } }); }
 function focusResult() { document.getElementById('operation-result')?.focus(); }
+try {
+    const restored = parseCommand(sessionStorage.getItem(pendingKey));
+    if (restored) {
+        original = restored; operation.value = restored.operation; lifecycle.value = 'uncertain'; command.value = restored.input.command_id as `${string}-${string}-${string}-${string}-${string}`; receipt.value = command.value;
+        for (const [key,value] of Object.entries(restored.input)) if (key in fields) fields[key] = value === null ? '' : String(value);
+        error.value = c('استعيد الطلب الأصلي بنتيجة غير محسومة. أعد المحاولة نفسها بعد التحقق من صلاحيتك الحالية.', 'The original request was restored with an unresolved outcome. Retry it after checking your current authority.');
+    }
+} catch { error.value = c('تعذر استعادة الطلب المحفوظ في هذا التبويب.', 'The saved request could not be restored in this tab.'); }
 </script>
 <template>
     <Head :title="c('الإعداد التجاري', 'Commercial configuration')" />
     <InternalLayout>
         <template #header><h1>{{ c('الإعداد التجاري', 'Commercial configuration') }}</h1><p class="admin-heading-description">{{ c('إدارة أسواق Builderad التجارية وإعداداتها.', 'Manage Builderad commercial markets and their configuration.') }}</p><p class="commercial-clarification">{{ c('لا يشمل الاستهداف الجغرافي لحملات المعلن.', 'Separate from advertiser campaign geographic targeting.') }}</p></template>
         <div class="admin-administration commercial-workflow"><button type="button" class="admin-action" :disabled="busy" @click="refreshRecords">{{ c('تحديث الحالة والصلاحيات', 'Refresh state and permissions') }}</button><Link v-if="page.props.auth.canManageCommercialPreparation" :href="route('internal.commercial-market-preparation.index')" class="admin-action admin-action-primary">{{ c('إضافة سوق', 'Add market') }}</Link><p v-if="!props.markets.length && !props.newMarketTargets?.length" class="admin-description">{{ c('يمكن للمؤسس إضافة سوق مباشرة من الإدارة. تفويض الموظفين مسار اختياري منفصل؛ يحتاج الموظف إلى صلاحية محددة.', 'The Founder can add a market directly in Administration. Employee delegation is a separate optional workflow; employees require exact permissions.') }}</p>
-            <div v-if="error" id="commercial-alert" role="alert" class="admin-action-error" tabindex="-1"><p>{{ c('تعذّر إكمال العملية. راجع التفاصيل والصلاحيات والحالة الحالية.', 'The operation could not be completed. Review details, permissions and current state.') }}</p><details><summary>{{ c('تفاصيل الاستجابة', 'Response details') }}</summary><p>{{ error }}</p></details><p v-if="conflictReview">{{ c('حدث تعارض. تم طلب تحديث الحالة دون إعادة إرسال. راجع الحالة والإيصال قبل أي عملية جديدة.', 'A conflict occurred. State refresh was requested without resubmission. Review current state and the receipt before a new operation.') }}</p><div v-if="conflictReview"><p>{{ c('المراجعة في الطلب الأصلي', 'Revision in the original request') }}: {{ original?.input.expected_revision ?? '—' }} · {{ c('المراجعة الحالية', 'Current revision') }}: {{ fields.expected_revision || '—' }}</p><details><summary>{{ c('الطلب الأصلي للمقارنة مع الحالة المحدثة', 'Original request to compare with refreshed state') }}</summary><pre>{{ JSON.stringify(original?.input, null, 2) }}</pre></details></div></div>
+            <section v-if="freshAuthentication === false || lifecycle === 'uncertain'" class="admin-section"><p class="admin-description">{{ c('يمكن تجديد الدخول مع حفظ الطلب الأصلي في هذا التبويب. عد إلى الإعداد التجاري لإعادة محاولة الطلب نفسه؛ لا تُحفظ صلاحيات الدخول.', 'You can renew sign-in while retaining the original request in this tab. Return to Commercial to retry that same request; authentication authority is not preserved.') }}</p><button type="button" class="admin-action" :disabled="busy || renewing" @click="renewLogin">{{ c('تسجيل الدخول مجددًا', 'Sign in again') }}</button></section><div v-if="error" id="commercial-alert" role="alert" class="admin-action-error" tabindex="-1"><p>{{ c('تعذّر إكمال العملية. راجع التفاصيل والصلاحيات والحالة الحالية.', 'The operation could not be completed. Review details, permissions and current state.') }}</p><details><summary>{{ c('تفاصيل الاستجابة', 'Response details') }}</summary><p>{{ error }}</p></details><p v-if="conflictReview">{{ c('حدث تعارض. تم طلب تحديث الحالة دون إعادة إرسال. راجع الحالة والإيصال قبل أي عملية جديدة.', 'A conflict occurred. State refresh was requested without resubmission. Review current state and the receipt before a new operation.') }}</p><div v-if="conflictReview"><p>{{ c('المراجعة في الطلب الأصلي', 'Revision in the original request') }}: {{ original?.input.expected_revision ?? '—' }} · {{ c('المراجعة الحالية', 'Current revision') }}: {{ fields.expected_revision || '—' }}</p><details><summary>{{ c('الطلب الأصلي للمقارنة مع الحالة المحدثة', 'Original request to compare with refreshed state') }}</summary><pre>{{ JSON.stringify(original?.input, null, 2) }}</pre></details></div></div>
             <div class="commercial-composition" :class="{ 'commercial-unselected': !fields.market_id && lifecycle === 'idle' }"><div class="commercial-primary"><form novalidate @submit.prevent="execute">
                 <fieldset :disabled="locked">
                     <section class="admin-section" aria-labelledby="market-heading">
