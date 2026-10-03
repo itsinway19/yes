@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 
 defineProps<{
     mustVerifyEmail?: boolean;
@@ -39,7 +38,14 @@ defineProps<{
                 <div
                     class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
                 >
-                    <UpdatePasswordForm class="max-w-xl" />
+                    <section dir="rtl" class="max-w-xl">
+                        <h2 class="text-lg font-medium text-gray-900">أمان الحساب</h2>
+                        <p class="mt-1 text-sm leading-6 text-gray-600">إدارة كلمة المرور ومفاتيح المرور والجلسات من قسم الأمان.</p>
+                        <Link :href="route('security.devices')"
+                            class="mt-4 inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                            الانتقال إلى الأمان
+                        </Link>
+                    </section>
                 </div>
 
             </div>

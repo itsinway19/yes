@@ -12,5 +12,6 @@ export type PageProps<
         user: User;
         canInternalAdministration: boolean;
         canManageServices: boolean;
+        canManageBusinessTypes: boolean;
     };
 };

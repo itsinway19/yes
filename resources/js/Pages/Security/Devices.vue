@@ -5,6 +5,7 @@ import { Passkeys } from '@laravel/passkeys';
 import { cancelPasskeyOperation, runPasskeyOperation } from '@/security/passkeyCeremony';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import InternalLayout from '@/Layouts/InternalLayout.vue';
+import UpdatePasswordForm from '@/Pages/Profile/Partials/UpdatePasswordForm.vue';
 
 type Session = {
     id: number;
@@ -118,10 +119,10 @@ function seenAt(value: string) {
 </script>
 
 <template>
-    <Head title="الأمان والأجهزة" />
+    <Head title="الأمان" />
     <component :is="internalContext ? InternalLayout : AuthenticatedLayout">
         <template #header>
-            <h1 class="text-xl font-semibold text-slate-900">الأمان والأجهزة</h1>
+            <h1 class="text-xl font-semibold text-slate-900">الأمان</h1>
         </template>
 
         <div dir="rtl" class="mx-auto max-w-5xl px-4 py-8 sm:px-6">
@@ -169,6 +170,10 @@ function seenAt(value: string) {
                         {{ busy === 'current' ? 'جارٍ تسجيل الخروج…' : 'تسجيل الخروج من هذا المتصفح' }}
                     </button>
                 </div>
+            </div>
+
+            <div v-if="!internalContext" class="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+                <UpdatePasswordForm />
             </div>
 
             <section class="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="passkeys-title">

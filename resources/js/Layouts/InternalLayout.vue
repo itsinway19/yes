@@ -1,39 +1,49 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, ref } from 'vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
+import LanguageSwitcher from '@/Components/LanguageSwitcher.vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-
+import { supportedLocale } from '@/localization/messages';
+const { t } = useI18n({ useScope: 'global' });
+const page = usePage();
+const locale = computed(() => supportedLocale(page.props.locale));
 const menuOpen = ref(false);
+const menuButton = ref<HTMLButtonElement | null>(null);
+const navigation = computed(() => [
+    { key: 'administration', route: 'internal.administration', visible: page.props.auth.canInternalAdministration },
+    { key: 'services', route: 'internal.services.index', visible: page.props.auth.canManageServices },
+    { key: 'businessTypes', route: 'internal.business-types.index', visible: page.props.auth.canManageBusinessTypes },
+    { key: 'commercial', route: 'internal.commercial.index', visible: true },
+    { key: 'security', route: 'internal.security.devices', visible: true },
+].filter(item => item.visible));
+const context = computed(() => navigation.value.find(item => route().current(item.route))?.key ?? 'workspace');
+const removeNavigationListener = router.on('navigate', () => { menuOpen.value = false; });
+onBeforeUnmount(removeNavigationListener);
+function closeMenu() {
+    if (!menuOpen.value) return;
+    menuOpen.value = false;
+    menuButton.value?.focus();
+}
 </script>
-
 <template>
-    <div dir="rtl" class="min-h-screen bg-slate-100 text-slate-900">
-        <header class="border-b border-slate-200 bg-white">
-            <nav aria-label="الإدارة الداخلية" class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div class="flex min-h-16 items-center justify-between gap-4">
-                    <Link :href="route($page.props.auth.canInternalAdministration ? 'internal.administration' : 'internal.security.devices')" class="flex items-center gap-3 font-semibold">
-                        <ApplicationLogo class="h-8 w-auto fill-current" />
-                        <span>إدارة Builderad</span>
-                    </Link>
-                    <button type="button" class="rounded-lg border px-3 py-2 text-sm sm:hidden" :aria-expanded="menuOpen" aria-controls="internal-menu" @click="menuOpen = !menuOpen">القائمة</button>
-                    <div class="hidden items-center gap-5 text-sm sm:flex">
-                        <Link :href="route('internal.commercial.index')" class="hover:underline">السياق التجاري والأسواق</Link>
-                        <Link v-if="$page.props.auth.canInternalAdministration" :href="route('internal.administration')" :aria-current="route().current('internal.administration') ? 'page' : undefined" class="hover:underline">الإدارة</Link>
-                        <Link v-if="$page.props.auth.canManageServices" :href="route('internal.services.index')" :aria-current="route().current('internal.services.index') ? 'page' : undefined" class="hover:underline">الخدمات</Link>
-                        <Link :href="route('internal.security.devices')" :aria-current="route().current('internal.security.devices') ? 'page' : undefined" class="hover:underline">الأمان والأجهزة</Link>
-                        <Link :href="route('internal.logout')" method="post" as="button" class="text-red-700 hover:underline">تسجيل الخروج</Link>
-                    </div>
-                </div>
-                <div v-if="menuOpen" id="internal-menu" class="flex flex-col gap-3 border-t py-4 text-sm sm:hidden">
-                    <Link :href="route('internal.commercial.index')">السياق التجاري والأسواق</Link>
-                    <Link v-if="$page.props.auth.canInternalAdministration" :href="route('internal.administration')">الإدارة</Link>
-                    <Link v-if="$page.props.auth.canManageServices" :href="route('internal.services.index')">الخدمات</Link>
-                    <Link :href="route('internal.security.devices')">الأمان والأجهزة</Link>
-                    <Link :href="route('internal.logout')" method="post" as="button" class="self-start text-red-700">تسجيل الخروج</Link>
-                </div>
-            </nav>
+    <div class="admin-shell" :dir="locale === 'ar' ? 'rtl' : 'ltr'" :lang="locale" @keydown.esc="closeMenu">
+        <a href="#internal-content" class="admin-skip">{{ t('admin.skip') }}</a>
+        <header class="admin-header">
+            <div class="admin-header-context"><span class="admin-eyebrow">{{ t('admin.internal') }}</span><span class="admin-context-divider" aria-hidden="true">/</span><span>{{ t(`admin.${context}`) }}</span></div>
+            <div class="admin-header-actions"><LanguageSwitcher route-name="internal.locale.update" /><button ref="menuButton" type="button" class="admin-action admin-menu-button" :aria-expanded="menuOpen" aria-controls="internal-menu" @click="menuOpen = !menuOpen">{{ t(menuOpen ? 'admin.closeMenu' : 'admin.menu') }}</button></div>
         </header>
-        <div v-if="$slots.header" class="border-b border-slate-200 bg-white px-4 py-6 shadow-sm sm:px-6"><div class="mx-auto max-w-7xl"><slot name="header" /></div></div>
-        <slot />
+        <aside class="admin-sidebar" :class="{ 'admin-sidebar-open': menuOpen }">
+            <Link :href="route($page.props.auth.canInternalAdministration ? 'internal.administration' : 'internal.security.devices')" class="admin-brand"><ApplicationLogo class="admin-brand-logo" aria-hidden="true" /><span class="admin-brand-copy"><span dir="ltr" class="admin-brand-name">Builderad</span><span class="admin-eyebrow">{{ t('admin.internal') }}</span></span></Link>
+            <nav id="internal-menu" :aria-label="t('admin.navigation')" class="admin-navigation">
+                <p class="admin-nav-heading">{{ t('admin.workspace') }}</p>
+                <Link v-for="item in navigation" :key="item.key" :href="route(item.route)" :aria-current="route().current(item.route) ? 'page' : undefined" class="admin-nav-link" @click="menuOpen = false"><span>{{ t(`admin.${item.key}`) }}</span></Link>
+            </nav>
+            <div class="admin-sidebar-footer"><span class="admin-eyebrow">{{ t('admin.internalAccess') }}</span><Link :href="route('internal.logout')" method="post" as="button" class="admin-logout">{{ t('admin.logout') }}</Link></div>
+        </aside>
+        <div class="admin-workspace">
+            <div v-if="$slots.header" class="admin-page-heading"><slot name="header" /></div>
+            <main id="internal-content" tabindex="-1"><slot /></main>
+        </div>
     </div>
 </template>

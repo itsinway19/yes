@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import axios from 'axios';
+import ProviderBrand from '@/Components/ProviderBrand.vue';
+import { useProviderPresentation, type ProviderSummary } from '@/Components/Business/providerPresentation';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import ProviderReportRequest from './ProviderReportRequest.vue';
 
@@ -19,10 +21,12 @@ type Snapshot = {
     notice: { privacy_url: string; deletion_instructions_url: string; revision: string; purpose: string } | null;
 };
 const props = defineProps<{ workspaceId: string; canManage: boolean }>();
+const emit = defineEmits<{ summary: [summary: ProviderSummary] }>();
 const base = `/workspaces/${encodeURIComponent(props.workspaceId)}/providers/meta`;
 const snapshot = ref<Snapshot | null>(null);
 const busy = ref('');
 const error = ref('');
+useProviderPresentation(snapshot, busy, error, emit);
 const announcement = ref('');
 const accounts = ref<Account[]>([]);
 const coverage = ref('');
@@ -221,7 +225,7 @@ onBeforeUnmount(() => { alive = false; abort.abort(); });
     <section dir="rtl" class="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="meta-connection-heading" :aria-busy="!!busy">
         <header class="flex flex-col gap-5 border-b border-slate-200 p-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
             <div class="flex items-center gap-4">
-                <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700" aria-hidden="true"><svg width="32" height="25" viewBox="0 0 32 25" fill="none"><path d="M3 17C3 7 7 3 10 3c5 0 9 18 14 18 3 0 5-3 5-7 0-8-3-11-6-11-5 0-9 18-14 18-4 0-6-2-6-4Z" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" /></svg></span>
+                <ProviderBrand provider="meta" :size="48" />
                 <div><p class="text-xs font-semibold tracking-wide text-indigo-700">حسابات الإعلانات · Meta</p><h2 id="meta-connection-heading" class="mt-1 text-xl font-semibold text-slate-900">ربط حسابك الإعلاني</h2></div>
             </div>
             <button type="button" :disabled="!!busy" class="self-start rounded-lg px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 sm:self-auto" @click="refresh">{{ busy === 'refresh' ? 'جارٍ التحديث…' : 'تحديث الحالة' }}</button>

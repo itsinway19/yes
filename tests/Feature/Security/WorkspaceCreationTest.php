@@ -55,9 +55,9 @@ class WorkspaceCreationTest extends TestCase
             ->where('event', 'workspace_created')->count());
 
         $this->withCredentials()->getJson('/workspaces/'.$workspace->public_id.'/foundation')->assertOk();
-        $this->get('/workspaces/'.$workspace->public_id)->assertOk();
+        $this->get('/workspaces/'.$workspace->public_id)->assertRedirect(route('workspaces.business.edit', $workspace->public_id));
         $this->get('/workspaces')->assertInertia(fn (Assert $page) => $page
-            ->component('Workspaces/Index')
+            ->component('Business/Index')
             ->has('workspaces', 1)
             ->where('workspaces.0.public_id', $workspace->public_id));
 
@@ -66,7 +66,7 @@ class WorkspaceCreationTest extends TestCase
         $this->get('/workspaces/'.$workspace->public_id)->assertForbidden();
         $this->post('/workspaces', ['name' => 'North Region', 'slug' => 'north-region'])->assertForbidden();
         $this->get('/workspaces')->assertInertia(fn (Assert $page) => $page
-            ->component('Workspaces/Index')->has('workspaces', 0));
+            ->component('Business/Index')->has('workspaces', 0));
 
         $other = User::factory()->create();
         $this->actingAs($other)->withCredentials()

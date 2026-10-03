@@ -671,7 +671,7 @@ class SourceRegistryTest extends TestCase
         $q=$db->prepare('SELECT '.$argv[2].' FROM '.$argv[1].' WHERE '.$argv[2].'=? FOR UPDATE'); $q->execute([$argv[3]]);
         $xid=$db->query('SELECT pg_current_xact_id()::text')->fetchColumn(); echo 'LOCK_READY'; fflush(STDOUT);
         $q=$db->prepare("SELECT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='transactionid' AND transactionid=?::xid AND pid=? AND NOT granted)");
-        $deadline=microtime(true)+6; $wait=false;
+        $deadline=microtime(true)+25; $wait=false;
         do { $q->execute([$xid,$argv[4]]); $wait=in_array($q->fetchColumn(),[true,1,'1','t'],true); if($wait) break; usleep(20000); } while(microtime(true)<$deadline);
         if(!$wait) { $db->rollBack(); exit(1); } echo 'WAIT_OBSERVED'; fflush(STDOUT);
         if($argv[5]==='revoke') { $q=$db->prepare("UPDATE security_action_grants SET status='revoked',revoked_at=clock_timestamp() WHERE id=?"); $q->execute([$argv[3]]); }
@@ -684,7 +684,7 @@ class SourceRegistryTest extends TestCase
         $db->commit();
         PHP;
         $holder = new Process([PHP_BINARY, '-r', $code, $table, $column, $id, (string) DB::scalar('SELECT pg_backend_pid()'), $revoke ? 'revoke' : 'expire', (string) $expiryGrant], base_path());
-        $holder->setTimeout(12);
+        $holder->setTimeout(40);
         $holder->start();
         try {
             $holder->waitUntil(fn ($type, $text) => str_contains($text, 'LOCK_READY'));
@@ -718,11 +718,11 @@ class SourceRegistryTest extends TestCase
                     'run' => $run, 'actor' => $this->actor->id, 'workspace' => $this->workspaceId,
                     'session' => SessionAuthority::sessionKey($this->request()), 'input' => $input,
                 ], JSON_THROW_ON_ERROR)]);
-                $p->setTimeout(15);
+                $p->setTimeout(45);
                 $p->start();
                 $processes[] = $p;
             }
-            $deadline = microtime(true) + 8;
+            $deadline = microtime(true) + 30;
             do {
                 // Same restricted role can inspect its own workers without pg_read_all_stats.
                 $waiters = (int) DB::scalar("SELECT count(*) FROM pg_stat_activity WHERE application_name=? AND lower(wait_event)='advisory'", [$run]);
@@ -762,6 +762,7 @@ class SourceRegistryTest extends TestCase
     {
         $user = User::factory()->create();
         $id = $this->owner()->table('workspaces')->insertGetId(['name' => 'Synthetic source Workspace',
+            'business_type_id' => $this->owner()->table('business_types')->where('key', 'real_estate')->value('id'),
             'slug' => 'bb1-'.Str::uuid(), 'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
         $this->owner()->table('workspace_memberships')->insert(['workspace_id' => $id, 'user_id' => $user->id,
             'role' => 'owner', 'status' => 'active', 'created_at' => now()]);

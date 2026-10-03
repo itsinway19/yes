@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import InternalLayout from '@/Layouts/InternalLayout.vue';
+import ProviderBrand from '@/Components/ProviderBrand.vue';
 
 type Person = {
     public_id: string;
@@ -28,6 +30,7 @@ const props = defineProps<{
     xOperatorStatus: { application_configured: boolean; notice_links_configured: boolean } | null;
     snapchatOperatorStatus: { application_configured: boolean; notice_links_configured: boolean } | null;
 }>();
+const { t, locale } = useI18n({ useScope: 'global' });
 const invite = useForm({ name: '', email: '' });
 const grant = useForm({ staff: '', action: '', reason: '' });
 const busy = ref('');
@@ -45,7 +48,7 @@ function staffAction(person: Person, action: 'attest' | 'activate' | 'revoke' | 
     busy.value = `${person.public_id}:${action}`;
     router.post(route(`internal.staff.${action}`, person.public_id), {}, {
         preserveScroll: true,
-        onError: () => { actionError.value = 'تعذّر تنفيذ الإجراء. تحقّق من الأهلية والصلاحيات ثم أعد المحاولة.'; },
+        onError: () => { actionError.value = 'staffActionError'; },
         onFinish: () => { busy.value = ''; },
     });
 }
@@ -62,119 +65,91 @@ function revokeGrant(id: number) {
     busy.value = `grant:${id}`;
     router.delete(route('internal.grants.destroy', id), {
         preserveScroll: true,
-        onError: () => { actionError.value = 'تعذّر سحب المنحة.'; },
+        onError: () => { actionError.value = 'grantActionError'; },
         onFinish: () => { busy.value = ''; },
     });
 }
 
-const statusLabel: Record<Person['status'], string> = {
-    pending: 'بانتظار التفعيل',
-    active: 'نشط',
-    revoked: 'أُلغيت الأهلية',
-};
+const providers = computed(() => [
+    { key: 'meta', name: 'Meta', status: props.metaOperatorStatus },
+    { key: 'google', name: 'Google Ads', status: props.googleOperatorStatus },
+    { key: 'tiktok', name: 'TikTok', status: props.tiktokOperatorStatus },
+    { key: 'x', name: 'X', status: props.xOperatorStatus },
+    { key: 'snapchat', name: 'Snapchat', status: props.snapchatOperatorStatus },
+].filter(provider => provider.status !== null));
+const xEnvironmentNames = ['BB2_X_CONSUMER_KEY', 'BB2_X_CONSUMER_SECRET', 'BB2_X_REDIRECT_URI', 'BB2_X_PRIVACY_URL', 'BB2_X_NOTICE_REVISION'];
 </script>
 
 <template>
-    <Head title="إدارة Builderad الداخلية" />
+    <Head :title="t('admin.title')" />
     <InternalLayout>
         <template #header>
-            <h1 class="text-xl font-semibold text-slate-900">إدارة Builderad الداخلية</h1>
+            <p class="admin-eyebrow">{{ t('admin.operatingWorkspace') }}</p>
+            <h1>{{ t('admin.title') }}</h1>
+            <p class="admin-heading-description">{{ t('admin.pageIntro') }}</p>
         </template>
-        <div dir="rtl" class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-            <Link v-if="props.permissions['service.manage']" :href="route('internal.services.index')" class="mb-5 inline-block text-sm font-medium text-indigo-700 underline">إدارة الخدمات المستقلة</Link>
-            <section v-if="metaOperatorStatus" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="meta-operator-title">
-                <h2 id="meta-operator-title" class="text-lg font-semibold text-slate-900">إعداد ربط Meta</h2>
-                <p class="mt-2 text-sm leading-6 text-slate-600">هذه حالة إعداد الخدمة المحلية فقط. لا تثبت موافقة Meta أو اعتماد سياسات البيانات أو اتصال حساب معلن أو جاهزية بياناته للتحليل.</p>
-                <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                    <div class="rounded-xl bg-slate-50 p-4"><dt class="font-medium text-slate-800">إعداد التطبيق وعنوان العودة</dt><dd class="mt-1 text-slate-600">{{ metaOperatorStatus.application_configured ? 'مضبوط تقنيًا' : 'غير مكتمل' }}</dd></div>
-                    <div class="rounded-xl bg-slate-50 p-4"><dt class="font-medium text-slate-800">صيغة روابط الإشعار والحذف</dt><dd class="mt-1 text-slate-600">{{ metaOperatorStatus.notice_links_configured ? 'صالحة تقنيًا؛ الاعتماد غير مثبت' : 'غير مكتملة' }}</dd></div>
-                </dl>
-            </section>
-            <section v-if="googleOperatorStatus" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="google-operator-title">
-                <h2 id="google-operator-title" class="text-lg font-semibold text-slate-900">إعداد ربط Google Ads</h2>
-                <p class="mt-2 text-sm leading-6 text-slate-600">هذه حالة إعداد الخدمة المحلية فقط. لا تثبت موافقة Google أو اعتماد سياسة الخصوصية أو اتصال حساب معلن أو جاهزية بياناته للتحليل.</p>
-                <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                    <div class="rounded-xl bg-slate-50 p-4"><dt class="font-medium text-slate-800">إعداد تطبيق OAuth وعنوان العودة</dt><dd class="mt-1 text-slate-600">{{ googleOperatorStatus.application_configured ? 'مضبوط تقنيًا' : 'غير مكتمل' }}</dd></div>
-                    <div class="rounded-xl bg-slate-50 p-4"><dt class="font-medium text-slate-800">رابط الخصوصية ونسخة الإشعار</dt><dd class="mt-1 text-slate-600">{{ googleOperatorStatus.notice_links_configured ? 'صالحة تقنيًا؛ الاعتماد غير مثبت' : 'غير مكتملة' }}</dd></div>
-                </dl>
-                <p class="mt-4 text-sm leading-6 text-slate-600">تُضبط المفاتيح على الخادم في متغيرات البيئة. لا تعرض هذه اللوحة الأسرار، ويبدأ المعلن الربط من مساحة عمله.</p>
-            </section>
-            <section v-if="tiktokOperatorStatus" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="tiktok-operator-title">
-                <h2 id="tiktok-operator-title" class="text-lg font-semibold text-slate-900">ربط TikTok</h2>
-                <p class="mt-3 rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-700">هذه حالة إعداد الخدمة المحلية فقط. لا تثبت موافقة TikTok أو اعتماد السياسات أو اتصال حساب المعلن.</p>
-                <dl class="mt-4 grid gap-4 sm:grid-cols-2"><div><dt class="font-semibold">إعداد التطبيق والتفويض وعنوان العودة</dt><dd class="mt-2 text-sm text-slate-700">{{ tiktokOperatorStatus.application_configured ? 'مكتمل محليًا' : 'غير مكتمل' }}</dd></div><div><dt class="font-semibold">صيغة رابط الخصوصية وإصدار الإشعار</dt><dd class="mt-2 text-sm text-slate-700">{{ tiktokOperatorStatus.notice_links_configured ? 'مكتملة محليًا' : 'غير مكتملة' }}</dd></div></dl>
-                <p class="mt-4 text-sm leading-7 text-slate-600">توضع مفاتيح TikTok على الخادم في متغيرات البيئة. الربط الفعلي والتحقق من سياسات المنصة مؤجلان.</p>
-            </section>
-            <section v-if="xOperatorStatus" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="x-operator-title">
-                <h2 id="x-operator-title" class="text-lg font-semibold text-slate-900">ربط X</h2>
-                <p class="mt-3 rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-700">هذه حالة إعداد الخدمة المحلية فقط. لا تثبت موافقة X أو اعتماد السياسات أو اتصال حساب المعلن.</p>
-                <dl class="mt-4 grid gap-4 sm:grid-cols-2"><div><dt class="font-semibold">إعداد تطبيق OAuth وعنوان العودة</dt><dd class="mt-2 text-sm text-slate-700">{{ xOperatorStatus.application_configured ? 'مكتمل محليًا' : 'غير مكتمل' }}</dd></div><div><dt class="font-semibold">صيغة رابط الخصوصية وإصدار الإشعار</dt><dd class="mt-2 text-sm text-slate-700">{{ xOperatorStatus.notice_links_configured ? 'مكتملة محليًا' : 'غير مكتملة' }}</dd></div></dl>
-                <p class="mt-4 text-sm leading-7 text-slate-600">توضع مفاتيح X على الخادم: BB2_X_CONSUMER_KEY وBB2_X_CONSUMER_SECRET، مع BB2_X_REDIRECT_URI وBB2_X_PRIVACY_URL وBB2_X_NOTICE_REVISION. الربط الفعلي والتحقق من سياسات المنصة مؤجلان.</p>
-            </section>
-            <section v-if="snapchatOperatorStatus" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="snapchat-operator-title">
-                <h2 id="snapchat-operator-title" class="text-lg font-semibold text-slate-900">ربط Snapchat</h2>
-                <p class="mt-3 rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-700">هذه حالة إعداد الخدمة المحلية فقط. لا تثبت موافقة Snapchat أو اعتماد السياسات أو اتصال حساب المعلن.</p>
-                <dl class="mt-4 grid gap-4 sm:grid-cols-2"><div><dt class="font-semibold">إعداد تطبيق OAuth وعنوان العودة</dt><dd class="mt-2 text-sm text-slate-700">{{ snapchatOperatorStatus.application_configured ? 'مكتمل محليًا' : 'غير مكتمل' }}</dd></div><div><dt class="font-semibold">صيغة رابط الخصوصية وإصدار الإشعار</dt><dd class="mt-2 text-sm text-slate-700">{{ snapchatOperatorStatus.notice_links_configured ? 'مكتملة محليًا' : 'غير مكتملة' }}</dd></div></dl>
-                <p class="mt-4 text-sm leading-7 text-slate-600">توضع مفاتيح Snapchat على الخادم في متغيرات البيئة. الربط الفعلي والتحقق من سياسات المنصة مؤجلان.</p>
-            </section>
-            <section v-if="props.permissions['staff.invite']" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="invite-title">
-                <h2 id="invite-title" class="text-lg font-semibold text-slate-900">دعوة موظف</h2>
-                <p class="mt-2 text-sm text-slate-600">تُنشئ الدعوة حسابًا معلّقًا فقط. يبدأ الموظف من رسالة تهيئة كلمة المرور، ثم يثبت بريده ويسجل مفتاح مرور.</p>
-                <form class="mt-5 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-start" @submit.prevent="inviteEmployee">
-                    <div><label for="staff-name" class="block text-sm font-medium text-slate-700">الاسم</label><input id="staff-name" v-model="invite.name" required maxlength="255" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /><p v-if="invite.errors.name" role="alert" class="mt-1 text-sm text-red-700">{{ invite.errors.name }}</p></div>
-                    <div><label for="staff-email" class="block text-sm font-medium text-slate-700">البريد</label><input id="staff-email" v-model="invite.email" type="email" required maxlength="255" dir="ltr" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /><p v-if="invite.errors.email" role="alert" class="mt-1 text-sm text-red-700">{{ invite.errors.email }}</p></div>
-                    <button type="submit" :disabled="invite.processing" class="mt-6 rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50">{{ invite.processing ? 'جارٍ الإرسال…' : 'إرسال الدعوة' }}</button>
-                </form>
-                <p v-if="invite.recentlySuccessful" role="status" class="mt-3 text-sm text-emerald-700">أُنشئ حساب الموظف وطُلب إرسال رسالة التهيئة.</p>
-            </section>
-            <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-                <div class="mb-6">
-                    <h2 class="text-lg font-semibold text-slate-900">أهلية الفريق الداخلي</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">حالة الأهلية هنا منفصلة عن جلسات الدخول والمنح التنفيذية وصلاحية أي مساحة عمل.</p>
-                </div>
-                <p v-if="actionError" role="alert" class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{{ actionError }}</p>
-                <div class="overflow-x-auto">
-                    <table class="w-full min-w-[46rem] text-right text-sm">
-                        <caption class="sr-only">أعضاء الفريق الداخلي وحالة أهليتهم</caption>
-                        <thead class="border-b border-slate-200 bg-slate-50 text-slate-600">
-                            <tr><th scope="col" class="px-4 py-3 font-medium">الاسم</th><th scope="col" class="px-4 py-3 font-medium">البريد</th><th scope="col" class="px-4 py-3 font-medium">الفئة</th><th scope="col" class="px-4 py-3 font-medium">الحالة</th><th scope="col" class="px-4 py-3 font-medium">الإجراء</th></tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            <tr v-for="person in people" :key="person.public_id">
-                                <td class="px-4 py-4 font-medium text-slate-900">{{ person.name }}</td>
-                                <td class="px-4 py-4 text-slate-700" dir="ltr">{{ person.email }}</td>
-                                <td class="px-4 py-4 text-slate-700">{{ person.kind === 'founder' ? 'المؤسس' : 'موظف' }}</td>
-                                <td class="px-4 py-4"><span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">{{ statusLabel[person.status] }}</span><p v-if="person.status === 'pending'" class="mt-2 text-xs text-slate-500">بريد: {{ person.email_verified_at ? 'مؤكد' : 'معلّق' }} · مفاتيح: {{ person.passkey_count }} · أهلية: {{ person.attested_at ? 'مُقرّة' : 'معلّقة' }}</p><p v-else-if="person.status === 'active' && person.kind === 'employee'" class="mt-2 text-xs text-slate-500">مفاتيح: {{ person.passkey_count }} · استقلال العاملين: {{ person.factor_independence_attested_at ? 'مُقرّ' : 'غير مُقرّ' }}</p></td>
-                                <td class="px-4 py-4"><div v-if="person.kind === 'employee'" class="flex flex-wrap gap-2">
-                                    <button v-if="props.permissions['staff.invite'] && person.status === 'pending'" type="button" :disabled="!!busy" class="rounded-lg border border-indigo-300 px-3 py-1.5 text-xs font-medium text-indigo-800 disabled:opacity-50" @click="staffAction(person, 'resend-invitation')">إعادة رابط التهيئة</button>
-                                    <button v-if="props.permissions['staff.attest'] && person.status === 'pending' && !person.attested_at" type="button" :disabled="!person.email_verified_at || !!busy" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium disabled:opacity-50" @click="staffAction(person, 'attest')">إقرار الأهلية</button>
-                                    <button v-if="props.permissions['staff.activate'] && person.status === 'pending'" type="button" :disabled="!person.email_verified_at || !person.attested_at || person.passkey_count < 1 || !!busy" class="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-medium text-emerald-800 disabled:opacity-50" @click="staffAction(person, 'activate')">تفعيل</button>
-                                    <button v-if="props.permissions['staff.revoke'] && person.status === 'active'" type="button" :disabled="!!busy" class="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 disabled:opacity-50" @click="staffAction(person, 'revoke')">إلغاء الأهلية</button>
-                                    <button v-if="canAttestFactors && props.permissions['grant.manage'] && person.status === 'active' && person.passkey_count >= 2 && !person.factor_independence_attested_at" type="button" :disabled="!!busy" class="rounded-lg border border-indigo-300 px-3 py-1.5 text-xs font-medium text-indigo-800 disabled:opacity-50" @click="staffAction(person, 'attest-factors')">إقرار استقلال المفتاحين</button>
-                                </div></td>
-                            </tr>
-                            <tr v-if="!people.length"><td colspan="5" class="px-4 py-10 text-center text-slate-600">لا توجد سجلات موظفين متاحة.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <section v-if="props.permissions['grant.manage']" class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="grants-title">
-                <h2 id="grants-title" class="text-lg font-semibold text-slate-900">منح الأفعال الداخلية</h2>
-                <p class="mt-2 text-sm leading-6 text-slate-600">تُمنح الأفعال لموظف نشط بعينه، مع سبب مسجّل، ولا تنتقل المنحة بين أجيال الحساب أو إلى المؤسس بالدور وحده.</p>
-                <form class="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_2fr_auto] md:items-end" @submit.prevent="issueGrant">
-                    <div><label for="grant-staff" class="block text-sm font-medium text-slate-700">الموظف</label><select id="grant-staff" v-model="grant.staff" required class="mt-1 w-full rounded-lg border-slate-300 text-sm"><option value="">اختر موظفًا</option><option v-for="person in people.filter(p => p.kind === 'employee' && p.status === 'active')" :key="person.public_id" :value="person.public_id">{{ person.name }}</option></select><p v-if="grant.errors.staff" role="alert" class="mt-1 text-xs text-red-700">{{ grant.errors.staff }}</p></div>
-                    <div><label for="grant-action" class="block text-sm font-medium text-slate-700">الفعل</label><select id="grant-action" v-model="grant.action" required class="mt-1 w-full rounded-lg border-slate-300 text-sm"><option value="">اختر فعلًا</option><option v-for="action in grantableActions" :key="action" :value="action">{{ action }}</option></select><p v-if="grant.errors.action" role="alert" class="mt-1 text-xs text-red-700">{{ grant.errors.action }}</p></div>
-                    <div><label for="grant-reason" class="block text-sm font-medium text-slate-700">السبب</label><input id="grant-reason" v-model="grant.reason" required minlength="10" maxlength="128" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /><p v-if="grant.errors.reason" role="alert" class="mt-1 text-xs text-red-700">{{ grant.errors.reason }}</p></div>
-                    <button type="submit" :disabled="grant.processing" class="rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50">{{ grant.processing ? 'جارٍ المنح…' : 'منح الفعل' }}</button>
-                </form>
-                <ul class="mt-6 divide-y divide-slate-100 border-t border-slate-100">
-                    <li v-for="item in staffGrants" :key="item.id" class="flex flex-col gap-2 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-                        <div><span class="font-medium text-slate-900">{{ item.name }}</span><span class="mx-2 text-slate-500">{{ item.action }}</span><p class="mt-1 text-xs text-slate-500">{{ item.reason }}</p></div>
-                        <button type="button" :disabled="!!busy" class="self-start text-sm font-medium text-red-700 underline disabled:opacity-50" @click="revokeGrant(item.id)">سحب المنحة</button>
+        <div class="admin-administration">
+            <p v-if="actionError" role="alert" class="admin-error admin-action-error">{{ t(`admin.${actionError}`) }}</p>
+            <section class="admin-section" aria-labelledby="staff-title">
+                <header class="admin-section-heading"><div><h2 id="staff-title">{{ t('admin.staffTitle') }}</h2><p class="admin-description">{{ t('admin.staffContext') }}</p></div></header>
+                <details v-if="props.permissions['staff.invite']" class="admin-disclosure admin-form-disclosure">
+                    <summary>{{ t('admin.inviteTitle') }}<span class="admin-disclosure-hint">{{ t('admin.newEmployee') }}</span></summary>
+                    <div class="admin-disclosure-body">
+                        <p class="admin-description">{{ t('admin.inviteContext') }}</p>
+                        <form class="admin-form admin-invite-form" @submit.prevent="inviteEmployee">
+                            <div class="admin-field"><label for="staff-name">{{ t('admin.name') }}</label><input id="staff-name" v-model="invite.name" required maxlength="255" autocomplete="name" :aria-invalid="!!invite.errors.name" :aria-describedby="invite.errors.name ? 'staff-name-error' : undefined" /><p v-if="invite.errors.name" id="staff-name-error" role="alert" class="admin-error">{{ invite.errors.name }}</p></div>
+                            <div class="admin-field"><label for="staff-email">{{ t('admin.email') }}</label><input id="staff-email" v-model="invite.email" type="email" required maxlength="255" dir="ltr" autocomplete="email" :aria-invalid="!!invite.errors.email" :aria-describedby="invite.errors.email ? 'staff-email-error' : undefined" /><p v-if="invite.errors.email" id="staff-email-error" role="alert" class="admin-error">{{ invite.errors.email }}</p></div>
+                            <button type="submit" :disabled="invite.processing" class="admin-action admin-action-primary">{{ t(invite.processing ? 'admin.sending' : 'admin.sendInvite') }}</button>
+                        </form>
+                        <p v-if="invite.recentlySuccessful" role="status" class="admin-success">{{ t('admin.inviteSuccess') }}</p>
+                    </div>
+                </details>
+                <div class="admin-entity-head" aria-hidden="true"><span>{{ t('admin.identity') }}</span><span>{{ t('admin.eligibility') }}</span><span>{{ t('admin.authentication') }}</span><span>{{ t('admin.actions') }}</span></div>
+                <ul class="admin-entity-list" :aria-label="t('admin.staffList')">
+                    <li v-for="person in people" :key="person.public_id" class="admin-entity-row">
+                        <div class="admin-identity"><h3>{{ person.name }}</h3><bdi dir="ltr" class="admin-email">{{ person.email }}</bdi><span class="admin-kind">{{ t(person.kind === 'founder' ? 'admin.founder' : 'admin.employee') }}</span><details class="admin-detail"><summary>{{ t('admin.recordId') }}</summary><code dir="ltr">{{ person.public_id }}</code></details></div>
+                        <div class="admin-eligibility"><span class="admin-mobile-label">{{ t('admin.eligibility') }}</span><span class="admin-status" :class="`admin-status-${person.status}`">{{ t(`admin.status.${person.status}`) }}</span><p v-if="person.status === 'pending'" class="admin-evidence">{{ t('admin.attestation') }}: {{ t(person.attested_at ? 'admin.attested' : 'admin.pending') }}</p></div>
+                        <div class="admin-authentication"><span class="admin-mobile-label">{{ t('admin.authentication') }}</span><template v-if="person.status === 'pending'"><p class="admin-evidence">{{ t('admin.email') }}: <strong>{{ t(person.email_verified_at ? 'admin.verified' : 'admin.pending') }}</strong></p><p class="admin-evidence">{{ t('admin.passkeys') }}: <strong>{{ person.passkey_count }}</strong></p></template><template v-else-if="person.status === 'active' && person.kind === 'employee'"><p class="admin-evidence">{{ t('admin.passkeys') }}: <strong>{{ person.passkey_count }}</strong></p><p class="admin-evidence">{{ t('admin.factorIndependence') }}: <strong>{{ t(person.factor_independence_attested_at ? 'admin.attested' : 'admin.notAttested') }}</strong></p></template></div>
+                        <div class="admin-person-actions"><div v-if="person.kind === 'employee'" class="admin-actions">
+                            <button v-if="props.permissions['staff.invite'] && person.status === 'pending'" type="button" :disabled="!!busy" class="admin-action" @click="staffAction(person, 'resend-invitation')">{{ t('admin.resendInvitation') }}</button>
+                            <button v-if="props.permissions['staff.attest'] && person.status === 'pending' && !person.attested_at" type="button" :disabled="!person.email_verified_at || !!busy" class="admin-action" @click="staffAction(person, 'attest')">{{ t('admin.attest') }}</button>
+                            <button v-if="props.permissions['staff.activate'] && person.status === 'pending'" type="button" :disabled="!person.email_verified_at || !person.attested_at || person.passkey_count < 1 || !!busy" class="admin-action admin-action-primary" @click="staffAction(person, 'activate')">{{ t('admin.activate') }}</button>
+                            <button v-if="props.permissions['staff.revoke'] && person.status === 'active'" type="button" :disabled="!!busy" class="admin-action admin-action-danger" @click="staffAction(person, 'revoke')">{{ t('admin.revokeEligibility') }}</button>
+                            <button v-if="canAttestFactors && props.permissions['grant.manage'] && person.status === 'active' && person.passkey_count >= 2 && !person.factor_independence_attested_at" type="button" :disabled="!!busy" class="admin-action" @click="staffAction(person, 'attest-factors')">{{ t('admin.attestFactors') }}</button>
+                        </div></div>
                     </li>
-                    <li v-if="!staffGrants.length" class="py-4 text-sm text-slate-600">لا توجد منح بشرية نشطة.</li>
+                    <li v-if="!people.length" class="admin-empty">{{ t('admin.noStaff') }}</li>
                 </ul>
             </section>
+            <section v-if="props.permissions['grant.manage']" class="admin-section" aria-labelledby="grants-title">
+                <header class="admin-section-heading"><div><h2 id="grants-title">{{ t('admin.grantsTitle') }}</h2><p class="admin-description">{{ t('admin.grantsContext') }}</p></div></header>
+                <details class="admin-disclosure admin-form-disclosure"><summary>{{ t('admin.issueGrant') }}<span class="admin-disclosure-hint">{{ t('admin.namedEmployee') }}</span></summary><div class="admin-disclosure-body">
+                    <p class="admin-description">{{ locale === 'ar' ? 'لمراجعة أنواع النشاط، امنح «إدارة أنواع النشاط» لموظف نشط من هذا النموذج. إن لم يوجد موظف نشط، أكمل دعوته وتحقق أهليته أولًا. المنحة لا تُمنح للنفس أو لحساب مؤسس.' : 'To review business types, grant “Manage business types” to an active employee using this form. If none exists, complete their invitation and eligibility first. Grants cannot be issued to yourself or a founder account.' }}</p><form class="admin-form admin-grant-form" @submit.prevent="issueGrant">
+                        <div class="admin-field"><label for="grant-staff">{{ t('admin.employee') }}</label><select id="grant-staff" v-model="grant.staff" required :aria-invalid="!!grant.errors.staff" :aria-describedby="grant.errors.staff ? 'grant-staff-error' : undefined"><option value="">{{ t('admin.chooseStaff') }}</option><option v-for="person in people.filter(p => p.kind === 'employee' && p.status === 'active')" :key="person.public_id" :value="person.public_id">{{ person.name }}</option></select><p v-if="grant.errors.staff" id="grant-staff-error" role="alert" class="admin-error">{{ grant.errors.staff }}</p></div>
+                        <div class="admin-field"><label for="grant-action">{{ t('admin.action') }}</label><select id="grant-action" v-model="grant.action" required dir="ltr" :aria-invalid="!!grant.errors.action" :aria-describedby="grant.errors.action ? 'grant-action-error' : undefined"><option value="">{{ t('admin.chooseAction') }}</option><option v-for="action in grantableActions" :key="action" :value="action">{{ action === 'business.manage' ? (locale === 'ar' ? 'إدارة أنواع النشاط — business.manage' : 'Manage business types — business.manage') : action }}</option></select><p v-if="grant.errors.action" id="grant-action-error" role="alert" class="admin-error">{{ grant.errors.action }}</p></div>
+                        <div class="admin-field"><label for="grant-reason">{{ t('admin.reason') }}</label><input id="grant-reason" v-model="grant.reason" required minlength="10" maxlength="128" :aria-invalid="!!grant.errors.reason" :aria-describedby="grant.errors.reason ? 'grant-reason-error' : undefined" /><p v-if="grant.errors.reason" id="grant-reason-error" role="alert" class="admin-error">{{ grant.errors.reason }}</p></div>
+                        <button type="submit" :disabled="grant.processing" class="admin-action admin-action-primary">{{ t(grant.processing ? 'admin.granting' : 'admin.issueGrant') }}</button>
+                    </form>
+                </div></details>
+                <ul class="admin-grant-list"><li v-for="item in staffGrants" :key="item.id" class="admin-grant-row"><div><h3>{{ item.name }}</h3><bdi dir="ltr" class="admin-code">{{ item.action }}</bdi><p class="admin-grant-reason">{{ item.reason }}</p><details class="admin-detail"><summary>{{ t('admin.recordId') }}</summary><code dir="ltr">{{ item.public_id }}</code></details></div><button type="button" :disabled="!!busy" class="admin-action admin-action-danger" @click="revokeGrant(item.id)">{{ t('admin.revokeGrant') }}</button></li><li v-if="!staffGrants.length" class="admin-empty">{{ t('admin.noGrants') }}</li></ul>
+            </section>
+            <section v-if="providers.length" class="admin-section admin-providers" aria-labelledby="providers-title">
+                <header class="admin-section-heading"><div><h2 id="providers-title">{{ t('admin.providersTitle') }}</h2><p class="admin-description">{{ t('admin.providersContext') }}</p></div></header>
+                <Link v-if="props.permissions['service.manage']" :href="route('internal.services.index')" class="admin-text-link">{{ t('admin.manageServices') }} <span aria-hidden="true">↗</span></Link>
+                <div class="admin-provider-head" aria-hidden="true"><span>{{ t('admin.provider') }}</span><span>{{ t('admin.localApplication') }}</span><span>{{ t('admin.localNotices') }}</span></div>
+                <details v-for="provider in providers" :key="provider.key" class="admin-provider-row admin-provider-details" :aria-labelledby="`${provider.key}-operator-title`">
+                    <summary class="admin-provider-summary">
+                        <span :id="`${provider.key}-operator-title`" class="admin-provider-name"><ProviderBrand :provider="provider.key" :size="32" /><bdi dir="ltr">{{ provider.name }}</bdi></span>
+                        <span><span class="admin-mobile-label">{{ t('admin.localApplication') }}</span><span class="admin-local-state">{{ t(provider.status!.application_configured ? (['meta', 'google'].includes(provider.key) ? 'admin.technicallyConfigured' : 'admin.locallyComplete') : 'admin.incomplete') }}</span></span>
+                        <span><span class="admin-mobile-label">{{ t('admin.localNotices') }}</span><span class="admin-local-state">{{ t(provider.status!.notice_links_configured ? (['meta', 'google'].includes(provider.key) ? 'admin.technicalNotice' : 'admin.locallyComplete') : 'admin.incomplete') }}</span></span>
+                        <span class="admin-provider-trigger">{{ t('admin.configurationDetails') }}</span>
+                    </summary>
+                    <div class="admin-provider-detail-body"><p class="admin-provider-disclaimer">{{ t(`admin.providers.${provider.key}.disclaimer`) }}</p><dl class="admin-provider-definitions"><div><dt>{{ t(`admin.providers.${provider.key}.application`) }}</dt><dd>{{ t(provider.status!.application_configured ? (['meta', 'google'].includes(provider.key) ? 'admin.technicallyConfigured' : 'admin.locallyComplete') : 'admin.incomplete') }}</dd></div><div><dt>{{ t(`admin.providers.${provider.key}.notice`) }}</dt><dd>{{ t(provider.status!.notice_links_configured ? (['meta', 'google'].includes(provider.key) ? 'admin.technicalNotice' : 'admin.locallyComplete') : 'admin.incomplete') }}</dd></div></dl><p v-if="provider.key !== 'meta'" class="admin-description">{{ t(`admin.providers.${provider.key}.environment`) }}</p><ul v-if="provider.key === 'x'" class="admin-environment-names"><li v-for="name in xEnvironmentNames" :key="name"><code dir="ltr">{{ name }}</code></li></ul><p v-if="provider.key === 'x'" class="admin-description">{{ t('admin.providers.x.deferred') }}</p></div>
+                </details>
+            </section>
+            <Link v-else-if="props.permissions['service.manage']" :href="route('internal.services.index')" class="admin-text-link">{{ t('admin.manageServices') }}</Link>
         </div>
     </InternalLayout>
 </template>
+
+<style scoped>.admin-provider-name{display:flex;align-items:center;gap:10px}</style>

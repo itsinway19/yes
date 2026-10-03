@@ -50,6 +50,9 @@ class HandleInertiaRequests extends Middleware
                         (int) $request->session()->get('a001_generation', 0),
                         'service.manage',
                     ),
+                'canManageBusinessTypes' => fn () => $request->is('internal/*') && $request->user() &&
+                    app(GrantAuthority::class)->has($request->user(),
+                        (int) $request->session()->get('a001_generation', 0), 'business.manage'),
             ],
         ];
     }

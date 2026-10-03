@@ -16,10 +16,58 @@ final class GrantAuthority
 
     public const STAFF_ACTIONS = [
         'staff.view', 'staff.invite', 'staff.attest', 'staff.activate', 'staff.revoke',
-        'grant.manage', 'service.manage',
+        'grant.manage', 'service.manage', 'business.manage',
     ];
 
     private const SENSITIVE_STAFF_ACTIONS = ['grant.manage', 'service.manage'];
+
+    /** Existing fresh responsible-Owner evidence issues a narrow grant; mutation itself is grant-based. */
+    public function requestBusinessContextGrant(Request $request, int $workspaceId): void
+    {
+        $owner = DB::selectOne('SELECT * FROM builderad_source_owner_evidence(?, ?)', [
+            $workspaceId, SessionAuthority::sessionKey($request),
+        ]);
+        if (! $owner || (int) $owner->actor_id !== $request->user()->id ||
+            (int) $owner->generation !== (int) $request->session()->get('a001_generation', 0)) {
+            throw new AuthorizationException('Current responsible Owner evidence required.');
+        }
+        DB::connection('pgsql_authority')->transaction(function () use ($request, $workspaceId, $owner): void {
+            $db = DB::connection('pgsql_authority');
+            $db->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', [
+                'business.context.grant.'.$owner->actor_id.'.'.$owner->generation.'.'.$workspaceId,
+            ]);
+            $existing = $db->table('security_action_grants')->where('subject_user_id', $owner->actor_id)
+                ->where('subject_generation', $owner->generation)->where('workspace_id', $workspaceId)
+                ->where('action', 'business.context.manage')->lockForUpdate()->first();
+            // An explicitly revoked or expired grant must never be silently restored.
+            if ($existing) {
+                if ($existing->status !== 'active' || $existing->revoked_at !== null ||
+                    ($existing->expires_at !== null && ! $db->scalar('SELECT ?::timestamptz > clock_timestamp()', [$existing->expires_at]))) {
+                    throw new AuthorizationException('Business context authority was revoked or expired.');
+                }
+                return;
+            }
+            $db->table('security_action_grants')->insert([
+                'subject_user_id' => $owner->actor_id, 'subject_generation' => $owner->generation,
+                'granted_by' => $owner->actor_id, 'source' => 'business_owner_request',
+                'action' => 'business.context.manage', 'scope_kind' => 'workspace', 'workspace_id' => $workspaceId,
+                'reason' => 'explicit_business_context_authority_request', 'status' => 'active', 'version' => 1,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $db->table('security_audit_events')->insert([
+                'actor_user_id' => $owner->actor_id, 'subject_user_id' => $owner->actor_id,
+                'workspace_id' => $workspaceId, 'event' => 'business_context_granted',
+                'reason' => 'explicit_business_context_authority_request', 'new_status' => 'active',
+                'new_generation' => $owner->generation, 'occurred_at' => now(),
+            ]);
+            $current = DB::selectOne('SELECT * FROM builderad_source_owner_evidence(?, ?)', [
+                $workspaceId, SessionAuthority::sessionKey($request),
+            ]);
+            if (! $current || (int) $current->generation !== (int) $owner->generation) {
+                throw new AuthorizationException('Authority expired before grant issuance.');
+            }
+        });
+    }
 
     public const SOURCE_ACTIONS = ['source.register', 'source.manage', 'source.read', 'source.audit.recover',
         'provider.connect', 'provider.read', 'provider.revoke'];
@@ -654,7 +702,7 @@ final class GrantAuthority
         }
         if ($lifecycle->principal_class === 'advertiser') {
             $allowedAdvertiserAction = ($action === 'workspace.create' && $scope === 'platform' && $workspaceId === null) ||
-                (in_array($action, ['workspace.view', 'service.scope'], true) && $scope === 'workspace' && $workspaceId !== null);
+                (in_array($action, ['workspace.view', 'service.scope', 'business.context.manage'], true) && $scope === 'workspace' && $workspaceId !== null);
             if (! $allowedAdvertiserAction) {
                 return false;
             }

@@ -3,6 +3,8 @@
 use App\Http\Controllers\Auth\InternalAuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasskeySessionController;
 use App\Http\Controllers\CommercialController;
+use App\Http\Controllers\BusinessContextController;
+use App\Http\Controllers\InternalBusinessTypeController;
 use App\Http\Controllers\GoogleConnectionController;
 use App\Http\Controllers\GoogleReportController;
 use App\Http\Controllers\InternalAdministrationController;
@@ -25,6 +27,8 @@ use App\Http\Controllers\WorkspaceSourceController;
 use App\Http\Controllers\XConnectionController;
 use App\Http\Controllers\XReportController;
 use App\Http\Middleware\EnsureCurrentPrincipal;
+use App\Http\Middleware\EnsureBusinessContext;
+use App\Http\Middleware\RestoreBusinessAfterCallback;
 use App\Http\Middleware\EnsureFreshAuthentication;
 use App\Http\Middleware\EnsurePendingStaffEnrollment;
 use App\Http\Middleware\RequireActionGrant;
@@ -44,9 +48,18 @@ Route::get('/', function () {
 Route::post('/locale', LocaleController::class)->name('locale.update');
 Route::post('/internal/locale', LocaleController::class)->name('internal.locale.update');
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', EnsureCurrentPrincipal::class])->name('dashboard');
+Route::get('/dashboard', [BusinessContextController::class, 'entry'])
+    ->middleware(['auth', EnsureCurrentPrincipal::class])->name('dashboard');
+Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
+    Route::get('/business/start', [BusinessContextController::class, 'start'])->name('business.start');
+    Route::post('/business/start', [BusinessContextController::class, 'store'])->name('business.start.store');
+    Route::get('/workspaces/{workspace}/business', [BusinessContextController::class, 'edit'])
+        ->whereUuid('workspace')->name('workspaces.business.edit');
+    Route::post('/workspaces/{workspace}/business', [BusinessContextController::class, 'update'])
+        ->whereUuid('workspace')->name('workspaces.business.update');
+    Route::post('/workspaces/{workspace}/business/authority', [BusinessContextController::class, 'authority'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.business.authority');
+});
 
 Route::middleware(['auth', EnsurePendingStaffEnrollment::class])->group(function () {
     Route::get('/staff/onboarding', StaffOnboardingController::class)->name('staff.onboarding');
@@ -59,7 +72,7 @@ Route::middleware(['auth', EnsurePendingStaffEnrollment::class.':true'])->group(
 });
 
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
-    Route::get('/providers/x/callback', [XConnectionController::class, 'callback'])->name('providers.x.callback');
+    Route::get('/providers/x/callback', [XConnectionController::class, 'callback'])->middleware(RestoreBusinessAfterCallback::class)->name('providers.x.callback');
     Route::get('/workspaces/{workspace}/providers/x/{source}/campaigns', [XReportController::class, 'campaigns'])
         ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.x.campaigns');
     Route::get('/workspaces/{workspace}/providers/x/{source}/report', [XReportController::class, 'status'])
@@ -76,7 +89,7 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
         ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.x.select');
     Route::post('/workspaces/{workspace}/providers/x/{source}/disconnect', [XConnectionController::class, 'disconnect'])
         ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.x.disconnect');
-    Route::get('/providers/snapchat/callback', [SnapchatConnectionController::class, 'callback'])->name('providers.snapchat.callback');
+    Route::get('/providers/snapchat/callback', [SnapchatConnectionController::class, 'callback'])->middleware(RestoreBusinessAfterCallback::class)->name('providers.snapchat.callback');
     Route::get('/workspaces/{workspace}/providers/snapchat/{source}/report', [SnapchatReportController::class, 'status'])
         ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.snapchat.report.status');
     Route::post('/workspaces/{workspace}/providers/snapchat/{source}/report', [SnapchatReportController::class, 'store'])
@@ -93,8 +106,8 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
         ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.snapchat.disconnect');
     Route::post('/workspaces/{workspace}/providers/snapchat/{source}/renew', [SnapchatConnectionController::class, 'renew'])
         ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.snapchat.renew');
-    Route::get('/providers/google/callback', [GoogleConnectionController::class, 'callback'])->name('providers.google.callback');
-    Route::get('/providers/tiktok/callback', [TikTokConnectionController::class, 'callback'])->name('providers.tiktok.callback');
+    Route::get('/providers/google/callback', [GoogleConnectionController::class, 'callback'])->middleware(RestoreBusinessAfterCallback::class)->name('providers.google.callback');
+    Route::get('/providers/tiktok/callback', [TikTokConnectionController::class, 'callback'])->middleware(RestoreBusinessAfterCallback::class)->name('providers.tiktok.callback');
     Route::get('/workspaces/{workspace}/providers/tiktok/{source}/report', [TikTokReportController::class, 'status'])
         ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.tiktok.report.status');
     Route::post('/workspaces/{workspace}/providers/tiktok/{source}/report', [TikTokReportController::class, 'store'])
@@ -133,7 +146,7 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
         ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.google.disconnect');
     Route::post('/workspaces/{workspace}/providers/google/{source}/renew', [GoogleConnectionController::class, 'renew'])
         ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.google.renew');
-    Route::get('/providers/meta/callback', [MetaConnectionController::class, 'callback'])->name('providers.meta.callback');
+    Route::get('/providers/meta/callback', [MetaConnectionController::class, 'callback'])->middleware(RestoreBusinessAfterCallback::class)->name('providers.meta.callback');
     Route::get('/workspaces/{workspace}/providers/meta', [MetaConnectionController::class, 'index'])
         ->whereUuid('workspace')->name('workspaces.providers.meta.index');
     Route::get('/workspaces/{workspace}/providers/meta/discovery/{flow}', [MetaConnectionController::class, 'discovery'])
@@ -150,7 +163,7 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
         ->middleware(EnsureFreshAuthentication::class)
         ->whereUuid('workspace')->name('workspaces.reassess-owner-grant');
     Route::get('/workspaces/{workspace}', [WorkspaceController::class, 'show'])
-        ->whereUuid('workspace')->name('workspaces.show');
+        ->middleware(EnsureBusinessContext::class)->whereUuid('workspace')->name('workspaces.show');
     Route::post('/workspaces/{workspace}/services', [WorkspaceServiceController::class, 'store'])
         ->middleware(EnsureFreshAuthentication::class)
         ->whereUuid('workspace')->name('workspaces.services.store');
@@ -190,6 +203,14 @@ Route::middleware('guest:internal')->group(function () {
 });
 
 Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->group(function () {
+    Route::get('/internal/business-types', [InternalBusinessTypeController::class, 'index'])
+        ->middleware(RequireActionGrant::class.':business.manage')->name('internal.business-types.index');
+    Route::middleware([RequireActionGrant::class.':business.manage', EnsureFreshAuthentication::class])->group(function () {
+        Route::post('/internal/business-types', [InternalBusinessTypeController::class, 'store'])->name('internal.business-types.store');
+        Route::post('/internal/business-types/{type}', [InternalBusinessTypeController::class, 'update'])->whereNumber('type')->name('internal.business-types.update');
+        Route::post('/internal/business-types/{type}/guidance', [InternalBusinessTypeController::class, 'guidance'])->whereNumber('type')->name('internal.business-types.guidance');
+        Route::post('/internal/business-types/{type}/prior', [InternalBusinessTypeController::class, 'prior'])->whereNumber('type')->name('internal.business-types.prior');
+    });
     Route::post('/internal/logout', [InternalAuthenticatedSessionController::class, 'destroy'])
         ->name('internal.logout');
     Route::get('/internal/security/devices', [SecurityDevicesController::class, 'index'])
