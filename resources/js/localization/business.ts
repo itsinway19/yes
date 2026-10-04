@@ -3,6 +3,14 @@ import { usePage } from '@inertiajs/vue3';
 import { supportedLocale } from './messages';
 
 const copy = {
+    marketsQuestion: ['أين تريد الحصول على عملائك؟', 'Where do you want to get your customers?'],
+    marketsIntro: ['اختر الدول التي تريد الحصول منها على عملائك أو نتائجك.', 'Choose the countries you want your customers or outcomes to come from.'],
+    marketsUnknown: ['لم تُحدّد الأسواق بعد', 'Markets have not been declared yet'],
+    marketsSearch: ['البحث عن دولة', 'Search for a country'], marketsSearchHint: ['اسم الدولة أو رمزها', 'Country name or code'],
+    marketsSelected: ['الدول المختارة', 'Selected countries'], marketsOptions: ['الدول المتاحة للاختيار', 'Available countries'],
+    marketsRemove: ['إزالة', 'Remove'], marketsNoResults: ['لا توجد دول مطابقة للبحث.', 'No countries match your search.'],
+    marketsSave: ['حفظ الأسواق', 'Save markets'], marketsLater: ['ليس الآن', 'Not now'], marketsReview: ['إعادة التحميل والمراجعة', 'Reload and review'],
+    marketsSummary: ['الأسواق المحددة', 'Declared markets'],
     reassess: ['إعادة تقييم صلاحية المالك', 'Reassess owner authority'], reassessIntro: ['بعد تغيير البريد وتأكيده، راجع أنشطتك القائمة بدخول حديث. لا تُعاد أي منحة سُحبت أو انتهت صلاحيتها.', 'After changing and verifying your email, review existing businesses with a recent sign-in. Revoked or expired grants are not restored.'], reassessAction: ['إعادة تقييم الصلاحية', 'Reassess authority'], reassessing: ['جارٍ التقييم…', 'Reassessing…'], reassessmentError: ['تعذّرت إعادة تقييم الصلاحية. تحقّق من تسجيل الدخول الحديث وحالة النشاط.', 'Could not reassess authority. Check recent sign-in and business status.'],
     authorityIntro: ['يمكنك منح صلاحية تعديل سياق هذا النشاط بشكل صريح قبل استكماله.', 'You can explicitly authorize business context editing before completing it.'], authorizeContext: ['السماح بتعديل سياق النشاط', 'Authorize business context editing'],
     home: ['الرئيسية', 'Home'], businesses: ['أنشطتي', 'My businesses'], security: ['الأمان', 'Security'], profile: ['الحساب', 'Account'], logout: ['تسجيل الخروج', 'Sign out'], context: ['سياق النشاط', 'Business context'], skip: ['انتقل إلى المحتوى', 'Skip to content'],

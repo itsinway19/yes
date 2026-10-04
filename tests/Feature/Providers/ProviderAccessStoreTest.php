@@ -156,6 +156,50 @@ class ProviderAccessStoreTest extends TestCase
         $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
     }
 
+    public function test_provider_geography_never_populates_or_overwrites_declared_markets(): void
+    {
+        $snapshot = fn () => [(array) $this->owner()->table('workspaces')->find($this->workspaceId),
+            $this->owner()->table('business_target_markets')->where('workspace_id', $this->workspaceId)->orderBy('country_code')->get()->toArray(),
+            $this->owner()->table('business_target_market_events')->where('workspace_id', $this->workspaceId)->orderBy('id')->get()->toArray()];
+        $acceptGeography = function (ProviderScope $scope, int $generation, string $country): void {
+            $native = $this->journalObservation($scope, '10.01');
+            $observation = new AdObservation($scope, $native->campaignId, $native->window, $native->spend,
+                [...$native->nativeFacts, 'account_country' => ['value' => $country, 'unit' => 'country_code',
+                    'meaning' => 'synthetic:provider-native-account-country', 'basis' => 'PROVIDER_REPORTED']],
+                $native->provenance, $native->readAt, $native->freshUntil);
+            $result = $this->withinWorkspace(fn ($request) => app(ObservationJournal::class)->accept($request,
+                new ObservationBatch($scope, [$observation], 'COMPLETE', null, null), 'synthetic-geography',
+                (string) Str::uuid(), $generation, 1, $native->provenance, null));
+            $this->assertSame(1, $result[$generation === 0 ? 'first_observations' : 'restatements']);
+        };
+        $before = $snapshot();
+        foreach ($this->scopes as $scope) {
+            $this->withinWorkspace(fn ($request) => app(ProviderAccessStore::class)->store($request, $scope, (string) Str::uuid(), 0,
+                new ProviderCredentials(['access_token' => 'synthetic-private-token', 'account_country' => 'JO']), null, 'SYNTHETIC_AUTHORIZED', $this->evidence()));
+            $acceptGeography($scope, 0, 'JO');
+            $this->assertEquals($before, $snapshot());
+        }
+        $this->post('/workspaces/'.$this->workspace.'/business/authority',
+            ['decision' => 'authorize', 'reason' => 'complete_business_context'])->assertRedirect();
+        $this->post('/workspaces/'.$this->workspace.'/business/target-markets', ['country_codes' => ['SA', 'KW'], 'version' => 0])->assertRedirect();
+        $before = $snapshot();
+        foreach ($this->scopes as $scope) {
+            $acceptGeography($scope, 1, 'AE');
+            $this->assertEquals($before, $snapshot());
+        }
+        $this->assertSame(10, $this->owner()->table('provider_observation_entries')->count());
+        $providerTables = ['source_registry', 'provider_access', 'provider_access_events', 'provider_observation_entries', 'provider_observation_runs', 'provider_observation_streams'];
+        $providerBefore = [];
+        foreach ($providerTables as $table) {
+            $providerBefore[$table] = $this->owner()->table($table)->get()->toArray();
+        }
+        $this->post('/workspaces/'.$this->workspace.'/business/target-markets', ['country_codes' => [], 'version' => 1])->assertRedirect();
+        foreach ($providerTables as $table) {
+            $this->assertEquals($providerBefore[$table], $this->owner()->table($table)->get()->toArray(), $table);
+        }
+        $this->assertSame([], $this->owner()->table('business_target_markets')->pluck('country_code')->all());
+    }
+
     public function test_stored_tokens_do_not_bypass_current_permission_expiry_or_missing_evidence(): void
     {
         $scope = $this->scopes['meta'];

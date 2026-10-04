@@ -6,12 +6,14 @@ use App\Business\BusinessContext;
 use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\Workspace;
 use App\Security\GrantAuthority;
+use App\Security\SessionAuthority;
 use App\Security\WorkspaceAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -53,7 +55,7 @@ final class BusinessContextController
         $workspace = $this->mutate(function () use ($request, $authority, $business, $input): Workspace {
             $result = $authority->create($request, Str::squish($input['name']), 'activity-'.$input['creation_key']);
             // Continue the same canonical atomic creation transaction, using its signed selector.
-            DB::selectOne('SELECT builderad_select_workspace_context(?)', [$result['id']]);
+            DB::selectOne('SELECT builderad_business_context_begin(?,?)', [$result['id'], SessionAuthority::sessionKey($request)]);
             $workspace = Workspace::query()->findOrFail($result['id']);
             $business->write($request, $workspace, [...$input, 'version' => 0, 'name' => Str::squish($input['name'])]);
 
@@ -77,6 +79,7 @@ final class BusinessContextController
                 'workspace' => $w->only(['public_id', 'name', 'business_type_id', 'business_context_version']),
                 'types' => $business->types(), 'canManage' => $business->canManage($request, $w),
                 'canRequestAuthority' => $requestable, 'creationKey' => null, 'version' => $w->business_context_version,
+                'business' => $business->projection($request, $w), 'countryOptions' => $business->countries(),
             ]);
         }, $request);
     }
@@ -88,7 +91,7 @@ final class BusinessContextController
         if (isset($input['name'])) {
             $input['name'] = Str::squish($input['name']);
         }
-        $this->mutate(fn () => $context->run($request->user(), $workspace,
+        $this->mutate(fn () => $context->runBusinessMutation($request->user(), $workspace,
             fn (Workspace $w) => $business->write($request, $w, $input), $request));
         $destination = $request->session()->pull('business.intended.'.$workspace);
         // Destination was captured from an authorized product route; its route authorizes again on GET.
@@ -104,6 +107,53 @@ final class BusinessContextController
         $request->validate(['decision' => ['required', 'in:authorize'], 'reason' => ['required', 'in:complete_business_context']]);
         $this->mutate(fn () => $context->run($request->user(), $workspace,
             fn (Workspace $w) => $grants->requestBusinessContextGrant($request, $w->id), $request));
+
+        return redirect()->route('workspaces.business.edit', $workspace);
+    }
+
+    public function updateTargetMarkets(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): RedirectResponse
+    {
+        // Preserve JSON list/object shape before Laravel's associative decoding makes [] and {} identical.
+        if ($request->isJson()) {
+            $payload = json_decode($request->getContent());
+            if (! is_object($payload) || ! property_exists($payload, 'country_codes') || ! is_array($payload->country_codes)) {
+                throw ValidationException::withMessages(['country_codes' => app()->getLocale() === 'ar'
+                    ? 'أرسل قائمة رموز الدول، ويمكن أن تكون فارغة.' : 'Submit a list of country codes; the list may be empty.']);
+            }
+        }
+        $countries = array_column($business->countries(), 'code');
+        try {
+            $input = $request->validate([
+                'country_codes' => ['present', 'array', 'list', 'max:'.count($countries)],
+                'country_codes.*' => ['required', 'string', Rule::in($countries)],
+                'version' => ['required', 'integer', 'min:0'],
+            ]);
+        } catch (ValidationException $error) {
+            $messages = [];
+            foreach ($error->errors() as $field => $errors) {
+                $key = str_starts_with($field, 'country_codes.') ? 'country_codes' : $field;
+                $messages[$key] = array_merge($messages[$key] ?? [], $errors);
+            }
+            throw ValidationException::withMessages($messages);
+        }
+        try {
+            $context->runBusinessMutation($request->user(), $workspace,
+                fn (Workspace $w) => $business->replaceTargetMarkets($request, $w, $input['country_codes'], (int) $input['version']), $request);
+        } catch (QueryException $error) {
+            if ($error->getCode() === '42501') {
+                abort(403);
+            }
+            if ($error->getCode() === '40001') {
+                throw ValidationException::withMessages(['version' => app()->getLocale() === 'ar'
+                    ? 'تغيّر سياق النشاط. أعد تحميل الصفحة وراجع الأسواق قبل الحفظ.'
+                    : 'Business context changed. Reload and review the markets before saving.']);
+            }
+            if (in_array($error->getCode(), ['22023', '23503', '23514', '23505'], true)) {
+                throw ValidationException::withMessages(['country_codes' => app()->getLocale() === 'ar'
+                    ? 'تعذّر حفظ الأسواق. تحقّق من رموز الدول.' : 'Could not save markets. Check the country codes.']);
+            }
+            throw $error;
+        }
 
         return redirect()->route('workspaces.business.edit', $workspace);
     }

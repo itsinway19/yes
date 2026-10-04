@@ -1,0 +1,44 @@
+{
+  "IDENTITY_SOURCE": "Debian iso-codes ISO 3166-1 database, redistributed unchanged by pycountry (maintained standard-derived dataset, not an ISO-published Arabic naming source)",
+  "IDENTITY_SNAPSHOT_OR_REVISION": "pycountry/pycountry@4c6a69927a25326a69bf753671fb571bb437cd7d; repository snapshot 2026-02-18; retrieved 2026-10-04",
+  "IDENTITY_COUNT": 249,
+  "IDENTITY_DIGEST": "801ef127f0b3e6b4e971c239c9b8475caedb65c17573d84ca1b57eed72523a0e",
+  "ENGLISH_LABEL_SOURCE": "Unicode CLDR cldr-localenames-full main/en/territories.json (distinct from ISO identity naming)",
+  "ENGLISH_LABEL_REVISION": "unicode-org/cldr-json@91c267402229a59e3ef2774544f001bf959e8809 (48.2.3), 2026-09-30; retrieved 2026-10-04",
+  "ARABIC_LABEL_SOURCE": "Unicode CLDR cldr-localenames-full main/ar/territories.json; localized display metadata, no claim of ISO naming authority",
+  "ARABIC_LABEL_REVISION": "unicode-org/cldr-json@91c267402229a59e3ef2774544f001bf959e8809 (48.2.3), 2026-09-30; retrieved 2026-10-04",
+  "LOCALIZATION_DIGEST_OR_EQUIVALENT": "264bcc1dfb5267520bc0a423e556e8ed07f976a66a46104905310b353d20557a",
+  "digest_algorithm": "SHA-256",
+  "identity_serialization": "Sorted unique alpha_2 codes joined by LF with one final LF; UTF-8 without BOM; labels excluded.",
+  "localization_serialization": "Code-sorted compact JSON array; fixed key order code,name_en,name_ar; NFC source labels; one final LF; UTF-8 without BOM.",
+  "mapping": "Identity membership is exactly source 3166-1[*].alpha_2; English/Arabic labels are exact CLDR territories[code] normalized to NFC. No fallback, manual spelling, alt label or region membership.",
+  "source_hashes": {
+    "cldr-ar-territories.json": "b78c4a11a9ad8358048998bcda2eb49e205d5ab281f85991ed097af7b972c3d7",
+    "cldr-en-territories.json": "158c1d575308f7e46912edbeda435c8fe2ef5dad280798231f3a432e406b1807",
+    "iso_3166-1.json": "f01b812b57fba9f31ff621bf33e7c7570a01964dbeb5be2167e94decf538c89f",
+    "pycountry-COPYRIGHT.txt": "f4b01617064bcd9e9fe3db62ec9c6ef8d0afcc388dda58d9b2935a551d7960e4",
+    "pycountry-LICENSE.txt": "3fa39c6e18a3a4411082b64c164deae1d8f47b03a4d45304c1f0ae478626e382",
+    "pycountry-README.rst": "714321db2f858b90fa0935e1a8e5c61679bcf90f2ae555ea8981532db405ab98",
+    "unicode-LICENSE.txt": "220ba0e1c43b99530d2d5bdb892a99dca0989414f51ab695ecd90163eaa1ec3b"
+  },
+  "sources": [
+    {
+      "file": "iso_3166-1.json",
+      "url": "https://github.com/pycountry/pycountry/blob/4c6a69927a25326a69bf753671fb571bb437cd7d/src/pycountry/databases/iso3166-1.json",
+      "git_blob_sha": "ee48a43ecb73808e5acbdc839cbe17f7cc32664b",
+      "license": "LGPL-2.1-or-later; Debian data LGPL-2.1; retained COPYRIGHT/LICENSE and upstream attribution"
+    },
+    {
+      "file": "cldr-en-territories.json",
+      "url": "https://github.com/unicode-org/cldr-json/blob/91c267402229a59e3ef2774544f001bf959e8809/cldr-json/cldr-localenames-full/main/en/territories.json",
+      "git_blob_sha": "3f3a27182aee6260c3e5a4ee6ba5c8327550c199",
+      "license": "Unicode-3.0; retained copyright/permission notice"
+    },
+    {
+      "file": "cldr-ar-territories.json",
+      "url": "https://github.com/unicode-org/cldr-json/blob/91c267402229a59e3ef2774544f001bf959e8809/cldr-json/cldr-localenames-full/main/ar/territories.json",
+      "git_blob_sha": "3ae035f22293b00a7ce927162b3444012d9242f6",
+      "license": "Unicode-3.0; retained copyright/permission notice"
+    }
+  ]
+}
