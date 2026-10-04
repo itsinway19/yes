@@ -3,7 +3,9 @@
 namespace App\Providers\Ads\Google;
 
 use App\Providers\Ads\Provider;
+use App\Providers\Ads\ProviderEvidenceValidity;
 use App\Providers\Ads\ProviderReportingEvidence;
+use App\Providers\Ads\ProviderReportPrerequisites;
 use App\Providers\Ads\ProviderScope;
 use App\Security\SessionAuthority;
 use App\Sources\EffectiveCapability;
@@ -29,29 +31,13 @@ final class GoogleAccessStatus
         $axes = array_fill_keys(EffectiveCapability::AXES, 'UNKNOWN');
         if ($access === null) {
             return ['version' => 0, 'connection' => 'NOT_CONNECTED', 'native_observation' => null, 'axes' => $axes,
+                'reporting' => (new ProviderReportPrerequisites)->derive('NOT_CONNECTED', $axes),
                 'effective' => ['state' => 'UNKNOWN', 'reason' => 'connection_missing', 'last_verified_at' => null]];
         }
         $at = new DateTimeImmutable;
         $evidence = json_decode($access->verification, true, flags: JSON_THROW_ON_ERROR);
         $evidence = app(ProviderReportingEvidence::class)->applicable($scope, $evidence);
-        foreach (EffectiveCapability::AXES as $axis) {
-            $fact = $evidence[$axis] ?? null;
-            try {
-                if (! is_array($fact) || empty($fact['provenance']) || empty($fact['verified_at']) || empty($fact['valid_until'])) {
-                    continue;
-                }
-                $observed = new DateTimeImmutable($fact['verified_at']);
-                $until = new DateTimeImmutable($fact['valid_until']);
-                if ($observed > $at || $until <= $observed) {
-                    continue;
-                }
-                $state = $fact['state'] ?? 'UNKNOWN';
-                $axes[$axis] = $until <= $at ? 'STALE'
-                    : (in_array($state, ['VERIFIED', 'REVOKED', 'PARTIAL', 'FAILED', 'UNSUPPORTED', 'VERIFICATION_NEEDED'], true) ? $state : 'UNKNOWN');
-            } catch (\Exception) {
-                // Malformed proof cannot become usable permission or a healthy UI state.
-            }
-        }
+        $axes = (new ProviderEvidenceValidity)->axes($evidence, $at, EffectiveCapability::AXES);
         $connection = 'CONNECTED';
         $effective = (new EffectiveCapability)->derive('UNVERIFIED', true, $evidence, $at);
         if ($access->local_state === 'REVOKED') {
@@ -81,7 +67,8 @@ final class GoogleAccessStatus
 
         return ['version' => $access->version, 'connection' => $connection,
             'native_observation' => ['state' => $access->native_state, 'observed_at' => $access->recorded_at],
-            'axes' => $axes, 'effective' => $effective];
+            'axes' => $axes, 'effective' => $effective,
+            'reporting' => (new ProviderReportPrerequisites)->derive($connection, $axes)];
     }
 
     public function requireReport(Request $request, ProviderScope $scope): void

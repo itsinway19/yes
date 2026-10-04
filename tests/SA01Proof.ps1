@@ -1,5 +1,5 @@
 param([string]$Filter = 'CommercialScopeTest|WorkspaceIsolationTest|DatabaseAuthorityBoundaryTest|InternalAuthorityTest|OwnerGrantReassessmentTest', [switch]$Browser, [switch]$FullRegression, [switch]$TestOwnedMigration,
-    [ValidateSet('','source','target')][string]$N1DurabilityPhase = '', [string]$N1PreservationFile = '')
+    [ValidateSet('','source','target')][string]$N1DurabilityPhase = '', [string]$N1PreservationFile = '', [switch]$ResetReuseProof, [switch]$CompleteRegression, [switch]$MigrationDurabilityProof)
 
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
@@ -39,7 +39,7 @@ try {
     & "$pg/initdb.exe" -D $dataRoot -U postgres --pwfile=$pwFile --auth-host=scram-sha-256 --auth-local=scram-sha-256 --encoding=UTF8 --locale=C
     Assert-Exit 'fresh initdb'
     Add-Content -LiteralPath (Join-Path $dataRoot 'postgresql.conf') -Value "`nlisten_addresses='127.0.0.1'`nport=5433`n"
-    if ($FullRegression) {
+    if ($FullRegression -or $CompleteRegression) {
         # Bound disposable database memory on this constrained host; retain all concurrent test clients.
         Add-Content -LiteralPath (Join-Path $dataRoot 'postgresql.conf') -Value "shared_buffers='32MB'`nwork_mem='1MB'`nmaintenance_work_mem='16MB'`n"
     }
@@ -132,7 +132,18 @@ ALTER ROLE builderad_authority SET lock_timeout='3s';
         & $php artisan migrate --database=pgsql_migrations --force
         Assert-Exit 'zero-to-head full migration'
     }
-    if ($FullRegression) {
+    if ($MigrationDurabilityProof) {
+        & $php tests/Support/MigrationDurabilityProof.php
+        Assert-Exit 'fresh populated forward and repeated catalog durability'
+    } elseif ($CompleteRegression) {
+        & $php -d memory_limit=1024M artisan test --compact "--log-junit=storage/framework/testing/remediation-full.xml"
+        Assert-Exit 'single-process complete regression'
+    } elseif ($ResetReuseProof) {
+        & $php artisan test --compact --filter=DisposableResetTest
+        Assert-Exit 'populated repeated disposable reset'
+        & $php artisan test --compact --filter='BusinessFoundationTest|DisposableTestDatabaseGuardTest'
+        Assert-Exit 'independent process reuse of same disposable database'
+    } elseif ($FullRegression) {
         # Execute every PHPUnit path without filters/skips. Separate processes release test mock/session memory.
         $regressionPaths = @((Join-Path $PSScriptRoot 'Unit'))
         $regressionPaths += @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'Feature') -Directory | Sort-Object Name | ForEach-Object FullName)

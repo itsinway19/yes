@@ -45,6 +45,7 @@ use App\Providers\Ads\ProviderRequestGuard;
 use App\Providers\Ads\ProviderScope;
 use App\Providers\Ads\ReportWindow;
 use App\Providers\Ads\Snapchat\SnapchatAccessAdapter;
+use App\Providers\Ads\Snapchat\SnapchatAccessStatus;
 use App\Providers\Ads\Snapchat\SnapchatAuthorizationCoordinator;
 use App\Providers\Ads\Snapchat\SnapchatClient;
 use App\Providers\Ads\Snapchat\SnapchatOAuthClient;
@@ -53,7 +54,9 @@ use App\Providers\Ads\Snapchat\SnapchatObservationReader;
 use App\Providers\Ads\Snapchat\SnapchatPendingAccess;
 use App\Providers\Ads\Snapchat\SnapchatReadJob;
 use App\Providers\Ads\Snapchat\SnapchatRequestFailed;
+use App\Providers\Ads\TikTok\TikTokAccessStatus;
 use App\Providers\Ads\TikTok\TikTokReadJob;
+use App\Providers\Ads\X\XAccessStatus;
 use App\Providers\Ads\X\XAccountDiscovery;
 use App\Providers\Ads\X\XAsyncAcquisition;
 use App\Providers\Ads\X\XAsyncReport;
@@ -4810,6 +4813,60 @@ class ProviderAccessStoreTest extends TestCase
             $this->assertSame('x_rate_limited', $failure->reason);
         }
         $this->assertSame(['retried' => true], $fence->run(['synthetic-throttle'], $deadline, static fn () => ['retried' => true]));
+    }
+
+    public function test_common_evidence_equivalence_and_report_projection_across_all_five_native_statuses(): void
+    {
+        $at = new DateTimeImmutable;
+        $fresh = ['state' => 'VERIFIED', 'provenance' => 'synthetic:common-proof',
+            'verified_at' => $at->modify('-1 minute')->format(DATE_ATOM), 'valid_until' => $at->modify('+1 hour')->format(DATE_ATOM)];
+        $cases = [
+            'missing' => [null, 'UNKNOWN'],
+            'malformed' => [['state' => 'VERIFIED'], 'UNKNOWN'],
+            'malformed_timestamp_type' => [[...$fresh, 'verified_at' => ['unexpected']], 'UNKNOWN'],
+            'malformed_state_type' => [[...$fresh, 'state' => ['unexpected']], 'UNKNOWN'],
+            'invalid_date' => [[...$fresh, 'verified_at' => 'unparseable timestamp'], 'UNKNOWN'],
+            'future_observation' => [[...$fresh, 'verified_at' => $at->modify('+1 minute')->format(DATE_ATOM)], 'UNKNOWN'],
+            'invalid_order' => [[...$fresh, 'valid_until' => $fresh['verified_at']], 'UNKNOWN'],
+            'expired' => [[...$fresh, 'verified_at' => $at->modify('-2 hours')->format(DATE_ATOM), 'valid_until' => $at->modify('-1 hour')->format(DATE_ATOM)], 'STALE'],
+            'stale_state' => [[...$fresh, 'state' => 'STALE'], 'UNKNOWN'],
+            'fresh' => [$fresh, 'VERIFIED'],
+            'denied' => [[...$fresh, 'state' => 'FAILED'], 'FAILED'],
+            'revoked' => [[...$fresh, 'state' => 'REVOKED'], 'REVOKED'],
+            'nonaccepted' => [[...$fresh, 'state' => 'DENIED'], 'UNKNOWN'],
+        ];
+        foreach ($this->scopes as $scope) {
+            $this->store($scope, (string) Str::uuid());
+            $status = match ($scope->provider) {
+                Provider::Google => new GoogleAccessStatus,
+                Provider::Meta => new MetaAccessStatus,
+                Provider::TikTok => new TikTokAccessStatus,
+                Provider::Snapchat => new SnapchatAccessStatus,
+                Provider::X => new XAccessStatus,
+            };
+            foreach ($cases as $case => [$fact, $expected]) {
+                $facts = array_fill_keys(EffectiveCapability::AXES, $fact);
+                $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->update(['verification' => json_encode($facts, JSON_THROW_ON_ERROR)]);
+                $snapshot = $this->withinWorkspace(fn ($r) => $status->snapshot($r, $scope));
+                foreach (EffectiveCapability::AXES as $axis) {
+                    $this->assertSame($expected, $snapshot['axes'][$axis], $scope->provider->value.':'.$case.':'.$axis);
+                }
+                $this->assertSame($case === 'fresh', $snapshot['reporting']['can_report']);
+                $this->assertSame($expected === 'VERIFIED' ? 'READY' : $expected, $snapshot['effective']['state']);
+            }
+            $facts = array_fill_keys(EffectiveCapability::AXES, $fresh);
+            $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->update(['verification' => json_encode($facts, JSON_THROW_ON_ERROR)]);
+            $grants = $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.read');
+            $this->assertSame(1, $grants->update(['status' => 'revoked', 'revoked_at' => now()]));
+            $snapshot = $this->withinWorkspace(fn ($r) => $status->snapshot($r, $scope));
+            $this->assertTrue($snapshot['reporting']['can_report']);
+            $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1)), '42501');
+            $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->revoke($r, $scope, (string) Str::uuid(), 1));
+            $snapshot = $this->withinWorkspace(fn ($r) => $status->snapshot($r, $scope));
+            $this->assertSame('REVOKED', $snapshot['axes']['credential']);
+            $this->assertFalse($snapshot['reporting']['can_report']);
+            $this->assertSame('local_access_revoked', $snapshot['effective']['reason']);
+        }
     }
 
     private function withinWorkspace(callable $callback): mixed

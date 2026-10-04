@@ -15,6 +15,7 @@ use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use RuntimeException;
 use Symfony\Component\Process\Process;
+use Tests\Support\RowLockReadiness;
 use Tests\TestCase;
 
 class SourceRegistryTest extends TestCase
@@ -355,7 +356,7 @@ class SourceRegistryTest extends TestCase
         $holder->setTimeout(10);
         $holder->start();
         try {
-            $holder->waitUntil(fn ($type, $text) => str_contains($text, 'LOCK_READY'));
+            RowLockReadiness::await($holder);
             $this->owner()->table('security_action_grants')->where('scope_kind', 'source')->where('action', 'source.manage')
                 ->update(['expires_at' => DB::raw("clock_timestamp()+interval '2 seconds'")]);
             $this->command($this->transition('rename', 1, ['label' => 'Must roll back']))->assertForbidden();
@@ -687,7 +688,7 @@ class SourceRegistryTest extends TestCase
         $holder->setTimeout(40);
         $holder->start();
         try {
-            $holder->waitUntil(fn ($type, $text) => str_contains($text, 'LOCK_READY'));
+            RowLockReadiness::await($holder);
             $effect();
             $holder->wait();
             $this->assertTrue($holder->isSuccessful(), $holder->getErrorOutput());
