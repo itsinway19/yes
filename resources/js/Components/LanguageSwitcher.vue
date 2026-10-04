@@ -4,7 +4,7 @@ import { router, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import { otherLocale, supportedLocale } from '@/localization/messages';
 
-const props = defineProps<{ routeName: string; disabled?: boolean }>();
+const props = defineProps<{ routeName: string; disabled?: boolean; preserveState?: boolean }>();
 const page = usePage();
 const { t } = useI18n({ useScope: 'global' });
 const locale = computed(() => supportedLocale(page.props.locale));
@@ -16,7 +16,7 @@ function choose() {
     const destination = route(props.routeName);
     switching.value = true;
     router.post(destination, { locale: targetLocale.value }, {
-        preserveState: false,
+        preserveState: props.preserveState ?? false,
         preserveScroll: true,
         onFinish: () => { switching.value = false; },
     });

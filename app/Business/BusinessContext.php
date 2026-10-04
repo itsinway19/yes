@@ -11,6 +11,19 @@ use Illuminate\Support\Facades\DB;
 
 final class BusinessContext
 {
+    public function countries(): array
+    {
+        return DB::table('country_references')->orderByRaw('code COLLATE "C"')->get(['code', 'name_ar', 'name_en'])
+            ->map(fn ($row) => (array) $row)->all();
+    }
+
+    public function replaceTargetMarkets(Request $request, Workspace $workspace, array $codes, int $version): int
+    {
+        return (int) DB::scalar('SELECT builderad_business_target_markets_write(?,?,ARRAY(SELECT jsonb_array_elements_text(?::jsonb)),?)', [
+            $workspace->id, SessionAuthority::sessionKey($request), json_encode($codes, JSON_THROW_ON_ERROR), $version,
+        ]);
+    }
+
     public function types(): array
     {
         return DB::table('business_types')->orderBy('id')->get(['id', 'key', 'name_ar', 'name_en', 'active', 'version'])
@@ -36,7 +49,12 @@ final class BusinessContext
         $type = $workspace->business_type_id ? DB::table('business_types')->where('id', $workspace->business_type_id)
             ->first(['id', 'key', 'name_ar', 'name_en', 'active']) : null;
 
-        return ['type' => $type, 'version' => $workspace->business_context_version, 'canManage' => $this->canManage($request, $workspace)];
+        $markets = DB::table('business_target_markets as m')->join('country_references as c', 'c.code', '=', 'm.country_code')
+            ->where('m.workspace_id', $workspace->id)->orderByRaw('c.code COLLATE "C"')->get(['c.code', 'c.name_ar', 'c.name_en'])
+            ->map(fn ($row) => (array) $row)->all();
+
+        return ['type' => $type, 'version' => $workspace->business_context_version, 'canManage' => $this->canManage($request, $workspace),
+            'targetMarketsDeclared' => $markets !== [], 'targetMarkets' => $markets];
     }
 
     public function guidance(Workspace $workspace): array

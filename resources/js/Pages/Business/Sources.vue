@@ -14,7 +14,7 @@ import XConnectionPanel from '../Workspaces/XConnectionPanel.vue';
 type Guidance = { provider: string; label: string; priority: number; rationale: string | null };
 const props = defineProps<{
     workspace: { public_id: string; name: string; slug: string };
-    business: { type: { id: number; key: string; name_ar: string; name_en: string; active: boolean } | null; version: number; canManage: boolean };
+    business: { type: { id: number; key: string; name_ar: string; name_en: string; active: boolean } | null; version: number; canManage: boolean; targetMarketsDeclared: boolean; targetMarkets: { code: string; name_ar: string; name_en: string }[] };
     guidance: { sources: Guidance[]; priors: { id: number; provider: string; product: string; label: string; rationale: string; applicability: string; limits: string; basis: string }[] };
     canRequestSourceAuthority: boolean; canManageServices: boolean; sourceCandidateId: string;
     sources: InstanceType<typeof SourceRegistryPanel>['$props']['sources'];
@@ -82,6 +82,7 @@ function revokeService(service: string) { busy.value = service; error.value = ''
     <Head :title="`${workspace.name} — ${t('sources')}`" /><AdvertiserLayout :business-name="workspace.name" :workspace-id="workspace.public_id">
         <header class="source-heading"><div><p class="biz-eyebrow">{{ t('sources') }}</p><h1>{{ c('اربط منصاتك', 'Connect your platforms') }}</h1><p class="biz-lead">{{ c('اختر المنصة التي تستخدمها، وتعرّف على ما يمكنها توفيره لنشاطك.', 'Choose a platform you use and see what it can provide for your business.') }}</p></div></header>
         <div class="source-business"><div><span>{{ c('نشاطك', 'Your business') }}</span><strong>{{ workspace.name }}</strong><span class="source-business-type">{{ localized(business.type) }}</span></div><Link v-if="business.canManage" :href="route('workspaces.business.edit', workspace.public_id)" class="biz-link">{{ c('تعديل النشاط', 'Edit business') }}</Link></div>
+        <p class="biz-lead"><span>{{ t('marketsSummary') }}: </span><template v-if="business.targetMarketsDeclared"><span v-for="(country, index) in business.targetMarkets" :key="country.code">{{ index ? '، ' : '' }}{{ localized(country) }}</span></template><span v-else>{{ t('marketsUnknown') }}</span></p>
         <section aria-labelledby="source-collection-title" class="source-collection">
             <div class="source-collection-heading"><h2 id="source-collection-title">{{ c('أين تعلن؟', 'Where do you advertise?') }}</h2><p>{{ c('ابدأ بما تستخدمه بالفعل. يمكنك إضافة مصادر أخرى لاحقًا.', 'Start with what you already use. You can add other sources later.') }}</p></div>
             <div ref="sourceGrid" class="source-grid"><article v-for="source in ordered" :key="source.provider" class="source-tile" :data-provider="keyFor(source.provider)">

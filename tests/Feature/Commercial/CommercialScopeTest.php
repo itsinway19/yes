@@ -5,6 +5,7 @@ namespace Tests\Feature\Commercial;
 use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
 use App\Security\CommercialAuditCustody;
+use App\Security\GrantAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -77,6 +78,42 @@ class CommercialScopeTest extends TestCase
                 ? ['denomination_code' => 'USD'] : ($table === 'commercial_market_assignments' ? ['denomination_code' => 'USD'] : ['reason_code' => 'rewrite'])), '23514');
         }
         $this->get('/internal/commercial')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Internal/Commercial')->has('markets', 2)->has('configurations', 4));
+    }
+
+    public function test_commercial_country_never_populates_or_overwrites_declared_markets(): void
+    {
+        foreach ([[], ['SA', 'AE']] as $index => $codes) {
+            $advertiser = User::factory()->create();
+            app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($advertiser, 1);
+            $this->actingAs($advertiser)->post('/workspaces', ['name' => 'DTM independent Commercial', 'slug' => 'commercial-dtm-'.$index])->assertRedirect();
+            $workspace = $this->owner()->table('workspaces')->where('slug', 'commercial-dtm-'.$index)->first();
+            if ($codes !== []) {
+                $this->post('/workspaces/'.$workspace->public_id.'/business/target-markets', ['country_codes' => $codes, 'version' => 0])->assertRedirect();
+            }
+            $snapshot = function () use ($workspace): array {
+                return [(array) $this->owner()->table('workspaces')->find($workspace->id),
+                    $this->owner()->table('business_target_markets')->where('workspace_id', $workspace->id)->orderBy('country_code')->get()->toArray(),
+                    $this->owner()->table('business_target_market_events')->where('workspace_id', $workspace->id)->orderBy('id')->get()->toArray()];
+            };
+            $before = $snapshot();
+            $this->actingAsInternal($this->operator)->withCredentials();
+            $market = $this->market('Synthetic Jordan', 'JOD');
+            $input = $this->registration($market, $workspace->public_id);
+            $this->postJson('/internal/commercial/registrations', $input)->assertOk();
+            $this->assertSame($market['market'], $this->owner()->table('commercial_market_assignments')->where('scope_id', $input['scope_id'])->value('market_id'));
+            $this->assertEquals($before, $snapshot());
+            $commercialTables = ['commercial_scopes', 'commercial_markets', 'commercial_market_assignments', 'commercial_market_configuration_versions', 'commercial_catalog_references'];
+            $commercialBefore = [];
+            foreach ($commercialTables as $table) {
+                $commercialBefore[$table] = $this->owner()->table($table)->get()->toArray();
+            }
+            $this->actingAs($advertiser)->post('/workspaces/'.$workspace->public_id.'/business/target-markets',
+                ['country_codes' => [], 'version' => $codes === [] ? 0 : 1])->assertRedirect();
+            foreach ($commercialTables as $table) {
+                $this->assertEquals($commercialBefore[$table], $this->owner()->table($table)->get()->toArray(), $table);
+            }
+            $this->assertSame(0, $this->owner()->table('business_target_markets')->where('workspace_id', $workspace->id)->count());
+        }
     }
 
     public function test_non_ecommerce_service_reference_uses_the_same_commercial_foundation(): void

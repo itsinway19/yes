@@ -26,6 +26,16 @@ final class WorkspaceContext
 
     public function run(User $principal, string $workspacePublicId, Closure $callback, Request $request): mixed
     {
+        return $this->execute($principal, $workspacePublicId, $callback, $request, false);
+    }
+
+    public function runBusinessMutation(User $principal, string $workspacePublicId, Closure $callback, Request $request): mixed
+    {
+        return $this->execute($principal, $workspacePublicId, $callback, $request, true);
+    }
+
+    private function execute(User $principal, string $workspacePublicId, Closure $callback, Request $request, bool $businessMutation): mixed
+    {
         $connection = DB::connection();
 
         if ($connection->transactionLevel() !== 0) {
@@ -37,7 +47,7 @@ final class WorkspaceContext
             throw new AuthorizationException('An active workspace membership is required.');
         }
 
-        return $connection->transaction(function () use ($connection, $principal, $workspacePublicId, $callback, $request) {
+        return $connection->transaction(function () use ($connection, $principal, $workspacePublicId, $callback, $request, $businessMutation) {
             $generation = (int) $request->session()->get('a001_generation', 0);
             if (! $this->lifecycles->isCurrent($principal, $generation)) {
                 throw new AuthorizationException('A current principal is required.');
@@ -65,7 +75,11 @@ final class WorkspaceContext
             }
 
             try {
-                $connection->selectOne('SELECT builderad_select_workspace_context(?)', [$workspace->getKey()]);
+                if ($businessMutation) {
+                    $connection->selectOne('SELECT builderad_business_context_begin(?,?)', [$workspace->getKey(), SessionAuthority::sessionKey($request)]);
+                } else {
+                    $connection->selectOne('SELECT builderad_select_workspace_context(?)', [$workspace->getKey()]);
+                }
             } catch (QueryException $exception) {
                 if ($exception->getCode() !== '42501') {
                     throw $exception;

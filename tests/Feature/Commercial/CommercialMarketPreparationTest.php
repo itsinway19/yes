@@ -325,14 +325,22 @@ class CommercialMarketPreparationTest extends TestCase
         foreach ([$first, $second] as $process) {
             $process->setTimeout(20);
         }
+        $waitForOutput = function (Process $process, string $marker): void {
+            // On Windows, Process status polling may already have buffered the marker.
+            while (! str_contains($process->getOutput(), $marker) && $process->isRunning()) {
+                $process->checkTimeout();
+                usleep(1000);
+            }
+            $this->assertStringContainsString($marker, $process->getOutput(), $process->getErrorOutput());
+        };
         try {
             $first->start();
-            $first->waitUntil(fn ($type, $out) => str_contains($out, 'PID='));
             $second->start();
-            $second->waitUntil(fn ($type, $out) => str_contains($out, 'PID='));
+            $waitForOutput($first, 'PID=');
+            $waitForOutput($second, 'PID=');
             file_put_contents($release.'-hold-start', 'start');
-            $first->waitUntil(fn ($type, $out) => str_contains($out, 'INSERT_READY'));
-            $this->assertTrue($first->isRunning(), $first->getErrorOutput());
+            $waitForOutput($first, 'INSERT_READY');
+            $this->assertTrue($first->isRunning(), $first->getOutput().' / '.$first->getErrorOutput());
             file_put_contents($release.'-race-start', 'start');
             preg_match('/PID=(\d+)/', $second->getOutput(), $match);
             $this->assertNotEmpty($match);
