@@ -5,7 +5,7 @@ import { useProviderPresentation, type ProviderSummary } from '@/Components/Busi
 import ProviderReportRequest from './ProviderReportRequest.vue';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
-type Access = { version: number; connection: string; axes?: Record<string, string> };
+type Access = { reporting?: { can_report: boolean; why_not: string | null }; version: number; connection: string; axes?: Record<string, string> };
 type Connection = { source_id: string; label: string; declared_account_id: string; access: Access };
 type Snapshot = { availability: string; connections: Connection[]; connect_intent: string | null; notice: { privacy_url: string } | null };
 type Account = { account_id: string; label: string; selection_handle: string };
@@ -143,7 +143,7 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
                     <p class="font-medium">{{ connection.label }}</p><p dir="ltr" class="text-xs text-slate-500">{{ connection.declared_account_id }}</p>
                     <p class="mt-2 text-sm text-slate-600">{{ stateLabel(connection.access.connection) }}</p>
                     <ProviderReportRequest provider="x" :workspace-id="workspaceId" :source-id="connection.source_id" :version="connection.access.version"
-                        :allowed="canManage && connection.access.connection === 'CONNECTED' && ['provider_support', 'provider_permission', 'credential', 'privacy_purpose'].every(axis => connection.access.axes?.[axis] === 'VERIFIED')" />
+                        :allowed="canManage && connection.access.reporting?.can_report === true" />
                     <button v-if="canManage && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED'" type="button" :disabled="busy" @click="confirming = connection.source_id" class="mt-3 text-sm text-red-700 underline">فصل المصدر محليًا</button>
                     <div v-if="confirming === connection.source_id" class="mt-3 rounded-lg bg-slate-50 p-4 text-sm leading-7"><p>سيُفصل هذا المصدر وتُزال بيانات تفويضه المحلية. لا يُلغى تفويض X ولا الربط بالمصادر الأخرى.</p><button type="button" :disabled="busy" @click="disconnect(connection)" class="me-4 text-red-700 underline">تأكيد الفصل المحلي</button><button type="button" :disabled="busy" @click="confirming = null" class="text-slate-600 underline">إلغاء</button></div>
                 </li>

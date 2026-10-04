@@ -6,6 +6,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import ProviderReportRequest from './ProviderReportRequest.vue';
 
 type Access = {
+    reporting?: { can_report: boolean; why_not: string | null };
     version: number;
     connection: string;
     native_observation: { state?: string; observed_at?: string } | null;
@@ -268,7 +269,7 @@ onBeforeUnmount(() => { alive = false; abort.abort(); });
                             </div>
                             <p class="mt-3 text-sm leading-7 text-slate-600">{{ readiness(source.access) }}</p>
                             <ProviderReportRequest :workspace-id="workspaceId" :source-id="source.source_id" :version="source.access.version" provider="meta"
-                                :allowed="source.access.connection === 'CONNECTED' && ['provider_support', 'provider_permission', 'credential', 'privacy_purpose'].every(axis => source.access.axes[axis] === 'VERIFIED')" />
+                                :allowed="source.access.reporting?.can_report === true" />
                             <button v-if="canManage && source.access.version > 0 && source.access.connection !== 'LOCALLY_DISCONNECTED'" type="button" :disabled="!!busy || !!disconnect || !!selectionRetry" class="mt-3 rounded px-1 py-1 text-xs font-semibold text-red-700 underline underline-offset-4 hover:text-red-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-700 disabled:opacity-50" @click="prepareDisconnect(source)">فصل الوصول المحلي</button>
                         </li>
                     </ul>

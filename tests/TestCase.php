@@ -7,10 +7,10 @@ use App\Security\SessionAuthority;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Tests\Support\DisposableDatabaseReset;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -72,7 +72,7 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-        // This check precedes both migrate:fresh and every fixture TRUNCATE,
+        // This check precedes both disposable reset and every fixture TRUNCATE,
         // including when PHPUnit is invoked without the PowerShell runner.
         app(DisposableTestDatabaseGuard::class)->assertSafe();
 
@@ -80,10 +80,7 @@ abstract class TestCase extends BaseTestCase
         Http::fake(['api.pwnedpasswords.com/*' => Http::response(str_repeat('F', 35).":0\n", 200)]);
 
         if (! self::$databasePrepared) {
-            Artisan::call('migrate:fresh', [
-                '--database' => 'pgsql_migrations',
-                '--force' => true,
-            ]);
+            app(DisposableDatabaseReset::class)->install();
 
             self::$databasePrepared = true;
         }

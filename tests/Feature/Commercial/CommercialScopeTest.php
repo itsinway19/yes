@@ -12,6 +12,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Symfony\Component\Process\Process;
+use Tests\Support\RowLockReadiness;
 use Tests\TestCase;
 
 class CommercialScopeTest extends TestCase
@@ -621,6 +622,46 @@ class CommercialScopeTest extends TestCase
         }
     }
 
+    public function test_recovery_expiry_after_delivery_wait_rolls_back_local_state_but_retains_custody(): void
+    {
+        $sa = $this->market('Synthetic recovery expiry', 'SAR');
+        $input = $this->registration($sa);
+        $this->postJson('/internal/commercial/registrations', $input)->assertOk();
+        $origin = $this->owner()->table('commercial_audit_obligations')->where('command_id', $input['command_id'])->first();
+        $grant = $this->owner()->table('security_action_grants')->where('subject_user_id', $this->operator->id)
+            ->where('commercial_target_id', $input['scope_id'])->where('action', 'RetryOrRecoverExistingAuditDelivery');
+        $grantId = (int) $grant->value('id');
+        $this->assertGreaterThan(0, $grantId);
+        $this->assertSame(1, $grant->update(['expires_at' => DB::raw("clock_timestamp() + interval '10 seconds'")]));
+        $before = $this->owner()->table('commercial_audit_delivery')->where('obligation_id', $origin->id)->first();
+        $consumer = DB::connection('pgsql');
+        $consumer->statement("SET lock_timeout = '20s'");
+        try {
+            $holder = $this->blockingHolder('SELECT 1 FROM commercial_audit_delivery WHERE obligation_id = ? FOR UPDATE',
+                [$origin->id], 'pgsql', $grantId);
+            try {
+                $this->postJson('/internal/commercial/audit/'.$origin->id.'/recover')->assertForbidden();
+            } finally {
+                $holder->wait();
+                $this->assertTrue($holder->isSuccessful(), $holder->getErrorOutput());
+                $this->assertMatchesRegularExpression('/WAIT_OBSERVED.*EXPIRY_OBSERVED/s', $holder->getOutput());
+            }
+        } finally {
+            $consumer->statement('RESET lock_timeout');
+        }
+        $this->assertEquals($before, $this->owner()->table('commercial_audit_delivery')->where('obligation_id', $origin->id)->first());
+        $custody = $this->owner()->table('security_commercial_audit_custody')->where('obligation_id', $origin->id)->first();
+        $this->assertNotNull($custody);
+        $this->assertTrue((bool) $this->owner()->scalar('SELECT expires_at <= clock_timestamp() FROM security_action_grants WHERE id = ?', [$grantId]));
+        $grant->update(['expires_at' => null]);
+        $this->postJson('/internal/commercial/audit/'.$origin->id.'/recover')->assertOk()->assertJsonPath('acknowledgment_id', $custody->acknowledgment_id);
+        $this->postJson('/internal/commercial/audit/'.$origin->id.'/recover')->assertOk()->assertJsonPath('acknowledgment_id', $custody->acknowledgment_id);
+        $this->assertSame(1, $this->owner()->table('commercial_audit_delivery')->where('obligation_id', $origin->id)->value('attempts'));
+        $grant->update(['status' => 'revoked', 'revoked_at' => now()]);
+        $this->postJson('/internal/commercial/audit/'.$origin->id.'/recover')->assertForbidden();
+        $this->assertSame(1, $this->owner()->table('security_commercial_audit_custody')->where('obligation_id', $origin->id)->count());
+    }
+
     private function registerSql(array $input): mixed
     {
         return DB::scalar('SELECT builderad_register_commercial_scope(?,?,?,?,?,?,?,?)', [
@@ -682,7 +723,7 @@ class CommercialScopeTest extends TestCase
             (string) ($expiryGrantId ?? 0)]);
         $holder->setTimeout($expiryGrantId === null ? 10 : 30);
         $holder->start();
-        $holder->waitUntil(fn ($type, $output) => str_contains($output, 'LOCK_READY'));
+        RowLockReadiness::await($holder);
         $this->assertTrue($holder->isRunning(), $holder->getErrorOutput());
 
         return $holder;

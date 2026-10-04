@@ -7,6 +7,7 @@
     },
     "type": "module",
     "scripts": {
+        "test": "node --test tests/password-generator.test.mjs tests/passkey-ceremony.test.mjs tests/localization.test.mjs tests/commercial-operator.test.mjs tests/provider-report-interaction.test.mjs tests/source-capability-ui.test.mjs tests/source-registry-interaction.test.mjs",
         "build": "vue-tsc && vite build",
         "dev": "vite",
         "test:password": "node --test tests/password-generator.test.mjs",

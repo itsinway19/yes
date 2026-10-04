@@ -164,7 +164,7 @@ final class ProviderReportingEvidence
 
             return $verified->format(DATE_ATOM) === preg_replace('/Z$/D', '+00:00', $fact['verified_at'])
                 && $until->format(DATE_ATOM) === preg_replace('/Z$/D', '+00:00', $fact['valid_until'])
-                && $verified <= $at && $until > $at && $until > $verified;
+                && (new ProviderEvidenceValidity)->classify([...$fact, 'state' => 'VERIFIED'], $at)->state === 'VERIFIED';
         } catch (\Throwable) {
             return false;
         }

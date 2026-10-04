@@ -26,8 +26,7 @@ export const usePage = () => ({ props: globalThis.__bb1Page });`).toString('base
 const http = 'data:text/javascript;base64,' + Buffer.from(`export default {
 post: (...args) => { globalThis.__bb1Transport.requests.push(args); return globalThis.__bb1Transport.send(...args); },
 isAxiosError: e => e.isAxiosError === true };`).toString('base64');
-async function compile(name, replacements = {}) {
-    const filename = new URL('../resources/js/Pages/Workspaces/' + name + '.vue', import.meta.url);
+async function compile(name, replacements = {}, filename = new URL('../resources/js/Pages/Workspaces/' + name + '.vue', import.meta.url)) {
     const { descriptor } = parse(await readFile(filename, 'utf8'));
     const script = compileScript(descriptor, { id: 'bb1-' + name, inlineTemplate: true });
     let output = ts.transpileModule(script.content, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
@@ -40,7 +39,9 @@ async function compile(name, replacements = {}) {
 }
 const declaration = await compile('DeclareSourceScope');
 const status = await compile('SourceCapabilityStatus');
-const panel = await compile('SourceRegistryPanel', { './DeclareSourceScope.vue': declaration.url, './SourceCapabilityStatus.vue': status.url });
+const brand = await compile('ProviderBrand', {}, new URL('../resources/js/Components/ProviderBrand.vue', import.meta.url));
+const panel = await compile('SourceRegistryPanel', { './DeclareSourceScope.vue': declaration.url, './SourceCapabilityStatus.vue': status.url,
+    '@/Components/ProviderBrand.vue': brand.url });
 
 function element(tag, text = '') {
     return { tag, text, children: [], props: {}, listeners: {}, parent: null, value: '', multiple: false, selected: false,

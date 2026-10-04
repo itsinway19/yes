@@ -2,6 +2,7 @@
 
 namespace App\Sources;
 
+use App\Providers\Ads\ProviderEvidenceValidity;
 use DateTimeImmutable;
 
 /** No assertion from a browser is accepted as provider evidence by BB1. */
@@ -19,38 +20,15 @@ final class EffectiveCapability
         }
         $verifiedAt = null;
         $blocked = [];
+        $classifier = new ProviderEvidenceValidity;
         foreach (self::AXES as $axis) {
-            $fact = $evidence[$axis] ?? null;
-            if (! is_array($fact) || empty($fact['provenance']) || empty($fact['verified_at']) || empty($fact['valid_until'])) {
-                $blocked[] = $this->result('UNKNOWN', $axis.'_unverified');
+            $classification = $classifier->classify($evidence[$axis] ?? null, $at);
+            if ($classification->state !== 'VERIFIED') {
+                $blocked[] = $this->result($classification->state, $axis.'_'.$classification->reason, $classification->observedAt?->format(DATE_ATOM));
 
                 continue;
             }
-            try {
-                $observed = new DateTimeImmutable($fact['verified_at']);
-                $expires = new DateTimeImmutable($fact['valid_until']);
-            } catch (\Exception) {
-                $blocked[] = $this->result('UNKNOWN', $axis.'_invalid_evidence');
-
-                continue;
-            }
-            if ($observed > $at || $expires <= $observed) {
-                $blocked[] = $this->result('UNKNOWN', $axis.'_invalid_evidence');
-
-                continue;
-            }
-            if ($expires <= $at) {
-                $blocked[] = $this->result('STALE', $axis.'_expired', $observed->format(DATE_ATOM));
-
-                continue;
-            }
-            $state = $fact['state'] ?? 'UNKNOWN';
-            if ($state !== 'VERIFIED') {
-                $blocked[] = $this->result(in_array($state, ['REVOKED', 'PARTIAL', 'FAILED', 'UNSUPPORTED', 'VERIFICATION_NEEDED'], true)
-                    ? $state : 'UNKNOWN', $axis.'_'.strtolower($state), $observed->format(DATE_ATOM));
-
-                continue;
-            }
+            $observed = $classification->observedAt;
             // Oldest relevant verification bounds the aggregate claim.
             $verifiedAt = $verifiedAt === null || $observed < $verifiedAt ? $observed : $verifiedAt;
         }

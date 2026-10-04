@@ -5,7 +5,7 @@ import { useProviderPresentation, type ProviderSummary } from '@/Components/Busi
 import ProviderReportRequest from './ProviderReportRequest.vue';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
-type Access = { version: number; connection: string; effective: { state: string }; axes?: Record<string, string> };
+type Access = { reporting?: { can_report: boolean; why_not: string | null }; version: number; connection: string; effective: { state: string }; axes?: Record<string, string> };
 type Connection = { source_id: string; label: string; declared_account_id: string; access: Access };
 type Snapshot = { connections: Connection[]; availability: string; connect_intent: string | null; notice: { privacy_url: string; revision: string } | null };
 type Account = { account_id: string; label: string; existing_source_label: string | null; selection_handle: string | null; hierarchy_handle: string | null; manager: boolean | null };
@@ -218,7 +218,7 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
                     <p dir="ltr" class="mt-1 text-xs text-slate-500">{{ connection.declared_account_id }}</p>
                     <p class="mt-2 text-sm text-slate-600">{{ connectionLabel(connection.access.connection) }}</p>
                     <ProviderReportRequest provider="google" :workspace-id="workspaceId" :source-id="connection.source_id" :version="connection.access.version"
-                        :allowed="canManage && connection.access.connection === 'CONNECTED' && ['provider_support', 'provider_permission', 'credential', 'privacy_purpose'].every(axis => connection.access.axes?.[axis] === 'VERIFIED')" />
+                        :allowed="canManage && connection.access.reporting?.can_report === true" />
                     <button v-if="canManage && snapshot.availability === 'CONNECT_AVAILABLE' && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED'" type="button" :disabled="busy" @click="renew(connection)" class="mt-3 me-4 text-sm font-medium text-indigo-700 underline disabled:opacity-50">تجديد الربط والتحقق من الحساب</button>
                     <button v-if="canManage && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED' && disconnectTarget !== connection.source_id" type="button" :disabled="busy" @click="disconnectTarget = connection.source_id" class="mt-3 text-sm font-medium text-red-700 underline disabled:opacity-50">فصل الحساب محليًا</button>
                     <div v-if="disconnectTarget === connection.source_id" class="mt-3 rounded-lg bg-slate-50 p-4 text-sm leading-7 text-slate-700">
