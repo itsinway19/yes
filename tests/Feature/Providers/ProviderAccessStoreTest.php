@@ -329,9 +329,26 @@ class ProviderAccessStoreTest extends TestCase
         PHP;
         $holder = new Process([PHP_BINARY, '-r', $code, $scope->sourceId, (string) $pid], base_path());
         $holder->setTimeout(10);
-        $holder->start();
+        $readinessOutput = '';
+        $lockReady = false;
+        // Install before launch so status/pipe reads cannot lose an early marker.
+        $holder->start(function (string $type, string $data) use (&$readinessOutput, &$lockReady): void {
+            if ($type === Process::OUT) {
+                $readinessOutput .= $data;
+                $lockReady = str_contains($readinessOutput, 'LOCK_READY');
+            }
+        });
         try {
-            $this->assertTrue($holder->waitUntil(fn () => str_contains($holder->getOutput(), 'LOCK_READY')),
+            while ($holder->isRunning()) {
+                $holder->checkTimeout();
+                if ($lockReady) {
+                    break;
+                }
+                usleep(1000); // Scheduling yield only; never establishes readiness.
+            }
+            // A marker drained from an exited holder cannot authorize the waiter.
+            $ready = $lockReady && $holder->isRunning();
+            $this->assertTrue($ready,
                 'Credential-row holder did not publish readiness; exit='.(string) $holder->getExitCode().'; stderr_bytes='.strlen($holder->getErrorOutput()));
             $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
                 ->where('action', 'provider.read')->update(['expires_at' => DB::raw("clock_timestamp()+interval '2 seconds'")]);

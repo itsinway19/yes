@@ -68,18 +68,24 @@ final class BusinessContextController
 
     public function edit(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): Response
     {
-        return $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $business): Response {
+        // Catalog presentation data is independent of the protected Workspace
+        // snapshot; keep its bounded query outside the Workspace read transaction.
+        $timezoneOptions = $business->currentIntentTimezones();
+
+        return $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $business, $timezoneOptions): Response {
             $existingGrant = DB::table('security_action_grants')->where('subject_user_id', $request->user()->id)
                 ->where('subject_generation', $request->session()->get('a001_generation'))
                 ->where('workspace_id', $w->id)->where('action', 'business.context.manage')->exists();
             $requestable = ! $existingGrant && DB::table('workspace_ownerships')->where('workspace_id', $w->id)
                 ->where('responsible_owner_user_id', $request->user()->id)->exists();
 
+            $projection = $business->projection($request, $w);
+
             return Inertia::render('Business/Context', [
-                'workspace' => $w->only(['public_id', 'name', 'business_type_id', 'business_context_version']),
+                'workspace' => [...$w->only(['public_id', 'name', 'business_type_id']), 'business_context_version' => $projection['version']],
                 'types' => $business->types(), 'canManage' => $business->canManage($request, $w),
-                'canRequestAuthority' => $requestable, 'creationKey' => null, 'version' => $w->business_context_version,
-                'business' => $business->projection($request, $w), 'countryOptions' => $business->countries(),
+                'canRequestAuthority' => $requestable, 'creationKey' => null, 'version' => $projection['version'],
+                'business' => $projection, 'countryOptions' => $business->countries(), 'timezoneOptions' => $timezoneOptions,
             ]);
         }, $request);
     }
@@ -107,6 +113,91 @@ final class BusinessContextController
         $request->validate(['decision' => ['required', 'in:authorize'], 'reason' => ['required', 'in:complete_business_context']]);
         $this->mutate(fn () => $context->run($request->user(), $workspace,
             fn (Workspace $w) => $grants->requestBusinessContextGrant($request, $w->id), $request));
+
+        return redirect()->route('workspaces.business.edit', $workspace);
+    }
+
+    public function updateCurrentIntent(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): RedirectResponse
+    {
+        $invalid = app()->getLocale() === 'ar'
+            ? 'أرسل إعلانًا كاملًا وتأكيدات واضحة ضمن حدود الإدخال. لا تُحذف أو تُختصر أي قيمة تلقائيًا.'
+            : 'Submit a complete declaration and explicit confirmations within the input limits. Values are never silently truncated.';
+        $oversized = app()->getLocale() === 'ar'
+            ? 'حجم الطلب يتجاوز حد الإدخال التقني. احتفظ بالمسودة وقلّل حجمها قبل الحفظ.'
+            : 'The request exceeds the technical input limit. Keep your draft and reduce its size before saving.';
+        abort_if(strlen($request->getContent()) > 81920, 413, $oversized);
+        try {
+            $payload = $request->isJson() ? json_decode($request->getContent(), flags: JSON_THROW_ON_ERROR) : null;
+        } catch (\JsonException) {
+            $payload = null;
+        }
+        $keys = is_object($payload) ? array_keys(get_object_vars($payload)) : [];
+        sort($keys, SORT_STRING);
+        if ($keys !== ['command', 'confirmations', 'value', 'version'] || ! is_object($payload->confirmations)
+            || ! is_int($payload->version) || $payload->version < 0 || ! in_array($payload->command, ['replace', 'clear'], true)
+            || ($payload->command === 'clear' ? $payload->value !== null : ! is_object($payload->value))) {
+            throw ValidationException::withMessages(['value' => $invalid]);
+        }
+        foreach (get_object_vars($payload->confirmations) as $key => $confirmed) {
+            if (! in_array($key, ['declaration', 'business_wide', 'outcome', 'acceptance_clear', 'clarification_required', 'quantity', 'horizon'], true)
+                || ! is_bool($confirmed)) {
+                throw ValidationException::withMessages(['confirmations' => $invalid]);
+            }
+        }
+        if ($payload->command === 'replace') {
+            if (! is_object($payload->value->outcome ?? null)
+                || ! property_exists($payload->value, 'horizon')
+                || ($payload->value->horizon !== null && ! is_object($payload->value->horizon))) {
+                throw ValidationException::withMessages(['value' => $invalid]);
+            }
+        }
+        // Validate the original body, not middleware-trimmed/coerced input.
+        // PostgreSQL compares the submitted horizon with serialized CURRENT state;
+        // there is intentionally no unconditional selectable-zone membership rule.
+        $input = json_decode($request->getContent(), true, flags: JSON_THROW_ON_ERROR);
+        $rules = [];
+        if ($payload->command === 'replace') {
+            $rules = [
+                'value' => ['required', 'array:direction,scope,description,outcome,quantity,horizon'],
+                'value.direction' => ['required', 'string', Rule::in(['increase_value', 'preserve_value', 'improve_efficiency_preserving_value', 'validate_business_direction'])],
+                'value.scope' => ['required', 'string', Rule::in(['business_wide'])],
+                'value.description' => ['present', 'nullable', 'string', 'max:2000'],
+                'value.outcome' => ['required', 'array:meaning,clarification,count_unit'],
+                'value.outcome.meaning' => ['required', 'string', 'max:2000'],
+                'value.outcome.clarification' => ['present', 'nullable', 'string', 'max:2000'],
+                'value.outcome.count_unit' => ['present', 'nullable', 'string', 'max:120', Rule::requiredIf(($input['value']['quantity'] ?? null) !== null)],
+                'value.quantity' => ['present', 'nullable', 'string', 'max:120', 'regex:/^(?=.*[1-9])[0-9]+$/D'],
+                'value.horizon' => ['present', 'nullable', 'array:deadline_date,timezone'],
+            ];
+            if ($payload->value->horizon !== null) {
+                $rules['value.horizon.timezone'] = ['required', 'string', 'max:120', 'regex:~^(?:UTC|[A-Za-z0-9_+\-]+(?:/[A-Za-z0-9_+\-]+)+)$~D'];
+                $rules['value.horizon.deadline_date'] = ['required', 'string', function ($attribute, $value, $fail) use ($invalid): void {
+                    if (! is_string($value) || ! preg_match('/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/D', $value, $parts)
+                        || (int) $parts[1] < 1 || ! checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])) {
+                        $fail($invalid);
+                    }
+                }];
+            }
+        }
+        $messages = array_fill_keys(array_map(fn ($key) => $key.'.*', array_keys($rules)), $invalid);
+        \Illuminate\Support\Facades\Validator::make($input, $rules, $messages)->validate();
+        try {
+            $context->runBusinessMutation($request->user(), $workspace,
+                fn (Workspace $w) => $business->replaceCurrentIntent($request, $w, $input['value'], $input['confirmations'], $input['version']), $request);
+        } catch (QueryException $error) {
+            if ($error->getCode() === '42501') {
+                abort(403);
+            }
+            if ($error->getCode() === '40001') {
+                throw ValidationException::withMessages(['version' => app()->getLocale() === 'ar'
+                    ? 'تغيّر سياق النشاط. احتفظ بالمسودة وراجع السياق الحالي قبل اعتماد المراجعة وإعادة التأكيد.'
+                    : 'Business context changed. Keep your draft and review the current context before adopting its revision and reconfirming.']);
+            }
+            if (in_array($error->getCode(), ['22023', '22P05'], true)) {
+                throw ValidationException::withMessages(['value' => $invalid]);
+            }
+            throw $error;
+        }
 
         return redirect()->route('workspaces.business.edit', $workspace);
     }

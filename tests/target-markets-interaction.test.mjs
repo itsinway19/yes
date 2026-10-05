@@ -40,9 +40,10 @@ async function compile(path, extra = {}) {
     return { url, component: (await import(url)).default };
 }
 const editor = await compile('Components/Business/TargetMarketsEditor.vue');
+const intent = await compile('Components/Business/CurrentIntentEditor.vue');
 const layout = moduleUrl(`export default { template: '<main><slot /></main>' };`);
 const context = await compile('Pages/Business/Context.vue', { '@/Layouts/AdvertiserLayout.vue': layout,
-    '@/Components/Business/TargetMarketsEditor.vue': editor.url });
+    '@/Components/Business/TargetMarketsEditor.vue': editor.url, '@/Components/Business/CurrentIntentEditor.vue': intent.url });
 const languageSwitcher = await compile('Components/LanguageSwitcher.vue', {
     '@/localization/messages': messages, 'vue-i18n': moduleUrl('export const useI18n = () => ({ t: key => key });'),
 });
