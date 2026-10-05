@@ -1,11 +1,16 @@
 <?php
 
 // Guarded synthetic Current Intent concurrency participant.
+use App\Business\BusinessContext;
 use App\Foundation\Tenancy\PrincipalContext;
+use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\User;
 use App\Security\DisposableTestDatabaseGuard;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
+use Illuminate\Session\ArraySessionHandler;
+use Illuminate\Session\Store;
 use Illuminate\Support\Facades\DB;
 
 require dirname(__DIR__).'/vendor/autoload.php';
@@ -59,49 +64,49 @@ try {
                 DB::selectOne('SELECT pg_advisory_xact_lock_shared(hashtextextended(?,0))', [$fixture['entry_barrier']]);
             });
         }
-        $request = \Illuminate\Http\Request::create('/', 'GET');
+        $request = Request::create('/', 'GET');
         $request->setUserResolver(fn () => $user);
-        $session = new \Illuminate\Session\Store('intent-proof', new \Illuminate\Session\ArraySessionHandler(120));
+        $session = new Store('intent-proof', new ArraySessionHandler(120));
         $session->setId($fixture['http_session_id']);
         $session->put('a001_generation', $fixture['generation']);
         $request->setLaravelSession($session);
-        $revision = app(\App\Foundation\Tenancy\WorkspaceContext::class)->run($user, $fixture['workspace_public_id'],
+        $revision = app(WorkspaceContext::class)->run($user, $fixture['workspace_public_id'],
             function ($active) use ($fixture, $request, $emit) {
                 $emit('SELECTED_XACT='.DB::scalar('SELECT pg_current_xact_id()::text'));
                 if (isset($fixture['read_barrier'])) {
                     DB::selectOne('SELECT pg_advisory_xact_lock_shared(hashtextextended(?,0))', [$fixture['read_barrier']]);
                 }
 
-                return app(\App\Business\BusinessContext::class)->projection($request, $active);
+                return app(BusinessContext::class)->projection($request, $active);
             }, $request);
     } else {
-    $revision = DB::transaction(function () use ($fixture, $user, $emit) {
-        app(PrincipalContext::class)->activate($user);
-        if (isset($fixture['entry_barrier'])) {
-            $emit('READY_XACT='.DB::scalar('SELECT pg_current_xact_id()::text'));
-            DB::selectOne('SELECT pg_advisory_xact_lock_shared(hashtextextended(?,0))', [$fixture['entry_barrier']]);
-        }
-        $emit('ENTERED_XACT='.DB::scalar('SELECT pg_current_xact_id()::text'));
-        DB::selectOne('SELECT builderad_business_context_begin(?,?)', [$fixture['workspace'], $fixture['session']]);
-        $emit('SELECTED_XACT='.DB::scalar('SELECT pg_current_xact_id()::text'));
+        $revision = DB::transaction(function () use ($fixture, $user, $emit) {
+            app(PrincipalContext::class)->activate($user);
+            if (isset($fixture['entry_barrier'])) {
+                $emit('READY_XACT='.DB::scalar('SELECT pg_current_xact_id()::text'));
+                DB::selectOne('SELECT pg_advisory_xact_lock_shared(hashtextextended(?,0))', [$fixture['entry_barrier']]);
+            }
+            $emit('ENTERED_XACT='.DB::scalar('SELECT pg_current_xact_id()::text'));
+            DB::selectOne('SELECT builderad_business_context_begin(?,?)', [$fixture['workspace'], $fixture['session']]);
+            $emit('SELECTED_XACT='.DB::scalar('SELECT pg_current_xact_id()::text'));
 
-        if (($fixture['operation'] ?? null) === 'intent') {
-            return DB::scalar('SELECT builderad_current_intent_write(?,?,?::jsonb,?::jsonb,?)', [
-                $fixture['workspace'], $fixture['session'], $fixture['value'] === null ? null : json_encode($fixture['value'], JSON_THROW_ON_ERROR),
-                json_encode((object) $fixture['confirmations'], JSON_THROW_ON_ERROR), $fixture['version'],
-            ]);
-        }
-        if (($fixture['operation'] ?? 'name') === 'dtm') {
-            return DB::scalar('SELECT builderad_business_target_markets_write(?,?,ARRAY(SELECT jsonb_array_elements_text(?::jsonb)),?)', [
-                $fixture['workspace'], $fixture['session'], json_encode($fixture['codes'], JSON_THROW_ON_ERROR), $fixture['version'],
-            ]);
-        }
+            if (($fixture['operation'] ?? null) === 'intent') {
+                return DB::scalar('SELECT builderad_current_intent_write(?,?,?::jsonb,?::jsonb,?)', [
+                    $fixture['workspace'], $fixture['session'], $fixture['value'] === null ? null : json_encode($fixture['value'], JSON_THROW_ON_ERROR),
+                    json_encode((object) $fixture['confirmations'], JSON_THROW_ON_ERROR), $fixture['version'],
+                ]);
+            }
+            if (($fixture['operation'] ?? 'name') === 'dtm') {
+                return DB::scalar('SELECT builderad_business_target_markets_write(?,?,ARRAY(SELECT jsonb_array_elements_text(?::jsonb)),?)', [
+                    $fixture['workspace'], $fixture['session'], json_encode($fixture['codes'], JSON_THROW_ON_ERROR), $fixture['version'],
+                ]);
+            }
 
-        // Exercise the actual canonical forward name/type writer, never a mock.
-        return DB::scalar('SELECT builderad_business_context_write(?,?,?,?,?)', [
-            $fixture['workspace'], $fixture['session'], $fixture['type'], $fixture['name'], $fixture['version'],
-        ]);
-    });
+            // Exercise the actual canonical forward name/type writer, never a mock.
+            return DB::scalar('SELECT builderad_business_context_write(?,?,?,?,?)', [
+                $fixture['workspace'], $fixture['session'], $fixture['type'], $fixture['name'], $fixture['version'],
+            ]);
+        });
     }
     if (is_array($revision)) {
         $emit('PROJECTION='.json_encode($revision, JSON_THROW_ON_ERROR));

@@ -257,13 +257,17 @@ class CurrentIntentTest extends TestCase
             $db->unprepared($definition);
         }
     }
+
     public function test_unrepresentable_postgresql_text_is_validation_error_without_effects(): void
     {
-        $workspace=$this->business(); $before=$this->stored($workspace);
-        $value=$this->value(); $value['description']="Retain\0this complete input";
-        $this->postJson($this->url($workspace),$this->command($value))->assertUnprocessable()->assertJsonValidationErrors('value');
-        $this->assertEquals($before,$this->stored($workspace));
+        $workspace = $this->business();
+        $before = $this->stored($workspace);
+        $value = $this->value();
+        $value['description'] = "Retain\0this complete input";
+        $this->postJson($this->url($workspace), $this->command($value))->assertUnprocessable()->assertJsonValidationErrors('value');
+        $this->assertEquals($before, $this->stored($workspace));
     }
+
     private function business(): object
     {
         $this->withCredentials();

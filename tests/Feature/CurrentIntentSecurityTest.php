@@ -2,12 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Foundation\Tenancy\PrincipalContext;
 use App\Foundation\Tenancy\WorkspaceContext;
+use App\Http\Middleware\EnsureCurrentPrincipal;
 use App\Models\User;
 use App\Security\GrantAuthority;
+use App\Security\ServiceWorkspaceContext;
 use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 class CurrentIntentSecurityTest extends TestCase
@@ -66,7 +71,7 @@ class CurrentIntentSecurityTest extends TestCase
         $this->assertSame($member->id, (int) $before[1][0]->actor_user_id);
         $db->table('security_action_grants')->where('workspace_id', $workspace->id)->where('action', 'business.context.manage')
             ->update(['status' => 'revoked', 'revoked_at' => now()]);
-        $this->get('/workspaces/'.$workspace->public_id.'/business')->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+        $this->get('/workspaces/'.$workspace->public_id.'/business')->assertInertia(fn (AssertableInertia $page) => $page
             ->where('business.canManage', false)->where('business.currentIntent.state', 'PRESENT'));
         $this->postJson($url, $this->command())->assertForbidden();
         $this->actingAs($owner)->postJson($url, $this->command())->assertForbidden();
@@ -82,8 +87,8 @@ class CurrentIntentSecurityTest extends TestCase
         $route = app('router')->getRoutes()->getByName('workspaces.business.current-intent.update');
         $this->assertSame(['POST'], $route->methods());
         $this->assertContains('auth', $route->gatherMiddleware());
-        $this->assertContains(\App\Http\Middleware\EnsureCurrentPrincipal::class, $route->gatherMiddleware());
-        $this->assertContains(\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class, app('router')->getMiddlewareGroups()['web']);
+        $this->assertContains(EnsureCurrentPrincipal::class, $route->gatherMiddleware());
+        $this->assertContains(PreventRequestForgery::class, app('router')->getMiddlewareGroups()['web']);
         $before = $this->snapshot($workspace);
         try {
             $this->app->detectEnvironment(fn () => 'local');
@@ -120,7 +125,7 @@ class CurrentIntentSecurityTest extends TestCase
             'authorized_by' => auth()->id(), 'purpose' => 'synthetic_metadata_read', 'status' => 'active', 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
         $db->table('service_action_grants')->insert(['service_identity_id' => $service, 'workspace_id' => $workspace->id,
             'granted_by' => auth()->id(), 'action' => 'workspace.view', 'reason' => 'synthetic_metadata_read', 'status' => 'active', 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
-        app(\App\Security\ServiceWorkspaceContext::class)->run($public, $credential, $workspace->public_id, function ($active): void {
+        app(ServiceWorkspaceContext::class)->run($public, $credential, $workspace->public_id, function ($active): void {
             $this->assertSame('service', DB::scalar("SELECT current_setting('app.authorization_phase')"));
             $this->denied(fn () => DB::scalar("SELECT builderad_current_intent_write(?, ?, NULL, '{\"declaration\":true}',0)", [$active->id, str_repeat('f', 64)]));
         });
@@ -147,11 +152,12 @@ class CurrentIntentSecurityTest extends TestCase
         $this->actingAsInternal($staff);
         $session = $db->table('security_sessions')->where('user_id', $staff->id)->value('session_key_hash');
         $this->denied(function () use ($staff, $session, $workspace): void {
-            app(\App\Foundation\Tenancy\PrincipalContext::class)->activate($staff);
+            app(PrincipalContext::class)->activate($staff);
             DB::scalar("SELECT builderad_current_intent_write(?, ?, NULL, '{\"declaration\":true}',0)", [$workspace->id, $session]);
         });
         $this->assertEquals($before, $this->snapshot($workspace));
     }
+
     public function test_history_is_scoped_to_the_signed_workspace(): void
     {
         $owner = DB::connection('pgsql_migrations');

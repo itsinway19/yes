@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Business\BusinessContext;
+use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\User;
 use App\Security\GrantAuthority;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
@@ -114,11 +117,11 @@ class CurrentIntentConcurrencyTest extends TestCase
         [$workspace, $session, $fixture] = $this->fixture();
         $db = DB::connection('pgsql_migrations');
         if ($noop) {
-            $request = \Illuminate\Http\Request::create('/', 'POST');
+            $request = Request::create('/', 'POST');
             $request->setLaravelSession($this->app['session']->driver());
             $request->setUserResolver(fn () => auth()->user());
-            app(\App\Foundation\Tenancy\WorkspaceContext::class)->runBusinessMutation(auth()->user(), $workspace->public_id,
-                fn ($active) => app(\App\Business\BusinessContext::class)->replaceCurrentIntent($request, $active, $fixture['value'], $fixture['confirmations'], 0), $request);
+            app(WorkspaceContext::class)->runBusinessMutation(auth()->user(), $workspace->public_id,
+                fn ($active) => app(BusinessContext::class)->replaceCurrentIntent($request, $active, $fixture['value'], $fixture['confirmations'], 0), $request);
             $workspace = $db->table('workspaces')->find($workspace->id);
         }
         $before = [(array) $workspace, $db->table('business_current_intent_events')->get()->toArray()];
@@ -277,11 +280,11 @@ class CurrentIntentConcurrencyTest extends TestCase
         $db = DB::connection('pgsql_migrations');
         $run = 'intent-read-'.Str::uuid();
         $fixture['run'] = $run;
-        $request = \Illuminate\Http\Request::create('/', 'POST');
+        $request = Request::create('/', 'POST');
         $request->setLaravelSession($this->app['session']->driver());
         $request->setUserResolver(fn () => auth()->user());
-        app(\App\Foundation\Tenancy\WorkspaceContext::class)->runBusinessMutation(auth()->user(), $workspace->public_id,
-            fn ($active) => app(\App\Business\BusinessContext::class)->replaceCurrentIntent($request, $active, $fixture['value'], $fixture['confirmations'], 0), $request);
+        app(WorkspaceContext::class)->runBusinessMutation(auth()->user(), $workspace->public_id,
+            fn ($active) => app(BusinessContext::class)->replaceCurrentIntent($request, $active, $fixture['value'], $fixture['confirmations'], 0), $request);
         $prior = $fixture['value'];
         $fixture['version'] = 1;
         $readerFixture = [...$fixture, 'operation' => 'read', 'generation' => 1,
@@ -382,12 +385,14 @@ class CurrentIntentConcurrencyTest extends TestCase
             auth()->forgetUser();
         }
     }
+
     public function test_audit_insert_wait_rechecks_grant_and_session_and_serializes_revocation(): void
     {
         foreach (['grant', 'session', 'revocation'] as $change) {
             $this->effectWait('intent', $change);
         }
     }
+
     private function effectWait(string $operation, string $authorityChange): void
     {
         $actor = User::factory()->create();
@@ -557,47 +562,69 @@ class CurrentIntentConcurrencyTest extends TestCase
 
     private function noopNormalizationWait(string $authorityChange): void
     {
-        [$workspace,$session,$fixture]=$this->fixture();
-        $owner=DB::connection('pgsql_migrations');
-        $request=\Illuminate\Http\Request::create('/','POST');
-        $request->setLaravelSession($this->app['session']->driver()); $request->setUserResolver(fn()=>auth()->user());
-        app(\App\Foundation\Tenancy\WorkspaceContext::class)->runBusinessMutation(auth()->user(),$workspace->public_id,
-            fn($active)=>app(\App\Business\BusinessContext::class)->replaceCurrentIntent($request,$active,$fixture['value'],$fixture['confirmations'],0),$request);
-        $facts=fn()=>[(array)$owner->table('workspaces')->find($workspace->id),$owner->table('business_current_intent_events')->where('workspace_id',$workspace->id)->get()->toArray()];
-        $before=$facts(); $run='intent-noop-normalization-'.Str::uuid(); $barrier=$run.'-barrier';
-        $fixture=[...$fixture,'run'=>$run,'expiry_after_ready'=>$authorityChange];
-        $definition=$owner->selectOne("SELECT pg_get_functiondef('builderad_current_intent_normalize(jsonb)'::regprocedure) AS body")->body;
-        $literal=$owner->getPdo()->quote($barrier);
-        $instrumented=preg_replace('/\bBEGIN\b/','BEGIN PERFORM pg_advisory_xact_lock_shared(hashtextextended('.$literal.',0));',$definition,1,$replacements);
-        $this->assertSame(1,$replacements);
-        $holder=DB::build([...config('database.connections.pgsql_migrations'),'name'=>$run.'-holder']);
-        $workers=$paths=[]; $evidence=['authority_change'=>$authorityChange,'before'=>$before,'pause'=>'normalization after initial authority checks'];
+        [$workspace,$session,$fixture] = $this->fixture();
+        $owner = DB::connection('pgsql_migrations');
+        $request = Request::create('/', 'POST');
+        $request->setLaravelSession($this->app['session']->driver());
+        $request->setUserResolver(fn () => auth()->user());
+        app(WorkspaceContext::class)->runBusinessMutation(auth()->user(), $workspace->public_id,
+            fn ($active) => app(BusinessContext::class)->replaceCurrentIntent($request, $active, $fixture['value'], $fixture['confirmations'], 0), $request);
+        $facts = fn () => [(array) $owner->table('workspaces')->find($workspace->id), $owner->table('business_current_intent_events')->where('workspace_id', $workspace->id)->get()->toArray()];
+        $before = $facts();
+        $run = 'intent-noop-normalization-'.Str::uuid();
+        $barrier = $run.'-barrier';
+        $fixture = [...$fixture, 'run' => $run, 'expiry_after_ready' => $authorityChange];
+        $definition = $owner->selectOne("SELECT pg_get_functiondef('builderad_current_intent_normalize(jsonb)'::regprocedure) AS body")->body;
+        $literal = $owner->getPdo()->quote($barrier);
+        $instrumented = preg_replace('/\bBEGIN\b/', 'BEGIN PERFORM pg_advisory_xact_lock_shared(hashtextextended('.$literal.',0));', $definition, 1, $replacements);
+        $this->assertSame(1, $replacements);
+        $holder = DB::build([...config('database.connections.pgsql_migrations'), 'name' => $run.'-holder']);
+        $workers = $paths = [];
+        $evidence = ['authority_change' => $authorityChange, 'before' => $before, 'pause' => 'normalization after initial authority checks'];
         try {
             // Test-only barrier, restored exactly in finally; never durable production policy.
-            $owner->unprepared($instrumented); $holder->beginTransaction();
-            $pid=(int)$holder->scalar('SELECT pg_backend_pid()');
-            $holder->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))',[$barrier]);
-            $writer=$this->start($fixture,$workers,$paths);
-            $evidence['activity_at_normalization']=$this->waitUntil(fn()=>$this->waiting($run,$pid));
-            $this->assertStringContainsString('SELECTED_XACT=',$writer->getOutput());
-            $sql=$authorityChange==='grant'
+            $owner->unprepared($instrumented);
+            $holder->beginTransaction();
+            $pid = (int) $holder->scalar('SELECT pg_backend_pid()');
+            $holder->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', [$barrier]);
+            $writer = $this->start($fixture, $workers, $paths);
+            $evidence['activity_at_normalization'] = $this->waitUntil(fn () => $this->waiting($run, $pid));
+            $this->assertStringContainsString('SELECTED_XACT=', $writer->getOutput());
+            $sql = $authorityChange === 'grant'
                 ? "SELECT bool_and(expires_at<=clock_timestamp()) FROM security_action_grants WHERE workspace_id=? AND action='business.context.manage'"
                 : 'SELECT idle_expires_at<=clock_timestamp() FROM security_sessions WHERE id=?';
-            $this->waitForClock($owner,$sql,$authorityChange==='grant'?$workspace->id:$session->id,20);
-            $holder->commit(); $writer->wait();
-            $this->assertTrue($writer->isSuccessful(),$writer->getErrorOutput()); $evidence['output']=$writer->getOutput();
-            $this->assertStringNotContainsString('DENIED=40P01',$evidence['output']);
-            $this->assertStringContainsString('DENIED=42501',$evidence['output']);
-            $this->assertEquals($before,$facts()); $evidence['after']=$facts();
+            $this->waitForClock($owner, $sql, $authorityChange === 'grant' ? $workspace->id : $session->id, 20);
+            $holder->commit();
+            $writer->wait();
+            $this->assertTrue($writer->isSuccessful(), $writer->getErrorOutput());
+            $evidence['output'] = $writer->getOutput();
+            $this->assertStringNotContainsString('DENIED=40P01', $evidence['output']);
+            $this->assertStringContainsString('DENIED=42501', $evidence['output']);
+            $this->assertEquals($before, $facts());
+            $evidence['after'] = $facts();
         } finally {
-            if($holder->transactionLevel()>0) $holder->rollBack();
-            foreach($workers as $worker) if($worker->isRunning()) $worker->stop();
-            $holder->disconnect(); DB::purge($run.'-holder'); $owner->unprepared($definition);
-            foreach($paths as $path) if(is_file($path)) unlink($path);
-            $proof=storage_path('framework/testing/'.$run.'.json'); file_put_contents($proof,json_encode($evidence,JSON_THROW_ON_ERROR|JSON_PRETTY_PRINT));
-            fwrite(STDOUT,'NOOP_NORMALIZATION_EVIDENCE='.$proof.PHP_EOL);
+            if ($holder->transactionLevel() > 0) {
+                $holder->rollBack();
+            }
+            foreach ($workers as $worker) {
+                if ($worker->isRunning()) {
+                    $worker->stop();
+                }
+            }
+            $holder->disconnect();
+            DB::purge($run.'-holder');
+            $owner->unprepared($definition);
+            foreach ($paths as $path) {
+                if (is_file($path)) {
+                    unlink($path);
+                }
+            }
+            $proof = storage_path('framework/testing/'.$run.'.json');
+            file_put_contents($proof, json_encode($evidence, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+            fwrite(STDOUT, 'NOOP_NORMALIZATION_EVIDENCE='.$proof.PHP_EOL);
         }
     }
+
     private function waitForClock($connection, string $sql, int $id, int $timeout = 5): void
     {
         $deadline = microtime(true) + $timeout;

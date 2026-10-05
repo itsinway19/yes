@@ -12,6 +12,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -180,7 +181,7 @@ final class BusinessContextController
             }
         }
         $messages = array_fill_keys(array_map(fn ($key) => $key.'.*', array_keys($rules)), $invalid);
-        \Illuminate\Support\Facades\Validator::make($input, $rules, $messages)->validate();
+        Validator::make($input, $rules, $messages)->validate();
         try {
             $context->runBusinessMutation($request->user(), $workspace,
                 fn (Workspace $w) => $business->replaceCurrentIntent($request, $w, $input['value'], $input['confirmations'], $input['version']), $request);

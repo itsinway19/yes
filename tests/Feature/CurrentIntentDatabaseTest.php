@@ -2,9 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Business\BusinessContext;
+use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Security\GrantAuthority;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -12,12 +16,12 @@ class CurrentIntentDatabaseTest extends TestCase
 {
     private function writeIntent(object $workspace, ?array $value, int $version, ?array $confirmations = null): int
     {
-        $request = \Illuminate\Http\Request::create('/', 'POST');
+        $request = Request::create('/', 'POST');
         $request->setLaravelSession($this->app['session']->driver());
         $request->setUserResolver(fn () => auth()->user());
 
-        return app(\App\Foundation\Tenancy\WorkspaceContext::class)->runBusinessMutation(auth()->user(), $workspace->public_id,
-            fn (\App\Models\Workspace $active) => app(\App\Business\BusinessContext::class)->replaceCurrentIntent($request, $active, $value,
+        return app(WorkspaceContext::class)->runBusinessMutation(auth()->user(), $workspace->public_id,
+            fn (Workspace $active) => app(BusinessContext::class)->replaceCurrentIntent($request, $active, $value,
                 $confirmations ?? ['declaration' => true, 'business_wide' => true, 'outcome' => true, 'acceptance_clear' => true,
                     'clarification_required' => $value !== null && $value['outcome']['clarification'] !== null, 'quantity' => true, 'horizon' => true], $version), $request);
     }
@@ -174,6 +178,7 @@ class CurrentIntentDatabaseTest extends TestCase
         $this->denied(fn () => $this->writeIntent($workspace, null, 1, ['declaration' => true]), '42501');
         $this->assertEquals($before, $this->snapshot($workspace));
     }
+
     private function ordered(mixed $value): mixed
     {
         if (! is_array($value)) {

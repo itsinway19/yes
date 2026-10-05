@@ -9,6 +9,7 @@ use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use App\Security\WorkspaceAuthority;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -75,48 +76,73 @@ try {
 
         return $result;
     };
-    if (getenv('CURRENT_INTENT_DURABILITY_STAGE')==='AfterRestart') {
-        $state=json_decode(file_get_contents($run.'/restart-state.json'),true,flags:JSON_THROW_ON_ERROR);
-        $fresh=$state['fresh']; $beforeRestart=$state['facts']; $catalogBeforeRestart=$state['catalog'];
-        $workspace=$state['workspace']; $a=$state['a']; $confirmation=$state['confirmation'];
-        $actor=User::findOrFail($state['actor']);
-        $request=Request::create('/','POST'); $request->setLaravelSession(app('session')->driver()); $request->setUserResolver(fn()=> $actor);
-        app(SessionAuthority::class)->issue($request,$actor,'password');
-    $mutate = static fn (?array $value, array $confirmation, int $revision) => app(WorkspaceContext::class)->runBusinessMutation($actor, $workspace['public_id'],
-        fn (Workspace $active) => app(BusinessContext::class)->replaceCurrentIntent($request, $active, $value, $confirmation, $revision), $request);
-    $facts = static fn () => ['workspace'=> $owner->selectOne('SELECT current_intent::text,business_context_version,updated_at::text FROM workspaces WHERE id=?',[$workspace['id']]),
-        'journal'=>$owner->select('SELECT to_jsonb(e)::text AS row FROM business_current_intent_events e WHERE workspace_id=? ORDER BY after_version',[$workspace['id']])];
-        $assert($normalize($facts())===$beforeRestart,'Current value or complete history changed across restart.');
-        $assert($catalog()===$catalogBeforeRestart,'ACL/RLS/constraints/functions/triggers changed across restart.');
-    $rejected = static function (Closure $operation, string $state) use ($assert): void {
-        try { $operation(); throw new RuntimeException('Expected denial missing: '.$state); }
-        catch (\Illuminate\Database\QueryException $error) { $assert($error->getCode()===$state,'Unexpected denial '.$error->getCode().' vs '.$state); }
-    };
-    $rejected(fn()=> $owner->delete('DELETE FROM business_current_intent_events WHERE workspace_id=?',[$workspace['id']]),'23514');
-    $rejected(fn()=> $owner->update('UPDATE business_current_intent_events SET occurred_at=now() WHERE workspace_id=?',[$workspace['id']]),'23514');
-    foreach(['TRUNCATE business_current_intent_events','INSERT INTO business_current_intent_events DEFAULT VALUES','UPDATE workspaces SET current_intent=NULL'] as $query) $rejected(fn()=>DB::statement($query),'42501');
-    $oversized=$a; $oversized['description'].='😀'; $rejected(fn()=> $mutate($oversized,$confirmation,6),'22023');
-    $assert($normalize($facts())===$beforeRestart,'Denied mutations changed row/revision/history/time.');
-    $migration=require database_path('migrations/0001_01_01_000340_create_current_intent.php');
-    try { $migration->down(); throw new RuntimeException('Forward-only down unexpectedly succeeded.'); }
-    catch (LogicException $error) { $assert(str_contains($error->getMessage(),'forward migration'),'Wrong forward-only contract.'); }
-    foreach($catalogBeforeRestart['constraints'] as $constraint) if(str_contains($constraint['definition'],'current_intent')) {
-        $assert(!preg_match('/timezone_supported|timezone_name_allowed|validate_horizon|pg_timezone/',$constraint['definition']),'Environmental acceptance is a durable CHECK.');
-    }
-    $candidates=array_values(array_unique([...DateTimeZone::listIdentifiers(DateTimeZone::ALL),'UTC']));
-    $expected=[];
-    foreach($owner->select('SELECT name,builderad_current_intent_timezone_name_allowed(name) AS allowed FROM pg_timezone_names') as $row) if($row->allowed && in_array($row->name,$candidates,true)) $expected[]=$row->name;
-    $options=app(BusinessContext::class)->currentIntentTimezones();
-    $assert(array_diff($options,$expected)===[] && array_diff($expected,$options)===[],'Restored runtime option/writer exact set mismatch.');
-    $assert($normalize($facts())===$beforeRestart,'Restored options altered history.');
-    $save('integrated-durability.json',['cluster'=>getenv('CURRENT_INTENT_CLUSTER_SYSTEM_IDENTIFIER'),'history'=>$beforeRestart,'catalog_groups'=>7,
-        'restart'=>'immediate crash restart; committed WAL recovered','options'=>count($options),'bidirectional_set_differences'=>[],
-        'immutable_update_delete'=>'23514','runtime_direct_mutations'=>'42501','oversized'=>'22023','forward_only'=>'PASS']);
-    echo "HISTORY_DURABILITY=PASS; LIVE_RESTART=PASS; BOUNDARY_VALUES_RETAINED=PASS; ACL_RLS_STATIC_IMMUTABILITY=PASS; RESTORED_TIMEZONE_SET=PASS\n";
+    if (getenv('CURRENT_INTENT_DURABILITY_STAGE') === 'AfterRestart') {
+        $state = json_decode(file_get_contents($run.'/restart-state.json'), true, flags: JSON_THROW_ON_ERROR);
+        $fresh = $state['fresh'];
+        $beforeRestart = $state['facts'];
+        $catalogBeforeRestart = $state['catalog'];
+        $workspace = $state['workspace'];
+        $a = $state['a'];
+        $confirmation = $state['confirmation'];
+        $actor = User::findOrFail($state['actor']);
+        $request = Request::create('/', 'POST');
+        $request->setLaravelSession(app('session')->driver());
+        $request->setUserResolver(fn () => $actor);
+        app(SessionAuthority::class)->issue($request, $actor, 'password');
+        $mutate = static fn (?array $value, array $confirmation, int $revision) => app(WorkspaceContext::class)->runBusinessMutation($actor, $workspace['public_id'],
+            fn (Workspace $active) => app(BusinessContext::class)->replaceCurrentIntent($request, $active, $value, $confirmation, $revision), $request);
+        $facts = static fn () => ['workspace' => $owner->selectOne('SELECT current_intent::text,business_context_version,updated_at::text FROM workspaces WHERE id=?', [$workspace['id']]),
+            'journal' => $owner->select('SELECT to_jsonb(e)::text AS row FROM business_current_intent_events e WHERE workspace_id=? ORDER BY after_version', [$workspace['id']])];
+        $assert($normalize($facts()) === $beforeRestart, 'Current value or complete history changed across restart.');
+        $assert($catalog() === $catalogBeforeRestart, 'ACL/RLS/constraints/functions/triggers changed across restart.');
+        $rejected = static function (Closure $operation, string $state) use ($assert): void {
+            try {
+                $operation();
+                throw new RuntimeException('Expected denial missing: '.$state);
+            } catch (QueryException $error) {
+                $assert($error->getCode() === $state, 'Unexpected denial '.$error->getCode().' vs '.$state);
+            }
+        };
+        $rejected(fn () => $owner->delete('DELETE FROM business_current_intent_events WHERE workspace_id=?', [$workspace['id']]), '23514');
+        $rejected(fn () => $owner->update('UPDATE business_current_intent_events SET occurred_at=now() WHERE workspace_id=?', [$workspace['id']]), '23514');
+        foreach (['TRUNCATE business_current_intent_events', 'INSERT INTO business_current_intent_events DEFAULT VALUES', 'UPDATE workspaces SET current_intent=NULL'] as $query) {
+            $rejected(fn () => DB::statement($query), '42501');
+        }
+        $oversized = $a;
+        $oversized['description'] .= '😀';
+        $rejected(fn () => $mutate($oversized, $confirmation, 6), '22023');
+        $assert($normalize($facts()) === $beforeRestart, 'Denied mutations changed row/revision/history/time.');
+        $migration = require database_path('migrations/0001_01_01_000340_create_current_intent.php');
+        try {
+            $migration->down();
+            throw new RuntimeException('Forward-only down unexpectedly succeeded.');
+        } catch (LogicException $error) {
+            $assert(str_contains($error->getMessage(), 'forward migration'), 'Wrong forward-only contract.');
+        }
+        foreach ($catalogBeforeRestart['constraints'] as $constraint) {
+            if (str_contains($constraint['definition'], 'current_intent')) {
+                $assert(! preg_match('/timezone_supported|timezone_name_allowed|validate_horizon|pg_timezone/', $constraint['definition']), 'Environmental acceptance is a durable CHECK.');
+            }
+        }
+        $candidates = array_values(array_unique([...DateTimeZone::listIdentifiers(DateTimeZone::ALL), 'UTC']));
+        $expected = [];
+        foreach ($owner->select('SELECT name,builderad_current_intent_timezone_name_allowed(name) AS allowed FROM pg_timezone_names') as $row) {
+            if ($row->allowed && in_array($row->name, $candidates, true)) {
+                $expected[] = $row->name;
+            }
+        }
+        $options = app(BusinessContext::class)->currentIntentTimezones();
+        $assert(array_diff($options, $expected) === [] && array_diff($expected, $options) === [], 'Restored runtime option/writer exact set mismatch.');
+        $assert($normalize($facts()) === $beforeRestart, 'Restored options altered history.');
+        $save('integrated-durability.json', ['cluster' => getenv('CURRENT_INTENT_CLUSTER_SYSTEM_IDENTIFIER'), 'history' => $beforeRestart, 'catalog_groups' => 7,
+            'restart' => 'immediate crash restart; committed WAL recovered', 'options' => count($options), 'bidirectional_set_differences' => [],
+            'immutable_update_delete' => '23514', 'runtime_direct_mutations' => '42501', 'oversized' => '22023', 'forward_only' => 'PASS']);
+        echo "HISTORY_DURABILITY=PASS; LIVE_RESTART=PASS; BOUNDARY_VALUES_RETAINED=PASS; ACL_RLS_STATIC_IMMUTABILITY=PASS; RESTORED_TIMEZONE_SET=PASS\n";
 
-        $reset=new DisposableDatabaseReset; $reset->install();
-        $assert($catalog()===$fresh,'Repeated reset catalog differs.');
-        $assert($owner->table('business_current_intent_events')->count()===0,'Journal survived disposable reset.');
+        $reset = new DisposableDatabaseReset;
+        $reset->install();
+        $assert($catalog() === $fresh, 'Repeated reset catalog differs.');
+        $assert($owner->table('business_current_intent_events')->count() === 0, 'Journal survived disposable reset.');
         echo "INTEGRATED_DURABILITY=PASS; REPEATED_RESET=PASS; PRIMARY_BUILDERAD_CONNECTIONS=0; PRIMARY_BUILDERAD_WRITES=0\n";
         exit(0);
     }
@@ -194,33 +220,44 @@ try {
     // Integrated transition durability uses only the identity-guarded cluster above.
     $mutate = static fn (?array $value, array $confirmation, int $revision) => app(WorkspaceContext::class)->runBusinessMutation($actor, $workspace['public_id'],
         fn (Workspace $active) => app(BusinessContext::class)->replaceCurrentIntent($request, $active, $value, $confirmation, $revision), $request);
-    $confirmation = ['declaration'=>true,'business_wide'=>true,'outcome'=>true,'acceptance_clear'=>true,'clarification_required'=>true,'quantity'=>true,'horizon'=>true];
-    $a = ['direction'=>'increase_value','scope'=>'business_wide','description'=>str_repeat('😀',2000),
-        'outcome'=>['meaning'=>str_repeat('ع',2000),'clarification'=>str_repeat('😀',2000),'count_unit'=>str_repeat('ع',120)],
-        'quantity'=>str_repeat('9',120),'horizon'=>['deadline_date'=>'2020-01-01','timezone'=>'Europe/Istanbul']];
-    $b = $a; $b['direction']='preserve_value'; $b['outcome']['meaning']='Completed qualified bookings';
-    $b['quantity']='100'; $b['horizon']=['deadline_date'=>'2021-01-01','timezone'=>'UTC'];
-    $mutate($a,$confirmation,2); $mutate($b,$confirmation,3); $mutate(null,['declaration'=>true],4); $mutate($a,$confirmation,5);
-    $facts = static fn () => ['workspace'=> $owner->selectOne('SELECT current_intent::text,business_context_version,updated_at::text FROM workspaces WHERE id=?',[$workspace['id']]),
-        'journal'=>$owner->select('SELECT to_jsonb(e)::text AS row FROM business_current_intent_events e WHERE workspace_id=? ORDER BY after_version',[$workspace['id']])];
-    $beforeRestart = $normalize($facts()); $save('history-before-restart.json',$beforeRestart);
-    $assert(count($beforeRestart['journal'])===4,'Declare/replace/clear/redeclare journal incomplete.');
-    $assert((int)$beforeRestart['workspace']['business_context_version']===6,'Shared transition revisions wrong.');
-    $supportDefinition=$owner->selectOne("SELECT pg_get_functiondef('builderad_current_intent_timezone_supported(text)'::regprocedure) AS body")->body;
+    $confirmation = ['declaration' => true, 'business_wide' => true, 'outcome' => true, 'acceptance_clear' => true, 'clarification_required' => true, 'quantity' => true, 'horizon' => true];
+    $a = ['direction' => 'increase_value', 'scope' => 'business_wide', 'description' => str_repeat('😀', 2000),
+        'outcome' => ['meaning' => str_repeat('ع', 2000), 'clarification' => str_repeat('😀', 2000), 'count_unit' => str_repeat('ع', 120)],
+        'quantity' => str_repeat('9', 120), 'horizon' => ['deadline_date' => '2020-01-01', 'timezone' => 'Europe/Istanbul']];
+    $b = $a;
+    $b['direction'] = 'preserve_value';
+    $b['outcome']['meaning'] = 'Completed qualified bookings';
+    $b['quantity'] = '100';
+    $b['horizon'] = ['deadline_date' => '2021-01-01', 'timezone' => 'UTC'];
+    $mutate($a, $confirmation, 2);
+    $mutate($b, $confirmation, 3);
+    $mutate(null, ['declaration' => true], 4);
+    $mutate($a, $confirmation, 5);
+    $facts = static fn () => ['workspace' => $owner->selectOne('SELECT current_intent::text,business_context_version,updated_at::text FROM workspaces WHERE id=?', [$workspace['id']]),
+        'journal' => $owner->select('SELECT to_jsonb(e)::text AS row FROM business_current_intent_events e WHERE workspace_id=? ORDER BY after_version', [$workspace['id']])];
+    $beforeRestart = $normalize($facts());
+    $save('history-before-restart.json', $beforeRestart);
+    $assert(count($beforeRestart['journal']) === 4, 'Declare/replace/clear/redeclare journal incomplete.');
+    $assert((int) $beforeRestart['workspace']['business_context_version'] === 6, 'Shared transition revisions wrong.');
+    $supportDefinition = $owner->selectOne("SELECT pg_get_functiondef('builderad_current_intent_timezone_supported(text)'::regprocedure) AS body")->body;
     try {
         $owner->unprepared("CREATE OR REPLACE FUNCTION builderad_current_intent_timezone_supported(p_zone text) RETURNS boolean LANGUAGE sql STABLE SET search_path=public,pg_temp AS 'SELECT p_zone=''UTC'''");
-        $assert($normalize($facts())===$beforeRestart,'Catalog support loss changed stored data.');
-        foreach(['UTC','Pacific/Apia'] as $timezone) {
+        $assert($normalize($facts()) === $beforeRestart, 'Catalog support loss changed stored data.');
+        foreach (['UTC', 'Pacific/Apia'] as $timezone) {
             $owner->statement("SET TIME ZONE '".$timezone."'");
-            foreach(['SQL, DMY','ISO, MDY'] as $style) {
+            foreach (['SQL, DMY', 'ISO, MDY'] as $style) {
                 $owner->statement("SET DateStyle TO '".$style."'");
-                $assert($owner->selectOne('SELECT builderad_current_intent_normalize(?::jsonb)=?::jsonb AS ok',[json_encode($a,JSON_THROW_ON_ERROR),json_encode($a,JSON_THROW_ON_ERROR)])->ok,'Static validation depended on timezone/DateStyle.');
+                $assert($owner->selectOne('SELECT builderad_current_intent_normalize(?::jsonb)=?::jsonb AS ok', [json_encode($a, JSON_THROW_ON_ERROR), json_encode($a, JSON_THROW_ON_ERROR)])->ok, 'Static validation depended on timezone/DateStyle.');
             }
         }
-    } finally { $owner->unprepared($supportDefinition); $owner->statement("SET TIME ZONE 'UTC'"); $owner->statement("SET DateStyle TO 'ISO, MDY'"); }
-    $catalogBeforeRestart=$catalog();
-    $save('restart-state.json',['fresh'=>$fresh,'facts'=>$beforeRestart,'catalog'=>$catalogBeforeRestart,'workspace'=>$workspace,'actor'=>$actor->id,'a'=>$a,'confirmation'=>$confirmation]);
-    $save('task1-durability.json',['baseline'=>$baseline,'cluster'=>getenv('CURRENT_INTENT_CLUSTER_SYSTEM_IDENTIFIER'),'fresh'=>$fresh,'preserved_row_counts'=>array_map('count',$before)]);
+    } finally {
+        $owner->unprepared($supportDefinition);
+        $owner->statement("SET TIME ZONE 'UTC'");
+        $owner->statement("SET DateStyle TO 'ISO, MDY'");
+    }
+    $catalogBeforeRestart = $catalog();
+    $save('restart-state.json', ['fresh' => $fresh, 'facts' => $beforeRestart, 'catalog' => $catalogBeforeRestart, 'workspace' => $workspace, 'actor' => $actor->id, 'a' => $a, 'confirmation' => $confirmation]);
+    $save('task1-durability.json', ['baseline' => $baseline, 'cluster' => getenv('CURRENT_INTENT_CLUSTER_SYSTEM_IDENTIFIER'), 'fresh' => $fresh, 'preserved_row_counts' => array_map('count', $before)]);
     echo "DURABILITY_RESTART_PREPARED=YES\n";
 } catch (Throwable $error) {
     fwrite(STDERR, get_class($error).': '.$error->getMessage()."\n");
