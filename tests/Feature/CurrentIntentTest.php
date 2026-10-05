@@ -9,6 +9,7 @@ use App\Models\Workspace;
 use App\Security\GrantAuthority;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -223,6 +224,7 @@ class CurrentIntentTest extends TestCase
             'candidateCount' => count($candidates), 'optionCount' => count($options), 'statementTimeout' => '15s',
             'setDifferenceBothDirections' => [], 'catalogFunctionNodes' => count($catalogNodes), 'catalogActualLoops' => 1];
         $path = storage_path('framework/testing/current-intent-execution/timezone-set-execution.json');
+        File::ensureDirectoryExists(dirname($path));
         file_put_contents($path, json_encode($evidence, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
         fwrite(STDOUT, 'TIMEZONE_SET_EXECUTION='.$path.PHP_EOL);
     }
