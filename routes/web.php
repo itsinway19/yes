@@ -61,6 +61,8 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
         ->whereUuid('workspace')->name('workspaces.business.update');
     Route::post('/workspaces/{workspace}/business/target-markets', [BusinessContextController::class, 'updateTargetMarkets'])
         ->whereUuid('workspace')->name('workspaces.business.target-markets.update');
+    Route::post('/workspaces/{workspace}/business/current-intent', [BusinessContextController::class, 'updateCurrentIntent'])
+        ->whereUuid('workspace')->name('workspaces.business.current-intent.update');
     Route::post('/workspaces/{workspace}/business/authority', [BusinessContextController::class, 'authority'])
         ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.business.authority');
 });

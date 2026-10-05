@@ -3,9 +3,10 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import AdvertiserLayout from '@/Layouts/AdvertiserLayout.vue';
 import { useBusinessCopy } from '@/localization/business';
 import { ref, watch } from 'vue';
+import CurrentIntentEditor from '@/Components/Business/CurrentIntentEditor.vue';
 import TargetMarketsEditor from '@/Components/Business/TargetMarketsEditor.vue';
 type Country = { code: string; name_ar: string; name_en: string };
-const props = defineProps<{ workspace: { public_id: string; name: string; business_type_id: number | null; business_context_version: number } | null; types: { id: number; key: string; name_ar: string; name_en: string; active: boolean }[]; canManage: boolean; canRequestAuthority?: boolean; creationKey: string | null; version: number; business?: { targetMarketsDeclared: boolean; targetMarkets: Country[]; version: number; canManage: boolean }; countryOptions?: Country[] }>();
+const props = defineProps<{ workspace: { public_id: string; name: string; business_type_id: number | null; business_context_version: number } | null; types: { id: number; key: string; name_ar: string; name_en: string; active: boolean }[]; canManage: boolean; canRequestAuthority?: boolean; creationKey: string | null; version: number; business?: { targetMarketsDeclared: boolean; targetMarkets: Country[]; version: number; canManage: boolean; currentIntent?: { state: string; value: { direction: string; scope: 'business_wide'; description: string | null; outcome: { meaning: string; clarification: string | null; count_unit: string | null }; quantity: string | null; horizon: { deadline_date: string; timezone: string } | null } | null; version: number } }; timezoneOptions?: string[]; countryOptions?: Country[] }>();
 const { t, localized } = useBusinessCopy();
 const form = useForm({ name: props.workspace?.name ?? '', business_type_id: props.workspace?.business_type_id ?? '', creation_key: props.creationKey, version: props.version });
 const authority = useForm({ decision: 'authorize', reason: 'complete_business_context' });
@@ -46,6 +47,7 @@ function save() { form.post(props.workspace ? route('workspaces.business.update'
             </form>
         </template>
         <template v-else><h1>{{ t('waiting') }}</h1><p class="biz-lead">{{ t('waitingIntro') }}</p><form v-if="canRequestAuthority && workspace" class="biz-form" @submit.prevent="authority.post(route('workspaces.business.authority', workspace.public_id), { preserveScroll: true })"><p class="biz-lead">{{ t('authorityIntro') }}</p><p v-for="(message, field) in authority.errors" :key="field" role="alert" class="biz-error">{{ message }}</p><div><button class="biz-button" :disabled="authority.processing">{{ authority.processing ? t('saving') : t('authorizeContext') }}</button></div></form><Link :href="route('workspaces.index')" class="biz-link inline-block mt-8">{{ t('businesses') }}</Link></template>
+        <CurrentIntentEditor v-if="workspace && business?.currentIntent && timezoneOptions" :workspace-id="workspace.public_id" :current-intent="business.currentIntent" :can-manage="business.canManage" :timezone-options="timezoneOptions" />
         <TargetMarketsEditor v-if="workspace && business && countryOptions" :workspace-id="workspace.public_id" :business="business" :country-options="countryOptions" :saved-context-version="savedContextVersion" @saved="marketsSaved" />
     </AdvertiserLayout>
 </template>
