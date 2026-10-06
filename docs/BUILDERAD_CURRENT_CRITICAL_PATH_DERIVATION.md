@@ -15,7 +15,7 @@ MASTER_EXECUTION_MAP_CHANGED = NO
 MASTER_EXECUTION_MAP_MATCHES_HEAD = YES
 MASTER_EXECUTION_MAP_COMPLETE = YES
 READY_FOR_CURRENT_CRITICAL_PATH_DERIVATION = YES
-CURRENT_CRITICAL_PATH_SELECTED = YES
+CURRENT_CRITICAL_PATH_SELECTED = NO
 NEXT_PRODUCT_SLICE = Joint Targeting + Spend recommendation from qualified retained evidence
 NEXT_PRODUCT_SLICE_SELECTED = YES
 ACTIVE_PRODUCT_WORK_AUTHORITY = SEMANTIC_DESIGN_ONLY
@@ -225,7 +225,7 @@ Verification remains documentary/Git only: pinned HEAD/origin/main, unchanged tr
 
 ## 10. Owner handoff
 
-Owner selects **Joint Targeting + Spend recommendation from qualified retained evidence**. CURRENT_CRITICAL_PATH_SELECTED = YES means only that the Case C sequencing decision has selected the next coherent Product-Slice direction; it does not establish a unique topological blocker. NEXT_PRODUCT_SLICE_SELECTED = YES applies to this bounded direction, with no permanent Slice ID assigned. The accepted derivation, candidate meaning and blocker ledger remain unchanged.
+CASE C established that no unique controlling Critical Path was proven. Owner subsequently selected the sole eligible Product-Slice direction: **Joint Targeting + Spend recommendation from qualified retained evidence**. Therefore CURRENT_CRITICAL_PATH_SELECTED = NO and NEXT_PRODUCT_SLICE_SELECTED = YES are separate control facts. The selected bounded direction has no permanent Slice ID assigned. The accepted derivation, candidate meaning and blocker ledger remain unchanged.
 
 ### Selected direction authority and foundational platform rule
 
@@ -301,7 +301,7 @@ WHAT_EVIDENCE_SUPPORTS_THE_DECISION = CANONICAL_FIRST_CORE_DECISION; CONTROL_MOD
   ACCEPTED_MAP_AND_PRESERVED_D_G_M_LEDGER
 WHAT_NEW_EVIDENCE_WOULD_CHANGE_THE_ORDER = UNSUITABLE_OR_UNAVAILABLE_REQUIRED_INPUT;
   ACTUALLY_REQUIRED_LIVE_AUTHORITY_OR_MATERIAL_ASSURANCE; CONCRETE_SEMANTIC_CONTRADICTION
-CURRENT_CRITICAL_PATH_SELECTED = YES (bounded Case C direction-selection sense only)
+CURRENT_CRITICAL_PATH_SELECTED = NO
 NEXT_PRODUCT_SLICE_SELECTED = YES (selected bounded direction only)
 PRODUCT_IMPLEMENTATION_STARTED = NO
 MASTER_EXECUTION_MAP_CHANGED = NO
