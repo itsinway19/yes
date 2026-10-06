@@ -1,6 +1,6 @@
 # Builderad — Project Control Model v1
 
-Prepared 2026-10-06 (Europe/Istanbul). **Status: draft for Owner review.** This is one operational control contract under [canonical Builderad governance](BUILDERAD_CORE_EXECUTION_GOVERNANCE.md), not product governance, implementation authorization, or a current-system reconstruction. Owner-supplied review corrections are incorporated; final Owner acceptance remains pending.
+Prepared 2026-10-06 (Europe/Istanbul). **Status: OWNER_ACCEPTED_AND_LANDED.** Final Owner acceptance has been granted. Original accepted-model landing: PR #17, merge `ca49cec88ea03004ead4ff2fa148dc32902db1df` (historical provenance). This document remains an operational control contract under [canonical Builderad governance](BUILDERAD_CORE_EXECUTION_GOVERNANCE.md), not product governance, implementation authorization by itself, or Current System Reconstruction.
 
 ## 1. Baseline and document-overlap gate
 
