@@ -44,6 +44,7 @@ use App\Providers\Ads\ProviderReportingEvidence;
 use App\Providers\Ads\ProviderRequestGuard;
 use App\Providers\Ads\ProviderScope;
 use App\Providers\Ads\ReportWindow;
+use App\Providers\Ads\SharedRealityInterpretation;
 use App\Providers\Ads\Snapchat\SnapchatAccessAdapter;
 use App\Providers\Ads\Snapchat\SnapchatAccessStatus;
 use App\Providers\Ads\Snapchat\SnapchatAuthorizationCoordinator;
@@ -4928,6 +4929,207 @@ class ProviderAccessStoreTest extends TestCase
             $this->assertFalse($snapshot['reporting']['can_report']);
             $this->assertSame('local_access_revoked', $snapshot['effective']['reason']);
         }
+    }
+
+    public function test_shared_reality_snapshot_empty_failed_partial_pending_and_omission_never_fuse_history(): void
+    {
+        $scope = $this->scopes['meta'];
+        $this->store($scope, (string) Str::uuid());
+        $this->journal($scope, (string) Str::uuid(), 0, '10');
+        foreach (['FAILED', 'PENDING', 'PARTIAL', 'UNKNOWN', 'COMPLETE'] as $index => $coverage) {
+            $observations = $coverage === 'PARTIAL' ? [$this->journalObservation($scope, '12')] : [];
+            $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->accept($r,
+                new ObservationBatch($scope, $observations, $coverage, null, $coverage === 'FAILED' ? 'synthetic_failed' : null),
+                'synthetic-range', (string) Str::uuid(), $index + 1, 1, $this->journalObservation($scope, '0')->provenance));
+            $view = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
+            $this->assertSame($index + 2, $view['generation']);
+            $this->assertSame($coverage, $view['coverage']);
+            $this->assertSame($coverage === 'PARTIAL' ? ['12'] : [], array_column(array_column($view['claims'], 'expenditure'), 'amount'));
+            $this->assertSame('WITHHELD', $view['latest_request']['state']);
+            $this->assertTrue($view['membership_complete']);
+        }
+        $historical = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range', 1));
+        $this->assertSame('HISTORICAL', $historical['selection']);
+        $this->assertSame('10', $historical['claims'][0]['expenditure']['amount']);
+        $missing = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'not-recorded'));
+        $this->assertNull($missing['coverage']);
+        $this->assertSame([], $missing['claims']);
+    }
+
+    public function test_shared_reality_snapshot_membership_bound_and_restatement_are_explicit(): void
+    {
+        $scope = $this->scopes['meta'];
+        $this->store($scope, (string) Str::uuid());
+        $rows = [];
+        for ($i = 0; $i < 201; $i++) {
+            $o = $this->journalObservation($scope, '10');
+            $rows[] = new AdObservation($scope, 'campaign-'.$i, $o->window, $o->spend, $o->nativeFacts, $o->provenance, $o->readAt, null);
+        }
+        $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->accept($r,
+            new ObservationBatch($scope, $rows, 'COMPLETE', null, null), 'synthetic-range', (string) Str::uuid(), 0, 1, $rows[0]->provenance));
+        $view = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
+        $this->assertCount(200, $view['claims']);
+        $this->assertFalse($view['membership_complete']);
+        $this->journal($scope, (string) Str::uuid(), 1, '11');
+        $this->journal($scope, (string) Str::uuid(), 2, '11');
+        $this->journal($scope, (string) Str::uuid(), 3, '13');
+        $before = $this->owner()->table('provider_observation_entries')->get()->toJson();
+        DB::enableQueryLog();
+        $view = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
+        $queries = collect(DB::getQueryLog())->filter(fn ($q) => str_contains($q['query'], 'provider_observation_entries'));
+        DB::disableQueryLog();
+        $this->assertCount(1, $queries);
+        $this->assertCount(1, $view['claims']);
+        $this->assertSame('13', $view['claims'][0]['expenditure']['amount']);
+        $this->assertSame('RESTATEMENT', $view['claims'][0]['relation']);
+        $this->assertSame(3, $view['claims'][0]['prior_generation']);
+        $this->assertSame($before, $this->owner()->table('provider_observation_entries')->get()->toJson());
+        $this->assertStringNotContainsString('encrypted_progress', json_encode($view, JSON_THROW_ON_ERROR));
+    }
+
+    public function test_shared_reality_snapshot_malformed_persisted_scale_fails_closed(): void
+    {
+        $scope = $this->scopes['meta'];
+        $this->store($scope, (string) Str::uuid());
+        $o = $this->journalObservation($scope, '10');
+        $stored = $o->jsonSerialize();
+        // Existing SQL validates native strings but does not enforce the typed decimal-scale representation.
+        $stored['spend']['decimal_scale'] = '0';
+        $payload = ['coverage' => 'COMPLETE', 'failure' => null, 'provenance' => $o->provenance,
+            'encrypted_progress' => null, 'progress_fingerprint' => null,
+            'observations' => [['identity' => $o->identity(), 'content_hash' => $o->contentHash(), 'observation' => $stored]]];
+        $this->withinWorkspace(fn ($r) => DB::scalar('SELECT builderad_observation_accept(?, ?, ?::uuid, ?, ?, ?, ?, ?, ?::uuid, ?, ?, ?::jsonb)', [
+            $scope->workspaceId, SessionAuthority::sessionKey($r), $scope->sourceId, $scope->provider->value,
+            $scope->accountId, $scope->operation, $scope->purpose, 'synthetic-range', (string) Str::uuid(), 0, 1,
+            json_encode($payload, JSON_THROW_ON_ERROR),
+        ]));
+        $this->assertSame(1, $this->owner()->table('provider_observation_runs')->count());
+        $this->expectException(\InvalidArgumentException::class);
+        $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
+    }
+
+    public function test_shared_reality_authority_exact_scope_revocation_and_historical_read_without_live_grant(): void
+    {
+        $scope = $this->scopes['meta'];
+        $this->store($scope, (string) Str::uuid());
+        $this->journal($scope, (string) Str::uuid(), 0, '10');
+        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.read')
+            ->update(['status' => 'revoked', 'revoked_at' => now()]);
+        $this->assertSame('10', $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'))['claims'][0]['expenditure']['amount']);
+        foreach ([new ProviderScope($scope->workspaceId + 1, $scope->sourceId, Provider::Meta, $scope->accountId, $scope->operation, $scope->purpose),
+            new ProviderScope($scope->workspaceId, (string) Str::uuid7(), Provider::Meta, $scope->accountId, $scope->operation, $scope->purpose),
+            new ProviderScope($scope->workspaceId, $scope->sourceId, Provider::Meta, 'wrong-account', $scope->operation, $scope->purpose),
+            new ProviderScope($scope->workspaceId, $scope->sourceId, Provider::Meta, $scope->accountId, $scope->operation, 'wrong_purpose')] as $wrong) {
+            $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $wrong, 'synthetic-range')), '42501');
+        }
+        try {
+            $wrong = new ProviderScope($scope->workspaceId, $scope->sourceId, Provider::Google, $scope->accountId, $scope->operation, $scope->purpose);
+            $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $wrong, 'synthetic-range'));
+            $this->fail('Wrong registered provider was released.');
+        } catch (AuthorizationException) {
+            $this->assertTrue(true);
+        }
+        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'source.read')
+            ->update(['status' => 'revoked', 'revoked_at' => now()]);
+        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range')), '42501');
+    }
+
+    public function test_shared_reality_authority_expiry_after_interpretation_denies_populated_empty_and_missing_results(): void
+    {
+        $scope = $this->scopes['meta'];
+        $this->store($scope, (string) Str::uuid());
+        foreach (['populated', 'empty', 'missing'] as $index => $case) {
+            $this->journal($scope, (string) Str::uuid(), $index, $case === 'populated' ? '10' : null);
+            $grants = $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'source.read');
+            $grants->update(['expires_at' => DB::raw("clock_timestamp()+interval '2 seconds'")]);
+            $expired = fn () => (bool) $grants->selectRaw('expires_at <= clock_timestamp() AS expired')->value('expired');
+            $double = new class($expired) extends SharedRealityInterpretation
+            {
+                public bool $interpreted = false;
+
+                public bool $expired = false;
+
+                public function __construct(private \Closure $expiry) {}
+
+                public function view(array $snapshot, DateTimeImmutable $at): array
+                {
+                    $result = parent::view($snapshot, $at);
+                    $this->interpreted = true;
+                    $deadline = microtime(true) + 5;
+                    do {
+                        $this->expired = ($this->expiry)();
+                        if ($this->expired) {
+                            break;
+                        }
+                        usleep(10000);
+                    } while (microtime(true) < $deadline);
+
+                    return $result;
+                }
+            };
+            $this->app->instance(SharedRealityInterpretation::class, $double);
+            $released = false;
+            try {
+                $this->denied(function () use ($scope, $case, &$released): void {
+                    $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, $case === 'missing' ? 'not-recorded' : 'synthetic-range'));
+                    $released = true;
+                }, '42501');
+                $this->assertTrue($double->interpreted, 'Initial authority/capture must pass before expiry.');
+                $this->assertTrue($double->expired, 'SQL-clock expiry must precede final release guard.');
+                $this->assertFalse($released);
+            } finally {
+                $this->app->forgetInstance(SharedRealityInterpretation::class);
+                $grants->update(['expires_at' => null]);
+            }
+        }
+    }
+
+    public function test_shared_reality_coherence_concurrent_restatement_cannot_change_captured_membership(): void
+    {
+        $scope = $this->scopes['meta'];
+        $this->store($scope, (string) Str::uuid());
+        $this->journal($scope, (string) Str::uuid(), 0, '10');
+        $o = $this->journalObservation($scope, '13');
+        $request = Request::create('/');
+        $request->setLaravelSession($this->app['session']->driver());
+        $worker = new Process([PHP_BINARY, base_path('tests/ObservationCommandWorker.php'), json_encode([
+            'run' => 'scr-coherence-'.Str::uuid(), 'actor' => $this->actor->id, 'scope' => $scope->jsonSerialize(),
+            'session' => SessionAuthority::sessionKey($request), 'command' => (string) Str::uuid(), 'generation' => 1,
+            'payload' => ['coverage' => 'COMPLETE', 'failure' => null, 'provenance' => $o->provenance,
+                'encrypted_progress' => null, 'progress_fingerprint' => null,
+                'observations' => [['identity' => $o->identity(), 'content_hash' => $o->contentHash(), 'observation' => $o->jsonSerialize()]]],
+        ], JSON_THROW_ON_ERROR)], base_path());
+        $worker->setTimeout(60);
+        $double = new class($worker) extends SharedRealityInterpretation
+        {
+            public function __construct(private Process $worker) {}
+
+            public function view(array $snapshot, DateTimeImmutable $at): array
+            {
+                // The independent writer commits after capture and before interpretation/release.
+                $this->worker->run();
+
+                return parent::view($snapshot, $at);
+            }
+        };
+        $this->app->instance(SharedRealityInterpretation::class, $double);
+        try {
+            $view = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
+            $this->assertTrue($worker->isSuccessful(), $worker->getErrorOutput());
+            $this->assertStringStartsWith('RESULT=', $worker->getOutput());
+            $this->assertSame(1, $view['generation']);
+            $this->assertSame(1, $view['claims'][0]['generation']);
+            $this->assertSame('10', $view['claims'][0]['expenditure']['amount']);
+        } finally {
+            $this->app->forgetInstance(SharedRealityInterpretation::class);
+            if ($worker->isRunning()) {
+                $worker->stop();
+            }
+        }
+        $new = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
+        $this->assertSame(2, $new['generation']);
+        $this->assertSame(2, $new['claims'][0]['generation']);
+        $this->assertSame('13', $new['claims'][0]['expenditure']['amount']);
     }
 
     private function withinWorkspace(callable $callback): mixed
