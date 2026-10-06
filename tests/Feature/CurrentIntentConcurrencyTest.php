@@ -67,6 +67,21 @@ class CurrentIntentConcurrencyTest extends TestCase
             fn ($row) => $row->wait_event_type === 'Lock' && str_contains($row->blockers, (string) $blocker)));
     }
 
+    private function externalReady(Process $worker, array $gate, string $signal): object
+    {
+        return $this->waitUntil(function () use ($worker, $gate, $signal) {
+            clearstatcache(true, $gate['ready']);
+            if (is_file($gate['ready']) && str_contains($worker->getOutput(), $signal)) {
+                return json_decode(file_get_contents($gate['ready']), flags: JSON_THROW_ON_ERROR);
+            }
+            if (! $worker->isRunning()) {
+                $this->fail('Worker exited before '.$signal.': '.$worker->getOutput().$worker->getErrorOutput());
+            }
+
+            return false;
+        });
+    }
+
     public function test_equal_and_different_full_bundle_races(): void
     {
         $this->race('equal');
@@ -307,17 +322,32 @@ class CurrentIntentConcurrencyTest extends TestCase
         $evidence = ['run' => $run, 'operation' => $operation, 'schedule' => $schedule, 'prior' => $prior, 'next' => $next];
         $trigger = false;
         try {
-            $holder->beginTransaction();
             $pid = (int) $holder->scalar('SELECT pg_backend_pid()');
             $barrier = 'builderad.test.read.'.$run;
-            $holder->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', [$barrier]);
+            if ($schedule !== 'reader_first') {
+                $holder->beginTransaction();
+                $holder->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', [$barrier]);
+            }
             if ($schedule === 'reader_first') {
-                $readerFixture['read_barrier'] = $barrier;
-                $reader = $this->start($readerFixture, $workers, $paths);
-                $evidence['reader_at_selected_scope'] = $this->waitUntil(fn () => $this->waiting($run, $pid));
-                $this->assertStringContainsString('SELECTED_XACT=', $reader->getOutput());
-                $readerPid = (int) $evidence['reader_at_selected_scope'][0]->pid;
+                $gates = [];
+                foreach (['writer', 'reader'] as $role) {
+                    $gates[$role] = ['ready' => storage_path('framework/testing/'.$run.'-'.$role.'-ready'),
+                        'release' => storage_path('framework/testing/'.$run.'-'.$role.'-release')];
+                    array_push($paths, ...array_values($gates[$role]));
+                }
+                $fixture['writer_external_gate'] = $gates['writer'];
                 $writer = $this->start($fixture, $workers, $paths);
+                $evidence['writer_pre_ready'] = $this->externalReady($writer, $gates['writer'], 'WRITER_READY');
+                $this->assertNull($evidence['writer_pre_ready']->xid);
+                $readerFixture['reader_external_gate'] = $gates['reader'];
+                $reader = $this->start($readerFixture, $workers, $paths);
+                $evidence['reader_at_selected_scope'] = $this->externalReady($reader, $gates['reader'], 'READER_HOLD_READY');
+                $this->assertStringContainsString('SELECTED_XACT=', $reader->getOutput());
+                $this->assertNotNull($evidence['reader_at_selected_scope']->xid);
+                $readerPid = (int) $evidence['reader_at_selected_scope']->pid;
+                if (file_put_contents($gates['writer']['release'], 'RELEASE') === false) {
+                    $this->fail('Cannot release external writer gate.');
+                }
                 $evidence['writer_waits_on_reader'] = $this->waitUntil(fn () => $this->waiting($run, $readerPid));
             } elseif ($schedule === 'writer_first') {
                 $table = match ($operation) {
@@ -339,7 +369,13 @@ class CurrentIntentConcurrencyTest extends TestCase
                 $evidence['synchronized_entry'] = $this->waitUntil(fn () => count($rows = $this->waiting($run, $pid)) === 2 ? $rows : false);
             }
             $evidence['locks'] = DB::select('SELECT pid,locktype,mode,granted,relation::regclass::text AS relation FROM pg_locks WHERE pid IN (SELECT pid FROM pg_stat_activity WHERE application_name=?) OR pid=? ORDER BY pid,locktype,mode', [$run, $pid]);
-            $holder->commit();
+            if ($schedule === 'reader_first') {
+                if (file_put_contents($gates['reader']['release'], 'RELEASE') === false) {
+                    $this->fail('Cannot release external reader gate.');
+                }
+            } else {
+                $holder->commit();
+            }
             foreach ($workers as $worker) {
                 $worker->wait();
                 $this->assertTrue($worker->isSuccessful(), $worker->getErrorOutput());

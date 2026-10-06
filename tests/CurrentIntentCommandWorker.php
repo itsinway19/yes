@@ -45,6 +45,39 @@ if (($fixture['operation'] ?? null) === 'revoke_manage') {
 $user = User::findOrFail($fixture['actor']);
 DB::selectOne("SELECT set_config('application_name',?,false)", [$fixture['run']]);
 $emit('PID='.DB::scalar('SELECT pg_backend_pid()'));
+$awaitExternalRelease = static function (array $gate, string $signal, bool $heartbeat) use ($emit): void {
+    // Test-only synchronization: never spend a product lock timeout on a gate.
+    $state = DB::selectOne("SELECT pg_backend_pid() AS pid,pg_current_xact_id_if_assigned()::text AS xid,
+        current_setting('lock_timeout') AS lock_timeout,current_setting('statement_timeout') AS statement_timeout,
+        current_setting('idle_in_transaction_session_timeout') AS idle_timeout");
+    if (file_put_contents($gate['ready'], json_encode($state, JSON_THROW_ON_ERROR), LOCK_EX) === false) {
+        throw new RuntimeException('Cannot publish external test gate readiness: '.$signal);
+    }
+    $emit($signal);
+    $deadline = hrtime(true) + 30_000_000_000;
+    $nextHeartbeat = hrtime(true);
+    while (true) {
+        clearstatcache(true, $gate['release']);
+        if (is_file($gate['release'])) {
+            return;
+        }
+        $now = hrtime(true);
+        if ($now >= $deadline) {
+            throw new RuntimeException('External test gate watchdog expired: '.$signal);
+        }
+        if ($heartbeat && $now >= $nextHeartbeat) {
+            DB::selectOne('SELECT 1');
+            $nextHeartbeat = $now + 1_000_000_000;
+        }
+        usleep(10000); // Poll an explicit release signal; no timing-based release.
+    }
+};
+if (isset($fixture['writer_external_gate'])) {
+    if (DB::transactionLevel() !== 0) {
+        throw new RuntimeException('Writer readiness must be outside a product transaction.');
+    }
+    $awaitExternalRelease($fixture['writer_external_gate'], 'WRITER_READY', false);
+}
 if (isset($fixture['expiry_after_ready'])) {
     // Fixture clock starts after PHP/guard startup, within the unchanged 3s lock timeout.
     $owner = DB::connection('pgsql_migrations');
@@ -71,8 +104,11 @@ try {
         $session->put('a001_generation', $fixture['generation']);
         $request->setLaravelSession($session);
         $revision = app(WorkspaceContext::class)->run($user, $fixture['workspace_public_id'],
-            function ($active) use ($fixture, $request, $emit) {
+            function ($active) use ($fixture, $request, $emit, $awaitExternalRelease) {
                 $emit('SELECTED_XACT='.DB::scalar('SELECT pg_current_xact_id()::text'));
+                if (isset($fixture['reader_external_gate'])) {
+                    $awaitExternalRelease($fixture['reader_external_gate'], 'READER_HOLD_READY', true);
+                }
                 if (isset($fixture['read_barrier'])) {
                     DB::selectOne('SELECT pg_advisory_xact_lock_shared(hashtextextended(?,0))', [$fixture['read_barrier']]);
                 }

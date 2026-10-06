@@ -3,6 +3,7 @@
 namespace App\Providers\Ads;
 
 use App\Security\SessionAuthority;
+use DateTimeImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -13,6 +14,55 @@ use LogicException;
 /** Internal durable acceptance boundary. Call inside exactly one signed Workspace transaction. */
 final class ObservationJournal
 {
+    /** Qualified accepted knowledge; this owner checks current authority after pure interpretation, before release. */
+    public function snapshot(Request $request, ProviderScope $scope, string $stream, ?int $generation = null, int $limit = 200): array
+    {
+        $this->requireTransaction();
+        $this->validateStream($stream);
+        if ($scope->operation !== 'report.read' || ($generation !== null && $generation < 1) || $limit < 1 || $limit > 200) {
+            throw new InvalidArgumentException('A bounded advertising report generation is required.');
+        }
+        $authorize = static fn () => DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [
+            $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId,
+            $scope->accountId, $scope->operation, $scope->purpose,
+        ]);
+        $authorize();
+        // One read point pins the pointer, immutable run and bounded membership together, including entryless runs.
+        $record = DB::selectOne(<<<'SQL'
+            SELECT sr.family, sr.declared_external_id, s.generation AS latest_generation,
+                   r.generation, r.coverage, r.failure, r.recorded_at, r.provenance::text,
+                   coalesce(e.entries, '[]'::jsonb)::text AS entries
+            FROM source_registry sr
+            LEFT JOIN provider_observation_streams s ON s.workspace_id=sr.workspace_id AND s.source_id=sr.id
+                AND s.provider=? AND s.resource=? AND s.operation=? AND s.purpose=? AND s.stream=?
+            LEFT JOIN provider_observation_runs r ON r.namespace=s.namespace AND r.generation=coalesce(?::bigint,s.generation)
+            LEFT JOIN LATERAL (
+                SELECT jsonb_agg(to_jsonb(bounded) ORDER BY bounded.identity) AS entries
+                FROM (SELECT generation,identity,content_hash,observation,prior_generation,relation
+                      FROM provider_observation_entries WHERE namespace=r.namespace AND generation=r.generation
+                      ORDER BY identity LIMIT ?) bounded
+            ) e ON true
+            WHERE sr.workspace_id=? AND sr.id=?::uuid AND sr.namespace='ad_account'
+            SQL, [$scope->provider->value, $scope->accountId, $scope->operation, $scope->purpose, $stream,
+            $generation, $limit + 1, $scope->workspaceId, $scope->sourceId]);
+        if ($record === null || $record->family !== $scope->provider->value || $record->declared_external_id !== $scope->accountId) {
+            throw new AuthorizationException('Exact registered advertising source scope required.');
+        }
+        $entries = json_decode($record->entries, true, flags: JSON_THROW_ON_ERROR);
+        $projection = ['scope' => $scope->jsonSerialize(), 'stream' => $stream,
+            'generation' => $record->generation === null ? null : (int) $record->generation,
+            'latest_generation' => $record->latest_generation === null ? null : (int) $record->latest_generation,
+            'membership_complete' => count($entries) <= $limit,
+            'run' => $record->generation === null ? null : ['coverage' => $record->coverage, 'failure' => $record->failure,
+                'recorded_at' => $record->recorded_at, 'provenance' => json_decode($record->provenance, true, flags: JSON_THROW_ON_ERROR)],
+            'entries' => array_slice($entries, 0, $limit)];
+        $result = app(SharedRealityInterpretation::class)->view($projection, new DateTimeImmutable);
+        // No empty/missing-run early return: expiry during interpretation must deny this protected release too.
+        $authorize();
+
+        return $result;
+    }
+
     public function accept(Request $request, ObservationBatch $batch, string $stream, string $command,
         int $expectedGeneration, int $accessVersion, array $readProvenance, ?NativeProgress $progress = null): array
     {
