@@ -7,9 +7,10 @@
     },
     "type": "module",
     "scripts": {
-        "test": "node --test tests/password-generator.test.mjs tests/passkey-ceremony.test.mjs tests/localization.test.mjs tests/commercial-operator.test.mjs tests/provider-report-interaction.test.mjs tests/source-capability-ui.test.mjs tests/source-registry-interaction.test.mjs tests/country-reference.test.mjs tests/target-markets-interaction.test.mjs tests/current-intent-interaction.test.mjs",
+        "test": "node --test tests/password-generator.test.mjs tests/passkey-ceremony.test.mjs tests/localization.test.mjs tests/commercial-operator.test.mjs tests/provider-report-interaction.test.mjs tests/source-capability-ui.test.mjs tests/source-registry-interaction.test.mjs tests/country-reference.test.mjs tests/target-markets-interaction.test.mjs tests/current-intent-interaction.test.mjs tests/object-purpose-interaction.test.mjs",
         "build": "vue-tsc && vite build",
         "dev": "vite",
+        "test:purpose": "node --test tests/object-purpose-interaction.test.mjs",
         "test:password": "node --test tests/password-generator.test.mjs",
         "test:passkey-client": "node --test tests/passkey-ceremony.test.mjs",
         "test:commercial-operator": "node --test tests/commercial-operator.test.mjs",
@@ -43,3 +44,4 @@
         "vue-i18n": "^11.4.12"
     }
 }
+
