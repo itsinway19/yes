@@ -1,0 +1,57 @@
+# Object Purpose Canonical Admission Implementation Plan
+
+**Status:** OWNER_AUTHORIZED_EXECUTION. Corrected in place on 2026-10-07 by the Owner's execution instruction; no further plan review. Same physical worktree `C:/dev/builderad-worktrees/real-targeting-pilot-001`, same branch `codex/object-purpose-admission-001`, base `eca45c91384f121019ced57063992c24d47608a1`.
+
+**Binding input:** [accepted Object-specific Advertising Purpose semantic contract](../specs/2026-10-07-object-specific-advertising-purpose-semantic-design.md), §§7–17, and [landed dependency activation review](../reviews/2026-10-07-owner-controlled-real-pilot-001-dependency-activation-review.md). Semantic Design is not reopened. Implement only OBJECT_PURPOSE_CANONICAL_ADMISSION. No N06/N07/N08, provider mutation, OAuth, Pilot seeds or real Pilot auto-admission.
+
+## Corrected boundaries
+
+Canonical object references are bounded, case-preserved opaque tuples: provider, account_namespace, account_id, object_kind, object_id, optional incarnation. They contain no inferred hierarchy, display-name identity or numerical conversion. Exact finite included/excluded sets are unique/disjoint, 1–50 included and 0–50 excluded; no automatic child/future-object applicability. Meta-only Campaign/Ad Set admission and decimal-ID checks belong exclusively at the HTTP admission edge. Canonical storage/normalization remain provider-neutral. Identity provenance/linkage is an attributable, explicitly confirmed declaration, not independently verified provider identity.
+
+No ObjectPurposeEvidence service/table/routes, upload, download, file staging or custody subsystem. Revisions retain only bounded structured original speaker/time (including unknown), source/identity-linkage statement, authority basis, historical support statement, effective-standing support and explicitly declared limitations/conflicts. Stored confirmation actor/generation/ownership/version and acceptance timestamps come from the server. No generic evidence system or delegation engine.
+
+Factor the existing current advertiser/session/Workspace/responsible-owner predicate into a neutral Foundation SQL authority boundary. Source wraps it and preserves its existing source-session signature and behavior. Purpose uses the neutral boundary directly with its own signed read context, owner-only access and fresh writes. Existing Source tests must remain green. Do not add Purpose grants, alter Source operational-purpose semantics, or make Purpose depend on builderad_source_actor.
+
+## Durable command and journal
+
+Three purpose-owned tables, Workspace-scoped composite keys:
+
+- `object_purposes`: UUIDv7 identity, workspace, head_version, created_at. Head is concurrency metadata, never effective truth.
+- `object_purpose_revisions`: immutable UUIDv7 revision, monotonic version/prior_version, explicit predecessor, operation declare/replace/correct/withdraw, effective_from/effective_until (exclusive), full snapshot, structured provenance, server actor/generation/ownership-version, confirmations, accepted_at and command_id. Withdrawal retains full prior premise and reason, implying UNKNOWN beyond its boundary, not positive NONE.
+- `object_purpose_command_receipts`: immutable workspace/command UUID, fingerprint, actor and exact result. Exact replay still requires current authority; changed input/actor fails 409.
+
+Bound command to 128 KiB, confirmed meaning/qualifications to 4000 characters, phase to 80, tuple strings to 180. Reject unknown keys, malformed JSON/list/boolean shapes, duplicate and included/excluded identical tuples. A command contains command_id, purpose_id/null, expected_version, operation, full declaration/null, effective_from/null, effective_until/null, supersedes_revision_id/null, affected_revision_ids, correction_reason/null, withdrawal_reason/null, confirmations. Server generates identity/revision IDs. Explicit dates must include timezone and normalize to UTC. Historical effective time requires explicit historical-attestation confirmation and nonempty retained historical support. Future time must not become applicable early.
+
+Every write freshly confirms meaning, finite scope, business authority, attributable identity/linkage and effective standing. Optional DTM/Intent relationships and historical/replacement/withdrawal actions each require separate confirmation. No agency self-delegation. Preserve original speaker/time separately from current responsible Owner confirmation. Unknown stays unknown.
+
+## DTM and Intent
+
+DTM relation is optional and explicitly declares mode `historical_attestation`, `current_alignment` or `current_dependency`, exact canonical Business Context revision, exact sorted canonical country snapshot, explicit relation text and optional confirmed country subset. Resolve the requested revision from canonical Context/Intent/DTM journals; reconstruct countries from the last DTM event at or before that exact revision (empty baseline at revision zero). Reject unavailable/future references or mismatched countries/subsets.
+
+An older exact revision is admissible on first declaration for supported historical attestation, with explicit historical confirmation and retained support. Never describe it as current. Require revision == current Context revision under lock only for current_alignment/current_dependency. Context changes never rewrite Purpose. Reads expose immutable consumed revision/countries, current Context revision and revalidation required for a current claim after drift. Literal meaning remains preserved.
+
+Optional Intent relation retains an explicitly proved canonical revision/value and statement; no implicit dependency and no Intent mutation/editor. No Purpose operation increments business_context_version or writes Context/DTM/Intent.
+
+## Authority, concurrency and reads
+
+Use WorkspaceContext::run, not runBusinessMutation. Signed current advertiser, exact live advertiser session, active Workspace membership, valid responsible Owner, current view grant, actor == responsible Owner; fresh authentication for writes. Deny staff, former Owners, ordinary members, expired/revoked sessions/grants and forged GUCs. Reads are initially responsible-Owner-only. Purpose signs its own bounded session context. Force RLS on all three tables; runtime SELECT only under valid Purpose context, no direct DML; specific public read-context/write entry functions only. Authority connection receives no Purpose capabilities. Fixed SECURITY DEFINER search paths, revoke PUBLIC execution.
+
+Serialize by `builderad.object-purpose.<workspace>` advisory transaction lock; no Workspace UPDATE/SHARE upgrade. Lock head after scope and authority. Revalidate database-clock authority after waits and before/after final effects; rejected operations roll back all effects. Expected head protects every fresh command; receipts protect exact replay. Distinct unchanged attestation commands remain identifiable journal revisions. No inferred overlap winner.
+
+Projection accepts effective_at and known_at, validated timezone-qualified timestamps; known_at cannot exceed server now. Replay only explicit accepted transitions known by known_at. Each transition cuts the reviewed earlier timeline from its effective boundary; requires explicit enumeration of affected scheduled revisions to prevent accidental cancellation. Later-recorded corrections retain old knowledge. Exact-revision history preserves full premises. Independent overlapping identities return MULTIPLE_APPLICABLE, explicit declared conflicts return CONFLICTING, never NLP classification/latest-wins. Exclusions are exact. Conditional end-standing returns CONDITION_CONTINUITY_NOT_ESTABLISHED rather than certified current if current condition proof is unavailable. No TTL or future launch calendar.
+
+## Minimum application surface
+
+Create ObjectPurpose service, command request/controller, GET index/show and POST store/revise routes under existing authenticated/current-principal middleware; fresh mutations, CSRF, UUID scoping. Meta-specific validation only in request admission edge; no provider calls. SQL 42501 ->403, 22023 ->422, 40001 ->409 with safe errors. Unavailable reads are not empty results.
+
+Minimal advertiser page/editor: meaning/qualifications/phase, exact finite Meta Campaign/Ad Set rows and exclusions, structured provenance, effective dates/end-condition, optional explicit DTM/Intent relationships, unchecked confirmations, explicit replacement/correction/withdrawal and accepted identity/revision/history. No real values prefilled. Dirty locale/prop refresh preserves drafts; changed head/stale responses require explicit review and reconfirmation, never silent retry. Add Business Context link and Arabic/English copy; preserve current Context/DTM/Intent editors.
+
+## Task execution (TDD)
+
+1. **Schema/normalization** — forward-only migration 000350, purpose SQL, ObjectPurposeDatabaseTest. RED then GREEN: exact opaque tuples, bounds/shape, immutable revisions/receipts and Workspace isolation; no provider rules in canonical normalizer. Commit tested unit.
+2. **Authority/atomic admission** — neutral Foundation SQL helper, Source compatibility wrapper, Purpose actor/read-context/writer, PHP adapter; security/concurrency tests. RED then GREEN: responsible-Owner authority, strict confirmations, replay fingerprint, stale head, forged/cross-scope/expired access, real lock-barrier races/effect-time rollback, DTM current drift versus supported historical reference. Commit tested unit.
+3. **Canonical projection** — effective/knowledge-time history and exact lookup tests. RED then GREEN: future replacement, supported historical correction, withdrawal UNKNOWN, explicit finite exceptions, independent overlaps, conditional standing, retained DTM historical/current labels and Intent preservation. Commit tested unit.
+4. **HTTP/advertiser UI** — Meta edge request, controller/routes, Vue editor/page, Context link/localization; focused HTTP and rendered interaction tests added to npm test. RED then GREEN: finite scope, confirmations reset after edits, dirty refresh, stale reply/no retry, separate withdrawal, protected reads/history and no external/context writes. Commit tested unit.
+5. **Verification/review** — official preflight and security:assert-disposable-test-db before any tests; only disposable PostgreSQL18 port5433 database. Focused Purpose tests, full Foundation (composer validate --strict, composer audit, npm audit high, full PHP, npm test, Pint --test), build, git diff --check. Fresh-context independent implementation review; fix findings in this branch with regression tests. Return implementation evidence only after completion. No push/merge/deployment or real Pilot admission in this execution scope.
+
+Ledger stays local/ignored. Plan corrections do not change accepted semantics. Preview/production data and schema are not touched. Historical review E1 remains consumed revision5; fresh runtime continuity is not asserted by implementation tests.
