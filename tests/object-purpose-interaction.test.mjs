@@ -58,7 +58,7 @@ const renderer = createRenderer({
 const editor = await compile('Components/Business/ObjectPurposeEditor.vue');
 function mount(overrides = {}, component = editor.component) {
  state.posts = []; state.forms = []; state.visits = []; state.page.locale = 'en';
- const props = reactive(component === editor.component ? { workspaceId: 'business', purpose: null, contextVersion: 7, currentIntent: null, ...overrides } : {timezoneOptions:['UTC','Europe/Istanbul'], ...overrides});
+ const props = reactive(component === editor.component ? { workspaceId: 'business', purpose: null, contextVersion: 7, currentIntent: null, ...overrides } : { ...overrides });
  const root = element('root'); const app = renderer.createApp({ render: () => h(component, props) });
  app.config.globalProperties.route = globalThis.route; app.mount(root);
  return { root, props, stop: () => app.unmount() };
@@ -122,4 +122,50 @@ test('historical withdrawal confirms its own retained support without needing su
  const from=nodes(v.root,n=>n.tag==='input'&&n.props.placeholder)[0]; from.value='2025-01-01T00:00:00Z'; from.listeners.input({target:from}); await nextTick();
  await confirm(v); await check(v,'confirm-transition'); await check(v,'confirm-historical'); submit(v);
  assert.equal(state.posts.length,1); assert.equal(state.posts[0].payload.withdrawal_reason,'Owner attests the preserved historical withdrawal record'); assert.equal(state.posts[0].payload.effective_from,'2025-01-01T00:00:00Z'); v.stop();
+});
+
+const retainedSnapshot = () => ({meaning:'A',qualifications:'Retained qualification',phase:'launch',included_objects:[{provider:'meta',account_namespace:'meta_ads_account',account_id:'100',object_kind:'campaign',object_id:'200',incarnation:null}],excluded_objects:[],provenance:{speaker:'Owner',statement_at:null,source:'Original statement',identity_basis:'Exact identified objects',authority_basis:'Responsible Owner',historical_support:null,effective_basis:'Bounded period'},dtm:null,intent:null,end_condition:'Ends if launch is cancelled',limitations:'Retained limitation',conflicts:['First conflict','Second conflict']});
+const retainedPurpose = (snapshot=retainedSnapshot()) => {
+ const revision={purpose_id:'purpose-1',revision_id:'revision-1',version:1,operation:'declare',snapshot,effective_from:'2026-10-07T00:00:00Z',effective_until:'2030-01-01T00:00:00Z',accepted_at:'2026-10-07T00:00:00Z',actor_user_id:1,actor_generation:1,ownership_version:1,reason:null,supersedes_revision_id:null,affected_revision_ids:[]};
+ return {purpose_id:'purpose-1',head_version:1,state:'DECLARED',applicable:revision,history:[revision],relationship_revalidation_required:false,dtm_standing:'NO_RELATION_DECLARED',continuity:'CONDITION_CONTINUITY_NOT_ESTABLISHED'};
+};
+const endInput = v => nodes(v.root,n=>n.tag==='label'&&text(n).includes('Exclusive effective end'))[0].children.find(n=>n.tag==='input');
+async function editEnd(v,value) { const n=endInput(v); n.value=value; n.listeners.input({target:n}); await nextTick(); }
+test('wording-only correction preserves the exact retained end and all unchanged snapshot fields',async()=>{
+ const purpose=retainedPurpose(); const v=mount({purpose});
+ await input(v,'operation','correct'); await input(v,'meaning','B'); await input(v,'reason','Corrects wording only');
+ await confirm(v); await check(v,'confirm-transition'); submit(v);
+ assert.equal(state.posts.length,1); const c=state.posts[0].payload;
+ assert.equal(c.effective_until,'2030-01-01T00:00:00Z');
+ assert.deepEqual(c.declaration,{...purpose.history[0].snapshot,meaning:'B'}); v.stop();
+});
+test('explicit end removal clears standing confirmation and must be reconfirmed as a transition',async()=>{
+ const v=mount({purpose:retainedPurpose()}); await confirm(v); await check(v,'confirm-transition');
+ assert.equal(endInput(v).value,'2030-01-01T00:00:00Z'); await editEnd(v,''); submit(v);
+ assert.equal(state.posts.length,0); assert.equal(find(v,'confirm-standing').checked,false); assert.equal(find(v,'confirm-transition').checked,false);
+ await confirm(v); await check(v,'confirm-transition'); submit(v); assert.equal(state.posts.length,1); assert.equal(state.posts[0].payload.effective_until,null); v.stop();
+});
+const layout = moduleUrl(`import { h } from ${JSON.stringify(import.meta.resolve('vue'))}; export default {render(){return h('main',this.$slots.default?.());}};`);
+const purposePage = await compile('Pages/Business/ObjectPurposes.vue',{'@/Layouts/AdvertiserLayout.vue':layout,'@/Components/Business/ObjectPurposeEditor.vue':editor.url});
+test('current DTM labels warn only for actual drift and historical references stay historical in both languages',async()=>{
+ for (const mode of ['current_alignment','current_dependency','historical_attestation']) {
+  const snapshot=retainedSnapshot(); snapshot.dtm={mode,version:7,countries:['SA'],subset:[],statement:'Exact retained relationship'};
+  const item=retainedPurpose(snapshot); item.dtm_standing=mode==='historical_attestation'?'HISTORICAL_ATTESTATION':'CURRENT_REFERENCE_AT_READ';
+  const v=mount({workspace:{public_id:'business',name:'Real workspace'},projection:{state:'DECLARED',items:[item],current_context_version:7,effective_at:'2026-10-07T00:00:00Z',known_at:'2026-10-07T00:00:00Z'},selectedPurpose:'purpose-1',business:{currentIntent:{value:null,version:7}}},purposePage.component);
+  assert.doesNotMatch(text(v.root),/current relationship requires revalidation/);
+  if(mode==='historical_attestation') assert.match(text(v.root),/Historical attestation; not a current claim/);
+  else {
+   assert.match(text(v.root),mode==='current_alignment'?/Current market alignment claim/:/Current market dependency/);
+   v.props.projection.items[0].relationship_revalidation_required=true; await nextTick(); assert.match(text(v.root),/current relationship requires revalidation/);
+   v.props.projection.items[0].relationship_revalidation_required=false; await nextTick();
+  }
+  state.page.locale='ar'; await nextTick(); assert.doesNotMatch(text(v.root),/العلاقة بالحاضر تحتاج إعادة تحقق/); v.stop();
+ }
+});
+
+test('a retained database timestamp is resubmitted as the same timezone-qualified instant without losing precision',async()=>{
+ const purpose=retainedPurpose(); purpose.history[0].effective_until='2030-01-01 00:00:00.123456+00';
+ const v=mount({purpose}); await input(v,'operation','correct'); await input(v,'meaning','B'); await input(v,'reason','Wording correction only');
+ await confirm(v); await check(v,'confirm-transition'); submit(v);
+ assert.equal(state.posts.length,1); assert.equal(state.posts[0].payload.effective_until,'2030-01-01T00:00:00.123456+00:00'); v.stop();
 });

@@ -41,8 +41,12 @@ final class ObjectPurpose
                 ->where('accepted_at', '<=', $knownAt->format('Y-m-d H:i:s.uP'))->orderBy('version')->get()
                 ->map(fn ($row) => $this->revisionArray($row))->all();
             $segments = [];
+            $transitions = [];
             foreach ($history as $revision) {
                 $from = new DateTimeImmutable($revision['effective_from']);
+                $transitions = array_values(array_filter($transitions,
+                    fn ($transition) => new DateTimeImmutable($transition['effective_from']) < $from));
+                $transitions[] = $revision;
                 // Every accepted transition explicitly cuts the reviewed preceding timeline.
                 // Later versions are knowledge, not a timestamp-based applicability winner.
                 $retained = [];
@@ -82,7 +86,7 @@ final class ObjectPurpose
                 'relationship_revalidation_required' => $revalidate,
                 'continuity' => $applicable === null ? 'NOT_ESTABLISHED' : ($applicable['snapshot']['end_condition'] !== null
                     ? 'CONDITION_CONTINUITY_NOT_ESTABLISHED' : 'DECLARED_EFFECTIVE_STANDING'),
-                'scheduled_revision_ids' => array_column(array_values(array_filter($history,
+                'scheduled_revision_ids' => array_column(array_values(array_filter($transitions,
                     fn ($revision) => new DateTimeImmutable($revision['effective_from']) > $effectiveAt)), 'revision_id')];
         }
         // Recheck after all queries; authority denial must never masquerade as no purpose.

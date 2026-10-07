@@ -10,12 +10,14 @@ const object = (): PurposeObject => ({ provider: 'meta', account_namespace: 'met
 const last = () => props.purpose?.history.at(-1);
 const baseline = ref(clone(props.purpose));
 const saved = last()?.snapshot;
+// Preserve the instant and PostgreSQL microseconds when reusing a retained boundary.
+const retainedInstant = (value: string | null | undefined) => (value ?? '').replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
 const intentReference = ref(saved?.intent ? clone(saved.intent) : (props.currentIntent?.value ? { version: props.contextVersion, value: clone(props.currentIntent.value), statement: '' } : null));
 const draft = reactive({ meaning: saved?.meaning ?? '', qualifications: saved?.qualifications ?? '', phase: saved?.phase ?? '',
     included: clone(saved?.included_objects ?? [object()]), excluded: clone(saved?.excluded_objects ?? []),
     speaker: saved?.provenance.speaker ?? '', statement_at: saved?.provenance.statement_at ?? '', source: saved?.provenance.source ?? '',
     identity_basis: saved?.provenance.identity_basis ?? '', authority_basis: saved?.provenance.authority_basis ?? '', historical_support: saved?.provenance.historical_support ?? '', effective_basis: saved?.provenance.effective_basis ?? '',
-    from: '', until: '', condition: saved?.end_condition ?? '', limitations: saved?.limitations ?? '', conflicts: saved?.conflicts.join('\n') ?? '',
+    from: '', until: retainedInstant(last()?.effective_until), condition: saved?.end_condition ?? '', limitations: saved?.limitations ?? '', conflicts: saved?.conflicts.join('\n') ?? '',
     dtmMode: saved?.dtm?.mode ?? 'none', dtmVersion: saved?.dtm?.version ?? props.contextVersion,
     countries: saved?.dtm?.countries.join(', ') ?? '', subset: saved?.dtm?.subset.join(', ') ?? '', dtmStatement: saved?.dtm?.statement ?? '',
     intentEnabled: saved?.intent !== null && saved?.intent !== undefined, intentStatement: saved?.intent?.statement ?? '', operation: 'replace', reason: '' });
@@ -60,7 +62,8 @@ function save() {
         provenance: { speaker: nullable(draft.speaker), statement_at: nullable(draft.statement_at), source: draft.source, identity_basis: draft.identity_basis, authority_basis: draft.authority_basis, historical_support: nullable(draft.historical_support), effective_basis: draft.effective_basis },
         dtm: draft.dtmMode === 'none' ? null : { mode: draft.dtmMode, version: Number(draft.dtmVersion), countries: codes(draft.countries), subset: codes(draft.subset), statement: draft.dtmStatement },
         intent: draft.intentEnabled && intentReference.value ? { version: intentReference.value.version, value: clone(intentReference.value.value), statement: draft.intentStatement } : null,
-        end_condition: nullable(draft.condition), limitations: nullable(draft.limitations), conflicts: draft.conflicts.trim() ? [draft.conflicts] : [] };
+        end_condition: nullable(draft.condition), limitations: nullable(draft.limitations),
+        conflicts: saved && draft.conflicts === saved.conflicts.join('\n') ? clone(saved.conflicts) : (draft.conflicts.trim() ? [draft.conflicts] : []) };
     const command = { command_id: commandId, purpose_id: baseline.value?.purpose_id ?? null, expected_version: baseline.value?.head_version ?? 0,
         operation: baseline.value ? draft.operation : 'declare', declaration, effective_from: nullable(draft.from), effective_until: withdrawing.value ? null : nullable(draft.until),
         supersedes_revision_id: baseline.value?.history.at(-1)?.revision_id ?? null, affected_revision_ids: baseline.value?.history.map(revision => revision.revision_id) ?? [],

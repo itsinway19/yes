@@ -11,6 +11,66 @@ use Tests\Support\ObjectPurposeTestCase;
 
 class ObjectPurposeTest extends ObjectPurposeTestCase
 {
+    public function test_text_correction_preserves_bounded_snapshot_and_explicit_end_removal_requires_confirmation(): void
+    {
+        $command = self::command();
+        $command['effective_until'] = '2030-01-01T00:00:00Z';
+        $first = $this->write($command);
+        $correction = $this->transition($first, 'correct');
+        $correction['effective_until'] = $command['effective_until'];
+        $correction['declaration'] = $command['declaration'];
+        $correction['declaration']['meaning'] = 'Corrected wording';
+        $second = $this->write($correction);
+        $revision = $this->project($first['purpose_id'])['items'][0]['applicable'];
+        $this->assertSame('2030-01-01T00:00:00+00:00', (new DateTimeImmutable($revision['effective_until']))->format(DATE_ATOM));
+        $this->assertJsonStringEqualsJsonString(json_encode($correction['declaration']), json_encode($revision['snapshot']));
+        $remove = $this->transition($second, 'replace');
+        $remove['declaration'] = $correction['declaration'];
+        $remove['confirmations']['standing'] = false;
+        $this->denied($remove, '22023');
+        $remove['confirmations']['standing'] = true;
+        $remove['confirmations']['transition'] = false;
+        $this->denied($remove, '22023');
+        $remove['confirmations']['transition'] = true;
+        $this->write($remove);
+        $this->assertNull($this->project($first['purpose_id'])['items'][0]['applicable']['effective_until']);
+    }
+
+    public function test_historical_market_reference_is_never_promoted_to_current_alignment(): void
+    {
+        $this->context(fn ($r, $w) => app(BusinessContext::class)->replaceTargetMarkets($r, $w, ['SA'], 0), true);
+        $this->context(fn ($r, $w) => app(BusinessContext::class)->replaceTargetMarkets($r, $w, ['AE'], 1), true);
+        $command = self::command();
+        $command['declaration']['dtm'] = ['mode' => 'historical_attestation', 'version' => 1, 'countries' => ['SA'], 'subset' => [], 'statement' => 'Retained earlier market relationship'];
+        $command['confirmations']['dtm'] = $command['confirmations']['historical'] = true;
+        $command['declaration']['provenance']['historical_support'] = 'Owner attests the preserved earlier statement';
+        $first = $this->write($command);
+        $item = $this->project($first['purpose_id'])['items'][0];
+        $this->assertSame('HISTORICAL_ATTESTATION', $item['dtm_standing']);
+        $this->assertFalse($item['relationship_revalidation_required']);
+        $this->assertJsonStringEqualsJsonString(json_encode($command['declaration']['dtm']), json_encode($item['applicable']['snapshot']['dtm']));
+    }
+
+    public function test_cancelled_future_transition_is_history_not_active_schedule_and_prior_knowledge_survives(): void
+    {
+        $first = $this->write(self::command());
+        $future = $this->write($this->transition($first, 'replace', '2030-01-01T00:00:00Z'));
+        $known = DB::connection('pgsql_migrations')->table('object_purpose_revisions')
+            ->where('revision_id', $future['revision_id'])->value('accepted_at');
+        $replacement = $this->write($this->transition($future, 'replace', '2029-01-01T00:00:00Z', [$future['revision_id']]));
+        $now = $this->project($first['purpose_id']);
+        $this->assertSame([$replacement['revision_id']], $now['items'][0]['scheduled_revision_ids']);
+        $this->assertCount(3, $now['items'][0]['history']);
+        $this->assertSame($future['revision_id'], $now['items'][0]['history'][1]['revision_id']);
+        $earlier = $this->project($first['purpose_id'], known: $known);
+        $this->assertSame([$future['revision_id']], $earlier['items'][0]['scheduled_revision_ids']);
+        $this->assertCount(2, $earlier['items'][0]['history']);
+        $this->assertSame($replacement['revision_id'], $this->project($first['purpose_id'], '2031-01-01T00:00:00Z')['items'][0]['applicable']['revision_id']);
+        $withdrawal = $this->write($this->transition($replacement, 'withdraw', '2032-01-01T00:00:00Z'));
+        $this->assertSame([$replacement['revision_id'], $withdrawal['revision_id']], $this->project($first['purpose_id'])['items'][0]['scheduled_revision_ids']);
+        $this->assertSame('UNKNOWN', $this->project($first['purpose_id'], '2033-01-01T00:00:00Z')['state']);
+    }
+
     public function test_supported_historical_withdrawal_retains_its_own_support_without_rewriting_original_provenance(): void
     {
         $first = $this->write(self::command());
@@ -121,6 +181,9 @@ class ObjectPurposeTest extends ObjectPurposeTestCase
         $c['declaration']['dtm'] = ['mode' => 'current_dependency', 'version' => 1, 'countries' => ['SA'], 'subset' => [], 'statement' => 'Use depends on the declared markets'];
         $c['confirmations']['dtm'] = true;
         $first = $this->write($c);
+        $unchanged = $this->project($first['purpose_id'])['items'][0];
+        $this->assertFalse($unchanged['relationship_revalidation_required']);
+        $this->assertSame('CURRENT_REFERENCE_AT_READ', $unchanged['dtm_standing']);
         $this->context(fn ($r, $w) => app(BusinessContext::class)->replaceTargetMarkets($r, $w, ['AE'], 1), true);
         $p = $this->project($first['purpose_id']);
         $this->assertSame(1, $p['items'][0]['applicable']['snapshot']['dtm']['version']);
