@@ -35,6 +35,9 @@ final class ObjectPurpose
             abort(404);
         }
         $contextVersion = (int) DB::table('workspaces')->where('id', $workspace->id)->value('business_context_version');
+        // Existing DTM events are immutable and prohibit no-op transitions.
+        $dtmTransitionVersion = (int) DB::table('business_target_market_events')->where('workspace_id', $workspace->id)
+            ->where('version', '<=', $contextVersion)->max('version');
         $items = [];
         foreach ($heads as $head) {
             $history = DB::table('object_purpose_revisions')->where('workspace_id', $workspace->id)->where('purpose_id', $head->id)
@@ -78,7 +81,7 @@ final class ObjectPurpose
             }
             $dtm = $applicable['snapshot']['dtm'] ?? null;
             $historical = $dtm !== null && $dtm['mode'] === 'historical_attestation';
-            $revalidate = $dtm !== null && ! $historical && $dtm['version'] !== $contextVersion;
+            $revalidate = $dtm !== null && ! $historical && $dtmTransitionVersion > $dtm['version'];
             $items[] = ['purpose_id' => $head->id, 'head_version' => (int) $head->head_version,
                 'state' => $applicable === null ? 'UNKNOWN' : 'DECLARED', 'applicable' => $applicable, 'history' => $history,
                 'dtm_standing' => $dtm === null ? 'NO_RELATION_DECLARED' : ($historical ? 'HISTORICAL_ATTESTATION' : ($revalidate
@@ -95,7 +98,7 @@ final class ObjectPurpose
         $hasDeclaredConflict = count(array_filter($applicable, fn ($item) => $item['applicable']['snapshot']['conflicts'] !== [])) > 0;
 
         return ['state' => $hasDeclaredConflict ? 'CONFLICTING' : (count($applicable) > 1 ? 'MULTIPLE_APPLICABLE' : ($applicable === [] ? 'UNKNOWN' : 'DECLARED')),
-            'items' => $items, 'current_context_version' => $contextVersion,
+            'items' => $items, 'current_context_version' => $contextVersion, 'latest_dtm_event_context_version' => $dtmTransitionVersion,
             'effective_at' => $effectiveAt->format('Y-m-d\TH:i:s.uP'), 'known_at' => $knownAt->format('Y-m-d\TH:i:s.uP')];
     }
 

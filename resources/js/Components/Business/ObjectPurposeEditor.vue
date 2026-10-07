@@ -3,7 +3,7 @@ import { router } from '@inertiajs/vue3';
 import { computed, reactive, ref, watch } from 'vue';
 import { useBusinessCopy } from '@/localization/business';
 import type { PurposeItem, PurposeObject, PurposeSnapshot, PurposeIntent } from '@/types/object-purpose';
-const props = defineProps<{ workspaceId: string; purpose: PurposeItem | null; contextVersion: number; currentIntent: { value: PurposeIntent | null; version: number } | null }>();
+const props = defineProps<{ workspaceId: string; purpose: PurposeItem | null; contextVersion: number; dtmTransitionVersion: number; currentIntent: { value: PurposeIntent | null; version: number } | null }>();
 const { t } = useBusinessCopy();
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const object = (): PurposeObject => ({ provider: 'meta', account_namespace: 'meta_ads_account', account_id: '', object_kind: 'campaign', object_id: '', incarnation: null });
@@ -29,7 +29,10 @@ const reset = () => { for (const key of Object.keys(flags) as Flag[]) flags[key]
 watch(() => JSON.stringify(draft), () => { reset(); commandId = null; errors.value = {}; });
 watch(() => props.purpose?.head_version, () => { changed.value = true; reviewed.value = false; reset(); });
 watch(() => props.contextVersion, () => {
-    if (draft.dtmMode.startsWith('current_') || draft.intentEnabled) { changed.value = true; reviewed.value = false; reset(); }
+    if (draft.intentEnabled) { changed.value = true; reviewed.value = false; reset(); }
+});
+watch(() => props.dtmTransitionVersion, () => {
+    if (draft.dtmMode.startsWith('current_')) { changed.value = true; reviewed.value = false; reset(); }
 });
 const historical = computed(() => (!withdrawing.value && draft.dtmMode === 'historical_attestation') || (!!draft.from && Date.parse(draft.from) < Date.now()));
 const withdrawing = computed(() => baseline.value !== null && draft.operation === 'withdraw');

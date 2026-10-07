@@ -5,7 +5,7 @@ import ObjectPurposeEditor from '@/Components/Business/ObjectPurposeEditor.vue';
 import { useBusinessCopy } from '@/localization/business';
 import type { PurposeItem, PurposeIntent } from '@/types/object-purpose';
 import { computed } from 'vue';
-const props = defineProps<{workspace: {public_id:string;name:string}; projection: {state:string;items:PurposeItem[];current_context_version:number;effective_at:string;known_at:string}; selectedPurpose:string|null; business:{currentIntent:{value:PurposeIntent|null;version:number}}}>();
+const props = defineProps<{workspace: {public_id:string;name:string}; projection: {state:string;items:PurposeItem[];current_context_version:number;latest_dtm_event_context_version:number;effective_at:string;known_at:string}; selectedPurpose:string|null; business:{currentIntent:{value:PurposeIntent|null;version:number}}}>();
 const { t } = useBusinessCopy();
 const selected = computed(() => props.projection.items.find(item => item.purpose_id === props.selectedPurpose) ?? null);
 </script>
@@ -36,6 +36,6 @@ const selected = computed(() => props.projection.items.find(item => item.purpose
             <p v-if="revision.supersedes_revision_id">{{ t('purposeAffected') }}: {{ revision.supersedes_revision_id }} · {{ revision.affected_revision_ids.join(', ') }}</p>
         </article>
     </section>
-    <ObjectPurposeEditor :key="selectedPurpose ?? 'new'" :workspace-id="workspace.public_id" :purpose="selected" :context-version="projection.current_context_version" :current-intent="business.currentIntent" />
+    <ObjectPurposeEditor :key="selectedPurpose ?? 'new'" :workspace-id="workspace.public_id" :purpose="selected" :context-version="projection.current_context_version" :dtm-transition-version="projection.latest_dtm_event_context_version" :current-intent="business.currentIntent" />
 </AdvertiserLayout>
 </template>

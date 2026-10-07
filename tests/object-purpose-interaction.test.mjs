@@ -58,7 +58,7 @@ const renderer = createRenderer({
 const editor = await compile('Components/Business/ObjectPurposeEditor.vue');
 function mount(overrides = {}, component = editor.component) {
  state.posts = []; state.forms = []; state.visits = []; state.page.locale = 'en';
- const props = reactive(component === editor.component ? { workspaceId: 'business', purpose: null, contextVersion: 7, currentIntent: null, ...overrides } : { ...overrides });
+ const props = reactive(component === editor.component ? { workspaceId: 'business', purpose: null, contextVersion: 7, dtmTransitionVersion: 0, currentIntent: null, ...overrides } : { ...overrides });
  const root = element('root'); const app = renderer.createApp({ render: () => h(component, props) });
  app.config.globalProperties.route = globalThis.route; app.mount(root);
  return { root, props, stop: () => app.unmount() };
@@ -151,7 +151,7 @@ test('current DTM labels warn only for actual drift and historical references st
  for (const mode of ['current_alignment','current_dependency','historical_attestation']) {
   const snapshot=retainedSnapshot(); snapshot.dtm={mode,version:7,countries:['SA'],subset:[],statement:'Exact retained relationship'};
   const item=retainedPurpose(snapshot); item.dtm_standing=mode==='historical_attestation'?'HISTORICAL_ATTESTATION':'CURRENT_REFERENCE_AT_READ';
-  const v=mount({workspace:{public_id:'business',name:'Real workspace'},projection:{state:'DECLARED',items:[item],current_context_version:7,effective_at:'2026-10-07T00:00:00Z',known_at:'2026-10-07T00:00:00Z'},selectedPurpose:'purpose-1',business:{currentIntent:{value:null,version:7}}},purposePage.component);
+  const v=mount({workspace:{public_id:'business',name:'Real workspace'},projection:{state:'DECLARED',items:[item],current_context_version:7,latest_dtm_event_context_version:7,effective_at:'2026-10-07T00:00:00Z',known_at:'2026-10-07T00:00:00Z'},selectedPurpose:'purpose-1',business:{currentIntent:{value:null,version:7}}},purposePage.component);
   assert.doesNotMatch(text(v.root),/current relationship requires revalidation/);
   if(mode==='historical_attestation') assert.match(text(v.root),/Historical attestation; not a current claim/);
   else {
@@ -168,4 +168,15 @@ test('a retained database timestamp is resubmitted as the same timezone-qualifie
  const v=mount({purpose}); await input(v,'operation','correct'); await input(v,'meaning','B'); await input(v,'reason','Wording correction only');
  await confirm(v); await check(v,'confirm-transition'); submit(v);
  assert.equal(state.posts.length,1); assert.equal(state.posts[0].payload.effective_until,'2030-01-01T00:00:00.123456+00:00'); v.stop();
+});
+
+test('DTM draft currentness follows DTM events instead of unrelated Context version changes',async()=>{
+ const snapshot=retainedSnapshot(); snapshot.dtm={mode:'current_dependency',version:7,countries:['SA'],subset:[],statement:'Exact current market dependency'};
+ const v=mount({purpose:retainedPurpose(snapshot),contextVersion:7,dtmTransitionVersion:7});
+ await confirm(v); await check(v,'confirm-dtm'); await check(v,'confirm-transition');
+ v.props.contextVersion=8; await nextTick();
+ assert.equal(find(v,'confirm-dtm').checked,true); submit(v); assert.equal(state.posts.length,1); assert.equal(state.posts[0].payload.declaration.dtm.version,7);
+ state.posts[0].options.onFinish(); await nextTick();
+ v.props.dtmTransitionVersion=9; v.props.contextVersion=9; await nextTick();
+ assert.equal(find(v,'confirm-dtm').checked,false); submit(v); assert.equal(state.posts.length,1); assert.match(text(v.root),/reference changed/); v.stop();
 });

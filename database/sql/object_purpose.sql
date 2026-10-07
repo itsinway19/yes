@@ -257,7 +257,9 @@ BEGIN
    SELECT 1 FROM business_target_market_events WHERE workspace_id=w AND version=reference_version UNION ALL
    SELECT 1 FROM business_current_intent_events WHERE workspace_id=w AND after_version=reference_version)) THEN
    RAISE EXCEPTION 'Exact canonical Context revision unavailable' USING ERRCODE='22023'; END IF;
-  IF snap#>>'{dtm,mode}' IN ('current_alignment','current_dependency') AND reference_version<>context_version THEN
+  -- The immutable DTM journal contains material transitions only; Intent/name/type drift is unrelated.
+  IF snap#>>'{dtm,mode}' IN ('current_alignment','current_dependency') AND EXISTS (
+   SELECT 1 FROM business_target_market_events WHERE workspace_id=w AND version>reference_version AND version<=context_version) THEN
    RAISE EXCEPTION 'Current DTM alignment changed; review required' USING ERRCODE='40001'; END IF;
   SELECT to_jsonb(after_codes) INTO countries FROM business_target_market_events WHERE workspace_id=w AND version<=reference_version ORDER BY version DESC LIMIT 1;
   countries:=coalesce(countries,'[]');
