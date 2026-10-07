@@ -50,4 +50,3 @@ BEGIN
  RETURN a;
 END $$;
 REVOKE ALL ON FUNCTION builderad_source_actor(bigint,text,boolean,boolean) FROM PUBLIC,builderad_app,builderad_authority;
-

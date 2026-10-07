@@ -39,4 +39,3 @@ const selected = computed(() => props.projection.items.find(item => item.purpose
     <ObjectPurposeEditor :key="selectedPurpose ?? 'new'" :workspace-id="workspace.public_id" :purpose="selected" :context-version="projection.current_context_version" :current-intent="business.currentIntent" />
 </AdvertiserLayout>
 </template>
-

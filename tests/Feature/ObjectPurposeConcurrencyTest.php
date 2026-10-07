@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Business\ObjectPurpose;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
@@ -9,6 +10,49 @@ use Tests\Support\ObjectPurposeTestCase;
 
 class ObjectPurposeConcurrencyTest extends ObjectPurposeTestCase
 {
+    public function test_canonical_read_holds_coherent_revision_until_transaction_finishes(): void
+    {
+        $first = $this->write(self::command());
+        $command = [...self::command(), 'purpose_id' => $first['purpose_id'], 'expected_version' => 1,
+            'operation' => 'replace', 'supersedes_revision_id' => $first['revision_id']];
+        $command['confirmations']['transition'] = true;
+        $session = DB::connection('pgsql_migrations')->table('security_sessions')->where('user_id', auth()->id())->value('session_key_hash');
+        $path = storage_path('framework/testing/purpose-reader-'.Str::uuid().'.json');
+        file_put_contents($path, json_encode(['workspace' => $this->workspace->id, 'actor' => auth()->id(),
+            'session' => $session, 'command' => $command]));
+        $worker = new Process([PHP_BINARY, base_path('tests/ObjectPurposeCommandWorker.php'), $path], base_path());
+        $worker->setTimeout(45);
+        try {
+            $this->context(function ($request, $workspace) use ($worker): void {
+                $projection = app(ObjectPurpose::class)->projection($request, $workspace);
+                $this->assertSame(1, $projection['items'][0]['head_version']);
+                $readerPid = (int) DB::scalar('SELECT pg_backend_pid()');
+                $worker->start();
+                $blocked = false;
+                $deadline = microtime(true) + 20;
+                do {
+                    if (preg_match('/PID=(\d+)/', $worker->getOutput(), $match)) {
+                        $blocked = (bool) DB::scalar('SELECT ?::integer=ANY(pg_blocking_pids(?::integer))', [$readerPid, (int) $match[1]]);
+                    }
+                    if ($blocked || ! $worker->isRunning()) {
+                        break;
+                    }
+                    usleep(20000);
+                } while (microtime(true) < $deadline);
+                $this->assertTrue($blocked, 'Real writer must wait for the canonical reader transaction');
+                $this->assertSame(1, DB::table('object_purposes')->value('head_version'));
+            });
+            $worker->wait();
+            $this->assertStringContainsString('RESULT=', $worker->getOutput());
+            $this->assertSame(2, DB::connection('pgsql_migrations')->table('object_purposes')->value('head_version'));
+        } finally {
+            if ($worker->isRunning()) {
+                $worker->stop();
+            }
+            @unlink($path);
+        }
+    }
+
     public function test_serialized_same_expected_head_has_one_winner(): void
     {
         $first = $this->write(self::command());

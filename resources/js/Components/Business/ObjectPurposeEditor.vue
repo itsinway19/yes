@@ -9,9 +9,8 @@ const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const object = (): PurposeObject => ({ provider: 'meta', account_namespace: 'meta_ads_account', account_id: '', object_kind: 'campaign', object_id: '', incarnation: null });
 const last = () => props.purpose?.history.at(-1);
 const baseline = ref(clone(props.purpose));
-const contextBaseline = ref(props.contextVersion);
-const intentBaseline = ref(clone(props.currentIntent));
 const saved = last()?.snapshot;
+const intentReference = ref(saved?.intent ? clone(saved.intent) : (props.currentIntent?.value ? { version: props.contextVersion, value: clone(props.currentIntent.value), statement: '' } : null));
 const draft = reactive({ meaning: saved?.meaning ?? '', qualifications: saved?.qualifications ?? '', phase: saved?.phase ?? '',
     included: clone(saved?.included_objects ?? [object()]), excluded: clone(saved?.excluded_objects ?? []),
     speaker: saved?.provenance.speaker ?? '', statement_at: saved?.provenance.statement_at ?? '', source: saved?.provenance.source ?? '',
@@ -30,7 +29,7 @@ watch(() => props.purpose?.head_version, () => { changed.value = true; reviewed.
 watch(() => props.contextVersion, () => {
     if (draft.dtmMode.startsWith('current_') || draft.intentEnabled) { changed.value = true; reviewed.value = false; reset(); }
 });
-const historical = computed(() => draft.dtmMode === 'historical_attestation' || (!!draft.from && Date.parse(draft.from) < Date.now()));
+const historical = computed(() => (!withdrawing.value && draft.dtmMode === 'historical_attestation') || (!!draft.from && Date.parse(draft.from) < Date.now()));
 const withdrawing = computed(() => baseline.value !== null && draft.operation === 'withdraw');
 const required = computed<Flag[]>(() => ['meaning', 'scope', 'authority', 'identity', 'standing',
     ...(!withdrawing.value && draft.dtmMode !== 'none' ? ['dtm' as const] : []),
@@ -41,13 +40,18 @@ const nullable = (v: string) => v.trim() === '' ? null : v;
 const codes = (v: string) => v.split(',').map(code => code.trim()).filter(Boolean);
 function review() { router.reload({ onSuccess: () => { reviewed.value = true; changed.value = true; } }); }
 function adopt() {
-    baseline.value = clone(props.purpose); contextBaseline.value = props.contextVersion; intentBaseline.value = clone(props.currentIntent);
+    baseline.value = clone(props.purpose);
     changed.value = reviewed.value = false; reset(); commandId = null; errors.value = {};
+}
+function useCurrentIntentReference() {
+    if (!props.currentIntent?.value) return;
+    intentReference.value = { version: props.contextVersion, value: clone(props.currentIntent.value), statement: '' };
+    reset(); commandId = null;
 }
 function save() {
     if (processing.value || changed.value || !required.value.every(key => flags[key])) return;
     if (!withdrawing.value && (!draft.meaning.trim() || !draft.source.trim() || !draft.identity_basis.trim() || !draft.authority_basis.trim() || !draft.effective_basis.trim())) return;
-    if (historical.value && !draft.historical_support.trim()) return;
+    if (historical.value && !(withdrawing.value ? draft.reason : draft.historical_support).trim()) return;
     if (baseline.value && draft.operation !== 'replace' && !draft.reason.trim()) return;
     commandId ??= crypto.randomUUID();
     const declaration: PurposeSnapshot | null = withdrawing.value ? null : {
@@ -55,7 +59,7 @@ function save() {
         included_objects: draft.included.map(row => ({...row, incarnation: row.incarnation || null})), excluded_objects: draft.excluded.map(row => ({...row, incarnation: row.incarnation || null})),
         provenance: { speaker: nullable(draft.speaker), statement_at: nullable(draft.statement_at), source: draft.source, identity_basis: draft.identity_basis, authority_basis: draft.authority_basis, historical_support: nullable(draft.historical_support), effective_basis: draft.effective_basis },
         dtm: draft.dtmMode === 'none' ? null : { mode: draft.dtmMode, version: Number(draft.dtmVersion), countries: codes(draft.countries), subset: codes(draft.subset), statement: draft.dtmStatement },
-        intent: draft.intentEnabled && intentBaseline.value?.value ? { version: contextBaseline.value, value: clone(intentBaseline.value.value), statement: draft.intentStatement } : null,
+        intent: draft.intentEnabled && intentReference.value ? { version: intentReference.value.version, value: clone(intentReference.value.value), statement: draft.intentStatement } : null,
         end_condition: nullable(draft.condition), limitations: nullable(draft.limitations), conflicts: draft.conflicts.trim() ? [draft.conflicts] : [] };
     const command = { command_id: commandId, purpose_id: baseline.value?.purpose_id ?? null, expected_version: baseline.value?.head_version ?? 0,
         operation: baseline.value ? draft.operation : 'declare', declaration, effective_from: nullable(draft.from), effective_until: withdrawing.value ? null : nullable(draft.until),
@@ -107,8 +111,8 @@ function save() {
             <label>{{ t('purposeSubset') }}<input v-model="draft.subset" /></label>
             <label>{{ t('purposeRelationStatement') }}<textarea v-model="draft.dtmStatement" maxlength="4000" /></label>
         </template>
-        <label v-if="currentIntent?.value"><input v-model="draft.intentEnabled" type="checkbox" />{{ t('purposeIntent') }}</label><p v-else>{{ t('purposeIntentAbsent') }}</p>
-        <label v-if="draft.intentEnabled">{{ t('purposeRelationStatement') }}<textarea v-model="draft.intentStatement" maxlength="4000" /></label>
+        <label v-if="intentReference"><input v-model="draft.intentEnabled" type="checkbox" />{{ t('purposeIntent') }}</label><p v-else>{{ t('purposeIntentAbsent') }}</p>
+        <div v-if="draft.intentEnabled && intentReference"><p>{{ t('purposeIntentReference') }} · {{ intentReference.version }} · {{ intentReference.value.outcome.meaning }}</p><p>{{ intentReference.value.description }} · {{ intentReference.value.outcome.clarification }} · {{ intentReference.value.quantity }} {{ intentReference.value.outcome.count_unit }}</p><p>{{ intentReference.value.direction }} · {{ intentReference.value.scope }} · {{ intentReference.value.horizon?.deadline_date }} {{ intentReference.value.horizon?.timezone }}</p><button v-if="currentIntent?.value" type="button" class="biz-link" @click="useCurrentIntentReference">{{ t('purposeUseCurrentIntent') }}</button></div><label v-if="draft.intentEnabled">{{ t('purposeRelationStatement') }}<textarea v-model="draft.intentStatement" maxlength="4000" /></label>
     </template>
     <label>{{ t('purposeStart') }}<input v-model="draft.from" placeholder="2026-10-07T12:00:00Z" /></label>
     <label v-if="purpose && draft.operation !== 'replace'">{{ t('purposeReason') }}<textarea v-model="draft.reason" data-purpose="reason" maxlength="4000" required /></label>
@@ -118,4 +122,3 @@ function save() {
     <button type="submit" class="biz-button" :disabled="processing || changed">{{ t('purposeSubmit') }}</button>
 </form>
 </template>
-

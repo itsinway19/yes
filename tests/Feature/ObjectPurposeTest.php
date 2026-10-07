@@ -11,6 +11,18 @@ use Tests\Support\ObjectPurposeTestCase;
 
 class ObjectPurposeTest extends ObjectPurposeTestCase
 {
+    public function test_supported_historical_withdrawal_retains_its_own_support_without_rewriting_original_provenance(): void
+    {
+        $first = $this->write(self::command());
+        $command = $this->transition($first, 'withdraw', '2025-01-01T00:00:00Z', [$first['revision_id']]);
+        $command['withdrawal_reason'] = 'Owner attests the preserved shutdown record establishing withdrawal on the stated historical date';
+        $this->write($command);
+        $projection = $this->project($first['purpose_id']);
+        $this->assertSame('UNKNOWN', $projection['state']);
+        $this->assertSame($command['withdrawal_reason'], $projection['items'][0]['history'][1]['reason']);
+        $this->assertNull($projection['items'][0]['history'][0]['snapshot']['provenance']['historical_support']);
+    }
+
     public function test_opaque_numeric_looking_ids_never_compare_as_numbers(): void
     {
         $c = self::command();
@@ -126,6 +138,6 @@ class ObjectPurposeTest extends ObjectPurposeTestCase
         $this->write($c);
         $p = $this->project();
         $this->assertSame('CONFLICTING', $p['state']);
-        $this->assertSame(['Owner declares incompatibility with retained earlier statement'],$p['items'][0]['applicable']['snapshot']['conflicts']);
+        $this->assertSame(['Owner declares incompatibility with retained earlier statement'], $p['items'][0]['applicable']['snapshot']['conflicts']);
     }
 }

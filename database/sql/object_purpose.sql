@@ -143,7 +143,15 @@ BEGIN
  RETURN a;
 END $$;
 CREATE FUNCTION builderad_object_purpose_read_begin(w bigint,s text) RETURNS bigint
-LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=public,pg_temp AS $$ SELECT builderad_object_purpose_actor(w,s,false) $$;
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=public,pg_temp AS $$
+DECLARE a bigint;
+BEGIN
+ a:=builderad_object_purpose_actor(w,s,false);
+ -- A coherent head/history/currentness projection within this signed transaction.
+ PERFORM pg_advisory_xact_lock_shared(hashtextextended('builderad.object-purpose.'||w,0));
+ a:=builderad_object_purpose_actor(w,s,false);
+ RETURN a;
+END $$;
 CREATE FUNCTION builderad_object_purpose_can_read(w bigint) RETURNS boolean
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=public,pg_temp AS $$
 DECLARE s text:=current_setting('app.object_purpose_session',true);
@@ -226,8 +234,8 @@ BEGIN
   IF op='correct' AND NOT builderad_object_purpose_text(c->'correction_reason',4000,true) THEN RAISE EXCEPTION 'Correction reason required' USING ERRCODE='22023'; END IF;
   reason:=c->>'correction_reason';
  END IF;
- IF start_at<accepted OR snap#>>'{dtm,mode}'='historical_attestation' THEN
-  IF cf->'historical' IS DISTINCT FROM 'true'::jsonb OR NOT builderad_object_purpose_text(snap#>'{provenance,historical_support}',4000,true) THEN
+ IF start_at<accepted OR (op<>'withdraw' AND snap#>>'{dtm,mode}'='historical_attestation') THEN
+  IF cf->'historical' IS DISTINCT FROM 'true'::jsonb OR (op<>'withdraw' AND NOT builderad_object_purpose_text(snap#>'{provenance,historical_support}',4000,true)) OR (op='withdraw' AND NOT builderad_object_purpose_text(to_jsonb(reason),4000,true)) THEN
    RAISE EXCEPTION 'Explicit supported historical attestation required' USING ERRCODE='22023'; END IF;
  END IF;
  IF snap#>'{provenance,statement_at}'<>'null'::jsonb THEN
@@ -258,9 +266,12 @@ BEGIN
  IF op<>'withdraw' AND snap->'intent'<>'null'::jsonb THEN
   IF cf->'intent' IS DISTINCT FROM 'true'::jsonb THEN RAISE EXCEPTION 'Explicit Intent confirmation required' USING ERRCODE='22023'; END IF;
   reference_version:=(snap#>>'{intent,version}')::bigint;
-  IF reference_version>context_version OR NOT EXISTS (SELECT 1 FROM business_current_intent_events WHERE workspace_id=w AND after_version=reference_version) THEN
+  IF reference_version>context_version OR (reference_version<>0 AND NOT EXISTS (
+   SELECT 1 FROM business_context_events WHERE workspace_id=w AND version=reference_version UNION ALL
+   SELECT 1 FROM business_target_market_events WHERE workspace_id=w AND version=reference_version UNION ALL
+   SELECT 1 FROM business_current_intent_events WHERE workspace_id=w AND after_version=reference_version)) THEN
    RAISE EXCEPTION 'Exact declared Intent revision unavailable' USING ERRCODE='22023'; END IF;
-  SELECT after_value INTO intent_value FROM business_current_intent_events WHERE workspace_id=w AND after_version=reference_version;
+  SELECT after_value INTO intent_value FROM business_current_intent_events WHERE workspace_id=w AND after_version<=reference_version ORDER BY after_version DESC LIMIT 1;
   IF intent_value IS NULL OR intent_value<>snap#>'{intent,value}' THEN RAISE EXCEPTION 'Canonical Intent snapshot mismatch' USING ERRCODE='22023'; END IF;
  END IF;
  a:=builderad_object_purpose_actor(w,s,true);
@@ -278,4 +289,3 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION builderad_object_purpose_actor(bigint,text,boolean),builderad_object_purpose_read_begin(bigint,text),builderad_object_purpose_can_read(bigint),builderad_object_purpose_write(bigint,text,jsonb) FROM PUBLIC,builderad_app,builderad_authority;
 GRANT EXECUTE ON FUNCTION builderad_object_purpose_read_begin(bigint,text),builderad_object_purpose_can_read(bigint),builderad_object_purpose_write(bigint,text,jsonb) TO builderad_app;
-

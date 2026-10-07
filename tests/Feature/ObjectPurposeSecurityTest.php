@@ -12,6 +12,23 @@ use Tests\Support\ObjectPurposeTestCase;
 
 class ObjectPurposeSecurityTest extends ObjectPurposeTestCase
 {
+    public function test_optional_intent_reference_reads_exact_context_revision_after_other_context_change(): void
+    {
+        $value = ['direction' => 'increase_value', 'scope' => 'business_wide', 'description' => null,
+            'outcome' => ['meaning' => 'Completed bookings', 'clarification' => null, 'count_unit' => null],
+            'quantity' => null, 'horizon' => null];
+        $this->context(fn ($r, $w) => app(BusinessContext::class)->replaceCurrentIntent($r, $w, $value,
+            ['declaration' => true, 'business_wide' => true, 'outcome' => true, 'acceptance_clear' => true], 0), true);
+        $this->context(fn ($r, $w) => app(BusinessContext::class)->replaceTargetMarkets($r, $w, ['SA'], 1), true);
+        $command = self::command();
+        $command['declaration']['intent'] = ['version' => 2, 'value' => $value, 'statement' => 'Explicit relationship to the retained business-wide booking intent'];
+        $command['confirmations']['intent'] = true;
+        $this->assertSame(1, $this->write($command)['version']);
+        $workspace = DB::connection('pgsql_migrations')->table('workspaces')->find($this->workspace->id);
+        $this->assertSame(2, $workspace->business_context_version);
+        $this->assertSame(1, DB::connection('pgsql_migrations')->table('business_current_intent_events')->count());
+    }
+
     public function test_fresh_owner_confirmation_admits_exact_finite_scope_without_context_mutation(): void
     {
         $first = $this->write(self::command());

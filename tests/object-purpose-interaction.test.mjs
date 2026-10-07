@@ -106,3 +106,20 @@ test('withdrawal has a separate transition confirmation and retains explicit rev
  await check(v,'confirm-transition'); submit(v); assert.equal(state.posts.length,1); assert.equal(state.posts[0].payload.declaration,null);
  assert.equal(state.posts[0].payload.supersedes_revision_id,'revision-1'); assert.equal(state.posts[0].payload.expected_version,1); v.stop();
 });
+test('editing a retained Intent relationship never silently rewires its version or full premise',async()=>{
+ const original={direction:'increase_value',scope:'business_wide',description:null,outcome:{meaning:'Original booking intent',clarification:null,count_unit:null},quantity:null,horizon:null};
+ const snapshot={meaning:'Existing use',qualifications:null,phase:null,included_objects:[{provider:'meta',account_namespace:'meta_ads_account',account_id:'100',object_kind:'campaign',object_id:'200',incarnation:null}],excluded_objects:[],provenance:{speaker:null,statement_at:null,source:'Owner',identity_basis:'Identified by Owner',authority_basis:'Owner',historical_support:null,effective_basis:'On acceptance'},dtm:null,intent:{version:3,value:original,statement:'Explicit relation to original booking intent'},end_condition:null,limitations:null,conflicts:[]};
+ const current={...original,outcome:{...original.outcome,meaning:'A different current intent'}};
+ const v=mount({contextVersion:9,currentIntent:{value:current,version:9},purpose:{purpose_id:'purpose-1',head_version:1,history:[{revision_id:'revision-1',version:1,snapshot,effective_from:'2020-01-01T00:00:00Z',accepted_at:'2020-01-01T00:00:00Z'}]}});
+ await confirm(v); await check(v,'confirm-intent'); await check(v,'confirm-transition'); submit(v);
+ assert.equal(state.posts.length,1); assert.equal(state.posts[0].payload.declaration.intent.version,3);
+ assert.deepEqual(state.posts[0].payload.declaration.intent.value,original); assert.match(text(v.root),/Original booking intent/); v.stop();
+});
+test('historical withdrawal confirms its own retained support without needing support in the original declaration',async()=>{
+ const snapshot={meaning:'Existing use',qualifications:null,phase:null,included_objects:[{provider:'meta',account_namespace:'meta_ads_account',account_id:'100',object_kind:'campaign',object_id:'200',incarnation:null}],excluded_objects:[],provenance:{speaker:null,statement_at:null,source:'Owner',identity_basis:'Identified by Owner',authority_basis:'Owner',historical_support:null,effective_basis:'On acceptance'},dtm:null,intent:null,end_condition:null,limitations:null,conflicts:[]};
+ const v=mount({purpose:{purpose_id:'purpose-1',head_version:1,history:[{revision_id:'revision-1',version:1,snapshot,effective_from:'2026-10-07T00:00:00Z',accepted_at:'2026-10-07T00:00:00Z'}]}});
+ await input(v,'operation','withdraw'); await input(v,'reason','Owner attests the preserved historical withdrawal record');
+ const from=nodes(v.root,n=>n.tag==='input'&&n.props.placeholder)[0]; from.value='2025-01-01T00:00:00Z'; from.listeners.input({target:from}); await nextTick();
+ await confirm(v); await check(v,'confirm-transition'); await check(v,'confirm-historical'); submit(v);
+ assert.equal(state.posts.length,1); assert.equal(state.posts[0].payload.withdrawal_reason,'Owner attests the preserved historical withdrawal record'); assert.equal(state.posts[0].payload.effective_from,'2025-01-01T00:00:00Z'); v.stop();
+});

@@ -52,4 +52,3 @@ function save() { form.post(props.workspace ? route('workspaces.business.update'
         <TargetMarketsEditor v-if="workspace && business && countryOptions" :workspace-id="workspace.public_id" :business="business" :country-options="countryOptions" :saved-context-version="savedContextVersion" @saved="marketsSaved" />
     </AdvertiserLayout>
 </template>
-
