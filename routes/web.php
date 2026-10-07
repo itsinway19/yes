@@ -14,6 +14,7 @@ use App\Http\Controllers\InternalServiceController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MetaConnectionController;
 use App\Http\Controllers\MetaReportController;
+use App\Http\Controllers\ObjectPurposeController;
 use App\Http\Controllers\PasskeyManagementController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SecurityDevicesController;
@@ -53,6 +54,14 @@ Route::post('/internal/locale', LocaleController::class)->name('internal.locale.
 Route::get('/dashboard', [BusinessContextController::class, 'entry'])
     ->middleware(['auth', EnsureCurrentPrincipal::class])->name('dashboard');
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
+    Route::get('/workspaces/{workspace}/object-purposes', [ObjectPurposeController::class, 'index'])
+        ->whereUuid('workspace')->name('workspaces.object-purposes.index');
+    Route::get('/workspaces/{workspace}/object-purposes/{purpose}', [ObjectPurposeController::class, 'show'])
+        ->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.object-purposes.show');
+    Route::post('/workspaces/{workspace}/object-purposes', [ObjectPurposeController::class, 'store'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.object-purposes.store');
+    Route::post('/workspaces/{workspace}/object-purposes/{purpose}/revisions', [ObjectPurposeController::class, 'revise'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.object-purposes.revise');
     Route::get('/business/start', [BusinessContextController::class, 'start'])->name('business.start');
     Route::post('/business/start', [BusinessContextController::class, 'store'])->name('business.start.store');
     Route::get('/workspaces/{workspace}/business', [BusinessContextController::class, 'edit'])

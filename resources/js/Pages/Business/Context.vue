@@ -37,6 +37,7 @@ function save() { form.post(props.workspace ? route('workspaces.business.update'
     <Head :title="t('context')" />
     <AdvertiserLayout :business-name="workspace?.name" :workspace-id="workspace?.public_id" :preserve-drafts-on-locale-change="!!workspace">
         <p class="biz-eyebrow">{{ t('context') }}</p>
+        <Link v-if="workspace" class="biz-link" :href="route('workspaces.object-purposes.index', workspace.public_id)">{{ t('purposeTitle') }}</Link>
         <template v-if="canManage"><h1>{{ workspace ? t('context') : t('setup') }}</h1><p class="biz-lead">{{ t('setupIntro') }}</p>
             <form class="biz-form" @submit.prevent="save">
                 <label>{{ t('name') }}<input v-model="form.name" required minlength="2" maxlength="120" :readonly="!!workspace && !workspace.business_type_id" autocomplete="organization" /><span v-if="form.errors.name" role="alert" class="biz-error">{{ form.errors.name }}</span></label>
