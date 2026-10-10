@@ -107,12 +107,33 @@ abstract class TestCase extends BaseTestCase
         $this->app['session']->forgetDrivers();
         $this->app->forgetInstance('session.store');
         $this->beforeApplicationDestroyed(static function () use ($directory): void {
-            foreach (glob($directory.'/*') as $file) {
-                if (is_file($file)) {
-                    unlink($file);
-                }
-            }
-            rmdir($directory);
+            self::removeTemporarySessionDirectory($directory);
         });
+    }
+
+    protected static function removeTemporarySessionDirectory(string $directory): void
+    {
+        foreach (scandir($directory) as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+            $file = $directory.DIRECTORY_SEPARATOR.$entry;
+            if (! is_file($file) || ! unlink($file)) {
+                throw new \RuntimeException('Unable to remove isolated session entry: '.$file);
+            }
+        }
+        // Windows can defer an unlinked file's removal until an existing handle
+        // closes. Retry only an otherwise empty, test-owned directory; real
+        // remaining entries and persistent failures still fail cleanup.
+        $deadline = hrtime(true) + 1_000_000_000;
+        do {
+            if (@rmdir($directory)) {
+                return;
+            }
+            if (scandir($directory) !== ['.', '..'] || hrtime(true) >= $deadline) {
+                throw new \RuntimeException('Unable to remove isolated session directory: '.$directory);
+            }
+            usleep(10000);
+        } while (true);
     }
 }

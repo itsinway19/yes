@@ -3,12 +3,33 @@
 namespace Tests\Feature\Security;
 
 use App\Models\User;
+use App\Security\SessionAuthority;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class SessionAuthorityTest extends TestCase
 {
+    public function test_activity_callback_belongs_to_the_connection_that_holds_the_session_proof(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $request = Request::create('/', 'GET');
+        $request->setLaravelSession(app('session')->driver());
+        $owner = DB::connection('pgsql_migrations');
+        $owner->table('security_sessions')->where('user_id', $user->id)
+            ->update(['last_seen_at' => now()->subMinute()]);
+        DB::transaction(function () use ($request, $user, $owner): void {
+            DB::connection('pgsql_authority')->transaction(function () use ($request, $user): void {
+                // The current-session proof still locks the default runtime connection.
+                app(SessionAuthority::class)->assertCurrent($request, $user, 1);
+            });
+            $this->assertTrue(Carbon::parse($owner->table('security_sessions')->where('user_id', $user->id)->value('last_seen_at'))->lessThan(now()->subSeconds(30)));
+        });
+        $this->assertTrue(Carbon::parse($owner->table('security_sessions')->where('user_id', $user->id)->value('last_seen_at'))->greaterThan(now()->subSeconds(5)));
+    }
+
     public function test_login_creates_a_bounded_server_session_and_revocation_denies_access(): void
     {
         $user = User::factory()->create();
@@ -32,6 +53,24 @@ class SessionAuthorityTest extends TestCase
         $this->get('/security/devices')->assertRedirect('/login');
         $this->assertGuest();
         $this->get('/login')->assertOk();
+    }
+
+    public function test_rollback_of_the_proof_discards_activity_even_after_another_connection_commits(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $request = Request::create('/', 'GET');
+        $request->setLaravelSession(app('session')->driver());
+        $owner = DB::connection('pgsql_migrations');
+        $owner->table('security_sessions')->where('user_id', $user->id)->update(['last_seen_at' => now()->subMinute()]);
+        $before = $owner->table('security_sessions')->where('user_id', $user->id)->value('last_seen_at');
+        DB::beginTransaction();
+        try {
+            DB::connection('pgsql_authority')->transaction(fn () => app(SessionAuthority::class)->assertCurrent($request, $user, 1));
+        } finally {
+            DB::rollBack();
+        }
+        $this->assertSame($before, $owner->table('security_sessions')->where('user_id', $user->id)->value('last_seen_at'));
     }
 
     public function test_expired_session_is_denied_even_when_cookie_still_exists(): void

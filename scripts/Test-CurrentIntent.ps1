@@ -1,8 +1,10 @@
 param(
-    [ValidateSet('Focused', 'Full', 'Durability', 'UI')][string] $Phase = 'Focused',
+    [ValidateSet('Focused', 'Full', 'Durability', 'UI', 'GoalsUI', 'ClientStateUI', 'VisibilityUI')][string] $Phase = 'Focused',
     [string] $Filter = 'BusinessFoundationTest',
     [string] $Baseline = '2cf51ea337b26e07bfcaff59ed9d3e81c632a50e',
-    [string] $DurabilityReference = ''
+    [string] $DurabilityReference = '',
+    [string] $GoalsBuildDirectory = 'build',
+    [ValidateRange(1, 20)][int] $Repeat = 1
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -13,6 +15,7 @@ $taskToken = [guid]::NewGuid().ToString()
 $taskStarted = $false
 $taskExit = 1
 $taskUiServer = $null
+$taskGoalsSessionRoot = $null
 $taskEnvironmentFileCreated = $false
 $taskEnvironmentPath = Join-Path $taskRoot '.env.testing'
 New-Item -ItemType Directory -Force -Path $taskRun | Out-Null
@@ -22,6 +25,7 @@ function Invoke-TaskPsql([string[]] $TaskArguments) {
     if ($LASTEXITCODE -ne 0) { throw 'Isolated CURRENT_INTENT database provisioning failed.' }
 }
 try {
+    if ($Repeat -ne 1 -and $Phase -ne 'Focused') { throw 'Repeat is restricted to focused isolated tests' }
     if ($Baseline -ne '2cf51ea337b26e07bfcaff59ed9d3e81c632a50e') { throw 'Unexpected authoritative baseline.' }
     if (Get-NetTCPConnection -LocalPort 5433 -State Listen -ErrorAction SilentlyContinue) { throw 'Port 5433 is not free; no existing server will be contacted.' }
     & (Join-Path $taskPgBin 'initdb.exe') -D (Join-Path $taskRun 'data') -U postgres -A trust --encoding=UTF8 --locale=C
@@ -67,7 +71,42 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Package discovery failed in isolated environment.' }
     $taskRelativeResult = 'storage/framework/testing/' + (Split-Path -Leaf $taskRun) + '/results.xml'
     switch ($Phase) {
-        'Focused' { & pwsh -NoProfile -File scripts/builderad.ps1 test --compact --display-warnings "--filter=$Filter" "--log-junit=$taskRelativeResult" 2>&1 | Tee-Object -FilePath (Join-Path $taskRun 'tests.log') }
+        { $_ -in @('GoalsUI', 'ClientStateUI', 'VisibilityUI') } {
+            if (Get-NetTCPConnection -LocalPort 8027 -State Listen -ErrorAction SilentlyContinue) { throw 'Goals proof port is not free; no existing server will be stopped.' }
+            if (Test-Path -LiteralPath (Join-Path $taskRoot 'public/hot')) { throw 'Vite hot file would bypass the isolated built preview.' }
+            if ($GoalsBuildDirectory -ne 'build' -and $GoalsBuildDirectory -notmatch '^build/remediation-[a-f0-9-]+$') { throw 'Unapproved isolated build path' }
+            if (-not (Test-Path -LiteralPath (Join-Path $taskRoot ('public/'+$GoalsBuildDirectory+'/manifest.json')))) { throw 'Goals browser build manifest missing' }
+            $env:GOALS_PROOF_BUILD_DIRECTORY = $GoalsBuildDirectory
+            $env:SESSION_DRIVER = 'file'
+            $env:APP_URL = 'http://localhost:8027'
+            $env:APP_LOCALE = 'ar'
+            # Laravel's supported storage override isolates every synthetic session,
+            # including anonymous requests and fresh logins, from existing previews.
+            $env:LARAVEL_STORAGE_PATH = Join-Path $taskRun 'ui-storage'
+            $taskGoalsSessionRoot = Join-Path $env:LARAVEL_STORAGE_PATH 'framework/sessions'
+            foreach ($taskStorageDirectory in @('framework/sessions','framework/views','framework/cache/data','logs','app/private')) {
+                New-Item -ItemType Directory -Force -Path (Join-Path $env:LARAVEL_STORAGE_PATH $taskStorageDirectory) | Out-Null
+            }
+            & pwsh -NoProfile -File scripts/builderad.ps1 php tests/Support/AdvertiserGoalsUiFixture.php 2>&1 | Tee-Object -FilePath (Join-Path $taskRun 'ui.log')
+            if ($LASTEXITCODE -ne 0) { throw 'Goals disposable fixture failed.' }
+            if ($Phase -in @('ClientStateUI', 'VisibilityUI')) {
+                & pwsh -NoProfile -File scripts/builderad.ps1 php tests/Support/ProtectedClientStateFixture.php setup 2>&1 | Tee-Object -FilePath (Join-Path $taskRun 'client-state-fixture.log')
+                if ($LASTEXITCODE -ne 0) { throw 'Protected client state fixture failed.' }
+            }
+            $taskUiServer = Start-Process -FilePath 'C:\tools\php85\php.exe' -ArgumentList @('-S','localhost:8027','-t','.',(Join-Path $taskRoot 'tests/Support/advertiser-goals-server.php')) -WorkingDirectory (Join-Path $taskRoot 'public') -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $taskRun 'ui-server.log') -RedirectStandardError (Join-Path $taskRun 'ui-server-error.log')
+            $taskBrowserScript = if ($Phase -eq 'ClientStateUI') { 'tests/Support/inertia-official-browser.mjs' } else { 'tests/Support/advertiser-goals-browser.mjs' }
+            if ($Phase -eq 'VisibilityUI') { $taskBrowserScript = 'tests/Support/client-visibility-browser.mjs' }
+            & 'C:\tools\node24\node.exe' $taskBrowserScript 2>&1 | Tee-Object -FilePath (Join-Path $taskRun 'ui-browser.log')
+            if ($LASTEXITCODE -ne 0) { throw 'Goals real browser proof failed.' }
+        }
+        'Focused' {
+            for ($taskAttempt = 1; $taskAttempt -le $Repeat; $taskAttempt++) {
+                $taskAttemptResult = if ($Repeat -eq 1) { $taskRelativeResult } else { $taskRelativeResult.Replace('results.xml', "results-attempt-$taskAttempt.xml") }
+                Write-Output "FOCUSED_ATTEMPT=$taskAttempt/$Repeat"
+                & pwsh -NoProfile -File scripts/builderad.ps1 test --compact --display-warnings "--filter=$Filter" "--log-junit=$taskAttemptResult" 2>&1 | Tee-Object -FilePath (Join-Path $taskRun "tests-attempt-$taskAttempt.log")
+                if ($LASTEXITCODE -ne 0) { throw "Focused attempt $taskAttempt failed; its evidence was retained" }
+            }
+        }
         'Full' { & pwsh -NoProfile -File scripts/builderad.ps1 test --compact --display-warnings "--log-junit=$taskRelativeResult" 2>&1 | Tee-Object -FilePath (Join-Path $taskRun 'tests.log') }
         'Durability' {
             $env:CURRENT_INTENT_DURABILITY_STAGE = 'BeforeRestart'
@@ -135,9 +174,16 @@ try {
     }
 } finally {
     if ($null -ne $taskUiServer -and -not $taskUiServer.HasExited) { Stop-Process -Id $taskUiServer.Id -Force; Write-Output 'TASK_UI_SERVER=STOPPED' }
+    if ($null -ne $taskGoalsSessionRoot) {
+        if ([IO.Path]::GetFullPath($taskGoalsSessionRoot) -ne [IO.Path]::GetFullPath((Join-Path $taskRun 'ui-storage/framework/sessions'))) { throw 'Goals session cleanup escaped the owned run.' }
+        foreach ($taskGoalsSession in (Get-ChildItem -LiteralPath $taskGoalsSessionRoot -File)) {
+            Remove-Item -LiteralPath $taskGoalsSession.FullName -Force
+        }
+    }
     $taskUiFixture = Join-Path $taskRun 'ui-fixture.json'
     if (Test-Path -LiteralPath $taskUiFixture) {
         $taskSessionRoot = [IO.Path]::GetFullPath((Join-Path $taskRoot 'storage/framework/sessions'))
+        if ($null -ne $taskGoalsSessionRoot) { $taskSessionRoot = [IO.Path]::GetFullPath($taskGoalsSessionRoot) }
         foreach ($taskSessionFile in (Get-Content -LiteralPath $taskUiFixture -Raw | ConvertFrom-Json).sessionFiles) {
             $taskSessionPath = [IO.Path]::GetFullPath($taskSessionFile)
             if (-not $taskSessionPath.StartsWith($taskSessionRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'UI session cleanup escaped the task session directory.' }

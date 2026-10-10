@@ -6,4 +6,5 @@ return [
         'paths' => [resource_path('js/Pages')],
         'extensions' => ['vue'],
     ],
+    'history' => ['encrypt' => true],
 ];

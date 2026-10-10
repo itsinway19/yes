@@ -83,6 +83,8 @@ class RegisteredUserController extends Controller
         $request->session()->regenerate();
         $sessions->issue($request, $user);
 
+        Inertia::clearHistory();
+
         return redirect(route('verification.notice', absolute: false));
     }
 }

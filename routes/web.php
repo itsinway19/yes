@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdvertiserGoalPreferencesController;
 use App\Http\Controllers\Auth\InternalAuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasskeySessionController;
 use App\Http\Controllers\BusinessContextController;
@@ -54,6 +55,10 @@ Route::post('/internal/locale', LocaleController::class)->name('internal.locale.
 Route::get('/dashboard', [BusinessContextController::class, 'entry'])
     ->middleware(['auth', EnsureCurrentPrincipal::class])->name('dashboard');
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
+    Route::get('/workspaces/{workspace}/goals', [AdvertiserGoalPreferencesController::class, 'edit'])
+        ->whereUuid('workspace')->name('workspaces.goals.edit');
+    Route::post('/workspaces/{workspace}/goals', [AdvertiserGoalPreferencesController::class, 'update'])
+        ->whereUuid('workspace')->name('workspaces.goals.update');
     Route::get('/workspaces/{workspace}/object-purposes', [ObjectPurposeController::class, 'index'])
         ->whereUuid('workspace')->name('workspaces.object-purposes.index');
     Route::get('/workspaces/{workspace}/object-purposes/{purpose}', [ObjectPurposeController::class, 'show'])

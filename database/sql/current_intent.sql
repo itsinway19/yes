@@ -127,9 +127,15 @@ GRANT EXECUTE ON FUNCTION builderad_current_intent_timezone_name_allowed(text) T
 
 -- One policy, separate single-name and set-wise catalog execution shapes.
 CREATE FUNCTION builderad_current_intent_timezone_supported(p_zone text) RETURNS boolean
-LANGUAGE sql STABLE SET search_path=public,pg_temp AS $$
- SELECT builderad_current_intent_timezone_name_allowed(p_zone)
-  AND EXISTS (SELECT 1 FROM pg_timezone_names WHERE name=p_zone)
+LANGUAGE plpgsql VOLATILE SET search_path=public,pg_temp SET TimeZone='UTC' AS $$
+BEGIN
+ IF NOT builderad_current_intent_timezone_name_allowed(p_zone) THEN RETURN false; END IF;
+ -- A leading colon requires a timezone file, without POSIX-spec fallback.
+ -- PostgreSQL returns its canonical filename, preserving exact-name acceptance.
+ -- The function-local GUC scope restores the caller's timezone on every exit.
+ RETURN set_config('TimeZone',':'||p_zone,true)=p_zone;
+EXCEPTION WHEN invalid_parameter_value THEN RETURN false;
+END;
 $$;
 REVOKE ALL ON FUNCTION builderad_current_intent_timezone_supported(text) FROM PUBLIC,builderad_authority;
 GRANT EXECUTE ON FUNCTION builderad_current_intent_timezone_supported(text) TO builderad_app;

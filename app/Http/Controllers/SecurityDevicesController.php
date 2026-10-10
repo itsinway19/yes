@@ -50,6 +50,8 @@ final class SecurityDevicesController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
+        Inertia::clearHistory();
+
         return redirect()->route($internal ? 'internal.login' : 'login');
     }
 }
