@@ -27,6 +27,10 @@
             <p>{{ app()->getLocale() === 'ar' ? 'جارٍ التحقق من صلاحية عرض الصفحة. إذا تعذر الاتصال، يمكنك إعادة المحاولة.' : 'Checking access to this page. If the connection is unavailable, you can retry.' }}</p>
             <button id="visibility-retry" type="button">{{ app()->getLocale() === 'ar' ? 'إعادة المحاولة' : 'Retry' }}</button>
         </div>
+        <div id="visibility-navigation-error" hidden role="status" aria-live="polite" style="position:fixed;bottom:16px;inset-inline-end:16px;z-index:2147483647;padding:16px;background:#fafbf8;color:#182d30;border:1px solid #14635b;max-width:calc(100% - 32px)">
+            <p>{{ app()->getLocale() === 'ar' ? 'تعذّر التحقق من الصفحة المطلوبة. بقيت الصفحة الحالية مفتوحة؛ يمكنك إعادة المحاولة.' : 'Could not verify the requested page. Your current page remains open; you can retry.' }}</p>
+            <button id="visibility-navigation-retry" type="button">{{ app()->getLocale() === 'ar' ? 'إعادة المحاولة' : 'Retry' }}</button>
+        </div>
         @inertia
     </body>
 </html>

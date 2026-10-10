@@ -124,6 +124,131 @@ async function ready(page) { await page.waitForFunction(() => document.documentE
 async function arm(page, all = false) { await page.evaluate(all => sessionStorage.setItem('official-proof-forbid-a', all ? '1' : 'goals'), all); }
 function cleanLeaks(start) { assert.equal(evidence.leaks.length, start, evidence.leaks.slice(start).join('\n')); }
 try {
+    await check('Protected initial HTML stays hidden and unmounted until its initial probe completes', 'BA_UX_001', async () => {
+        const ctx = await context(); let release; try {
+            const p = await ctx.newPage(); await login(p); await ready(p);
+            let entered, probes = 0; const gate = new Promise(r => release = r), seen = new Promise(r => entered = r);
+            await p.route(base + '/profile', async route => {
+                if (route.request().headers()['x-builderad-visibility'] !== '1') return route.continue();
+                probes++; entered(); await gate; await route.continue();
+            });
+            await p.goto(base + '/profile', { waitUntil: 'domcontentloaded' }); await seen;
+            assert.equal(await p.locator('#app').evaluate(e => getComputedStyle(e).visibility), 'hidden');
+            assert.equal(await p.locator('#app').evaluate(e => !!e.__vue_app__), false);
+            // Core 3.7.1 clones initialPage in init: each exact Page is checked.
+            release(); await ready(p); await p.waitForTimeout(150); assert.equal(probes, 2);
+            return { protectedInitialPixelsHidden: true, componentUnmountedBeforeCheck: true, initialProbeCount: probes };
+        } finally { release?.(); await ctx.close(); }
+    });
+    await check('Initial network failure retries only the visibility probe without renewing session activity', 'BA_UX_001', async () => {
+        const ctx = await context(); try {
+            const p = await ctx.newPage(); await login(p); await ready(p);
+            let probes = 0, documents = 0;
+            p.on('request', request => { if (request.resourceType() === 'document' && request.url() === base + '/profile') documents++; });
+            await p.route(base + '/profile', route => {
+                if (route.request().headers()['x-builderad-visibility'] !== '1') return route.continue();
+                probes++; return probes === 1 ? route.abort('failed') : route.continue();
+            });
+            await p.goto(base + '/profile', { waitUntil: 'domcontentloaded' });
+            await p.waitForFunction(() => document.documentElement.dataset.visibility === 'unavailable');
+            assert.equal(await p.locator('#app').evaluate(e => !!e.__vue_app__), false);
+            const before = fixtureCommand('inspect');
+            await p.locator('#visibility-retry').click(); await ready(p); await p.waitForTimeout(150);
+            assert.equal(documents, 1); assert.equal(probes, 3);
+            assert.deepEqual(fixtureCommand('inspect').sessions, before.sessions);
+            return { initialDocumentRequests: documents, failedProbes: 1, successfulProbes: 2, idleAndLastSeenUnchanged: true };
+        } finally { await ctx.close(); }
+    });
+    await check('Routine navigation, replace and validation never mask an approved display', 'BA_UX_001', async () => {
+        const ctx = await context(); try {
+            const p = await ctx.newPage(); await login(p); await ready(p);
+            await p.evaluate(() => {
+                window.__uxFrames = []; window.__uxSampling = true;
+                const sample = () => {
+                    if (!window.__uxSampling) return;
+                    const app = document.getElementById('app');
+                    window.__uxFrames.push({ state: document.documentElement.dataset.visibility, url: location.pathname,
+                        visible: getComputedStyle(app).visibility, component: app.__vue_app__.config.globalProperties.$page.component });
+                    requestAnimationFrame(sample);
+                }; requestAnimationFrame(sample);
+            });
+            await visit(p, base + '/profile'); await ready(p);
+            await p.evaluate(url => document.getElementById('app').__vue_app__.config.globalProperties.$inertia.visit(url, { replace: true }), goalUrl(fixture.first));
+            await p.waitForURL(goalUrl(fixture.first)); await ready(p);
+            await visit(p, base + '/profile'); await ready(p);
+            await p.evaluate(() => document.getElementById('app').__vue_app__.config.globalProperties.$inertia.patch('/profile', { name: '', email: 'invalid' }));
+            await p.waitForFunction(() => Object.keys(document.getElementById('app').__vue_app__.config.globalProperties.$page.props.errors).length > 0);
+            await ready(p);
+            const frames = await p.evaluate(() => { window.__uxSampling = false; return window.__uxFrames; });
+            assert.ok(frames.length > 0); assert.deepEqual(frames.filter(f => f.state !== 'ready' || f.visible === 'hidden'), []);
+            assert.deepEqual(frames.filter(f => f.url === '/profile' && f.component !== 'Profile/Edit'), []);
+            return { sampledFrames: frames.length, maskedFrames: 0, replace: true, validation: true };
+        } finally { await ctx.close(); }
+    });
+    await check('Candidate probe failure leaves current draft visible and retry does not block later visits', 'BA_UX_001', async () => {
+        const ctx = await context(); try {
+            const p = await ctx.newPage(); await login(p); await ready(p); await draft(p); await ready(p);
+            await p.route(base + '/profile', route => route.request().headers()['x-builderad-visibility'] === '1' ? route.abort('failed') : route.continue());
+            await p.evaluate(() => { window.confirm = () => true; document.getElementById('app').__vue_app__.config.globalProperties.$inertia.visit('/profile'); });
+            await p.locator('#visibility-navigation-error').waitFor({ state: 'visible' });
+            assert.equal(new URL(p.url()).pathname, '/workspaces/' + fixture.first + '/goals');
+            assert.equal(await p.locator('#app').evaluate(e => getComputedStyle(e).visibility), 'visible'); await assertDraft(p);
+            await p.unroute(base + '/profile'); await p.locator('#visibility-navigation-retry').click();
+            await p.waitForURL(base + '/profile'); await ready(p);
+            await historyStep(p, 'back'); await ready(p); await assertDraft(p);
+            return { currentDraftVisible: true, retrySucceeded: true, rememberedDraftRetained: true };
+        } finally { await ctx.close(); }
+    });
+    await check('A cancelled delayed Inertia response cannot mount or replace a newer workspace', 'BA_UX_001', async () => {
+        const ctx = await context(); let release; try {
+            const p = await ctx.newPage(); await login(p); await ready(p);
+            let entered; const gate = new Promise(r => release = r), seen = new Promise(r => entered = r);
+            await p.route(base + '/profile', async route => {
+                if (route.request().headers()['x-builderad-visibility'] === '1') return route.continue();
+                const response = await route.fetch(); entered(); await gate; await route.fulfill({ response });
+            });
+            await p.evaluate(() => document.getElementById('app').__vue_app__.config.globalProperties.$inertia.visit('/profile'));
+            await seen;
+            await p.evaluate(url => document.getElementById('app').__vue_app__.config.globalProperties.$inertia.visit(url), goalUrl(fixture.second));
+            await p.waitForURL(goalUrl(fixture.second)); await ready(p); release(); await p.waitForTimeout(200);
+            assert.equal(new URL(p.url()).pathname, '/workspaces/' + fixture.second + '/goals');
+            assert.equal(await p.evaluate(() => document.getElementById('app').__vue_app__.config.globalProperties.$page.component), 'Business/Goals');
+            return { delayedResponseReleased: true, latestWorkspaceRetained: true };
+        } finally { release?.(); await ctx.close(); }
+    });
+    await check('Ordinary offline request keeps the draft visible and retry preserves its History entry', 'BA_UX_001', async () => {
+        const ctx = await context(); try {
+            const p = await ctx.newPage(); await login(p); await ready(p); await draft(p); await ready(p);
+            await ctx.setOffline(true);
+            await p.evaluate(() => { window.confirm = () => true; document.getElementById('app').__vue_app__.config.globalProperties.$inertia.visit('/profile'); });
+            await p.locator('#visibility-navigation-error').waitFor({ state: 'visible' }); await assertDraft(p);
+            assert.equal(await p.locator('#app').evaluate(e => getComputedStyle(e).visibility), 'visible');
+            await ctx.setOffline(false); await p.waitForURL(base + '/profile'); await ready(p);
+            await historyStep(p, 'back'); await ready(p); await assertDraft(p);
+            return { failedRequestRetainedDraft: true, retryRetainedHistoryEntry: true };
+        } finally { await ctx.close(); }
+    });
+    await check('Cancellation while a real Vue chunk is delayed prevents candidate mounting', 'BA_UX_001', async () => {
+        const ctx = await context(); let release; try {
+            const p = await ctx.newPage(); await login(p); await ready(p);
+            let entered; const gate = new Promise(r => release = r), seen = new Promise(r => entered = r);
+            const manifest = JSON.parse(await readFile('public/build/manifest.json', 'utf8'));
+            const asset = manifest['resources/js/Pages/Profile/Edit.vue'].file;
+            await p.route(base + '/build/' + asset, async route => { entered(); await gate; await route.continue(); });
+            await p.evaluate(() => {
+                window.__uxComponents = []; window.__uxWatch = true;
+                const sample = () => { if (!window.__uxWatch) return; window.__uxComponents.push(document.getElementById('app').__vue_app__.config.globalProperties.$page.component); requestAnimationFrame(sample); }; sample();
+                document.getElementById('app').__vue_app__.config.globalProperties.$inertia.visit('/profile');
+            });
+            await Promise.race([seen, new Promise((_, reject) => setTimeout(() => reject(new Error('Vue chunk not requested')), 15000))]);
+            assert.equal(await p.locator('#app').evaluate(e => getComputedStyle(e).visibility), 'visible');
+            await p.evaluate(url => { const r = document.getElementById('app').__vue_app__.config.globalProperties.$inertia; r.cancelAll(); r.visit(url); }, goalUrl(fixture.second));
+            await p.waitForURL(goalUrl(fixture.second)); await ready(p); release(); await p.waitForTimeout(200);
+            const components = await p.evaluate(() => { window.__uxWatch = false; return window.__uxComponents; });
+            assert.equal(components.includes('Profile/Edit'), false);
+            return { actualChunkDelayed: true, cancelledCandidateMounts: 0, subsequentVisitSucceeded: true };
+        } finally { release?.(); await ctx.close(); }
+    });
     await check('Authorized navigation preserves drafts, results, baseline and workspace isolation', 'VISIBILITY', async () => {
         const ctx = await context(); try {
             const p = await ctx.newPage(); await login(p); await ready(p); await draft(p); await ready(p);
@@ -160,7 +285,7 @@ try {
         const ctx=await context();try{const p=await ctx.newPage();await login(p);await ready(p);await draft(p);await ready(p);await p.goto(base+'/');await ready(p);fixtureCommand('expire');await arm(p);const start=evidence.leaks.length,shows=evidence.pageshow.length;await historyStep(p,'back');cleanLeaks(start);assert.ok(evidence.pageshow.slice(shows).some(s=>s.persisted),'No actual BFCache restoration observed');return {actualPersistedPageshow:true,sampledLeaks:0};}finally{await ctx.close();}
     });
     await check('Offline restoration stays hidden and recovers the authorized draft after retry','VISIBILITY',async()=>{
-        const ctx=await context();try{const p=await ctx.newPage();await login(p);await ready(p);await draft(p);await ready(p);await visit(p,base+'/profile');await ready(p);await ctx.setOffline(true);await p.goBack({waitUntil:'commit'});await p.waitForFunction(()=>document.documentElement.dataset.visibility==='unavailable');assert.equal(await p.locator('#app').evaluate(e=>getComputedStyle(e).visibility),'hidden');await ctx.setOffline(false);await p.locator('#visibility-retry').click();await ready(p);await assertDraft(p);return {draftRetained:true};}finally{await ctx.close();}
+        const ctx=await context();try{const p=await ctx.newPage();await login(p);await ready(p);await draft(p);await ready(p);await visit(p,base+'/profile');await ready(p);const idleBefore=fixtureCommand('inspect');await ctx.setOffline(true);await p.goBack({waitUntil:'commit'});await p.waitForFunction(()=>document.documentElement.dataset.visibility==='unavailable');assert.equal(await p.locator('#app').evaluate(e=>getComputedStyle(e).visibility),'hidden');await ctx.setOffline(false);await p.locator('#visibility-retry').click();await ready(p);await assertDraft(p);assert.deepEqual(fixtureCommand('inspect').sessions,idleBefore.sessions);return {draftRetained:true,idleUnchanged:true};}finally{await ctx.close();}
     });
     await check('Revocation while a successful probe response is delayed cannot reveal the page','VISIBILITY',async()=>{
         const ctx=await context();try{const p=await ctx.newPage();await login(p);await ready(p);await draft(p);await ready(p);await visit(p,base+'/profile');await ready(p);let release,entered;const gate=new Promise(r=>release=r),seen=new Promise(r=>entered=r);await p.route(goalUrl(fixture.first),async route=>{if(route.request().headers()['x-builderad-visibility']!=='1')return route.continue();const response=await route.fetch();entered();await gate;await route.fulfill({response});});await p.goBack({waitUntil:'commit'});await seen;fixtureCommand('revoke');await arm(p);const start=evidence.leaks.length; // trigger a new authority boundary while the old response is in flight

@@ -20,32 +20,36 @@ function syncLocale(value: unknown) {
     applyDocumentLocale(locale, document.documentElement);
 }
 
-createInertiaApp({
-    title: (title) => `${title} - ${appName}`,
-    resolve: async (name, page) => {
-        if (!page) throw new Error('Page authority evidence is required.');
-        await visibility.authorize(page);
-        return resolvePageComponent(
-            `./Pages/${name}.vue`,
-            import.meta.glob<DefineComponent>('./Pages/**/*.vue'),
-        );
-    },
-    setup({ el, App, props, plugin }) {
-        syncLocale(props.initialPage.props.locale);
-        createApp({
-            setup() {
-                const page = usePage();
-                watch(() => page.props?.locale, syncLocale, { flush: 'sync' });
-                return () => h(App, props);
-            },
-        })
-            .use(plugin)
-            .use(i18n)
-            .use(ZiggyVue)
-            .mount(el);
-        visibility.mounted(props.initialPage);
-    },
-    progress: {
-        color: '#4B5563',
-    },
-});
+function startApp() {
+    return createInertiaApp({
+        title: (title) => `${title} - ${appName}`,
+        resolve: async (name, page) => {
+            if (!page) throw new Error('Page authority evidence is required.');
+            return visibility.resolve(page, () => resolvePageComponent(
+                `./Pages/${name}.vue`,
+                import.meta.glob<DefineComponent>('./Pages/**/*.vue'),
+            ));
+        },
+        setup({ el, App, props, plugin }) {
+            visibility.beforeMount(props.initialPage);
+            syncLocale(props.initialPage.props.locale);
+            createApp({
+                setup() {
+                    const page = usePage();
+                    watch(() => page.props?.locale, syncLocale, { flush: 'sync' });
+                    return () => h(App, props);
+                },
+            })
+                .use(plugin)
+                .use(i18n)
+                .use(ZiggyVue)
+                .mount(el);
+            visibility.mounted(props.initialPage);
+        },
+        progress: {
+            color: '#4B5563',
+        },
+    }).catch(error => visibility.initialFailure(error, () => { void startApp(); }));
+}
+
+void startApp();
