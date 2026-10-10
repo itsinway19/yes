@@ -24,6 +24,8 @@ final class InternalAuthenticatedSessionController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
+        Inertia::clearHistory();
+
         return redirect()->route('internal.login');
     }
 }

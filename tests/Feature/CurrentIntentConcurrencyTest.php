@@ -155,24 +155,52 @@ class CurrentIntentConcurrencyTest extends TestCase
         $workers = $paths = [];
         $evidence = ['baseline' => '2cf51ea337b26e07bfcaff59ed9d3e81c632a50e', 'run' => $run, 'other' => $other,
             'preferred_first' => $first, 'authority_change' => $authorityChange, 'noop' => $noop, 'before' => $before];
+        $record = static function (string $event, array $details = []) use (&$evidence): void {
+            if (str_starts_with($event, 'catalog_') && count($evidence['timing'] ?? []) >= 100) {
+                $evidence['catalog_timing_samples_omitted'] = ($evidence['catalog_timing_samples_omitted'] ?? 0) + 1;
+
+                return;
+            }
+            $evidence['timing'][] = ['event' => $event, 'mono_ns' => hrtime(true), 'wall_s' => microtime(true), ...$details];
+        };
         try {
+            if ($first === null) {
+                $barrier = 'builderad.test.entry.'.$run;
+                $fixture['entry_barrier'] = $second['entry_barrier'] = $barrier;
+            }
+            // Both processes finish PHP/bootstrap before spending the unchanged
+            // product lock budget. Their readiness has no open transaction/xid.
+            $byIndex = $startupGates = [];
+            foreach ([0, 1] as $index) {
+                $startupGates[$index] = ['ready' => storage_path('framework/testing/'.$run.'-entry-'.$index.'-ready'),
+                    'release' => storage_path('framework/testing/'.$run.'-entry-'.$index.'-release')];
+                array_push($paths, ...array_values($startupGates[$index]));
+                $participant = [...($index === 0 ? $fixture : $second), 'entry_external_gate' => $startupGates[$index]];
+                $byIndex[$index] = $this->start($participant, $workers, $paths);
+                $evidence['pre_ready'][$index] = $this->externalReady($byIndex[$index], $startupGates[$index], 'ENTRY_READY');
+                $this->assertNull($evidence['pre_ready'][$index]->xid);
+            }
+            $record('holder_transaction_start');
             $holder->beginTransaction();
-            $blocker = (int) $holder->scalar('SELECT pg_backend_pid()');
+            $holderIdentity = $holder->selectOne('SELECT pg_backend_pid() AS pid,pg_current_xact_id()::text AS xid');
+            $blocker = (int) $holderIdentity->pid;
+            $evidence['holder_identity'] = $holderIdentity;
             if (in_array($authorityChange, ['generation', 'membership', 'owner'], true)) {
                 $holder->selectOne("SELECT pg_advisory_xact_lock(hashtextextended('builderad.business.context.'||?::text,0))", [$workspace->id]);
             } else {
                 $holder->table('security_sessions')->where('id', $session->id)->lockForUpdate()->first();
             }
+            $record('holder_lock_acquired');
             if ($first === null) {
                 $entry->beginTransaction();
                 $entryPid = (int) $entry->scalar('SELECT pg_backend_pid()');
-                $barrier = 'builderad.test.entry.'.$run;
                 $entry->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', [$barrier]);
-                $fixture['entry_barrier'] = $second['entry_barrier'] = $barrier;
             }
-            $byIndex = [];
             foreach ($first === null ? [0, 1] : [$first, 1 - $first] as $position => $index) {
-                $byIndex[$index] = $this->start($index === 0 ? $fixture : $second, $workers, $paths);
+                $record('participant_release', ['index' => $index]);
+                if (file_put_contents($startupGates[$index]['release'], 'RELEASE') === false) {
+                    $this->fail('Cannot release prepared concurrency participant.');
+                }
                 if ($first !== null && $position === 0) {
                     $evidence['first_wait_before_second_entry'] = $this->waitUntil(fn () => $this->waiting($run, $blocker));
                 }
@@ -182,15 +210,50 @@ class CurrentIntentConcurrencyTest extends TestCase
                 foreach ($workers as $worker) {
                     $this->assertStringContainsString('READY_XACT=', $worker->getOutput());
                 }
+                $record('entry_release_start');
                 $entry->commit();
+                $record('entry_release_end');
             }
-            $evidence['waiting'] = $this->waitUntil(function () use ($run) {
-                $rows = DB::select('SELECT pid,wait_event_type,pg_blocking_pids(pid)::text AS blockers FROM pg_stat_activity WHERE application_name=?', [$run]);
+            // Capture the live holder boundary and its locks in one query. A
+            // cached/transitional wait_event alone can still describe the entry
+            // barrier just released. Separate catalog probes also spend the
+            // participants' unchanged 3s lock budget while we hold the fixture.
+            $record('observation_start');
+            $sample = $this->waitUntil(function () use ($run, $blocker, $workspace, $record) {
+                $record('catalog_query_start');
+                $row = DB::selectOne(<<<'SQL'
+                    WITH participants AS MATERIALIZED (
+                      SELECT pid,backend_xid::text AS xid,query_start::text AS query_start,wait_event_type,wait_event,
+                             pg_blocking_pids(pid)::text AS blockers
+                      FROM pg_stat_activity WHERE application_name=?
+                    ), observed_locks AS MATERIALIZED (
+                      SELECT pid,locktype,mode,granted,relation::regclass::text AS relation,
+                             transactionid::text AS xid,
+                             (locktype='advisory' AND objsubid=1 AND
+                              ((classid::bigint << 32) | objid::bigint)=
+                              hashtextextended('builderad.business.context.'||?::text,0)) AS workspace_lock
+                      FROM pg_locks WHERE pid IN (SELECT pid FROM participants) OR pid=?
+                    )
+                    SELECT clock_timestamp()::text AS captured_at,
+                           (SELECT json_agg(p ORDER BY pid) FROM participants p) AS waiting,
+                           (SELECT json_agg(l ORDER BY pid,locktype,mode) FROM observed_locks l) AS locks
+                    SQL, [$run, $workspace->id, $blocker]);
+                $record('catalog_query_end');
+                $waiting = json_decode($row->waiting ?? '[]', flags: JSON_THROW_ON_ERROR);
+                $locks = json_decode($row->locks ?? '[]', flags: JSON_THROW_ON_ERROR);
+                $blockedByHolder = array_filter($waiting, fn ($waiter) => $waiter->wait_event_type === 'Lock'
+                    && in_array($blocker, explode(',', trim($waiter->blockers, '{}'))));
+                $queued = array_unique(array_column(array_filter($locks, fn ($lock) => ! $lock->granted), 'pid'));
+                if (count($waiting) !== 2 || count($queued) !== 2 || ! $blockedByHolder) {
+                    return false;
+                }
 
-                return count($rows) === 2 && count(array_filter($rows, fn ($row) => $row->wait_event_type === 'Lock')) === 2 ? $rows : false;
+                return ['waiting' => $waiting, 'locks' => $locks, 'blocked_by_holder' => array_values($blockedByHolder),
+                    'captured_at' => $row->captured_at];
             });
-            $evidence['locks'] = DB::select('SELECT pid,locktype,mode,granted,relation::regclass::text AS relation,transactionid::text AS xid FROM pg_locks WHERE pid IN (SELECT pid FROM pg_stat_activity WHERE application_name=?) OR pid=? ORDER BY pid,locktype,mode', [$run, $blocker]);
-            $this->assertNotEmpty($this->waiting($run, $blocker));
+            $record('observation_end');
+            $evidence = [...$evidence, ...$sample];
+            $this->assertNotEmpty($sample['blocked_by_holder']);
             if ($authorityChange === 'generation') {
                 $db->table('principal_lifecycles')->where('user_id', $fixture['actor'])->increment('generation');
             } elseif ($authorityChange === 'membership') {
@@ -208,7 +271,9 @@ class CurrentIntentConcurrencyTest extends TestCase
                 $holder->table('security_sessions')->where('id', $session->id)->update(['idle_expires_at' => DB::raw("clock_timestamp()+interval '250 milliseconds'")]);
                 $this->waitUntil(fn () => $holder->scalar('SELECT idle_expires_at<=clock_timestamp() FROM security_sessions WHERE id=?', [$session->id]));
             }
+            $record('holder_release_start');
             $holder->commit();
+            $record('holder_release_end');
             foreach ($workers as $worker) {
                 $worker->wait();
                 $this->assertTrue($worker->isSuccessful(), $worker->getErrorOutput());
@@ -265,6 +330,11 @@ class CurrentIntentConcurrencyTest extends TestCase
                     $worker->stop();
                 }
             }
+            // Preserve the exact failure phase even if the barrier assertion
+            // failed before normal output collection; never disguise 55P03.
+            $evidence['final_worker_outputs'] = array_map(fn ($worker) => $worker->getOutput().$worker->getErrorOutput(), $workers);
+            $evidence['worker_timings'] = array_map(fn ($path) => json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR),
+                glob(storage_path('framework/testing/'.$run.'-participant-*.log.timing.json')));
             foreach ($paths as $path) {
                 if (is_file($path)) {
                     unlink($path);

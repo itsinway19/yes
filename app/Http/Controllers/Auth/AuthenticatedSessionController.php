@@ -47,11 +47,14 @@ class AuthenticatedSessionController extends Controller
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+            Inertia::clearHistory();
             if ($exception instanceof AuthorizationException) {
                 throw ValidationException::withMessages(['email' => trans('auth.failed')]);
             }
             throw $exception;
         }
+
+        Inertia::clearHistory();
 
         return $staffPending
             ? redirect()->route('staff.onboarding')
@@ -69,6 +72,8 @@ class AuthenticatedSessionController extends Controller
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
+
+        Inertia::clearHistory();
 
         return redirect('/');
     }

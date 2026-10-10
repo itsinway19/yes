@@ -42,6 +42,15 @@ class ArchitectureSourceOptionalityTest extends TestCase
             ->where('business.targetMarkets.1.code', 'SA')->where('business.currentIntent.value', $intent));
         $this->get('/workspaces/'.$workspace->public_id)->assertOk();
 
+        $goalUrl = '/workspaces/'.$workspace->public_id.'/goals';
+        $this->get($goalUrl)->assertInertia(fn (Assert $page) => $page->component('Business/Goals'));
+        $this->postJson($goalUrl, ['version' => 0, 'value' => [
+            'goals' => ['sales', 'customers'], 'priority' => 'sales',
+            'results' => ['sales' => ['actual_sales'], 'customers' => []],
+        ]])->assertOk()->assertJsonPath('version', 1);
+        $this->getJson($goalUrl)->assertOk()->assertJsonPath('value.results.sales', ['actual_sales']);
+        $this->assertEquals($intent, json_decode($owner->table('workspaces')->where('id', $workspace->id)->value('current_intent'), true));
+
         // Explicit, finite synthetic identity and provenance are still mandatory; no discovery or inferred identity.
         $command = ObjectPurposeTestCase::command();
         $command['declaration']['included_objects'] = [['provider' => 'meta', 'account_namespace' => 'meta_ads_account',

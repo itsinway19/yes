@@ -19,10 +19,28 @@ $app->make(Kernel::class)->bootstrap();
 app(DisposableTestDatabaseGuard::class)->assertSafe();
 $fixture = json_decode(file_get_contents($argv[1]), true, flags: JSON_THROW_ON_ERROR);
 $participantLog = storage_path('framework/testing/'.$fixture['run'].'-participant-'.getmypid().'.log');
-$emit = static function (string $line) use ($participantLog): void {
+$timing = ['process_pid' => getmypid(), 'events' => []];
+$mark = static function (string $event, array $details = []) use (&$timing): void {
+    $timing['events'][] = ['event' => $event, 'mono_ns' => hrtime(true), 'wall_s' => microtime(true), ...$details];
+};
+$measure = static function (string $event, callable $operation) use ($mark): mixed {
+    $mark($event.'_start');
+    try {
+        $result = $operation();
+        $mark($event.'_end', ['success' => true]);
+
+        return $result;
+    } catch (Throwable $error) {
+        $mark($event.'_end', ['success' => false, 'error' => $error->getCode()]);
+        throw $error;
+    }
+};
+$emit = static function (string $line) use ($participantLog, $mark): void {
+    $mark('emit_start', ['label' => strtok($line, '=')]);
     file_put_contents($participantLog, $line.PHP_EOL, FILE_APPEND);
     echo $line.PHP_EOL;
     flush();
+    $mark('emit_end');
 };
 if (($fixture['operation'] ?? null) === 'revoke_manage') {
     // Guarded fixture-only authority change on an independent owner connection.
@@ -44,7 +62,8 @@ if (($fixture['operation'] ?? null) === 'revoke_manage') {
 }
 $user = User::findOrFail($fixture['actor']);
 DB::selectOne("SELECT set_config('application_name',?,false)", [$fixture['run']]);
-$emit('PID='.DB::scalar('SELECT pg_backend_pid()'));
+$timing['backend_pid'] = (int) DB::scalar('SELECT pg_backend_pid()');
+$emit('PID='.$timing['backend_pid']);
 $awaitExternalRelease = static function (array $gate, string $signal, bool $heartbeat) use ($emit): void {
     // Test-only synchronization: never spend a product lock timeout on a gate.
     $state = DB::selectOne("SELECT pg_backend_pid() AS pid,pg_current_xact_id_if_assigned()::text AS xid,
@@ -77,6 +96,12 @@ if (isset($fixture['writer_external_gate'])) {
         throw new RuntimeException('Writer readiness must be outside a product transaction.');
     }
     $awaitExternalRelease($fixture['writer_external_gate'], 'WRITER_READY', false);
+}
+if (isset($fixture['entry_external_gate'])) {
+    if (DB::transactionLevel() !== 0) {
+        throw new RuntimeException('Participant readiness must precede the product transaction.');
+    }
+    $awaitExternalRelease($fixture['entry_external_gate'], 'ENTRY_READY', false);
 }
 if (isset($fixture['expiry_after_ready'])) {
     // Fixture clock starts after PHP/guard startup, within the unchanged 3s lock timeout.
@@ -116,33 +141,38 @@ try {
                 return app(BusinessContext::class)->projection($request, $active);
             }, $request);
     } else {
-        $revision = DB::transaction(function () use ($fixture, $user, $emit) {
+        $mark('transaction_start');
+        $revision = DB::transaction(function () use ($fixture, $user, $emit, $mark, $measure, &$timing) {
             app(PrincipalContext::class)->activate($user);
             if (isset($fixture['entry_barrier'])) {
                 $emit('READY_XACT='.DB::scalar('SELECT pg_current_xact_id()::text'));
                 DB::selectOne('SELECT pg_advisory_xact_lock_shared(hashtextextended(?,0))', [$fixture['entry_barrier']]);
             }
-            $emit('ENTERED_XACT='.DB::scalar('SELECT pg_current_xact_id()::text'));
-            DB::selectOne('SELECT builderad_business_context_begin(?,?)', [$fixture['workspace'], $fixture['session']]);
+            $timing['xid'] = DB::scalar('SELECT pg_current_xact_id()::text');
+            $emit('ENTERED_XACT='.$timing['xid']);
+            $measure('workspace_begin', fn () => DB::selectOne('SELECT builderad_business_context_begin(?,?)', [$fixture['workspace'], $fixture['session']]));
             $emit('SELECTED_XACT='.DB::scalar('SELECT pg_current_xact_id()::text'));
 
             if (($fixture['operation'] ?? null) === 'intent') {
-                return DB::scalar('SELECT builderad_current_intent_write(?,?,?::jsonb,?::jsonb,?)', [
+                $result = $measure('write', fn () => DB::scalar('SELECT builderad_current_intent_write(?,?,?::jsonb,?::jsonb,?)', [
                     $fixture['workspace'], $fixture['session'], $fixture['value'] === null ? null : json_encode($fixture['value'], JSON_THROW_ON_ERROR),
                     json_encode((object) $fixture['confirmations'], JSON_THROW_ON_ERROR), $fixture['version'],
-                ]);
-            }
-            if (($fixture['operation'] ?? 'name') === 'dtm') {
-                return DB::scalar('SELECT builderad_business_target_markets_write(?,?,ARRAY(SELECT jsonb_array_elements_text(?::jsonb)),?)', [
+                ]));
+            } elseif (($fixture['operation'] ?? 'name') === 'dtm') {
+                $result = $measure('write', fn () => DB::scalar('SELECT builderad_business_target_markets_write(?,?,ARRAY(SELECT jsonb_array_elements_text(?::jsonb)),?)', [
                     $fixture['workspace'], $fixture['session'], json_encode($fixture['codes'], JSON_THROW_ON_ERROR), $fixture['version'],
-                ]);
+                ]));
+            } else {
+                // Exercise the actual canonical forward name/type writer, never a mock.
+                $result = $measure('write', fn () => DB::scalar('SELECT builderad_business_context_write(?,?,?,?,?)', [
+                    $fixture['workspace'], $fixture['session'], $fixture['type'], $fixture['name'], $fixture['version'],
+                ]));
             }
+            $mark('commit_start');
 
-            // Exercise the actual canonical forward name/type writer, never a mock.
-            return DB::scalar('SELECT builderad_business_context_write(?,?,?,?,?)', [
-                $fixture['workspace'], $fixture['session'], $fixture['type'], $fixture['name'], $fixture['version'],
-            ]);
+            return $result;
         });
+        $mark('commit_end');
     }
     if (is_array($revision)) {
         $emit('PROJECTION='.json_encode($revision, JSON_THROW_ON_ERROR));
@@ -152,6 +182,12 @@ try {
         $emit(json_encode(['status' => 'accepted', 'sqlstate' => null, 'version' => (int) $revision], JSON_THROW_ON_ERROR));
     }
 } catch (QueryException $error) {
+    $mark('transaction_failed', ['sqlstate' => $error->getCode()]);
+    $emit('ERROR_QUERY='.$error->getSql());
+    $emit('ERROR_DETAIL='.$error->getPrevious()?->getMessage());
     $emit('DENIED='.$error->getCode());
     $emit(json_encode(['status' => 'denied', 'sqlstate' => $error->getCode(), 'version' => null], JSON_THROW_ON_ERROR));
+} finally {
+    // Buffer timings in memory: no new tracing I/O while product locks are held.
+    file_put_contents($participantLog.'.timing.json', json_encode($timing, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
 }

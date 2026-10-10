@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 use Laravel\Passkeys\Actions\GenerateVerificationOptions;
 use Laravel\Passkeys\Http\Requests\PasskeyVerificationRequest;
 use Laravel\Passkeys\Passkeys;
@@ -79,6 +80,7 @@ final class PasskeySessionController extends Controller
             Auth::guard($internal ? 'internal' : 'web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+            Inertia::clearHistory();
             if ($exception instanceof AuthenticatorResponseVerificationException) {
                 PasskeyCeremonyTrace::record($request, 'login_assertion_rejected');
                 $response = $request->credential()->response;
@@ -113,6 +115,7 @@ final class PasskeySessionController extends Controller
         }
 
         PasskeyCeremonyTrace::record($request, 'login_assertion_accepted');
+        Inertia::clearHistory();
 
         $destination = $internal && ! app(GrantAuthority::class)->has(
             $request->user(), (int) $request->session()->get('a001_generation', 0), 'staff.view',

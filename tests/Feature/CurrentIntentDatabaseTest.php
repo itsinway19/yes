@@ -34,6 +34,46 @@ class CurrentIntentDatabaseTest extends TestCase
             $db->table('business_current_intent_events')->where('workspace_id', $workspace->id)->orderBy('after_version')->get()->toArray()];
     }
 
+    public function test_timezone_upgrade_is_repeatable_and_preserves_function_authority_and_declarations(): void
+    {
+        $workspace = $this->business();
+        $value = $this->value();
+        $value['horizon']['timezone'] = 'UTC';
+        $this->assertSame(1, $this->writeIntent($workspace, $value, 0));
+        $before = $this->snapshot($workspace);
+        $owner = DB::connection('pgsql_migrations');
+        $owner->unprepared(<<<'SQL'
+            CREATE OR REPLACE FUNCTION builderad_current_intent_timezone_supported(p_zone text) RETURNS boolean
+            LANGUAGE sql STABLE SET search_path=public,pg_temp AS $$
+             SELECT builderad_current_intent_timezone_name_allowed(p_zone)
+              AND EXISTS (SELECT 1 FROM pg_timezone_names WHERE name=p_zone)
+            $$;
+            SQL);
+        $metadataSql = "SELECT oid,proowner,proacl::text,prosecdef FROM pg_proc
+            WHERE oid='builderad_current_intent_timezone_supported(text)'::regprocedure";
+        $metadata = $owner->selectOne($metadataSql);
+        $entry = $owner->scalar("SELECT pg_get_functiondef('builderad_business_context_begin(bigint,text)'::regprocedure)");
+        $connection = DB::getDefaultConnection();
+        try {
+            DB::setDefaultConnection('pgsql_migrations');
+            $migration = require database_path('migrations/0001_01_01_000370_optimize_current_intent_timezone_lookup.php');
+            $owner->transaction(function () use ($migration): void {
+                $migration->up();
+                $migration->up();
+            });
+        } finally {
+            DB::setDefaultConnection($connection);
+        }
+        $this->assertEquals($metadata, $owner->selectOne($metadataSql));
+        $this->assertSame($entry, $owner->scalar("SELECT pg_get_functiondef('builderad_business_context_begin(bigint,text)'::regprocedure)"));
+        $this->assertEquals($before, $this->snapshot($workspace));
+        $this->assertStringNotContainsString('pg_timezone_names', $owner->scalar("SELECT prosrc FROM pg_proc WHERE oid='builderad_current_intent_timezone_supported(text)'::regprocedure"));
+        $this->assertTrue((bool) DB::scalar("SELECT builderad_current_intent_timezone_supported('UTC')"));
+        $this->assertFalse((bool) DB::scalar("SELECT builderad_current_intent_timezone_supported('UTC/0')"));
+        $this->assertSame(1, $this->writeIntent($workspace, $value, 0));
+        $this->assertEquals($before, $this->snapshot($workspace));
+    }
+
     public function test_atomic_full_sequence_noop_stale_and_complete_audit(): void
     {
         $workspace = $this->business();

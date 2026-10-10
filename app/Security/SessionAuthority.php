@@ -4,6 +4,7 @@ namespace App\Security;
 
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Connection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -84,7 +85,9 @@ final class SessionAuthority
             Carbon::parse($session->absolute_expires_at)->lessThanOrEqualTo(now())) {
             throw new AuthorizationException('Staff enrollment session expired.');
         }
-        $this->touchAfterCommit((int) $session->id, (int) $lifecycle->generation, 15, now());
+        if (! $request->attributes->get('builderad.visibility_probe', false)) {
+            $this->touchAfterCommit($connection, (int) $session->id, (int) $lifecycle->generation, 15, now());
+        }
     }
 
     public function assertCurrent(Request $request, User $user, int $generation): void
@@ -109,7 +112,9 @@ final class SessionAuthority
             throw new ExpiredSecuritySession;
         }
 
-        $this->touchAfterCommit((int) $session->id, $generation, $internal ? 15 : 60, $now);
+        if (! $request->attributes->get('builderad.visibility_probe', false)) {
+            $this->touchAfterCommit(DB::connection(), (int) $session->id, $generation, $internal ? 15 : 60, $now);
+        }
     }
 
     public function assertCurrentAuthority(Request $request, User $user, int $generation): void
@@ -154,9 +159,9 @@ final class SessionAuthority
             SQL, [$now, $now->copy()->addMinutes($idleMinutes), $session->id, $generation]);
     }
 
-    private function touchAfterCommit(int $sessionId, int $generation, int $idleMinutes, Carbon $checkedAt): void
+    private function touchAfterCommit(Connection $proofConnection, int $sessionId, int $generation, int $idleMinutes, Carbon $checkedAt): void
     {
-        DB::connection()->afterCommit(static function () use ($sessionId, $generation, $idleMinutes, $checkedAt): void {
+        $touch = static function () use ($sessionId, $generation, $idleMinutes, $checkedAt): void {
             $connection = DB::connection('pgsql_authority');
             $idleDeadline = $checkedAt->copy()->addMinutes($idleMinutes);
             $connection->update(<<<'SQL'
@@ -166,7 +171,24 @@ final class SessionAuthority
                   AND idle_expires_at > clock_timestamp()
                   AND absolute_expires_at > clock_timestamp()
                 SQL, [$checkedAt, $idleDeadline, $sessionId, $generation]);
-        });
+        };
+
+        // Laravel's shared manager registers Connection::afterCommit on the last
+        // pending transaction across ALL connections. Bind to the proof's record
+        // so another connection cannot execute this while the session SHARE lock
+        // is still held. Its normal outer commit/rollback lifecycle owns the touch.
+        if ($proofConnection->transactionLevel() === 0) {
+            $touch();
+
+            return;
+        }
+        $transaction = app('db.transactions')->getPendingTransactions()->last(
+            fn ($record) => $record->connection === $proofConnection->getName(),
+        );
+        if (! $transaction) {
+            throw new \LogicException('Session proof transaction record is unavailable.');
+        }
+        $transaction->addCallback($touch);
     }
 
     public function rebindGeneration(Request $request, User $user, int $generation): void

@@ -4,6 +4,7 @@ import { supportedLocale } from './messages';
 
 const copy = {
     purposeIntentReference: ['مرجع التصريح بالنية؛ القيمة والمراجعة المحفوظتان', 'Referenced Intent declaration; retained value and revision'], purposeUseCurrentIntent: ['اختيار التصريح الحالي بشكل صريح وإعادة التأكيد', 'Explicitly select the current declaration and reconfirm'],
+    goalsTitle: ['أهدافك', 'Your goals'],
     purposeTitle: ['الغرض الإعلاني للأشياء المحددة', 'Business purpose of exact advertising objects'],
     purposeIntro: ['صرّح بالاستخدام التجاري لهذه الأشياء تحديدًا. التصريح لا يثبت الأداء ولا يأذن بتغيير الإعلان.', 'Declare the business use of these exact objects. A declaration does not establish performance or authorize advertising changes.'],
     purposeMeaning: ['الاستخدام التجاري المؤكد', 'Confirmed business use'], purposeQualifications: ['التوضيحات الحاسمة', 'Decisive qualifications'], purposePhase: ['المرحلة، إن وُجدت', 'Phase, if declared'],

@@ -61,6 +61,7 @@ class ProfileController extends Controller
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+            Inertia::clearHistory();
 
             return Redirect::route('login')->with('status', __('security.email.reauthenticate'));
         }

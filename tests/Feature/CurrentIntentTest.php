@@ -211,7 +211,7 @@ class CurrentIntentTest extends TestCase
         $db = DB::connection('pgsql_migrations');
         $scalar = $db->scalar("SELECT prosrc FROM pg_proc WHERE oid='builderad_current_intent_timezone_supported(text)'::regprocedure");
         $this->assertStringContainsString('builderad_current_intent_timezone_name_allowed(p_zone)', $scalar);
-        $this->assertStringContainsString('name=p_zone', $scalar);
+        $this->assertStringNotContainsString('pg_timezone_names', $scalar);
         $this->assertStringContainsString('builderad_current_intent_timezone_name_allowed', $query['query']);
         $this->assertStringNotContainsString('posix', $scalar);
         $this->assertStringNotContainsString('posix', $query['query']);
@@ -227,6 +227,58 @@ class CurrentIntentTest extends TestCase
         File::ensureDirectoryExists(dirname($path));
         file_put_contents($path, json_encode($evidence, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
         fwrite(STDOUT, 'TIMEZONE_SET_EXECUTION='.$path.PHP_EOL);
+    }
+
+    public function test_single_timezone_lookup_matches_the_catalog_exactly_and_restores_caller_settings(): void
+    {
+        $catalog = DB::select('SELECT name,builderad_current_intent_timezone_name_allowed(name) AS allowed FROM pg_timezone_names');
+        $accepted = [];
+        $candidates = [];
+        foreach ($catalog as $row) {
+            if ($row->allowed) {
+                $accepted[$row->name] = true;
+            }
+            array_push($candidates, $row->name, strtolower($row->name), strtoupper($row->name));
+        }
+        $candidates = [...array_values(array_unique([...$candidates, 'UTC', 'utc', 'Utc', 'Europe/ISTANBUL',
+            'PST', '+03:00', 'UTC0', 'UTC/0', 'GMT/0', 'AAA0/BBB', 'Some/Unsupported',
+            'posix/America/New_York', 'right/UTC', '../UTC', ':UTC', '', ' UTC', 'UTC ',
+            'Zone/'.str_repeat('A', 116)])), null];
+        $prior = DB::scalar('SHOW TimeZone');
+        DB::transaction(function () use ($candidates, $accepted): void {
+            DB::selectOne("SELECT set_config('TimeZone','Pacific/Auckland',true)");
+            $rows = DB::select('SELECT value AS name,builderad_current_intent_timezone_supported(value) AS supported
+                FROM jsonb_array_elements_text(?::jsonb)', [json_encode($candidates, JSON_THROW_ON_ERROR)]);
+            $this->assertCount(count($candidates), $rows);
+            foreach ($rows as $row) {
+                $this->assertSame(isset($accepted[$row->name]), (bool) $row->supported, 'Timezone acceptance differs: '.var_export($row->name, true));
+            }
+            $this->assertSame('Pacific/Auckland', DB::scalar('SHOW TimeZone'));
+            $this->assertSame('3s', DB::scalar('SHOW lock_timeout'));
+            // Successful and rejected checks must also restore settings after rollback.
+            DB::beginTransaction();
+            DB::selectOne("SELECT set_config('TimeZone','Europe/Istanbul',true)");
+            $this->assertTrue((bool) DB::scalar("SELECT builderad_current_intent_timezone_supported('UTC')"));
+            $this->assertFalse((bool) DB::scalar("SELECT builderad_current_intent_timezone_supported('Some/Unsupported')"));
+            $this->assertSame('Europe/Istanbul', DB::scalar('SHOW TimeZone'));
+            DB::rollBack();
+            $this->assertSame('Pacific/Auckland', DB::scalar('SHOW TimeZone'));
+        });
+        $this->assertSame($prior, DB::scalar('SHOW TimeZone'));
+    }
+
+    public function test_timezone_optimization_preserves_skipped_civil_date_rejection(): void
+    {
+        $workspace = $this->business();
+        $value = $this->value();
+        $value['horizon'] = ['deadline_date' => '2011-12-30', 'timezone' => 'Pacific/Apia'];
+        $this->postJson($this->url($workspace), $this->command($value))->assertUnprocessable()->assertJsonValidationErrors('value');
+        $this->assertSame(0, (int) DB::connection('pgsql_migrations')->table('workspaces')->where('id', $workspace->id)->value('business_context_version'));
+        $this->assertSame(0, DB::connection('pgsql_migrations')->table('business_current_intent_events')->count());
+        $value['horizon']['deadline_date'] = '2011-12-31';
+        $this->postJson($this->url($workspace), $this->command($value))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(1, (int) DB::connection('pgsql_migrations')->table('workspaces')->where('id', $workspace->id)->value('business_context_version'));
+        $this->assertSame(1, DB::connection('pgsql_migrations')->table('business_current_intent_events')->count());
     }
 
     public function test_http_unchanged_horizon_carryover_survives_option_loss_but_new_pair_is_denied(): void

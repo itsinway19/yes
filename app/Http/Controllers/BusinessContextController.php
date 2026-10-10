@@ -64,7 +64,7 @@ final class BusinessContextController
         });
         $request->session()->put('business.creation_completed', $input['creation_key']);
 
-        return redirect()->route('workspaces.show', $workspace->public_id);
+        return redirect()->route('workspaces.goals.edit', $workspace->public_id);
     }
 
     public function edit(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): Response
