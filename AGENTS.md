@@ -52,6 +52,8 @@ Investigate failures through evidence and controlled comparisons:
 - Before modifying production behavior to resolve a test failure, establish whether the failing expectation and test orchestration reflect the intended product contract. A test failure is evidence requiring investigation, not by itself authorization to change production semantics.
 - Avoid broad performance investigations or unrelated optimizations unless evidence establishes their relevance to the failure.
 
+For concurrency failures, distinguish worker bootstrap/readiness, the actual lock attempt and observed blockers, early worker exit, and timeout. Retain worker output, connection identities, and wait evidence. A timeout alone does not establish a product defect; successful verification must still observe the required real contention.
+
 If two focused diagnostic experiments do not materially narrow the cause, stop unproductive expansion, summarize the evidence, and identify the smallest useful next step. Escalate before starting another prolonged investigation.
 
 This limit applies to unproductive investigation, not to the number of tests required to verify a clearly understood correction or productive work converging toward a solution.

@@ -22,6 +22,8 @@ $request->setUserResolver(fn () => $user);
 $session = new Store('session-touch-proof', new ArraySessionHandler(120));
 $session->setId($fixture['session_id']);
 $request->setLaravelSession($session);
+echo "BOOTED\n";
+flush();
 $wait = static function (string $signal): void {
     $deadline = hrtime(true) + 25_000_000_000;
     do {

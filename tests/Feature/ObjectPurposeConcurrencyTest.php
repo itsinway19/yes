@@ -22,30 +22,54 @@ class ObjectPurposeConcurrencyTest extends ObjectPurposeTestCase
             'session' => $session, 'command' => $command]));
         $worker = new Process([PHP_BINARY, base_path('tests/ObjectPurposeCommandWorker.php'), $path], base_path());
         $worker->setTimeout(45);
+        $evidence = ['reader_pid' => null, 'writer_pid' => null];
         try {
-            $this->context(function ($request, $workspace) use ($worker): void {
+            $this->context(function ($request, $workspace) use ($worker, &$evidence): void {
                 $projection = app(ObjectPurpose::class)->projection($request, $workspace);
                 $this->assertSame(1, $projection['items'][0]['head_version']);
                 $readerPid = (int) DB::scalar('SELECT pg_backend_pid()');
+                $evidence['reader_pid'] = $readerPid;
                 $worker->start();
+                $evidence['worker_started_s'] = microtime(true);
                 $blocked = false;
                 $deadline = microtime(true) + 20;
+                $nextHeartbeat = microtime(true);
                 do {
+                    // Worker bootstrap is outside the behavior under test. Keep the
+                    // real reader transaction live while waiting for its PID.
+                    if (microtime(true) >= $nextHeartbeat) {
+                        DB::scalar('SELECT 1');
+                        $nextHeartbeat = microtime(true) + 1;
+                    }
                     if (preg_match('/PID=(\d+)/', $worker->getOutput(), $match)) {
-                        $blocked = (bool) DB::scalar('SELECT ?::integer=ANY(pg_blocking_pids(?::integer))', [$readerPid, (int) $match[1]]);
+                        $evidence['writer_pid'] = (int) $match[1];
+                        $blocked = str_contains($worker->getOutput(), 'WRITE_ATTEMPT=') &&
+                            (bool) DB::scalar('SELECT ?::integer=ANY(pg_blocking_pids(?::integer))', [$readerPid, (int) $match[1]]);
                     }
                     if ($blocked || ! $worker->isRunning()) {
                         break;
                     }
                     usleep(20000);
                 } while (microtime(true) < $deadline);
-                $this->assertTrue($blocked, 'Real writer must wait for the canonical reader transaction');
+                $evidence += [
+                    'observed_s' => microtime(true),
+                    'reason' => $blocked ? 'barrier_observed' : ($worker->isRunning() ? 'observation_timeout' : 'worker_exited_before_barrier'),
+                    'running' => $worker->isRunning(), 'exit_code' => $worker->getExitCode(),
+                    'stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput(),
+                    'activity' => DB::select(
+                        'SELECT pid,state,wait_event_type,wait_event,query,query_start,xact_start,pg_blocking_pids(pid)::text AS blockers FROM pg_stat_activity WHERE pid IN (?::integer,?::integer)',
+                        [$readerPid, $evidence['writer_pid']],
+                    ),
+                ];
+                $this->assertTrue($blocked, 'Real writer must wait for the canonical reader transaction: '.json_encode($evidence, JSON_THROW_ON_ERROR));
                 $this->assertSame(1, DB::table('object_purposes')->value('head_version'));
             });
             $worker->wait();
             $this->assertStringContainsString('RESULT=', $worker->getOutput());
             $this->assertSame(2, DB::connection('pgsql_migrations')->table('object_purposes')->value('head_version'));
         } finally {
+            file_put_contents($path.'.evidence.json', json_encode($evidence, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+            echo 'PURPOSE_READER_EVIDENCE='.$path.'.evidence.json'.PHP_EOL;
             if ($worker->isRunning()) {
                 $worker->stop();
             }

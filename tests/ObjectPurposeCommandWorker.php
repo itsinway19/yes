@@ -24,6 +24,9 @@ try {
         app(PrincipalContext::class)->activate(User::findOrFail($f['actor']));
         DB::scalar('SELECT builderad_select_workspace_context(?)', [$f['workspace']]);
 
+        echo 'WRITE_ATTEMPT='.microtime(true).PHP_EOL;
+        flush();
+
         return DB::scalar('SELECT builderad_object_purpose_write(?,?,?::jsonb)', [$f['workspace'], $f['session'], json_encode($f['command'])]);
     });
     echo 'RESULT='.$result.PHP_EOL;

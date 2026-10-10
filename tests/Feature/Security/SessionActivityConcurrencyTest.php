@@ -26,6 +26,16 @@ class SessionActivityConcurrencyTest extends TestCase
                 $worker->setTimeout(35);
                 $worker->start();
                 $workers[] = $worker;
+                // Bootstrap has the existing process timeout (35 seconds). The
+                // 25-second lock-observation budget starts after bootstrap.
+                // waitUntil only observes newly read chunks; BOOTED can already
+                // be buffered by updateStatus on Windows. Inspect all output.
+                while (! str_contains($worker->getOutput(), 'BOOTED')) {
+                    $worker->checkTimeout();
+                    $this->assertTrue($worker->isRunning(),
+                        'Session worker exited before bootstrap: '.$worker->getOutput().$worker->getErrorOutput());
+                    usleep(10000);
+                }
                 $deadline = microtime(true) + 25;
                 do {
                     clearstatcache();
