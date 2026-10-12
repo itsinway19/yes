@@ -94,6 +94,7 @@ class PasswordUpdateTest extends TestCase
 
     public function test_password_change_requires_an_authenticated_advertiser(): void
     {
+        $this->useIdentityDocument('/login');
         $this->put('/password', [
             'current_password' => 'password', 'password' => 'new unique password 2026',
             'password_confirmation' => 'new unique password 2026',

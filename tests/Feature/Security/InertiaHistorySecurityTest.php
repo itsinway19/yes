@@ -18,14 +18,20 @@ class InertiaHistorySecurityTest extends TestCase
     public function test_login_clears_prior_history_on_the_next_render_only(): void
     {
         $user = User::factory()->create();
-        $this->post('/login', ['email' => $user->email, 'password' => 'password'])->assertRedirect();
+        $this->useIdentityDocument();
+        $this->postJson('/login', ['email' => $user->email, 'password' => 'password'])
+            ->assertOk()->assertJsonPath('transition.epoch', 1);
         $this->get('/profile')->assertViewHas('page', fn ($page) => $page['clearHistory'] === true);
         $this->get('/profile')->assertViewHas('page', fn ($page) => empty($page['clearHistory']));
     }
 
     public function test_logout_sets_clear_history_after_invalidating_the_session(): void
     {
-        $this->actingAs(User::factory()->create())->post('/logout')->assertRedirect('/');
+        $user = User::factory()->create();
+        $this->useIdentityDocument();
+        $this->postJson('/login', ['email' => $user->email, 'password' => 'password'])->assertOk();
+        $this->postJson('/logout')->assertOk()->assertJsonPath('redirect', '/')
+            ->assertJsonPath('transition.status', 'closed');
         $this->assertGuest();
         $this->get('/')->assertViewHas('page', fn ($page) => $page['clearHistory'] === true && $page['encryptHistory'] === true);
     }

@@ -21,8 +21,15 @@ function rewrite(code, replacements) { for (const [from,to] of Object.entries(re
 const messages = moduleUrl(transpile(await readFile(new URL('../resources/js/localization/messages.ts', import.meta.url),'utf8')));
 const logic = moduleUrl(transpile(await readFile(new URL('../resources/js/Components/Business/goalSelection.ts',import.meta.url),'utf8')));
 const copy = moduleUrl(rewrite(transpile(await readFile(new URL('../resources/js/localization/goals.ts',import.meta.url),'utf8')), {vue:import.meta.resolve('vue'),'@inertiajs/vue3':inertia,'./messages':messages}));
+// Protocol ownership is tested separately against the real helper. These scoped
+// fixture bindings let the Vue renderer exercise its draft and watcher consumers.
+const identityModule = moduleUrl(`const binding=()=>({principal:globalThis.__goalsTest.page.auth?.user?.id??1,
+context:globalThis.__goalsTest.page.auth?.sessionContextId??'fixture',epoch:1,boundary:'advertiser',credential:'fixture-sid',lifecycle:1,lineage:'fixture'});
+export const captureIdentity=()=>({binding:binding()}),trustIdentityState=value=>!globalThis.__goalsTest.identityBlocked&&!!value&&Object.entries(binding()).every(([key,current])=>value[key]===current),
+identityHeaders=()=>({}),closeIdentityDocument=()=>{globalThis.__goalsTest.identityBlocked=true};`);
+const logoutModule = moduleUrl(rewrite(transpile(await readFile(new URL('../resources/js/logout.ts',import.meta.url),'utf8')),{'./identityProtocol':identityModule}));
 const { descriptor } = parse(await readFile(new URL('../resources/js/Pages/Business/Goals.vue',import.meta.url),'utf8'));
-const component = (await import(moduleUrl(rewrite(transpile(compileScript(descriptor,{id:'goals-test',inlineTemplate:true}).content),{vue:import.meta.resolve('vue'),'@inertiajs/vue3':inertia,axios,'@lucide/vue':icons,'@/Layouts/AdvertiserLayout.vue':layout,'@/localization/goals':copy,'@/Components/Business/goalSelection':logic})))).default;
+const component = (await import(moduleUrl(rewrite(transpile(compileScript(descriptor,{id:'goals-test',inlineTemplate:true}).content),{vue:import.meta.resolve('vue'),'@inertiajs/vue3':inertia,axios,'@/logout':logoutModule,'@/identityProtocol':identityModule,'@lucide/vue':icons,'@/Layouts/AdvertiserLayout.vue':layout,'@/localization/goals':copy,'@/Components/Business/goalSelection':logic})))).default;
 function element(tag,text='') { return {tag,text,children:[],props:{},parent:null}; }
 const renderer=createRenderer({createElement:element,createText:text=>element('#text',text),createComment:text=>element('#comment',text),setText:(n,t)=>n.text=t,setElementText:(n,t)=>{n.text=t;n.children=[];},parentNode:n=>n.parent,nextSibling:n=>n.parent?.children[n.parent.children.indexOf(n)+1]??null,insert(n,p,a){if(n.parent)n.parent.children.splice(n.parent.children.indexOf(n),1);const index=a?p.children.indexOf(a):-1;p.children.splice(index<0?p.children.length:index,0,n);n.parent=p;},remove(n){n.parent?.children.splice(n.parent.children.indexOf(n),1);n.parent=null;},patchProp(n,k,old,v){n.props[k]=v;}});
 const catalog=['sales','customers','growth','efficiency'].map(id=>({id,name_ar:'عربي '+id,name_en:'English '+id,description_ar:'وصف '+id,description_en:'Description '+id,results:[{id:id+'_one',name_ar:'نتيجة '+id,name_en:'Outcome '+id},{id:id+'_two',name_ar:'ثانية '+id,name_en:'Second '+id}]}));
@@ -54,3 +61,12 @@ test('read-only outcome inspection preserves saved priority and never posts',asy
 test('history remount restores unsaved goal and outcome draft with original revision',async()=>{const v=mount();await change(v,'select-sales');await change(v,'result-sales_one');await change(v,'select-customers');v.stop();const restored=mount({},true);assert.equal(find(restored,'select-customers').props.checked,true);assert.equal(find(restored,'result-sales_one').props.checked,true);await submit(restored);assert.equal(state.posts[0].payload.version,0);assert.deepEqual(state.posts[0].payload.value.goals,['sales','customers']);restored.stop();});
 
 test('remembered drafts cannot cross authenticated session bindings',async()=>{state.page.auth={user:{id:1},sessionContextId:'first'};const v=mount();await change(v,'select-sales');state.page.auth={user:{id:1},sessionContextId:'second'};await nextTick();assert.equal(find(v,'select-sales').props.checked,false);assert.equal(find(v,'continue').props.disabled,true);v.stop();delete state.page.auth;});
+test('blocked identity cannot accept a late saved payload or queue trusted remembered draft writes',async()=>{
+    const v=mount();await change(v,'select-sales');await submit(v);const remembered=structuredClone(state.remembered);
+    state.identityBlocked=true;
+    state.posts[0].resolve({data:{version:9,value:{goals:['customers'],priority:'customers',results:{}}}});await flush();
+    assert.equal(find(v,'select-sales').props.checked,true);assert.equal(find(v,'select-customers').props.checked,false);
+    assert.deepEqual(state.remembered,remembered);assert.equal(state.visits.length,0);
+    await change(v,'select-customers');assert.equal(find(v,'select-customers').props.checked,false);
+    v.stop();state.identityBlocked=false;
+});

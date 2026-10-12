@@ -10,11 +10,16 @@ const routerModule = url(`export const router={on:(n,fn)=>globalThis.__visibilit
  visit:(path,options)=>globalThis.__visibility.visits.push({path,options})};`);
 const coreModule = url('export class HttpCancelledError extends Error {} export class HttpNetworkError extends Error {}');
 const vueModule = url('export const nextTick=()=>Promise.resolve();');
+// Identity protocol has its own contract probes; this harness isolates retained
+// navigation/History/BFCache containment without bypassing production admission.
+const identityModule = url(`export const acceptIdentityPage=()=>{},attachIdentityPage=()=>{},
+ requireIdentity=value=>value||{receipt:'isolated-visibility-fixture',binding:{boundary:'advertiser',epoch:1}},recoverIdentity=async()=>{},retryIdentityRecovery=async()=>{},identityBlocked=()=>false,receiveIdentityHint=()=>{},resumeIdentityRenewal=()=>{globalThis.__visibility.renewalResumes=(globalThis.__visibility.renewalResumes||0)+1};`);
 const source = ts.transpileModule(await readFile(new URL('../resources/js/clientVisibility.ts', import.meta.url), 'utf8'),
     { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
     .replace("from '@inertiajs/vue3'", `from ${JSON.stringify(routerModule)}`)
     .replace("from '@inertiajs/core'", `from ${JSON.stringify(coreModule)}`)
-    .replace("from 'vue'", `from ${JSON.stringify(vueModule)}`);
+    .replace("from 'vue'", `from ${JSON.stringify(vueModule)}`)
+    .replace("from './identityProtocol'", `from ${JSON.stringify(identityModule)}`);
 const { installClientVisibility, VisibilityUnavailable } = await import(url(source));
 const { router } = await import(routerModule);
 const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
@@ -25,7 +30,7 @@ function setup() {
     globalThis.PopStateEvent = class { constructor(type, options) { this.type = type; this.state = options.state; } };
     globalThis.document = { documentElement: { dataset: { visibility: 'checking' } }, visibilityState: 'visible', title: 'Private',
         getElementById: id => id === 'app' ? { setAttribute() { state.inert = true; }, removeAttribute() { state.inert = false; } }
-            : id === 'visibility-navigation-error' ? state.notice : { addEventListener: (_, fn) => state.buttons[id] = fn },
+            : id === 'visibility-navigation-error' ? state.notice : id === 'logout-status' ? { removeAttribute() { state.terminalNotice = true; } } : { addEventListener: (_, fn) => state.buttons[id] = fn },
         addEventListener: (name, fn) => state.document[name] = fn };
     globalThis.window = { location: { origin: 'http://localhost', pathname: '/a', search: '', href: 'http://localhost/a',
         replace: path => state.replaced.push(path), reload: () => state.reloads++ }, crypto: { subtle: {} },
@@ -81,11 +86,14 @@ test('ordinary navigation and replace/validation events leave the approved page 
 });
 test('History and BFCache require fresh checks even for an identical page object', async () => {
     const s = setup(), p = await initial(s);
+    const renewalResumes=s.renewalResumes;
     s.window.pagehide(); assert.equal(document.documentElement.dataset.visibility, 'checking');
     s.window.pageshow({ persisted: true }); await flush();
     assert.equal(document.documentElement.dataset.visibility, 'checking');
+    assert.equal(s.renewalResumes,renewalResumes,'Untrusted restoration must not resume renewal');
     s.reply(1, p.props.clientVisibility); await flush();
     assert.equal(document.documentElement.dataset.visibility, 'ready');
+    assert.equal(s.renewalResumes,renewalResumes+1,'Existing successful visibility admission resumes renewal');
     s.window.popstate({ state: 'encrypted-entry' }); const restored = s.resolve(p);
     assert.equal(document.documentElement.dataset.visibility, 'checking');
     s.reply(2, p.props.clientVisibility); await restored; await s.commit(p);
@@ -149,16 +157,18 @@ test('server denial during a navigation immediately invalidates the currently vi
 test('observed invalidation during a successful delayed probe cannot approve stale data', async () => {
     const s = setup(), a = await initial(s), p = page('/b'); s.start(p);
     const waiting = s.resolve(p); const rejected = assert.rejects(waiting, /superseded/);
-    s.window.focus(); await rejected; await flush();
+    s.window.pagehide(); s.window.pageshow({persisted:true}); await rejected; await flush();
     s.reply(1, p.props.clientVisibility); s.reply(2, a.props.clientVisibility); await flush();
     assert.deepEqual(s.mounted, []); assert.equal(document.documentElement.dataset.visibility, 'ready');
 });
-test('backgrounding clears approval and a late component cannot reach the swap', async () => {
+test('ordinary focus and tab changes preserve the approved display and candidate without authority probes', async () => {
     const s = setup(); await initial(s); const p = page('/b'); s.start(p);
-    const waiting = s.resolve(p); const rejected = assert.rejects(waiting, /superseded/);
-    document.visibilityState = 'hidden'; s.document.visibilitychange(); await rejected;
-    s.reply(1, p.props.clientVisibility); await flush();
-    assert.equal(document.documentElement.dataset.visibility, 'checking'); assert.deepEqual(s.mounted, []);
+    const waiting = s.resolve(p);
+    document.visibilityState = 'hidden'; s.document.visibilitychange?.(); s.window.focus();
+    assert.equal(document.documentElement.dataset.visibility, 'ready'); assert.equal(s.requests.length,2);
+    document.visibilityState = 'visible'; s.document.visibilitychange?.();
+    s.reply(1, p.props.clientVisibility); await waiting; await s.commit(p);
+    assert.equal(document.documentElement.dataset.visibility, 'ready'); assert.deepEqual(s.mounted,[p]);
 });
 test('legacy or mismatched receipts never authorize a component', async () => {
     for (const p of [{ url: '/a', props: { auth: { user: { id: 1 } } } }, page('/different')]) {
@@ -211,4 +221,50 @@ test('initial offline failure retries the retained page through a fresh probe wi
     assert.equal(document.documentElement.dataset.visibility, 'unavailable'); assert.equal(s.cleared, 0);
     s.window.online(); s.reply(1, p.props.clientVisibility); await retried; s.boundary.mounted(p);
     assert.equal(document.documentElement.dataset.visibility, 'ready'); assert.equal(s.reloads, 0);
+});
+
+test('terminal departure rejects in-flight approval and every same-document reveal path without erasing keys', async () => {
+    const s = setup(), p = await initial(s);
+    s.window.pageshow({ persisted: true });
+    await flush();
+    assert.equal(s.requests.length, 2);
+    s.boundary.closeDocument();
+    s.reply(1, p.props.clientVisibility);
+    await flush();
+    s.window.pagehide();
+    s.window.pageshow({ persisted: true });
+    s.window.focus(); s.window.online();
+    s.document.visibilitychange?.();
+    s.buttons['visibility-retry']();
+    s.buttons['visibility-navigation-retry']();
+    s.router.navigate({ detail: { page: p } });
+    s.router.success({ detail: { page: p } });
+    s.router.error({ detail: { page: p } });
+    s.boundary.mounted(p);
+    await flush();
+    await assert.rejects(s.resolve(p), /superseded/);
+    assert.notEqual(document.documentElement.dataset.visibility, 'ready');
+    assert.equal(s.inert, true);
+    assert.equal(s.terminalNotice, true);
+    assert.equal(s.requests.length, 2);
+    assert.equal(s.cleared, 0);
+    assert.deepEqual(s.replaced, []);
+    assert.deepEqual(s.visits, []);
+});
+test('all four advertiser logout entries use the single injected document operation', async () => {
+    const entries = [
+        ['Layouts/AdvertiserLayout.vue', 1],
+        ['Layouts/AuthenticatedLayout.vue', 2],
+        ['Pages/Auth/VerifyEmail.vue', 1],
+    ];
+    for (const [path, count] of entries) {
+        const component = await readFile(new URL('../resources/js/' + path, import.meta.url), 'utf8');
+        assert.match(component, /inject\(logoutKey\)/);
+        assert.match(component, /logout\.start\(/);
+        assert.equal((component.match(/@click="leave"/g) ?? []).length, count);
+        assert.doesNotMatch(component, /route\(['"]logout['"]\)|createLogoutOperation|fetch\(/);
+    }
+    const app = await readFile(new URL('../resources/js/app.ts', import.meta.url), 'utf8');
+    assert.equal((app.match(/createLogoutOperation\(visibility.closeDocument\)/g) ?? []).length, 1);
+    assert.match(app, /provide\(logoutKey, logout\)/);
 });

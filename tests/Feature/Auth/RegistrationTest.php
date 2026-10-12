@@ -20,6 +20,7 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register(): void
     {
+        $this->useIdentityDocument('/register');
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
@@ -28,11 +29,12 @@ class RegistrationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('verification.notice', absolute: false));
+        $response->assertOk()->assertJsonPath('redirect', route('verification.notice', absolute: false))->assertJsonPath('transition.epoch', 1);
     }
 
     public function test_mismatched_password_confirmation_is_rejected_in_arabic(): void
     {
+        $this->useIdentityDocument('/register');
         $this->post('/register', [
             'name' => 'Test User',
             'email' => 'mismatch@example.test',

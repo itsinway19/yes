@@ -10,6 +10,12 @@ use Tests\TestCase;
 
 class PasswordPolicyTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->useIdentityDocument('/register');
+    }
+
     public function test_registration_rejects_short_password_and_reports_breach_service_failure_separately(): void
     {
         $this->post('/register', [
@@ -66,7 +72,8 @@ class PasswordPolicyTest extends TestCase
         $this->post('/register', [
             'name' => 'Advertiser', 'email' => 'long@example.com',
             'password' => $password, 'password_confirmation' => $password,
-        ])->assertRedirect(route('verification.notice', absolute: false));
+        ])->assertOk()->assertJsonPath('redirect', route('verification.notice', absolute: false))
+            ->assertJsonPath('transition.epoch', 1);
     }
 
     public function test_a_known_breached_password_is_rejected_with_an_arabic_error(): void

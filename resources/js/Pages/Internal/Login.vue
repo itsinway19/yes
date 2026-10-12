@@ -7,6 +7,7 @@ import GuestLayout from '@/Layouts/GuestLayout.vue';
 import LanguageSwitcher from '@/Components/LanguageSwitcher.vue';
 import { passkeyLoginErrorKey } from '@/localization/passkeyError';
 import { cancelPasskeyOperation, runPasskeyOperation } from '@/security/passkeyCeremony';
+import { captureIdentity, identityDestination } from '@/identityProtocol';
 
 defineProps<{ status?: string }>();
 const { t } = useI18n({ useScope: 'global' });
@@ -37,13 +38,14 @@ async function signIn() {
     busy.value = true;
     errorKey.value = '';
     try {
+        const captured = captureIdentity();
         const operation = runPasskeyOperation('internal-login', {
-            options: route('internal.auth.passkey.options'),
-            submit: route('internal.auth.passkey.store'),
+            options: captured.binding.principal ? '/internal/identity/passkey/options' : route('internal.auth.passkey.options'),
+            submit: captured.binding.principal ? '/internal/identity/passkey' : route('internal.auth.passkey.store'),
         }, routes => Passkeys.verify({ routes }));
         operationId = operation.id;
-        const result = await operation.promise as { redirect?: string };
-        window.location.assign(result.redirect || route('internal.administration'));
+        const result = await operation.promise;
+        window.location.assign(identityDestination(result, captured));
     } catch (failure) {
         errorKey.value = passkeyLoginErrorKey(failure);
     } finally {

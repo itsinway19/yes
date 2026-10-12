@@ -17,6 +17,23 @@ final class ExpiredSecuritySession extends AuthorizationException
 
     public function render(Request $request): Response
     {
+        if ($request->attributes->has('builderad.identity_cookies')) {
+            try {
+                app(IdentityLifecycle::class)->expire($request);
+            } catch (IdentityTransitionConflict) {
+                // Another committed identity owns the lineage: retire no other input.
+            }
+            IdentityCookies::own($request, 'terminal');
+            Inertia::clearHistory();
+            $destination = $request->is('internal/*') ? '/internal/login' : '/login';
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $this->getMessage(), 'identityConflict' => true,
+                    'context' => $request->is('internal/*') ? '/internal/identity/context' : '/identity/context'], 409)
+                    ->header('Cache-Control', 'no-store');
+            }
+
+            return redirect($destination)->header('Cache-Control', 'no-store');
+        }
         // Clear this browser only, after the rejected transaction has unwound.
         $internal = $request->is('internal/*');
         Auth::guard($internal ? 'internal' : 'web')->logoutCurrentDevice();

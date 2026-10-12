@@ -99,6 +99,9 @@ class BusinessFoundationTest extends TestCase
 
     public function test_gate_preserves_destination_security_and_existing_identity(): void
     {
+        config(['session.driver' => 'redis', 'session.connection' => 'default']);
+        app('session')->forgetDrivers();
+        app()->forgetInstance('session.store');
         $workspace = $this->business(User::factory()->create());
         $this->get('/workspaces/'.$workspace->public_id.'?tab=sources')->assertRedirect(route('workspaces.business.edit', $workspace->public_id));
         $this->get('/profile')->assertOk();
@@ -109,7 +112,8 @@ class BusinessFoundationTest extends TestCase
         $db = DB::connection('pgsql_migrations');
         $this->assertSame(1, $db->table('workspaces')->count());
         $this->assertSame('Original business', $db->table('workspaces')->value('name'));
-        $this->post('/logout')->assertRedirect('/');
+        $this->post('/logout')->assertOk()->assertJsonPath('redirect', '/')
+            ->assertJsonPath('transition.status', 'closed');
     }
 
     public function test_legacy_classification_preserves_source_instances_and_historical_evidence(): void

@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/vue3';
 import { HttpCancelledError, HttpNetworkError, type ActiveVisit, type Page, type RouterInitParams } from '@inertiajs/core';
 import { nextTick } from 'vue';
+import { acceptIdentityPage, attachIdentityPage, requireIdentity, recoverIdentity, retryIdentityRecovery, identityBlocked, receiveIdentityHint, resumeIdentityRenewal } from './identityProtocol';
 
 type Evidence = { protected: boolean; path: string; context: string | null };
 type Visit = Pick<ActiveVisit, 'replace' | 'preserveState' | 'preserveScroll'> &
@@ -63,6 +64,7 @@ export function installClientVisibility() {
         if (displayed !== approval || !trustedDisplay()) return;
         root.dataset.visibility = 'ready';
         document.getElementById('app')?.removeAttribute('inert');
+        resumeIdentityRenewal();
     }
     function notice(show: boolean) {
         const element = document.getElementById('visibility-navigation-error');
@@ -88,6 +90,8 @@ export function installClientVisibility() {
     async function authorize(ticket: Approval) {
         assert(ticket);
         const page = ticket.page, receipt = evidence(page);
+        try { acceptIdentityPage(page); }
+        catch { await recoverIdentity(); throw cancelled(); }
         const target = new URL(page.url, window.location.origin);
         if (!receipt || typeof receipt.protected !== 'boolean' || typeof receipt.path !== 'string' ||
             target.origin !== window.location.origin || target.pathname + target.search !== receipt.path) {
@@ -96,7 +100,12 @@ export function installClientVisibility() {
         if (page.clearHistory && !announced.has(page)) {
             announced.add(page);
             displayed = undefined; hide();
-            channel?.postMessage('invalidate');
+            // This admitted document announces an identity transition. A second
+            // fresh document at the same epoch must not cancel its bootstrap.
+            // Receivers consult server context for differing epochs; the hint
+            // grants no authority. Other invalidation paths remain unchanged.
+            const binding = requireIdentity(page.props.identity).binding;
+            channel?.postMessage({ boundary: binding.boundary, epoch: binding.epoch });
         }
         const identity = (value: Page) => {
             const auth = value.props.auth as { user?: { id: unknown }; sessionContextId?: unknown } | undefined;
@@ -110,10 +119,12 @@ export function installClientVisibility() {
         const response = await abortable(fetch(target.href, {
             credentials: 'same-origin', cache: 'no-store', redirect: 'manual', signal: ticket.controller.signal,
             headers: { 'X-Inertia': 'true', Accept: 'text/html', 'X-Builderad-Visibility': '1',
-                'X-Builderad-Visibility-Context': receipt.context },
+                'X-Builderad-Visibility-Context': receipt.context,
+                'X-Builderad-Document': requireIdentity(page.props.identity).receipt },
         }), ticket);
         assert(ticket);
         if (response.type === 'opaqueredirect' || [401, 403, 404, 409, 410].includes(response.status)) {
+            if ([401, 409].includes(response.status)) { await recoverIdentity(); throw cancelled(); }
             invalidate(); throw cancelled();
         }
         if (!response.ok) throw new VisibilityUnavailable();
@@ -216,6 +227,7 @@ export function installClientVisibility() {
             await nextTick();
             if (!valid(ticket)) { hide(); throw cancelled(); }
             live = update.page; displayed = ticket;
+            attachIdentityPage(update.page);
             restoration = undefined;
             notice(false); reveal(live);
         } });
@@ -226,16 +238,17 @@ export function installClientVisibility() {
     }, true);
     window.addEventListener('pagehide', breakTrust, true);
     window.addEventListener('pageshow', event => { if (event.persisted) void checkLive(); }, true);
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') breakTrust(); else retryCheck();
-    });
     window.addEventListener('focus', () => {
-        if (restoration?.path === path()) restoreHistory(); else if (live) void checkLive();
+        if (restoration?.path === path()) restoreHistory();
     });
     window.addEventListener('online', retryCheck);
-    channel?.addEventListener('message', () => { breakTrust(); void checkLive(); });
-    document.getElementById('visibility-retry')?.addEventListener('click', retryCheck);
-    document.getElementById('visibility-navigation-retry')?.addEventListener('click', retryCheck);
+    channel?.addEventListener('message', event => {
+        if (event.data === 'invalidate') { breakTrust(); void checkLive(); }
+        else receiveIdentityHint(event.data);
+    });
+    const retryBoundary = () => { if (identityBlocked()) void retryIdentityRecovery(); else retryCheck(); };
+    document.getElementById('visibility-retry')?.addEventListener('click', retryBoundary);
+    document.getElementById('visibility-navigation-retry')?.addEventListener('click', retryBoundary);
     // Inertia 3.7.1's popstate listener does not return/catch setQuietly's inner
     // promise. Handle only our already surfaced failures/expected cancellations;
     // leave all unrelated errors observable. The rejected resolver never swaps.
@@ -259,7 +272,23 @@ export function installClientVisibility() {
         if (trustedDisplay()) notice(true);
         else { hide(); root.dataset.visibility = 'unavailable'; }
     });
-    return { resolve, beforeMount(page: Page) {
+    return { resolve, identityRecovered() {
+        // Context recovery proved the same credential/principal/lifecycle. Resume
+        // only the previously admitted live page, never a cancelled candidate.
+        if (!live || leaving) return;
+        acceptIdentityPage(live);
+        const ticket: Approval = { page: live, generation, sequence, controller: new AbortController() };
+        approvals.set(live, ticket); displayed = ticket;
+        notice(false); reveal(live);
+    }, closeDocument() {
+        // Unknown transport does not revoke keys. Reuse the existing display owner.
+        leaving = true;
+        generation++; sequence++;
+        displayed = undefined;
+        stopPending(); notice(false); hide();
+        root.dataset.visibility = 'terminal';
+        document.getElementById('logout-status')?.removeAttribute('hidden');
+    }, beforeMount(page: Page) {
         const ticket = approvals.get(page);
         if (!ticket) throw cancelled();
         assert(ticket);

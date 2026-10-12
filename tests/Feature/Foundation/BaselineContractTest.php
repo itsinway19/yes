@@ -116,6 +116,7 @@ class BaselineContractTest extends TestCase
 
     public function test_document_root_direction_follows_the_application_locale(): void
     {
+        $this->useIdentityDocument();
         $this->get('/login')->assertSee('<html lang="ar" dir="rtl">', false);
 
         $this->post('/locale', ['locale' => 'en'])->assertRedirect('/login');

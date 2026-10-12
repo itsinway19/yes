@@ -15,11 +15,17 @@ use Webauthn\TrustPath\EmptyTrustPath;
 
 class PasskeyAssertionTest extends TestCase
 {
+    private function freshAssertionOptions(bool $internal = false): array
+    {
+        $this->useIdentityDocument($internal ? '/internal/login' : '/login');
+
+        return $this->getJson(($internal ? '/internal' : '').'/auth/passkey/options')->assertOk()->json('options');
+    }
+
     public function test_staff_passkey_issues_only_an_internal_session_and_rotates_the_session_id(): void
     {
-        $this->usePersistentTestSessions();
         [$user, $key, $credentialId] = $this->createCredential(staff: true);
-        $options = $this->getJson('/internal/auth/passkey/options')->assertOk()->json('options');
+        $options = $this->freshAssertionOptions(true);
         $oldSessionHash = hash('sha256', $this->app['session']->driver()->getId());
 
         $this->postJson('/internal/auth/passkey', ['credential' => $this->assertion(
@@ -39,14 +45,14 @@ class PasskeyAssertionTest extends TestCase
         $this->get('/internal/security/devices')->assertOk();
         $this->get('/dashboard')->assertRedirect(route('login'));
         $this->get('/internal/security/devices')->assertOk();
-        $this->post('/internal/logout')->assertRedirect(route('internal.login'));
+        $this->post('/internal/logout')->assertOk()->assertJsonPath('redirect', '/internal/login')->assertJsonPath('transition.status', 'closed');
         $this->get('/internal/security/devices')->assertRedirect(route('internal.login'));
     }
 
     public function test_advertiser_passkey_cannot_issue_an_internal_session(): void
     {
         [$user, $key, $credentialId] = $this->createCredential();
-        $options = $this->getJson('/internal/auth/passkey/options')->assertOk()->json('options');
+        $options = $this->freshAssertionOptions(true);
 
         $this->postJson('/internal/auth/passkey', ['credential' => $this->assertion(
             $options, $key, $credentialId, $user,
@@ -59,7 +65,7 @@ class PasskeyAssertionTest extends TestCase
     public function test_staff_passkey_cannot_issue_an_advertiser_session(): void
     {
         [$user, $key, $credentialId] = $this->createCredential(staff: true);
-        $options = $this->getJson('/auth/passkey/options')->assertOk()->json('options');
+        $options = $this->freshAssertionOptions();
 
         $this->postJson('/auth/passkey', ['credential' => $this->assertion(
             $options, $key, $credentialId, $user,
@@ -71,7 +77,7 @@ class PasskeyAssertionTest extends TestCase
     public function test_signed_uv_assertion_issues_a_passkey_session_and_cannot_be_replayed(): void
     {
         [$user, $key, $credentialId] = $this->createCredential();
-        $options = $this->getJson('/auth/passkey/options')->assertOk()->json('options');
+        $options = $this->freshAssertionOptions();
         $this->assertSame('required', $options['userVerification']);
         $this->assertSame(config('passkeys.relying_party_id'), $options['rpId']);
         $this->assertSame([], $options['allowCredentials']);
@@ -92,7 +98,8 @@ class PasskeyAssertionTest extends TestCase
                 .';session:'.DB::table('security_sessions')->where('user_id', $user->id)->value('id').';uv:1',
         ]);
 
-        $this->post('/logout')->assertRedirect('/');
+        $this->post('/logout')->assertOk()->assertJsonPath('redirect', '/')->assertJsonPath('transition.status', 'closed');
+        $this->freshAssertionOptions();
         $this->postJson('/auth/passkey', ['credential' => $assertion])->assertUnprocessable();
         $this->assertSame(1, DB::table('security_sessions')->where('user_id', $user->id)->count());
     }
@@ -100,7 +107,7 @@ class PasskeyAssertionTest extends TestCase
     public function test_signed_assertion_without_uv_is_denied(): void
     {
         [$user, $key, $credentialId] = $this->createCredential();
-        $options = $this->getJson('/auth/passkey/options')->assertOk()->json('options');
+        $options = $this->freshAssertionOptions();
 
         $this->postJson('/auth/passkey', ['credential' => $this->assertion(
             $options, $key, $credentialId, $user, AuthenticatorData::FLAG_UP,
@@ -113,7 +120,7 @@ class PasskeyAssertionTest extends TestCase
     public function test_signed_assertion_from_wrong_origin_is_denied(): void
     {
         [$user, $key, $credentialId] = $this->createCredential();
-        $options = $this->getJson('/auth/passkey/options')->assertOk()->json('options');
+        $options = $this->freshAssertionOptions();
 
         $this->postJson('/auth/passkey', ['credential' => $this->assertion(
             $options, $key, $credentialId, $user,
@@ -126,7 +133,7 @@ class PasskeyAssertionTest extends TestCase
     public function test_assertion_with_invalid_signature_is_denied(): void
     {
         [$user, $key, $credentialId] = $this->createCredential();
-        $options = $this->getJson('/auth/passkey/options')->assertOk()->json('options');
+        $options = $this->freshAssertionOptions();
         $assertion = $this->assertion($options, $key, $credentialId, $user,
             AuthenticatorData::FLAG_UP | AuthenticatorData::FLAG_UV);
         $assertion['response']['signature'] = Base64UrlSafe::encodeUnpadded(random_bytes(64));
@@ -138,22 +145,25 @@ class PasskeyAssertionTest extends TestCase
     public function test_revoked_credential_and_expired_challenge_are_denied(): void
     {
         [$user, $key, $credentialId] = $this->createCredential();
-        $options = $this->getJson('/auth/passkey/options')->assertOk()->json('options');
+        $options = $this->freshAssertionOptions();
         $assertion = $this->assertion($options, $key, $credentialId, $user,
             AuthenticatorData::FLAG_UP | AuthenticatorData::FLAG_UV);
 
-        $this->withSession(['builderad.passkey_verification_issued_at' => time() - 61])
-            ->postJson('/auth/passkey', ['credential' => $assertion])->assertUnprocessable();
+        $this->withSession(['builderad.passkey_verification_issued_at' => time() - 61]);
+        // The real Redis-backed request reloads the session; persist the forced
+        // expiration before exercising the unchanged challenge deadline check.
+        app('session')->driver()->save();
+        $this->postJson('/auth/passkey', ['credential' => $assertion])->assertUnprocessable();
         $this->assertSame(0, DB::table('security_sessions')->count());
 
-        $this->getJson('/auth/passkey/options')->assertOk();
+        $this->freshAssertionOptions();
         DB::connection('pgsql_migrations')->table('passkeys')->where('user_id', $user->id)->delete();
         $this->postJson('/auth/passkey', ['credential' => $assertion])->assertUnprocessable();
         $this->assertSame(0, DB::table('security_sessions')->count());
     }
 
     /** @return array{User, \OpenSSLAsymmetricKey, string} */
-    private function createCredential(bool $staff = false): array
+    protected function createCredential(bool $staff = false): array
     {
         $user = User::factory()->create();
         $key = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
@@ -196,7 +206,7 @@ class PasskeyAssertionTest extends TestCase
     /** @param array<string, mixed> $options
      * @return array<string, mixed>
      */
-    private function assertion(array $options, \OpenSSLAsymmetricKey $key, string $credentialId,
+    protected function assertion(array $options, \OpenSSLAsymmetricKey $key, string $credentialId,
         User $user, int $flags, ?string $origin = null): array
     {
         $clientData = json_encode([

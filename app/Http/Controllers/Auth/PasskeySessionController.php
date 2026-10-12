@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Security\AuthorityVerifyPasskey;
 use App\Security\GrantAuthority;
+use App\Security\IdentityAuthentication;
 use App\Security\PasskeyCeremonyTrace;
 use App\Security\SessionAuthority;
 use Illuminate\Http\JsonResponse;
@@ -36,20 +37,22 @@ final class PasskeySessionController extends Controller
         return response()->json(['options' => WebAuthn::toBrowserArray($options)]);
     }
 
-    public function store(PasskeyVerificationRequest $request, AuthorityVerifyPasskey $verify, SessionAuthority $sessions): JsonResponse
+    public function store(PasskeyVerificationRequest $request, AuthorityVerifyPasskey $verify, IdentityAuthentication $identity): JsonResponse
     {
         $internal = $request->is('internal/*');
         PasskeyCeremonyTrace::record($request, 'login_assertion_submitted');
-        $issuedAt = (int) $request->session()->pull('builderad.passkey_verification_issued_at', 0);
-        if ($issuedAt < time() - 60 || $issuedAt > time()) {
-            PasskeyCeremonyTrace::record($request, 'login_challenge_expired');
-            throw ValidationException::withMessages(['credential' => __('login.passkey_expired')]);
-        }
-
-        $verificationOptions = $request->verificationOptions();
+        $verificationOptions = null;
+        $passkey = null;
+        $lifecycle = null;
 
         try {
-            DB::connection('pgsql_authority')->transaction(function () use ($request, $verify, $sessions, $verificationOptions, $internal): void {
+            $result = $identity->login($request, function () use ($request, $verify, &$verificationOptions, &$passkey, &$lifecycle, $internal): void {
+                $issuedAt = (int) $request->session()->pull('builderad.passkey_verification_issued_at', 0);
+                if ($issuedAt < time() - 60 || $issuedAt > time()) {
+                    PasskeyCeremonyTrace::record($request, 'login_challenge_expired');
+                    throw ValidationException::withMessages(['credential' => __('login.passkey_expired')]);
+                }
+                $verificationOptions = $request->verificationOptions();
                 $passkey = $verify($request->credential(), $verificationOptions);
                 $user = $passkey->user;
                 $lifecycle = DB::connection('pgsql_authority')->table('principal_lifecycles')
@@ -61,7 +64,14 @@ final class PasskeySessionController extends Controller
 
                 Auth::guard($internal ? 'internal' : 'web')->login($user);
                 $request->session()->regenerate();
-                $sessions->issue($request, $user, $internal ? 'internal_passkey' : 'passkey');
+            }, $internal ? 'internal_passkey' : 'passkey', function () use ($request, $internal): string {
+                $destination = $internal && ! app(GrantAuthority::class)->has(
+                    $request->user(), (int) $request->session()->get('a001_generation', 0), 'staff.view',
+                ) ? 'internal.security.devices' : ($internal ? 'internal.administration' : 'dashboard');
+
+                return route($destination, absolute: false);
+            }, function () use ($request, &$passkey, &$lifecycle): void {
+                $user = $passkey->user;
                 $authority = DB::connection('pgsql_authority');
                 $sessionId = $authority->table('security_sessions')
                     ->where('session_key_hash', SessionAuthority::sessionKey($request))->value('id');
@@ -77,10 +87,6 @@ final class PasskeySessionController extends Controller
                 ]);
             });
         } catch (Throwable $exception) {
-            Auth::guard($internal ? 'internal' : 'web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-            Inertia::clearHistory();
             if ($exception instanceof AuthenticatorResponseVerificationException) {
                 PasskeyCeremonyTrace::record($request, 'login_assertion_rejected');
                 $response = $request->credential()->response;
@@ -117,10 +123,6 @@ final class PasskeySessionController extends Controller
         PasskeyCeremonyTrace::record($request, 'login_assertion_accepted');
         Inertia::clearHistory();
 
-        $destination = $internal && ! app(GrantAuthority::class)->has(
-            $request->user(), (int) $request->session()->get('a001_generation', 0), 'staff.view',
-        ) ? 'internal.security.devices' : ($internal ? 'internal.administration' : 'dashboard');
-
-        return response()->json(['redirect' => route($destination, absolute: false)]);
+        return $result;
     }
 }

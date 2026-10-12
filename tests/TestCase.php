@@ -3,6 +3,8 @@
 namespace Tests;
 
 use App\Security\DisposableTestDatabaseGuard;
+use App\Security\IdentityReceipt;
+use App\Security\IdentityTransition;
 use App\Security\SessionAuthority;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
@@ -15,6 +17,34 @@ use Tests\Support\DisposableDatabaseReset;
 abstract class TestCase extends BaseTestCase
 {
     private static bool $databasePrepared = false;
+
+    private bool $ownedIdentityFixture = false;
+
+    /** Explicitly enter the real anonymous/document protocol for compatibility tests. */
+    protected function useIdentityDocument(string $path = '/login'): array
+    {
+        config(['session.driver' => 'redis', 'session.connection' => 'default']);
+        Auth::forgetGuards();
+        app('session')->forgetDrivers();
+        app()->forgetInstance('session.store');
+        foreach (['X-CSRF-TOKEN', 'X-Builderad-Document', 'X-Builderad-Transition'] as $header) {
+            unset($this->defaultHeaders[$header]);
+        }
+        $this->withCredentials();
+        $response = $this->get($path, ['Accept' => 'text/html']);
+        $response->assertOk();
+        $identity = $response->viewData('page')['props']['identity'];
+        $this->identityFixtureHeaders($identity);
+        $this->ownedIdentityFixture = true;
+
+        return $identity;
+    }
+
+    private function identityFixtureHeaders(array $identity): void
+    {
+        $this->withHeaders(['X-CSRF-TOKEN' => $identity['csrf'],
+            'X-Builderad-Document' => $identity['receipt'], 'X-Builderad-Transition' => $identity['transition']]);
+    }
 
     public function actingAs(Authenticatable $user, $guard = null)
     {
@@ -47,9 +77,43 @@ abstract class TestCase extends BaseTestCase
             app(SessionAuthority::class)->issue($request, $user,
                 $guard === 'internal' ? 'internal_passkey' : ($staff ? 'staff_enrollment' : 'password'));
         }
+        $session->put(Auth::guard($guard)->getName(), $user->getAuthIdentifier());
+        $this->withIdentityAdmissionFixture($request, $user, $guard);
         $session->save();
 
         return $this;
+    }
+
+    /** Synthetic document for existing authorization tests, not authentication/race evidence. */
+    private function withIdentityAdmissionFixture(Request $request, Authenticatable $user, string $guard): void
+    {
+        $this->withCredentials();
+        $boundary = $guard === 'internal' ? 'internal' : 'advertiser';
+        $existing = DB::connection('pgsql_authority')->table('browser_identity_transitions')
+            ->where('current_session_key_hash', SessionAuthority::sessionKey($request))
+            ->where('principal_id', $user->getAuthIdentifier())->where('boundary', $boundary)->first();
+        $lineage = $existing?->lineage_id ?? app(IdentityTransition::class)->create($boundary);
+        $epoch = $existing ? (int) $existing->epoch : 1;
+        if (! $existing) {
+            DB::connection('pgsql_authority')->table('browser_identity_transitions')->where('lineage_id', $lineage)->update([
+                'epoch' => 1, 'current_session_key_hash' => SessionAuthority::sessionKey($request),
+                'principal_id' => $user->getAuthIdentifier(), 'status' => 'active', 'kind' => 'login',
+                'last_nonce' => bin2hex(random_bytes(32)), 'updated_at' => now(),
+            ]);
+        }
+        $request->session()->put(['builderad.identity_lineage' => $lineage, 'builderad.identity_epoch' => $epoch,
+            'builderad.identity_cookie_lease' => time() + (int) config('session.lifetime') * 60]);
+        $binding = ['lineage' => $lineage, 'epoch' => $epoch, 'boundary' => $boundary,
+            'credential' => SessionAuthority::sessionKey($request), 'principal' => (int) $user->getAuthIdentifier(),
+            'lifecycle' => (int) $request->session()->get('a001_generation'),
+            'context' => hash_hmac('sha256', $request->session()->getId(), (string) config('app.key')),
+            'generation' => bin2hex(random_bytes(32))];
+        $receipts = app(IdentityReceipt::class);
+        unset($this->unencryptedCookies[$request->session()->getName().'-lineage']);
+        $this->withCookie($request->session()->getName().'-lineage', $lineage);
+        $this->withHeaders(['X-CSRF-TOKEN' => $request->session()->token(),
+            'X-Builderad-Document' => $receipts->issue($binding, 'document', time() + 7200),
+            'X-Builderad-Transition' => $receipts->issue([...$binding, 'nonce' => bin2hex(random_bytes(32))], 'transition', time() + 600)]);
     }
 
     /** Synthetic administrative session fixture for authorization tests, not a WebAuthn proof. */
@@ -63,6 +127,16 @@ abstract class TestCase extends BaseTestCase
         $response = parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
         foreach ($response->baseResponse->headers->getCookies() as $cookie) {
             $this->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
+        }
+        if ($this->ownedIdentityFixture && $response->status() === 200) {
+            $result = json_decode($response->getContent(), true);
+            if (is_array($result['transition'] ?? null) && is_array($result['identity'] ?? null)) {
+                $this->identityFixtureHeaders($result['identity']);
+            } elseif (($result['transition']['status'] ?? null) === 'closed') {
+                foreach (['X-CSRF-TOKEN', 'X-Builderad-Document', 'X-Builderad-Transition'] as $header) {
+                    unset($this->defaultHeaders[$header]);
+                }
+            }
         }
 
         return $response;

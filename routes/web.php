@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AdvertiserGoalPreferencesController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\IdentityContextController;
 use App\Http\Controllers\Auth\InternalAuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasskeySessionController;
 use App\Http\Controllers\BusinessContextController;
@@ -323,3 +325,21 @@ Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->prefix('int
 });
 
 require __DIR__.'/auth.php';
+
+foreach (['' => 'advertiser', '/internal' => 'internal'] as $prefix => $boundary) {
+    Route::get($prefix.'/identity/context', [IdentityContextController::class, 'show']);
+    Route::get($prefix.'/identity/transition', [IdentityContextController::class, 'resolve']);
+    Route::post($prefix.'/identity/renew', [IdentityContextController::class, 'renew']);
+    Route::post($prefix.'/identity/rebind', [IdentityContextController::class, 'rebind']);
+}
+Route::middleware('auth')->group(function () {
+    Route::get('/identity/switch', [AuthenticatedSessionController::class, 'create']);
+    Route::post('/identity/switch', [AuthenticatedSessionController::class, 'store']);
+    Route::get('/identity/passkey/options', [PasskeySessionController::class, 'options']);
+    Route::post('/identity/passkey', [PasskeySessionController::class, 'store']);
+});
+Route::middleware('auth:internal')->group(function () {
+    Route::get('/internal/identity/switch', [InternalAuthenticatedSessionController::class, 'create']);
+    Route::get('/internal/identity/passkey/options', [PasskeySessionController::class, 'options']);
+    Route::post('/internal/identity/passkey', [PasskeySessionController::class, 'store']);
+});

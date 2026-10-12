@@ -41,8 +41,9 @@ class InternalAuthorityTest extends TestCase
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
+        $this->useIdentityDocument();
         $this->post('/login', ['email' => $staff->email, 'password' => 'password'])
-            ->assertRedirect(route('staff.onboarding'));
+            ->assertOk()->assertJsonPath('redirect', route('staff.onboarding', absolute: false));
         $this->get('/staff/onboarding')->assertOk();
         $this->get('/dashboard')->assertRedirect(route('verification.notice', absolute: false));
         $this->withCredentials()->getJson('/staff/onboarding/passkeys/options')->assertForbidden();
@@ -56,6 +57,7 @@ class InternalAuthorityTest extends TestCase
     public function test_internal_password_login_is_denied_and_ineligible_staff_cannot_use_protected_routes(): void
     {
         $employee = $this->staff('active');
+        $this->useIdentityDocument();
         $this->post('/login', ['email' => $employee->email, 'password' => 'password'])
             ->assertSessionHasErrors('email');
         $this->assertGuest();

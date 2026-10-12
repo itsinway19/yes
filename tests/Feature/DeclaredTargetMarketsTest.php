@@ -119,7 +119,7 @@ class DeclaredTargetMarketsTest extends TestCase
                 ->assertJsonValidationErrors('country_codes');
         }
         $this->postJson($url, ['version' => 0])->assertUnprocessable()->assertJsonValidationErrors('country_codes');
-        $this->call('POST', $url, [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'],
+        $this->call('POST', $url, [], $this->prepareCookiesForJsonRequest(), [], $this->transformHeadersToServerVars(['Content-Type' => 'application/json', 'Accept' => 'application/json']),
             '{"country_codes":{},"version":0}')->assertUnprocessable()->assertJsonValidationErrors('country_codes');
         foreach ([null, -1, 'invalid'] as $version) {
             $this->postJson($url, ['country_codes' => ['SA'], 'version' => $version])->assertUnprocessable()
@@ -211,7 +211,7 @@ class DeclaredTargetMarketsTest extends TestCase
         $db = DB::connection('pgsql_migrations');
         $db->table('security_sessions')->where('user_id', auth()->id())->update(['revoked_at' => now()]);
         $this->postJson('/workspaces/'.$workspace->public_id.'/business/target-markets',
-            ['country_codes' => ['SA'], 'version' => 0])->assertForbidden();
+            ['country_codes' => ['SA'], 'version' => 0])->assertStatus(409)->assertJsonPath('identityConflict', true);
         $this->assertSame(0, $db->table('business_target_markets')->count());
         $this->assertSame(0, $db->table('business_target_market_events')->count());
     }

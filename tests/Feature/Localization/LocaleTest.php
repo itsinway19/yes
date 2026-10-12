@@ -11,6 +11,7 @@ class LocaleTest extends TestCase
 {
     public function test_guest_locale_cookie_is_encrypted_host_scoped_and_shared_across_both_login_pages(): void
     {
+        $this->useIdentityDocument();
         $this->get('/login')->assertOk()->assertSee('lang="ar" dir="rtl"', false);
 
         $response = $this->withHeader('Referer', 'http://localhost/login')
@@ -25,14 +26,17 @@ class LocaleTest extends TestCase
         $this->assertSame('lax', strtolower((string) $cookie->getSameSite()));
 
         $this->get('/login')->assertOk()->assertSee('lang="en" dir="ltr"', false);
+        $this->useIdentityDocument('/internal/login');
         $this->get('/internal/login')->assertOk()->assertSee('lang="en" dir="ltr"', false);
         $this->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => Inertia::getVersion()])->get('/internal/login')
             ->assertOk()->assertJsonPath('component', 'Internal/Login')->assertJsonPath('props.locale', 'en');
         $this->flushHeaders();
+        $this->useIdentityDocument('/internal/login');
 
         $this->withHeader('Referer', 'http://localhost/internal/login')
             ->post('/internal/locale', ['locale' => 'ar'])->assertRedirect('/internal/login');
         $this->get('/internal/login')->assertOk()->assertSee('lang="ar" dir="rtl"', false);
+        $this->useIdentityDocument();
         $this->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => Inertia::getVersion()])->get('/login')
             ->assertOk()->assertJsonPath('component', 'Auth/Login')->assertJsonPath('props.locale', 'ar');
     }
@@ -44,21 +48,27 @@ class LocaleTest extends TestCase
         $this->withUnencryptedCookie(ResolveLocale::COOKIE, 'not-an-encrypted-cookie')
             ->get('/internal/login')->assertOk()->assertSee('lang="ar" dir="rtl"', false);
 
+        $this->useIdentityDocument();
         $this->postJson('/locale', ['locale' => 'fr'])->assertUnprocessable()->assertJsonValidationErrors('locale');
+        $this->useIdentityDocument('/internal/login');
         $this->postJson('/internal/locale', ['locale' => 'fr'])->assertUnprocessable()->assertJsonValidationErrors('locale');
+        $this->useIdentityDocument();
         $this->get('/login')->assertOk()->assertSee('lang="ar" dir="rtl"', false);
     }
 
     public function test_switch_redirects_only_to_same_origin_and_session_context(): void
     {
+        $this->useIdentityDocument();
         $this->withHeader('Referer', 'https://attacker.example/steal')
             ->post('/locale', ['locale' => 'en'])->assertRedirect('/login');
         $this->withHeader('Referer', 'http://localhost/internal/login')
             ->post('/locale', ['locale' => 'en'])->assertRedirect('/login');
+        $this->useIdentityDocument('/internal/login');
         $this->withHeader('Referer', 'http://localhost/login')
             ->post('/internal/locale', ['locale' => 'en'])->assertRedirect('/internal/login');
         $this->withHeader('Referer', 'http://localhost/internal/login?next=1')
             ->post('/internal/locale', ['locale' => 'en'])->assertRedirect('/internal/login?next=1');
+        $this->useIdentityDocument();
         $this->withHeader('Referer', 'https://attacker.example/steal')
             ->post('/locale', ['locale' => 'fr'])->assertRedirect('/login');
     }
@@ -79,6 +89,7 @@ class LocaleTest extends TestCase
         $this->assertSame('/internal', $internalSession->getPath());
         $this->assertNull(collect($internalCookies)->first(fn ($cookie) => $cookie->getName() === $advertiser));
 
+        $this->useIdentityDocument();
         $response = $this->withServerVariables(['HTTPS' => 'on'])
             ->post('https://localhost/locale', ['locale' => 'en']);
         $response->assertRedirect('/login');
@@ -96,27 +107,30 @@ class LocaleTest extends TestCase
         $this->assertLessThan(array_search(ResolveLocale::class, $middleware, true),
             array_search(PreventRequestForgery::class, $middleware, true));
 
-        $this->get('/login')->assertOk();
+        $document = $this->get('/login', ['Accept' => 'text/html'])->assertOk()->viewData('page')['props']['identity'];
         $advertiserToken = $this->app['session']->token();
         $this->app->detectEnvironment(fn () => 'local');
 
         $this->post('/locale', ['locale' => 'en'])->assertStatus(419);
         $this->post('/internal/locale', ['locale' => 'en'])->assertStatus(419);
         $this->post('/internal/locale', ['locale' => 'en', '_token' => $advertiserToken])->assertStatus(419);
-        $this->post('/locale', ['locale' => 'en', '_token' => $advertiserToken])->assertRedirect('/login');
+        $this->post('/locale', ['locale' => 'en', '_token' => $advertiserToken,
+            '_identity_receipt' => $document['receipt']])->assertRedirect('/login');
     }
 
     public function test_login_validation_and_authentication_errors_follow_effective_locale(): void
     {
-        $this->post('/login', [])->assertSessionHasErrors('email');
-        $this->assertStringContainsString('البريد الإلكتروني', session('errors')->first('email'));
-        $this->post('/login', ['email' => 'unknown@example.com', 'password' => 'wrong'])
-            ->assertSessionHasErrors(['email' => 'بيانات الدخول غير صحيحة.']);
+        $this->useIdentityDocument();
+        $missing = $this->postJson('/login', [])->assertUnprocessable()->assertJsonValidationErrors('email');
+        $this->assertStringContainsString('البريد الإلكتروني', $missing->json('errors.email.0'));
+        $this->postJson('/login', ['email' => 'unknown@example.com', 'password' => 'wrong'])
+            ->assertUnprocessable()->assertJsonPath('errors.email.0', 'بيانات الدخول غير صحيحة.');
 
+        $this->useIdentityDocument();
         $this->post('/locale', ['locale' => 'en'])->assertRedirect('/login');
-        $this->post('/login', [])->assertSessionHasErrors('email');
-        $this->assertStringContainsString('email', strtolower(session('errors')->first('email')));
-        $this->post('/login', ['email' => 'unknown@example.com', 'password' => 'wrong'])
-            ->assertSessionHasErrors(['email' => 'These credentials do not match our records.']);
+        $missing = $this->postJson('/login', [])->assertUnprocessable()->assertJsonValidationErrors('email');
+        $this->assertStringContainsString('email', strtolower($missing->json('errors.email.0')));
+        $this->postJson('/login', ['email' => 'unknown@example.com', 'password' => 'wrong'])
+            ->assertUnprocessable()->assertJsonPath('errors.email.0', 'These credentials do not match our records.');
     }
 }

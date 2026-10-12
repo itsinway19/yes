@@ -4,13 +4,12 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Security\IdentityAuthentication;
 use App\Security\LifecycleAuthority;
-use App\Security\SessionAuthority;
 use Illuminate\Auth\Events\Registered;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules;
@@ -43,7 +42,7 @@ class RegisteredUserController extends Controller
      *
      * @throws ValidationException
      */
-    public function store(Request $request, LifecycleAuthority $lifecycles, SessionAuthority $sessions): RedirectResponse
+    public function store(Request $request, LifecycleAuthority $lifecycles, IdentityAuthentication $identity): JsonResponse
     {
         $passwordRule = Rules\Password::defaults();
         $requirements = $passwordRule->appliedRules();
@@ -59,7 +58,8 @@ class RegisteredUserController extends Controller
             'password.password.uncompromised' => 'كلمة المرور معروفة في تسريبات البيانات. اختر كلمة مرور مختلفة.',
         ]);
 
-        $user = DB::connection('pgsql_authority')->transaction(function () use ($request, $lifecycles): User {
+        $user = null;
+        $result = $identity->login($request, function () use ($request, $lifecycles, &$user): void {
             $user = User::on('pgsql_authority')->create([
                 'name' => $request->name,
                 'email' => $request->email,
@@ -67,8 +67,9 @@ class RegisteredUserController extends Controller
             ]);
             $lifecycles->registerPending($user);
 
-            return $user;
-        });
+            Auth::login($user);
+            $request->session()->regenerate();
+        }, 'password', fn () => route('verification.notice', absolute: false));
 
         try {
             event(new Registered($user));
@@ -79,12 +80,6 @@ class RegisteredUserController extends Controller
             ]);
         }
 
-        Auth::login($user);
-        $request->session()->regenerate();
-        $sessions->issue($request, $user);
-
-        Inertia::clearHistory();
-
-        return redirect(route('verification.notice', absolute: false));
+        return $result;
     }
 }

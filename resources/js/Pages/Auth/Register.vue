@@ -7,6 +7,7 @@ import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { generatePassword } from '@/security/generatePassword';
+import { authenticateIdentity } from '@/identityProtocol';
 
 const props = defineProps<{
     passwordPolicy: { min: number; max: number; browserRules: string };
@@ -58,7 +59,8 @@ onMounted(() => {
 });
 onUnmounted(() => window.clearInterval(autofillTimer));
 
-const submit = (event: Event) => {
+const submit = async (event: Event) => {
+    if (form.processing) return;
     const fields = (event.currentTarget as HTMLFormElement).elements;
     for (const key of ['name', 'email', 'password', 'password_confirmation'] as const) {
         const input = fields.namedItem(key) as HTMLInputElement | null;
@@ -80,11 +82,16 @@ const submit = (event: Event) => {
         return;
     }
 
-    form.post(route('register'), {
-        onSuccess: () => {
-            form.reset('password', 'password_confirmation');
-        },
-    });
+    form.processing = true;
+    try {
+        const result = await authenticateIdentity(route('register'), form.data());
+        form.reset('password', 'password_confirmation');
+        window.location.assign(result.redirect);
+    } catch (error) {
+        const failure = error as { errors?: Record<string, string[]>; message?: string };
+        if (failure.errors) for (const [field, messages] of Object.entries(failure.errors)) form.setError(field as 'name' | 'email' | 'password' | 'password_confirmation', messages[0]);
+        else form.setError('password', failure.message || 'تعذّر إكمال التسجيل.');
+    } finally { form.processing = false; }
 };
 </script>
 

@@ -200,7 +200,11 @@ class CommercialScopeTest extends TestCase
             'fresh_auth' => $this->owner()->table('security_sessions')->where('user_id', $this->operator->id)->update(['authenticated_at' => now()->subMinutes(6)]),
         };
         $response = $this->postJson('/internal/commercial/registrations', $input);
-        $this->assertContains($response->status(), [302, 403]);
+        if ($kind === 'stale_session') {
+            $response->assertStatus(409)->assertJsonPath('identityConflict', true);
+        } else {
+            $this->assertContains($response->status(), [302, 403]);
+        }
         $this->assertSame(0, $this->owner()->table('commercial_scopes')->count());
         $this->assertSame(0, $this->owner()->table('commercial_command_results')->where('command_id', $input['command_id'])->count());
     }

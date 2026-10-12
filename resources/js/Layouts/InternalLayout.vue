@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, inject } from 'vue';
+import { logoutKey } from '@/logout';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import LanguageSwitcher from '@/Components/LanguageSwitcher.vue';
@@ -7,6 +8,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { supportedLocale } from '@/localization/messages';
 const { t } = useI18n({ useScope: 'global' });
 const page = usePage();
+const logout = inject(logoutKey);
 const locale = computed(() => supportedLocale(page.props.locale));
 const menuOpen = ref(false);
 const menuButton = ref<HTMLButtonElement | null>(null);
@@ -40,7 +42,7 @@ function closeMenu() {
                 <p class="admin-nav-heading">{{ t('admin.workspace') }}</p>
                 <Link v-for="item in navigation" :key="item.key" :href="route(item.route)" :aria-current="route().current(item.route) ? 'page' : undefined" class="admin-nav-link" @click="menuOpen = false"><span>{{ t(`admin.${item.key}`) }}</span></Link>
             </nav>
-            <div class="admin-sidebar-footer"><span class="admin-eyebrow">{{ t('admin.internalAccess') }}</span><Link :href="route('internal.logout')" method="post" as="button" class="admin-logout">{{ t('admin.logout') }}</Link></div>
+            <div class="admin-sidebar-footer"><span class="admin-eyebrow">{{ t('admin.internalAccess') }}</span><button type="button" @click="logout?.start(() => true)" class="admin-logout">{{ t('admin.logout') }}</button></div>
         </aside>
         <div class="admin-workspace">
             <div v-if="$slots.header" class="admin-page-heading"><slot name="header" /></div>

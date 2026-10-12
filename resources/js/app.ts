@@ -9,10 +9,15 @@ import { messages, supportedLocale } from './localization/messages';
 import { applyDocumentLocale } from './localization/documentLocale';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import { installClientVisibility } from './clientVisibility';
+import { createLogoutOperation, logoutKey } from './logout';
+import { installIdentityProtocol, attachIdentityPage, onIdentityRecovered } from './identityProtocol';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Builderad';
 const i18n = createI18n({ legacy: false, locale: 'ar', fallbackLocale: 'en', messages });
+installIdentityProtocol();
 const visibility = installClientVisibility();
+onIdentityRecovered(visibility.identityRecovered);
+const logout = createLogoutOperation(visibility.closeDocument);
 
 function syncLocale(value: unknown) {
     const locale = supportedLocale(value);
@@ -32,6 +37,7 @@ function startApp() {
         },
         setup({ el, App, props, plugin }) {
             visibility.beforeMount(props.initialPage);
+            attachIdentityPage(props.initialPage);
             syncLocale(props.initialPage.props.locale);
             createApp({
                 setup() {
@@ -40,6 +46,7 @@ function startApp() {
                     return () => h(App, props);
                 },
             })
+                .provide(logoutKey, logout)
                 .use(plugin)
                 .use(i18n)
                 .use(ZiggyVue)

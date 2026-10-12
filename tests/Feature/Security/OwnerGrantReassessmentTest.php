@@ -28,12 +28,14 @@ class OwnerGrantReassessmentTest extends TestCase
         $this->assertSame('pending', DB::table('principal_lifecycles')
             ->where('user_id', $owner->id)->value('status'));
 
+        $this->useIdentityDocument();
         $this->post('/login', ['email' => 'new-owner@example.test', 'password' => 'password'])
-            ->assertRedirect();
+            ->assertOk()->assertJsonPath('redirect', '/dashboard');
         $owner->refresh();
         $this->get(URL::temporarySignedRoute('verification.verify', now()->addHour(), [
             'id' => $owner->id, 'hash' => sha1($owner->email),
         ]))->assertRedirect();
+        $this->useIdentityDocument('/profile');
         $this->assertSame(2, (int) DB::table('principal_lifecycles')
             ->where('user_id', $owner->id)->value('generation'));
         $changedAt = DB::table('security_audit_events')->where('subject_user_id', $owner->id)
@@ -95,9 +97,11 @@ class OwnerGrantReassessmentTest extends TestCase
         DB::connection('pgsql_migrations')->table('workspace_ownerships')
             ->where('workspace_id', $workspace->id)
             ->update(['responsible_owner_user_id' => $otherOwner->id, 'version' => 2]);
-        $this->post('/logout')->assertRedirect('/');
+        $this->post('/logout')->assertOk()->assertJsonPath('redirect', '/')
+            ->assertJsonPath('transition.status', 'closed');
+        $this->useIdentityDocument();
         $this->post('/login', ['email' => $owner->email, 'password' => 'password'])
-            ->assertRedirect();
+            ->assertOk()->assertJsonPath('redirect', '/dashboard');
         $this->post('/workspaces/'.$workspace->public_id.'/reassess-owner-grant')
             ->assertForbidden();
     }
@@ -118,7 +122,7 @@ class OwnerGrantReassessmentTest extends TestCase
 
         app(LifecycleAuthority::class)->disable($owner, $owner->id, 'security_hold');
         $this->post('/workspaces/'.$workspace->public_id.'/reassess-owner-grant')
-            ->assertRedirect('/login');
+            ->assertStatus(409)->assertJsonPath('identityConflict', true);
         $this->assertGuest();
     }
 
@@ -163,10 +167,13 @@ class OwnerGrantReassessmentTest extends TestCase
     {
         $this->patch('/profile', ['name' => $owner->name, 'email' => $email])
             ->assertRedirect(route('login'));
-        $this->post('/login', ['email' => $email, 'password' => 'password'])->assertRedirect();
+        $this->useIdentityDocument();
+        $this->post('/login', ['email' => $email, 'password' => 'password'])->assertOk()
+            ->assertJsonPath('redirect', '/dashboard');
         $owner->refresh();
         $this->get(URL::temporarySignedRoute('verification.verify', now()->addHour(), [
             'id' => $owner->id, 'hash' => sha1($owner->email),
         ]))->assertRedirect();
+        $this->useIdentityDocument('/profile');
     }
 }

@@ -4,17 +4,15 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Security\SessionAuthority;
+use App\Security\IdentityAuthentication;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
-use Throwable;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -32,49 +30,32 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request, SessionAuthority $sessions): RedirectResponse
+    public function store(LoginRequest $request, IdentityAuthentication $identity): JsonResponse
     {
-        $request->authenticate();
-
-        $request->session()->regenerate();
-        $staffPending = DB::table('principal_lifecycles')->where('user_id', $request->user()->id)
-            ->where('principal_class', 'staff')->where('status', 'pending')->exists();
+        $staffPending = false;
         try {
-            DB::transaction(fn () => $sessions->issue(
-                $request, $request->user(), $staffPending ? 'staff_enrollment' : 'password',
-            ));
-        } catch (Throwable $exception) {
-            Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-            Inertia::clearHistory();
-            if ($exception instanceof AuthorizationException) {
-                throw ValidationException::withMessages(['email' => trans('auth.failed')]);
-            }
-            throw $exception;
+            return $identity->login($request, function () use ($request): void {
+                $request->authenticate();
+                $request->session()->regenerate();
+            }, function () use ($request, &$staffPending): string {
+                $staffPending = DB::connection('pgsql_authority')->table('principal_lifecycles')
+                    ->where('user_id', $request->user()->id)->where('principal_class', 'staff')->where('status', 'pending')->exists();
+
+                return $staffPending ? 'staff_enrollment' : 'password';
+            }, function () use ($request, &$staffPending): string {
+                return $staffPending ? route('staff.onboarding', absolute: false)
+                    : (string) $request->session()->pull('url.intended', route('dashboard', absolute: false));
+            });
+        } catch (AuthorizationException) {
+            throw ValidationException::withMessages(['email' => trans('auth.failed')]);
         }
-
-        Inertia::clearHistory();
-
-        return $staffPending
-            ? redirect()->route('staff.onboarding')
-            : redirect()->intended(route('dashboard', absolute: false));
     }
 
     /**
      * Destroy an authenticated session.
      */
-    public function destroy(Request $request, SessionAuthority $sessions): RedirectResponse
+    public function destroy(Request $request, IdentityAuthentication $identity): JsonResponse
     {
-        $sessions->revokeCurrent($request);
-        Auth::guard('web')->logout();
-
-        $request->session()->invalidate();
-
-        $request->session()->regenerateToken();
-
-        Inertia::clearHistory();
-
-        return redirect('/');
+        return $identity->close($request);
     }
 }

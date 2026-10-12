@@ -12,6 +12,7 @@ class LifecycleActivationTest extends TestCase
 {
     public function test_registration_stays_pending_until_verified_and_repeated_verification_is_idempotent(): void
     {
+        $this->useIdentityDocument('/register');
         $response = $this->post('/register', [
             'name' => 'Advertiser',
             'email' => 'advertiser@example.com',
@@ -20,7 +21,7 @@ class LifecycleActivationTest extends TestCase
         ]);
 
         $user = User::query()->where('email', 'advertiser@example.com')->firstOrFail();
-        $response->assertRedirect(route('verification.notice', absolute: false));
+        $response->assertOk()->assertJsonPath('redirect', route('verification.notice', absolute: false));
         $this->assertAuthenticatedAs($user);
         $this->assertDatabaseHas('principal_lifecycles', [
             'user_id' => $user->id,
@@ -46,6 +47,9 @@ class LifecycleActivationTest extends TestCase
             'action' => 'workspace.create',
             'subject_generation' => 1,
         ]);
+        // Verification advances the lifecycle. Enter the new native document
+        // instead of submitting the old pending document's signed receipt.
+        $this->useIdentityDocument('/profile');
         $this->get('/dashboard')->assertRedirect(route('business.start'));
         $this->get('/business/start')->assertOk();
 

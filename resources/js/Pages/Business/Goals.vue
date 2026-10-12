@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { logoutKey } from '@/logout';
+import { captureIdentity, trustIdentityState, type IdentityBinding } from '@/identityProtocol';
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { ChartNoAxesColumnIncreasing, Users, Lightbulb, Settings, Store, ArrowLeft } from '@lucide/vue';
 import AdvertiserLayout from '@/Layouts/AdvertiserLayout.vue';
 import { useGoalsCopy } from '@/localization/goals';
@@ -10,11 +12,19 @@ type Preferences = { value: GoalValue; version: number };
 const props = defineProps<{ workspace: { public_id: string; name: string }; business: { type: { name_ar: string; name_en: string } | null; canManage: boolean }; preferences: Preferences; catalog: GoalCatalog }>();
 const { locale, t, localized } = useGoalsCopy();
 const page = usePage();
+const logout = inject(logoutKey, undefined);
 const historyKey = computed(() => {
     const auth = page.props.auth as { user?: { id: number }; sessionContextId?: string } | undefined;
     return `advertiser-goals:${auth?.user?.id}:${auth?.sessionContextId}:${props.workspace.public_id}`;
 });
-const remembered = (props.business.canManage ? router.restore(historyKey.value) : undefined) as { baseline: Preferences; draft: GoalValue } | undefined;
+type RememberedGoals = { baseline: Preferences; draft: GoalValue; identity: IdentityBinding };
+function restoreDraft(key: string): RememberedGoals | undefined {
+    const stored = props.business.canManage ? router.restore(key) as RememberedGoals | undefined : undefined;
+    return stored && trustIdentityState(stored.identity) ? stored : undefined;
+}
+const remembered = restoreDraft(historyKey.value);
+let draftIdentity = { ...captureIdentity().binding };
+const ownsDraft = () => trustIdentityState(draftIdentity);
 const baseline = ref<Preferences>(JSON.parse(JSON.stringify(remembered?.baseline ?? props.preferences)));
 const draft = reactive(cloneGoals(remembered?.draft ?? props.preferences.value));
 const busy = ref(false), reviewing = ref(false), conflict = ref(false), error = ref('');
@@ -26,34 +36,35 @@ function viewResults(id: string) { if (!props.business.canManage && draft.goals.
 const icons = { sales: ChartNoAxesColumnIncreasing, customers: Users, growth: Lightbulb, efficiency: Settings };
 const mutable = computed(() => props.business.canManage && !busy.value && !reviewing.value);
 watch(() => props.preferences, preferences => {
-    if (dirty.value || busy.value || conflict.value) return;
+    if (!ownsDraft() || dirty.value || busy.value || conflict.value) return;
     baseline.value = JSON.parse(JSON.stringify(preferences)); Object.assign(draft, cloneGoals(preferences.value));
 }, { deep: true });
 watch(historyKey, key => {
-    const restored = (props.business.canManage ? router.restore(key) : undefined) as { baseline: Preferences; draft: GoalValue } | undefined;
+    const restored = restoreDraft(key);
+    draftIdentity = { ...captureIdentity().binding };
     baseline.value = JSON.parse(JSON.stringify(restored?.baseline ?? props.preferences));
     Object.assign(draft, cloneGoals(restored?.draft ?? props.preferences.value));
     viewedGoal.value = null; reviewed.value = null; conflict.value = false; error.value = '';
 });
 watch([draft, baseline], () => {
-    if (!props.business.canManage) return;
-    router.remember({ baseline: JSON.parse(JSON.stringify(baseline.value)), draft: cloneGoals(draft) }, historyKey.value);
+    if (!props.business.canManage || !ownsDraft()) return;
+    router.remember({ baseline: JSON.parse(JSON.stringify(baseline.value)), draft: cloneGoals(draft), identity: { ...draftIdentity } }, historyKey.value);
 }, { deep: true, flush: 'post' });
-function choose(id: string) { if (mutable.value) toggleGoal(draft, id); }
-function prioritize(id: string) { if (mutable.value) setPriority(draft, id); }
-function outcome(goal: string, id: string) { if (mutable.value) toggleResult(draft, goal, id); }
+function choose(id: string) { if (mutable.value && ownsDraft()) toggleGoal(draft, id); }
+function prioritize(id: string) { if (mutable.value && ownsDraft()) setPriority(draft, id); }
+function outcome(goal: string, id: string) { if (mutable.value && ownsDraft()) toggleResult(draft, goal, id); }
 async function save() {
-    if (!mutable.value || !canContinue(draft) || conflict.value) return;
+    if (!mutable.value || !ownsDraft() || !canContinue(draft) || conflict.value) return;
     const workspace = props.workspace.public_id;
     busy.value = true; error.value = '';
     try {
         const response = await axios.post<Preferences>(route('workspaces.goals.update', workspace), { value: cloneGoals(draft), version: baseline.value.version }, { headers: { Accept: 'application/json' } });
-        if (workspace !== props.workspace.public_id) return;
+        if (!ownsDraft() || workspace !== props.workspace.public_id) return;
         baseline.value = response.data; Object.assign(draft, cloneGoals(response.data.value));
         busy.value = false;
         router.visit(route('workspaces.show', workspace));
     } catch (failure) {
-        if (workspace !== props.workspace.public_id) return;
+        if (!ownsDraft() || workspace !== props.workspace.public_id) return;
         const status = axios.isAxiosError(failure) ? failure.response?.status : undefined;
         if (status === 409) { conflict.value = true; reviewed.value = null; }
         else if (status === 403) error.value = t('denied');
@@ -62,16 +73,17 @@ async function save() {
     } finally { busy.value = false; }
 }
 function review() {
-    if (!mutable.value) return;
+    if (!mutable.value || !ownsDraft()) return;
     reviewing.value = true;
     router.reload({ only: ['preferences', 'business'], onSuccess: () => { reviewed.value = JSON.parse(JSON.stringify(props.preferences)); }, onFinish: () => { reviewing.value = false; } });
 }
 function adopt() {
-    if (!mutable.value || !reviewed.value) return;
+    if (!mutable.value || !ownsDraft() || !reviewed.value) return;
     baseline.value = JSON.parse(JSON.stringify(reviewed.value)); reviewed.value = null; conflict.value = false; error.value = '';
 }
 let removeBefore: (() => void) | undefined;
-const beforeUnload = (event: BeforeUnloadEvent) => { if (dirty.value) { event.preventDefault(); event.returnValue = ''; } };
+const canLeave = () => !busy.value && !reviewing.value && (!dirty.value || window.confirm(t('unsaved')));
+const beforeUnload = (event: BeforeUnloadEvent) => { if (!logout?.started() && dirty.value) { event.preventDefault(); event.returnValue = ''; } };
 onMounted(() => {
     window.addEventListener('beforeunload', beforeUnload);
     removeBefore = router.on('before', event => {
@@ -79,7 +91,7 @@ onMounted(() => {
         const localePath = new URL(route('locale.update'), window.location.origin).pathname;
         if (event.detail.visit.url.pathname === localePath) return;
         if (reviewing.value && event.detail.visit.url.pathname === window.location.pathname) return;
-        if ((busy.value || reviewing.value) || (dirty.value && !window.confirm(t('unsaved')))) event.preventDefault();
+        if (!canLeave()) event.preventDefault();
     });
 });
 onBeforeUnmount(() => { removeBefore?.(); window.removeEventListener('beforeunload', beforeUnload); });
@@ -88,7 +100,7 @@ onBeforeUnmount(() => { removeBefore?.(); window.removeEventListener('beforeunlo
 <template>
  <div class="goals-page">
   <Head :title="t('title')" />
-  <AdvertiserLayout :business-name="workspace.name" :workspace-id="workspace.public_id" preserve-drafts-on-locale-change>
+  <AdvertiserLayout :business-name="workspace.name" :workspace-id="workspace.public_id" preserve-drafts-on-locale-change :confirm-logout="canLeave">
    <section class="goals-screen" :dir="locale === 'ar' ? 'rtl' : 'ltr'" :aria-busy="busy || reviewing">
     <p class="biz-eyebrow">{{ t('eyebrow') }}</p>
     <h1>{{ t('title') }}</h1><p class="goals-intro">{{ t('intro') }}</p>

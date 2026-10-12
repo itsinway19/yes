@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Security\IdentityAuthentication;
 use App\Security\SessionAuthority;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -42,16 +44,8 @@ final class SecurityDevicesController extends Controller
         return back();
     }
 
-    public function destroyCurrent(Request $request, SessionAuthority $sessions): RedirectResponse
+    public function destroyCurrent(Request $request, IdentityAuthentication $identity): JsonResponse
     {
-        $sessions->revokeCurrent($request);
-        $internal = $request->is('internal/*');
-        auth($internal ? 'internal' : 'web')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        Inertia::clearHistory();
-
-        return redirect()->route($internal ? 'internal.login' : 'login');
+        return $identity->close($request);
     }
 }
