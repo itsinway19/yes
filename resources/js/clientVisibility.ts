@@ -1,7 +1,9 @@
 import { router } from '@inertiajs/vue3';
 import { HttpCancelledError, HttpNetworkError, type ActiveVisit, type Page, type RouterInitParams } from '@inertiajs/core';
+import { configureNavigation, navigationPhase } from './inertiaNavigation';
 import { nextTick } from 'vue';
-import { acceptIdentityPage, attachIdentityPage, requireIdentity, recoverIdentity, retryIdentityRecovery, identityBlocked, receiveIdentityHint, resumeIdentityRenewal } from './identityProtocol';
+import { acceptIdentityPage, attachIdentityPage, requireIdentity, recoverIdentity, retryIdentityRecovery, identityBlocked, receiveIdentityHint, resumeIdentityRenewal, closeIdentityDocument } from './identityProtocol';
+import { beginNavigationSwap, confirmNavigationSwap, abortNavigationSwap } from './navigationSettlement';
 
 type Evidence = { protected: boolean; path: string; context: string | null };
 type Visit = Pick<ActiveVisit, 'replace' | 'preserveState' | 'preserveScroll'> &
@@ -28,6 +30,26 @@ export function installClientVisibility() {
     const announced = new WeakSet<Page>();
     const channel = typeof BroadcastChannel === 'undefined' ? undefined : new BroadcastChannel('builderad-visibility');
     const evidence = (page: Page) => page.props.clientVisibility as Evidence | undefined;
+    const knownDocument = (page: Page): boolean => {
+        try {
+            acceptIdentityPage(page);
+            const receipt = evidence(page), target = new URL(page.url, window.location.origin);
+            return !!receipt && typeof receipt.protected === 'boolean' && target.origin === window.location.origin
+                && receipt.path === target.pathname + target.search;
+        } catch { return false; }
+    };
+    configureNavigation({ validate: knownDocument, failure: (_error, restored) => {
+        if (restored) { notice(true); return; }
+        breakTrust(); closeIdentityDocument(); leaving = true;
+        root.dataset.visibility = 'unavailable';
+        const target = window.location.href;
+        try { window.location.replace(target); }
+        catch {
+            // A blocked departure is terminal until an explicit fresh-document action.
+            const retry = document.getElementById('visibility-retry');
+            if (retry) retry.onclick = () => window.location.replace(target);
+        }
+    } });
     const path = () => window.location.pathname + window.location.search;
     const cancelled = () => new VisibilityCancelled('Page visibility operation superseded');
 
@@ -99,7 +121,6 @@ export function installClientVisibility() {
         }
         if (page.clearHistory && !announced.has(page)) {
             announced.add(page);
-            displayed = undefined; hide();
             // This admitted document announces an identity transition. A second
             // fresh document at the same epoch must not cancel its bootstrap.
             // Receivers consult server context for differing epochs; the hint
@@ -194,8 +215,22 @@ export function installClientVisibility() {
     }
     router.on('start', event => {
         // 3.7.1 fires start with RequestParams.all(), including active callbacks.
-        const visit = event.detail.visit as ActiveVisit;
+        const visit = event.detail.visit as ActiveVisit & { deferredProps?: boolean; poll?: boolean };
         if (visit.prefetch) return;
+        const target = live ? new URL(live.url, window.location.origin) : undefined;
+        const partial = visit.method === 'get' && visit.async && target
+            && (visit.deferredProps || visit.poll || visit.only.length + visit.except.length + visit.reset.length > 0)
+            && target.origin === visit.url.origin && target.pathname === visit.url.pathname;
+        if (partial) {
+            const capturedGeneration = generation, capturedSequence = sequence;
+            const beforeUpdate = visit.onBeforeUpdate;
+            visit.onBeforeUpdate = page => {
+                if (leaving || generation !== capturedGeneration || sequence !== capturedSequence
+                    || !live || new URL(live.url, window.location.origin).pathname !== target.pathname) throw cancelled();
+                beforeUpdate(page);
+            };
+            return;
+        }
         restoration = undefined;
         sequence++; stopPending(); notice(false);
         retryUrl = visit.method === 'get' ? visit.url.href : live?.url;
@@ -221,15 +256,23 @@ export function installClientVisibility() {
         router.init = init;
         const swap = options.swapComponent;
         init<ComponentType>({ ...options, swapComponent: async update => {
-            const ticket = approvals.get(update.page);
-            if (!ticket || !valid(ticket)) { hide(); throw cancelled(); }
-            await swap(update);
-            await nextTick();
-            if (!valid(ticket)) { hide(); throw cancelled(); }
-            live = update.page; displayed = ticket;
-            attachIdentityPage(update.page);
-            restoration = undefined;
-            notice(false); reveal(live);
+            const phase = navigationPhase(update.page);
+            const committed = phase === 'committed' || phase === 'compensating';
+            const original = approvals.get(update.page) ?? (phase === 'compensating' ? displayed : undefined);
+            if (!original || !knownDocument(update.page) || (!committed && !valid(original))) { hide(); throw cancelled(); }
+            const ticket = { ...original, page: update.page, generation, sequence };
+            beginNavigationSwap(update.page, update.component);
+            try {
+                await swap(update);
+                await nextTick();
+                confirmNavigationSwap(update.page);
+                if (!knownDocument(update.page) || (!committed && !valid(ticket))) { hide(); throw cancelled(); }
+                approvals.set(update.page, ticket);
+                live = update.page; displayed = ticket;
+                attachIdentityPage(update.page);
+                restoration = undefined;
+                notice(false); reveal(live);
+            } catch (error) { abortNavigationSwap(); throw error; }
         } });
     };
     window.addEventListener('popstate', event => {
@@ -296,7 +339,16 @@ export function installClientVisibility() {
         const ticket = approvals.get(page);
         if (ticket && valid(ticket)) { live = page; displayed = ticket; reveal(page); }
     }, initialFailure(error: unknown, retryInitial: () => void) {
-        if (!(error instanceof HttpCancelledError) && !(error instanceof VisibilityUnavailable)) throw error;
+        if (!(error instanceof HttpCancelledError) && !(error instanceof VisibilityUnavailable)) {
+            // Initial render has not settled. Close this document so pending
+            // core initialization cannot publish it after mount failure.
+            breakTrust(); closeIdentityDocument(); leaving = true;
+            root.dataset.visibility = 'unavailable';
+            const button = document.getElementById('visibility-retry');
+            if (button) button.onclick = () => window.location.replace(window.location.href);
+            console.error('Initial page render/mount failed', error);
+            return;
+        }
         if (!live && !leaving) {
             retry = retryInitial;
             root.dataset.visibility = 'unavailable';

@@ -7,7 +7,7 @@
     },
     "type": "module",
     "scripts": {
-        "test": "node --test tests/password-generator.test.mjs tests/passkey-ceremony.test.mjs tests/localization.test.mjs tests/commercial-operator.test.mjs tests/provider-report-interaction.test.mjs tests/source-capability-ui.test.mjs tests/source-registry-interaction.test.mjs tests/country-reference.test.mjs tests/target-markets-interaction.test.mjs tests/current-intent-interaction.test.mjs tests/object-purpose-interaction.test.mjs tests/goal-selection-interaction.test.mjs tests/client-visibility.test.mjs tests/identity-protocol.test.mjs",
+        "test": "node --test tests/password-generator.test.mjs tests/passkey-ceremony.test.mjs tests/localization.test.mjs tests/commercial-operator.test.mjs tests/provider-report-interaction.test.mjs tests/source-capability-ui.test.mjs tests/source-registry-interaction.test.mjs tests/country-reference.test.mjs tests/target-markets-interaction.test.mjs tests/current-intent-interaction.test.mjs tests/object-purpose-interaction.test.mjs tests/goal-selection-interaction.test.mjs tests/client-visibility.test.mjs tests/identity-protocol.test.mjs tests/inertia-n1-artifact.test.mjs tests/inertia-n1.test.mjs",
         "build": "vue-tsc && vite build",
         "dev": "vite",
         "test:goals": "node --test tests/goal-selection-interaction.test.mjs",
@@ -16,7 +16,9 @@
         "test:password": "node --test tests/password-generator.test.mjs",
         "test:passkey-client": "node --test tests/passkey-ceremony.test.mjs",
         "test:commercial-operator": "node --test tests/commercial-operator.test.mjs",
-        "test:localization": "node --test tests/localization.test.mjs"
+        "test:localization": "node --test tests/localization.test.mjs",
+        "build:inertia-n1": "node compat/inertia-n1/build.mjs",
+        "test:inertia-n1": "node --test tests/inertia-n1-artifact.test.mjs tests/inertia-n1.test.mjs"
     },
     "devDependencies": {
         "@inertiajs/vue3": "^3.7.1",

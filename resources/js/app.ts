@@ -11,6 +11,7 @@ import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import { installClientVisibility } from './clientVisibility';
 import { createLogoutOperation, logoutKey } from './logout';
 import { installIdentityProtocol, attachIdentityPage, onIdentityRecovered } from './identityProtocol';
+import { installNavigationSettlement, beginNavigationSwap, confirmNavigationSwap, abortNavigationSwap } from './navigationSettlement';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Builderad';
 const i18n = createI18n({ legacy: false, locale: 'ar', fallbackLocale: 'en', messages });
@@ -39,18 +40,26 @@ function startApp() {
             visibility.beforeMount(props.initialPage);
             attachIdentityPage(props.initialPage);
             syncLocale(props.initialPage.props.locale);
-            createApp({
+            const app = createApp({
                 setup() {
                     const page = usePage();
                     watch(() => page.props?.locale, syncLocale, { flush: 'sync' });
                     return () => h(App, props);
                 },
-            })
-                .provide(logoutKey, logout)
+            });
+            installNavigationSettlement(app);
+            app.provide(logoutKey, logout)
                 .use(plugin)
                 .use(i18n)
-                .use(ZiggyVue)
-                .mount(el);
+                .use(ZiggyVue);
+            beginNavigationSwap(props.initialPage, props.initialComponent);
+            try {
+                app.mount(el);
+                confirmNavigationSwap(props.initialPage);
+            } catch (error) {
+                abortNavigationSwap();
+                throw error;
+            }
             visibility.mounted(props.initialPage);
         },
         progress: {

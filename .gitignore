@@ -18,6 +18,7 @@
 /.zed
 /auth.json
 /node_modules
+/storage/framework/inertia-n1/
 /public/build
 /public/hot
 /public/storage
