@@ -188,7 +188,7 @@ class AdvertiserGoalPreferencesTest extends TestCase
         $this->save(self::value(), 1)->assertForbidden();
         $this->actingAs($actor);
         $owner->table('security_sessions')->where('user_id', $actor->id)->update(['revoked_at' => now()]);
-        $this->save(self::value(), 1)->assertForbidden();
+        $this->save(self::value(), 1)->assertStatus(409)->assertJsonPath('identityConflict', true);
         $this->assertSame(1, $owner->table('advertiser_goal_preference_events')->count());
     }
 

@@ -18,24 +18,24 @@ class AuthenticationTest extends TestCase
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
         $user = User::factory()->create();
-
+        $this->useIdentityDocument();
         $response = $this->post('/login', [
             'email' => $user->email,
             'password' => 'password',
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertOk()->assertJsonPath('redirect', route('dashboard', absolute: false))->assertJsonPath('transition.epoch', 1);
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();
-
-        $this->post('/login', [
+        $this->useIdentityDocument();
+        $this->postJson('/login', [
             'email' => $user->email,
             'password' => 'wrong-password',
-        ]);
+        ])->assertUnprocessable()->assertJsonValidationErrors('email');
 
         $this->assertGuest();
     }
@@ -45,10 +45,10 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create();
         DB::connection('pgsql_migrations')->table('principal_lifecycles')->where('user_id', $user->id)
             ->update(['status' => 'disabled', 'generation' => 2, 'cause' => 'security_hold']);
-
-        $this->post('/login', [
+        $this->useIdentityDocument();
+        $this->postJson('/login', [
             'email' => $user->email, 'password' => 'password',
-        ])->assertSessionHasErrors('email');
+        ])->assertUnprocessable()->assertJsonValidationErrors('email');
 
         $this->assertGuest();
         $this->assertSame(0, DB::table('security_sessions')->where('user_id', $user->id)->count());
@@ -58,9 +58,11 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->post('/logout');
+        $this->useIdentityDocument();
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])->assertOk();
+        $response = $this->post('/logout');
 
         $this->assertGuest();
-        $response->assertRedirect('/');
+        $response->assertOk()->assertJsonPath('redirect', '/')->assertJsonPath('transition.status', 'closed');
     }
 }

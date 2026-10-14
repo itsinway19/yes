@@ -8,13 +8,21 @@ const routerModule = url(`export const router={on:(n,fn)=>globalThis.__visibilit
  init:options=>globalThis.__visibility.swap=options.swapComponent,
  cancelAll(){globalThis.__visibility.active?.onCancel();},flushAll(){},clearHistory(){globalThis.__visibility.cleared++;},
  visit:(path,options)=>globalThis.__visibility.visits.push({path,options})};`);
-const coreModule = url('export class HttpCancelledError extends Error {} export class HttpNetworkError extends Error {}');
+const coreModule = url('export class HttpCancelledError extends Error {} export class HttpNetworkError extends Error {} export const configureNavigation=hooks=>{globalThis.__visibility.navigationHooks=hooks;}; export const navigationPhase=()=>undefined;');
 const vueModule = url('export const nextTick=()=>Promise.resolve();');
+// Identity protocol has its own contract probes; this harness isolates retained
+// navigation/History/BFCache containment without bypassing production admission.
+const identityModule = url(`export const acceptIdentityPage=()=>{},attachIdentityPage=()=>{},
+requireIdentity=value=>value||{receipt:'isolated-visibility-fixture',binding:{boundary:'advertiser',epoch:1}},recoverIdentity=async()=>{},retryIdentityRecovery=async()=>{},identityBlocked=()=>false,receiveIdentityHint=()=>{},closeIdentityDocument=()=>{},resumeIdentityRenewal=()=>{globalThis.__visibility.renewalResumes=(globalThis.__visibility.renewalResumes||0)+1};`);
+const settlementModule = url('export const beginNavigationSwap=()=>{},confirmNavigationSwap=()=>{},abortNavigationSwap=()=>{};');
 const source = ts.transpileModule(await readFile(new URL('../resources/js/clientVisibility.ts', import.meta.url), 'utf8'),
     { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
     .replace("from '@inertiajs/vue3'", `from ${JSON.stringify(routerModule)}`)
     .replace("from '@inertiajs/core'", `from ${JSON.stringify(coreModule)}`)
-    .replace("from 'vue'", `from ${JSON.stringify(vueModule)}`);
+    .replace("from 'vue'", `from ${JSON.stringify(vueModule)}`)
+    .replace("from './identityProtocol'", `from ${JSON.stringify(identityModule)}`)
+    .replace("from './inertiaNavigation'", `from ${JSON.stringify(coreModule)}`)
+    .replace("from './navigationSettlement'", `from ${JSON.stringify(settlementModule)}`);
 const { installClientVisibility, VisibilityUnavailable } = await import(url(source));
 const { router } = await import(routerModule);
 const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
@@ -25,7 +33,7 @@ function setup() {
     globalThis.PopStateEvent = class { constructor(type, options) { this.type = type; this.state = options.state; } };
     globalThis.document = { documentElement: { dataset: { visibility: 'checking' } }, visibilityState: 'visible', title: 'Private',
         getElementById: id => id === 'app' ? { setAttribute() { state.inert = true; }, removeAttribute() { state.inert = false; } }
-            : id === 'visibility-navigation-error' ? state.notice : { addEventListener: (_, fn) => state.buttons[id] = fn },
+            : id === 'visibility-navigation-error' ? state.notice : id === 'logout-status' ? { removeAttribute() { state.terminalNotice = true; } } : { addEventListener: (_, fn) => state.buttons[id] = fn },
         addEventListener: (name, fn) => state.document[name] = fn };
     globalThis.window = { location: { origin: 'http://localhost', pathname: '/a', search: '', href: 'http://localhost/a',
         replace: path => state.replaced.push(path), reload: () => state.reloads++ }, crypto: { subtle: {} },
@@ -39,6 +47,7 @@ function setup() {
     state.resolve = (p, load = async () => 'component') => state.boundary.resolve(p, load);
     state.start = p => {
         const visit = { id: 'visit-' + state.visits.length + '-' + state.requests.length, prefetch: false,
+            async: false, only: [], except: [], reset: [],
             method: 'get', url: new URL(p?.url ?? '/next', 'http://localhost'), replace: false, preserveState: false, preserveScroll: false,
             onBeforeUpdate() {}, onCancel() {} };
         state.router.start({ detail: { visit } }); state.active = visit;
@@ -79,13 +88,34 @@ test('ordinary navigation and replace/validation events leave the approved page 
     assert.equal(document.documentElement.dataset.visibility, 'ready'); assert.deepEqual(s.mounted, [b]);
     s.router.success({ detail: { page: a } }); assert.deepEqual(s.mounted, [b]);
 });
+test('same-page deferred visits keep independent approvals but a genuine navigation invalidates them',async()=>{
+    const s=setup(),a=await initial(s),first=page(),second=page();
+    const start=p=>{const visit={id:p===first?'partial-a':'partial-b',prefetch:false,method:'get',async:true,deferredProps:true,
+        url:new URL('/a','http://localhost'),only:['part'],except:[],reset:[],onBeforeUpdate(){},onCancel(){}};
+        s.router.start({detail:{visit}});return visit;};
+    const v1=start(first),v2=start(second);v2.onBeforeUpdate(second);let wait=s.resolve(second);s.reply(1,second.props.clientVisibility);await wait;await s.commit(second);
+    v1.onBeforeUpdate(first);wait=s.resolve(first);s.reply(2,first.props.clientVisibility);await wait;await s.commit(first);
+    assert.equal(document.documentElement.dataset.visibility,'ready');assert.deepEqual(s.mounted,[second,first]);
+    s.start(page('/b'));assert.throws(()=>v1.onBeforeUpdate(first),/superseded/);assert.equal(s.requests.length,3);
+});
+test('initial render failure closes the document without reload, key deletion or automatic retry',async()=>{
+    const s=setup(),p=await initial(s);const log=console.error;let errors=0;console.error=()=>errors++;
+    try{s.boundary.initialFailure(Error('mount fault'),()=>{throw Error('Unexpected automatic retry');});
+        assert.equal(document.documentElement.dataset.visibility,'unavailable');assert.equal(s.inert,true);
+        s.router.navigate({detail:{page:p}});s.router.success({detail:{page:p}});s.window.focus();s.buttons['visibility-retry']();
+        assert.notEqual(document.documentElement.dataset.visibility,'ready');assert.deepEqual(s.replaced,[]);assert.equal(s.cleared,0);assert.equal(errors,1);
+    }finally{console.error=log;}
+});
 test('History and BFCache require fresh checks even for an identical page object', async () => {
     const s = setup(), p = await initial(s);
+    const renewalResumes=s.renewalResumes;
     s.window.pagehide(); assert.equal(document.documentElement.dataset.visibility, 'checking');
     s.window.pageshow({ persisted: true }); await flush();
     assert.equal(document.documentElement.dataset.visibility, 'checking');
+    assert.equal(s.renewalResumes,renewalResumes,'Untrusted restoration must not resume renewal');
     s.reply(1, p.props.clientVisibility); await flush();
     assert.equal(document.documentElement.dataset.visibility, 'ready');
+    assert.equal(s.renewalResumes,renewalResumes+1,'Existing successful visibility admission resumes renewal');
     s.window.popstate({ state: 'encrypted-entry' }); const restored = s.resolve(p);
     assert.equal(document.documentElement.dataset.visibility, 'checking');
     s.reply(2, p.props.clientVisibility); await restored; await s.commit(p);
@@ -149,16 +179,18 @@ test('server denial during a navigation immediately invalidates the currently vi
 test('observed invalidation during a successful delayed probe cannot approve stale data', async () => {
     const s = setup(), a = await initial(s), p = page('/b'); s.start(p);
     const waiting = s.resolve(p); const rejected = assert.rejects(waiting, /superseded/);
-    s.window.focus(); await rejected; await flush();
+    s.window.pagehide(); s.window.pageshow({persisted:true}); await rejected; await flush();
     s.reply(1, p.props.clientVisibility); s.reply(2, a.props.clientVisibility); await flush();
     assert.deepEqual(s.mounted, []); assert.equal(document.documentElement.dataset.visibility, 'ready');
 });
-test('backgrounding clears approval and a late component cannot reach the swap', async () => {
+test('ordinary focus and tab changes preserve the approved display and candidate without authority probes', async () => {
     const s = setup(); await initial(s); const p = page('/b'); s.start(p);
-    const waiting = s.resolve(p); const rejected = assert.rejects(waiting, /superseded/);
-    document.visibilityState = 'hidden'; s.document.visibilitychange(); await rejected;
-    s.reply(1, p.props.clientVisibility); await flush();
-    assert.equal(document.documentElement.dataset.visibility, 'checking'); assert.deepEqual(s.mounted, []);
+    const waiting = s.resolve(p);
+    document.visibilityState = 'hidden'; s.document.visibilitychange?.(); s.window.focus();
+    assert.equal(document.documentElement.dataset.visibility, 'ready'); assert.equal(s.requests.length,2);
+    document.visibilityState = 'visible'; s.document.visibilitychange?.();
+    s.reply(1, p.props.clientVisibility); await waiting; await s.commit(p);
+    assert.equal(document.documentElement.dataset.visibility, 'ready'); assert.deepEqual(s.mounted,[p]);
 });
 test('legacy or mismatched receipts never authorize a component', async () => {
     for (const p of [{ url: '/a', props: { auth: { user: { id: 1 } } } }, page('/different')]) {
@@ -211,4 +243,50 @@ test('initial offline failure retries the retained page through a fresh probe wi
     assert.equal(document.documentElement.dataset.visibility, 'unavailable'); assert.equal(s.cleared, 0);
     s.window.online(); s.reply(1, p.props.clientVisibility); await retried; s.boundary.mounted(p);
     assert.equal(document.documentElement.dataset.visibility, 'ready'); assert.equal(s.reloads, 0);
+});
+
+test('terminal departure rejects in-flight approval and every same-document reveal path without erasing keys', async () => {
+    const s = setup(), p = await initial(s);
+    s.window.pageshow({ persisted: true });
+    await flush();
+    assert.equal(s.requests.length, 2);
+    s.boundary.closeDocument();
+    s.reply(1, p.props.clientVisibility);
+    await flush();
+    s.window.pagehide();
+    s.window.pageshow({ persisted: true });
+    s.window.focus(); s.window.online();
+    s.document.visibilitychange?.();
+    s.buttons['visibility-retry']();
+    s.buttons['visibility-navigation-retry']();
+    s.router.navigate({ detail: { page: p } });
+    s.router.success({ detail: { page: p } });
+    s.router.error({ detail: { page: p } });
+    s.boundary.mounted(p);
+    await flush();
+    await assert.rejects(s.resolve(p), /superseded/);
+    assert.notEqual(document.documentElement.dataset.visibility, 'ready');
+    assert.equal(s.inert, true);
+    assert.equal(s.terminalNotice, true);
+    assert.equal(s.requests.length, 2);
+    assert.equal(s.cleared, 0);
+    assert.deepEqual(s.replaced, []);
+    assert.deepEqual(s.visits, []);
+});
+test('all four advertiser logout entries use the single injected document operation', async () => {
+    const entries = [
+        ['Layouts/AdvertiserLayout.vue', 1],
+        ['Layouts/AuthenticatedLayout.vue', 2],
+        ['Pages/Auth/VerifyEmail.vue', 1],
+    ];
+    for (const [path, count] of entries) {
+        const component = await readFile(new URL('../resources/js/' + path, import.meta.url), 'utf8');
+        assert.match(component, /inject\(logoutKey\)/);
+        assert.match(component, /logout\.start\(/);
+        assert.equal((component.match(/@click="leave"/g) ?? []).length, count);
+        assert.doesNotMatch(component, /route\(['"]logout['"]\)|createLogoutOperation|fetch\(/);
+    }
+    const app = await readFile(new URL('../resources/js/app.ts', import.meta.url), 'utf8');
+    assert.equal((app.match(/createLogoutOperation\(visibility.closeDocument\)/g) ?? []).length, 1);
+    assert.match(app, /provide\(logoutKey, logout\)/);
 });

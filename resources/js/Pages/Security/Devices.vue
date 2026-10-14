@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, inject } from 'vue';
+import { logoutKey } from '@/logout';
 import { Head, router } from '@inertiajs/vue3';
 import { Passkeys } from '@laravel/passkeys';
 import { cancelPasskeyOperation, runPasskeyOperation } from '@/security/passkeyCeremony';
@@ -17,6 +18,7 @@ type Session = {
 type Passkey = { id: number; name: string; provider: string | null; created_at: string; last_used_at: string | null };
 
 const props = defineProps<{ sessions: Session[]; passkeys: Passkey[]; internalContext: boolean }>();
+const logout = inject(logoutKey);
 const securityRoute = (name: string) => `security.${name}`;
 const contextRoute = (name: string) => route(props.internalContext ? `internal.${securityRoute(name)}` : securityRoute(name));
 
@@ -107,10 +109,7 @@ function endOthers() {
 function endCurrent() {
     error.value = '';
     busy.value = 'current';
-    router.post(contextRoute('sessions.sign-out-current'), {}, {
-        onError: () => { error.value = 'تعذّر تسجيل الخروج من هذا المتصفح.'; },
-        onFinish: () => { busy.value = null; },
-    });
+    if (logout) void logout.start(() => true, contextRoute('sessions.sign-out-current'));
 }
 
 function seenAt(value: string) {

@@ -31,7 +31,7 @@ class CurrentIntentTest extends TestCase
     private function raw(object $workspace, string $body)
     {
         return $this->call('POST', $this->url($workspace), [], $this->prepareCookiesForJsonRequest(), [],
-            ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'], $body);
+            $this->transformHeadersToServerVars(['Content-Type' => 'application/json', 'Accept' => 'application/json']), $body);
     }
 
     private function stored(object $workspace): array

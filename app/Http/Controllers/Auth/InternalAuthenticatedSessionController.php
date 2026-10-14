@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Security\SessionAuthority;
-use Illuminate\Http\RedirectResponse;
+use App\Security\IdentityAuthentication;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,15 +16,8 @@ final class InternalAuthenticatedSessionController extends Controller
         return Inertia::render('Internal/Login', ['status' => session('status')]);
     }
 
-    public function destroy(Request $request, SessionAuthority $sessions): RedirectResponse
+    public function destroy(Request $request, IdentityAuthentication $identity): JsonResponse
     {
-        $sessions->revokeCurrent($request);
-        Auth::guard('internal')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        Inertia::clearHistory();
-
-        return redirect()->route('internal.login');
+        return $identity->close($request);
     }
 }

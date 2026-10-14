@@ -11,6 +11,12 @@ use Tests\TestCase;
 
 class PasswordResetTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->useIdentityDocument('/forgot-password');
+    }
+
     public function test_reset_password_link_screen_can_be_rendered(): void
     {
         $response = $this->get('/forgot-password');
@@ -77,6 +83,11 @@ class PasswordResetTest extends TestCase
         $this->actingAs($user)->get('/dashboard')->assertRedirect(route('business.start'));
         $this->app['auth']->logout();
         $this->flushSession();
+        // The reset requester is another browser, not a reload of the old
+        // Redis credential. Preserve that old canonical session for revocation.
+        $this->defaultCookies = [];
+        $this->unencryptedCookies = [];
+        $this->useIdentityDocument('/forgot-password');
         $this->assertSame(1, DB::table('security_sessions')->where('user_id', $user->id)->whereNull('revoked_at')->count());
 
         $this->post('/forgot-password', ['email' => $user->email]);

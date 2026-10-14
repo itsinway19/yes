@@ -11,16 +11,23 @@ use Illuminate\Support\Facades\DB;
 
 final class SessionAuthority
 {
-    public function issue(Request $request, User $user, string $method = 'password'): void
+    public function issue(Request $request, User $user, string $method = 'password', ?Connection $issuanceContext = null): void
     {
-        $lifecycle = DB::table('principal_lifecycles')->where('user_id', $user->id)->first();
+        // The owned registration transition can create its pending lifecycle in
+        // the same authority transaction. Read that transaction's own evidence;
+        // preserve every eligibility/deadline rule and the default caller path.
+        if ($issuanceContext !== null && ($issuanceContext !== DB::connection('pgsql_authority') || $issuanceContext->transactionLevel() < 1)) {
+            throw new \LogicException('Session issuance context must be the owned authority transaction.');
+        }
+        $reader = $issuanceContext ?? DB::connection();
+        $lifecycle = $reader->table('principal_lifecycles')->where('user_id', $user->id)->first();
         if (! $lifecycle || ! in_array($lifecycle->status, ['pending', 'current'], true)) {
             throw new AuthorizationException('Account lifecycle is unavailable.');
         }
 
         $staff = $lifecycle->principal_class === 'staff';
         if ($staff) {
-            $personnel = DB::table('internal_personnel')->where('user_id', $user->id)->first();
+            $personnel = $reader->table('internal_personnel')->where('user_id', $user->id)->first();
             if ($method === 'staff_enrollment' && $lifecycle->status === 'pending' &&
                 $personnel?->status === 'pending') {
                 DB::connection('pgsql_authority')->transaction(fn () => $this->insertSession(

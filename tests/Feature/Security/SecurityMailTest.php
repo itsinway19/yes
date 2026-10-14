@@ -120,6 +120,7 @@ class SecurityMailTest extends TestCase
 
     public function test_queued_security_notice_keeps_its_locale_after_browser_language_changes(): void
     {
+        $this->useIdentityDocument();
         $user = User::factory()->create();
         foreach ([
             ['ar', 'en', 'أُضيف مفتاح مرور إلى حسابك', 'rtl'],

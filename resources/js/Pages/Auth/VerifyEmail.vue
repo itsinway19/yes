@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
+import { logoutKey } from '@/logout';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 
 const props = defineProps<{
     status?: string;
 }>();
 
 const form = useForm({});
+const logout = inject(logoutKey);
+function leave() { if (logout) void logout.start(() => true); }
 
 const submit = () => {
     form.post(route('verification.send'));
@@ -43,12 +46,11 @@ const verificationLinkSent = computed(
                     {{ form.processing ? 'جارٍ الطلب…' : 'طلب رابط تأكيد جديد' }}
                 </PrimaryButton>
 
-                <Link
-                    :href="route('logout')"
-                    method="post"
-                    as="button"
+                <button
+                    type="button"
+                    @click="leave"
                     class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >تسجيل الخروج</Link
+                    >تسجيل الخروج</button
                 >
             </div>
         </form>

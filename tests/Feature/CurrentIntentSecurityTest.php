@@ -92,12 +92,17 @@ class CurrentIntentSecurityTest extends TestCase
         $before = $this->snapshot($workspace);
         try {
             $this->app->detectEnvironment(fn () => 'local');
+            // The admitted fixture owns a valid document CSRF token; explicitly
+            // remove it to exercise rejection before the protected effect.
+            $this->withoutHeader('X-CSRF-TOKEN');
             $this->postJson('/workspaces/'.$workspace->public_id.'/business/current-intent', $this->command())->assertStatus(419);
         } finally {
             $this->app->detectEnvironment(fn () => 'testing');
         }
         $this->assertEquals($before, $this->snapshot($workspace));
-        auth()->logout();
+        $this->withHeader('X-CSRF-TOKEN', $this->app['session']->driver()->token());
+        $this->postJson('/logout')->assertOk()->assertJsonPath('transition.status', 'closed');
+        $this->useIdentityDocument('/login');
         $this->postJson('/workspaces/'.$workspace->public_id.'/business/current-intent', $this->command())->assertUnauthorized();
         $this->assertEquals($before, $this->snapshot($workspace));
     }
@@ -107,7 +112,7 @@ class CurrentIntentSecurityTest extends TestCase
         $workspace = $this->business();
         $before = $this->snapshot($workspace);
         DB::connection('pgsql_migrations')->table('security_sessions')->where('user_id', auth()->id())->update(['revoked_at' => now()]);
-        $this->postJson('/workspaces/'.$workspace->public_id.'/business/current-intent', $this->command())->assertForbidden();
+        $this->postJson('/workspaces/'.$workspace->public_id.'/business/current-intent', $this->command())->assertStatus(409)->assertJsonPath('identityConflict', true);
         $this->assertGuest();
         $this->assertEquals($before, $this->snapshot($workspace));
     }

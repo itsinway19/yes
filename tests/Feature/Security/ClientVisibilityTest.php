@@ -46,7 +46,8 @@ class ClientVisibilityTest extends TestCase
         $db->table('security_sessions')->where('user_id', $user->id)->update(['idle_expires_at' => now()->subMinute()]);
         $deadline = $db->table('security_sessions')->where('user_id', $user->id)->value('idle_expires_at');
         $this->get('/profile', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1',
-            'X-Builderad-Visibility-Context' => $receipt['context']])->assertRedirect('/login');
+            'X-Builderad-Visibility-Context' => $receipt['context']])->assertStatus(409)
+            ->assertJsonPath('identityConflict', true);
         $this->assertSame($deadline, $db->table('security_sessions')->where('user_id', $user->id)->value('idle_expires_at'));
     }
 

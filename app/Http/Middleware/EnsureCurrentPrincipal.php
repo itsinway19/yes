@@ -46,6 +46,11 @@ final class EnsureCurrentPrincipal
         };
 
         // WorkspaceContext checks lifecycle and session inside its own outer RLS transaction.
+        if ($request->routeIs('internal.logout', 'security.sessions.sign-out-current', 'internal.security.sessions.sign-out-current')) {
+            DB::transaction($authorize);
+
+            return $next($request); // The identity transition owns its outer authority transaction.
+        }
         if ($request->routeIs('workspaces.foundation', 'workspaces.show', 'workspaces.business.*', 'workspaces.goals.*', 'workspaces.object-purposes.*', 'workspaces.services.*', 'workspaces.sources.*',
             'workspaces.providers.meta.*', 'providers.meta.callback', 'workspaces.providers.google.*', 'providers.google.callback',
             'workspaces.providers.tiktok.*', 'providers.tiktok.callback', 'workspaces.providers.snapchat.*', 'providers.snapchat.callback',

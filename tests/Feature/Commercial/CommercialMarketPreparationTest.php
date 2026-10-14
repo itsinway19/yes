@@ -14,14 +14,17 @@ class CommercialMarketPreparationTest extends TestCase
 {
     public function test_country_command_replays_after_new_login_with_same_generated_identities(): void
     {
-        $this->usePersistentTestSessions();
+        config(['session.driver' => 'redis', 'session.connection' => 'default']);
+        app('session')->forgetDrivers();
+        app()->forgetInstance('session.store');
         $founder = $this->staff('founder');
         $this->actingAsInternal($founder)->withCredentials();
         $page = $this->get('/internal/administration/commercial-markets')->assertOk()->viewData('page')['props'];
         $input = ['mode' => 'direct', 'intent_id' => $page['intentId'], 'intent_binding' => $page['intentBinding'],
             'country_code' => 'JO', 'denomination_code' => 'USD'];
         $original = $this->postJson('/internal/administration/commercial-markets', $input)->assertOk()->json();
-        $this->post('/internal/logout')->assertRedirect(route('internal.login'));
+        $this->post('/internal/logout')->assertOk()->assertJsonPath('redirect', '/internal/login')
+            ->assertJsonPath('transition.status', 'closed');
         $this->actingAsInternal($founder)->withCredentials();
         $newPage = $this->get('/internal/administration/commercial-markets')->assertOk()->viewData('page')['props'];
         $this->assertNotSame($page['intentId'], $newPage['intentId']);
@@ -34,7 +37,9 @@ class CommercialMarketPreparationTest extends TestCase
 
     public function test_uncommitted_market_identity_can_resume_only_for_same_current_founder_and_authentic_binding(): void
     {
-        $this->usePersistentTestSessions();
+        config(['session.driver' => 'redis', 'session.connection' => 'default']);
+        app('session')->forgetDrivers();
+        app()->forgetInstance('session.store');
         $founder = $this->staff('founder');
         $this->actingAsInternal($founder)->withCredentials();
         $page = $this->get('/internal/administration/commercial-markets')->assertOk()->viewData('page')['props'];
@@ -45,7 +50,7 @@ class CommercialMarketPreparationTest extends TestCase
         $this->actingAsInternal($this->staff('founder'))->withCredentials();
         $this->postJson('/internal/administration/commercial-markets', $input)->assertForbidden();
         $this->actingAsInternal($founder)->withCredentials();
-        $this->post('/internal/logout')->assertRedirect();
+        $this->post('/internal/logout')->assertOk()->assertJsonPath('transition.status', 'closed');
         $this->actingAsInternal($founder)->withCredentials();
         $this->postJson('/internal/administration/commercial-markets', $input)->assertOk()
             ->assertJsonPath('market_id', $binding['target_id'])->assertJsonPath('configuration_id', $binding['configuration_id']);

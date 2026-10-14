@@ -5,12 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Notifications\SecurityMail;
 use App\Notifications\SecurityNotice;
+use App\Security\IdentityLifecycle;
 use App\Security\LifecycleAuthority;
 use App\Security\SessionAuthority;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Redirect;
@@ -58,9 +58,7 @@ class ProfileController extends Controller
             return $emailChanged;
         });
         if ($changed) {
-            Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+            app(IdentityLifecycle::class)->expire($request);
             Inertia::clearHistory();
 
             return Redirect::route('login')->with('status', __('security.email.reauthenticate'));

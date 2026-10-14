@@ -5,10 +5,12 @@ namespace App\Http\Middleware;
 use App\Security\ClientVisibility;
 use App\Security\ExpiredSecuritySession;
 use App\Security\GrantAuthority;
+use App\Security\IdentityDocument;
 use App\Security\SessionAuthority;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 use Inertia\Middleware;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -82,6 +84,8 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
+            'identity' => Inertia::always(fn () => $request->attributes->has('builderad.identity_document')
+                ? app(IdentityDocument::class)->metadata($request) : null),
             'locale' => app()->getLocale(),
             'clientVisibility' => fn () => app(ClientVisibility::class)->describe($request),
             'auth' => [

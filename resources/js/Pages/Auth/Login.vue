@@ -12,6 +12,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import LanguageSwitcher from '@/Components/LanguageSwitcher.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import { authenticateIdentity, captureIdentity, identityDestination } from '@/identityProtocol';
 
 defineProps<{ canResetPassword?: boolean; status?: string }>();
 const { t } = useI18n({ useScope: 'global' });
@@ -43,12 +44,14 @@ async function signInWithPasskey() {
     passkeyErrorKey.value = '';
     passkeyBusy.value = true;
     try {
+        const captured = captureIdentity();
         const operation = runPasskeyOperation('login',
-            { options: route('auth.passkey.options'), submit: route('auth.passkey.store') },
+            { options: captured.binding.principal ? '/identity/passkey/options' : route('auth.passkey.options'),
+                submit: captured.binding.principal ? '/identity/passkey' : route('auth.passkey.store') },
             routes => Passkeys.verify({ routes }));
         operationId = operation.id;
         const result = await operation.promise;
-        window.location.assign(result.redirect || route('dashboard'));
+        window.location.assign(identityDestination(result, captured));
     } catch (error) {
         passkeyErrorKey.value = passkeyLoginErrorKey(error);
     } finally {
@@ -57,8 +60,18 @@ async function signInWithPasskey() {
     }
 }
 
-function submit() {
-    form.post(route('login'), { onFinish: () => form.reset('password') });
+async function submit() {
+    if (form.processing) return;
+    form.processing = true;
+    form.clearErrors();
+    try {
+        const result = await authenticateIdentity(captureIdentity().binding.principal ? '/identity/switch' : route('login'), form.data());
+        window.location.assign(result.redirect);
+    } catch (error) {
+        const failure = error as { errors?: Record<string, string[]>; message?: string };
+        if (failure.errors) for (const [field, messages] of Object.entries(failure.errors)) form.setError(field as 'email' | 'password', messages[0]);
+        else form.setError('email', failure.message || t('auth.failed'));
+    } finally { form.processing = false; form.reset('password'); }
 }
 </script>
 

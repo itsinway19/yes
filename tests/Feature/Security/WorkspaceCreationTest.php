@@ -157,6 +157,7 @@ class WorkspaceCreationTest extends TestCase
         }
 
         app(LifecycleAuthority::class)->disable($user, $user->id, 'security_hold');
-        $this->get('/workspaces/'.$workspace->public_id)->assertForbidden();
+        $this->get('/workspaces/'.$workspace->public_id)->assertRedirect('/login');
+        $this->assertGuest();
     }
 }

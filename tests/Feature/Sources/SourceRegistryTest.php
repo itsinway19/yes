@@ -125,15 +125,15 @@ class SourceRegistryTest extends TestCase
     {
         $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)
             ->update(['absolute_expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->assertContains($this->command($this->input)->status(), [401, 403]);
+        $this->command($this->input)->assertStatus(409)->assertJsonPath('identityConflict', true);
         $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['absolute_expires_at' => now()->addHour()]);
         $this->actingAs($this->actor);
         $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['revoked_at' => now()]);
-        $this->assertContains($this->command($this->input)->status(), [401, 403]);
+        $this->command($this->input)->assertStatus(409)->assertJsonPath('identityConflict', true);
         $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['revoked_at' => null]);
         $this->actingAs($this->actor);
         $this->owner()->table('principal_lifecycles')->where('user_id', $this->actor->id)->update(['generation' => 2]);
-        $this->assertContains($this->command($this->input)->status(), [401, 403]);
+        $this->command($this->input)->assertStatus(409)->assertJsonPath('identityConflict', true);
         $this->assertSame(0, $this->owner()->table('source_registry')->count());
     }
 
@@ -474,7 +474,7 @@ class SourceRegistryTest extends TestCase
         $this->postJson('/workspaces/'.$public.'/source-audit/'.$receipt['obligation_id'].'/recover')->assertForbidden();
         $this->actingAs($this->actor);
         $this->owner()->table('principal_lifecycles')->where('user_id', $this->actor->id)->update(['generation' => 2]);
-        $this->assertContains($this->postJson($this->recoveryUrl($receipt['obligation_id']))->status(), [401, 403]);
+        $this->postJson($this->recoveryUrl($receipt['obligation_id']))->assertStatus(409)->assertJsonPath('identityConflict', true);
         $this->assertSame(0, $this->owner()->table('security_source_audit_custody')->count());
         $this->assertSame(0, $this->owner()->table('source_audit_delivery')->value('attempts'));
     }

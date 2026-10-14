@@ -34,8 +34,9 @@ class SessionAuthorityTest extends TestCase
     {
         $user = User::factory()->create();
 
+        $this->useIdentityDocument();
         $this->post('/login', ['email' => $user->email, 'password' => 'password'])
-            ->assertRedirect(route('dashboard', absolute: false));
+            ->assertOk()->assertJsonPath('redirect', route('dashboard', absolute: false));
 
         $session = DB::table('security_sessions')->where('user_id', $user->id)->first();
         $this->assertNotNull($session);

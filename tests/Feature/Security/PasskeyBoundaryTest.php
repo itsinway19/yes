@@ -62,6 +62,7 @@ class PasskeyBoundaryTest extends TestCase
 
     public function test_passkey_enrollment_requires_current_authenticated_principal(): void
     {
+        $this->useIdentityDocument();
         $this->getJson('/security/passkeys/options')->assertUnauthorized();
 
         $pending = User::factory()->unverified()->create();
@@ -74,6 +75,7 @@ class PasskeyBoundaryTest extends TestCase
 
     public function test_invalid_passkey_assertion_does_not_create_a_session(): void
     {
+        $this->useIdentityDocument();
         $this->getJson('/auth/passkey/options')->assertOk()->assertJsonStructure(['options']);
         $this->postJson('/auth/passkey', ['credential' => []])->assertUnprocessable();
         $this->assertSame(0, DB::table('security_sessions')->count());
