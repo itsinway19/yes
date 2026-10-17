@@ -9857,7 +9857,9 @@
         ]
       },
       "migration": null,
-      "testLeads": []
+      "testLeads": [
+        "tests/provider-api-client.test.mjs"
+      ]
     },
     {
       "method": "GET|HEAD",
@@ -25654,13 +25656,32 @@
       "@laravel/passkeys"
     ],
     "resources/js/sessionLease.ts": [],
+    "resources/js/sources/api.ts": [
+      "resources/js/spa/api.ts",
+      "resources/js/sources/client.ts",
+      "resources/js/sources/providers.ts"
+    ],
     "resources/js/sources/client.ts": [
       "resources/js/api/application.ts",
       "resources/js/api/generated/application"
     ],
+    "resources/js/sources/DeclareSourceScope.vue": [
+      "vue",
+      "resources/js/sources/api.ts",
+      "resources/js/sources/state.ts",
+      "resources/js/spa/transport.ts"
+    ],
     "resources/js/sources/providers.ts": [
       "resources/js/api/application.ts",
       "resources/js/api/generated/application"
+    ],
+    "resources/js/sources/state.ts": [
+      "vue",
+      "vue-router",
+      "resources/js/api/generated/application",
+      "resources/js/spa/query.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/sources/api.ts"
     ],
     "resources/js/spa/api.ts": [
       "resources/js/api/application.ts",
