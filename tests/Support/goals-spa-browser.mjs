@@ -63,7 +63,7 @@ async function get(page,url,extra={}){
 }
 const ready=(page,mode)=>page.waitForFunction(mode=>{
  const workspace=location.pathname.match(/workspaces\/([^/]+)\/goals/)?.[1];
- return mode==='spa'?window.__goalsSpa?.status.value==='ready'&&__goalsSpa.current.value?.workspace.public_id===workspace
+ return mode==='spa'?document.getElementById('goals-spa')?.dataset.state==='ready'&&!!document.querySelector(`#goals-spa [data-spa-private] a[href="/spa/workspaces/${workspace}/goals"], #goals-spa [data-spa-private] a[href="/spa/workspaces/${workspace}/goals/review"]`)
  :document.documentElement.dataset.visibility==='ready'&&document.getElementById('app')?.__vue_app__?.config.globalProperties.$page.props.workspace?.public_id===workspace;
 },mode);
 async function login(page,mode,who='a'){
@@ -86,6 +86,10 @@ async function check(name,mode,fn){
 try{
  browser=await chromium.launch({headless:true,ignoreDefaultArgs:['--disable-back-forward-cache'],executablePath:'C:/Users/stoma/AppData/Local/ms-playwright/chromium-1208/chrome-win64/chrome.exe'});
  result.browser=browser.version();
+ if(onlyRestoration){
+  const {runRestorationAcceptance}=await import('./goals-spa-restoration.mjs');
+  await runRestorationAcceptance({browser,check,login,get,post,target,fixture,workspace,foreign,command,wire,before,until,result});
+ }
  if(!onlyRestoration&&!onlyClosure&&!onlyRetention)await runGoalsContractCases({browser,check,login,meta,fixture,result});
  for(const mode of onlyRestoration||onlyClosure||onlyRetention?[]:['inertia','spa']){
   const context=await browser.newContext({viewport:{width:1280,height:900}});let page=await context.newPage();page.setDefaultTimeout(15000);
@@ -266,7 +270,7 @@ try{
    await page.addInitScript(()=>addEventListener('pageshow',event=>console.log('GOALS_NATIVE_SHOW '+JSON.stringify({persisted:event.persisted,trusted:event.isTrusted,path:location.pathname}))));
    page.on('console',message=>{if(message.text().startsWith('GOALS_NATIVE_SHOW '))shows.push(JSON.parse(message.text().slice(18)));});
    await login(page,mode);
-   await check('native BFCache '+transition+' rechecks authority before private display',mode,async()=>{
+   await check('native BFCache '+transition+' denies authority and hides private DOM after traversal',mode,async()=>{
     const mark=shows.length;await page.goto('http://localhost:8138/up');
     if(transition==='expire')command('expire');
     else{
@@ -278,7 +282,7 @@ try{
     await page.waitForFunction(()=>{const form=document.querySelector('[data-goals="form"]');return !form||getComputedStyle(form).visibility==='hidden'||!form.getClientRects().length||!!form.closest('#goals-spa:not([data-state="ready"])');});
     const native=shows.slice(mark).some(event=>event.persisted&&event.trusted);
     if(!native)result.unverified.push({mode,gate:'native BFCache '+transition,reason:'No trusted persisted event; fresh-document path does not prove BFCache'});
-    return {result:native?'PASS':'UNVERIFIED',shows:shows.slice(mark),notRestored,note:'A fresh native redirect is safe but is not BFCache evidence. Checks visible DOM after server denial; pre-JavaScript cached-frame confidentiality is not proved'};
+    return {result:native?'PASS':'UNVERIFIED',observedPath:native?'native-bfcache':'fresh-document',freshDocumentSafety:native?'NOT_EXERCISED':'PASS',shows:shows.slice(mark),notRestored,note:'A fresh native redirect is safe but is not BFCache evidence. Checks visible DOM after server denial; pre-JavaScript cached-frame confidentiality is not proved'};
    });await context.close();
   }
  }

@@ -1,0 +1,93 @@
+{
+  "date": "2026-10-17",
+  "task": "Bounded final acceptance review and development unblock",
+  "publishedHead": "ead9bd5e35e937f729906a5d99ab67ffc41e4b9d",
+  "localCommit": "This document is part of the authorized local test/documentation commit; obtain its SHA from git log. No self-referential SHA.",
+  "livePr": {
+    "number": 36,
+    "draft": true,
+    "merged": false,
+    "head": "ead9bd5e35e937f729906a5d99ab67ffc41e4b9d",
+    "base": "580837d334ac703209644ffff54bb6d05a62a0c0"
+  },
+  "liveFoundation": {
+    "run": 39038000416,
+    "status": "completed",
+    "conclusion": "success",
+    "checkout": "7bdd76f10b174b598c6e4f28de99807c9f62e7f5",
+    "coversNewLocalCommit": false
+  },
+  "executedNow": [
+    "Node 24 --check tests/Support/goals-spa-browser.mjs: PASS",
+    "Node 24 --check tests/Support/goals-spa-restoration.mjs: PASS",
+    "git diff --check: PASS",
+    "Recorded executable/test/build input SHA-256 comparison: 667 entries, zero mismatches",
+    "JSON and recorded browser result consistency: PASS"
+  ],
+  "reusedBrowser": {
+    "run": "storage/framework/testing/goals-spa-5a26eee6-5e44-4d16-8dec-33f38b4651a2",
+    "pass": 9,
+    "unverified": 2,
+    "fail": 0,
+    "reexecuted": false,
+    "reason": "Same recorded executable/test/build inputs; no behavioral correction or new hypothesis"
+  },
+  "restoration": {
+    "freshDocumentSafety": "PASS within recorded Chromium cases",
+    "nativeSpaOccurrence": "NOT_OBSERVED",
+    "nativeSpaSafety": "UNVERIFIED",
+    "preJavascriptCachedFrameConfidentiality": "UNVERIFIED",
+    "physicalIphoneSafari": "NOT_EXECUTED",
+    "physicalAndroidChrome": "NOT_EXECUTED"
+  },
+  "acceptance": {
+    "A": "PASS locally within previous scope",
+    "B": "BLOCKED",
+    "C": "BLOCKED"
+  },
+  "decisions": {
+    "architecture": "Vue SPA + Laravel accepted by explicit Owner instruction in this task",
+    "mergeRecommendation": "Option 2 conditional on explicit Owner merge-scope decision and final published-candidate CI; merge deferred until conditions met",
+    "activation": "Do not enable Goals SPA for users",
+    "deployment": "No production approval",
+    "ownerAcceptanceChanged": false
+  },
+  "processesStarted": [],
+  "files": [
+    {
+      "path": "tests/Support/goals-spa-browser.mjs",
+      "sha256": "2606E6917B906CC41B69BFC732E458EC29AA3EC023035C24BD29983036700F8B",
+      "bytes": 31064
+    },
+    {
+      "path": "tests/Support/goals-spa-restoration.mjs",
+      "sha256": "816151F354A5A1FE05B97311B3B7912A278BBA6B30C718341CC5D543DEFEEFBD",
+      "bytes": 5100
+    },
+    {
+      "path": "docs/execution/spa-openapi/acceptance/INDEPENDENT_BC_REVIEW.md",
+      "sha256": "AD0D567AF903DE1E3C03CAAABF4B9390352A8899118354447269CE5AC60B1369",
+      "bytes": 13806
+    },
+    {
+      "path": "docs/execution/spa-openapi/acceptance/review-evidence.json",
+      "sha256": "4A38FB9E22FD2BFFCC1A477E6164C767703DE4A6A004C4B9AA4DCD35D2A7C713",
+      "bytes": 9508
+    },
+    {
+      "path": "storage/framework/testing/spa-openapi-github/GITHUB_CI_VERIFICATION_REPORT.md",
+      "sha256": "1FE9EE0D135F57946A570D2302AF0ABA687AF3CCAA917B7EBFF045BFB06E7CC0",
+      "bytes": 12150
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-5a26eee6-5e44-4d16-8dec-33f38b4651a2/browser-results.json",
+      "sha256": "E49E1CA07E3601B31501E8C43D887DB72D507FD3B3992288D31CDA17B37DF87F",
+      "bytes": 362233
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-5a26eee6-5e44-4d16-8dec-33f38b4651a2/source-manifest.json",
+      "sha256": "9692D3F0BCCD04CAF303AD7F52767BD068D023563FD2C0A2B574BEB5E4035819",
+      "bytes": 90345
+    }
+  ]
+}
