@@ -1,0 +1,301 @@
+{
+  "codeCommit": "a7315574b127deac85b6c4d3816452baebd1847b",
+  "codeTree": "6b3017a8ae7c28168207e4dd2ebc3902eb541a1b",
+  "note": "Working-file SHA and Git-blob SHA may differ through LF normalization; hash-object with path attributes verifies equality of the actual committed content.",
+  "files": [
+    {
+      "path": ".github/workflows/foundation.yml",
+      "blobOid": "e1f1911933c4669b1f573b0c3368bf779c0a2d0b",
+      "committedSha256": "cbe6afbc85c6c743d1f9d94ea3899904e30e00b5790bd1ecaa047e4e257093ec",
+      "workingFileSha256": "cbe6afbc85c6c743d1f9d94ea3899904e30e00b5790bd1ecaa047e4e257093ec",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "app/Http/Controllers/GoalsSpaController.php",
+      "blobOid": "37fa77eee84839a3c698a7f99dcbba8933bb9da0",
+      "committedSha256": "185fff6543f159463d7f272e0cc679308a135f9de77459606f85462c50b0110f",
+      "workingFileSha256": "185fff6543f159463d7f272e0cc679308a135f9de77459606f85462c50b0110f",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "app/Security/IdentityCookies.php",
+      "blobOid": "e4dc541e120de24931484b2e07a672150ad7b864",
+      "committedSha256": "ac9119252b198ec47eae486099e0d9111e56ec9451ac72d93027d34b9240beae",
+      "workingFileSha256": "ac9119252b198ec47eae486099e0d9111e56ec9451ac72d93027d34b9240beae",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "app/Security/IdentityDocument.php",
+      "blobOid": "071ed1ed33756c5c2196b11793773ed6accfc24c",
+      "committedSha256": "ba4c561ed9b0b16f7a1350507456ee9482889617a0f231a617d65f755dc3da1b",
+      "workingFileSha256": "ba4c561ed9b0b16f7a1350507456ee9482889617a0f231a617d65f755dc3da1b",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "app/Security/IdentityRenewal.php",
+      "blobOid": "406e33fbe6f3abdd0a9ca9e6b6b7ef6679344a3e",
+      "committedSha256": "4090ec3db03f3e9732b39383bcc71859b6b665b8e3e3cece859f17a0ecb4d085",
+      "workingFileSha256": "4090ec3db03f3e9732b39383bcc71859b6b665b8e3e3cece859f17a0ecb4d085",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "app/Security/IdentityTransition.php",
+      "blobOid": "e9755012ce1a5a888d355371eb35781a37577115",
+      "committedSha256": "8e15f92c851761cba8e8df9f4a219f5b3c18faa0468663fa3e65c0dada35acf6",
+      "workingFileSha256": "8e15f92c851761cba8e8df9f4a219f5b3c18faa0468663fa3e65c0dada35acf6",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "config/spa.php",
+      "blobOid": "d9d6d9c36262fd8a099e20972037a42b962963cf",
+      "committedSha256": "935db18f6b34d3de7a964ddd9976a18a52e8d8993f986e8278e729bebeb5272f",
+      "workingFileSha256": "935db18f6b34d3de7a964ddd9976a18a52e8d8993f986e8278e729bebeb5272f",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "contracts/goals.openapi.json",
+      "blobOid": "570f2e6db1a4c8a36de0a961e60691eaab1610d9",
+      "committedSha256": "4b670b9347a4a08aba5bb75da0ae906f42b0fc91b3a918be66952bb9995fef51",
+      "workingFileSha256": "4b670b9347a4a08aba5bb75da0ae906f42b0fc91b3a918be66952bb9995fef51",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "package-lock.json",
+      "blobOid": "bc8d672252b5a21dc66a828e8fa5550595fb28a5",
+      "committedSha256": "74c2ce2e39e6e8e381ef1dd1723c58817aacdc39d710f207f4ff9c0757718186",
+      "workingFileSha256": "526b8d89b2340ac968dc05e8ab8b5a44480b24c1c0501ef301c83e95f8069c08",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "package.json",
+      "blobOid": "c3b2db1547361bf8e6b8148f01574ebff4d4d6fb",
+      "committedSha256": "0a4697b07ca6116312a267a5796121ededaf0d25d710864ac233449fe653aaae",
+      "workingFileSha256": "fe71853fad23630c970d1a6166b649fa5c091f90521843a88e001e783ecf1733",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "resources/js/api/generated/goals.d.ts",
+      "blobOid": "cfc9298e835894c4b241a1df10f8452543aa40c5",
+      "committedSha256": "754cd014c6de34b47c11e0f28822bff169e821447bb9838a92074dbfed1c5fe8",
+      "workingFileSha256": "754cd014c6de34b47c11e0f28822bff169e821447bb9838a92074dbfed1c5fe8",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "resources/js/api/goals.ts",
+      "blobOid": "c9566e482bca67d90f34bd1dca442c91c23b7910",
+      "committedSha256": "39d23f3d322b602add77588f31f8380b6535c8b0bc0100a592bbe7bbc82ec8c2",
+      "workingFileSha256": "39d23f3d322b602add77588f31f8380b6535c8b0bc0100a592bbe7bbc82ec8c2",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "resources/js/goals-spa/GoalsEditor.vue",
+      "blobOid": "4e7d97ef4749ad685e8585881e8a1eec901ac185",
+      "committedSha256": "0d89f63a5583bfc27cfab854b60c9a0b8bf813f6067e9056ae2dc1fa0621599f",
+      "workingFileSha256": "0d89f63a5583bfc27cfab854b60c9a0b8bf813f6067e9056ae2dc1fa0621599f",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "resources/js/goals-spa/GoalsReview.vue",
+      "blobOid": "1784c23e978e36623390c3ab1d1c13d9396f4659",
+      "committedSha256": "4d467d5713b7c5ad2208ed3e49f88ed705693a5fc52bda62990c899a4a0bdbe7",
+      "workingFileSha256": "4d467d5713b7c5ad2208ed3e49f88ed705693a5fc52bda62990c899a4a0bdbe7",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "resources/js/goals-spa/api.ts",
+      "blobOid": "66251f4a37ffdbd9dde2e6b3889896352349b739",
+      "committedSha256": "0f0b879437dd573ca90dae7076fdc0f30eede357581316c1afd4ad77f86d09eb",
+      "workingFileSha256": "0f0b879437dd573ca90dae7076fdc0f30eede357581316c1afd4ad77f86d09eb",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "resources/js/goals-spa/drafts.ts",
+      "blobOid": "6db9ca28ad0e6973e9a81f90653c838852a5b211",
+      "committedSha256": "774a1ea6376098822c5c1bda64e4a34f86fa939030255a339a67ff18f95bc564",
+      "workingFileSha256": "774a1ea6376098822c5c1bda64e4a34f86fa939030255a339a67ff18f95bc564",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "resources/js/goals-spa/main.ts",
+      "blobOid": "2611314a061625fd256ef1c34a8af8f5716b4cb9",
+      "committedSha256": "b8470bd906ae348d2bfe791013eef72810ff0b94cc754173d7ff68e62fb072f3",
+      "workingFileSha256": "b8470bd906ae348d2bfe791013eef72810ff0b94cc754173d7ff68e62fb072f3",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "resources/js/goals-spa/state.ts",
+      "blobOid": "24e7df375c7f2ea280010b4143562121d8ed6aab",
+      "committedSha256": "efc311afc520bb92a0b7662ba45da7d3ced25836b21a56cf1c0788698e94340b",
+      "workingFileSha256": "efc311afc520bb92a0b7662ba45da7d3ced25836b21a56cf1c0788698e94340b",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "resources/js/goals-spa/transport.ts",
+      "blobOid": "7cecf828eaf8aad30f648ae8f8dd86b3d8a555ed",
+      "committedSha256": "b7f1bced0e5b642b728ac3a7749706c8b164c772811ffa02e57793dac2ae3c8f",
+      "workingFileSha256": "b7f1bced0e5b642b728ac3a7749706c8b164c772811ffa02e57793dac2ae3c8f",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "resources/js/identityProtocol.ts",
+      "blobOid": "1d13891fe1a5850af1242ae598c5f2d5dc331a52",
+      "committedSha256": "ad0074970879c094eb11ef2941dd979724ba4072764186378d31c10f2c9c6091",
+      "workingFileSha256": "ad0074970879c094eb11ef2941dd979724ba4072764186378d31c10f2c9c6091",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "resources/js/sessionLease.ts",
+      "blobOid": "0285349bd75823f60a2eafef49a754f12fc15c87",
+      "committedSha256": "c02ec46d33b9a63b6c5fbd10026663da31bd9c4c09296368d15fede879bf13b1",
+      "workingFileSha256": "c02ec46d33b9a63b6c5fbd10026663da31bd9c4c09296368d15fede879bf13b1",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "resources/views/goals-spa.blade.php",
+      "blobOid": "d98f1cff2d2bb1da84598a1e0fb13ed3f8913d1b",
+      "committedSha256": "d0a06e087c6ad1c473ee0339de59989b337d14328b3dfc1a62e5a6f0fae2e812",
+      "workingFileSha256": "d0a06e087c6ad1c473ee0339de59989b337d14328b3dfc1a62e5a6f0fae2e812",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "routes/goals-spa.php",
+      "blobOid": "cea2447aae49fbca70496f3c2fc332f8cf2980ca",
+      "committedSha256": "f60acdebf8e7d7c63da2f3cb56b5e9d0ccf59117b344648c1674acf89cbeda43",
+      "workingFileSha256": "f60acdebf8e7d7c63da2f3cb56b5e9d0ccf59117b344648c1674acf89cbeda43",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "routes/web.php",
+      "blobOid": "3ef212c973699ac466c56b4afa11615a1ea4060f",
+      "committedSha256": "c24a9031e916a9df59e1e8aa1a94ea9ed9f5eef8779cc83b899877198dd6dd70",
+      "workingFileSha256": "c24a9031e916a9df59e1e8aa1a94ea9ed9f5eef8779cc83b899877198dd6dd70",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "scripts/Test-GoalsSpa.ps1",
+      "blobOid": "8e9fc776c5c0349b2b17e930812bf01fc6e69fb6",
+      "committedSha256": "dfcf67f82d4b5382cb84405643d312f5493d1c77418c912b9ca720966c5e9f37",
+      "workingFileSha256": "dfcf67f82d4b5382cb84405643d312f5493d1c77418c912b9ca720966c5e9f37",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "scripts/goals-openapi.mjs",
+      "blobOid": "529bccc1cb53a02779e25d9820cb8fe796e4fc4c",
+      "committedSha256": "3b2b310e4384627b5be3e0e966118aec39570417299059eda106e392bdd3250c",
+      "workingFileSha256": "3b2b310e4384627b5be3e0e966118aec39570417299059eda106e392bdd3250c",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/Feature/GoalsSpaIntegrationTest.php",
+      "blobOid": "cee27a93bf23c869fb99423a849e1defc6159a6a",
+      "committedSha256": "5723631ecef0f6980740927ebc70b934143f29249630fba535b3da3d3873945a",
+      "workingFileSha256": "5723631ecef0f6980740927ebc70b934143f29249630fba535b3da3d3873945a",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/Feature/GoalsSpaProofTest.php",
+      "blobOid": "33d0526467efbd9f48801b8f6f76b2788adc4fe4",
+      "committedSha256": "d26e391f281bbb8d222dfc4e2679871b39376edee4ed4795d8fe39329a10eb10",
+      "workingFileSha256": "d26e391f281bbb8d222dfc4e2679871b39376edee4ed4795d8fe39329a10eb10",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/Feature/Localization/LocaleTest.php",
+      "blobOid": "0b414eb2026646b64ecc52293312edcf80a03664",
+      "committedSha256": "39659ea95e84bd7d376f23a22f8f4ddf8100edec7e3f7a2e3b518259b2a2a7d9",
+      "workingFileSha256": "39659ea95e84bd7d376f23a22f8f4ddf8100edec7e3f7a2e3b518259b2a2a7d9",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/Feature/Security/IdentityRenewalTest.php",
+      "blobOid": "647a0bb90b931ea975b8228f4099d22771510750",
+      "committedSha256": "dff4d8af5a410566f164ecb963ab3e89dfa2ea8a3b65f943137b291b0bf74365",
+      "workingFileSha256": "dff4d8af5a410566f164ecb963ab3e89dfa2ea8a3b65f943137b291b0bf74365",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/Feature/Security/ProductionIdentityTest.php",
+      "blobOid": "2fcd916267187d7c1e36374248cc15b9cadb8610",
+      "committedSha256": "2f05c186121f0ce15059bbdcc820f897cb3b34d2ae46ccb1496f500a2a1823b2",
+      "workingFileSha256": "2f05c186121f0ce15059bbdcc820f897cb3b34d2ae46ccb1496f500a2a1823b2",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/Support/GoalsSpaFixture.php",
+      "blobOid": "db32220242775463e2251f649d5807d05f675db6",
+      "committedSha256": "95cf89947aefc250591211a751e5121474d471ae8906eda31fdec18ea84788ea",
+      "workingFileSha256": "95cf89947aefc250591211a751e5121474d471ae8906eda31fdec18ea84788ea",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/Support/GoalsSpaLockWorker.php",
+      "blobOid": "ccbb053be74a84892465e8842aa901ac35b540ac",
+      "committedSha256": "21201e385d32d7924dcf45f4b333cafb26b6c568d334f6be45588e53fa4e5bfd",
+      "workingFileSha256": "21201e385d32d7924dcf45f4b333cafb26b6c568d334f6be45588e53fa4e5bfd",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/Support/goals-api-contract.mjs",
+      "blobOid": "b9973233e0dbdfb92cb5802898b76d691cff3fc8",
+      "committedSha256": "5ad5078c5bdb3ca8792b129342f310e8f67ee89219d8c16e8f86d102e372c973",
+      "workingFileSha256": "5ad5078c5bdb3ca8792b129342f310e8f67ee89219d8c16e8f86d102e372c973",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/Support/goals-spa-browser.mjs",
+      "blobOid": "8b11a0a3c368798beb66edf506627bf585d7c375",
+      "committedSha256": "65eed89886b46dd2a1ed2c4f981b8b26ed0219349026c23609a420d95ef689f0",
+      "workingFileSha256": "65eed89886b46dd2a1ed2c4f981b8b26ed0219349026c23609a420d95ef689f0",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/Support/goals-spa-closure.mjs",
+      "blobOid": "35dc0cede8f20b04936585a1ca20d9a45123436e",
+      "committedSha256": "e432138d845c8fbeb34c5de4db68f2e2373ecc46f649f7a234f6cabe60170e5a",
+      "workingFileSha256": "e432138d845c8fbeb34c5de4db68f2e2373ecc46f649f7a234f6cabe60170e5a",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/Support/goals-spa-routes.php",
+      "blobOid": "f83a55fddb896c5fd6f289210bf194abeec4308b",
+      "committedSha256": "51fdcbf023317079aa347df49c6c5caaf8713194f4e10febe53fa5d65de5af5f",
+      "workingFileSha256": "51fdcbf023317079aa347df49c6c5caaf8713194f4e10febe53fa5d65de5af5f",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/Support/goals-spa-server.php",
+      "blobOid": "c4b172659057fb5318ed02dc383a695f7e515cb9",
+      "committedSha256": "ef39576939e078e08d820283cc8314a0b8e8b775e8dfd3dc453fc6cc30d4b715",
+      "workingFileSha256": "ef39576939e078e08d820283cc8314a0b8e8b775e8dfd3dc453fc6cc30d4b715",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/Unit/IdentityCookiesTest.php",
+      "blobOid": "0de0dfd98df406547f536e4ae7e7458001536b62",
+      "committedSha256": "a9348c316a856d01fa9845a1d599bdea5854ddff9005f3bed2484b99aad70bc3",
+      "workingFileSha256": "a9348c316a856d01fa9845a1d599bdea5854ddff9005f3bed2484b99aad70bc3",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/goals-api-client.test.mjs",
+      "blobOid": "d9e15e927e1c429123eab7195268e016ad60f062",
+      "committedSha256": "2aeed87f16edd13d9bfc95626daa4d82c3d921e4dee798e9572f31c7479bd9ed",
+      "workingFileSha256": "2aeed87f16edd13d9bfc95626daa4d82c3d921e4dee798e9572f31c7479bd9ed",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "tests/identity-protocol.test.mjs",
+      "blobOid": "0423ed9ba1c3353cbda8c34fcd13f46888c28b01",
+      "committedSha256": "138d087fee3c258cdf2117dc388932c13e288118de92fe78616707c9f2efd57f",
+      "workingFileSha256": "138d087fee3c258cdf2117dc388932c13e288118de92fe78616707c9f2efd57f",
+      "normalizedWorkingFileMatchesGit": true
+    },
+    {
+      "path": "vite.goals-spa.config.js",
+      "blobOid": "d220197ae6c581a25be0d9fed1c735392b7c3f7b",
+      "committedSha256": "6edca674e4f011f58abc404cb07e62236ca6b29e540fb39c48485e33831f6dcf",
+      "workingFileSha256": "6edca674e4f011f58abc404cb07e62236ca6b29e540fb39c48485e33831f6dcf",
+      "normalizedWorkingFileMatchesGit": true
+    }
+  ]
+}
