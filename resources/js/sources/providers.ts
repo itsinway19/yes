@@ -6,6 +6,7 @@ export type Provider = 'meta' | 'google' | 'tiktok' | 'snapchat' | 'x';
 export type ProviderAccess = Schemas['ProviderAccess'];
 export type ProviderSnapshot = Schemas['ProviderSnapshot'];
 export type VersionCommand = Schemas['ProviderVersionCommand'];
+export type SnapchatRenewalOutcome = Schemas['SnapchatRenewalOutcome'];
 type BasicProvider = 'google' | 'tiktok' | 'snapchat';
 type ReportScope = { workspace: string; source: string; signal?: AbortSignal };
 export type ReportPeriod = { provider: BasicProvider; period: Schemas['ProviderReportPeriod'] }
@@ -31,6 +32,11 @@ export function providerOperations(api: ReturnType<typeof createApplicationClien
             return received(await api.POST(`/workspaces/{workspace}/providers/${provider}/connect`, {
                 params: { path: { workspace } }, body: { intent }, signal,
             }), 'provider connection');
+        },
+        async connectGoogle(workspace: string, body: Schemas['GoogleConnectCommand'], signal?: AbortSignal) {
+            return received(await api.POST('/workspaces/{workspace}/providers/google/connect', {
+                params: { path: { workspace } }, body, signal,
+            }), 'Google connection');
         },
         async discover(provider: Exclude<Provider, 'google'>, workspace: string, flow: string, signal?: AbortSignal) {
             return received(await api.GET(`/workspaces/{workspace}/providers/${provider}/discovery/{flow}`, {

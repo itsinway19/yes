@@ -30,7 +30,7 @@ export function sourceContracts({ ref, text, uuid, object, list, nullable, versi
             WorkspaceSourcesData: object({ workspace: ref('WorkspaceReference'), business: ref('BusinessContextProjection'),
                 guidance: object({ sources: list(object({ provider: text, label: text, priority: { type: 'integer' }, rationale: nullable(text) })), priors: list(object({ id: { type: 'integer' }, provider: text, product: text, label: text, rationale: text, applicability: text, limits: text, basis: text })) }),
                 canRequestSourceAuthority: { type: 'boolean' }, canManageServices: { type: 'boolean' }, sourceCandidateId: uuid, sources: ref('SourceRegistryProjection'), services: list(object({ public_id: uuid, name: text, purpose: text })),
-                commercial: object({ state: text, context: nullable(object({ scope_id: text, market_label: text, configuration_id: text, catalog_identity: text, catalog_version: text, denomination_code: text, effective_at: text })), agreement_state: text, amount_state: text }) }),
+                commercial: object({ state: text, context: nullable(object({ scope_id: text, market_id: uuid, market_label: text, configuration_id: text, catalog_identity: text, catalog_version: text, denomination_code: text, effective_at: text })), agreement_state: text, amount_state: text }) }),
             WorkspaceSourcesResource: envelope('WorkspaceSourcesData'),
         },
     };

@@ -10,6 +10,8 @@ export function providerContracts({ ref, text, uuid, object, list, nullable, ver
     const xPeriod = { ...period, campaign_ids: { ...list({ type: 'string', pattern: '^[a-zA-Z0-9]{1,180}$' }), minItems: 1, maxItems: 20, uniqueItems: true }, placement: { enum: ['ALL_ON_TWITTER', 'SPOTLIGHT', 'TREND'] }, mode };
     const command = { command_id: uuid, expected_version: { type: 'integer', minimum: 1 }, expected_generation: version, deadline: { type: 'string', format: 'date-time' } };
     const accessAcknowledgement = object({ source_id: uuid, receipt: {}, access: ref('ProviderAccess') }, undefined, true);
+    const snapchatSuccess = object({ source_id: uuid, receipt: {}, access: ref('ProviderAccess'), status: false }, ['source_id', 'receipt', 'access'], true);
+    const snapchatAction = object({ status: { const: 'PROVIDER_ACTION_REQUIRED' }, reason: text, source_id: uuid, access: ref('ProviderAccess'), receipt: false }, ['status', 'reason', 'source_id', 'access']);
     const paths = {};
     for (const provider of providers) {
         const base = `/workspaces/{workspace}/providers/${provider}`;
@@ -20,7 +22,7 @@ export function providerContracts({ ref, text, uuid, object, list, nullable, ver
         const fields = provider === 'x' ? xPeriod : provider === 'meta' ? { ...period, mode } : period;
         const query = Object.entries(fields).map(([name, schema]) => ({ in: 'query', name: name === 'campaign_ids' ? 'campaign_ids[]' : name, schema, required: name !== 'mode', ...(name === 'campaign_ids' ? { style: 'form', explode: true } : {}) }));
         paths[base] = { get: read(`${provider}ConnectionSnapshot`, ref('ProviderSnapshot'), [workspaceParameter, ...headers]) };
-        paths[`${base}/connect`] = { post: write(`${provider}BeginConnection`, object({ intent: ref('ProviderFlowHandle') }), object({ authorization_url: text }), [workspaceParameter]) };
+        paths[`${base}/connect`] = { post: write(`${provider}BeginConnection`, provider === 'google' ? ref('GoogleConnectCommand') : object({ intent: ref('ProviderFlowHandle') }), object({ authorization_url: text }), [workspaceParameter]) };
         paths[`${base}/discovery/{flow}`] = { get: read(`${provider}DiscoverAccounts`, page, [workspaceParameter, flowParameter]) };
         paths[`${base}/select`] = { post: write(`${provider}SelectAccount`, object({ selection: ref('ProviderFlowHandle') }), ['meta', 'snapchat', 'x'].includes(provider) ? accessAcknowledgement : object({ source_id: uuid, receipt: {}, status: text }), [workspaceParameter]) };
         paths[`${base}/{source}/disconnect`] = { post: write(`${provider}DisconnectLocalAccess`, ref('ProviderVersionCommand'), accessAcknowledgement, [workspaceParameter, sourceParameter]) };
@@ -30,9 +32,17 @@ export function providerContracts({ ref, text, uuid, object, list, nullable, ver
         };
         if (provider === 'google') paths[`${base}/hierarchy/{flow}`] = { get: read('googleBrowseHierarchy', page, [workspaceParameter, flowParameter]) };
         if (['google', 'snapchat'].includes(provider)) paths[`${base}/{source}/renew`] = { post: write(`${provider}RenewAccess`, ref('ProviderVersionCommand'), accessAcknowledgement, [workspaceParameter, sourceParameter]) };
+        if (provider === 'snapchat') {
+            paths[`${base}/{source}/renew`].post.responses[200] = response(ref('SnapchatRenewalSuccess'));
+            paths[`${base}/{source}/renew`].post.responses[502] = response({ oneOf: [ref('SnapchatRenewalActionRequired'), object({ status: { const: 'PROVIDER_ACTION_REQUIRED' }, reason: text })] });
+        }
     }
     paths['/workspaces/{workspace}/providers/x/{source}/campaigns'] = { get: read('xCampaignChoices', object({ campaigns: list(object({ id: text, label: text })), continuation: nullable(ref('ProviderFlowHandle')) }), [workspaceParameter, sourceParameter, { in: 'query', name: 'continuation', schema: ref('ProviderFlowHandle') }]) };
     return { paths, schemas: {
+        GoogleConnectCommand: { oneOf: [object({ intent: ref('ProviderFlowHandle'), recover_offline_grant: { type: 'boolean' } }, ['intent']), object({ source_id: uuid, expected_version: version, recover_offline_grant: { type: 'boolean' } }, ['source_id', 'expected_version'])] },
+        SnapchatRenewalSuccess: snapchatSuccess,
+        SnapchatRenewalActionRequired: snapchatAction,
+        SnapchatRenewalOutcome: { oneOf: [ref('SnapchatRenewalSuccess'), ref('SnapchatRenewalActionRequired')] },
         ProviderFlowHandle: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$' },
         ProviderActionError: object({ status: text, reason: text }, ['status', 'reason'], true),
         ProviderAccess: object({ version, connection: text, native_observation: nullable(object({ state: text, observed_at: text })), axes: { type: 'object', additionalProperties: text }, effective: object({ state: text, reason: text, last_verified_at: nullable(text) }), reporting: object({ can_report: { type: 'boolean' }, why_not: nullable(text) }) }),

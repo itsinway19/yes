@@ -94,10 +94,29 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
+use Tests\Support\ApplicationContractAssertions;
 use Tests\TestCase;
 
 class ProviderAccessStoreTest extends TestCase
 {
+    use ApplicationContractAssertions;
+
+    public function test_review_google_offline_recovery_reaches_the_existing_oauth_consent_boundary(): void
+    {
+        $http = new Factory;
+        $http->preventStrayRequests();
+        $this->configureGoogleHttp($http);
+        $base = '/workspaces/'.$this->workspace.'/providers/google';
+        $intent = $this->getJson($base)->assertOk()->json('connect_intent');
+        $command = ['intent' => $intent, 'recover_offline_grant' => true];
+        $this->assertApplicationContract('GoogleConnectCommand', $command);
+        $url = $this->postJson($base.'/connect', $command)->assertOk()->json('authorization_url');
+        parse_str(parse_url($url, PHP_URL_QUERY), $query);
+        $this->assertSame('consent', $query['prompt']);
+        $this->assertSame('offline', $query['access_type']);
+        $http->assertNothingSent();
+    }
+
     private User $actor;
 
     private int $workspaceId;
@@ -3213,6 +3232,8 @@ class ProviderAccessStoreTest extends TestCase
         $command = ['command_id' => (string) Str::uuid(), 'expected_version' => 2];
         $renewed = $this->postJson($base.'/renew', $command)->assertOk()->assertJsonPath('receipt.version', 3)
             ->assertJsonPath('access.connection', 'CONNECTED')->assertJsonPath('access.axes.privacy_purpose', 'UNKNOWN');
+        $this->assertApplicationContract('SnapchatRenewalOutcome', $renewed->json());
+        $this->assertApplicationContract('SnapchatRenewalSuccess', $renewed->json());
         $this->assertSame($renewed->json('receipt'), $this->postJson($base.'/renew', $command)->assertOk()->json('receipt'));
         $cipher = $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->value('encrypted_credentials');
         $stored = json_decode(Crypt::decryptString($cipher), true, flags: JSON_THROW_ON_ERROR);
@@ -3233,6 +3254,9 @@ class ProviderAccessStoreTest extends TestCase
         $base = '/workspaces/'.$this->workspace.'/providers/snapchat';
         $denied = $this->postJson($base.'/'.$scope->sourceId.'/renew', ['command_id' => (string) Str::uuid(), 'expected_version' => 2])
             ->assertStatus(502)->assertJsonPath('reason', 'snapchat_reconnect_required');
+        $denied->assertJsonPath('status', 'PROVIDER_ACTION_REQUIRED')->assertJsonMissingPath('receipt');
+        $this->assertApplicationContract('SnapchatRenewalOutcome', $denied->json());
+        $this->assertApplicationContract('SnapchatRenewalActionRequired', $denied->json());
         $this->assertStringNotContainsString('synthetic-private-error', $denied->getContent());
         $this->assertSame($old, $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->value('encrypted_credentials'));
         $connections = $this->getJson($base)->assertOk()->json('connections');

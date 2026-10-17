@@ -50,6 +50,17 @@ test('Source command contract rejects invented provider evidence and incompatibl
     assert.equal(validator({ ...command, effect: 'rename', label: 'Corrected label' }), true);
 });
 
+test('commercial context is absent as a whole or contains the required non-null market UUID', () => {
+    const validate = new Ajv({ strict: false, validateFormats: false }).compile({ ...spec, $ref: '#/components/schemas/WorkspaceSourcesData/properties/commercial' });
+    const commercial = { state: 'UNAVAILABLE', context: null, agreement_state: 'UNKNOWN', amount_state: 'UNKNOWN' };
+    assert.equal(validate(commercial), true);
+    const context = { scope_id: 'scope', market_id: '9465e77a-c79a-4001-931f-98ed673397d9', market_label: 'Synthetic market', configuration_id: 'configuration', catalog_identity: 'catalog', catalog_version: '1', denomination_code: 'JOD', effective_at: '2026-10-18T00:00:00+03:00' };
+    assert.equal(validate({ ...commercial, state: 'CONTEXT_RECORDED', context }), true);
+    assert.equal(validate({ ...commercial, context: { ...context, market_id: null } }), false);
+    const { market_id, ...missingMarket } = context;
+    assert.equal(validate({ ...commercial, context: missingMarket }), false);
+});
+
 test('the real generated-client adapter forwards cancellation to the one protected transport', async () => {
     let captured;
     globalThis.__sourceTransport = async (_url, options) => { captured = options; return Response.json({ ok: true }); };

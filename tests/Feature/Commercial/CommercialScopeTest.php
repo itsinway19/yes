@@ -13,11 +13,32 @@ use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Symfony\Component\Process\Process;
+use Tests\Support\ApplicationContractAssertions;
 use Tests\Support\RowLockReadiness;
 use Tests\TestCase;
 
 class CommercialScopeTest extends TestCase
 {
+    use ApplicationContractAssertions;
+
+    public function test_review_source_commercial_contract_preserves_absence_and_exact_market_uuid(): void
+    {
+        [$beneficiary, $workspace] = $this->workspace();
+        $absent = $this->actingAs($beneficiary)->getJson('/workspaces/'.$workspace)->assertOk()
+            ->assertJsonPath('data.commercial.context', null)->json();
+        $this->assertApplicationContract('WorkspaceSourcesResource', $absent);
+        $this->actingAsInternal($this->operator);
+        $market = $this->market('Synthetic contract market', 'JOD');
+        $input = $this->registration($market, $workspace);
+        $this->postJson('/internal/commercial/registrations', $input)->assertOk();
+        $workspaceId = $this->owner()->table('workspaces')->where('public_id', $workspace)->value('id');
+        $this->grant($beneficiary, 'ReadCommercialContextAdvertiser', $input['scope_id'], $workspaceId);
+        $present = $this->actingAs($beneficiary)->getJson('/workspaces/'.$workspace)->assertOk()
+            ->assertJsonPath('data.commercial.context.market_id', $market['market'])->json();
+        $this->assertIsString($present['data']['commercial']['context']['market_id']);
+        $this->assertApplicationContract('WorkspaceSourcesResource', $present);
+    }
+
     private User $operator;
 
     protected function setUp(): void

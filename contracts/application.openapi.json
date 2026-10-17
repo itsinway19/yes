@@ -4202,16 +4202,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "intent": {
-                    "$ref": "#/components/schemas/ProviderFlowHandle"
-                  }
-                },
-                "required": [
-                  "intent"
-                ],
-                "additionalProperties": false
+                "$ref": "#/components/schemas/GoogleConnectCommand"
               }
             }
           }
@@ -7430,23 +7421,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "source_id": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "receipt": {},
-                    "access": {
-                      "$ref": "#/components/schemas/ProviderAccess"
-                    }
-                  },
-                  "required": [
-                    "source_id",
-                    "receipt",
-                    "access"
-                  ],
-                  "additionalProperties": true
+                  "$ref": "#/components/schemas/SnapchatRenewalSuccess"
                 }
               }
             }
@@ -7516,7 +7491,27 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProviderActionError"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SnapchatRenewalActionRequired"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "const": "PROVIDER_ACTION_REQUIRED"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "reason"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
                 }
               }
             }
@@ -11137,6 +11132,10 @@
                       "scope_id": {
                         "type": "string"
                       },
+                      "market_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
                       "market_label": {
                         "type": "string"
                       },
@@ -11158,6 +11157,7 @@
                     },
                     "required": [
                       "scope_id",
+                      "market_id",
                       "market_label",
                       "configuration_id",
                       "catalog_identity",
@@ -11223,6 +11223,102 @@
           "visibility"
         ],
         "additionalProperties": false
+      },
+      "GoogleConnectCommand": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "intent": {
+                "$ref": "#/components/schemas/ProviderFlowHandle"
+              },
+              "recover_offline_grant": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "intent"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "expected_version": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "recover_offline_grant": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "source_id",
+              "expected_version"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "SnapchatRenewalSuccess": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "receipt": {},
+          "access": {
+            "$ref": "#/components/schemas/ProviderAccess"
+          },
+          "status": false
+        },
+        "required": [
+          "source_id",
+          "receipt",
+          "access"
+        ],
+        "additionalProperties": true
+      },
+      "SnapchatRenewalActionRequired": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "const": "PROVIDER_ACTION_REQUIRED"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "access": {
+            "$ref": "#/components/schemas/ProviderAccess"
+          },
+          "receipt": false
+        },
+        "required": [
+          "status",
+          "reason",
+          "source_id",
+          "access"
+        ],
+        "additionalProperties": false
+      },
+      "SnapchatRenewalOutcome": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SnapchatRenewalSuccess"
+          },
+          {
+            "$ref": "#/components/schemas/SnapchatRenewalActionRequired"
+          }
+        ]
       },
       "ProviderFlowHandle": {
         "type": "string",

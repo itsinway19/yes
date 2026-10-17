@@ -1456,6 +1456,8 @@ export interface components {
                 state: string;
                 context: {
                     scope_id: string;
+                    /** Format: uuid */
+                    market_id: string;
                     market_label: string;
                     configuration_id: string;
                     catalog_identity: string;
@@ -1473,6 +1475,34 @@ export interface components {
             locale: "ar" | "en";
             visibility: components["schemas"]["Visibility"];
         };
+        GoogleConnectCommand: {
+            intent: components["schemas"]["ProviderFlowHandle"];
+            recover_offline_grant?: boolean;
+        } | {
+            /** Format: uuid */
+            source_id: string;
+            expected_version: number;
+            recover_offline_grant?: boolean;
+        };
+        SnapchatRenewalSuccess: {
+            /** Format: uuid */
+            source_id: string;
+            receipt: unknown;
+            access: components["schemas"]["ProviderAccess"];
+            status?: never;
+        } & {
+            [key: string]: unknown;
+        };
+        SnapchatRenewalActionRequired: {
+            /** @constant */
+            status: "PROVIDER_ACTION_REQUIRED";
+            reason: string;
+            /** Format: uuid */
+            source_id: string;
+            access: components["schemas"]["ProviderAccess"];
+            receipt?: never;
+        };
+        SnapchatRenewalOutcome: components["schemas"]["SnapchatRenewalSuccess"] | components["schemas"]["SnapchatRenewalActionRequired"];
         ProviderFlowHandle: string;
         ProviderActionError: {
             status: string;
@@ -4607,9 +4637,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    intent: components["schemas"]["ProviderFlowHandle"];
-                };
+                "application/json": components["schemas"]["GoogleConnectCommand"];
             };
         };
         responses: {
@@ -6875,14 +6903,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** Format: uuid */
-                        source_id: string;
-                        receipt: unknown;
-                        access: components["schemas"]["ProviderAccess"];
-                    } & {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SnapchatRenewalSuccess"];
                 };
             };
             /** @description Original Laravel authorization, CSRF, validation or service failure. */
@@ -6945,7 +6966,11 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProviderActionError"];
+                    "application/json": components["schemas"]["SnapchatRenewalActionRequired"] | {
+                        /** @constant */
+                        status: "PROVIDER_ACTION_REQUIRED";
+                        reason: string;
+                    };
                 };
             };
             /** @description Original Laravel authorization, CSRF, validation or service failure. */

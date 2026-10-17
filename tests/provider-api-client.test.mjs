@@ -22,6 +22,38 @@ const fake = () => {
     return { client, requests, result };
 };
 
+test('Google offline recovery forwards true without changing the existing Laravel request format', async () => {
+    const { client, requests } = fake();
+    await client.connectGoogle('workspace', { intent: handle, recover_offline_grant: true });
+    assert.equal(requests[0].url.pathname, '/workspaces/workspace/providers/google/connect');
+    assert.equal(requests[0].method, 'POST');
+    assert.deepEqual(requests[0].body, { intent: handle, recover_offline_grant: true });
+    await client.connectGoogle('workspace', { intent: handle });
+    assert.deepEqual(requests[1].body, { intent: handle });
+});
+
+test('Snapchat renewal retains the real 200 success and 502 action-required response shapes', async () => {
+    const access = { version: 3, connection: 'CONNECTED', native_observation: null, axes: {}, effective: { state: 'UNKNOWN', reason: 'privacy_unverified', last_verified_at: null }, reporting: { can_report: false, why_not: 'privacy_unverified' } };
+    const success = { source_id: 'source', receipt: { version: 3 }, access };
+    const denied = { source_id: 'source', status: 'PROVIDER_ACTION_REQUIRED', reason: 'snapchat_reconnect_required', access: { ...access, connection: 'REAUTHORIZATION_REQUIRED' } };
+    const validate = new Ajv({ strict: false, validateFormats: false }).compile({ ...spec, $ref: '#/components/schemas/SnapchatRenewalOutcome' });
+    assert.equal(validate(success), true);
+    assert.equal(validate(denied), true);
+    const { receipt, ...missingReceipt } = success;
+    assert.equal(validate(missingReceipt), false);
+    assert.equal(validate({ ...denied, receipt }), false);
+    const client = createApplicationClient('https://builderad.test', async request => {
+        const command = await request.json();
+        return Response.json(command.expected_version === 2 ? success : denied, { status: command.expected_version === 2 ? 200 : 502 });
+    });
+    const path = '/workspaces/{workspace}/providers/snapchat/{source}/renew';
+    const positive = await client.POST(path, { params: { path: { workspace: 'workspace', source: 'source' } }, body: { command_id: 'success', expected_version: 2 } });
+    assert.deepEqual(positive.data, success);
+    const negative = await client.POST(path, { params: { path: { workspace: 'workspace', source: 'source' } }, body: { command_id: 'denied', expected_version: 3 } });
+    assert.deepEqual(negative.error, denied);
+    assert.equal(negative.data, undefined);
+});
+
 test('every generated provider HTTP operation matches an existing runtime-registered route', async () => {
     const inventory = JSON.parse(await readFile(new URL('../docs/inertia-inventory.json', import.meta.url), 'utf8'));
     const routes = inventory.runtime.goalsDisabled;
