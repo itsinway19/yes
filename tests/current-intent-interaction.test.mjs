@@ -22,7 +22,7 @@ export const useForm = input => {
  }); globalThis.__intentTest.forms.push(form); return form;
 };
 export const useBusinessForm=(input,kind)=>{const form=useForm(input);form.submit=(workspace,options)=>form.post('workspaces.business.'+kind+'/'+workspace,options);return form;};
-export const restore=()=>undefined,remember=()=>{},stamp=()=>0,owned=()=>true;
+export const restore=()=>undefined,remember=()=>{},stamp=()=>0,owned=()=>true,RouterLink=Link;
 export const refresh=(workspace,options)=>router.reload(options),saveIntent=(workspace,payload,options)=>router.post('workspaces.business.current-intent.update/'+workspace,payload,options);`);
 const replacements = { vue: import.meta.resolve('vue'), '@inertiajs/vue3': inertia };
 function rewrite(code, extra = {}) {
@@ -41,7 +41,7 @@ async function compile(path, extra = {}) {
     const { descriptor } = parse(await readFile(new URL('../resources/js/' + path, import.meta.url), 'utf8'));
     const source = compileScript(descriptor, { id: 'dtm-test', inlineTemplate: true }).content;
     const url = moduleUrl(rewrite(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText,
-        { '@/localization/business': copy, '@/localization/businessCopy': neutralCopy, '@/spa/locale': moduleUrl(`import {computed} from ${JSON.stringify(import.meta.resolve('vue'))};export const locale=computed(()=>globalThis.__intentTest.page.locale);`), '@/business-context/commands': inertia, './commands': inertia, '@/business-context/drafts': inertia, './drafts': inertia, '@/spa/transport': inertia, ...extra }));
+        { '@/localization/business': copy, '@/localization/businessCopy': neutralCopy, '@/spa/locale': moduleUrl(`import {computed} from ${JSON.stringify(import.meta.resolve('vue'))};export const locale=computed(()=>globalThis.__intentTest.page.locale);`), '@/business-context/commands': inertia, './commands': inertia, '@/business-context/drafts': inertia, './drafts': inertia, '@/spa/transport': inertia, 'vue-router': inertia, ...extra }));
     return { url, component: (await import(url)).default };
 }
 const editor = await compile('Components/Business/CurrentIntentEditor.vue');

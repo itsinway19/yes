@@ -1,4 +1,4 @@
-param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation','workspaces','context')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='')
+param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation','workspaces','context','purpose')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='')
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $proofRoot=Split-Path -Parent $PSScriptRoot

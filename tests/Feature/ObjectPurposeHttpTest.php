@@ -22,6 +22,28 @@ class ObjectPurposeHttpTest extends ObjectPurposeTestCase
         return $c;
     }
 
+    public function test_unified_shell_and_context_resources_preserve_canonical_read_writer_and_passive_authority(): void
+    {
+        $this->get($this->url())->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
+        $resource = $this->getJson($this->url().'/context')->assertOk()->json('data');
+        $this->assertNull($resource['selectedPurpose']);
+        $this->assertSame('UNKNOWN', $resource['projection']['state']);
+        $first = $this->postJson($this->url(), $this->input())->assertCreated()->json();
+        $selected = $this->url().'/'.$first['purpose_id'];
+        $this->get($selected)->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
+        $this->getJson($selected.'/context')->assertOk()->assertJsonPath('data.selectedPurpose', $first['purpose_id'])
+            ->assertJsonPath('data.projection.items.0.applicable.revision_id', $first['revision_id']);
+        $before = DB::connection('pgsql_migrations')->table('security_sessions')->where('user_id', auth()->id())->sole();
+        $this->travel(30)->seconds();
+        $this->getJson($selected.'/context', ['X-Builderad-Passive' => '1'])->assertOk();
+        $this->getJson($selected.'/context', ['X-Builderad-Witness' => '1'])->assertOk()->assertJsonMissingPath('data');
+        $after = DB::connection('pgsql_migrations')->table('security_sessions')->where('id', $before->id)->sole();
+        $this->assertSame($before->idle_expires_at, $after->idle_expires_at);
+        $this->assertSame($before->absolute_expires_at, $after->absolute_expires_at);
+        $this->getJson($selected.'/context?known_at=2030-01-01T00:00:00Z')->assertUnprocessable();
+        $this->getJson($this->url().'/00000000-0000-4000-8000-000000000000/context')->assertNotFound();
+    }
+
     public function test_owner_http_admission_read_and_stale_conflict_preserve_other_context(): void
     {
         $this->getJson($this->url())->assertOk()->assertJsonPath('state', 'UNKNOWN');

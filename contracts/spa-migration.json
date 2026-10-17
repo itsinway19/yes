@@ -46,6 +46,17 @@
       "cutover": "BusinessContextController no longer renders a legacy page. The former Pages/Business/Context renderer is moved into the SPA feature without any legacy imports; its component requirements remain tested. Existing native redirects are preserved; JSON commands acknowledge the same original writers. Memory-only Workspace/form drafts survive same-document suspension and clear on terminal document closure. Sources/Object Purpose and authentication/internal destinations remain pending; this is not complete advertiser or final Foundation/CI acceptance."
     },
     {
+      "id": "object-purpose",
+      "journey": "Declare exact finite advertising-object purpose, review canonical temporal history, correct/replace/withdraw with explicit DTM/Intent references and an immutable unresolved command",
+      "routes": ["GET /workspaces/{workspace}/object-purposes", "GET /workspaces/{workspace}/object-purposes/{purpose}", "GET /workspaces/{workspace}/object-purposes/context", "GET /workspaces/{workspace}/object-purposes/{purpose}/context", "POST /workspaces/{workspace}/object-purposes", "POST /workspaces/{workspace}/object-purposes/{purpose}/revisions"],
+      "spaBoundary": "Canonical list/detail and same-document business-context links in the shared SPA; existing raw JSON projections and 201 writers remain canonical",
+      "businessOwners": ["App\\Business\\ObjectPurpose", "App\\Foundation\\Tenancy\\WorkspaceContext", "App\\Security\\SessionAuthority", "App\\Http\\Requests\\ObjectPurposeCommandRequest"],
+      "apiContract": "contracts/application.openapi.json",
+      "tests": ["ObjectPurposeHttpTest", "ObjectPurposeSecurityTest", "ObjectPurposeTest", "ObjectPurposeDtmLineageTest", "ArchitectureSourceOptionalityTest", "tests/object-purpose-interaction.test.mjs", "tests/object-purpose-spa.test.mjs", "tests/Support/object-purpose-spa-browser.mjs"],
+      "status": "LOCAL_JOURNEY_ACCEPTED",
+      "cutover": "Legacy Business/ObjectPurposes rendering is removed. The same view/editor now use official Vue Router and the shared typed client/transport. Unknown outcomes lock replacement until an explicit exact-original retry is acknowledged; terminal closure clears document memory. The original SQL owner/membership/freshness predicate, temporal writer, receipt fingerprint and Meta-only HTTP admission remain unchanged. Generic canonical object identity is not reduced to Meta. Final Foundation/CI, source/provider/auth/internal migration and B/C/device gates remain separate."
+    },
+    {
       "id": "locale-command",
       "journey": "Switch the application language using the existing encrypted locale cookie",
       "routes": ["POST /locale"],

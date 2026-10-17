@@ -1,21 +1,24 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
-import AdvertiserLayout from '@/Layouts/AdvertiserLayout.vue';
+import { RouterLink as Link } from 'vue-router';
 import ObjectPurposeEditor from '@/Components/Business/ObjectPurposeEditor.vue';
-import { useBusinessCopy } from '@/localization/business';
+import { useBusinessCopy } from '@/localization/businessCopy';
+import { locale } from '@/spa/locale';
+import type { PurposeAcknowledgement } from './api';
 import type { PurposeItem, PurposeIntent } from '@/types/object-purpose';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 const props = defineProps<{workspace: {public_id:string;name:string}; projection: {state:string;items:PurposeItem[];current_context_version:number;latest_dtm_event_context_version:number;effective_at:string;known_at:string}; selectedPurpose:string|null; business:{currentIntent:{value:PurposeIntent|null;version:number}}}>();
-const { t } = useBusinessCopy();
+const { t } = useBusinessCopy(locale);
+const emit = defineEmits<{ saved: [reply: PurposeAcknowledgement] }>();
+const editor = ref<{ hasUnsaved: () => boolean; pending: () => boolean }>();
+defineExpose({ hasUnsaved: () => editor.value?.hasUnsaved() ?? false, pending: () => editor.value?.pending() ?? false });
 const selected = computed(() => props.projection.items.find(item => item.purpose_id === props.selectedPurpose) ?? null);
 </script>
 <template>
-<Head :title="t('purposeTitle')" />
-<AdvertiserLayout :business-name="workspace.name" :workspace-id="workspace.public_id" :preserve-drafts-on-locale-change="true">
+<section>
     <h1>{{ t('purposeTitle') }}</h1><p>{{ workspace.name }}</p>
-    <a class="biz-link" :href="route('workspaces.business.edit',workspace.public_id)">{{ t('context') }}</a>
+    <Link class="biz-link" :to="`/workspaces/${workspace.public_id}/business`">{{ t('context') }}</Link>
     <p v-if="projection.state === 'UNKNOWN'">{{ t('purposeUnknown') }}</p>
-    <ul v-if="!selectedPurpose"><li v-for="item in projection.items" :key="item.purpose_id"><Link class="biz-link" :href="route('workspaces.object-purposes.show',[workspace.public_id,item.purpose_id])">{{ t('purposeRead') }} · {{ item.applicable?.snapshot.meaning ?? item.purpose_id }} · {{ item.head_version }}</Link></li></ul>
+    <ul v-if="!selectedPurpose"><li v-for="item in projection.items" :key="item.purpose_id"><Link class="biz-link" :to="`/workspaces/${workspace.public_id}/object-purposes/${item.purpose_id}`">{{ t('purposeRead') }} · {{ item.applicable?.snapshot.meaning ?? item.purpose_id }} · {{ item.head_version }}</Link></li></ul>
     <section v-if="selected" class="grid gap-4" style="overflow-wrap:anywhere">
         <p>{{ t('purposeRevision') }} · {{ selected.applicable?.version ?? '—' }} · {{ selected.purpose_id }}</p>
         <p v-if="selected.relationship_revalidation_required" role="status">{{ t('purposeRevalidation') }}</p>
@@ -36,6 +39,6 @@ const selected = computed(() => props.projection.items.find(item => item.purpose
             <p v-if="revision.supersedes_revision_id">{{ t('purposeAffected') }}: {{ revision.supersedes_revision_id }} · {{ revision.affected_revision_ids.join(', ') }}</p>
         </article>
     </section>
-    <ObjectPurposeEditor :key="selectedPurpose ?? 'new'" :workspace-id="workspace.public_id" :purpose="selected" :context-version="projection.current_context_version" :dtm-transition-version="projection.latest_dtm_event_context_version" :current-intent="business.currentIntent" />
-</AdvertiserLayout>
+    <ObjectPurposeEditor ref="editor" :key="selectedPurpose ?? 'new'" :workspace-id="workspace.public_id" :purpose="selected" :context-version="projection.current_context_version" :dtm-transition-version="projection.latest_dtm_event_context_version" :current-intent="business.currentIntent" @saved="emit('saved', $event)" />
+</section>
 </template>

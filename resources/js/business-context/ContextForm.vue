@@ -5,6 +5,7 @@ import { locale } from '@/spa/locale';
 import { onBeforeUnmount, ref, watch } from 'vue';
 import { remember, restore } from './drafts';
 import { owned, stamp } from '@/spa/transport';
+import { RouterLink } from 'vue-router';
 import CurrentIntentEditor from '@/Components/Business/CurrentIntentEditor.vue';
 import TargetMarketsEditor from '@/Components/Business/TargetMarketsEditor.vue';
 type Country = { code: string; name_ar: string; name_en: string };
@@ -61,7 +62,7 @@ onBeforeUnmount(() => { if (props.canManage && props.workspace) remember(props.w
     <section class="context-form">
         <p class="biz-eyebrow">{{ t('context') }}</p>
         <p v-if="workspace" class="biz-lead" data-context="business-name">{{ workspace.name }}</p>
-        <a v-if="workspace" class="biz-link" :href="`/workspaces/${workspace.public_id}/object-purposes`">{{ t('purposeTitle') }}</a>
+        <RouterLink v-if="workspace" class="biz-link" :to="`/workspaces/${workspace.public_id}/object-purposes`">{{ t('purposeTitle') }}</RouterLink>
         <template v-if="canManage"><h1>{{ workspace ? t('context') : t('setup') }}</h1><p class="biz-lead">{{ t('setupIntro') }}</p>
             <form class="biz-form" data-context="identity" @submit.prevent="save">
                 <label>{{ t('name') }}<input v-model="form.name" required minlength="2" maxlength="120" :readonly="!!workspace && !workspace.business_type_id" autocomplete="organization" /><span v-if="form.errors.name" role="alert" class="biz-error">{{ form.errors.name }}</span></label>

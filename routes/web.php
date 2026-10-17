@@ -72,6 +72,10 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
         ->whereUuid('workspace')->name('workspaces.goals.update');
     Route::get('/workspaces/{workspace}/object-purposes', [ObjectPurposeController::class, 'index'])
         ->whereUuid('workspace')->name('workspaces.object-purposes.index');
+    Route::get('/workspaces/{workspace}/object-purposes/context', [ObjectPurposeController::class, 'applicationIndex'])
+        ->whereUuid('workspace')->name('workspaces.object-purposes.application.index');
+    Route::get('/workspaces/{workspace}/object-purposes/{purpose}/context', [ObjectPurposeController::class, 'applicationShow'])
+        ->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.object-purposes.application.show');
     Route::get('/workspaces/{workspace}/object-purposes/{purpose}', [ObjectPurposeController::class, 'show'])
         ->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.object-purposes.show');
     Route::post('/workspaces/{workspace}/object-purposes', [ObjectPurposeController::class, 'store'])

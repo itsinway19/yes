@@ -2,6 +2,7 @@ import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import { supportedLocale } from './messages';
 
 const copy = {
+    purposeUnknownDelivery: ['تعذّر تأكيد نتيجة الأمر الأصلي. ربما حدثت الكتابة؛ لا يُنشأ أمر بديل قبل حسمها.', 'The original command outcome is unknown. It may have committed; a replacement command stays blocked until resolution.'], purposeRetryOriginal: ['إعادة إرسال الأمر الأصلي نفسه', 'Retry the exact original command'],
     contextReview: ['مراجعة سياق النشاط المحفوظ', 'Review saved business context'], contextAdopt: ['اعتماد المراجعة مع إبقاء مسودة الاسم والنوع', 'Adopt reviewed revision and retain the name/type draft'],
     purposeIntentReference: ['مرجع التصريح بالنية؛ القيمة والمراجعة المحفوظتان', 'Referenced Intent declaration; retained value and revision'], purposeUseCurrentIntent: ['اختيار التصريح الحالي بشكل صريح وإعادة التأكيد', 'Explicitly select the current declaration and reconfirm'],
     goalsTitle: ['أهدافك', 'Your goals'],

@@ -11,7 +11,7 @@
     "build": "vue-tsc && vite build",
     "dev": "vite",
     "test:goals": "node --test tests/spa-goals-interaction.test.mjs",
-    "test:spa-foundation": "node --test tests/spa-router.test.mjs tests/spa-transport.test.mjs tests/inertia-retirement.test.mjs tests/application-api-client.test.mjs tests/spa-goals-interaction.test.mjs tests/business-context-commands.test.mjs",
+    "test:spa-foundation": "node --test tests/spa-router.test.mjs tests/spa-transport.test.mjs tests/inertia-retirement.test.mjs tests/application-api-client.test.mjs tests/spa-goals-interaction.test.mjs tests/business-context-commands.test.mjs tests/object-purpose-spa.test.mjs",
     "inertia:check": "node scripts/inertia-retirement.mjs",
     "inertia:inventory": "node scripts/inertia-inventory.mjs --runtime",
     "test:visibility": "node --test tests/client-visibility.test.mjs",

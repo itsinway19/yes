@@ -6,12 +6,12 @@ use App\Business\BusinessContext;
 use App\Business\ObjectPurpose;
 use App\Foundation\Tenancy\WorkspaceContext;
 use App\Http\Requests\ObjectPurposeCommandRequest;
+use App\Http\Responses\SpaPage;
 use App\Models\Workspace;
 use DateTimeImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
 
 final class ObjectPurposeController extends Controller
 {
@@ -25,20 +25,32 @@ final class ObjectPurposeController extends Controller
         return $this->read($request, $workspace, $purpose, $context, $service, $business);
     }
 
-    private function read(Request $request, string $workspace, ?string $id, WorkspaceContext $context, ObjectPurpose $service, BusinessContext $business): mixed
+    public function applicationIndex(Request $request, string $workspace, WorkspaceContext $context, ObjectPurpose $purpose, BusinessContext $business): mixed
+    {
+        return $this->read($request, $workspace, null, $context, $purpose, $business, true);
+    }
+
+    public function applicationShow(Request $request, string $workspace, string $purpose, WorkspaceContext $context, ObjectPurpose $service, BusinessContext $business): mixed
+    {
+        return $this->read($request, $workspace, $purpose, $context, $service, $business, true);
+    }
+
+    private function read(Request $request, string $workspace, ?string $id, WorkspaceContext $context, ObjectPurpose $service, BusinessContext $business, bool $application = false): mixed
     {
         $effective = $this->instant($request->query('effective_at'), 'effective_at');
         $known = $this->instant($request->query('known_at'), 'known_at');
 
-        return $this->guard(function () use ($request, $workspace, $id, $context, $service, $business, $effective, $known) {
-            return $context->run($request->user(), $workspace, function (Workspace $active) use ($request, $id, $service, $business, $effective, $known) {
+        return $this->guard(function () use ($request, $workspace, $id, $context, $service, $business, $effective, $known, $application) {
+            return $context->run($request->user(), $workspace, function (Workspace $active) use ($request, $id, $service, $business, $effective, $known, $application) {
                 $projection = $service->projection($request, $active, $id, $effective, $known);
-                if ($request->expectsJson()) {
-                    return response()->json($projection);
+                if ($request->expectsJson() && ! $application) {
+                    return response()->json($projection)->header('Cache-Control', 'no-store');
                 }
 
-                return Inertia::render('Business/ObjectPurposes', ['workspace' => ['public_id' => $active->public_id, 'name' => $active->name],
-                    'projection' => $projection, 'selectedPurpose' => $id, 'business' => $business->projection($request, $active)]);
+                return $application
+                    ? (new SpaPage(['workspace' => ['public_id' => $active->public_id, 'name' => $active->name],
+                        'projection' => $projection, 'selectedPurpose' => $id, 'business' => $business->projection($request, $active)]))->resource($request)
+                    : new SpaPage([]);
             }, $request);
         });
     }

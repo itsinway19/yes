@@ -10,6 +10,7 @@ import { goalsRoutes } from '../goals-spa/routes';
 import { exposeGoalsProof } from '../goals-spa/proof';
 import { workspaceRoutes } from '../workspaces/routes';
 import { businessContextRoutes } from '../business-context/routes';
+import { objectPurposeRoutes } from '../object-purpose/routes';
 import { locale, localeBusy, switchLocale } from './locale';
 const root = (document.getElementById('application-spa') ?? document.getElementById('goals-spa'))!;
 watch(status, value => { root.dataset.state = value; }, { immediate: true, flush: 'sync' });
@@ -21,7 +22,7 @@ const load = (to: RouteLocationNormalized, passive: boolean) => {
     if (!activePresentation) { status.value = 'unavailable'; return; }
     return activePresentation.load(to, passive);
 };
-const router = createApplicationRouter([...workspaceRoutes, ...goalsRoutes, ...businessContextRoutes], {
+const router = createApplicationRouter([...workspaceRoutes, ...goalsRoutes, ...businessContextRoutes, ...objectPurposeRoutes], {
     suspend: clearDisplay,
     load,
     unavailable: () => { status.value = 'unavailable'; },
@@ -36,6 +37,7 @@ const app = createApp(defineComponent({ setup: () => () => h('div', { dir: local
         bootstrap.application ? h(RouterLink, { to: '/workspaces' }, () => copy('أنشطتي', 'My businesses')) : null,
         bootstrap.application && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/business` }, () => copy('سياق النشاط', 'Business context')) : null,
         bootstrap.application && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/goals` }, () => copy('الأهداف', 'Goals')) : null,
+        bootstrap.application && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/object-purposes` }, () => copy('الغرض الإعلاني', 'Object purpose')) : null,
         bootstrap.application ? h('a', { href: '/profile' }, copy('الحساب', 'Account')) : null,
         bootstrap.application ? h('a', { href: '/security/devices' }, copy('الأمان', 'Security')) : null,
         bootstrap.application ? h('button', { disabled: localeBusy.value || status.value !== 'ready', 'data-application': 'locale', onClick: async () => { localeError.value = false; try { await switchLocale(); } catch { localeError.value = true; } } }, locale.value === 'ar' ? 'English' : 'العربية') : null,

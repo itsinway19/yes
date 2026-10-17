@@ -165,6 +165,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/workspaces/{workspace}/object-purposes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readObjectPurposeProjection"];
+        put?: never;
+        /** @description Original fresh-authenticated Meta-only HTTP admission edge and canonical SQL writer. Command identity is idempotent; uncertain delivery is never automatically replayed or replaced. */
+        post: operations["declareObjectPurpose"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace}/object-purposes/{purpose}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readSelectedObjectPurposeProjection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace}/object-purposes/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readObjectPurposeContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace}/object-purposes/{purpose}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readSelectedObjectPurposeContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace}/object-purposes/{purpose}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Original fresh-authenticated Meta-only HTTP admission edge and canonical SQL writer. Command identity is idempotent; uncertain delivery is never automatically replayed or replaced. */
+        post: operations["reviseObjectPurpose"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/locale": {
         parameters: {
             query?: never;
@@ -404,6 +486,152 @@ export interface components {
             };
             version: number;
         };
+        PurposeObject: {
+            provider: string;
+            account_namespace: string;
+            account_id: string;
+            object_kind: string;
+            object_id: string;
+            incarnation: string | null;
+        };
+        MetaPurposeObject: components["schemas"]["PurposeObject"] & ({
+            /** @constant */
+            provider: "meta";
+            /** @constant */
+            account_namespace: "meta_ads_account";
+            account_id: string;
+            /** @enum {unknown} */
+            object_kind: "campaign" | "ad_set";
+            object_id: string;
+        } & {
+            [key: string]: unknown;
+        });
+        PurposeSnapshot: {
+            meaning: string;
+            qualifications: string | null;
+            phase: string | null;
+            included_objects: components["schemas"]["PurposeObject"][];
+            excluded_objects: components["schemas"]["PurposeObject"][];
+            provenance: {
+                speaker: string | null;
+                statement_at: string | null;
+                source: string;
+                identity_basis: string;
+                authority_basis: string;
+                historical_support: string | null;
+                effective_basis: string;
+            };
+            dtm: {
+                mode: string;
+                version: number;
+                countries: string[];
+                subset: string[];
+                statement: string;
+            } | null;
+            intent: {
+                version: number;
+                value: components["schemas"]["CurrentIntentValue"];
+                statement: string;
+            } | null;
+            end_condition: string | null;
+            limitations: string | null;
+            conflicts: string[];
+        };
+        PurposeRevision: {
+            /** Format: uuid */
+            purpose_id: string;
+            /** Format: uuid */
+            revision_id: string;
+            version: number;
+            operation: string;
+            effective_from: string;
+            effective_until: string | null;
+            accepted_at: string;
+            actor_user_id: number;
+            actor_generation: number;
+            ownership_version: number;
+            snapshot: components["schemas"]["PurposeSnapshot"];
+            reason: string | null;
+            supersedes_revision_id: string | null;
+            affected_revision_ids: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        PurposeItem: {
+            /** Format: uuid */
+            purpose_id: string;
+            head_version: number;
+            state: string;
+            applicable: components["schemas"]["PurposeRevision"] | null;
+            history: components["schemas"]["PurposeRevision"][];
+            relationship_revalidation_required: boolean;
+            continuity: string;
+            dtm_standing: string;
+            scheduled_revision_ids: string[];
+        };
+        PurposeProjection: {
+            state: string;
+            items: components["schemas"]["PurposeItem"][];
+            current_context_version: number;
+            latest_dtm_event_context_version: number;
+            effective_at: string;
+            known_at: string;
+        };
+        ObjectPurposeData: {
+            workspace: {
+                /** Format: uuid */
+                public_id: string;
+                name: string;
+            };
+            projection: components["schemas"]["PurposeProjection"];
+            selectedPurpose: string | null;
+            business: components["schemas"]["BusinessContextProjection"];
+        };
+        ObjectPurposeResource: {
+            data: components["schemas"]["ObjectPurposeData"];
+            /** @enum {unknown} */
+            locale: "ar" | "en";
+            visibility: components["schemas"]["Visibility"];
+        };
+        PurposeCommand: {
+            /** Format: uuid */
+            command_id: string;
+            purpose_id: string | null;
+            expected_version: number;
+            /** @enum {unknown} */
+            operation: "declare" | "replace" | "correct" | "withdraw";
+            declaration: components["schemas"]["MetaPurposeSnapshot"] | null;
+            effective_from: string | null;
+            effective_until: string | null;
+            supersedes_revision_id: string | null;
+            affected_revision_ids: string[];
+            correction_reason: string | null;
+            withdrawal_reason: string | null;
+            confirmations: {
+                meaning: boolean;
+                scope: boolean;
+                authority: boolean;
+                identity: boolean;
+                standing: boolean;
+                dtm: boolean;
+                intent: boolean;
+                historical: boolean;
+                transition: boolean;
+            };
+        };
+        PurposeAcknowledgement: {
+            /** Format: uuid */
+            purpose_id: string;
+            /** Format: uuid */
+            revision_id: string;
+            version: number;
+        };
+        MetaPurposeSnapshot: components["schemas"]["PurposeSnapshot"] & ({
+            included_objects: components["schemas"]["MetaPurposeObject"][];
+            excluded_objects: components["schemas"]["MetaPurposeObject"][];
+        } & {
+            [key: string]: unknown;
+        });
     };
     responses: never;
     parameters: never;
@@ -1422,6 +1650,535 @@ export interface operations {
             };
             /** @description Original technical input-size boundary; preserve the full draft. */
             413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readObjectPurposeProjection: {
+        parameters: {
+            query?: {
+                /** @description Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid. */
+                effective_at?: string;
+                /** @description Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid. */
+                known_at?: string;
+            };
+            header?: never;
+            path: {
+                workspace: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurposeProjection"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unknown exact purpose; never an empty successful read. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    declareObjectPurpose: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurposeCommand"];
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurposeAcknowledgement"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readSelectedObjectPurposeProjection: {
+        parameters: {
+            query?: {
+                /** @description Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid. */
+                effective_at?: string;
+                /** @description Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid. */
+                known_at?: string;
+            };
+            header?: never;
+            path: {
+                workspace: string;
+                purpose: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurposeProjection"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unknown exact purpose; never an empty successful read. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readObjectPurposeContext: {
+        parameters: {
+            query?: {
+                /** @description Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid. */
+                effective_at?: string;
+                /** @description Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid. */
+                known_at?: string;
+            };
+            header?: {
+                "X-Builderad-Passive"?: "1";
+                "X-Builderad-Witness"?: "1";
+            };
+            path: {
+                workspace: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectPurposeResource"] | components["schemas"]["GoalsWitness"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unknown exact purpose; never an empty successful read. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readSelectedObjectPurposeContext: {
+        parameters: {
+            query?: {
+                /** @description Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid. */
+                effective_at?: string;
+                /** @description Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid. */
+                known_at?: string;
+            };
+            header?: {
+                "X-Builderad-Passive"?: "1";
+                "X-Builderad-Witness"?: "1";
+            };
+            path: {
+                workspace: string;
+                purpose: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectPurposeResource"] | components["schemas"]["GoalsWitness"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unknown exact purpose; never an empty successful read. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reviseObjectPurpose: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace: string;
+                purpose: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurposeCommand"];
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurposeAcknowledgement"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

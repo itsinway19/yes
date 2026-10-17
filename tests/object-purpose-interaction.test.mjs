@@ -20,7 +20,9 @@ export const useForm = input => {
  const keys = Object.keys(input); const form = reactive({ ...input, errors: {}, processing: false, recentlySuccessful: false,
  post(url, options) { globalThis.__purposeTest.posts.push({ url, payload: JSON.parse(JSON.stringify(Object.fromEntries(keys.map(k => [k, form[k]])))), options }); }
  }); globalThis.__purposeTest.forms.push(form); return form;
-};`);
+};
+export const RouterLink=Link,useRoute=()=>({params:{workspace:'business'},query:{},fullPath:'/workspaces/business/object-purposes'}),unresolved=()=>undefined,restore=()=>undefined,remember=()=>{},forget=()=>{},retryPurpose=()=>{};
+export const refreshPurpose=(route,options)=>router.reload(options),submitPurpose=(workspace,payload,options)=>router.post(workspace,payload,options);`);
 const replacements = { vue: import.meta.resolve('vue'), '@inertiajs/vue3': inertia };
 function rewrite(code, extra = {}) {
     for (const [from, to] of Object.entries({ ...replacements, ...extra })) {
@@ -38,7 +40,7 @@ async function compile(path, extra = {}) {
     const { descriptor } = parse(await readFile(new URL('../resources/js/' + path, import.meta.url), 'utf8'));
     const source = compileScript(descriptor, { id: 'dtm-test', inlineTemplate: true }).content;
     const url = moduleUrl(rewrite(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText,
-        { '@/localization/business': copy, ...extra }));
+        { '@/localization/business': copy, '@/localization/businessCopy': neutralCopy, '@/spa/locale': moduleUrl(`import {computed} from ${JSON.stringify(import.meta.resolve('vue'))};export const locale=computed(()=>globalThis.__purposeTest.page.locale);`), 'vue-router': inertia, '@/object-purpose/commands': inertia, ...extra }));
     return { url, component: (await import(url)).default };
 }
 function element(tag, text = '') {
@@ -148,7 +150,7 @@ test('explicit end removal clears standing confirmation and must be reconfirmed 
  await confirm(v); await check(v,'confirm-transition'); submit(v); assert.equal(state.posts.length,1); assert.equal(state.posts[0].payload.effective_until,null); v.stop();
 });
 const layout = moduleUrl(`import { h } from ${JSON.stringify(import.meta.resolve('vue'))}; export default {render(){return h('main',this.$slots.default?.());}};`);
-const purposePage = await compile('Pages/Business/ObjectPurposes.vue',{'@/Layouts/AdvertiserLayout.vue':layout,'@/Components/Business/ObjectPurposeEditor.vue':editor.url});
+const purposePage = await compile('object-purpose/PurposeView.vue',{'@/Components/Business/ObjectPurposeEditor.vue':editor.url});
 test('current DTM labels warn only for actual drift and historical references stay historical in both languages',async()=>{
  for (const mode of ['current_alignment','current_dependency','historical_attestation']) {
   const snapshot=retainedSnapshot(); snapshot.dtm={mode,version:7,countries:['SA'],subset:[],statement:'Exact retained relationship'};
@@ -181,4 +183,14 @@ test('DTM draft currentness follows DTM events instead of unrelated Context vers
  state.posts[0].options.onFinish(); await nextTick();
  v.props.dtmTransitionVersion=9; v.props.contextVersion=9; await nextTick();
  assert.equal(find(v,'confirm-dtm').checked,false); submit(v); assert.equal(state.posts.length,1); assert.match(text(v.root),/reference changed/); v.stop();
+});
+
+test('acknowledged Purpose cannot submit again before its canonical replacement presentation settles',async()=>{
+ const v=mount({purpose:retainedPurpose()});
+ try{
+  await input(v,'operation','correct');await input(v,'meaning','Acknowledged correction');await input(v,'reason','Explicit wording correction');await confirm(v);await check(v,'confirm-transition');submit(v);
+  assert.equal(state.posts.length,1);state.posts[0].options.onSuccess({purpose_id:'purpose-1',revision_id:'revision-2',version:2});state.posts[0].options.onFinish();await nextTick();
+  assert.equal(find(v,'save').props.disabled,true,'An acknowledged but unsettled baseline must not admit another command');
+  await input(v,'meaning','Too early replacement');await confirm(v);await check(v,'confirm-transition');submit(v);assert.equal(state.posts.length,1);
+ }finally{v.stop();}
 });

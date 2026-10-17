@@ -1456,6 +1456,771 @@
         }
       }
     },
+    "/workspaces/{workspace}/object-purposes": {
+      "get": {
+        "operationId": "readObjectPurposeProjection",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "effective_at",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid."
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurposeProjection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown exact purpose; never an empty successful read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "declareObjectPurpose",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurposeCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurposeAcknowledgement"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Original fresh-authenticated Meta-only HTTP admission edge and canonical SQL writer. Command identity is idempotent; uncertain delivery is never automatically replayed or replaced."
+      }
+    },
+    "/workspaces/{workspace}/object-purposes/{purpose}": {
+      "get": {
+        "operationId": "readSelectedObjectPurposeProjection",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "purpose",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "effective_at",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid."
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurposeProjection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown exact purpose; never an empty successful read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace}/object-purposes/context": {
+      "get": {
+        "operationId": "readObjectPurposeContext",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "effective_at",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid."
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid."
+          },
+          {
+            "in": "header",
+            "name": "X-Builderad-Passive",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Builderad-Witness",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ObjectPurposeResource"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GoalsWitness"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown exact purpose; never an empty successful read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace}/object-purposes/{purpose}/context": {
+      "get": {
+        "operationId": "readSelectedObjectPurposeContext",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "purpose",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "effective_at",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid."
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid."
+          },
+          {
+            "in": "header",
+            "name": "X-Builderad-Passive",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Builderad-Witness",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ObjectPurposeResource"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GoalsWitness"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown exact purpose; never an empty successful read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace}/object-purposes/{purpose}/revisions": {
+      "post": {
+        "operationId": "reviseObjectPurpose",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "purpose",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurposeCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurposeAcknowledgement"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Original fresh-authenticated Meta-only HTTP admission edge and canonical SQL writer. Command identity is idempotent; uncertain delivery is never automatically replayed or replaced."
+      }
+    },
     "/locale": {
       "post": {
         "operationId": "setApplicationLocale",
@@ -2522,6 +3287,763 @@
           "version"
         ],
         "additionalProperties": false
+      },
+      "PurposeObject": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "account_namespace": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "object_kind": {
+            "type": "string"
+          },
+          "object_id": {
+            "type": "string"
+          },
+          "incarnation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "provider",
+          "account_namespace",
+          "account_id",
+          "object_kind",
+          "object_id",
+          "incarnation"
+        ],
+        "additionalProperties": false
+      },
+      "MetaPurposeObject": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PurposeObject"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "meta"
+              },
+              "account_namespace": {
+                "const": "meta_ads_account"
+              },
+              "account_id": {
+                "type": "string",
+                "pattern": "^[0-9]{1,40}$"
+              },
+              "object_kind": {
+                "enum": [
+                  "campaign",
+                  "ad_set"
+                ]
+              },
+              "object_id": {
+                "type": "string",
+                "pattern": "^[0-9]{1,40}$"
+              }
+            },
+            "required": [
+              "provider",
+              "account_namespace",
+              "account_id",
+              "object_kind",
+              "object_id"
+            ],
+            "additionalProperties": true
+          }
+        ]
+      },
+      "PurposeSnapshot": {
+        "type": "object",
+        "properties": {
+          "meaning": {
+            "type": "string"
+          },
+          "qualifications": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "included_objects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PurposeObject"
+            }
+          },
+          "excluded_objects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PurposeObject"
+            }
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "speaker": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "statement_at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "source": {
+                "type": "string"
+              },
+              "identity_basis": {
+                "type": "string"
+              },
+              "authority_basis": {
+                "type": "string"
+              },
+              "historical_support": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "effective_basis": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "speaker",
+              "statement_at",
+              "source",
+              "identity_basis",
+              "authority_basis",
+              "historical_support",
+              "effective_basis"
+            ],
+            "additionalProperties": false
+          },
+          "dtm": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "countries": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "subset": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "statement": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "version",
+                  "countries",
+                  "subset",
+                  "statement"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "intent": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "value": {
+                    "$ref": "#/components/schemas/CurrentIntentValue"
+                  },
+                  "statement": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "version",
+                  "value",
+                  "statement"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "end_condition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limitations": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "meaning",
+          "qualifications",
+          "phase",
+          "included_objects",
+          "excluded_objects",
+          "provenance",
+          "dtm",
+          "intent",
+          "end_condition",
+          "limitations",
+          "conflicts"
+        ],
+        "additionalProperties": false
+      },
+      "PurposeRevision": {
+        "type": "object",
+        "properties": {
+          "purpose_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operation": {
+            "type": "string"
+          },
+          "effective_from": {
+            "type": "string"
+          },
+          "effective_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "accepted_at": {
+            "type": "string"
+          },
+          "actor_user_id": {
+            "type": "integer"
+          },
+          "actor_generation": {
+            "type": "integer"
+          },
+          "ownership_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/PurposeSnapshot"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "supersedes_revision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "affected_revision_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "purpose_id",
+          "revision_id",
+          "version",
+          "operation",
+          "effective_from",
+          "effective_until",
+          "accepted_at",
+          "actor_user_id",
+          "actor_generation",
+          "ownership_version",
+          "snapshot",
+          "reason",
+          "supersedes_revision_id",
+          "affected_revision_ids"
+        ],
+        "additionalProperties": true
+      },
+      "PurposeItem": {
+        "type": "object",
+        "properties": {
+          "purpose_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "head_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "state": {
+            "type": "string"
+          },
+          "applicable": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PurposeRevision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PurposeRevision"
+            }
+          },
+          "relationship_revalidation_required": {
+            "type": "boolean"
+          },
+          "continuity": {
+            "type": "string"
+          },
+          "dtm_standing": {
+            "type": "string"
+          },
+          "scheduled_revision_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "purpose_id",
+          "head_version",
+          "state",
+          "applicable",
+          "history",
+          "relationship_revalidation_required",
+          "continuity",
+          "dtm_standing",
+          "scheduled_revision_ids"
+        ],
+        "additionalProperties": false
+      },
+      "PurposeProjection": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PurposeItem"
+            }
+          },
+          "current_context_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "latest_dtm_event_context_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "effective_at": {
+            "type": "string"
+          },
+          "known_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "items",
+          "current_context_version",
+          "latest_dtm_event_context_version",
+          "effective_at",
+          "known_at"
+        ],
+        "additionalProperties": false
+      },
+      "ObjectPurposeData": {
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "type": "object",
+            "properties": {
+              "public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "public_id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "projection": {
+            "$ref": "#/components/schemas/PurposeProjection"
+          },
+          "selectedPurpose": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "business": {
+            "$ref": "#/components/schemas/BusinessContextProjection"
+          }
+        },
+        "required": [
+          "workspace",
+          "projection",
+          "selectedPurpose",
+          "business"
+        ],
+        "additionalProperties": false
+      },
+      "ObjectPurposeResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ObjectPurposeData"
+          },
+          "locale": {
+            "enum": [
+              "ar",
+              "en"
+            ]
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/Visibility"
+          }
+        },
+        "required": [
+          "data",
+          "locale",
+          "visibility"
+        ],
+        "additionalProperties": false
+      },
+      "PurposeCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "purpose_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operation": {
+            "enum": [
+              "declare",
+              "replace",
+              "correct",
+              "withdraw"
+            ]
+          },
+          "declaration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetaPurposeSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effective_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "supersedes_revision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "affected_revision_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "correction_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "withdrawal_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confirmations": {
+            "type": "object",
+            "properties": {
+              "meaning": {
+                "type": "boolean"
+              },
+              "scope": {
+                "type": "boolean"
+              },
+              "authority": {
+                "type": "boolean"
+              },
+              "identity": {
+                "type": "boolean"
+              },
+              "standing": {
+                "type": "boolean"
+              },
+              "dtm": {
+                "type": "boolean"
+              },
+              "intent": {
+                "type": "boolean"
+              },
+              "historical": {
+                "type": "boolean"
+              },
+              "transition": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "meaning",
+              "scope",
+              "authority",
+              "identity",
+              "standing",
+              "dtm",
+              "intent",
+              "historical",
+              "transition"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "command_id",
+          "purpose_id",
+          "expected_version",
+          "operation",
+          "declaration",
+          "effective_from",
+          "effective_until",
+          "supersedes_revision_id",
+          "affected_revision_ids",
+          "correction_reason",
+          "withdrawal_reason",
+          "confirmations"
+        ],
+        "additionalProperties": false
+      },
+      "PurposeAcknowledgement": {
+        "type": "object",
+        "properties": {
+          "purpose_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "purpose_id",
+          "revision_id",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "MetaPurposeSnapshot": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PurposeSnapshot"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "included_objects": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/MetaPurposeObject"
+                }
+              },
+              "excluded_objects": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/MetaPurposeObject"
+                }
+              }
+            },
+            "required": [
+              "included_objects",
+              "excluded_objects"
+            ],
+            "additionalProperties": true
+          }
+        ]
       }
     }
   }
