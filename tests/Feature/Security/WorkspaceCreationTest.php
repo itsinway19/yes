@@ -9,7 +9,6 @@ use App\Security\LifecycleAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class WorkspaceCreationTest extends TestCase
@@ -56,17 +55,15 @@ class WorkspaceCreationTest extends TestCase
 
         $this->withCredentials()->getJson('/workspaces/'.$workspace->public_id.'/foundation')->assertOk();
         $this->get('/workspaces/'.$workspace->public_id)->assertRedirect(route('workspaces.business.edit', $workspace->public_id));
-        $this->get('/workspaces')->assertInertia(fn (Assert $page) => $page
-            ->component('Business/Index')
-            ->has('workspaces', 1)
-            ->where('workspaces.0.public_id', $workspace->public_id));
+        $this->getJson('/workspaces')->assertOk()
+            ->assertJsonCount(1, 'data.workspaces')
+            ->assertJsonPath('data.workspaces.0.public_id', $workspace->public_id);
 
         $owner->table('security_action_grants')->where('workspace_id', $workspace->id)
             ->update(['status' => 'revoked', 'revoked_at' => now()]);
         $this->get('/workspaces/'.$workspace->public_id)->assertForbidden();
         $this->post('/workspaces', ['name' => 'North Region', 'slug' => 'north-region'])->assertForbidden();
-        $this->get('/workspaces')->assertInertia(fn (Assert $page) => $page
-            ->component('Business/Index')->has('workspaces', 0));
+        $this->getJson('/workspaces')->assertOk()->assertJsonCount(0, 'data.workspaces');
 
         $other = User::factory()->create();
         $this->actingAs($other)->withCredentials()

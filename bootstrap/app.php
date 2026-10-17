@@ -6,6 +6,7 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ResolveLocale;
 use App\Http\Middleware\SanitizeProviderCallback;
 use App\Http\Middleware\SelectSessionContext;
+use App\Http\Middleware\SpaPresentation;
 use App\Http\Middleware\StartIdentitySession;
 use App\Security\BreachCheckUnavailable;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
@@ -38,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             CaptureIdentityInput::class,
             AdmitIdentityDocument::class,
             ResolveLocale::class,
+            SpaPresentation::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);

@@ -1,7 +1,7 @@
 import '../css/app.css';
 import './bootstrap';
 
-import { createInertiaApp, usePage } from '@inertiajs/vue3';
+import { createInertiaApp, router, usePage } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, DefineComponent, h, watch } from 'vue';
 import { createI18n } from 'vue-i18n';
@@ -10,7 +10,8 @@ import { applyDocumentLocale } from './localization/documentLocale';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import { installClientVisibility } from './clientVisibility';
 import { createLogoutOperation, logoutKey } from './logout';
-import { installIdentityProtocol, attachIdentityPage, onIdentityRecovered } from './identityProtocol';
+import { installIdentityProtocol, attachIdentityPage, onIdentityRecovered, captureIdentity, closeIdentityDocument } from './identityProtocol';
+import { applicationDestination } from './spa/destination';
 import { installNavigationSettlement, beginNavigationSwap, confirmNavigationSwap, abortNavigationSwap } from './navigationSettlement';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Builderad';
@@ -19,6 +20,16 @@ installIdentityProtocol();
 const visibility = installClientVisibility();
 onIdentityRecovered(visibility.identityRecovered);
 const logout = createLogoutOperation(visibility.closeDocument);
+router.on('httpException', event => {
+    const destination = event.detail.response.headers['x-builderad-document-location'];
+    if (typeof destination !== 'string') return;
+    const target = applicationDestination(destination, window.location.origin, captureIdentity().binding.boundary);
+    event.preventDefault();
+    closeIdentityDocument();
+    visibility.closeDocument();
+    document.getElementById('logout-status')?.setAttribute('hidden', '');
+    window.location.assign(target);
+});
 
 function syncLocale(value: unknown) {
     const locale = supportedLocale(value);

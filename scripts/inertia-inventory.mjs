@@ -5,6 +5,8 @@ import { execFileSync } from 'node:child_process';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = path => readFile(resolve(root, path), 'utf8');
+const migration = JSON.parse(await read('contracts/spa-migration.json'));
+const migratedRoutes = new Map(migration.journeys.flatMap(journey => journey.routes.map(route => [route, journey])));
 async function walk(directory) {
     const entries = await readdir(resolve(root, directory), { withFileTypes: true });
     return (await Promise.all(entries.map(entry => entry.isDirectory()
@@ -76,7 +78,8 @@ for (const path of (await walk('routes')).filter(path => path.endsWith('.php')))
             action: controller ? `${controller}@${method}` : 'Closure',
             businessOwners: owner ? [...owner.source.matchAll(/use\s+(App\\(?:Business|Commercial|Foundation|Security|Sources|Providers)\\[^;]+);/g)].map(imported => imported[1]) : [],
             pages,
-            legacyBehavior: /Inertia::(?:render|location|clearHistory|encryptHistory)/.test(body) ? 'INERTIA' : 'HTTP_OR_DELEGATED',
+            legacyBehavior: /Inertia::(?:render|location|clearHistory|encryptHistory)/.test(body) ? 'INERTIA'
+                : /new SpaPage\(/.test(body) ? 'SPA_RESOURCE' : 'HTTP_OR_DELEGATED',
             spaBoundary: controller?.endsWith('GoalsSpaController') ? 'OPT_IN_EXISTING_GOALS' : 'NOT_MIGRATED',
             apiContract: /GoalsSpaController|AdvertiserGoalPreferencesController/.test(controller ?? '') ? 'contracts/goals.openapi.json' : 'NOT_CONTRACTED',
         });
@@ -140,6 +143,11 @@ const matrixRoutes = Object.keys(runtime).length ? [...new Map(Object.values(run
 const testSources = await Promise.all((await walk('tests')).filter(path => /\.(php|mjs)$/.test(path))
     .map(async path => ({ path, source: await read(path) })));
 for (const route of matrixRoutes) {
+    route.migration = migratedRoutes.get(`${route.method.split('|')[0]} ${route.uri}`) ?? null;
+    if (route.migration) {
+        route.spaBoundary = route.migration.spaBoundary;
+        route.apiContract = route.migration.apiContract;
+    }
     const controller = route.action.split('\\').at(-1).split('@')[0].replace(/Controller$/, '');
     route.testLeads = testSources.filter(test => (controller !== 'Closure' && test.path.includes(controller))
         || (route.name && test.source.includes(route.name)) || test.source.includes(`'${route.uri}'`)
@@ -151,23 +159,28 @@ const report = {
         ? 'SOURCE_AND_RUNTIME_ROUTE_REGISTRATION; both Goals opt-in states recorded. Runtime middleware names establish registration, not authorization behavior or passing coverage. Test references are discovery leads.'
         : 'STATIC_SOURCE_ONLY; runtime expansion pending. Includes conditional routes, not a claim that they are enabled. Test references are discovery leads, not passing evidence.',
     routes: matrixRoutes, sourceDeclarations: routes, runtime, imports: edges, support,
+    summary: {
+        registeredRoutes: matrixRoutes.length,
+        legacyRenderRoutes: matrixRoutes.filter(route => route.pages.length).length,
+        locallyAcceptedJourneys: migration.journeys.filter(journey => journey.status === 'LOCAL_JOURNEY_ACCEPTED').map(journey => journey.id),
+    },
     unresolved: ['Runtime authorization behavior and route constraints', 'Delegated/dynamic render calls', 'Behavioral browser parity', 'Nonliteral route declarations'],
 };
 const json = JSON.stringify(report, null, 2) + '\n';
 const escape = value => String(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
 const rows = matrixRoutes.map(route => [
     `${route.method} ${route.uri} (${route.source})`,
-    route.pages.join(', ') || route.name || route.action,
+    route.migration?.journey || route.pages.join(', ') || route.name || route.action,
     route.runtime?.goalsEnabled.flatMap(entry => entry.middleware).join('; ') || route.authorization.join('; ') || 'web; inspect action',
-    route.action,
+    route.migration ? route.migration.businessOwners.join(', ') : route.action,
     route.spaBoundary,
     route.apiContract,
-    route.testLeads.length ? 'UNVERIFIED: ' + route.testLeads.join(', ') : 'PENDING: no direct test reference found',
-    route.spaBoundary === 'OPT_IN_EXISTING_GOALS' ? 'OPT_IN; legacy retained' : 'REMAINING',
+    route.migration ? route.migration.tests.join(', ') : route.testLeads.length ? 'UNVERIFIED: ' + route.testLeads.slice(0, 4).join(', ') + (route.testLeads.length > 4 ? '; more in JSON' : '') : 'PENDING: no direct test reference found',
+    route.migration?.status ?? (route.spaBoundary === 'OPT_IN_EXISTING_GOALS' ? 'OPT_IN; legacy retained' : 'REMAINING'),
 ].map(escape).join(' | '));
 const markdown = '# Inertia retirement migration matrix\n\n' + report.evidence + '\n\n'
-    + 'Generated with `node scripts/inertia-inventory.mjs`. Full business-owner imports, component dependency graph and support/test discovery are in `inertia-inventory.json`. No route is accepted by this inventory.\n\n'
-    + '| Legacy Route | User Journey | Authorization (static expressions) | Business Owner / HTTP owner | SPA Route / HTTP Boundary | API Contract | Tests | Status |\n'
+    + 'Generated with `node scripts/inertia-inventory.mjs --runtime`. Full business-owner imports, component dependency graph and test discovery are in `inertia-inventory.json`. Local journey acceptance is explicitly recorded in `contracts/spa-migration.json`; discovery alone accepts nothing. Final Foundation/CI and release acceptance remain separate.\n\n'
+    + '| Legacy Route | User Journey | Authorization (registered middleware) | Business Owner / HTTP owner | SPA Route / HTTP Boundary | API Contract | Tests | Status |\n'
     + '|---|---|---|---|---|---|---|---|\n'
     + rows.map(row => `| ${row} |`).join('\n') + '\n';
 for (const [path, content] of [['docs/inertia-inventory.json', json], ['docs/INERTIA_RETIREMENT_MATRIX.md', markdown]]) {

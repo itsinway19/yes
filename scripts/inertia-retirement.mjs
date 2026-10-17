@@ -9,6 +9,13 @@ const marker = /inertia/gi;
 const directories = ['app', 'bootstrap', 'config', 'routes', 'resources', 'compat'];
 const manifests = ['package.json', 'package-lock.json', 'composer.json', 'composer.lock'];
 
+export function referenceCount(path, source) {
+    if (path.startsWith('resources/js/api/generated/') && path.endsWith('.d.ts')) {
+        source = source.replace(/\/\*\*[\s\S]*?\*\//g, '');
+    }
+    return [...source.matchAll(marker)].length;
+}
+
 export async function inventory() {
     const paths = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--',
         ...directories, ...manifests, 'vite*.js', 'vite*.ts', 'vite*.mjs'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean);
@@ -23,7 +30,7 @@ export async function inventory() {
             source = JSON.stringify(Object.fromEntries(['dependencies', 'devDependencies', 'overrides', 'require', 'require-dev']
                 .filter(key => manifest[key]).map(key => [key, manifest[key]])));
         }
-        const count = [...source.matchAll(marker)].length;
+        const count = referenceCount(path, source);
         if (count) result[path] = count;
     }
     return result;

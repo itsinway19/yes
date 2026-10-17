@@ -1,0 +1,38 @@
+{
+  "basis": "Owner-authorized definitive retirement. Local journey acceptance is not final Foundation, CI or release acceptance.",
+  "journeys": [
+    {
+      "id": "workspace-selection",
+      "journey": "Choose an authorized business and reassess eligible owner authority",
+      "routes": ["GET /workspaces", "POST /workspaces/{workspace}/reassess-owner-grant"],
+      "spaBoundary": "/workspaces; reassessment remains an existing Laravel effect endpoint",
+      "businessOwners": ["App\\Security\\WorkspaceAuthority", "App\\Security\\GrantAuthority"],
+      "apiContract": "contracts/application.openapi.json",
+      "tests": ["WorkspaceSpaIntegrationTest", "WorkspaceCreationTest", "OwnerGrantReassessmentTest", "tests/Support/workspace-spa-browser.mjs"],
+      "status": "LOCAL_JOURNEY_ACCEPTED",
+      "cutover": "WorkspaceController@index serves only the unified SPA shell/resource. Legacy list rendering is unreachable. Links from remaining legacy pages cross through native document navigation. Selected business/context/source destinations remain native until their own cutover."
+    },
+    {
+      "id": "business-creation",
+      "journey": "Create one classified business, retain uncertain original command, and continue to Goals",
+      "routes": ["GET /business/start", "POST /business/start"],
+      "spaBoundary": "/business/start; Laravel retains the atomic writer and next-journey redirect",
+      "businessOwners": ["App\\Security\\WorkspaceAuthority", "App\\Business\\BusinessContext"],
+      "apiContract": "contracts/application.openapi.json",
+      "tests": ["WorkspaceSpaIntegrationTest", "BusinessFoundationTest", "tests/application-api-client.test.mjs", "tests/Support/workspace-spa-browser.mjs"],
+      "status": "LOCAL_JOURNEY_ACCEPTED",
+      "cutover": "BusinessContextController@start serves only the unified SPA. The previous Context creation presentation is unreachable. The existing creation key, SQL writer, transaction and non-JSON redirects are preserved. Goals continuation still uses its canonical legacy document until its own migration; this is not acceptance of the whole advertiser group."
+    },
+    {
+      "id": "locale-command",
+      "journey": "Switch the application language using the existing encrypted locale cookie",
+      "routes": ["POST /locale"],
+      "spaBoundary": "Shared Laravel HTTP command; no additional Vue application",
+      "businessOwners": ["App\\Http\\Controllers\\LocaleController", "App\\Http\\Middleware\\ResolveLocale"],
+      "apiContract": "contracts/application.openapi.json",
+      "tests": ["LocaleTest", "WorkspaceSpaIntegrationTest", "tests/Support/workspace-spa-browser.mjs"],
+      "status": "SHARED_HTTP_OWNER_VERIFIED",
+      "cutover": "JSON acknowledgement added for the unified SPA; existing native/legacy cookie and redirect contracts remain. Arabic/English direction and creation draft retention were exercised in Chromium."
+    }
+  ]
+}

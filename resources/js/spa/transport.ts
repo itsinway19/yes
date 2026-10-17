@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import type { IdentityMetadata } from '../identityProtocol';
 import { remainingSessionLease } from '../sessionLease';
 
-export const bootstrap = JSON.parse(document.getElementById('goals-bootstrap')!.textContent!) as { identity: IdentityMetadata; locale: string };
+export const bootstrap = JSON.parse((document.getElementById('application-bootstrap') ?? document.getElementById('goals-bootstrap'))!.textContent!) as { identity: IdentityMetadata; locale: 'ar' | 'en'; application?: boolean };
 let identity = bootstrap.identity;
 let leaseExpiresAt = Date.now() + identity.leaseMilliseconds;
 export const scope = JSON.stringify(Object.fromEntries(Object.entries(identity.binding).filter(([key]) => key !== 'generation')));

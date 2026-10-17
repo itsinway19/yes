@@ -59,6 +59,8 @@ if ($mode === 'setup') {
     match ($mode) {
         'expire' => $db->table('security_sessions')->where('user_id', $user)->update(['idle_expires_at' => now()->subSecond()]),
         'revoke' => $db->table('security_sessions')->where('user_id', $user)->update(['revoked_at' => now()]),
+        'deny-create' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('action', 'workspace.create')->update(['status' => 'revoked', 'revoked_at' => now()]),
+        'restore-create' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('action', 'workspace.create')->update(['status' => 'active', 'revoked_at' => null]),
         'deny' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('workspace_id', $workspace)->where('action', 'business.context.manage')->update(['status' => 'revoked', 'revoked_at' => now()]),
         'restore' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('workspace_id', $workspace)->where('action', 'business.context.manage')->update(['status' => 'active', 'revoked_at' => null]),
         'deny-view' => $db->table('workspace_memberships')->where('user_id', $user)->where('workspace_id', $workspace)->update(['status' => 'revoked', 'revoked_at' => now()]),

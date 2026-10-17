@@ -34,6 +34,7 @@ const onlyRestoration=process.env.GOALS_SPA_ONLY==='restoration';
 const onlyClosure=process.env.GOALS_SPA_ONLY==='closure';
 const onlyRetention=process.env.GOALS_SPA_ONLY==='retention';
 const onlyFoundation=process.env.GOALS_SPA_ONLY==='foundation';
+const onlyWorkspaces=process.env.GOALS_SPA_ONLY==='workspaces';
 const closure=process.env.GOALS_SPA_CLOSURE==='enabled';
 const result={head:spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim(),selection:process.env.GOALS_SPA_ONLY??'all',kind:'Real Laravel + dedicated Redis + PostgreSQL runtime/RLS + Chromium; synthetic users only',cases:[],wire,errors:[],assets:[],findings:[],unverified:[]};
 let browser;
@@ -44,10 +45,10 @@ function command(mode,who='a'){
 }
 const workspace=fixture.a.workspaces[0].public_id,other=fixture.a.workspaces[1].public_id,foreign=fixture.b.workspaces[0].public_id;
 const target=(mode,id=workspace,review=false)=>mode==='spa'?`/spa/workspaces/${id}/goals${review?'/review':''}`:`/workspaces/${id}/goals`;
-const meta=page=>page.evaluate(()=>{const raw=document.getElementById('goals-bootstrap')?.textContent;return raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);});
+const meta=page=>page.evaluate(()=>{const raw=(document.getElementById('application-bootstrap')??document.getElementById('goals-bootstrap'))?.textContent;return raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);});
 async function post(page,url,body,extra={}){
  return page.evaluate(async({url,body,extra})=>{
-  const raw=document.getElementById('goals-bootstrap')?.textContent;
+  const raw=(document.getElementById('application-bootstrap')??document.getElementById('goals-bootstrap'))?.textContent;
   const identity=raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);
   const response=await fetch(url,{method:'POST',credentials:'same-origin',redirect:'manual',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':identity.csrf,'X-Builderad-Document':identity.receipt,'X-Builderad-Transition':identity.transition,...extra},body:body?JSON.stringify(body):undefined});
   return {status:response.status,body:await response.json()};
@@ -55,7 +56,7 @@ async function post(page,url,body,extra={}){
 }
 async function get(page,url,extra={}){
  return page.evaluate(async({url,extra})=>{
-  const raw=document.getElementById('goals-bootstrap')?.textContent;
+  const raw=(document.getElementById('application-bootstrap')??document.getElementById('goals-bootstrap'))?.textContent;
   const identity=raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);
   const response=await fetch(url,{headers:{Accept:'application/json','X-Builderad-Document':identity.receipt,...extra},cache:'no-store'});
   const text=await response.text();let body;try{body=JSON.parse(text);}catch{body=text;}
@@ -95,8 +96,12 @@ try{
   const {runFoundationCases}=await import('./spa-foundation-browser.mjs');
   await runFoundationCases({browser,check,login,ready,visit,target,until,result,workspace,other,command,run});
  }
- if(!onlyRestoration&&!onlyClosure&&!onlyRetention&&!onlyFoundation)await runGoalsContractCases({browser,check,login,meta,fixture,result});
- for(const mode of onlyRestoration||onlyClosure||onlyRetention||onlyFoundation?[]:['inertia','spa']){
+ if(onlyWorkspaces){
+  const {runWorkspaceCases}=await import('./workspace-spa-browser.mjs');
+  await runWorkspaceCases({browser,check,login,meta,result,fixture,command,run});
+ }
+ if(!onlyRestoration&&!onlyClosure&&!onlyRetention&&!onlyFoundation&&!onlyWorkspaces)await runGoalsContractCases({browser,check,login,meta,fixture,result});
+ for(const mode of onlyRestoration||onlyClosure||onlyRetention||onlyFoundation||onlyWorkspaces?[]:['inertia','spa']){
   const context=await browser.newContext({viewport:{width:1280,height:900}});let page=await context.newPage();page.setDefaultTimeout(15000);
   page.on('dialog',dialog=>dialog.accept());page.on('pageerror',error=>result.errors.push({mode,message:error.message}));
   context.on('response',response=>{if(response.url().includes('/build/')&&response.status()===200)result.assets.push({url:response.url(),status:response.status()});});
@@ -217,7 +222,7 @@ try{
   }
  }
  // Exact HTTP ownership experiment, shared backend and actual cookie delivery.
- for(const mode of onlyRestoration||onlyRetention||onlyFoundation?[]:['inertia','spa']){
+ for(const mode of onlyRestoration||onlyRetention||onlyFoundation||onlyWorkspaces?[]:['inertia','spa']){
   const context=await browser.newContext();const page=await context.newPage();page.on('dialog',d=>d.accept());await login(page,mode);
   await check('reversed real renewal/login cookie delivery',mode,async()=>{
    const originalIdentity=await meta(page);
@@ -252,7 +257,7 @@ try{
   const {runClosureCases}=await import('./goals-spa-closure.mjs');
   await runClosureCases({browser,check,login,get,post,meta,ready,visit,target,selected,command,until,held,wire,result,fixture,workspace,other,foreign,run,hash});
  }
- for(const mode of onlyClosure||onlyRetention||onlyFoundation?[]:['inertia','spa']){
+ for(const mode of onlyClosure||onlyRetention||onlyFoundation||onlyWorkspaces?[]:['inertia','spa']){
   for(const fault of onlyRestoration?[]:['load','render']){
    const context=await browser.newContext();const page=await context.newPage();page.on('dialog',d=>d.accept());
    await page.goto('http://localhost:8138/login');assert.equal((await post(page,'/login',{email:'goals-a@example.test',password:'DisposableGoalsProof42!'})).status,200);

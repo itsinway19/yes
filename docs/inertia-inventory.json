@@ -46,6 +46,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/BB2SyntheticRuntimeWorker.php",
         "tests/commercial-operator.test.mjs",
@@ -161,6 +162,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/PasskeyAssertionTest.php",
         "tests/Feature/Security/PasskeyBoundaryTest.php",
@@ -221,6 +223,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/PasskeyAssertionTest.php",
         "tests/Feature/Security/PasskeyBoundaryTest.php",
@@ -245,12 +248,10 @@
         "App\\Security\\SessionAuthority",
         "App\\Security\\WorkspaceAuthority"
       ],
-      "pages": [
-        "Business/Context"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
+      "spaBoundary": "/business/start; Laravel retains the atomic writer and next-journey redirect",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -283,14 +284,36 @@
           }
         ]
       },
+      "migration": {
+        "id": "business-creation",
+        "journey": "Create one classified business, retain uncertain original command, and continue to Goals",
+        "routes": [
+          "GET /business/start",
+          "POST /business/start"
+        ],
+        "spaBoundary": "/business/start; Laravel retains the atomic writer and next-journey redirect",
+        "businessOwners": [
+          "App\\Security\\WorkspaceAuthority",
+          "App\\Business\\BusinessContext"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "WorkspaceSpaIntegrationTest",
+          "BusinessFoundationTest",
+          "tests/application-api-client.test.mjs",
+          "tests/Support/workspace-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "BusinessContextController@start serves only the unified SPA. The previous Context creation presentation is unreachable. The existing creation key, SQL writer, transaction and non-JSON redirects are preserved. Goals continuation still uses its canonical legacy document until its own migration; this is not acceptance of the whole advertiser group."
+      },
       "testLeads": [
-        "tests/Feature/ArchitectureSourceOptionalityTest.php",
+        "tests/application-api-client.test.mjs",
         "tests/Feature/Auth/PasswordResetTest.php",
         "tests/Feature/BusinessContextLockOrderTest.php",
         "tests/Feature/BusinessFoundationTest.php",
-        "tests/Feature/CurrentIntentTest.php",
-        "tests/Feature/DeclaredTargetMarketsTest.php",
-        "tests/Feature/Security/LifecycleActivationTest.php"
+        "tests/Feature/Security/LifecycleActivationTest.php",
+        "tests/Feature/WorkspaceSpaIntegrationTest.php",
+        "tests/Support/workspace-spa-browser.mjs"
       ]
     },
     {
@@ -313,8 +336,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "/business/start; Laravel retains the atomic writer and next-journey redirect",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -347,10 +370,35 @@
           }
         ]
       },
+      "migration": {
+        "id": "business-creation",
+        "journey": "Create one classified business, retain uncertain original command, and continue to Goals",
+        "routes": [
+          "GET /business/start",
+          "POST /business/start"
+        ],
+        "spaBoundary": "/business/start; Laravel retains the atomic writer and next-journey redirect",
+        "businessOwners": [
+          "App\\Security\\WorkspaceAuthority",
+          "App\\Business\\BusinessContext"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "WorkspaceSpaIntegrationTest",
+          "BusinessFoundationTest",
+          "tests/application-api-client.test.mjs",
+          "tests/Support/workspace-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "BusinessContextController@start serves only the unified SPA. The previous Context creation presentation is unreachable. The existing creation key, SQL writer, transaction and non-JSON redirects are preserved. Goals continuation still uses its canonical legacy document until its own migration; this is not acceptance of the whole advertiser group."
+      },
       "testLeads": [
+        "tests/application-api-client.test.mjs",
         "tests/Feature/BusinessContextLockOrderTest.php",
         "tests/Feature/BusinessFoundationTest.php",
-        "tests/Feature/Security/LifecycleActivationTest.php"
+        "tests/Feature/Security/LifecycleActivationTest.php",
+        "tests/Feature/WorkspaceSpaIntegrationTest.php",
+        "tests/Support/workspace-spa-browser.mjs"
       ]
     },
     {
@@ -402,6 +450,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Auth/PasswordConfirmationTest.php",
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
@@ -455,6 +504,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Auth/PasswordConfirmationTest.php",
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
@@ -515,6 +565,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Auth/AuthenticationTest.php",
         "tests/Feature/Auth/EmailVerificationTest.php",
@@ -576,6 +627,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -625,6 +677,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Auth/PasswordResetTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php"
@@ -678,6 +731,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Auth/PasswordResetTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php"
@@ -723,6 +777,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/IdentityRenewalTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
@@ -784,6 +839,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -837,6 +893,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -879,6 +936,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/ProductionIdentityTest.php"
       ]
@@ -923,6 +981,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/IdentityRenewalTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
@@ -980,6 +1039,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Localization/LocaleTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
@@ -1036,6 +1096,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/ProductionIdentityTest.php",
         "tests/Support/goals-spa-browser.mjs",
@@ -1084,6 +1145,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/identity-protocol.test.mjs"
       ]
@@ -1150,6 +1212,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/commercial-operator.test.mjs",
         "tests/Feature/Security/InternalAuthorityTest.php",
@@ -1210,6 +1273,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
         "tests/SA01BrowserFixture.php"
@@ -1270,6 +1334,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
         "tests/SA01BrowserFixture.php"
@@ -1330,6 +1395,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php"
       ]
@@ -1389,6 +1455,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php"
       ]
@@ -1448,6 +1515,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php"
       ]
@@ -1505,6 +1573,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/CustomerAdministrationTest.php"
       ]
@@ -1563,6 +1632,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/CustomerAdministrationTest.php"
       ]
@@ -1621,6 +1691,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/PasskeyAssertionTest.php"
       ]
@@ -1679,6 +1750,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -1739,6 +1811,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/BusinessFoundationTest.php"
       ]
@@ -1802,6 +1875,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/BusinessFoundationTest.php"
       ]
@@ -1865,6 +1939,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -1926,6 +2001,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -1987,6 +2063,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -2046,6 +2123,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2111,6 +2189,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2175,6 +2254,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2239,6 +2319,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2303,6 +2384,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2364,6 +2446,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2428,6 +2511,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2492,6 +2576,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2556,6 +2641,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2620,6 +2706,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2681,6 +2768,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2745,6 +2833,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2806,6 +2895,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2875,6 +2965,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/InternalAuthorityTest.php"
       ]
@@ -2942,6 +3033,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -2984,6 +3076,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/IdentityRenewalTest.php",
         "tests/identity-protocol.test.mjs"
@@ -3040,6 +3133,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -3093,6 +3187,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -3135,6 +3230,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -3177,6 +3273,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/IdentityRenewalTest.php"
       ]
@@ -3230,6 +3327,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Localization/LocaleTest.php"
       ]
@@ -3274,6 +3372,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -3318,6 +3417,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Localization/LocaleTest.php"
       ]
@@ -3371,6 +3471,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
         "tests/Feature/Localization/LocaleTest.php",
@@ -3431,6 +3532,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/commercial-operator.test.mjs",
         "tests/Feature/Auth/LogoutResponseCookieTest.php",
@@ -3491,7 +3593,9 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
+        "tests/application-api-client.test.mjs",
         "tests/Feature/Security/InternalAuthorityTest.php",
         "tests/Feature/Security/PasskeyAssertionTest.php",
         "tests/Feature/Security/SecurityDevicesTest.php",
@@ -3551,6 +3655,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -3606,6 +3711,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -3661,6 +3767,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -3717,6 +3824,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/PasskeyBoundaryTest.php",
         "tests/Feature/Security/SecurityDevicesTest.php"
@@ -3773,6 +3881,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/SecurityDevicesTest.php"
       ]
@@ -3831,6 +3940,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/SecurityDevicesTest.php"
       ]
@@ -3892,6 +4002,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/ServiceAuthorityTest.php"
       ]
@@ -3953,6 +4064,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -4011,6 +4123,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/ServiceAuthorityTest.php"
       ]
@@ -4072,6 +4185,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/ServiceAuthorityTest.php"
       ]
@@ -4133,6 +4247,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -4192,6 +4307,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -4257,6 +4373,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/InternalAuthorityTest.php"
       ]
@@ -4324,6 +4441,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -4389,6 +4507,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -4454,6 +4573,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -4522,6 +4642,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -4587,6 +4708,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -4601,8 +4723,8 @@
       "businessOwners": [],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Shared Laravel HTTP command; no additional Vue application",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -4631,11 +4753,32 @@
           }
         ]
       },
+      "migration": {
+        "id": "locale-command",
+        "journey": "Switch the application language using the existing encrypted locale cookie",
+        "routes": [
+          "POST /locale"
+        ],
+        "spaBoundary": "Shared Laravel HTTP command; no additional Vue application",
+        "businessOwners": [
+          "App\\Http\\Controllers\\LocaleController",
+          "App\\Http\\Middleware\\ResolveLocale"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "LocaleTest",
+          "WorkspaceSpaIntegrationTest",
+          "tests/Support/workspace-spa-browser.mjs"
+        ],
+        "status": "SHARED_HTTP_OWNER_VERIFIED",
+        "cutover": "JSON acknowledgement added for the unified SPA; existing native/legacy cookie and redirect contracts remain. Arabic/English direction and creation draft retention were exercised in Chromium."
+      },
       "testLeads": [
         "tests/Feature/Foundation/BaselineContractTest.php",
         "tests/Feature/Localization/LocaleTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
         "tests/Feature/Security/SecurityMailTest.php",
+        "tests/Feature/WorkspaceSpaIntegrationTest.php",
         "tests/goal-selection-interaction.test.mjs",
         "tests/identity-protocol.test.mjs",
         "tests/Support/inertia-n1-browser.mjs",
@@ -4691,6 +4834,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/commercial-operator.test.mjs",
         "tests/Feature/ArchitectureSourceOptionalityTest.php",
@@ -4747,6 +4891,7 @@
         "tests/Support/ProductionIdentityWorker.php",
         "tests/Support/ProtectedClientStateFixture.php",
         "tests/Support/spa-foundation-browser.mjs",
+        "tests/Support/workspace-spa-browser.mjs",
         "tests/TestCase.php",
         "tests/Unit/GoogleAccessAdapterTest.php",
         "tests/Unit/GoogleObservationAdapterTest.php",
@@ -4801,6 +4946,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/ArchitectureSourceOptionalityTest.php",
         "tests/Feature/Auth/AuthenticationTest.php",
@@ -4830,6 +4976,7 @@
         "tests/Support/logout-native-boundary-browser.mjs",
         "tests/Support/logout-terminal-browser.mjs",
         "tests/Support/ProductionIdentityWorker.php",
+        "tests/Support/workspace-spa-browser.mjs",
         "tests/TestCase.php"
       ]
     },
@@ -4880,6 +5027,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/client-visibility.test.mjs",
         "tests/commercial-operator.test.mjs",
@@ -4957,6 +5105,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Auth/PasswordConfirmationTest.php",
         "tests/Feature/Auth/PasswordResetTest.php",
@@ -5019,6 +5168,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/BusinessFoundationTest.php",
         "tests/Feature/ProfileTest.php",
@@ -5090,6 +5240,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/BusinessFoundationTest.php",
         "tests/Feature/ProfileTest.php",
@@ -5176,6 +5327,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/BusinessFoundationTest.php"
       ]
@@ -5250,6 +5402,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -5322,6 +5475,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -5392,6 +5546,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -5461,6 +5616,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -5513,6 +5669,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/commercial-operator.test.mjs",
         "tests/Feature/Auth/RegistrationTest.php",
@@ -5578,6 +5735,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Auth/RegistrationTest.php",
         "tests/Feature/Security/LifecycleActivationTest.php",
@@ -5632,6 +5790,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Auth/PasswordResetTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php"
@@ -5686,6 +5845,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -5741,6 +5901,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Auth/PasswordUpdateTest.php",
         "tests/Feature/BusinessFoundationTest.php",
@@ -5802,6 +5963,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -5857,6 +6019,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/PasskeyBoundaryTest.php"
       ]
@@ -5914,6 +6077,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -5970,6 +6134,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/SecurityDevicesTest.php"
       ]
@@ -6025,6 +6190,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/SecurityDevicesTest.php"
       ]
@@ -6083,6 +6249,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/SecurityDevicesTest.php"
       ]
@@ -6137,6 +6304,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/InternalAuthorityTest.php"
       ]
@@ -6191,6 +6359,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -6243,6 +6412,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Security/InternalAuthorityTest.php"
       ]
@@ -6294,6 +6464,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Auth/EmailVerificationTest.php",
         "tests/Feature/Auth/RegistrationTest.php",
@@ -6357,6 +6528,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/Auth/EmailVerificationTest.php",
         "tests/Feature/Security/LifecycleActivationTest.php",
@@ -6384,12 +6556,10 @@
         "App\\Security\\WorkspaceAuthority",
         "App\\Sources\\SourceRegistry"
       ],
-      "pages": [
-        "Business/Index"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
+      "spaBoundary": "/workspaces; reassessment remains an existing Laravel effect endpoint",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6422,7 +6592,30 @@
           }
         ]
       },
+      "migration": {
+        "id": "workspace-selection",
+        "journey": "Choose an authorized business and reassess eligible owner authority",
+        "routes": [
+          "GET /workspaces",
+          "POST /workspaces/{workspace}/reassess-owner-grant"
+        ],
+        "spaBoundary": "/workspaces; reassessment remains an existing Laravel effect endpoint",
+        "businessOwners": [
+          "App\\Security\\WorkspaceAuthority",
+          "App\\Security\\GrantAuthority"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "WorkspaceSpaIntegrationTest",
+          "WorkspaceCreationTest",
+          "OwnerGrantReassessmentTest",
+          "tests/Support/workspace-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "WorkspaceController@index serves only the unified SPA shell/resource. Legacy list rendering is unreachable. Links from remaining legacy pages cross through native document navigation. Selected business/context/source destinations remain native until their own cutover."
+      },
       "testLeads": [
+        "tests/application-api-client.test.mjs",
         "tests/Feature/AdvertiserGoalPreferencesTest.php",
         "tests/Feature/ArchitectureSourceOptionalityTest.php",
         "tests/Feature/BusinessContextLockOrderTest.php",
@@ -6444,9 +6637,11 @@
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
         "tests/Feature/Security/ServiceAuthorityTest.php",
         "tests/Feature/Security/WorkspaceCreationTest.php",
+        "tests/Feature/WorkspaceSpaIntegrationTest.php",
         "tests/goal-selection-interaction.test.mjs",
         "tests/Support/advertiser-goals-browser.mjs",
-        "tests/Support/ObjectPurposeTestCase.php"
+        "tests/Support/ObjectPurposeTestCase.php",
+        "tests/Support/workspace-spa-browser.mjs"
       ]
     },
     {
@@ -6505,7 +6700,9 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
+        "tests/application-api-client.test.mjs",
         "tests/Feature/AdvertiserGoalPreferencesTest.php",
         "tests/Feature/ArchitectureSourceOptionalityTest.php",
         "tests/Feature/BusinessContextLockOrderTest.php",
@@ -6527,8 +6724,10 @@
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
         "tests/Feature/Security/ServiceAuthorityTest.php",
         "tests/Feature/Security/WorkspaceCreationTest.php",
+        "tests/Feature/WorkspaceSpaIntegrationTest.php",
         "tests/Support/advertiser-goals-browser.mjs",
-        "tests/Support/ObjectPurposeTestCase.php"
+        "tests/Support/ObjectPurposeTestCase.php",
+        "tests/Support/workspace-spa-browser.mjs"
       ]
     },
     {
@@ -6592,6 +6791,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/BusinessFoundationTest.php",
         "tests/Feature/CurrentIntentTest.php",
@@ -6600,6 +6800,7 @@
         "tests/Feature/Providers/ProviderAccessStoreTest.php",
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
         "tests/Feature/Security/WorkspaceCreationTest.php",
+        "tests/Feature/WorkspaceSpaIntegrationTest.php",
         "tests/goal-selection-interaction.test.mjs",
         "tests/target-markets-interaction.test.mjs"
       ]
@@ -6660,6 +6861,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/ArchitectureSourceOptionalityTest.php",
         "tests/Feature/BusinessContextLockOrderTest.php",
@@ -6723,6 +6925,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/BusinessContextLockOrderTest.php"
       ]
@@ -6784,6 +6987,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/BusinessContextLockOrderTest.php"
       ]
@@ -6842,6 +7046,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/BusinessContextLockOrderTest.php",
         "tests/Feature/CurrentIntentSecurityTest.php"
@@ -6901,6 +7106,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/BusinessContextLockOrderTest.php"
       ]
@@ -6955,6 +7161,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -7011,6 +7218,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/AdvertiserGoalPreferencesTest.php",
         "tests/Feature/ArchitectureSourceOptionalityTest.php",
@@ -7073,6 +7281,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/AdvertiserGoalPreferencesTest.php",
         "tests/Feature/GoalsSpaIntegrationTest.php",
@@ -7134,6 +7343,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/ObjectPurposeConcurrencyTest.php",
         "tests/Feature/ObjectPurposeDatabaseTest.php",
@@ -7200,6 +7410,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/ObjectPurposeConcurrencyTest.php",
         "tests/Feature/ObjectPurposeDatabaseTest.php",
@@ -7265,6 +7476,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/ObjectPurposeConcurrencyTest.php",
         "tests/Feature/ObjectPurposeDatabaseTest.php",
@@ -7331,6 +7543,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/ObjectPurposeConcurrencyTest.php",
         "tests/Feature/ObjectPurposeDatabaseTest.php",
@@ -7407,6 +7620,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -7477,6 +7691,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -7544,6 +7759,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -7611,6 +7827,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -7681,6 +7898,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -7751,6 +7969,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -7821,6 +8040,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -7883,6 +8103,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -7945,6 +8166,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8007,6 +8229,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8076,6 +8299,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8148,6 +8372,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8217,6 +8442,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8289,6 +8515,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8361,6 +8588,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8422,6 +8650,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8483,6 +8712,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8552,6 +8782,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8624,6 +8855,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8693,6 +8925,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8765,6 +8998,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8837,6 +9071,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8909,6 +9144,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -8970,6 +9206,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Unit/SnapchatReportDownloadTest.php"
       ]
@@ -9033,6 +9270,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Unit/SnapchatReportDownloadTest.php"
       ]
@@ -9102,6 +9340,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -9172,6 +9411,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -9239,6 +9479,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -9309,6 +9550,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -9379,6 +9621,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -9440,6 +9683,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -9501,6 +9745,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -9567,6 +9812,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -9636,6 +9882,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -9702,6 +9949,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -9771,6 +10019,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -9835,6 +10084,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -9904,6 +10154,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -9968,6 +10219,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -10032,6 +10284,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -10057,8 +10310,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "/workspaces; reassessment remains an existing Laravel effect endpoint",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -10093,9 +10346,32 @@
           }
         ]
       },
+      "migration": {
+        "id": "workspace-selection",
+        "journey": "Choose an authorized business and reassess eligible owner authority",
+        "routes": [
+          "GET /workspaces",
+          "POST /workspaces/{workspace}/reassess-owner-grant"
+        ],
+        "spaBoundary": "/workspaces; reassessment remains an existing Laravel effect endpoint",
+        "businessOwners": [
+          "App\\Security\\WorkspaceAuthority",
+          "App\\Security\\GrantAuthority"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "WorkspaceSpaIntegrationTest",
+          "WorkspaceCreationTest",
+          "OwnerGrantReassessmentTest",
+          "tests/Support/workspace-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "WorkspaceController@index serves only the unified SPA shell/resource. Legacy list rendering is unreachable. Links from remaining legacy pages cross through native document navigation. Selected business/context/source destinations remain native until their own cutover."
+      },
       "testLeads": [
         "tests/Feature/Foundation/WorkspaceIsolationTest.php",
-        "tests/Feature/Security/WorkspaceCreationTest.php"
+        "tests/Feature/Security/WorkspaceCreationTest.php",
+        "tests/Feature/WorkspaceSpaIntegrationTest.php"
       ]
     },
     {
@@ -10152,6 +10428,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -10208,6 +10485,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -10265,6 +10543,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -10322,6 +10601,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": []
     },
     {
@@ -10379,6 +10659,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/source-registry-interaction.test.mjs"
       ]
@@ -10423,6 +10704,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/GoalsSpaIntegrationTest.php",
         "tests/Feature/GoalsSpaProofTest.php",
@@ -10472,6 +10754,7 @@
           }
         ]
       },
+      "migration": null,
       "testLeads": [
         "tests/Feature/GoalsSpaIntegrationTest.php",
         "tests/Feature/GoalsSpaProofTest.php",
@@ -11909,10 +12192,8 @@
         "App\\Security\\SessionAuthority",
         "App\\Security\\WorkspaceAuthority"
       ],
-      "pages": [
-        "Business/Context"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -15342,10 +15623,8 @@
         "App\\Security\\WorkspaceAuthority",
         "App\\Sources\\SourceRegistry"
       ],
-      "pages": [
-        "Business/Index"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -23657,6 +23936,11 @@
     ]
   },
   "imports": {
+    "resources/js/api/application.ts": [
+      "openapi-fetch",
+      "resources/js/api/generated/application"
+    ],
+    "resources/js/api/generated/application.d.ts": [],
     "resources/js/api/generated/goals.d.ts": [],
     "resources/js/api/goals.ts": [
       "openapi-fetch",
@@ -23673,6 +23957,7 @@
       "resources/js/clientVisibility.ts",
       "resources/js/logout.ts",
       "resources/js/identityProtocol.ts",
+      "resources/js/spa/destination.ts",
       "resources/js/navigationSettlement.ts"
     ],
     "resources/js/bootstrap.ts": [
@@ -24139,6 +24424,17 @@
       "@laravel/passkeys"
     ],
     "resources/js/sessionLease.ts": [],
+    "resources/js/spa/api.ts": [
+      "resources/js/api/application.ts",
+      "resources/js/spa/transport.ts"
+    ],
+    "resources/js/spa/destination.ts": [],
+    "resources/js/spa/locale.ts": [
+      "vue",
+      "resources/js/spa/transport.ts",
+      "resources/js/spa/api.ts",
+      "resources/js/localization/documentLocale.ts"
+    ],
     "resources/js/spa/main.ts": [
       "vue",
       "vue-router",
@@ -24148,7 +24444,9 @@
       "resources/js/spa/presentation.ts",
       "resources/js/spa/router.ts",
       "resources/js/goals-spa/routes.ts",
-      "resources/js/goals-spa/proof.ts"
+      "resources/js/goals-spa/proof.ts",
+      "resources/js/workspaces/routes.ts",
+      "resources/js/spa/locale.ts"
     ],
     "resources/js/spa/presentation.ts": [
       "vue"
@@ -24175,13 +24473,50 @@
       "@inertiajs/core"
     ],
     "resources/js/types/object-purpose.ts": [],
-    "resources/js/types/vite-env.d.ts": []
+    "resources/js/types/vite-env.d.ts": [],
+    "resources/js/workspaces/api.ts": [
+      "resources/js/spa/api.ts",
+      "resources/js/api/generated/application"
+    ],
+    "resources/js/workspaces/BusinessCreate.vue": [
+      "vue",
+      "vue-router",
+      "resources/js/workspaces/api.ts",
+      "resources/js/workspaces/state.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/spa/destination.ts",
+      "resources/js/spa/presentation.ts",
+      "resources/js/spa/locale.ts"
+    ],
+    "resources/js/workspaces/routes.ts": [
+      "vue-router",
+      "resources/js/workspaces/state.ts",
+      "resources/js/workspaces/WorkspaceIndex.vue",
+      "resources/js/workspaces/BusinessCreate.vue"
+    ],
+    "resources/js/workspaces/state.ts": [
+      "vue",
+      "vue-router",
+      "resources/js/spa/query.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/workspaces/api.ts"
+    ],
+    "resources/js/workspaces/WorkspaceIndex.vue": [
+      "vue",
+      "vue-router",
+      "resources/js/workspaces/state.ts",
+      "resources/js/workspaces/api.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/spa/destination.ts",
+      "resources/js/spa/locale.ts"
+    ]
   },
   "support": {
     "app/Http/Middleware/AdmitIdentityDocument.php": 2,
     "app/Http/Middleware/HandleInertiaRequests.php": 13,
     "resources/views/app.blade.php": 3,
     "resources/views/goals-spa.blade.php": 2,
+    "resources/views/spa.blade.php": 1,
     "tests/client-visibility.test.mjs": 32,
     "tests/commercial-operator.test.mjs": 3,
     "tests/current-intent-interaction.test.mjs": 3,
@@ -24204,18 +24539,16 @@
     "tests/Feature/Security/IdentityRenewalTest.php": 1,
     "tests/Feature/Security/InertiaHistorySecurityTest.php": 1,
     "tests/Feature/Security/InternalAuthorityTest.php": 8,
-    "tests/Feature/Security/OwnerGrantReassessmentTest.php": 4,
     "tests/Feature/Security/ProductionIdentityTest.php": 2,
     "tests/Feature/Security/ProductionPasskeyTest.php": 1,
     "tests/Feature/Security/SecurityDevicesTest.php": 4,
-    "tests/Feature/Security/WorkspaceCreationTest.php": 4,
     "tests/Feature/Sources/SourceRegistryTest.php": 18,
     "tests/goal-selection-interaction.test.mjs": 6,
     "tests/goals-api-client.test.mjs": 1,
     "tests/identity-protocol.test.mjs": 4,
     "tests/inertia-n1-artifact.test.mjs": 5,
     "tests/inertia-n1.test.mjs": 10,
-    "tests/inertia-retirement.test.mjs": 3,
+    "tests/inertia-retirement.test.mjs": 7,
     "tests/object-purpose-interaction.test.mjs": 3,
     "tests/source-registry-interaction.test.mjs": 3,
     "tests/Support/advertiser-goals-server.php": 1,
@@ -24234,6 +24567,7 @@
     "tests/Support/logout-native-boundary-browser.mjs": 4,
     "tests/Support/logout-terminal-browser.mjs": 11,
     "tests/Support/spa-foundation-browser.mjs": 1,
+    "tests/Support/workspace-spa-browser.mjs": 3,
     "tests/target-markets-interaction.test.mjs": 3,
     "tests/TestCase.php": 4,
     "scripts/goals-openapi.mjs": 2,
@@ -24252,6 +24586,14 @@
     "compat/inertia-n1/source/navigation.ts": 1,
     "compat/inertia-n1/source/request.ts": 3,
     "compat/inertia-n1/source/response.ts": 14
+  },
+  "summary": {
+    "registeredRoutes": 169,
+    "legacyRenderRoutes": 25,
+    "locallyAcceptedJourneys": [
+      "workspace-selection",
+      "business-creation"
+    ]
   },
   "unresolved": [
     "Runtime authorization behavior and route constraints",

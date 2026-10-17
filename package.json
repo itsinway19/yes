@@ -11,7 +11,7 @@
     "build": "vue-tsc && vite build",
     "dev": "vite",
     "test:goals": "node --test tests/goal-selection-interaction.test.mjs",
-    "test:spa-foundation": "node --test tests/spa-router.test.mjs tests/spa-transport.test.mjs tests/inertia-retirement.test.mjs",
+    "test:spa-foundation": "node --test tests/spa-router.test.mjs tests/spa-transport.test.mjs tests/inertia-retirement.test.mjs tests/application-api-client.test.mjs",
     "inertia:check": "node scripts/inertia-retirement.mjs",
     "inertia:inventory": "node scripts/inertia-inventory.mjs --runtime",
     "test:visibility": "node --test tests/client-visibility.test.mjs",
@@ -24,8 +24,8 @@
     "test:inertia-n1": "node --test tests/inertia-n1-artifact.test.mjs tests/inertia-n1.test.mjs",
     "build:goals-spa": "vue-tsc && vite build --config vite.goals-spa.config.js",
     "build:goals-spa:proof": "vue-tsc && vite build --config vite.goals-spa.config.js --mode proof",
-    "api:generate": "node scripts/goals-openapi.mjs",
-    "api:check": "node scripts/goals-openapi.mjs --check"
+    "api:generate": "node scripts/goals-openapi.mjs && node scripts/application-openapi.mjs",
+    "api:check": "node scripts/goals-openapi.mjs --check && node scripts/application-openapi.mjs --check"
   },
   "devDependencies": {
     "@inertiajs/vue3": "^3.7.1",

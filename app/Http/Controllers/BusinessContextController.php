@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Business\BusinessContext;
 use App\Foundation\Tenancy\WorkspaceContext;
+use App\Http\Responses\SpaPage;
 use App\Models\Workspace;
 use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use App\Security\WorkspaceAuthority;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,7 +33,7 @@ final class BusinessContextController
         return redirect()->route($businesses ? 'workspaces.index' : 'business.start');
     }
 
-    public function start(Request $request, BusinessContext $business, WorkspaceAuthority $authority): Response|RedirectResponse
+    public function start(Request $request, BusinessContext $business, WorkspaceAuthority $authority): SpaPage|RedirectResponse
     {
         $visible = $authority->visibleTo($request->user(), (int) $request->session()->get('a001_generation', 0));
         if ($visible && ! $request->boolean('new')) {
@@ -44,11 +46,11 @@ final class BusinessContextController
             $request->session()->put('business.creation_key', $key);
         }
 
-        return Inertia::render('Business/Context', ['workspace' => null, 'types' => $business->types(),
+        return new SpaPage(['types' => $business->types(),
             'canManage' => true, 'canRequestAuthority' => false, 'creationKey' => $key, 'version' => 0]);
     }
 
-    public function store(Request $request, WorkspaceAuthority $authority, BusinessContext $business): RedirectResponse
+    public function store(Request $request, WorkspaceAuthority $authority, BusinessContext $business): RedirectResponse|JsonResponse
     {
         $input = $request->validate(['name' => ['required', 'string', 'min:2', 'max:120'],
             'business_type_id' => ['required', 'integer', 'min:1'], 'creation_key' => ['required', 'uuid']]);
@@ -64,7 +66,9 @@ final class BusinessContextController
         });
         $request->session()->put('business.creation_completed', $input['creation_key']);
 
-        return redirect()->route('workspaces.goals.edit', $workspace->public_id);
+        return $request->expectsJson()
+            ? response()->json(['redirect' => route('workspaces.goals.edit', $workspace->public_id, absolute: false)])->header('Cache-Control', 'no-store')
+            : redirect()->route('workspaces.goals.edit', $workspace->public_id);
     }
 
     public function edit(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): Response
