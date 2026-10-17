@@ -1,5 +1,4 @@
 {
-  "app/Http/Controllers/AdvertiserGoalPreferencesController.php": 3,
   "app/Http/Controllers/Auth/AuthenticatedSessionController.php": 4,
   "app/Http/Controllers/Auth/ConfirmablePasswordController.php": 4,
   "app/Http/Controllers/Auth/EmailVerificationPromptController.php": 4,
@@ -59,7 +58,6 @@
   "resources/js/Pages/Auth/ResetPassword.vue": 1,
   "resources/js/Pages/Auth/VerifyEmail.vue": 1,
   "resources/js/Pages/Business/Context.vue": 1,
-  "resources/js/Pages/Business/Goals.vue": 1,
   "resources/js/Pages/Business/Index.vue": 1,
   "resources/js/Pages/Business/ObjectPurposes.vue": 1,
   "resources/js/Pages/Business/Sources.vue": 1,
@@ -87,7 +85,6 @@
   "resources/js/identityProtocol.ts": 3,
   "resources/js/inertiaNavigation.ts": 3,
   "resources/js/localization/business.ts": 1,
-  "resources/js/localization/goals.ts": 1,
   "resources/js/navigationSettlement.ts": 3,
   "resources/js/types/global.d.ts": 4,
   "resources/js/types/inertia-n1.d.ts": 1,

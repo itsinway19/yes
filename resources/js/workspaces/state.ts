@@ -9,6 +9,11 @@ export const creationDraft = reactive({ name: '', business_type_id: '' as number
 export const unresolvedCreation = shallowRef<CreateBusiness>();
 let serial = 0;
 
+export function resetCreationDraft() {
+    Object.assign(creationDraft, { name: '', business_type_id: '', creation_key: '' });
+    unresolvedCreation.value = undefined;
+}
+
 export function clear() { serial++; current.value = undefined; void query.cancelQueries(); }
 
 export async function load(route: RouteLocationNormalized, passive: boolean) {
@@ -32,6 +37,5 @@ export async function load(route: RouteLocationNormalized, passive: boolean) {
 
 onClose(() => {
     clear(); query.clear();
-    Object.assign(creationDraft, { name: '', business_type_id: '', creation_key: '' });
-    unresolvedCreation.value = undefined;
+    resetCreationDraft();
 });

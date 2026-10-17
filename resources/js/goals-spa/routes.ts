@@ -9,6 +9,8 @@ const meta = {
 };
 
 export const goalsRoutes: RouteRecordRaw[] = [
+    { path: '/workspaces/:workspace/goals', component: () => import('./GoalsEditor.vue'), meta },
+    { path: '/workspaces/:workspace/goals/review', component: () => import('./GoalsReview.vue'), meta },
     { path: '/spa/workspaces/:workspace/goals', component: () => import('./GoalsEditor.vue'), meta },
     { path: '/spa/workspaces/:workspace/goals/review', component: () => import('./GoalsReview.vue'), meta },
 ];

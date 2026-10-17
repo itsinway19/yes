@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
-import { RouterLink, onBeforeRouteLeave } from 'vue-router';
+import { RouterLink, onBeforeRouteLeave, useRouter } from 'vue-router';
 import { createBusiness, type CreateBusiness } from './api';
-import { current, creationDraft as draft, unresolvedCreation } from './state';
+import { current, creationDraft as draft, unresolvedCreation, resetCreationDraft } from './state';
 import { bootstrap, owned, stamp, status, TransportError } from '../spa/transport';
 import { applicationDestination } from '../spa/destination';
 import { confirmDeparture } from '../spa/presentation';
@@ -12,6 +12,7 @@ const data = computed(() => current.value && 'types' in current.value.data ? cur
 const busy = ref(false), errors = ref<Record<string, string[]>>({}), error = ref('');
 const copy = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const dirty = computed(() => !!draft.name || draft.business_type_id !== '');
+const router = useRouter();
 const keyChanged = computed(() => draft.creation_key !== data.value?.creationKey);
 let alive = true;
 const canLeave = () => !busy.value && (!dirty.value || confirm(copy('لديك بيانات غير محفوظة. هل تريد المغادرة؟', 'You have unfinished business details. Leave this page?')));
@@ -37,7 +38,11 @@ async function save(retry = false) {
     try {
         const result = await createBusiness(command);
         if (!alive || !owned(captured)) return;
-        location.assign(applicationDestination(result.redirect, location.origin, bootstrap.identity.binding.boundary));
+        const target = new URL(applicationDestination(result.redirect, location.origin, bootstrap.identity.binding.boundary));
+        const path = target.pathname + target.search + target.hash;
+        resetCreationDraft(); busy.value = false;
+        if (router.resolve(path).matched.length) await router.push(path);
+        else location.assign(target.href);
     } catch (failure) {
         if (!alive || !owned(captured)) return;
         if (failure instanceof TransportError && [403, 422].includes(failure.status)) {

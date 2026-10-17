@@ -7,7 +7,7 @@ import path from 'node:path';
 export async function runClosureCases(h){
  const {browser,check,login,get,post,meta,ready,target,selected,command,until,held,wire,result,fixture,workspace,other,foreign,run,hash}=h;
  const cookies=async context=>(await context.cookies()).map(({name,value,path,expires,httpOnly,secure,sameSite})=>({name,hash:hash(value),path,expires,httpOnly,secure,sameSite}));
- for(const mode of process.env.GOALS_SPA_ONLY==='retention'?[]:['inertia','spa']){
+ for(const mode of process.env.GOALS_SPA_ONLY==='retention'?[]:['application']){
   for(const scenario of ['renew-reverse','revoked-pending','logout-pending','multiple-tabs']){
    const context=await browser.newContext();const page=await context.newPage();page.on('dialog',d=>d.accept());
    try{
@@ -102,7 +102,7 @@ export async function runClosureCases(h){
      const retry=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`/workspaces/${workspace}/goals`);await page.locator('[data-goals="continue"]').click();assert.equal((await retry).status(),409);
      await page.locator('[data-goals="review"]').click();await page.locator('[data-goals="adopt"]').waitFor();await page.locator('[data-goals="adopt"]').click();
      const reconciled=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`/workspaces/${workspace}/goals`);await page.locator('[data-goals="continue"]').click();assert.equal((await reconciled).status(),200);
-     await page.waitForURL(url=>mode==='spa'?url.pathname.endsWith('/review'):url.pathname===`/workspaces/${workspace}`);
+     await page.waitForURL(url=>url.pathname.endsWith('/review'));
      const after=command('inspect');assert.equal(after.effects,committed.effects);assert.equal(after.goals.find(g=>g.workspace_id===fixture.a.workspaces[0].id).version,canonicalReply.version);
      await page.unroute('**/*');return {serverCommitBeforeLoss:{version:canonicalReply.version,effects:committed.effects},clientMessage:message,automaticWrites:automatic.length,explicitStaleRetry:409,reconciled:200,effectDelta:after.effects-before.effects,note:'Proxy discarded the completed real HTTP response after canonical DB commit; no synthetic writer or response body.'};
     });
@@ -112,7 +112,7 @@ export async function runClosureCases(h){
  await check('closure renewed sessions survive original short cookie lifetime without cookie republication','both',async()=>{
   const entries=[];
   try{
-   for(const mode of ['inertia','spa']){
+   for(const mode of ['application']){
     const context=await browser.newContext(),page=await context.newPage();page.on('dialog',d=>d.accept());await login(page,mode);
     const identity=await meta(page),state=command('inspect'),session=state.sessions.find(s=>s.session_key_hash===identity.binding.credential),jar=await cookies(context);
     const credential=jar.find(c=>c.httpOnly&&c.name.endsWith('-session'));assert.ok(credential);

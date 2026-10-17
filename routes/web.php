@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\PasskeySessionController;
 use App\Http\Controllers\BusinessContextController;
 use App\Http\Controllers\CommercialController;
 use App\Http\Controllers\CommercialMarketPreparationController;
+use App\Http\Controllers\GoalsSpaController;
 use App\Http\Controllers\GoogleConnectionController;
 use App\Http\Controllers\GoogleReportController;
 use App\Http\Controllers\InternalAdministrationController;
@@ -63,6 +64,10 @@ Route::get('/dashboard', [BusinessContextController::class, 'entry'])
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
     Route::get('/workspaces/{workspace}/goals', [AdvertiserGoalPreferencesController::class, 'edit'])
         ->whereUuid('workspace')->name('workspaces.goals.edit');
+    Route::get('/workspaces/{workspace}/goals/review', [AdvertiserGoalPreferencesController::class, 'edit'])
+        ->whereUuid('workspace')->name('workspaces.goals.review');
+    Route::get('/workspaces/{workspace}/goals/context', [GoalsSpaController::class, 'context'])
+        ->whereUuid('workspace')->name('workspaces.goals.context');
     Route::post('/workspaces/{workspace}/goals', [AdvertiserGoalPreferencesController::class, 'update'])
         ->whereUuid('workspace')->name('workspaces.goals.update');
     Route::get('/workspaces/{workspace}/object-purposes', [ObjectPurposeController::class, 'index'])

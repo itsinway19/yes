@@ -43,7 +43,8 @@ class ArchitectureSourceOptionalityTest extends TestCase
         $this->get('/workspaces/'.$workspace->public_id)->assertOk();
 
         $goalUrl = '/workspaces/'.$workspace->public_id.'/goals';
-        $this->get($goalUrl)->assertInertia(fn (Assert $page) => $page->component('Business/Goals'));
+        $this->get($goalUrl)->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
+        $this->getJson($goalUrl.'/context')->assertOk()->assertJsonCount(4, 'catalog');
         $this->postJson($goalUrl, ['version' => 0, 'value' => [
             'goals' => ['sales', 'customers'], 'priority' => 'sales',
             'results' => ['sales' => ['actual_sales'], 'customers' => []],

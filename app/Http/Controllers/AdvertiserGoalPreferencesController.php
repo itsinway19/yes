@@ -3,29 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Business\AdvertiserGoalPreferences;
-use App\Business\BusinessContext;
 use App\Foundation\Tenancy\WorkspaceContext;
+use App\Http\Responses\SpaPage;
 use App\Models\Workspace;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
 
 final class AdvertiserGoalPreferencesController extends Controller
 {
     public function edit(Request $request, string $workspace, WorkspaceContext $context,
-        AdvertiserGoalPreferences $goals, BusinessContext $business): mixed
+        AdvertiserGoalPreferences $goals): mixed
     {
-        return $context->run($request->user(), $workspace, function (Workspace $active) use ($request, $goals, $business) {
-            $preferences = $goals->projection($active);
+        return $context->run($request->user(), $workspace, function (Workspace $active) use ($request, $goals) {
             if ($request->expectsJson()) {
-                return response()->json($preferences);
+                return response()->json($goals->projection($active))->header('Cache-Control', 'no-store');
             }
 
-            return Inertia::render('Business/Goals', [
-                'workspace' => $active->only(['public_id', 'name']), 'preferences' => $preferences,
-                'business' => $business->projection($request, $active), 'catalog' => AdvertiserGoalPreferences::catalog(),
-            ]);
+            return new SpaPage([]);
         }, $request);
     }
 

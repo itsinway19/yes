@@ -101,7 +101,7 @@
             }
           }
         },
-        "description": "Accept application/json. Without it, the existing route renders Inertia HTML."
+        "description": "Accept application/json for canonical preferences. Native HTML requests receive the unified SPA shell, without a business projection."
       },
       "post": {
         "operationId": "saveGoals",
@@ -339,6 +339,129 @@
           }
         },
         "description": "Opt-in SPA contextual read: reuses canonical Goals and BusinessContext projections. Witness returns only visibility. Passive/witness checks never extend canonical idle authority."
+      }
+    },
+    "/workspaces/{workspace}/goals/context": {
+      "get": {
+        "operationId": "readCanonicalGoalsContext",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Goals-Passive",
+            "in": "header",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "X-Goals-Witness",
+            "in": "header",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized canonical projection. Never shared-cache private data.",
+            "headers": {
+              "X-Builderad-Identity": {
+                "description": "Server document evidence, verified by the web transport. Not independent authority.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/GoalsContext"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GoalsWitness"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No current authenticated session. A stale document may instead be rejected with identityConflict 409 before auth.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unverified principal, absent Workspace scope or withdrawn grant. No write effect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CAS mismatch: preserve draft and explicitly review current version. identityConflict=true instead closes the document; never adopt it as a CAS conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "CSRF rejection, including a transport session that no longer contains the CSRF token. No write effect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid exact JSON value/version shape, size or domain selection; errors.value contains validation messages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Unified SPA contextual read through the existing WorkspaceContext, Goals and BusinessContext readers. Passive/witness requests preserve canonical idle authority."
       }
     },
     "/workspaces": {

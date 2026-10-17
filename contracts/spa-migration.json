@@ -21,7 +21,18 @@
       "apiContract": "contracts/application.openapi.json",
       "tests": ["WorkspaceSpaIntegrationTest", "BusinessFoundationTest", "tests/application-api-client.test.mjs", "tests/Support/workspace-spa-browser.mjs"],
       "status": "LOCAL_JOURNEY_ACCEPTED",
-      "cutover": "BusinessContextController@start serves only the unified SPA. The previous Context creation presentation is unreachable. The existing creation key, SQL writer, transaction and non-JSON redirects are preserved. Goals continuation still uses its canonical legacy document until its own migration; this is not acceptance of the whole advertiser group."
+      "cutover": "BusinessContextController@start serves only the unified SPA. The previous Context creation presentation is unreachable. The existing creation key, SQL writer, transaction and non-JSON redirects are preserved. Successful creation continues to canonical Goals in the same unified SPA document; this is not acceptance of the whole advertiser group."
+    },
+    {
+      "id": "advertiser-goals",
+      "journey": "Choose business goals, priority and per-goal outcomes; review conflicts and saved state without repeating uncertain writes",
+      "routes": ["GET /workspaces/{workspace}/goals", "GET /workspaces/{workspace}/goals/context", "GET /workspaces/{workspace}/goals/review", "POST /workspaces/{workspace}/goals"],
+      "spaBoundary": "Canonical editor and saved review use the shared Vue Router; Laravel retains the existing writer and scoped contextual reads",
+      "businessOwners": ["App\\Business\\AdvertiserGoalPreferences", "App\\Business\\BusinessContext", "App\\Foundation\\Tenancy\\WorkspaceContext"],
+      "apiContract": "contracts/application.openapi.json",
+      "tests": ["AdvertiserGoalPreferencesTest", "GoalsSpaIntegrationTest", "GoalsSpaProofTest", "tests/spa-goals-interaction.test.mjs", "tests/Support/goals-spa-browser.mjs", "tests/Support/goals-spa-closure.mjs"],
+      "status": "LOCAL_JOURNEY_ACCEPTED",
+      "cutover": "Canonical HTML routes contain only the unified shell and no business projection. The former Business/Goals Vue renderer and locale adapter are deleted; behavior tests exercise the actual SPA editor. Existing opt-in proof URLs reuse this renderer and shared entry; their production flag is not enabled. Business context, sources and account/security destinations remain native boundaries pending their cutover. Final Foundation, remote CI and B/C/device acceptance remain separate."
     },
     {
       "id": "locale-command",

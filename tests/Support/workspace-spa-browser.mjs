@@ -40,9 +40,11 @@ export async function runWorkspaceCases({ browser, check, login, meta, result, f
     let type;
     try {
         await check('legacy navigation crosses once into the sole SPA workspace chooser', 'spa', async () => {
-            await login(page, 'inertia');
+            await login(page, 'application');
+            await page.goto('http://localhost:8138/profile');
+            await page.waitForFunction(() => document.documentElement.dataset.visibility === 'ready');
             const previous = await meta(page);
-            await page.getByRole('link', { name: 'أنشطتي', exact: true }).click();
+            await page.getByRole('link', { name: 'مساحات العمل', exact: true }).click();
             await page.waitForURL('http://localhost:8138/workspaces');
             await appReady(page, 'index');
             const next = await meta(page);
@@ -104,6 +106,7 @@ export async function runWorkspaceCases({ browser, check, login, meta, result, f
         await check('lost creation ACK preserves the exact command and explicit retry creates no duplicate', 'spa', async () => {
             const before = await list();
             const name = 'Lost ACK creation ' + Date.now();
+            const originalDocument = await meta(page);
             await page.locator('[data-workspaces="name"]').fill(name);
             const payloads = [];
             let lose = true;
@@ -134,11 +137,13 @@ export async function runWorkspaceCases({ browser, check, login, meta, result, f
             command('restore-create');
             await page.locator('[data-workspaces="retry"]').click();
             await page.waitForURL(/\/workspaces\/[^/]+\/goals$/);
+            await page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready' && document.querySelector('[data-goals="form"]'));
+            assert.equal((await meta(page)).binding.generation, originalDocument.binding.generation);
             assert.equal(payloads.length, 3); assert.deepEqual(payloads[2], payloads[0]);
             const after = await list();
             assert.equal(after.length, before.length + 1);
             assert.equal(after.filter(row => row.name === name).length, 1);
-            return { lostAckAfterServerCommit: true, automaticAttempts: 1, explicitAttempts: 3, deniedRetryPreservesOriginalUnknown: true, exactOriginalPayload: true, createdWorkspaces: 1, nextJourney: 'Canonical Goals remains legacy until its own cutover' };
+            return { lostAckAfterServerCommit: true, initialDelivery: 1, automaticRetries: 0, explicitRetries: 2, deniedRetryPreservesOriginalUnknown: true, exactOriginalPayload: true, createdWorkspaces: 1, nextJourney: 'Canonical Goals in the same unified SPA document' };
         });
         await check('revoked session cannot restore chooser data or use its old receipt', 'spa', async () => {
             await page.goto('http://localhost:8138/workspaces'); await appReady(page, 'index');

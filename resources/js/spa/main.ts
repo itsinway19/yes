@@ -33,6 +33,10 @@ watch(locale, value => { i18n.global.locale.value = value; });
 const app = createApp(defineComponent({ setup: () => () => h('div', { dir: locale.value === 'ar' ? 'rtl' : 'ltr' }, [
     h('header', { style: 'display:flex;gap:20px;padding:18px;flex-wrap:wrap;align-items:center' }, [h('strong', 'BuilderAd'),
         bootstrap.application ? h(RouterLink, { to: '/workspaces' }, () => copy('أنشطتي', 'My businesses')) : null,
+        bootstrap.application && typeof router.currentRoute.value.params.workspace === 'string' ? h('a', { href: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/business` }, copy('سياق النشاط', 'Business context')) : null,
+        bootstrap.application && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/goals` }, () => copy('الأهداف', 'Goals')) : null,
+        bootstrap.application ? h('a', { href: '/profile' }, copy('الحساب', 'Account')) : null,
+        bootstrap.application ? h('a', { href: '/security/devices' }, copy('الأمان', 'Security')) : null,
         bootstrap.application ? h('button', { disabled: localeBusy.value || status.value !== 'ready', 'data-application': 'locale', onClick: async () => { localeError.value = false; try { await switchLocale(); } catch { localeError.value = true; } } }, locale.value === 'ar' ? 'English' : 'العربية') : null,
         h('button', { onClick: () => { if(confirmDeparture.value())void logout(); }, disabled: status.value !== 'ready', 'data-spa': 'logout' }, copy('تسجيل الخروج', 'Sign out'))]),
     localeError.value ? h('p', { role: 'alert' }, copy('تعذّر حفظ اللغة. حاول مجددًا.', 'The language change could not be confirmed. Try again.')) : null,

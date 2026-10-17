@@ -1,5 +1,4 @@
-import { computed } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import { supportedLocale } from './messages';
 const copy = {
     eyebrow: ['هدف النشاط', 'Business goals'], title: ['ما هدفك التجاري الآن؟', 'What is your business goal now?'],
@@ -18,9 +17,8 @@ const copy = {
     review: ['مراجعة النسخة المحفوظة', 'Review saved version'], adopt: ['اعتماد المراجعة للحفظ بهذه المسودة', 'Use reviewed revision to save this draft'],
     savedVersion: ['الأهداف المحفوظة حاليًا', 'Currently saved goals'], selectLabel: ['اختيار الهدف', 'Select goal'],
 } as const;
-export function useGoalsCopy() {
-    const page = usePage();
-    const locale = computed(() => supportedLocale(page.props.locale));
+export function useGoalsCopy(input: MaybeRefOrGetter<unknown>) {
+    const locale = computed(() => supportedLocale(toValue(input)));
     const t = (key: keyof typeof copy): string => copy[key][locale.value === 'ar' ? 0 : 1];
     const localized = (value: { name_ar: string; name_en: string }) => locale.value === 'ar' ? value.name_ar : value.name_en;
     return { locale, t, localized };

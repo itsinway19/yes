@@ -6,15 +6,15 @@ import { current, read, confirmDeparture } from './state';
 import { remember, restore, type Preferences } from './drafts';
 import { bootstrap, stamp, owned, TransportError } from './transport';
 import { saveGoals } from './api';
+import { goalsPath } from './paths';
+import { useGoalsCopy } from '../localization/goalsCopy';
+import { locale as applicationLocale } from '../spa/locale';
 import { canContinue, cloneGoals, goalSignature, setPriority, toggleGoal, toggleResult } from '../Components/Business/goalSelection';
 const props = current.value!;
 const workspace = props.workspace;
 const business = computed(() => current.value?.business ?? props.business), catalog = props.catalog;
 const router = useRouter();
-const locale = ref(bootstrap.locale);
-const localized = (value: {name_ar:string;name_en:string}) => locale.value === 'ar' ? value.name_ar : value.name_en;
-const text: Record<string,string> = {title:'ما هدفك التجاري الآن؟',eyebrow:'هدف النشاط',intro:'اختر الأهداف التي تريد تحقيقها.',edit:'تعديل',readonly:'عرض فقط',selectLabel:'اختيار الهدف',priority:'أولوية البداية',makePriority:'تعيين كأولوية',viewResults:'عرض النتائج',choosePriority:'حدد أولوية بداية',results:'النتيجة المطلوبة',conflict:'تغيرت الأهداف المحفوظة. مسودتك لم تتغير.',review:'مراجعة النسخة المحفوظة',adopt:'اعتماد النسخة للحفظ بهذه المسودة',savedVersion:'الأهداف المحفوظة حاليًا',empty:'لم يتم اختيار أي هدف',saving:'جارٍ الحفظ…',continue:'متابعة',previous:'السابق'};
-const t = (key: string) => text[key] ?? key;
+const { locale, t, localized } = useGoalsCopy(applicationLocale);
 const baseline = ref<Preferences>(structuredClone(props.preferences));
 const draft = reactive(cloneGoals(props.preferences.value));
 const busy = ref(false), reviewing = ref(false), conflict = ref(false), error = ref('');
@@ -38,13 +38,13 @@ async function save(){
  try{
   const saved=await saveGoals(workspace.public_id,{value:{...cloneGoals(draft),priority:draft.priority},version:baseline.value.version});
   if(!alive || !owned(revision))return;baseline.value=saved;Object.assign(draft,cloneGoals(saved.value));await persist;busy.value=false;
-  await router.push(`/spa/workspaces/${workspace.public_id}/goals/review`);
- }catch(failure){if(!alive || !owned(revision))return;if(failure instanceof TransportError && failure.status===409){conflict.value=true;reviewed.value=null;}else error.value=failure instanceof TransportError&&failure.status===403?'لم يعد لديك إذن للحفظ؛ المسودة باقية.':failure instanceof TransportError&&failure.status===422?Object.values(failure.body.errors??{}).flat().join(' ')||'راجع الاختيارات.':'تعذّر تأكيد الحفظ. راجع النسخة المحفوظة قبل إعادة المحاولة.';}
+  await router.push(goalsPath(workspace.public_id, true));
+ }catch(failure){if(!alive || !owned(revision))return;if(failure instanceof TransportError && failure.status===409){conflict.value=true;reviewed.value=null;}else error.value=failure instanceof TransportError&&failure.status===403?t('denied'):failure instanceof TransportError&&failure.status===422?Object.values(failure.body.errors??{}).flat().join(' ')||t('failed'):t('failed');}
  finally{busy.value=false;}
 }
 async function review(){reviewing.value=true;try{const value=await read(workspace.public_id);if(alive&&value)reviewed.value=structuredClone(value.preferences);}finally{reviewing.value=false;}}
 function adopt(){if(reviewed.value){baseline.value=JSON.parse(JSON.stringify(reviewed.value));reviewed.value=null;conflict.value=false;error.value='';}}
-const canLeave=()=>!busy.value&&!reviewing.value&&(!dirty.value||confirm('لديك اختيارات غير محفوظة. هل تريد المغادرة؟'));
+const canLeave=()=>!busy.value&&!reviewing.value&&(!dirty.value||confirm(t('unsaved')));
 confirmDeparture.value=canLeave;
 onBeforeRouteLeave(async()=>{if(!canLeave())return false;await persist;});
 const beforeUnload=(event:BeforeUnloadEvent)=>{if(dirty.value){event.preventDefault();event.returnValue='';}};
@@ -53,11 +53,11 @@ onBeforeUnmount(()=>{alive=false;if(confirmDeparture.value===canLeave)confirmDep
 </script>
 <template>
  <div class="goals-page">
-  <main class="business-main" data-spa-private>
+  <main class="business-main" data-spa-private :data-goals-workspace="workspace.public_id">
    <section class="goals-screen" :dir="locale === 'ar' ? 'rtl' : 'ltr'" :aria-busy="busy || reviewing">
     <p class="biz-eyebrow">{{ t('eyebrow') }}</p>
     <h1>{{ t('title') }}</h1><p class="goals-intro">{{ t('intro') }}</p>
-    <div class="goals-business"><Store :size="25" aria-hidden="true" /><div><strong>{{ workspace.name }}</strong><p v-if="business.type">{{ localized(business.type) }}</p></div><Link v-if="business.canManage" :to="`/spa/workspaces/${workspace.public_id}/goals/review`">{{ t('edit') }}</Link></div>
+    <div class="goals-business"><Store :size="25" aria-hidden="true" /><div><strong>{{ workspace.name }}</strong><p v-if="business.type">{{ localized(business.type) }}</p></div><a v-if="business.canManage && bootstrap.application" :href="`/workspaces/${workspace.public_id}/business`">{{ t('edit') }}</a><Link v-else-if="business.canManage" :to="goalsPath(workspace.public_id, true)">{{ t('edit') }}</Link></div>
     <p v-if="!business.canManage" class="goals-note">{{ t('readonly') }}</p>
     <form data-goals="form" @submit.prevent="save">
      <fieldset class="goals-grid" :disabled="business.canManage && !mutable"><legend class="sr-only">{{ t('selectLabel') }}</legend>
@@ -72,7 +72,7 @@ onBeforeUnmount(()=>{alive=false;if(confirmDeparture.value===canLeave)confirmDep
      <fieldset v-if="priorityGoal" class="goals-outcomes" :aria-label="`${t('results')}: ${localized(priorityGoal)}`" :disabled="!mutable"><legend>{{ t('results') }}</legend><div class="goals-outcome-list"><label v-for="result in priorityGoal.results" :key="result.id" :class="{ 'is-selected': draft.results[priorityGoal.id]?.includes(result.id) }"><input v-if="business.canManage" type="checkbox" :data-goals="`result-${result.id}`" :checked="draft.results[priorityGoal.id]?.includes(result.id) ?? false" @change="outcome(priorityGoal.id, result.id)" /><span v-else aria-hidden="true">{{ draft.results[priorityGoal.id]?.includes(result.id) ? '✓' : '' }}</span>{{ localized(result) }}</label></div></fieldset>
      <div v-if="conflict" class="goals-feedback" role="alert"><p>{{ t('conflict') }}</p><button type="button" data-goals="review" class="biz-link" :disabled="!mutable" @click="review">{{ t('review') }}</button><template v-if="reviewed"><h3>{{ t('savedVersion') }}</h3><p v-if="!reviewed.value.goals.length">{{ t('empty') }}</p><ul><li v-for="goal in catalog.filter(g => reviewed?.value.goals.includes(g.id))" :key="goal.id">{{ localized(goal) }}<strong v-if="reviewed.value.priority === goal.id"> — {{ t('priority') }}</strong><ul><li v-for="result in goal.results.filter(r => reviewed?.value.results[goal.id]?.includes(r.id))" :key="result.id">{{ localized(result) }}</li></ul></li></ul><button type="button" data-goals="adopt" class="biz-link" :disabled="!mutable" @click="adopt">{{ t('adopt') }}</button></template></div>
      <p v-if="error" class="goals-error" role="alert">{{ error }}</p><p v-if="busy || reviewing" role="status">{{ t('saving') }}</p>
-     <footer class="goals-footer"><button v-if="business.canManage" type="submit" data-goals="continue" class="goals-continue" :disabled="!mutable || !canContinue(draft) || conflict">{{ busy ? t('saving') : t('continue') }}<ArrowLeft :size="18" aria-hidden="true" /></button><Link :to="`/spa/workspaces/${workspace.public_id}/goals/review`" class="goals-previous">{{ t('previous') }}<ArrowLeft :size="16" aria-hidden="true" /></Link></footer>
+     <footer class="goals-footer"><button v-if="business.canManage" type="submit" data-goals="continue" class="goals-continue" :disabled="!mutable || !canContinue(draft) || conflict">{{ busy ? t('saving') : t('continue') }}<ArrowLeft :size="18" aria-hidden="true" /></button><a v-if="bootstrap.application" :href="`/workspaces/${workspace.public_id}/business`" class="goals-previous">{{ t('previous') }}<ArrowLeft :size="16" aria-hidden="true" /></a><Link v-else :to="goalsPath(workspace.public_id, true)" class="goals-previous">{{ t('previous') }}<ArrowLeft :size="16" aria-hidden="true" /></Link></footer>
     </form>
    </section>
   </main>

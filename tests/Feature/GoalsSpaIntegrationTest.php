@@ -48,4 +48,36 @@ final class GoalsSpaIntegrationTest extends TestCase
         $this->assertFileDoesNotExist(public_path('contracts/goals.openapi.json'));
         $this->assertFileDoesNotExist(public_path('openapi.json'));
     }
+
+    public function test_canonical_editor_review_and_context_share_the_existing_writer_and_scope(): void
+    {
+        $user = User::factory()->create();
+        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
+        $this->actingAs($user)->post('/workspaces', ['name' => 'Canonical private goals', 'slug' => 'canonical-goals'])->assertRedirect();
+        $owner = DB::connection('pgsql_migrations');
+        $workspace = $owner->table('workspaces')->where('slug', 'canonical-goals')->sole();
+        $path = '/workspaces/'.$workspace->public_id.'/goals';
+        foreach (['', '/review'] as $suffix) {
+            $this->get($path.$suffix)->assertOk()->assertSee('application-bootstrap', false)
+                ->assertDontSee('data-page=', false)->assertDontSee($workspace->name);
+        }
+        $projection = $this->getJson($path.'/context')->assertOk()->json();
+        $this->assertSame($this->getJson($path)->assertOk()->json(), $projection['preferences']);
+        $this->assertCount(4, $projection['catalog']);
+        $this->postJson($path, ['value' => AdvertiserGoalPreferencesTest::value(), 'version' => 0])->assertOk();
+        $this->getJson($path.'/context')->assertOk()->assertJsonPath('preferences.version', 1);
+        $before = $owner->table('security_sessions')->where('user_id', $user->id)->sole();
+        $this->travel(30)->seconds();
+        $this->getJson($path.'/context', ['X-Goals-Passive' => '1'])->assertOk();
+        $this->getJson($path.'/context', ['X-Goals-Witness' => '1'])->assertOk()->assertJsonMissingPath('preferences');
+        $after = $owner->table('security_sessions')->where('id', $before->id)->sole();
+        $this->assertSame($before->idle_expires_at, $after->idle_expires_at);
+        $this->assertSame($before->absolute_expires_at, $after->absolute_expires_at);
+        $owner->table('security_action_grants')->where('subject_user_id', $user->id)->where('workspace_id', $workspace->id)
+            ->where('action', 'business.context.manage')->update(['status' => 'revoked', 'revoked_at' => now()]);
+        $this->getJson($path.'/context')->assertOk()->assertJsonPath('business.canManage', false);
+        $this->postJson($path, ['value' => AdvertiserGoalPreferencesTest::value(), 'version' => 1])->assertForbidden();
+        $this->actingAs(User::factory()->create())->getJson($path.'/context')->assertForbidden();
+        $this->getJson('/workspaces/not-a-uuid/goals/context')->assertNotFound();
+    }
 }
