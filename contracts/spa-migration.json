@@ -65,7 +65,7 @@
       "apiContract": "contracts/application.openapi.json",
       "tests": ["SourceRegistryTest", "ServiceAuthorityTest", "tests/sources-api-client.test.mjs", "tests/spa-transport.test.mjs"],
       "status": "PREPARING_NOT_CUT_OVER",
-      "cutover": "Not accepted. Same existing scoped readers/writers and non-JSON redirects are retained. The generated-operation helper consumes the shared client but is not activated by a page. Provider operation contracts, actual Source UI conversion, durable original-command/session handling and browser proof remain required before deleting the old renderer. No live provider or business-outcome claim."
+      "cutover": "Not accepted. Same existing scoped readers/writers and non-JSON redirects are retained. Generated Source/provider operation helpers consume the shared client but are not activated by a page. All five provider/report HTTP contracts are prepared; actual Source UI conversion, durable original-command/session handling and browser proof remain required before deleting the old renderer. No live provider or business-outcome claim."
     },
     {
       "id": "locale-command",
