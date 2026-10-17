@@ -16,6 +16,7 @@ final class GoalsSpaIntegrationTest extends TestCase
         // Register the opt-in production route file even if the suite booted disabled.
         if (! Route::has('workspaces.goals.spa.shell')) {
             Route::middleware('web')->group(base_path('routes/goals-spa.php'));
+            Route::getRoutes()->refreshNameLookups();
         }
         $user = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
