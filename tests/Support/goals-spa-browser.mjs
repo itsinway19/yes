@@ -35,6 +35,7 @@ const onlyClosure=process.env.GOALS_SPA_ONLY==='closure';
 const onlyRetention=process.env.GOALS_SPA_ONLY==='retention';
 const onlyFoundation=process.env.GOALS_SPA_ONLY==='foundation';
 const onlyWorkspaces=process.env.GOALS_SPA_ONLY==='workspaces';
+const onlyContext=process.env.GOALS_SPA_ONLY==='context';
 const closure=process.env.GOALS_SPA_CLOSURE==='enabled';
 const result={head:spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim(),selection:process.env.GOALS_SPA_ONLY??'all',kind:'Real Laravel + dedicated Redis + PostgreSQL runtime/RLS + Chromium; synthetic users only',cases:[],wire,errors:[],assets:[],findings:[],unverified:[]};
 let browser;
@@ -99,8 +100,9 @@ try{
   const {runWorkspaceCases}=await import('./workspace-spa-browser.mjs');
   await runWorkspaceCases({browser,check,login,meta,result,fixture,command,run});
  }
- if(!onlyRestoration&&!onlyClosure&&!onlyRetention&&!onlyFoundation&&!onlyWorkspaces)await runGoalsContractCases({browser,check,login,meta,fixture,result});
- for(const mode of onlyRestoration||onlyClosure||onlyRetention||onlyFoundation||onlyWorkspaces?[]:['application']){
+ if(onlyContext){const {runBusinessContextCases}=await import('./business-context-spa-browser.mjs');await runBusinessContextCases({browser,check,login,meta,get,post,command,fixture,result,run,until,held});}
+ if(!onlyRestoration&&!onlyClosure&&!onlyRetention&&!onlyFoundation&&!onlyWorkspaces&&!onlyContext)await runGoalsContractCases({browser,check,login,meta,fixture,result});
+ for(const mode of onlyRestoration||onlyClosure||onlyRetention||onlyFoundation||onlyWorkspaces||onlyContext?[]:['application']){
   const context=await browser.newContext({viewport:{width:1280,height:900}});let page=await context.newPage();page.setDefaultTimeout(15000);
   page.on('dialog',dialog=>dialog.accept());page.on('pageerror',error=>result.errors.push({mode,message:error.message}));
   context.on('response',response=>{if(response.url().includes('/build/')&&response.status()===200)result.assets.push({url:response.url(),status:response.status()});});
@@ -242,7 +244,7 @@ try{
   }
  }
  // Exact HTTP ownership experiment, shared backend and actual cookie delivery.
- for(const mode of onlyRestoration||onlyRetention||onlyFoundation||onlyWorkspaces?[]:['application']){
+ for(const mode of onlyRestoration||onlyRetention||onlyFoundation||onlyWorkspaces||onlyContext?[]:['application']){
   const context=await browser.newContext();const page=await context.newPage();page.on('dialog',d=>d.accept());await login(page,mode);
   await check('reversed real renewal/login cookie delivery',mode,async()=>{
    const originalIdentity=await meta(page);
@@ -277,7 +279,7 @@ try{
   const {runClosureCases}=await import('./goals-spa-closure.mjs');
   await runClosureCases({browser,check,login,get,post,meta,ready,visit,target,selected,command,until,held,wire,result,fixture,workspace,other,foreign,run,hash});
  }
- for(const mode of onlyClosure||onlyRetention||onlyFoundation||onlyWorkspaces?[]:['application']){
+ for(const mode of onlyClosure||onlyRetention||onlyFoundation||onlyWorkspaces||onlyContext?[]:['application']){
   for(const fault of onlyRestoration?[]:['load','render']){
    const context=await browser.newContext();const page=await context.newPage();page.on('dialog',d=>d.accept());
    await page.goto('http://localhost:8138/login');assert.equal((await post(page,'/login',{email:'goals-a@example.test',password:'DisposableGoalsProof42!'})).status,200);

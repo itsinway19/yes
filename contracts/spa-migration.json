@@ -35,6 +35,17 @@
       "cutover": "Canonical HTML routes contain only the unified shell and no business projection. The former Business/Goals Vue renderer and locale adapter are deleted; behavior tests exercise the actual SPA editor. Existing opt-in proof URLs reuse this renderer and shared entry; their production flag is not enabled. Business context, sources and account/security destinations remain native boundaries pending their cutover. Final Foundation, remote CI and B/C/device acceptance remain separate."
     },
     {
+      "id": "business-context",
+      "journey": "Edit classified business name/type, request explicit authority, replace target markets, and replace or clear Current Intent with independent drafts and CAS review",
+      "routes": ["GET /workspaces/{workspace}/business", "POST /workspaces/{workspace}/business", "POST /workspaces/{workspace}/business/authority", "POST /workspaces/{workspace}/business/target-markets", "POST /workspaces/{workspace}/business/current-intent"],
+      "spaBoundary": "Canonical context screen in the shared SPA; existing Laravel continuation remains authoritative and exits natively only for un-migrated destinations",
+      "businessOwners": ["App\\Business\\BusinessContext", "App\\Security\\GrantAuthority", "App\\Foundation\\Tenancy\\WorkspaceContext"],
+      "apiContract": "contracts/application.openapi.json",
+      "tests": ["WorkspaceSpaIntegrationTest", "BusinessFoundationTest", "CurrentIntentTest", "CurrentIntentSecurityTest", "DeclaredTargetMarketsTest", "DeclaredTargetMarketsSecurityTest", "ArchitectureSourceOptionalityTest", "tests/current-intent-interaction.test.mjs", "tests/target-markets-interaction.test.mjs", "tests/business-context-commands.test.mjs", "tests/Support/business-context-spa-browser.mjs"],
+      "status": "LOCAL_JOURNEY_ACCEPTED",
+      "cutover": "BusinessContextController no longer renders a legacy page. The former Pages/Business/Context renderer is moved into the SPA feature without any legacy imports; its component requirements remain tested. Existing native redirects are preserved; JSON commands acknowledge the same original writers. Memory-only Workspace/form drafts survive same-document suspension and clear on terminal document closure. Sources/Object Purpose and authentication/internal destinations remain pending; this is not complete advertiser or final Foundation/CI acceptance."
+    },
+    {
       "id": "locale-command",
       "journey": "Switch the application language using the existing encrypted locale cookie",
       "routes": ["POST /locale"],

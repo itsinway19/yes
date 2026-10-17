@@ -101,6 +101,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/workspaces/{workspace}/business": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readBusinessContext"];
+        put?: never;
+        post: operations["updateBusinessContext"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace}/business/authority": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requestBusinessContextAuthority"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace}/business/target-markets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["replaceBusinessTargetMarkets"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace}/business/current-intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["replaceOrClearCurrentIntent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/locale": {
         parameters: {
             query?: never;
@@ -245,6 +309,100 @@ export interface components {
         };
         ApplicationDestination: {
             redirect: string;
+        };
+        CountryReference: {
+            code: string;
+            name_ar: string;
+            name_en: string;
+        };
+        CurrentIntentValue: {
+            /** @enum {unknown} */
+            direction: "increase_value" | "preserve_value" | "improve_efficiency_preserving_value" | "validate_business_direction";
+            /** @constant */
+            scope: "business_wide";
+            description: string | null;
+            outcome: {
+                meaning: string;
+                clarification: string | null;
+                count_unit: string | null;
+            };
+            quantity: string | null;
+            horizon: {
+                deadline_date: string;
+                timezone: string;
+            } | null;
+        };
+        CurrentIntentProjection: {
+            /** @enum {unknown} */
+            state: "NOT_DECLARED" | "PRESENT";
+            value: components["schemas"]["CurrentIntentValue"] | null;
+            version: number;
+        };
+        BusinessContextProjection: {
+            type: {
+                id: number;
+                key: string;
+                name_ar: string;
+                name_en: string;
+                active: boolean;
+            } | null;
+            version: number;
+            currentIntent: components["schemas"]["CurrentIntentProjection"];
+            canManage: boolean;
+            targetMarketsDeclared: boolean;
+            targetMarkets: components["schemas"]["CountryReference"][];
+        };
+        BusinessContextData: {
+            workspace: {
+                /** Format: uuid */
+                public_id: string;
+                name: string;
+                business_type_id: number | null;
+                business_context_version: number;
+            };
+            types: components["schemas"]["BusinessType"][];
+            canManage: boolean;
+            canRequestAuthority: boolean;
+            version: number;
+            business: components["schemas"]["BusinessContextProjection"];
+            countryOptions: components["schemas"]["CountryReference"][];
+            timezoneOptions: string[];
+        };
+        BusinessContextResource: {
+            data: components["schemas"]["BusinessContextData"];
+            /** @enum {unknown} */
+            locale: "ar" | "en";
+            visibility: components["schemas"]["Visibility"];
+        };
+        UpdateBusinessContext: {
+            name: string;
+            business_type_id: number;
+            version: number;
+        };
+        RequestBusinessContextAuthority: {
+            /** @constant */
+            decision: "authorize";
+            /** @constant */
+            reason: "complete_business_context";
+        };
+        ReplaceTargetMarkets: {
+            country_codes: string[];
+            version: number;
+        };
+        CurrentIntentCommand: {
+            /** @enum {unknown} */
+            command: "replace" | "clear";
+            value: components["schemas"]["CurrentIntentValue"] | null;
+            confirmations: {
+                declaration?: boolean;
+                business_wide?: boolean;
+                outcome?: boolean;
+                acceptance_clear?: boolean;
+                clarification_required?: boolean;
+                quantity?: boolean;
+                horizon?: boolean;
+            };
+            version: number;
         };
     };
     responses: never;
@@ -829,6 +987,441 @@ export interface operations {
             };
             /** @description Identity context conflict; close the document when identityConflict is true. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readBusinessContext: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Builderad-Passive"?: "1";
+                "X-Builderad-Witness"?: "1";
+            };
+            path: {
+                workspace: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessContextResource"] | components["schemas"]["GoalsWitness"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateBusinessContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBusinessContext"];
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationDestination"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original technical input-size boundary; preserve the full draft. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    requestBusinessContextAuthority: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestBusinessContextAuthority"];
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationDestination"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original technical input-size boundary; preserve the full draft. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    replaceBusinessTargetMarkets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceTargetMarkets"];
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationDestination"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original technical input-size boundary; preserve the full draft. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    replaceOrClearCurrentIntent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurrentIntentCommand"];
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationDestination"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original technical input-size boundary; preserve the full draft. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };

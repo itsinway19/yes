@@ -106,8 +106,8 @@ class BusinessFoundationTest extends TestCase
         $this->get('/workspaces/'.$workspace->public_id.'?tab=sources')->assertRedirect(route('workspaces.business.edit', $workspace->public_id));
         $this->get('/profile')->assertOk();
         $this->get('/security/devices')->assertOk();
-        $this->get('/workspaces/'.$workspace->public_id.'/business')->assertInertia(fn (Assert $page) => $page
-            ->component('Business/Context')->where('workspace.name', 'Original business')->where('canManage', true));
+        $this->get('/workspaces/'.$workspace->public_id.'/business')->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
+        $this->getJson('/workspaces/'.$workspace->public_id.'/business')->assertOk()->assertJsonPath('data.workspace.name', 'Original business')->assertJsonPath('data.canManage', true);
         $this->classify($workspace)->assertRedirect('/workspaces/'.$workspace->public_id.'?tab=sources');
         $db = DB::connection('pgsql_migrations');
         $this->assertSame(1, $db->table('workspaces')->count());
@@ -166,12 +166,11 @@ class BusinessFoundationTest extends TestCase
                 'created_at' => now(), 'updated_at' => now()]);
         }
         $this->actingAs($member);
-        $this->get('/workspaces/'.$workspace->public_id.'/business')->assertInertia(fn (Assert $page) => $page->where('canManage', true));
+        $this->getJson('/workspaces/'.$workspace->public_id.'/business')->assertOk()->assertJsonPath('data.canManage', true);
         $this->classify($workspace)->assertRedirect();
         $db->table('security_action_grants')->where('subject_user_id', $member->id)->where('action', 'business.context.manage')
             ->update(['status' => 'revoked', 'revoked_at' => now()]);
-        $this->get('/workspaces/'.$workspace->public_id.'/business')->assertInertia(fn (Assert $page) => $page
-            ->where('canManage', false)->where('canRequestAuthority', false));
+        $this->getJson('/workspaces/'.$workspace->public_id.'/business')->assertOk()->assertJsonPath('data.canManage', false)->assertJsonPath('data.canRequestAuthority', false);
     }
 
     public function test_change_is_versioned_and_does_not_rewrite_previous_context(): void

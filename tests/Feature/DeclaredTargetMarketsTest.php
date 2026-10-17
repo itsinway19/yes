@@ -101,10 +101,10 @@ class DeclaredTargetMarketsTest extends TestCase
         $url = '/workspaces/'.$workspace->public_id.'/business';
         $this->post($url.'/target-markets', ['country_codes' => ['SA', 'KW', 'AE', 'SA'], 'version' => 0])
             ->assertRedirect($url);
-        $this->get($url)->assertInertia(fn (Assert $page) => $page->component('Business/Context')
-            ->has('countryOptions', 249)->where('business.targetMarketsDeclared', true)
-            ->where('business.version', 1)->where('business.targetMarkets.0.code', 'AE')
-            ->where('business.targetMarkets.1.code', 'KW')->where('business.targetMarkets.2.code', 'SA'));
+        $this->get($url)->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
+        $this->getJson($url)->assertOk()->assertJsonCount(249, 'data.countryOptions')->assertJsonPath('data.business.targetMarketsDeclared', true)
+            ->assertJsonPath('data.business.version', 1)->assertJsonPath('data.business.targetMarkets.0.code', 'AE')
+            ->assertJsonPath('data.business.targetMarkets.1.code', 'KW')->assertJsonPath('data.business.targetMarkets.2.code', 'SA');
         $actual = DB::connection('pgsql_migrations')->table('workspaces')->find($workspace->id);
         $this->assertSame($workspace->name, $actual->name);
         $this->assertSame($workspace->business_type_id, $actual->business_type_id);

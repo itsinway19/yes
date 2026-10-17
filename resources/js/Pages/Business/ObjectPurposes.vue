@@ -13,7 +13,7 @@ const selected = computed(() => props.projection.items.find(item => item.purpose
 <Head :title="t('purposeTitle')" />
 <AdvertiserLayout :business-name="workspace.name" :workspace-id="workspace.public_id" :preserve-drafts-on-locale-change="true">
     <h1>{{ t('purposeTitle') }}</h1><p>{{ workspace.name }}</p>
-    <Link class="biz-link" :href="route('workspaces.business.edit',workspace.public_id)">{{ t('context') }}</Link>
+    <a class="biz-link" :href="route('workspaces.business.edit',workspace.public_id)">{{ t('context') }}</a>
     <p v-if="projection.state === 'UNKNOWN'">{{ t('purposeUnknown') }}</p>
     <ul v-if="!selectedPurpose"><li v-for="item in projection.items" :key="item.purpose_id"><Link class="biz-link" :href="route('workspaces.object-purposes.show',[workspace.public_id,item.purpose_id])">{{ t('purposeRead') }} · {{ item.applicable?.snapshot.meaning ?? item.purpose_id }} · {{ item.head_version }}</Link></li></ul>
     <section v-if="selected" class="grid gap-4" style="overflow-wrap:anywhere">

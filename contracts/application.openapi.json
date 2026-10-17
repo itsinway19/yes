@@ -883,6 +883,579 @@
         "description": "Existing fresh-authenticated GrantAuthority owner reassessment; no revoked or expired grant is restored."
       }
     },
+    "/workspaces/{workspace}/business": {
+      "get": {
+        "operationId": "readBusinessContext",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Builderad-Passive",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Builderad-Witness",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessContextResource"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GoalsWitness"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "updateBusinessContext",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBusinessContext"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationDestination"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Original technical input-size boundary; preserve the full draft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace}/business/authority": {
+      "post": {
+        "operationId": "requestBusinessContextAuthority",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestBusinessContextAuthority"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationDestination"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Original technical input-size boundary; preserve the full draft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace}/business/target-markets": {
+      "post": {
+        "operationId": "replaceBusinessTargetMarkets",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceTargetMarkets"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationDestination"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Original technical input-size boundary; preserve the full draft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace}/business/current-intent": {
+      "post": {
+        "operationId": "replaceOrClearCurrentIntent",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurrentIntentCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationDestination"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Original technical input-size boundary; preserve the full draft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/locale": {
       "post": {
         "operationId": "setApplicationLocale",
@@ -1503,6 +2076,450 @@
         },
         "required": [
           "redirect"
+        ],
+        "additionalProperties": false
+      },
+      "CountryReference": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          },
+          "name_ar": {
+            "type": "string"
+          },
+          "name_en": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name_ar",
+          "name_en"
+        ],
+        "additionalProperties": false
+      },
+      "CurrentIntentValue": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "enum": [
+              "increase_value",
+              "preserve_value",
+              "improve_efficiency_preserving_value",
+              "validate_business_direction"
+            ]
+          },
+          "scope": {
+            "const": "business_wide"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome": {
+            "type": "object",
+            "properties": {
+              "meaning": {
+                "type": "string"
+              },
+              "clarification": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "count_unit": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "meaning",
+              "clarification",
+              "count_unit"
+            ],
+            "additionalProperties": false
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "deadline_date": {
+                    "type": "string"
+                  },
+                  "timezone": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "deadline_date",
+                  "timezone"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "direction",
+          "scope",
+          "description",
+          "outcome",
+          "quantity",
+          "horizon"
+        ],
+        "additionalProperties": false
+      },
+      "CurrentIntentProjection": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "enum": [
+              "NOT_DECLARED",
+              "PRESENT"
+            ]
+          },
+          "value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentIntentValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "state",
+          "value",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessContextProjection": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "key": {
+                    "type": "string"
+                  },
+                  "name_ar": {
+                    "type": "string"
+                  },
+                  "name_en": {
+                    "type": "string"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "key",
+                  "name_ar",
+                  "name_en",
+                  "active"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "currentIntent": {
+            "$ref": "#/components/schemas/CurrentIntentProjection"
+          },
+          "canManage": {
+            "type": "boolean"
+          },
+          "targetMarketsDeclared": {
+            "type": "boolean"
+          },
+          "targetMarkets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountryReference"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "version",
+          "currentIntent",
+          "canManage",
+          "targetMarketsDeclared",
+          "targetMarkets"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessContextData": {
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "type": "object",
+            "properties": {
+              "public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "business_type_id": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "business_context_version": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "public_id",
+              "name",
+              "business_type_id",
+              "business_context_version"
+            ],
+            "additionalProperties": false
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BusinessType"
+            }
+          },
+          "canManage": {
+            "type": "boolean"
+          },
+          "canRequestAuthority": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "business": {
+            "$ref": "#/components/schemas/BusinessContextProjection"
+          },
+          "countryOptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountryReference"
+            }
+          },
+          "timezoneOptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "workspace",
+          "types",
+          "canManage",
+          "canRequestAuthority",
+          "version",
+          "business",
+          "countryOptions",
+          "timezoneOptions"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessContextResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BusinessContextData"
+          },
+          "locale": {
+            "enum": [
+              "ar",
+              "en"
+            ]
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/Visibility"
+          }
+        },
+        "required": [
+          "data",
+          "locale",
+          "visibility"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateBusinessContext": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120
+          },
+          "business_type_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "business_type_id",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "RequestBusinessContextAuthority": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "const": "authorize"
+          },
+          "reason": {
+            "const": "complete_business_context"
+          }
+        },
+        "required": [
+          "decision",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "ReplaceTargetMarkets": {
+        "type": "object",
+        "properties": {
+          "country_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "country_codes",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "CurrentIntentCommand": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "enum": [
+              "replace",
+              "clear"
+            ]
+          },
+          "value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentIntentValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confirmations": {
+            "type": "object",
+            "properties": {
+              "declaration": {
+                "type": "boolean"
+              },
+              "business_wide": {
+                "type": "boolean"
+              },
+              "outcome": {
+                "type": "boolean"
+              },
+              "acceptance_clear": {
+                "type": "boolean"
+              },
+              "clarification_required": {
+                "type": "boolean"
+              },
+              "quantity": {
+                "type": "boolean"
+              },
+              "horizon": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "command",
+          "value",
+          "confirmations",
+          "version"
         ],
         "additionalProperties": false
       }

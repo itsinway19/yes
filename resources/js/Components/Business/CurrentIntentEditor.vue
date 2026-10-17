@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
-import { computed, reactive, ref, watch } from 'vue';
-import { useBusinessCopy } from '@/localization/business';
+import { refresh, saveIntent } from '@/business-context/commands';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { remember, restore } from '@/business-context/drafts';
+import { useBusinessCopy } from '@/localization/businessCopy';
+import { locale } from '@/spa/locale';
 type Intent = { direction: string; scope: 'business_wide'; description: string | null; outcome: { meaning: string; clarification: string | null; count_unit: string | null }; quantity: string | null; horizon: { deadline_date: string; timezone: string } | null };
 const props = defineProps<{ workspaceId: string; currentIntent: { state: string; value: Intent | null; version: number }; canManage: boolean; timezoneOptions: string[] }>();
-const { t } = useBusinessCopy();
+const { t } = useBusinessCopy(locale);
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const fields = (v: Intent | null) => ({ direction: v?.direction ?? '', description: v?.description ?? '', meaning: v?.outcome.meaning ?? '', clarification: v?.outcome.clarification ?? '', count_unit: v?.outcome.count_unit ?? '', quantity: v?.quantity ?? '', deadline_date: v?.horizon?.deadline_date ?? '', timezone: v?.horizon?.timezone ?? '', needsClarification: v?.outcome.clarification != null });
 const baseline = ref(clone(props.currentIntent));
@@ -12,6 +14,14 @@ const draft = reactive(fields(baseline.value.value));
 const flags = reactive({ declaration: false, business_wide: false, outcome: false, acceptance_clear: false, clarification_required: false, quantity: false, horizon: false });
 const editing = ref(false), clearing = ref(false), processing = ref(false), changed = ref(false), reviewed = ref(false);
 const errors = ref<Record<string,string>>({});
+type Draft = { baseline: typeof props.currentIntent; draft: typeof draft; flags: typeof flags; editing: boolean; clearing: boolean; changed: boolean; reviewed: boolean; errors: Record<string, string>; pending: boolean };
+const retained = props.canManage ? restore<Draft>(props.workspaceId, 'intent') : undefined;
+const saved = retained && (retained.editing || retained.clearing || retained.pending) ? retained : undefined;
+if (saved) {
+ baseline.value = saved.baseline; Object.assign(draft, saved.draft); Object.assign(flags, saved.flags);
+ editing.value = saved.editing; clearing.value = saved.clearing; changed.value = saved.changed || saved.baseline.version !== props.currentIntent.version; reviewed.value = saved.reviewed;
+ errors.value = saved.pending ? { value: t('intentTransportError') } : saved.errors;
+}
 const signature = () => JSON.stringify(draft);
 const dirty = computed(() => signature() !== JSON.stringify(fields(baseline.value.value)));
 const resetConfirmations = () => { for (const key of Object.keys(flags) as (keyof typeof flags)[]) flags[key] = false; };
@@ -25,7 +35,7 @@ watch(() => props.currentIntent, () => {
 }, { deep: true });
 function edit() { editing.value = true; clearing.value = false; }
 function cancel() { Object.assign(draft, fields(props.currentIntent.value)); baseline.value = clone(props.currentIntent); resetConfirmations(); editing.value = clearing.value = changed.value = reviewed.value = false; errors.value = {}; }
-function review() { router.reload({ onSuccess: () => { reviewed.value = true; changed.value = true; } }); }
+function review() { void refresh(props.workspaceId, { onSuccess: () => { reviewed.value = true; changed.value = true; } }); }
 function adoptVersion() { baseline.value = clone(props.currentIntent); resetConfirmations(); changed.value = false; reviewed.value = false; errors.value = {}; }
 const optional = (s: string) => s.replace(/^[\t\n\r ]+|[\t\n\r ]+$/g, '') || null;
 const value = computed<Intent>(() => ({ direction: draft.direction, scope: 'business_wide', description: optional(draft.description), outcome: { meaning: optional(draft.meaning) ?? '', clarification: draft.needsClarification ? optional(draft.clarification) : null, count_unit: optional(draft.count_unit) }, quantity: draft.quantity ? draft.quantity.replace(/^0+/, '') : null, horizon: draft.deadline_date || draft.timezone ? { deadline_date: draft.deadline_date, timezone: draft.timezone } : null }));
@@ -56,8 +66,7 @@ function save() {
  if(new TextEncoder().encode(JSON.stringify(command)).length>81920) { errors.value={value:t('intentTooLong')}; return; }
  const submitted=signature(); const wasClear=clearing.value; let succeeded=false;
  processing.value=true; errors.value={};
- router.post(route('workspaces.business.current-intent.update',props.workspaceId),clone(command),{
- preserveState:true,preserveScroll:true,
+ void saveIntent(props.workspaceId,clone(command) as Parameters<typeof saveIntent>[1],{
  onSuccess:()=> { succeeded=true; if(signature()===submitted && clearing.value===wasClear) { adoptCanonical(); editing.value=clearing.value=false; resetConfirmations(); } else changed.value=true; },
  onHttpException:response=> { if(response.status===413) { errors.value={value:t('intentTooLong')}; return false; } },
  onError:e=> { errors.value=e; if(e.version) changed.value=true; },
@@ -66,6 +75,8 @@ function save() {
 }
 const directions = ['increase_value','preserve_value','improve_efficiency_preserving_value','validate_business_direction'] as const;
 const directionLabel = (direction: string) => ({increase_value:t('intentIncrease'),preserve_value:t('intentPreserve'),improve_efficiency_preserving_value:t('intentEfficiency'),validate_business_direction:t('intentValidate')}[direction] ?? direction);
+defineExpose({ hasUnsaved: () => dirty.value || clearing.value, pending: () => processing.value });
+onBeforeUnmount(() => { if (props.canManage) remember(props.workspaceId, 'intent', { baseline: baseline.value, draft, flags, editing: editing.value, clearing: clearing.value, changed: changed.value, reviewed: reviewed.value, errors: errors.value, pending: processing.value }); });
 </script>
 <template>
  <section data-current-intent class="current-intent biz-divider min-w-0 mt-10" style="overflow-wrap:anywhere">

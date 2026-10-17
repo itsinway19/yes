@@ -4869,6 +4869,7 @@
         "tests/SA01BrowserFixture.php",
         "tests/Support/advertiser-goals-browser.mjs",
         "tests/Support/AdvertiserGoalsUiFixture.php",
+        "tests/Support/business-context-spa-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
         "tests/Support/CurrentIntentUiFixture.php",
         "tests/Support/DeclaredTargetMarketsDurabilityProof.php",
@@ -6796,8 +6797,7 @@
         "tests/Feature/Providers/ProviderAccessStoreTest.php",
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
         "tests/Feature/Security/WorkspaceCreationTest.php",
-        "tests/Feature/WorkspaceSpaIntegrationTest.php",
-        "tests/target-markets-interaction.test.mjs"
+        "tests/Feature/WorkspaceSpaIntegrationTest.php"
       ]
     },
     {
@@ -6818,12 +6818,10 @@
         "App\\Security\\SessionAuthority",
         "App\\Security\\WorkspaceAuthority"
       ],
-      "pages": [
-        "Business/Context"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
+      "spaBoundary": "Canonical context screen in the shared SPA; existing Laravel continuation remains authoritative and exits natively only for un-migrated destinations",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6856,13 +6854,42 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "business-context",
+        "journey": "Edit classified business name/type, request explicit authority, replace target markets, and replace or clear Current Intent with independent drafts and CAS review",
+        "routes": [
+          "GET /workspaces/{workspace}/business",
+          "POST /workspaces/{workspace}/business",
+          "POST /workspaces/{workspace}/business/authority",
+          "POST /workspaces/{workspace}/business/target-markets",
+          "POST /workspaces/{workspace}/business/current-intent"
+        ],
+        "spaBoundary": "Canonical context screen in the shared SPA; existing Laravel continuation remains authoritative and exits natively only for un-migrated destinations",
+        "businessOwners": [
+          "App\\Business\\BusinessContext",
+          "App\\Security\\GrantAuthority",
+          "App\\Foundation\\Tenancy\\WorkspaceContext"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "WorkspaceSpaIntegrationTest",
+          "BusinessFoundationTest",
+          "CurrentIntentTest",
+          "CurrentIntentSecurityTest",
+          "DeclaredTargetMarketsTest",
+          "DeclaredTargetMarketsSecurityTest",
+          "ArchitectureSourceOptionalityTest",
+          "tests/current-intent-interaction.test.mjs",
+          "tests/target-markets-interaction.test.mjs",
+          "tests/business-context-commands.test.mjs",
+          "tests/Support/business-context-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "BusinessContextController no longer renders a legacy page. The former Pages/Business/Context renderer is moved into the SPA feature without any legacy imports; its component requirements remain tested. Existing native redirects are preserved; JSON commands acknowledge the same original writers. Memory-only Workspace/form drafts survive same-document suspension and clear on terminal document closure. Sources/Object Purpose and authentication/internal destinations remain pending; this is not complete advertiser or final Foundation/CI acceptance."
+      },
       "testLeads": [
-        "tests/Feature/ArchitectureSourceOptionalityTest.php",
         "tests/Feature/BusinessContextLockOrderTest.php",
         "tests/Feature/BusinessFoundationTest.php",
-        "tests/Feature/CurrentIntentTest.php",
-        "tests/Feature/DeclaredTargetMarketsTest.php",
         "tests/Feature/Security/WorkspaceCreationTest.php"
       ]
     },
@@ -6886,8 +6913,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Canonical context screen in the shared SPA; existing Laravel continuation remains authoritative and exits natively only for un-migrated destinations",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6920,7 +6947,39 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "business-context",
+        "journey": "Edit classified business name/type, request explicit authority, replace target markets, and replace or clear Current Intent with independent drafts and CAS review",
+        "routes": [
+          "GET /workspaces/{workspace}/business",
+          "POST /workspaces/{workspace}/business",
+          "POST /workspaces/{workspace}/business/authority",
+          "POST /workspaces/{workspace}/business/target-markets",
+          "POST /workspaces/{workspace}/business/current-intent"
+        ],
+        "spaBoundary": "Canonical context screen in the shared SPA; existing Laravel continuation remains authoritative and exits natively only for un-migrated destinations",
+        "businessOwners": [
+          "App\\Business\\BusinessContext",
+          "App\\Security\\GrantAuthority",
+          "App\\Foundation\\Tenancy\\WorkspaceContext"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "WorkspaceSpaIntegrationTest",
+          "BusinessFoundationTest",
+          "CurrentIntentTest",
+          "CurrentIntentSecurityTest",
+          "DeclaredTargetMarketsTest",
+          "DeclaredTargetMarketsSecurityTest",
+          "ArchitectureSourceOptionalityTest",
+          "tests/current-intent-interaction.test.mjs",
+          "tests/target-markets-interaction.test.mjs",
+          "tests/business-context-commands.test.mjs",
+          "tests/Support/business-context-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "BusinessContextController no longer renders a legacy page. The former Pages/Business/Context renderer is moved into the SPA feature without any legacy imports; its component requirements remain tested. Existing native redirects are preserved; JSON commands acknowledge the same original writers. Memory-only Workspace/form drafts survive same-document suspension and clear on terminal document closure. Sources/Object Purpose and authentication/internal destinations remain pending; this is not complete advertiser or final Foundation/CI acceptance."
+      },
       "testLeads": [
         "tests/Feature/BusinessContextLockOrderTest.php"
       ]
@@ -6946,8 +7005,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Canonical context screen in the shared SPA; existing Laravel continuation remains authoritative and exits natively only for un-migrated destinations",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6982,7 +7041,39 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "business-context",
+        "journey": "Edit classified business name/type, request explicit authority, replace target markets, and replace or clear Current Intent with independent drafts and CAS review",
+        "routes": [
+          "GET /workspaces/{workspace}/business",
+          "POST /workspaces/{workspace}/business",
+          "POST /workspaces/{workspace}/business/authority",
+          "POST /workspaces/{workspace}/business/target-markets",
+          "POST /workspaces/{workspace}/business/current-intent"
+        ],
+        "spaBoundary": "Canonical context screen in the shared SPA; existing Laravel continuation remains authoritative and exits natively only for un-migrated destinations",
+        "businessOwners": [
+          "App\\Business\\BusinessContext",
+          "App\\Security\\GrantAuthority",
+          "App\\Foundation\\Tenancy\\WorkspaceContext"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "WorkspaceSpaIntegrationTest",
+          "BusinessFoundationTest",
+          "CurrentIntentTest",
+          "CurrentIntentSecurityTest",
+          "DeclaredTargetMarketsTest",
+          "DeclaredTargetMarketsSecurityTest",
+          "ArchitectureSourceOptionalityTest",
+          "tests/current-intent-interaction.test.mjs",
+          "tests/target-markets-interaction.test.mjs",
+          "tests/business-context-commands.test.mjs",
+          "tests/Support/business-context-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "BusinessContextController no longer renders a legacy page. The former Pages/Business/Context renderer is moved into the SPA feature without any legacy imports; its component requirements remain tested. Existing native redirects are preserved; JSON commands acknowledge the same original writers. Memory-only Workspace/form drafts survive same-document suspension and clear on terminal document closure. Sources/Object Purpose and authentication/internal destinations remain pending; this is not complete advertiser or final Foundation/CI acceptance."
+      },
       "testLeads": [
         "tests/Feature/BusinessContextLockOrderTest.php"
       ]
@@ -7007,8 +7098,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Canonical context screen in the shared SPA; existing Laravel continuation remains authoritative and exits natively only for un-migrated destinations",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -7041,10 +7132,44 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "business-context",
+        "journey": "Edit classified business name/type, request explicit authority, replace target markets, and replace or clear Current Intent with independent drafts and CAS review",
+        "routes": [
+          "GET /workspaces/{workspace}/business",
+          "POST /workspaces/{workspace}/business",
+          "POST /workspaces/{workspace}/business/authority",
+          "POST /workspaces/{workspace}/business/target-markets",
+          "POST /workspaces/{workspace}/business/current-intent"
+        ],
+        "spaBoundary": "Canonical context screen in the shared SPA; existing Laravel continuation remains authoritative and exits natively only for un-migrated destinations",
+        "businessOwners": [
+          "App\\Business\\BusinessContext",
+          "App\\Security\\GrantAuthority",
+          "App\\Foundation\\Tenancy\\WorkspaceContext"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "WorkspaceSpaIntegrationTest",
+          "BusinessFoundationTest",
+          "CurrentIntentTest",
+          "CurrentIntentSecurityTest",
+          "DeclaredTargetMarketsTest",
+          "DeclaredTargetMarketsSecurityTest",
+          "ArchitectureSourceOptionalityTest",
+          "tests/current-intent-interaction.test.mjs",
+          "tests/target-markets-interaction.test.mjs",
+          "tests/business-context-commands.test.mjs",
+          "tests/Support/business-context-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "BusinessContextController no longer renders a legacy page. The former Pages/Business/Context renderer is moved into the SPA feature without any legacy imports; its component requirements remain tested. Existing native redirects are preserved; JSON commands acknowledge the same original writers. Memory-only Workspace/form drafts survive same-document suspension and clear on terminal document closure. Sources/Object Purpose and authentication/internal destinations remain pending; this is not complete advertiser or final Foundation/CI acceptance."
+      },
       "testLeads": [
+        "tests/current-intent-interaction.test.mjs",
         "tests/Feature/BusinessContextLockOrderTest.php",
-        "tests/Feature/CurrentIntentSecurityTest.php"
+        "tests/Feature/CurrentIntentSecurityTest.php",
+        "tests/target-markets-interaction.test.mjs"
       ]
     },
     {
@@ -7067,8 +7192,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Canonical context screen in the shared SPA; existing Laravel continuation remains authoritative and exits natively only for un-migrated destinations",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -7101,7 +7226,39 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "business-context",
+        "journey": "Edit classified business name/type, request explicit authority, replace target markets, and replace or clear Current Intent with independent drafts and CAS review",
+        "routes": [
+          "GET /workspaces/{workspace}/business",
+          "POST /workspaces/{workspace}/business",
+          "POST /workspaces/{workspace}/business/authority",
+          "POST /workspaces/{workspace}/business/target-markets",
+          "POST /workspaces/{workspace}/business/current-intent"
+        ],
+        "spaBoundary": "Canonical context screen in the shared SPA; existing Laravel continuation remains authoritative and exits natively only for un-migrated destinations",
+        "businessOwners": [
+          "App\\Business\\BusinessContext",
+          "App\\Security\\GrantAuthority",
+          "App\\Foundation\\Tenancy\\WorkspaceContext"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "WorkspaceSpaIntegrationTest",
+          "BusinessFoundationTest",
+          "CurrentIntentTest",
+          "CurrentIntentSecurityTest",
+          "DeclaredTargetMarketsTest",
+          "DeclaredTargetMarketsSecurityTest",
+          "ArchitectureSourceOptionalityTest",
+          "tests/current-intent-interaction.test.mjs",
+          "tests/target-markets-interaction.test.mjs",
+          "tests/business-context-commands.test.mjs",
+          "tests/Support/business-context-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "BusinessContextController no longer renders a legacy page. The former Pages/Business/Context renderer is moved into the SPA feature without any legacy imports; its component requirements remain tested. Existing native redirects are preserved; JSON commands acknowledge the same original writers. Memory-only Workspace/form drafts survive same-document suspension and clear on terminal document closure. Sources/Object Purpose and authentication/internal destinations remain pending; this is not complete advertiser or final Foundation/CI acceptance."
+      },
       "testLeads": [
         "tests/Feature/BusinessContextLockOrderTest.php"
       ]
@@ -12606,10 +12763,8 @@
         "App\\Security\\SessionAuthority",
         "App\\Security\\WorkspaceAuthority"
       ],
-      "pages": [
-        "Business/Context"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -24323,6 +24478,52 @@
     "resources/js/bootstrap.ts": [
       "axios"
     ],
+    "resources/js/business-context/api.ts": [
+      "resources/js/spa/api.ts",
+      "resources/js/api/generated/application"
+    ],
+    "resources/js/business-context/BusinessContext.vue": [
+      "vue",
+      "vue-router",
+      "resources/js/business-context/ContextForm.vue",
+      "resources/js/business-context/state.ts",
+      "resources/js/spa/presentation.ts",
+      "resources/js/spa/locale.ts",
+      "resources/js/spa/destination.ts",
+      "resources/js/spa/transport.ts"
+    ],
+    "resources/js/business-context/commands.ts": [
+      "vue",
+      "resources/js/spa/transport.ts",
+      "resources/js/spa/locale.ts",
+      "resources/js/business-context/state.ts",
+      "resources/js/business-context/api.ts"
+    ],
+    "resources/js/business-context/ContextForm.vue": [
+      "resources/js/business-context/commands.ts",
+      "resources/js/localization/businessCopy.ts",
+      "resources/js/spa/locale.ts",
+      "vue",
+      "resources/js/business-context/drafts.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/Components/Business/CurrentIntentEditor.vue",
+      "resources/js/Components/Business/TargetMarketsEditor.vue"
+    ],
+    "resources/js/business-context/drafts.ts": [
+      "resources/js/spa/transport.ts"
+    ],
+    "resources/js/business-context/routes.ts": [
+      "vue-router",
+      "resources/js/business-context/state.ts",
+      "resources/js/business-context/BusinessContext.vue"
+    ],
+    "resources/js/business-context/state.ts": [
+      "vue",
+      "vue-router",
+      "resources/js/spa/query.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/business-context/api.ts"
+    ],
     "resources/js/clientVisibility.ts": [
       "@inertiajs/vue3",
       "@inertiajs/core",
@@ -24339,9 +24540,11 @@
       "resources/js/localization/business.ts"
     ],
     "resources/js/Components/Business/CurrentIntentEditor.vue": [
-      "@inertiajs/vue3",
+      "resources/js/business-context/commands.ts",
       "vue",
-      "resources/js/localization/business.ts"
+      "resources/js/business-context/drafts.ts",
+      "resources/js/localization/businessCopy.ts",
+      "resources/js/spa/locale.ts"
     ],
     "resources/js/Components/Business/goalSelection.ts": [],
     "resources/js/Components/Business/ObjectPurposeEditor.vue": [
@@ -24356,8 +24559,10 @@
     ],
     "resources/js/Components/Business/TargetMarketsEditor.vue": [
       "vue",
-      "@inertiajs/vue3",
-      "resources/js/localization/business.ts"
+      "resources/js/business-context/drafts.ts",
+      "resources/js/business-context/commands.ts",
+      "resources/js/localization/businessCopy.ts",
+      "resources/js/spa/locale.ts"
     ],
     "resources/js/Components/Checkbox.vue": [
       "vue"
@@ -24501,8 +24706,11 @@
       "tailwind-merge"
     ],
     "resources/js/localization/business.ts": [
-      "vue",
       "@inertiajs/vue3",
+      "resources/js/localization/businessCopy.ts"
+    ],
+    "resources/js/localization/businessCopy.ts": [
+      "vue",
       "resources/js/localization/messages.ts"
     ],
     "resources/js/localization/documentLocale.ts": [],
@@ -24582,14 +24790,6 @@
       "resources/js/Layouts/GuestLayout.vue",
       "resources/js/Components/PrimaryButton.vue",
       "@inertiajs/vue3"
-    ],
-    "resources/js/Pages/Business/Context.vue": [
-      "@inertiajs/vue3",
-      "resources/js/Layouts/AdvertiserLayout.vue",
-      "resources/js/localization/business.ts",
-      "vue",
-      "resources/js/Components/Business/CurrentIntentEditor.vue",
-      "resources/js/Components/Business/TargetMarketsEditor.vue"
     ],
     "resources/js/Pages/Business/Index.vue": [
       "@inertiajs/vue3",
@@ -24806,6 +25006,7 @@
       "resources/js/goals-spa/routes.ts",
       "resources/js/goals-spa/proof.ts",
       "resources/js/workspaces/routes.ts",
+      "resources/js/business-context/routes.ts",
       "resources/js/spa/locale.ts"
     ],
     "resources/js/spa/presentation.ts": [
@@ -24879,16 +25080,14 @@
     "resources/views/spa.blade.php": 1,
     "tests/client-visibility.test.mjs": 32,
     "tests/commercial-operator.test.mjs": 3,
-    "tests/current-intent-interaction.test.mjs": 3,
-    "tests/Feature/ArchitectureSourceOptionalityTest.php": 3,
+    "tests/current-intent-interaction.test.mjs": 8,
     "tests/Feature/Auth/RegistrationTest.php": 3,
-    "tests/Feature/BusinessFoundationTest.php": 11,
+    "tests/Feature/BusinessFoundationTest.php": 8,
     "tests/Feature/Commercial/CommercialMarketPreparationTest.php": 7,
     "tests/Feature/Commercial/CommercialScopeTest.php": 9,
     "tests/Feature/CountryReferenceProvenanceTest.php": 3,
-    "tests/Feature/CurrentIntentSecurityTest.php": 4,
-    "tests/Feature/CurrentIntentTest.php": 5,
-    "tests/Feature/DeclaredTargetMarketsTest.php": 4,
+    "tests/Feature/CurrentIntentTest.php": 3,
+    "tests/Feature/DeclaredTargetMarketsTest.php": 3,
     "tests/Feature/Foundation/BaselineContractTest.php": 5,
     "tests/Feature/GoalsSpaIntegrationTest.php": 1,
     "tests/Feature/GoalsSpaProofTest.php": 1,
@@ -24927,7 +25126,7 @@
     "tests/Support/logout-terminal-browser.mjs": 11,
     "tests/Support/spa-foundation-browser.mjs": 1,
     "tests/Support/workspace-spa-browser.mjs": 2,
-    "tests/target-markets-interaction.test.mjs": 3,
+    "tests/target-markets-interaction.test.mjs": 8,
     "tests/TestCase.php": 4,
     "scripts/goals-openapi.mjs": 1,
     "scripts/inertia-inventory.mjs": 13,
@@ -24948,11 +25147,12 @@
   },
   "summary": {
     "registeredRoutes": 171,
-    "legacyRenderRoutes": 24,
+    "legacyRenderRoutes": 23,
     "locallyAcceptedJourneys": [
       "workspace-selection",
       "business-creation",
-      "advertiser-goals"
+      "advertiser-goals",
+      "business-context"
     ]
   },
   "unresolved": [

@@ -18,6 +18,10 @@ const security = [{ sessionCookie: [], documentReceipt: [] }];
 const headers = ['X-Builderad-Passive', 'X-Builderad-Witness'].map(name => ({ in: 'header', name, schema: { enum: ['1'] } }));
 const resource = name => ({ oneOf: [ref(name), ref('GoalsWitness')] });
 const envelope = data => object({ data: ref(data), locale: { enum: ['ar', 'en'] }, visibility: ref('Visibility') });
+const version = { type: 'integer', minimum: 0 };
+const nullable = schema => ({ anyOf: [schema, { type: 'null' }] });
+const workspaceParameter = { in: 'path', name: 'workspace', required: true, schema: uuid };
+const businessCommand = (operationId, schema) => ({ operationId, security, parameters: [workspaceParameter], requestBody: { required: true, ...json(ref(schema)) }, responses: { 200: response(ref('ApplicationDestination')), 413: { description: 'Original technical input-size boundary; preserve the full draft.', ...json(ref('Error')) }, ...errors } });
 
 export const spec = {
     openapi: '3.1.0',
@@ -44,6 +48,13 @@ export const spec = {
                 description: 'Existing fresh-authenticated GrantAuthority owner reassessment; no revoked or expired grant is restored.',
             },
         },
+        '/workspaces/{workspace}/business': {
+            get: { operationId: 'readBusinessContext', security, parameters: [workspaceParameter, ...headers], responses: { 200: response(resource('BusinessContextResource')), ...errors } },
+            post: businessCommand('updateBusinessContext', 'UpdateBusinessContext'),
+        },
+        '/workspaces/{workspace}/business/authority': { post: businessCommand('requestBusinessContextAuthority', 'RequestBusinessContextAuthority') },
+        '/workspaces/{workspace}/business/target-markets': { post: businessCommand('replaceBusinessTargetMarkets', 'ReplaceTargetMarkets') },
+        '/workspaces/{workspace}/business/current-intent': { post: businessCommand('replaceOrClearCurrentIntent', 'CurrentIntentCommand') },
         '/locale': {
             post: { operationId: 'setApplicationLocale', security,
                 requestBody: { required: true, ...json(object({ locale: { enum: ['ar', 'en'] } })) },
@@ -63,6 +74,16 @@ export const spec = {
             BusinessCreationResource: envelope('BusinessCreationData'),
             CreateBusiness: object({ name: { type: 'string', minLength: 2, maxLength: 120 }, business_type_id: { type: 'integer', minimum: 1 }, creation_key: uuid }),
             ApplicationDestination: object({ redirect: text }),
+            CountryReference: object({ code: { type: 'string', pattern: '^[A-Z]{2}$' }, name_ar: text, name_en: text }),
+            CurrentIntentValue: object({ direction: { enum: ['increase_value', 'preserve_value', 'improve_efficiency_preserving_value', 'validate_business_direction'] }, scope: { const: 'business_wide' }, description: nullable(text), outcome: object({ meaning: text, clarification: nullable(text), count_unit: nullable(text) }), quantity: nullable(text), horizon: nullable(object({ deadline_date: text, timezone: text })) }),
+            CurrentIntentProjection: object({ state: { enum: ['NOT_DECLARED', 'PRESENT'] }, value: nullable(ref('CurrentIntentValue')), version }),
+            BusinessContextProjection: object({ type: nullable(object({ id: { type: 'integer' }, key: text, name_ar: text, name_en: text, active: { type: 'boolean' } })), version, currentIntent: ref('CurrentIntentProjection'), canManage: { type: 'boolean' }, targetMarketsDeclared: { type: 'boolean' }, targetMarkets: list(ref('CountryReference')) }),
+            BusinessContextData: object({ workspace: object({ public_id: uuid, name: text, business_type_id: nullable({ type: 'integer' }), business_context_version: version }), types: list(ref('BusinessType')), canManage: { type: 'boolean' }, canRequestAuthority: { type: 'boolean' }, version, business: ref('BusinessContextProjection'), countryOptions: list(ref('CountryReference')), timezoneOptions: list(text) }),
+            BusinessContextResource: envelope('BusinessContextData'),
+            UpdateBusinessContext: object({ name: { type: 'string', minLength: 2, maxLength: 120 }, business_type_id: { type: 'integer', minimum: 1 }, version }),
+            RequestBusinessContextAuthority: object({ decision: { const: 'authorize' }, reason: { const: 'complete_business_context' } }),
+            ReplaceTargetMarkets: object({ country_codes: list(text), version }),
+            CurrentIntentCommand: object({ command: { enum: ['replace', 'clear'] }, value: nullable(ref('CurrentIntentValue')), confirmations: { type: 'object', properties: Object.fromEntries(['declaration', 'business_wide', 'outcome', 'acceptance_clear', 'clarification_required', 'quantity', 'horizon'].map(name => [name, { type: 'boolean' }])), additionalProperties: false }, version }),
         },
     },
 };

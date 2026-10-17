@@ -18,8 +18,6 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
 
 final class BusinessContextController
 {
@@ -71,13 +69,13 @@ final class BusinessContextController
             : redirect()->route('workspaces.goals.edit', $workspace->public_id);
     }
 
-    public function edit(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): Response
+    public function edit(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): SpaPage
     {
         // Catalog presentation data is independent of the protected Workspace
         // snapshot; keep its bounded query outside the Workspace read transaction.
         $timezoneOptions = $business->currentIntentTimezones();
 
-        return $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $business, $timezoneOptions): Response {
+        return $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $business, $timezoneOptions): SpaPage {
             $existingGrant = DB::table('security_action_grants')->where('subject_user_id', $request->user()->id)
                 ->where('subject_generation', $request->session()->get('a001_generation'))
                 ->where('workspace_id', $w->id)->where('action', 'business.context.manage')->exists();
@@ -86,16 +84,16 @@ final class BusinessContextController
 
             $projection = $business->projection($request, $w);
 
-            return Inertia::render('Business/Context', [
+            return new SpaPage([
                 'workspace' => [...$w->only(['public_id', 'name', 'business_type_id']), 'business_context_version' => $projection['version']],
                 'types' => $business->types(), 'canManage' => $business->canManage($request, $w),
-                'canRequestAuthority' => $requestable, 'creationKey' => null, 'version' => $projection['version'],
+                'canRequestAuthority' => $requestable, 'version' => $projection['version'],
                 'business' => $projection, 'countryOptions' => $business->countries(), 'timezoneOptions' => $timezoneOptions,
             ]);
         }, $request);
     }
 
-    public function update(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): RedirectResponse
+    public function update(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): RedirectResponse|JsonResponse
     {
         $input = $request->validate(['business_type_id' => ['required', 'integer', 'min:1'],
             'name' => ['sometimes', 'string', 'min:2', 'max:120'], 'version' => ['required', 'integer', 'min:0']]);
@@ -107,22 +105,26 @@ final class BusinessContextController
         $destination = $request->session()->pull('business.intended.'.$workspace);
         // Destination was captured from an authorized product route; its route authorizes again on GET.
         if (is_string($destination) && $this->safeDestination($destination, $workspace)) {
-            return redirect()->to($destination);
+            return $request->expectsJson()
+                ? response()->json(['redirect' => $destination])->header('Cache-Control', 'no-store')
+                : redirect()->to($destination);
         }
 
-        return redirect()->route('workspaces.show', $workspace);
+        return $request->expectsJson()
+            ? response()->json(['redirect' => route('workspaces.show', $workspace, absolute: false)])->header('Cache-Control', 'no-store')
+            : redirect()->route('workspaces.show', $workspace);
     }
 
-    public function authority(Request $request, string $workspace, WorkspaceContext $context, GrantAuthority $grants): RedirectResponse
+    public function authority(Request $request, string $workspace, WorkspaceContext $context, GrantAuthority $grants): RedirectResponse|JsonResponse
     {
         $request->validate(['decision' => ['required', 'in:authorize'], 'reason' => ['required', 'in:complete_business_context']]);
         $this->mutate(fn () => $context->run($request->user(), $workspace,
             fn (Workspace $w) => $grants->requestBusinessContextGrant($request, $w->id), $request));
 
-        return redirect()->route('workspaces.business.edit', $workspace);
+        return $this->contextDestination($request, $workspace);
     }
 
-    public function updateCurrentIntent(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): RedirectResponse
+    public function updateCurrentIntent(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): RedirectResponse|JsonResponse
     {
         $invalid = app()->getLocale() === 'ar'
             ? 'أرسل إعلانًا كاملًا وتأكيدات واضحة ضمن حدود الإدخال. لا تُحذف أو تُختصر أي قيمة تلقائيًا.'
@@ -204,10 +206,10 @@ final class BusinessContextController
             throw $error;
         }
 
-        return redirect()->route('workspaces.business.edit', $workspace);
+        return $this->contextDestination($request, $workspace);
     }
 
-    public function updateTargetMarkets(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): RedirectResponse
+    public function updateTargetMarkets(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): RedirectResponse|JsonResponse
     {
         // Preserve JSON list/object shape before Laravel's associative decoding makes [] and {} identical.
         if ($request->isJson()) {
@@ -251,7 +253,14 @@ final class BusinessContextController
             throw $error;
         }
 
-        return redirect()->route('workspaces.business.edit', $workspace);
+        return $this->contextDestination($request, $workspace);
+    }
+
+    private function contextDestination(Request $request, string $workspace): RedirectResponse|JsonResponse
+    {
+        return $request->expectsJson()
+            ? response()->json(['redirect' => route('workspaces.business.edit', $workspace, absolute: false)])->header('Cache-Control', 'no-store')
+            : redirect()->route('workspaces.business.edit', $workspace);
     }
 
     public function safeDestination(string $destination, string $workspace): bool

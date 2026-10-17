@@ -12,7 +12,6 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 class CurrentIntentSecurityTest extends TestCase
@@ -66,13 +65,12 @@ class CurrentIntentSecurityTest extends TestCase
                 'action' => $action, 'reason' => 'explicit_fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
         }
         $url = '/workspaces/'.$workspace->public_id.'/business/current-intent';
-        $this->actingAs($member)->postJson($url, $this->command())->assertRedirect();
+        $this->actingAs($member)->postJson($url, $this->command())->assertOk();
         $before = $this->snapshot($workspace);
         $this->assertSame($member->id, (int) $before[1][0]->actor_user_id);
         $db->table('security_action_grants')->where('workspace_id', $workspace->id)->where('action', 'business.context.manage')
             ->update(['status' => 'revoked', 'revoked_at' => now()]);
-        $this->get('/workspaces/'.$workspace->public_id.'/business')->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('business.canManage', false)->where('business.currentIntent.state', 'PRESENT'));
+        $this->getJson('/workspaces/'.$workspace->public_id.'/business')->assertOk()->assertJsonPath('data.business.canManage', false)->assertJsonPath('data.business.currentIntent.state', 'PRESENT');
         $this->postJson($url, $this->command())->assertForbidden();
         $this->actingAs($owner)->postJson($url, $this->command())->assertForbidden();
         $this->actingAs(User::factory()->create())->postJson($url, $this->command())->assertForbidden();

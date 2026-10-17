@@ -10,6 +10,40 @@ use Tests\TestCase;
 
 final class WorkspaceSpaIntegrationTest extends TestCase
 {
+    public function test_business_context_shell_resource_commands_and_passive_reads_preserve_existing_authority(): void
+    {
+        $actor = User::factory()->create();
+        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($actor, 1);
+        $this->actingAs($actor)->post('/workspaces', ['name' => 'Context SPA fixture', 'slug' => 'context-spa'])->assertRedirect();
+        $owner = DB::connection('pgsql_migrations');
+        $workspace = $owner->table('workspaces')->where('slug', 'context-spa')->sole();
+        $type = $owner->table('business_types')->where('key', 'real_estate')->value('id');
+        $owner->table('business_types')->where('id', $type)->update(['active' => true]);
+        $path = '/workspaces/'.$workspace->public_id.'/business';
+        $this->get($path)->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false)->assertDontSee('Context SPA fixture');
+        $initial = $this->getJson($path)->assertOk()->assertJsonCount(249, 'data.countryOptions')->json('data');
+        $this->assertTrue($initial['canManage']);
+        $this->postJson($path, ['name' => 'Context SPA saved', 'business_type_id' => $type, 'version' => 0])
+            ->assertOk()->assertJsonPath('redirect', '/workspaces/'.$workspace->public_id);
+        $this->postJson($path.'/target-markets', ['country_codes' => ['AE', 'SA'], 'version' => 1])->assertOk()->assertJsonPath('redirect', $path);
+        $this->getJson($path)->assertOk()->assertJsonPath('data.workspace.name', 'Context SPA saved')
+            ->assertJsonPath('data.version', 2)->assertJsonPath('data.business.targetMarkets.0.code', 'AE');
+        $this->postJson($path.'/target-markets', ['country_codes' => ['KW'], 'version' => 1])->assertUnprocessable()->assertJsonValidationErrors('version');
+        $before = $owner->table('security_sessions')->where('user_id', $actor->id)->sole();
+        $this->travel(30)->seconds();
+        $this->getJson($path, ['X-Builderad-Passive' => '1'])->assertOk();
+        $this->getJson($path, ['X-Builderad-Witness' => '1'])->assertOk()->assertJsonMissingPath('data');
+        $after = $owner->table('security_sessions')->where('id', $before->id)->sole();
+        $this->assertSame($before->idle_expires_at, $after->idle_expires_at);
+        $this->assertSame($before->absolute_expires_at, $after->absolute_expires_at);
+        $owner->table('security_action_grants')->where('subject_user_id', $actor->id)->where('workspace_id', $workspace->id)
+            ->where('action', 'business.context.manage')->update(['status' => 'revoked', 'revoked_at' => now()]);
+        $this->getJson($path)->assertOk()->assertJsonPath('data.canManage', false);
+        $this->postJson($path, ['name' => 'Forbidden replacement', 'business_type_id' => $type, 'version' => 2])->assertForbidden();
+        $this->actingAs(User::factory()->create())->getJson($path)->assertForbidden();
+        $this->getJson('/workspaces/not-a-uuid/business')->assertNotFound();
+    }
+
     public function test_creation_uses_the_existing_atomic_idempotent_writer_and_private_shell(): void
     {
         $user = User::factory()->create();

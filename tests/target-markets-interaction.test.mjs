@@ -20,7 +20,10 @@ export const useForm = input => {
  const keys = Object.keys(input); const form = reactive({ ...input, errors: {}, processing: false, recentlySuccessful: false,
  post(url, options) { globalThis.__dtmTest.posts.push({ url, payload: JSON.parse(JSON.stringify(Object.fromEntries(keys.map(k => [k, form[k]])))), options }); }
  }); globalThis.__dtmTest.forms.push(form); return form;
-};`);
+};
+export const useBusinessForm=(input,kind)=>{const form=useForm(input);form.submit=(workspace,options)=>form.post('workspaces.business.'+kind+'/'+workspace,options);return form;};
+export const restore=()=>undefined,remember=()=>{},stamp=()=>0,owned=()=>true;
+export const refresh=(workspace,options)=>router.reload(options),saveIntent=(workspace,payload,options)=>router.post('workspaces.business.current-intent.update/'+workspace,payload,options);`);
 const replacements = { vue: import.meta.resolve('vue'), '@inertiajs/vue3': inertia };
 function rewrite(code, extra = {}) {
     for (const [from, to] of Object.entries({ ...replacements, ...extra })) {
@@ -30,19 +33,21 @@ function rewrite(code, extra = {}) {
 }
 const messages = moduleUrl(ts.transpileModule(await readFile(new URL('../resources/js/localization/messages.ts', import.meta.url), 'utf8'),
     { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText);
-const copy = moduleUrl(rewrite(ts.transpileModule(await readFile(new URL('../resources/js/localization/business.ts', import.meta.url), 'utf8'),
+const neutralCopy = moduleUrl(rewrite(ts.transpileModule(await readFile(new URL('../resources/js/localization/businessCopy.ts', import.meta.url), 'utf8'),
     { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText, { './messages': messages }));
+const copy = moduleUrl(rewrite(ts.transpileModule(await readFile(new URL('../resources/js/localization/business.ts', import.meta.url), 'utf8'),
+    { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText, { './businessCopy': neutralCopy }));
 async function compile(path, extra = {}) {
     const { descriptor } = parse(await readFile(new URL('../resources/js/' + path, import.meta.url), 'utf8'));
     const source = compileScript(descriptor, { id: 'dtm-test', inlineTemplate: true }).content;
     const url = moduleUrl(rewrite(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText,
-        { '@/localization/business': copy, ...extra }));
+        { '@/localization/business': copy, '@/localization/businessCopy': neutralCopy, '@/spa/locale': moduleUrl(`import {computed} from ${JSON.stringify(import.meta.resolve('vue'))};export const locale=computed(()=>globalThis.__dtmTest.page.locale);`), '@/business-context/commands': inertia, './commands': inertia, '@/business-context/drafts': inertia, './drafts': inertia, '@/spa/transport': inertia, ...extra }));
     return { url, component: (await import(url)).default };
 }
 const editor = await compile('Components/Business/TargetMarketsEditor.vue');
 const intent = await compile('Components/Business/CurrentIntentEditor.vue');
 const layout = moduleUrl(`export default { template: '<main><slot /></main>' };`);
-const context = await compile('Pages/Business/Context.vue', { '@/Layouts/AdvertiserLayout.vue': layout,
+const context = await compile('business-context/ContextForm.vue', { '@/Layouts/AdvertiserLayout.vue': layout,
     '@/Components/Business/TargetMarketsEditor.vue': editor.url, '@/Components/Business/CurrentIntentEditor.vue': intent.url });
 const languageSwitcher = await compile('Components/LanguageSwitcher.vue', {
     '@/localization/messages': messages, 'vue-i18n': moduleUrl('export const useI18n = () => ({ t: key => key });'),
@@ -114,7 +119,7 @@ test('locale_switch_preserves_draft_codes', async () => {
 test('skip_never_posts_or_clears_saved_set', async () => {
     const view = mount(); await toggle(view, 'AE');
     const skip = find(view, n => n.tag === 'a' && text(n).includes('ليس الآن'));
-    assert.ok(skip.props.href.includes('workspaces.show'));
+    assert.equal(skip.props.href, '/workspaces/business');
     assert.equal(state.posts.length, 0); assert.deepEqual(view.props.business.targetMarkets, [countries[2]]); view.stop();
 });
 test('readonly_members_cannot_submit', () => {
