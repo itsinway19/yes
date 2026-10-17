@@ -68,6 +68,35 @@ class SourceRegistryTest extends TestCase
         $this->command([...$this->input, 'token' => 'never_store'])->assertUnprocessable();
     }
 
+    public function test_application_source_resource_preserves_exact_scope_truth_and_passive_deadlines(): void
+    {
+        $path = '/workspaces/'.$this->workspace;
+        $this->getJson($path)->assertOk()->assertJsonCount(0, 'data.sources.items')
+            ->assertJsonPath('data.workspace.public_id', $this->workspace)->assertJsonPath('visibility.protected', true);
+        $receipt = $this->command($this->input)->assertOk()->json();
+        $resource = $this->getJson($path)->assertOk()->assertJsonCount(1, 'data.sources.items')
+            ->assertJsonPath('data.sources.items.0.id', $this->input['source_id'])
+            ->assertJsonPath('data.sources.items.0.identity_verification', 'UNVERIFIED')
+            ->assertJsonPath('data.sources.items.0.capability.state', 'UNKNOWN')
+            ->assertJsonPath('data.sources.items.0.capability.last_verified_at', null)
+            ->assertJsonPath('data.sources.items.0.audit_delivery.0.state', 'PENDING');
+        $this->assertStringContainsString('no-store', $resource->headers->get('Cache-Control'));
+        $before = $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->sole();
+        $this->travel(30)->seconds();
+        $this->getJson($path, ['X-Builderad-Passive' => '1'])->assertOk();
+        $this->getJson($path, ['X-Builderad-Witness' => '1'])->assertOk()
+            ->assertJsonPath('visibility.protected', true)->assertJsonMissingPath('data');
+        $after = $this->owner()->table('security_sessions')->where('id', $before->id)->sole();
+        $this->assertSame($before->idle_expires_at, $after->idle_expires_at);
+        $this->assertSame($before->absolute_expires_at, $after->absolute_expires_at);
+        $this->command($this->input)->assertExactJson($receipt);
+        $this->assertSame(1, $this->owner()->table('source_command_receipts')->count());
+        $this->owner()->table('security_action_grants')->where('workspace_id', $this->workspaceId)
+            ->where('action', 'source.read')->update(['status' => 'revoked', 'revoked_at' => now()]);
+        $this->getJson($path)->assertOk()->assertJsonCount(0, 'data.sources.items');
+        $this->actingAs(User::factory()->create())->getJson($path)->assertForbidden();
+    }
+
     public function test_workspace_presents_stable_opaque_session_binding_without_granting_source_authority(): void
     {
         $sessionId = $this->app['session']->driver()->getId();

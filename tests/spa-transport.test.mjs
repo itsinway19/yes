@@ -35,6 +35,41 @@ test('late responses cannot publish after presentation ownership is suspended', 
     client.close();
 });
 
+test('a pending consumer cancellation reaches the shared fetch without claiming server cancellation', async () => {
+    const client = await transport(), caller = new AbortController(); let signal;
+    globalThis.fetch = (_url, options) => new Promise((_resolve, reject) => { signal = options.signal; signal.addEventListener('abort', () => reject(new DOMException('Consumer cancelled', 'AbortError')), { once: true }); });
+    const pending = client.protectedResponse('/provider-read', { signal: caller.signal }).catch(error => error);
+    try { caller.abort(); assert.equal(signal.aborted, true, 'The existing feature AbortSignal must reach the single transport'); }
+    finally { client.close(); await pending; }
+});
+
+test('an already cancelled consumer starts no request', async () => {
+    const client = await transport(), caller = new AbortController(); let attempts = 0; caller.abort();
+    globalThis.fetch = async () => { attempts++; return response(200, { private: 'cancelled consumer' }); };
+    try { await assert.rejects(client.protectedResponse('/provider-read', { signal: caller.signal }), error => error.name === 'AbortError'); assert.equal(attempts, 0); }
+    finally { client.close(); }
+});
+
+test('a cancelled consumer cannot publish a successful reply even when fetch ignores cancellation', async () => {
+    const client = await transport(), caller = new AbortController(); let deliver;
+    globalThis.fetch = () => new Promise(resolve => { deliver = resolve; });
+    const pending = client.protectedResponse('/provider-read', { signal: caller.signal });
+    caller.abort(); deliver(response(200, { private: 'cancelled consumer' }));
+    try { await assert.rejects(pending, error => error.name === 'AbortError'); }
+    finally { client.close(); }
+});
+
+test('observed identity failures still close the document after consumer cancellation', async () => {
+    for (const [status, body, evidence] of [[419, { message: 'CSRF' }, identity], [200, {}, { ...identity, binding: { ...identity.binding, principal: 2 } }]]) {
+        const client = await transport(), caller = new AbortController(); let deliver;
+        globalThis.fetch = () => new Promise(resolve => { deliver = resolve; });
+        const pending = client.protectedResponse('/provider-read', { signal: caller.signal });
+        caller.abort(); deliver(response(status, body, evidence));
+        await assert.rejects(pending);
+        assert.equal(client.status.value, 'closed');
+    }
+});
+
 test('CAS and permission errors preserve their contract while identity/CSRF failures close the document', async () => {
     for (const [status, body, terminal] of [
         [409, { message: 'CAS' }, false], [403, { message: 'forbidden' }, false],

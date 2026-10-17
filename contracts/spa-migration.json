@@ -57,6 +57,17 @@
       "cutover": "Legacy Business/ObjectPurposes rendering is removed. The same view/editor now use official Vue Router and the shared typed client/transport. Unknown outcomes lock replacement until an explicit exact-original retry is acknowledged; terminal closure clears document memory. The original SQL owner/membership/freshness predicate, temporal writer, receipt fingerprint and Meta-only HTTP admission remain unchanged. Generic canonical object identity is not reduced to Meta. Final Foundation/CI, source/provider/auth/internal migration and B/C/device gates remain separate."
     },
     {
+      "id": "source-management",
+      "journey": "Manage exact Source authority, unverified local identities/scopes, independent audit delivery and service scopes; complete provider/report workflows before UI cutover",
+      "routes": ["GET /workspaces/{workspace}", "POST /workspaces/{workspace}/source-grants", "POST /workspaces/{workspace}/sources", "POST /workspaces/{workspace}/source-audit/{obligation}/recover", "POST /workspaces/{workspace}/services", "DELETE /workspaces/{workspace}/services/{service}"],
+      "spaBoundary": "PREPARATION ONLY: canonical JSON resource and existing commands are contracted; the Source page and provider panels are still legacy and no SPA route is registered",
+      "businessOwners": ["App\\Sources\\SourceRegistry", "App\\Security\\GrantAuthority", "App\\Security\\WorkspaceAuthority", "App\\Foundation\\Tenancy\\WorkspaceContext"],
+      "apiContract": "contracts/application.openapi.json",
+      "tests": ["SourceRegistryTest", "ServiceAuthorityTest", "tests/sources-api-client.test.mjs", "tests/spa-transport.test.mjs"],
+      "status": "PREPARING_NOT_CUT_OVER",
+      "cutover": "Not accepted. Same existing scoped readers/writers and non-JSON redirects are retained. The generated-operation helper consumes the shared client but is not activated by a page. Provider operation contracts, actual Source UI conversion, durable original-command/session handling and browser proof remain required before deleting the old renderer. No live provider or business-outcome claim."
+    },
+    {
       "id": "locale-command",
       "journey": "Switch the application language using the existing encrypted locale cookie",
       "routes": ["POST /locale"],

@@ -2337,6 +2337,688 @@
           }
         }
       }
+    },
+    "/workspaces/{workspace}": {
+      "get": {
+        "operationId": "readWorkspaceSources",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Builderad-Passive",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Builderad-Witness",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WorkspaceSourcesResource"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GoalsWitness"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Existing missing Business prerequisite redirects to the canonical Business context."
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace}/source-grants": {
+      "post": {
+        "operationId": "requestSourceAuthority",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceAuthorityCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "decision": {
+                      "enum": [
+                        "authorize",
+                        "revoke"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "decision"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace}/sources": {
+      "post": {
+        "operationId": "applySourceCommand",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceReceipt"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace}/source-audit/{obligation}/recover": {
+      "post": {
+        "operationId": "recoverSourceAudit",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "obligation",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "obligation_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "delivery_state": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "obligation_id",
+                    "delivery_state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace}/services": {
+      "post": {
+        "operationId": "authorizeServiceScope",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "service": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 128
+                  }
+                },
+                "required": [
+                  "service",
+                  "purpose"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationDestination"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace}/services/{service}": {
+      "delete": {
+        "operationId": "revokeServiceScope",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationDestination"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4044,6 +4726,769 @@
             "additionalProperties": true
           }
         ]
+      },
+      "SourceScope": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource",
+          "operation",
+          "purpose"
+        ],
+        "additionalProperties": false
+      },
+      "SourceAuthorityCommand": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resource": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "action": {
+            "enum": [
+              "source.register",
+              "source.manage",
+              "source.read",
+              "source.audit.recover",
+              "provider.connect",
+              "provider.read",
+              "provider.revoke"
+            ]
+          },
+          "decision": {
+            "enum": [
+              "authorize",
+              "revoke"
+            ]
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "source_id",
+          "resource",
+          "operation",
+          "purpose",
+          "reason",
+          "action",
+          "decision"
+        ],
+        "additionalProperties": false
+      },
+      "SourceCommand": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "source_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "resource": {
+                "type": "string"
+              },
+              "operation": {
+                "type": "string"
+              },
+              "purpose": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "command_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "expected_version": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "effect": {
+                "const": "register"
+              },
+              "family": {
+                "type": "string"
+              },
+              "namespace": {
+                "type": "string"
+              },
+              "external_id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_id",
+              "resource",
+              "operation",
+              "purpose",
+              "reason",
+              "command_id",
+              "expected_version",
+              "effect",
+              "family",
+              "namespace",
+              "external_id",
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "resource": {
+                "type": "string"
+              },
+              "operation": {
+                "type": "string"
+              },
+              "purpose": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "command_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "expected_version": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "effect": {
+                "const": "rename"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_id",
+              "resource",
+              "operation",
+              "purpose",
+              "reason",
+              "command_id",
+              "expected_version",
+              "effect",
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "resource": {
+                "type": "string"
+              },
+              "operation": {
+                "type": "string"
+              },
+              "purpose": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "command_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "expected_version": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "effect": {
+                "const": "declare_scope"
+              }
+            },
+            "required": [
+              "source_id",
+              "resource",
+              "operation",
+              "purpose",
+              "reason",
+              "command_id",
+              "expected_version",
+              "effect"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "resource": {
+                "type": "string"
+              },
+              "operation": {
+                "type": "string"
+              },
+              "purpose": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "command_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "expected_version": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "effect": {
+                "const": "revoke"
+              }
+            },
+            "required": [
+              "source_id",
+              "resource",
+              "operation",
+              "purpose",
+              "reason",
+              "command_id",
+              "expected_version",
+              "effect"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "SourceReceipt": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "registration_state": {
+            "type": "string"
+          },
+          "obligation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "local_audit": {
+            "const": "DURABLE"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "source_id",
+          "version",
+          "registration_state",
+          "obligation_id",
+          "local_audit",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "SourceItem": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "family": {
+            "type": "string"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "declared_external_id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string"
+          },
+          "identity_verification": {
+            "const": "UNVERIFIED"
+          },
+          "axes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "capability": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "last_verified_at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "state",
+              "reason",
+              "last_verified_at"
+            ],
+            "additionalProperties": false
+          },
+          "can_manage": {
+            "type": "boolean"
+          },
+          "scope_choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceScope"
+            }
+          },
+          "next_repair": {
+            "type": "string"
+          },
+          "audit_delivery": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "resource": {
+                  "type": "string"
+                },
+                "operation": {
+                  "type": "string"
+                },
+                "purpose": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "command_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "receipt_version": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "state": {
+                  "type": "string"
+                },
+                "attempts": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "can_recover": {
+                  "type": "boolean"
+                },
+                "recovery_reason": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "resource",
+                "operation",
+                "purpose",
+                "id",
+                "command_id",
+                "receipt_version",
+                "state",
+                "attempts",
+                "can_recover",
+                "recovery_reason"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "resource",
+          "operation",
+          "purpose",
+          "id",
+          "family",
+          "namespace",
+          "declared_external_id",
+          "label",
+          "version",
+          "status",
+          "identity_verification",
+          "axes",
+          "capability",
+          "can_manage",
+          "scope_choices",
+          "next_repair",
+          "audit_delivery"
+        ],
+        "additionalProperties": true
+      },
+      "SourceRegistryProjection": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceItem"
+            }
+          },
+          "registration_authorities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_target_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "source_resource": {
+                  "type": "string"
+                },
+                "source_operation": {
+                  "type": "string"
+                },
+                "source_purpose": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source_target_id",
+                "source_resource",
+                "source_operation",
+                "source_purpose"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "state",
+          "items",
+          "registration_authorities"
+        ],
+        "additionalProperties": false
+      },
+      "WorkspaceSourcesData": {
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "$ref": "#/components/schemas/WorkspaceReference"
+          },
+          "business": {
+            "$ref": "#/components/schemas/BusinessContextProjection"
+          },
+          "guidance": {
+            "type": "object",
+            "properties": {
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "provider": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "priority": {
+                      "type": "integer"
+                    },
+                    "rationale": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "provider",
+                    "label",
+                    "priority",
+                    "rationale"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "priors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "product": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "rationale": {
+                      "type": "string"
+                    },
+                    "applicability": {
+                      "type": "string"
+                    },
+                    "limits": {
+                      "type": "string"
+                    },
+                    "basis": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "provider",
+                    "product",
+                    "label",
+                    "rationale",
+                    "applicability",
+                    "limits",
+                    "basis"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "sources",
+              "priors"
+            ],
+            "additionalProperties": false
+          },
+          "canRequestSourceAuthority": {
+            "type": "boolean"
+          },
+          "canManageServices": {
+            "type": "boolean"
+          },
+          "sourceCandidateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sources": {
+            "$ref": "#/components/schemas/SourceRegistryProjection"
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "public_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "purpose": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "public_id",
+                "name",
+                "purpose"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "commercial": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string"
+              },
+              "context": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "scope_id": {
+                        "type": "string"
+                      },
+                      "market_label": {
+                        "type": "string"
+                      },
+                      "configuration_id": {
+                        "type": "string"
+                      },
+                      "catalog_identity": {
+                        "type": "string"
+                      },
+                      "catalog_version": {
+                        "type": "string"
+                      },
+                      "denomination_code": {
+                        "type": "string"
+                      },
+                      "effective_at": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "scope_id",
+                      "market_label",
+                      "configuration_id",
+                      "catalog_identity",
+                      "catalog_version",
+                      "denomination_code",
+                      "effective_at"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "agreement_state": {
+                "type": "string"
+              },
+              "amount_state": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "state",
+              "context",
+              "agreement_state",
+              "amount_state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "workspace",
+          "business",
+          "guidance",
+          "canRequestSourceAuthority",
+          "canManageServices",
+          "sourceCandidateId",
+          "sources",
+          "services",
+          "commercial"
+        ],
+        "additionalProperties": false
+      },
+      "WorkspaceSourcesResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WorkspaceSourcesData"
+          },
+          "locale": {
+            "enum": [
+              "ar",
+              "en"
+            ]
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/Visibility"
+          }
+        },
+        "required": [
+          "data",
+          "locale",
+          "visibility"
+        ],
+        "additionalProperties": false
       }
     }
   }

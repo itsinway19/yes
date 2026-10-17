@@ -36,7 +36,10 @@ export async function request<T>(url: string, options: RequestInit = {}, termina
 export async function protectedResponse(url: string, options: RequestInit = {}, terminal = false): Promise<Response> {
     if (status.value === 'closed') throw new Error('Document is closed');
     if (new URL(url, location.origin).origin !== location.origin) throw new Error('Application origin required');
+    options.signal?.throwIfAborted();
     const captured = stamp(), input = identity, controller = new AbortController(); pending.add(controller);
+    const cancel = () => controller.abort(options.signal?.reason);
+    options.signal?.addEventListener('abort', cancel, { once: true });
     const timeout = setTimeout(() => controller.abort(), 10000);
     try {
         const response = await fetch(url, { ...options, signal: controller.signal, credentials: 'same-origin', cache: 'no-store', redirect: 'manual',
@@ -61,10 +64,11 @@ export async function protectedResponse(url: string, options: RequestInit = {}, 
         const raw = response.headers.get('X-Builderad-Identity');
         const evidence = raw ? JSON.parse(raw) as IdentityMetadata : undefined;
         if (!evidence || !equal(evidence)) { close(); throw new Error('Document binding changed'); }
+        controller.signal.throwIfAborted();
         // Refresh signed request evidence without inventing a new cookie lease.
         identity = { ...evidence, leaseMilliseconds: identity.leaseMilliseconds };
         return response;
-    } finally { clearTimeout(timeout); pending.delete(controller); }
+    } finally { clearTimeout(timeout); options.signal?.removeEventListener('abort', cancel); pending.delete(controller); }
 }
 export function resumeLease() {
     clearTimeout(timer); clearTimeout(expiry);

@@ -73,6 +73,7 @@
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
         "tests/Feature/Security/PasskeyAssertionTest.php",
         "tests/Feature/Security/ProductionPasskeyTest.php",
+        "tests/Feature/Security/ServiceAuthorityTest.php",
         "tests/Feature/Security/SessionActivityConcurrencyTest.php",
         "tests/Feature/Security/SessionAuthorityTest.php",
         "tests/object-purpose-interaction.test.mjs",
@@ -5679,6 +5680,7 @@
         "tests/Feature/Security/PasswordPolicyTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
         "tests/Feature/Sources/SourceRegistryTest.php",
+        "tests/sources-api-client.test.mjs",
         "tests/Support/DeclaredTargetMarketsLegacyFixture.php",
         "tests/Support/DisposableDatabaseReset.php",
         "tests/Support/IdentityTransitionFixture.php"
@@ -6754,8 +6756,8 @@
         "Business/Sources"
       ],
       "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "PREPARATION ONLY: canonical JSON resource and existing commands are contracted; the Source page and provider panels are still legacy and no SPA route is registered",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6790,7 +6792,34 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "source-management",
+        "journey": "Manage exact Source authority, unverified local identities/scopes, independent audit delivery and service scopes; complete provider/report workflows before UI cutover",
+        "routes": [
+          "GET /workspaces/{workspace}",
+          "POST /workspaces/{workspace}/source-grants",
+          "POST /workspaces/{workspace}/sources",
+          "POST /workspaces/{workspace}/source-audit/{obligation}/recover",
+          "POST /workspaces/{workspace}/services",
+          "DELETE /workspaces/{workspace}/services/{service}"
+        ],
+        "spaBoundary": "PREPARATION ONLY: canonical JSON resource and existing commands are contracted; the Source page and provider panels are still legacy and no SPA route is registered",
+        "businessOwners": [
+          "App\\Sources\\SourceRegistry",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\WorkspaceAuthority",
+          "App\\Foundation\\Tenancy\\WorkspaceContext"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "SourceRegistryTest",
+          "ServiceAuthorityTest",
+          "tests/sources-api-client.test.mjs",
+          "tests/spa-transport.test.mjs"
+        ],
+        "status": "PREPARING_NOT_CUT_OVER",
+        "cutover": "Not accepted. Same existing scoped readers/writers and non-JSON redirects are retained. The generated-operation helper consumes the shared client but is not activated by a page. Provider operation contracts, actual Source UI conversion, durable original-command/session handling and browser proof remain required before deleting the old renderer. No live provider or business-outcome claim."
+      },
       "testLeads": [
         "tests/Feature/BusinessFoundationTest.php",
         "tests/Feature/CurrentIntentTest.php",
@@ -6799,7 +6828,8 @@
         "tests/Feature/Providers/ProviderAccessStoreTest.php",
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
         "tests/Feature/Security/WorkspaceCreationTest.php",
-        "tests/Feature/WorkspaceSpaIntegrationTest.php"
+        "tests/Feature/WorkspaceSpaIntegrationTest.php",
+        "tests/sources-api-client.test.mjs"
       ]
     },
     {
@@ -11071,8 +11101,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "PREPARATION ONLY: canonical JSON resource and existing commands are contracted; the Source page and provider panels are still legacy and no SPA route is registered",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -11107,7 +11137,34 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "source-management",
+        "journey": "Manage exact Source authority, unverified local identities/scopes, independent audit delivery and service scopes; complete provider/report workflows before UI cutover",
+        "routes": [
+          "GET /workspaces/{workspace}",
+          "POST /workspaces/{workspace}/source-grants",
+          "POST /workspaces/{workspace}/sources",
+          "POST /workspaces/{workspace}/source-audit/{obligation}/recover",
+          "POST /workspaces/{workspace}/services",
+          "DELETE /workspaces/{workspace}/services/{service}"
+        ],
+        "spaBoundary": "PREPARATION ONLY: canonical JSON resource and existing commands are contracted; the Source page and provider panels are still legacy and no SPA route is registered",
+        "businessOwners": [
+          "App\\Sources\\SourceRegistry",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\WorkspaceAuthority",
+          "App\\Foundation\\Tenancy\\WorkspaceContext"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "SourceRegistryTest",
+          "ServiceAuthorityTest",
+          "tests/sources-api-client.test.mjs",
+          "tests/spa-transport.test.mjs"
+        ],
+        "status": "PREPARING_NOT_CUT_OVER",
+        "cutover": "Not accepted. Same existing scoped readers/writers and non-JSON redirects are retained. The generated-operation helper consumes the shared client but is not activated by a page. Provider operation contracts, actual Source UI conversion, durable original-command/session handling and browser proof remain required before deleting the old renderer. No live provider or business-outcome claim."
+      },
       "testLeads": []
     },
     {
@@ -11128,8 +11185,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "PREPARATION ONLY: canonical JSON resource and existing commands are contracted; the Source page and provider panels are still legacy and no SPA route is registered",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -11164,7 +11221,34 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "source-management",
+        "journey": "Manage exact Source authority, unverified local identities/scopes, independent audit delivery and service scopes; complete provider/report workflows before UI cutover",
+        "routes": [
+          "GET /workspaces/{workspace}",
+          "POST /workspaces/{workspace}/source-grants",
+          "POST /workspaces/{workspace}/sources",
+          "POST /workspaces/{workspace}/source-audit/{obligation}/recover",
+          "POST /workspaces/{workspace}/services",
+          "DELETE /workspaces/{workspace}/services/{service}"
+        ],
+        "spaBoundary": "PREPARATION ONLY: canonical JSON resource and existing commands are contracted; the Source page and provider panels are still legacy and no SPA route is registered",
+        "businessOwners": [
+          "App\\Sources\\SourceRegistry",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\WorkspaceAuthority",
+          "App\\Foundation\\Tenancy\\WorkspaceContext"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "SourceRegistryTest",
+          "ServiceAuthorityTest",
+          "tests/sources-api-client.test.mjs",
+          "tests/spa-transport.test.mjs"
+        ],
+        "status": "PREPARING_NOT_CUT_OVER",
+        "cutover": "Not accepted. Same existing scoped readers/writers and non-JSON redirects are retained. The generated-operation helper consumes the shared client but is not activated by a page. Provider operation contracts, actual Source UI conversion, durable original-command/session handling and browser proof remain required before deleting the old renderer. No live provider or business-outcome claim."
+      },
       "testLeads": []
     },
     {
@@ -11186,8 +11270,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "PREPARATION ONLY: canonical JSON resource and existing commands are contracted; the Source page and provider panels are still legacy and no SPA route is registered",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -11222,7 +11306,34 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "source-management",
+        "journey": "Manage exact Source authority, unverified local identities/scopes, independent audit delivery and service scopes; complete provider/report workflows before UI cutover",
+        "routes": [
+          "GET /workspaces/{workspace}",
+          "POST /workspaces/{workspace}/source-grants",
+          "POST /workspaces/{workspace}/sources",
+          "POST /workspaces/{workspace}/source-audit/{obligation}/recover",
+          "POST /workspaces/{workspace}/services",
+          "DELETE /workspaces/{workspace}/services/{service}"
+        ],
+        "spaBoundary": "PREPARATION ONLY: canonical JSON resource and existing commands are contracted; the Source page and provider panels are still legacy and no SPA route is registered",
+        "businessOwners": [
+          "App\\Sources\\SourceRegistry",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\WorkspaceAuthority",
+          "App\\Foundation\\Tenancy\\WorkspaceContext"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "SourceRegistryTest",
+          "ServiceAuthorityTest",
+          "tests/sources-api-client.test.mjs",
+          "tests/spa-transport.test.mjs"
+        ],
+        "status": "PREPARING_NOT_CUT_OVER",
+        "cutover": "Not accepted. Same existing scoped readers/writers and non-JSON redirects are retained. The generated-operation helper consumes the shared client but is not activated by a page. Provider operation contracts, actual Source UI conversion, durable original-command/session handling and browser proof remain required before deleting the old renderer. No live provider or business-outcome claim."
+      },
       "testLeads": []
     },
     {
@@ -11244,8 +11355,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "PREPARATION ONLY: canonical JSON resource and existing commands are contracted; the Source page and provider panels are still legacy and no SPA route is registered",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -11280,7 +11391,34 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "source-management",
+        "journey": "Manage exact Source authority, unverified local identities/scopes, independent audit delivery and service scopes; complete provider/report workflows before UI cutover",
+        "routes": [
+          "GET /workspaces/{workspace}",
+          "POST /workspaces/{workspace}/source-grants",
+          "POST /workspaces/{workspace}/sources",
+          "POST /workspaces/{workspace}/source-audit/{obligation}/recover",
+          "POST /workspaces/{workspace}/services",
+          "DELETE /workspaces/{workspace}/services/{service}"
+        ],
+        "spaBoundary": "PREPARATION ONLY: canonical JSON resource and existing commands are contracted; the Source page and provider panels are still legacy and no SPA route is registered",
+        "businessOwners": [
+          "App\\Sources\\SourceRegistry",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\WorkspaceAuthority",
+          "App\\Foundation\\Tenancy\\WorkspaceContext"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "SourceRegistryTest",
+          "ServiceAuthorityTest",
+          "tests/sources-api-client.test.mjs",
+          "tests/spa-transport.test.mjs"
+        ],
+        "status": "PREPARING_NOT_CUT_OVER",
+        "cutover": "Not accepted. Same existing scoped readers/writers and non-JSON redirects are retained. The generated-operation helper consumes the shared client but is not activated by a page. Provider operation contracts, actual Source UI conversion, durable original-command/session handling and browser proof remain required before deleting the old renderer. No live provider or business-outcome claim."
+      },
       "testLeads": []
     },
     {
@@ -11302,8 +11440,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "PREPARATION ONLY: canonical JSON resource and existing commands are contracted; the Source page and provider panels are still legacy and no SPA route is registered",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -11338,7 +11476,34 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "source-management",
+        "journey": "Manage exact Source authority, unverified local identities/scopes, independent audit delivery and service scopes; complete provider/report workflows before UI cutover",
+        "routes": [
+          "GET /workspaces/{workspace}",
+          "POST /workspaces/{workspace}/source-grants",
+          "POST /workspaces/{workspace}/sources",
+          "POST /workspaces/{workspace}/source-audit/{obligation}/recover",
+          "POST /workspaces/{workspace}/services",
+          "DELETE /workspaces/{workspace}/services/{service}"
+        ],
+        "spaBoundary": "PREPARATION ONLY: canonical JSON resource and existing commands are contracted; the Source page and provider panels are still legacy and no SPA route is registered",
+        "businessOwners": [
+          "App\\Sources\\SourceRegistry",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\WorkspaceAuthority",
+          "App\\Foundation\\Tenancy\\WorkspaceContext"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "SourceRegistryTest",
+          "ServiceAuthorityTest",
+          "tests/sources-api-client.test.mjs",
+          "tests/spa-transport.test.mjs"
+        ],
+        "status": "PREPARING_NOT_CUT_OVER",
+        "cutover": "Not accepted. Same existing scoped readers/writers and non-JSON redirects are retained. The generated-operation helper consumes the shared client but is not activated by a page. Provider operation contracts, actual Source UI conversion, durable original-command/session handling and browser proof remain required before deleting the old renderer. No live provider or business-outcome claim."
+      },
       "testLeads": [
         "tests/source-registry-interaction.test.mjs"
       ]
@@ -25486,6 +25651,10 @@
       "@laravel/passkeys"
     ],
     "resources/js/sessionLease.ts": [],
+    "resources/js/sources/client.ts": [
+      "resources/js/api/application.ts",
+      "resources/js/api/generated/application"
+    ],
     "resources/js/spa/api.ts": [
       "resources/js/api/application.ts",
       "resources/js/spa/transport.ts"

@@ -2,6 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import openapiTS, { astToString } from 'openapi-typescript';
 import { spec as goals } from './goals-openapi.mjs';
+import { sourceContracts } from './sources-openapi.mjs';
 
 const ref = name => ({ $ref: `#/components/schemas/${name}` });
 const text = { type: 'string' };
@@ -26,6 +27,7 @@ const purposeParameter = { in: 'path', name: 'purpose', required: true, schema: 
 const temporalParameters = ['effective_at', 'known_at'].map(name => ({ in: 'query', name, schema: text, description: 'Existing timezone-qualified temporal filter. Future knowledge and malformed instants remain invalid.' }));
 const purposeRead = (operationId, selected, contextual) => ({ operationId, security, parameters: [workspaceParameter, ...(selected ? [purposeParameter] : []), ...temporalParameters, ...(contextual ? headers : [])], responses: { 200: response(contextual ? resource('ObjectPurposeResource') : ref('PurposeProjection')), 404: { description: 'Unknown exact purpose; never an empty successful read.', ...json(ref('Error')) }, ...errors } });
 const purposeWrite = (operationId, selected) => ({ operationId, security, parameters: [workspaceParameter, ...(selected ? [purposeParameter] : [])], requestBody: { required: true, ...json(ref('PurposeCommand')) }, responses: { 201: response(ref('PurposeAcknowledgement')), ...errors }, description: 'Original fresh-authenticated Meta-only HTTP admission edge and canonical SQL writer. Command identity is idempotent; uncertain delivery is never automatically replayed or replaced.' });
+const sources = sourceContracts({ ref, text, uuid, object, list, nullable, version, response, json, errors, security, headers, workspaceParameter, envelope, resource });
 
 export const spec = {
     openapi: '3.1.0',
@@ -70,6 +72,7 @@ export const spec = {
                 responses: { 200: response(object({ locale: { enum: ['ar', 'en'] } })), ...errors },
             },
         },
+        ...sources.paths,
     },
     components: {
         securitySchemes: goals.components.securitySchemes,
@@ -104,6 +107,7 @@ export const spec = {
             PurposeCommand: object({ command_id: uuid, purpose_id: nullable(uuid), expected_version: version, operation: { enum: ['declare', 'replace', 'correct', 'withdraw'] }, declaration: nullable(ref('MetaPurposeSnapshot')), effective_from: nullable(text), effective_until: nullable(text), supersedes_revision_id: nullable(uuid), affected_revision_ids: list(uuid), correction_reason: nullable(text), withdrawal_reason: nullable(text), confirmations: object(Object.fromEntries(['meaning', 'scope', 'authority', 'identity', 'standing', 'dtm', 'intent', 'historical', 'transition'].map(name => [name, { type: 'boolean' }]))) }),
             PurposeAcknowledgement: object({ purpose_id: uuid, revision_id: uuid, version }),
             MetaPurposeSnapshot: { allOf: [ref('PurposeSnapshot'), object({ included_objects: list(ref('MetaPurposeObject')), excluded_objects: list(ref('MetaPurposeObject')) }, undefined, true)] },
+            ...sources.schemas,
         },
     },
 };

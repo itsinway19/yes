@@ -20,6 +20,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 final class WorkspaceController extends Controller
 {
@@ -50,17 +51,17 @@ final class WorkspaceController extends Controller
             : redirect()->route('workspaces.show', $workspace);
     }
 
-    public function show(Request $request, string $workspace, WorkspaceContext $context, GrantAuthority $grants): Response
+    public function show(Request $request, string $workspace, WorkspaceContext $context, GrantAuthority $grants): Response|HttpResponse
     {
         return $context->run(
             $request->user(),
             $workspace,
-            function (Workspace $activeWorkspace) use ($request, $grants): Response {
+            function (Workspace $activeWorkspace) use ($request, $grants): Response|HttpResponse {
                 $isOwner = DB::table('workspace_ownerships')
                     ->where('workspace_id', $activeWorkspace->id)
                     ->where('responsible_owner_user_id', $request->user()->id)->exists();
 
-                return Inertia::render('Business/Sources', [
+                $data = [
                     'business' => app(BusinessContext::class)->projection($request, $activeWorkspace),
                     'guidance' => app(BusinessContext::class)->guidance($activeWorkspace),
                     'commercial' => app(RegisterCommercialScope::class)->advertiserProjection($activeWorkspace->id),
@@ -81,7 +82,11 @@ final class WorkspaceController extends Controller
                         ->where('scope.status', 'active')
                         ->orderBy('identity.name')
                         ->get(['identity.public_id', 'identity.name', 'scope.purpose']),
-                ]);
+                ];
+
+                return $request->expectsJson()
+                    ? (new SpaPage($data))->resource($request)
+                    : Inertia::render('Business/Sources', $data);
             },
             $request,
         );
