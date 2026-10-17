@@ -33,6 +33,7 @@ await new Promise(resolve=>proxy.listen(8138,'localhost',resolve));
 const onlyRestoration=process.env.GOALS_SPA_ONLY==='restoration';
 const onlyClosure=process.env.GOALS_SPA_ONLY==='closure';
 const onlyRetention=process.env.GOALS_SPA_ONLY==='retention';
+const onlyFoundation=process.env.GOALS_SPA_ONLY==='foundation';
 const closure=process.env.GOALS_SPA_CLOSURE==='enabled';
 const result={head:spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim(),selection:process.env.GOALS_SPA_ONLY??'all',kind:'Real Laravel + dedicated Redis + PostgreSQL runtime/RLS + Chromium; synthetic users only',cases:[],wire,errors:[],assets:[],findings:[],unverified:[]};
 let browser;
@@ -90,8 +91,12 @@ try{
   const {runRestorationAcceptance}=await import('./goals-spa-restoration.mjs');
   await runRestorationAcceptance({browser,check,login,get,post,target,fixture,workspace,foreign,command,wire,before,until,result});
  }
- if(!onlyRestoration&&!onlyClosure&&!onlyRetention)await runGoalsContractCases({browser,check,login,meta,fixture,result});
- for(const mode of onlyRestoration||onlyClosure||onlyRetention?[]:['inertia','spa']){
+ if(onlyFoundation){
+  const {runFoundationCases}=await import('./spa-foundation-browser.mjs');
+  await runFoundationCases({browser,check,login,ready,visit,target,until,result,workspace,other,command,run});
+ }
+ if(!onlyRestoration&&!onlyClosure&&!onlyRetention&&!onlyFoundation)await runGoalsContractCases({browser,check,login,meta,fixture,result});
+ for(const mode of onlyRestoration||onlyClosure||onlyRetention||onlyFoundation?[]:['inertia','spa']){
   const context=await browser.newContext({viewport:{width:1280,height:900}});let page=await context.newPage();page.setDefaultTimeout(15000);
   page.on('dialog',dialog=>dialog.accept());page.on('pageerror',error=>result.errors.push({mode,message:error.message}));
   context.on('response',response=>{if(response.url().includes('/build/')&&response.status()===200)result.assets.push({url:response.url(),status:response.status()});});
@@ -212,7 +217,7 @@ try{
   }
  }
  // Exact HTTP ownership experiment, shared backend and actual cookie delivery.
- for(const mode of onlyRestoration||onlyRetention?[]:['inertia','spa']){
+ for(const mode of onlyRestoration||onlyRetention||onlyFoundation?[]:['inertia','spa']){
   const context=await browser.newContext();const page=await context.newPage();page.on('dialog',d=>d.accept());await login(page,mode);
   await check('reversed real renewal/login cookie delivery',mode,async()=>{
    const originalIdentity=await meta(page);
@@ -247,7 +252,7 @@ try{
   const {runClosureCases}=await import('./goals-spa-closure.mjs');
   await runClosureCases({browser,check,login,get,post,meta,ready,visit,target,selected,command,until,held,wire,result,fixture,workspace,other,foreign,run,hash});
  }
- for(const mode of onlyClosure||onlyRetention?[]:['inertia','spa']){
+ for(const mode of onlyClosure||onlyRetention||onlyFoundation?[]:['inertia','spa']){
   for(const fault of onlyRestoration?[]:['load','render']){
    const context=await browser.newContext();const page=await context.newPage();page.on('dialog',d=>d.accept());
    await page.goto('http://localhost:8138/login');assert.equal((await post(page,'/login',{email:'goals-a@example.test',password:'DisposableGoalsProof42!'})).status,200);

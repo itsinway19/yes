@@ -118,6 +118,8 @@ jobs:
 
       - name: Verify Foundation
         run: |
+          node scripts/inertia-retirement.mjs
+          npm run test:spa-foundation
           composer validate --strict
           composer audit
           npm audit --audit-level=high

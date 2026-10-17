@@ -1,12 +1,12 @@
-import { QueryClient } from '@tanstack/vue-query';
+import { query } from '../spa/query';
 import { shallowRef } from 'vue';
 import { request, scope, stamp, owned, status, resumeLease, onClose, bootstrap } from './transport';
 import { readGoalsContext } from './api';
 import type { GoalsContext } from '../api/goals';
 export type GoalsData = GoalsContext;
-export const query = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 0, gcTime: 300000 } } });
+export { query };
 export const current = shallowRef<GoalsData>();
-export const confirmDeparture = shallowRef<() => boolean>(() => true);
+export { confirmDeparture } from '../spa/presentation';
 let load = 0;
 export async function read(workspace: string, passive = false) {
     const captured = stamp(), serial = ++load;

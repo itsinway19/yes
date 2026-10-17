@@ -1,4 +1,4 @@
-param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='')
+param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='')
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $proofRoot=Split-Path -Parent $PSScriptRoot
@@ -36,7 +36,10 @@ function Get-ProofSource {
  $proofFiles=@(& git ls-files --cached --others --exclude-standard)
  $proofFiles+=@('public/build/manifest.json','public/build/goals-spa/manifest.json')|Where-Object{Test-Path -LiteralPath (Join-Path $proofRoot $_)}
  $proofMap=[ordered]@{}
- foreach($proofFile in ($proofFiles|Sort-Object -Unique)){$proofMap[$proofFile]=(Get-FileHash -LiteralPath (Join-Path $proofRoot $proofFile) -Algorithm SHA256).Hash}
+ foreach($proofFile in ($proofFiles|Sort-Object -Unique)){
+  $proofSourcePath=Join-Path $proofRoot $proofFile
+  $proofMap[$proofFile]=if(Test-Path -LiteralPath $proofSourcePath -PathType Leaf){(Get-FileHash -LiteralPath $proofSourcePath -Algorithm SHA256).Hash}else{'<deleted>'}
+ }
  return $proofMap|ConvertTo-Json -Depth 4
 }
 function Invoke-ProofPsql([string[]]$Arguments) {
