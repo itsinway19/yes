@@ -173,10 +173,13 @@ final class IdentityDocument
         return ['receipt' => $this->receipts->issue($binding, 'document', time() + 7200),
             'binding' => $binding, 'csrf' => $request->session()->token(),
             'transition' => $this->receipts->issue([...$binding, 'nonce' => bin2hex(random_bytes(32))], 'transition', time() + 600),
-            // Only successful publication observes a new cookie lease. Fresh
-            // documents retain the old conservative horizon, never Redis TTL.
+            // Availability is not authority. New cookies have a fixed retention
+            // bound; fresh documents may observe Redis TTL without renewing it.
+            // Legacy cookies keep their old conservative bound.
             'leaseMilliseconds' => $request->attributes->get('builderad.identity_lease_milliseconds')
-                ?? max(1000, ((int) $request->session()->get('builderad.identity_cookie_lease', time()) - time()) * 1000),
+                ?? ($request->user() && $request->session()->has('builderad.identity_cookie_deadline')
+                    ? app(IdentityRenewal::class)->remainingMilliseconds($request)
+                    : max(1000, ((int) $request->session()->get('builderad.identity_cookie_lease', time()) - time()) * 1000)),
             'renewalProtocol' => IdentityRenewal::compatible($request) ? 1 : 0];
     }
 

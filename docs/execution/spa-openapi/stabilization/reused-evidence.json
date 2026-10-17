@@ -1,0 +1,98 @@
+{
+  "kind": "Reused local execution evidence; no new full-suite run during stabilization",
+  "phpTests": "971",
+  "assertions": "13858",
+  "errors": "0",
+  "failures": "0",
+  "skipped": "0",
+  "browserPassed": 50,
+  "browserUnverified": 2,
+  "browserFailed": 0,
+  "files": [
+    {
+      "path": "storage/framework/testing/goals-spa-1eeb237e-ccb1-4fe7-984c-79ceae70b21d/tests.xml",
+      "sha256": "1E5F8690404076B61ABFFF7C7122B406171F32BE0EDD4857190D7AD9D65645AC",
+      "bytes": 371146
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-1eeb237e-ccb1-4fe7-984c-79ceae70b21d/tests.log",
+      "sha256": "2DC6ED3136F3430985EEAD398F41A147793FF5D64034EDD8672F3EE9C2D78A29",
+      "bytes": 29781
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-1eeb237e-ccb1-4fe7-984c-79ceae70b21d/source-manifest.json",
+      "sha256": "CEE262FEDAB2B098AE5C03B30B6F190C2339F27D0EFB26471BC0E876C6E19FBC",
+      "bytes": 88561
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-1eeb237e-ccb1-4fe7-984c-79ceae70b21d/verification-bridge.json",
+      "sha256": "9534A89D8797A9D6B4AF78A1C7C1CF729853C17675694E443D751D88EB63DA76",
+      "bytes": 395
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-500b054a-9894-4fef-883d-b3a87605bb88/browser-results.json",
+      "sha256": "9AC1B20E5FC8C5EBDFB992D11B5762BF934E638D2B97E7F6EADE086982F93909",
+      "bytes": 1819271
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-500b054a-9894-4fef-883d-b3a87605bb88/source-manifest.json",
+      "sha256": "57E20976EAF968ED57E56F2D06362B74C82D0C66E24057AF1F5D61E70FF85B86",
+      "bytes": 88232
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-500b054a-9894-4fef-883d-b3a87605bb88/final-source-bridge.json",
+      "sha256": "8A5C1F95C515C73255000007AFC6FF8131A0D03FFE12064235ABDEAA4DEF437F",
+      "bytes": 627
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-500b054a-9894-4fef-883d-b3a87605bb88/schema-bridge.json",
+      "sha256": "7AE3EE7BFE56A1B1446F45B77D7DE8364A50DDA640C06012C121F0892A01390E",
+      "bytes": 247
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-500b054a-9894-4fef-883d-b3a87605bb88/verification-bridge-before-final.json",
+      "sha256": "6E087E5DD08BBFA3C330F6065238AC1F60D038D0A2FFACED3031B93D71EF3839",
+      "bytes": 285
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-1eeb237e-ccb1-4fe7-984c-79ceae70b21d/gate-composer-audit.log",
+      "sha256": "A2CAF0F7C741E62640C2DA83B829C15D0373825ABC85618AD482156A2B00C508",
+      "bytes": 45
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-1eeb237e-ccb1-4fe7-984c-79ceae70b21d/gate-composer-validate---strict.log",
+      "sha256": "617D39E3B4752168F63039991B7E1EFACA11E54A1F5A9153D93B0D4EFE91FE05",
+      "bytes": 26
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-1eeb237e-ccb1-4fe7-984c-79ceae70b21d/gate-npm-audit---audit-level=high.log",
+      "sha256": "D27B123A9A4659FD8711C45290E913336A9F7EFBB6C9C554CEDD656B84ED35C7",
+      "bytes": 239
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-1eeb237e-ccb1-4fe7-984c-79ceae70b21d/gate-npm-run-api-check.log",
+      "sha256": "CAE608F449E4C010B3FD811BA8A1209A4BA9885980745BBCA5CADC9AFFF4EF11",
+      "bytes": 91
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-1eeb237e-ccb1-4fe7-984c-79ceae70b21d/gate-npm-run-build-goals-spa.log",
+      "sha256": "B1E60569A44B68013E914437B95B36277C7E99E09B905200E3E229A132D3E7FC",
+      "bytes": 1286
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-1eeb237e-ccb1-4fe7-984c-79ceae70b21d/gate-npm-run-build.log",
+      "sha256": "30F1916345F7AE20CDCFC6BAAD451E153076806CF7B03700939977D46D789764",
+      "bytes": 7296
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-1eeb237e-ccb1-4fe7-984c-79ceae70b21d/gate-npm-test------test-concurrency=1.log",
+      "sha256": "D78829EE04B66CE944A9F0C746A3263A1AA8A6D8B3AB624FA0CFAD98EB51DA81",
+      "bytes": 42157
+    },
+    {
+      "path": "storage/framework/testing/goals-spa-1eeb237e-ccb1-4fe7-984c-79ceae70b21d/gate-php-vendor-bin-pint---test.log",
+      "sha256": "ACBF5DA6385237B6F4CD342C4454D93F6C4DF8BFCF1687838EDB3B651981C4E1",
+      "bytes": 35
+    }
+  ]
+}

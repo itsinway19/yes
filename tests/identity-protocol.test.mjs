@@ -13,12 +13,14 @@ clearHistory(){globalThis.__identity.cleared++}};`);
 const axios = dataUrl(`export default {defaults:{},interceptors:{request:{use(fn){globalThis.__identity.axiosRequest=fn}},
 response:{use(fn,error){globalThis.__identity.axiosResponse=fn;globalThis.__identity.axiosError=error}}}};`);
 const passkeys = dataUrl(`export const Passkeys={configure(v){globalThis.__identity.passkeys=v}};`);
+const leaseModule=dataUrl(ts.transpileModule(await readFile(new URL('../resources/js/sessionLease.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText);
 const compiled = ts.transpileModule(await readFile(new URL('../resources/js/identityProtocol.ts', import.meta.url), 'utf8'),
     { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
     .replace("from '@inertiajs/core'", `from ${JSON.stringify(core)}`)
     .replace("from '@inertiajs/vue3'", `from ${JSON.stringify(vue)}`)
     .replace("from 'axios'", `from ${JSON.stringify(axios)}`)
-    .replace("from '@laravel/passkeys'", `from ${JSON.stringify(passkeys)}`);
+    .replace("from '@laravel/passkeys'", `from ${JSON.stringify(passkeys)}`)
+    .replace("from './sessionLease'", `from ${JSON.stringify(leaseModule)}`);
 let sequence = 0;
 function metadata(overrides = {}) {
     const binding = {lineage:'11111111-1111-4111-8111-111111111111',epoch:1,boundary:'advertiser',credential:'a'.repeat(64),
@@ -322,6 +324,18 @@ const correctedMetadata = (overrides = {}, leaseMilliseconds = 30000) =>
     ({...metadata(overrides),renewalProtocol:1,leaseMilliseconds});
 const leaseTimer = s => s.activeTimers().find(timer=>![15000,10000].includes(timer.delay));
 const deadlineTimer = (s,ms) => s.activeTimers().find(timer=>timer.delay===ms);
+
+test('cookie-free renewal counts delayed delivery against its observed availability horizon',async t=>{
+ const s=await setup(t,correctedMetadata());await s.fire(leaseTimer(s));
+ s.now+=2000;s.reply(0,200,{identity:correctedMetadata({},30000)});await flush();
+ assert.equal(s.protocol.captureIdentity().leaseMilliseconds,28000);assert.equal(leaseTimer(s).delay,19600);
+});
+
+test('an expired availability reply cannot restart a renewal lease',async t=>{
+ const s=await setup(t,correctedMetadata());await s.fire(leaseTimer(s));
+ s.now+=2000;s.reply(0,200,{identity:correctedMetadata({},1000)});await flush();
+ assert.equal(s.protocol.identityBlocked(),true);assert.equal(s.requests[1].url,'/identity/context');
+});
 
 async function timedOutRenewal(t) {
  const s=await setup(t,correctedMetadata());await s.fire(leaseTimer(s));

@@ -50,10 +50,9 @@ final class IdentityCookies
             && ! ($request->attributes->get('builderad.identity_uncertain') || $state?->uncertain)
             && ! ($request->attributes->get('builderad.identity_replayed') || $state?->replayed)
             && $response->getStatusCode() < 400;
-        $renewedSeconds = null;
         if ($healthy && $operation === 'renewal') {
             try {
-                $renewedSeconds = app(IdentityRenewal::class)->refresh($request);
+                app(IdentityRenewal::class)->refresh($request);
                 if (! $response instanceof JsonResponse) {
                     throw new \LogicException('Renewal must return its publication metadata as JSON.');
                 }
@@ -77,10 +76,10 @@ final class IdentityCookies
                 && is_array($owned) && $owned['credential'] === SessionAuthority::sessionKey($request)
                 && $owned['epoch'] === $request->session()->get('builderad.identity_epoch')
                 && $owned['lineage'] === $request->session()->get('builderad.identity_lineage')
+                && is_int($owned['cookie_deadline'] ?? null) && $owned['cookie_deadline'] > time()
+                && $owned['cookie_deadline'] === $request->session()->get('builderad.identity_cookie_deadline')
                 && $owned['csrf'] === $request->session()->token())
             || ($operation === 'anonymous' && ! $request->user())
-            || ($operation === 'renewal' && $renewedSeconds !== null && $captured['credential'] === SessionAuthority::sessionKey($request)
-                && $captured['epoch'] === $request->session()->get('builderad.identity_epoch'))
         );
         foreach ($response->headers->getCookies() as $cookie) {
             if (! in_array($cookie->getName(), $captured['names'], true)
@@ -93,8 +92,11 @@ final class IdentityCookies
             if (! $issue || ($remember && ($operation !== 'transition' || ($committed['kind'] ?? null) !== 'login'))
                 || ($selector && ($operation !== 'anonymous' || ! $request->attributes->get('builderad.identity_selector_created')))) {
                 $response->headers->removeCookie($cookie->getName(), $cookie->getPath(), $cookie->getDomain());
-            } elseif ($operation === 'renewal' && $cookie->getExpiresTime() !== 0) {
-                $response->headers->setCookie($cookie->withExpires(time() + $renewedSeconds));
+            } elseif ($operation === 'transition' && ! $remember && ! $selector && $cookie->getExpiresTime() !== 0) {
+                // Renewal publishes no cookies at all. An older completed
+                // renewal therefore cannot overwrite a later login in any tab.
+                // Preserve session cookies (expire-on-close) and all other flags.
+                $response->headers->setCookie($cookie->withExpires($owned['cookie_deadline']));
             }
         }
 

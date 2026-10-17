@@ -1,0 +1,1 @@
+Add opt-in Goals Vue SPA with a generated OpenAPI client and bounded session continuity

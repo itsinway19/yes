@@ -2,6 +2,7 @@ import { http, HttpCancelledError, type Page } from '@inertiajs/core';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { Passkeys } from '@laravel/passkeys';
+import { remainingSessionLease } from './sessionLease';
 
 export type IdentityBinding = {
     lineage: string; epoch: number; boundary: 'advertiser' | 'internal'; credential: string;
@@ -164,6 +165,7 @@ async function renewIdentity(revision: number): Promise<void> {
         controller.abort(); cancelWait(new Error('Identity renewal transport timed out.'));
     }, RENEWAL_WAIT_MS) : undefined;
     const prefix = captured.binding.boundary === 'internal' ? '/internal' : '';
+    const startedAt = Date.now();
     try {
         const exchange = (async () => {
             const response = await fetch(`${prefix}/identity/renew`, { method: 'POST', credentials: 'same-origin',
@@ -181,6 +183,7 @@ async function renewIdentity(revision: number): Promise<void> {
         if (!sameIdentity(captured.binding, fresh.binding)) {
             throw new HttpCancelledError('Renewal result belongs to another identity document.');
         }
+        if (fresh.renewalProtocol === 1) fresh.leaseMilliseconds = remainingSessionLease(fresh.leaseMilliseconds, startedAt);
         current = fresh;
         renewalReplacementUsed = false;
         updateLease();
@@ -272,6 +275,7 @@ export function recoverIdentity(): Promise<void> {
         failContext(new Error('Identity context timed out; explicitly retry recovery.'));
     }, CONTEXT_WAIT_MS) : undefined;
     const contextRequest = (async () => {
+        const startedAt = Date.now();
         const response = await fetch(`${prefix}/identity/context`, {
             credentials: 'same-origin', cache: 'no-store', redirect: 'manual', signal: contextController.signal, headers: { Accept: 'application/json' },
         });
@@ -289,6 +293,7 @@ export function recoverIdentity(): Promise<void> {
             window.location.replace(window.location.href);
             return;
         }
+        if (fresh.renewalProtocol === 1) fresh.leaseMilliseconds = remainingSessionLease(fresh.leaseMilliseconds, startedAt);
         current = fresh;
         updateLease();
         if (live) live.props.identity = fresh;

@@ -85,9 +85,11 @@ class IdentityCookiesTest extends TestCase
         $request = $this->request();
         $request->attributes->set('builderad.identity_cookie_operation', 'transition');
         $request->attributes->set('builderad.identity_committed', ['status' => 'active', 'kind' => 'login']);
+        $request->session()->put('builderad.identity_cookie_deadline', time() + 86400);
         $request->attributes->set('builderad.identity_output', [
             'credential' => SessionAuthority::sessionKey($request), 'epoch' => 1,
             'lineage' => $request->session()->get('builderad.identity_lineage'), 'csrf' => $request->session()->token(),
+            'cookie_deadline' => $request->session()->get('builderad.identity_cookie_deadline'),
         ]);
         $response = (new IdentityCookies)->finish($request, $this->response());
         $this->assertCount(5, $response->headers->getCookies());
@@ -97,6 +99,7 @@ class IdentityCookiesTest extends TestCase
                 $this->assertTrue($cookie->isHttpOnly());
                 $this->assertSame('lax', $cookie->getSameSite());
                 $this->assertSame('/', $cookie->getPath());
+                $this->assertSame(0, $cookie->getExpiresTime(), 'Session cookies retain expire-on-close semantics.');
             }
         }
     }
@@ -128,7 +131,7 @@ class IdentityCookiesTest extends TestCase
         $this->assertCount(2, $response->headers->getCookies());
     }
 
-    public function test_renewal_retains_current_credential_without_recaller_and_rejects_sid_change(): void
+    public function test_renewal_publishes_no_owned_cookies_and_rejects_sid_change(): void
     {
         // Cookie-policy unit only. Real canonical admission and Redis are
         // exercised separately by IdentityRenewalTest and the browser gate.
@@ -161,7 +164,8 @@ class IdentityCookiesTest extends TestCase
         $request = $this->request();
         $request->attributes->set('builderad.identity_cookie_operation', 'renewal');
         $response = (new IdentityCookies)->finish($request, $publication());
-        $this->assertCount(4, $response->headers->getCookies());
+        $this->assertCount(2, $response->headers->getCookies());
+        $this->assertSame(['locale', 'builderad-internal-session'], array_map(fn ($cookie) => $cookie->getName(), $response->headers->getCookies()));
         $request->session()->regenerate();
         $response = (new IdentityCookies)->finish($request, $publication());
         $this->assertCount(2, $response->headers->getCookies());

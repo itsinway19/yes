@@ -1,0 +1,661 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "BuilderAd internal Goals contract",
+    "version": "1.0.0",
+    "description": "Private migration slice. Cookies and identity headers describe the WEB transport only. Not a mobile authentication design."
+  },
+  "paths": {
+    "/workspaces/{workspace}/goals": {
+      "get": {
+        "operationId": "readGoals",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized canonical projection. Never shared-cache private data.",
+            "headers": {
+              "X-Builderad-Identity": {
+                "description": "Server document evidence, verified by the web transport. Not independent authority.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No current authenticated session. A stale document may instead be rejected with identityConflict 409 before auth.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unverified principal, absent Workspace scope or withdrawn grant. No write effect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CAS mismatch: preserve draft and explicitly review current version. identityConflict=true instead closes the document; never adopt it as a CAS conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "CSRF rejection, including a transport session that no longer contains the CSRF token. No write effect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid exact JSON value/version shape, size or domain selection; errors.value contains validation messages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Accept application/json. Without it, the existing route renders Inertia HTML."
+      },
+      "post": {
+        "operationId": "saveGoals",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Browser CSRF token. Laravel 13 may accept trusted same-origin Fetch Metadata before token validation; absent that evidence a valid token is required."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized canonical projection. Never shared-cache private data.",
+            "headers": {
+              "X-Builderad-Identity": {
+                "description": "Server document evidence, verified by the web transport. Not independent authority.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No current authenticated session. A stale document may instead be rejected with identityConflict 409 before auth.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unverified principal, absent Workspace scope or withdrawn grant. No write effect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CAS mismatch: preserve draft and explicitly review current version. identityConflict=true instead closes the document; never adopt it as a CAS conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "CSRF rejection, including a transport session that no longer contains the CSRF token. No write effect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid exact JSON value/version shape, size or domain selection; errors.value contains validation messages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Canonical existing writer; exact two-field JSON object, maximum 8192 bytes. No automatic retry after uncertain delivery. Same-origin Laravel CSRF checks remain authoritative.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveGoals"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spa/api/workspaces/{workspace}/goals": {
+      "get": {
+        "operationId": "readGoalsContext",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Goals-Passive",
+            "in": "header",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "X-Goals-Witness",
+            "in": "header",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized canonical projection. Never shared-cache private data.",
+            "headers": {
+              "X-Builderad-Identity": {
+                "description": "Server document evidence, verified by the web transport. Not independent authority.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/GoalsContext"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GoalsWitness"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No current authenticated session. A stale document may instead be rejected with identityConflict 409 before auth.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unverified principal, absent Workspace scope or withdrawn grant. No write effect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CAS mismatch: preserve draft and explicitly review current version. identityConflict=true instead closes the document; never adopt it as a CAS conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "CSRF rejection, including a transport session that no longer contains the CSRF token. No write effect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid exact JSON value/version shape, size or domain selection; errors.value contains validation messages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Opt-in SPA contextual read: reuses canonical Goals and BusinessContext projections. Witness returns only visibility. Passive/witness checks never extend canonical idle authority."
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "builderad-session",
+        "description": "Default advertiser cookie; SESSION_COOKIE may override it. Server SQL/Redis admission remains mandatory."
+      },
+      "documentReceipt": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Builderad-Document"
+      },
+      "transitionReceipt": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Builderad-Transition"
+      }
+    },
+    "schemas": {
+      "GoalValue": {
+        "type": "object",
+        "properties": {
+          "goals": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "priority": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "results": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "goals",
+          "priority",
+          "results"
+        ],
+        "additionalProperties": false
+      },
+      "Preferences": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/GoalValue"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "value",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "SaveGoals": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/WriteGoalValue"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "value",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "WriteGoalValue": {
+        "type": "object",
+        "properties": {
+          "goals": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 4,
+            "uniqueItems": true
+          },
+          "priority": {
+            "type": "string"
+          },
+          "results": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          }
+        },
+        "required": [
+          "goals",
+          "priority",
+          "results"
+        ],
+        "additionalProperties": false,
+        "description": "Canonical SQL additionally requires exact catalog IDs, selected priority, results only for selected goals and results from the matching catalog. It normalizes ordering and empty results. Initial read may be empty/null; that state is not a valid write."
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "identityConflict": {
+            "type": "boolean"
+          }
+        },
+        "required": [],
+        "additionalProperties": true
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ],
+        "additionalProperties": false
+      },
+      "Visibility": {
+        "type": "object",
+        "properties": {
+          "protected": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "context": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "protected",
+          "path",
+          "context"
+        ],
+        "additionalProperties": false
+      },
+      "GoalsWitness": {
+        "type": "object",
+        "properties": {
+          "visibility": {
+            "$ref": "#/components/schemas/Visibility"
+          }
+        },
+        "required": [
+          "visibility"
+        ],
+        "additionalProperties": false
+      },
+      "GoalsContext": {
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "type": "object",
+            "properties": {
+              "public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "public_id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/Preferences"
+          },
+          "business": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name_ar": {
+                        "type": "string"
+                      },
+                      "name_en": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name_ar",
+                      "name_en"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "canManage": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "type",
+              "canManage"
+            ],
+            "additionalProperties": true
+          },
+          "catalog": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name_ar": {
+                  "type": "string"
+                },
+                "name_en": {
+                  "type": "string"
+                },
+                "description_ar": {
+                  "type": "string"
+                },
+                "description_en": {
+                  "type": "string"
+                },
+                "results": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name_ar": {
+                        "type": "string"
+                      },
+                      "name_en": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name_ar",
+                      "name_en"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name_ar",
+                "name_en",
+                "description_ar",
+                "description_en",
+                "results"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/Visibility"
+          }
+        },
+        "required": [
+          "workspace",
+          "preferences",
+          "business",
+          "catalog",
+          "visibility"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

@@ -1,0 +1,228 @@
+{
+  "recordedAt": "2026-10-17T14:49:22.2281911+03:00",
+  "sourceHead": "580837d334ac703209644ffff54bb6d05a62a0c0",
+  "destinationHead": "580837d334ac703209644ffff54bb6d05a62a0c0",
+  "destinationInitialStatus": [],
+  "sourceStatus": [
+    " M app/Security/IdentityCookies.php",
+    " M app/Security/IdentityDocument.php",
+    " M app/Security/IdentityRenewal.php",
+    " M app/Security/IdentityTransition.php",
+    " M package-lock.json",
+    " M package.json",
+    " M resources/js/identityProtocol.ts",
+    " M tests/Feature/Localization/LocaleTest.php",
+    " M tests/Feature/Security/IdentityRenewalTest.php",
+    " M tests/Feature/Security/ProductionIdentityTest.php",
+    " M tests/Unit/IdentityCookiesTest.php",
+    " M tests/identity-protocol.test.mjs",
+    "?? app/Http/Controllers/GoalsSpaController.php",
+    "?? docs/experiments/",
+    "?? resources/js/goals-spa/",
+    "?? resources/js/sessionLease.ts",
+    "?? resources/views/goals-spa.blade.php",
+    "?? scripts/Test-GoalsSpa.ps1",
+    "?? tests/Feature/GoalsSpaProofTest.php",
+    "?? tests/Support/GoalsSpaFixture.php",
+    "?? tests/Support/GoalsSpaLockWorker.php",
+    "?? tests/Support/goals-spa-browser.mjs",
+    "?? tests/Support/goals-spa-closure.mjs",
+    "?? tests/Support/goals-spa-routes.php",
+    "?? tests/Support/goals-spa-server.php",
+    "?? vite.goals-spa.config.js"
+  ],
+  "files": [
+    {
+      "path": "app/Security/IdentityCookies.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\app\\Security\\IdentityCookies.php",
+      "sha256": "AC9119252B198EC47EAE486099E0D9111E56EC9451AC72D93027D34B9240BEAE",
+      "group": "session-continuity"
+    },
+    {
+      "path": "app/Security/IdentityDocument.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\app\\Security\\IdentityDocument.php",
+      "sha256": "BA4C561ED9B0B16F7A1350507456EE9482889617A0F231A617D65F755DC3DA1B",
+      "group": "session-continuity"
+    },
+    {
+      "path": "app/Security/IdentityRenewal.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\app\\Security\\IdentityRenewal.php",
+      "sha256": "4090EC3DB03F3E9732B39383BCC71859B6B665B8E3E3CECE859F17A0ECB4D085",
+      "group": "session-continuity"
+    },
+    {
+      "path": "app/Security/IdentityTransition.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\app\\Security\\IdentityTransition.php",
+      "sha256": "8E15F92C851761CBA8E8DF9F4A219F5B3C18FAA0468663FA3E65C0DADA35ACF6",
+      "group": "session-continuity"
+    },
+    {
+      "path": "package-lock.json",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\package-lock.json",
+      "sha256": "46607C87D1A60F533E49B288FD1FAF30E9EEF28655C6204AEBAB3BD0D157C7D5",
+      "group": "goals-spa"
+    },
+    {
+      "path": "package.json",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\package.json",
+      "sha256": "BD45A553F260C9BDC77DD6567615AAE73A3F709B386A168EA641A208F7929B6F",
+      "group": "goals-spa"
+    },
+    {
+      "path": "resources/js/identityProtocol.ts",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\resources\\js\\identityProtocol.ts",
+      "sha256": "AD0074970879C094EB11EF2941DD979724BA4072764186378D31C10F2C9C6091",
+      "group": "session-continuity"
+    },
+    {
+      "path": "tests/Feature/Localization/LocaleTest.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\tests\\Feature\\Localization\\LocaleTest.php",
+      "sha256": "39659EA95E84BD7D376F23A22F8F4DDF8100EDEC7E3F7A2E3B518259B2A2A7D9",
+      "group": "session-continuity"
+    },
+    {
+      "path": "tests/Feature/Security/IdentityRenewalTest.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\tests\\Feature\\Security\\IdentityRenewalTest.php",
+      "sha256": "DFF4D8AF5A410566F164ECB963AB3E89DFA2EA8A3B65F943137B291B0BF74365",
+      "group": "session-continuity"
+    },
+    {
+      "path": "tests/Feature/Security/ProductionIdentityTest.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\tests\\Feature\\Security\\ProductionIdentityTest.php",
+      "sha256": "2F05C186121F0CE15059BBDCC820F897CB3B34D2AE46CCB1496F500A2A1823B2",
+      "group": "session-continuity"
+    },
+    {
+      "path": "tests/Unit/IdentityCookiesTest.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\tests\\Unit\\IdentityCookiesTest.php",
+      "sha256": "A9348C316A856D01FA9845A1D599BDEA5854DDFF9005F3BED2484B99AAD70BC3",
+      "group": "session-continuity"
+    },
+    {
+      "path": "tests/identity-protocol.test.mjs",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\tests\\identity-protocol.test.mjs",
+      "sha256": "138D087FEE3C258CDF2117DC388932C13E288118DE92FE78616707C9F2EFD57F",
+      "group": "session-continuity"
+    },
+    {
+      "path": "app/Http/Controllers/GoalsSpaController.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\app\\Http\\Controllers\\GoalsSpaController.php",
+      "sha256": "7B46E2B01CD668A8BEAD70AB9ABF19E174EEC904EE351359D6D0A8003466C9AA",
+      "group": "goals-spa"
+    },
+    {
+      "path": "docs/experiments/GOALS_SPA_PROOF_REPORT.md",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\docs\\experiments\\GOALS_SPA_PROOF_REPORT.md",
+      "sha256": "590126BA9E92DB6D1D6A66E1B0E9AA2EAD4674D4ED34E05B6EF23226C33D94B4",
+      "group": "historical-report"
+    },
+    {
+      "path": "docs/experiments/SESSION_CONTINUITY_CLOSURE_REPORT.md",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\docs\\experiments\\SESSION_CONTINUITY_CLOSURE_REPORT.md",
+      "sha256": "2118E54967F5E7A289A470EF6E846DD7988800C70DA9F3B818C1AC57EC3A64CA",
+      "group": "historical-report"
+    },
+    {
+      "path": "resources/js/goals-spa/GoalsEditor.vue",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\resources\\js\\goals-spa\\GoalsEditor.vue",
+      "sha256": "2BAD6FCC1C9AEE086E87739EA7BCB2BB51830452C0E0E9746A5D36684D47CE52",
+      "group": "goals-spa"
+    },
+    {
+      "path": "resources/js/goals-spa/GoalsReview.vue",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\resources\\js\\goals-spa\\GoalsReview.vue",
+      "sha256": "4D467D5713B7C5AD2208ED3E49F88ED705693A5FC52BDA62990C899A4A0BDBE7",
+      "group": "goals-spa"
+    },
+    {
+      "path": "resources/js/goals-spa/drafts.ts",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\resources\\js\\goals-spa\\drafts.ts",
+      "sha256": "F99F79F705665B74323ABA8C5F213B1D9513EB7A6A5C625A2A5D6BCAFBE81606",
+      "group": "goals-spa"
+    },
+    {
+      "path": "resources/js/goals-spa/main.ts",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\resources\\js\\goals-spa\\main.ts",
+      "sha256": "A14AA33BD3F7C64CF0E0968A29140262D6DF62AA51E1E3E8C7385AC1533EAFA5",
+      "group": "goals-spa"
+    },
+    {
+      "path": "resources/js/goals-spa/state.ts",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\resources\\js\\goals-spa\\state.ts",
+      "sha256": "C173C3AB2CBB6572781E3E1BD1F8D2CA52ACC0863B1DAE72FD1C5088BCF96061",
+      "group": "goals-spa"
+    },
+    {
+      "path": "resources/js/goals-spa/transport.ts",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\resources\\js\\goals-spa\\transport.ts",
+      "sha256": "BC1AB79A06FDDF8B96502B2ED3F921007A25AE330F27A7981987F7DA6A1A5511",
+      "group": "goals-spa"
+    },
+    {
+      "path": "resources/js/sessionLease.ts",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\resources\\js\\sessionLease.ts",
+      "sha256": "C02EC46D33B9A63B6C5FBD10026663DA31BD9C4C09296368D15FEDE879BF13B1",
+      "group": "session-continuity"
+    },
+    {
+      "path": "resources/views/goals-spa.blade.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\resources\\views\\goals-spa.blade.php",
+      "sha256": "D0A06E087C6AD1C473EE0339DE59989B337D14328B3DFC1A62E5A6F0FAE2E812",
+      "group": "goals-spa"
+    },
+    {
+      "path": "scripts/Test-GoalsSpa.ps1",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\scripts\\Test-GoalsSpa.ps1",
+      "sha256": "3110E05AFE31C5356999DF3FB2CCCB20087F6D7D8738F56C12675CF622FB9EF0",
+      "group": "verification-scaffolding"
+    },
+    {
+      "path": "tests/Feature/GoalsSpaProofTest.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\tests\\Feature\\GoalsSpaProofTest.php",
+      "sha256": "D26E391F281BBB8D222DFC4E2679871B39376EDEE4ED4795D8FE39329A10EB10",
+      "group": "verification-scaffolding"
+    },
+    {
+      "path": "tests/Support/GoalsSpaFixture.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\tests\\Support\\GoalsSpaFixture.php",
+      "sha256": "95CF89947AEFC250591211A751E5121474D471AE8906EDA31FDEC18EA84788EA",
+      "group": "verification-scaffolding"
+    },
+    {
+      "path": "tests/Support/GoalsSpaLockWorker.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\tests\\Support\\GoalsSpaLockWorker.php",
+      "sha256": "21201E385D32D7924DCF45F4B333CAFB26B6C568D334F6BE45588E53FA4E5BFD",
+      "group": "verification-scaffolding"
+    },
+    {
+      "path": "tests/Support/goals-spa-browser.mjs",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\tests\\Support\\goals-spa-browser.mjs",
+      "sha256": "7687B3A0D659CEA25C205B990A8C724C22DD19ABB82DDF4B4A4908F8A1520F88",
+      "group": "verification-scaffolding"
+    },
+    {
+      "path": "tests/Support/goals-spa-closure.mjs",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\tests\\Support\\goals-spa-closure.mjs",
+      "sha256": "E432138D845C8FBEB34C5DE4DB68F2E2373ECC46F649F7A234F6CABE60170E5A",
+      "group": "verification-scaffolding"
+    },
+    {
+      "path": "tests/Support/goals-spa-routes.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\tests\\Support\\goals-spa-routes.php",
+      "sha256": "9D71B081C7E8B26C6CC1DB2EDD4F61CE5A36C0F06E5B29A9111785EFDA8257E5",
+      "group": "verification-scaffolding"
+    },
+    {
+      "path": "tests/Support/goals-spa-server.php",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\tests\\Support\\goals-spa-server.php",
+      "sha256": "EF39576939E078E08D820283CC8314A0B8E8B775E8DFD3DC453FC6CC30D4B715",
+      "group": "verification-scaffolding"
+    },
+    {
+      "path": "vite.goals-spa.config.js",
+      "source": "C:\\dev\\builderad-worktrees\\ba-vue-spa-001\\vite.goals-spa.config.js",
+      "sha256": "6EDCA674E4F011F58ABC404CB07E62236CA6B29E540FB39C48485E33831F6DCF",
+      "group": "goals-spa"
+    }
+  ]
+}

@@ -1,0 +1,266 @@
+{
+  "date": "2026-10-17",
+  "worktree": "C:/dev/builderad-worktrees/ba-spa-openapi-001",
+  "reviewedHead": "ead9bd5e35e937f729906a5d99ab67ffc41e4b9d",
+  "base": "580837d334ac703209644ffff54bb6d05a62a0c0",
+  "pr": "https://github.com/42Huss/builderad/pull/36",
+  "foundation": {
+    "run": "https://github.com/42Huss/builderad/actions/runs/39038000416",
+    "conclusion": "success",
+    "checkout": "7bdd76f10b174b598c6e4f28de99807c9f62e7f5",
+    "head": "ead9bd5e35e937f729906a5d99ab67ffc41e4b9d",
+    "phpTests": 971,
+    "phpAssertions": 12719,
+    "javascriptTests": 285,
+    "logExcerpt": [
+      "2026-10-17T13:48:00.1757185Z HEAD is now at 7bdd76f Merge ead9bd5e35e937f729906a5d99ab67ffc41e4b9d into 580837d334ac703209644ffff54bb6d05a62a0c0",
+      "2026-10-17T13:48:00.1837561Z 7bdd76f10b174b598c6e4f28de99807c9f62e7f5",
+      "2026-10-17T13:54:22.7551921Z   Tests:    971 passed (12719 assertions)",
+      "2026-10-17T13:54:31.5453234Z ℹ tests 285",
+      "2026-10-17T13:54:31.5454284Z ℹ pass 285",
+      "2026-10-17T13:54:31.5454711Z ℹ fail 0",
+      "2026-10-17T13:54:31.6382253Z > api:check",
+      "2026-10-17T13:54:56.1465650Z > build:goals-spa"
+    ]
+  },
+  "reconciliation": {
+    "unchangedHeadFilesCompared": 41,
+    "headFileMismatches": [],
+    "productionSpaArtifactsCompared": 6,
+    "productionArtifactMismatches": [],
+    "reusedEvidenceFilesCompared": 17,
+    "reusedEvidenceMismatches": [],
+    "excludedChangedHeadFile": "tests/Support/goals-spa-browser.mjs"
+  },
+  "browser": {
+    "run": "storage/framework/testing/goals-spa-5a26eee6-5e44-4d16-8dec-33f38b4651a2",
+    "version": "145.0.7632.6",
+    "artifact": "existing production SPA; six artifact hashes equal final-candidate-manifest.json",
+    "cases": [
+      {
+        "name": "production artifact and script-free shell expose no Goals projection",
+        "mode": "spa",
+        "result": "PASS",
+        "details": {
+          "status": 200,
+          "cacheControl": "no-store, private",
+          "scope": "Fresh HTML only; identity bootstrap remains present; not cached compositor frames"
+        }
+      },
+      {
+        "name": "reload keeps private presentation closed until authoritative witness completes",
+        "mode": "spa",
+        "result": "PASS",
+        "details": {
+          "scope": "Real reload, real HTTP witness held before server admission; no proof globals"
+        }
+      },
+      {
+        "name": "script-free fresh document rejects old workspace after expire",
+        "mode": "spa",
+        "result": "PASS",
+        "details": {
+          "requestStatus": 302,
+          "finalStatus": 200,
+          "scope": "Forced fresh HTTP document with JavaScript disabled; does not establish native BFCache"
+        }
+      },
+      {
+        "name": "script-free fresh document rejects old workspace after revoke",
+        "mode": "spa",
+        "result": "PASS",
+        "details": {
+          "requestStatus": 302,
+          "finalStatus": 200,
+          "scope": "Forced fresh HTTP document with JavaScript disabled; does not establish native BFCache"
+        }
+      },
+      {
+        "name": "script-free fresh document rejects old workspace after switch",
+        "mode": "spa",
+        "result": "PASS",
+        "details": {
+          "requestStatus": 403,
+          "finalStatus": 403,
+          "scope": "Forced fresh HTTP document with JavaScript disabled; does not establish native BFCache"
+        }
+      },
+      {
+        "name": "script-free fresh document rejects old workspace after deny-view",
+        "mode": "spa",
+        "result": "PASS",
+        "details": {
+          "requestStatus": 403,
+          "finalStatus": 403,
+          "scope": "Forced fresh HTTP document with JavaScript disabled; does not establish native BFCache"
+        }
+      },
+      {
+        "name": "production foreign workspace shell and projection both deny access",
+        "mode": "spa",
+        "result": "PASS",
+        "details": {
+          "shell": 403,
+          "projection": 403,
+          "scope": "Foreign shell and projection with current cookie and valid document receipt"
+        }
+      },
+      {
+        "name": "native BFCache expire denies authority and hides private DOM after traversal",
+        "mode": "inertia",
+        "result": "PASS",
+        "details": {
+          "result": "PASS",
+          "observedPath": "native-bfcache",
+          "freshDocumentSafety": "NOT_EXERCISED",
+          "shows": [
+            {
+              "persisted": false,
+              "trusted": true,
+              "path": "/up"
+            },
+            {
+              "persisted": false,
+              "trusted": true,
+              "path": "/workspaces/01a14a32-25ab-7de4-9726-fc0c402f80de/goals"
+            },
+            {
+              "persisted": true,
+              "trusted": true,
+              "path": "/workspaces/01a14a32-25ab-7de4-9726-fc0c402f80de/goals"
+            }
+          ],
+          "notRestored": [],
+          "note": "A fresh native redirect is safe but is not BFCache evidence. Checks visible DOM after server denial; pre-JavaScript cached-frame confidentiality is not proved"
+        }
+      },
+      {
+        "name": "native BFCache switch denies authority and hides private DOM after traversal",
+        "mode": "inertia",
+        "result": "PASS",
+        "details": {
+          "result": "PASS",
+          "observedPath": "native-bfcache",
+          "freshDocumentSafety": "NOT_EXERCISED",
+          "shows": [
+            {
+              "persisted": false,
+              "trusted": true,
+              "path": "/up"
+            },
+            {
+              "persisted": false,
+              "trusted": true,
+              "path": "/workspaces/01a14a32-25ab-7de4-9726-fc0c402f80de/goals"
+            },
+            {
+              "persisted": true,
+              "trusted": true,
+              "path": "/workspaces/01a14a32-25ab-7de4-9726-fc0c402f80de/goals"
+            }
+          ],
+          "notRestored": [],
+          "note": "A fresh native redirect is safe but is not BFCache evidence. Checks visible DOM after server denial; pre-JavaScript cached-frame confidentiality is not proved"
+        }
+      },
+      {
+        "name": "native BFCache expire denies authority and hides private DOM after traversal",
+        "mode": "spa",
+        "result": "UNVERIFIED",
+        "details": {
+          "result": "UNVERIFIED",
+          "observedPath": "fresh-document",
+          "freshDocumentSafety": "PASS",
+          "shows": [
+            {
+              "persisted": false,
+              "trusted": true,
+              "path": "/up"
+            }
+          ],
+          "notRestored": [
+            [
+              {
+                "type": "Circumstantial",
+                "reason": "MainResourceHasCacheControlNoStore"
+              },
+              {
+                "type": "Circumstantial",
+                "reason": "JsNetworkRequestReceivedCacheControlNoStoreResource"
+              },
+              {
+                "type": "Circumstantial",
+                "reason": "BrowsingInstanceNotSwapped"
+              }
+            ]
+          ],
+          "note": "A fresh native redirect is safe but is not BFCache evidence. Checks visible DOM after server denial; pre-JavaScript cached-frame confidentiality is not proved"
+        }
+      },
+      {
+        "name": "native BFCache switch denies authority and hides private DOM after traversal",
+        "mode": "spa",
+        "result": "UNVERIFIED",
+        "details": {
+          "result": "UNVERIFIED",
+          "observedPath": "fresh-document",
+          "freshDocumentSafety": "PASS",
+          "shows": [
+            {
+              "persisted": false,
+              "trusted": true,
+              "path": "/up"
+            },
+            {
+              "persisted": false,
+              "trusted": true,
+              "path": "/spa/workspaces/01a14a32-25ab-7de4-9726-fc0c402f80de/goals"
+            }
+          ],
+          "notRestored": [
+            [
+              {
+                "type": "Circumstantial",
+                "reason": "MainResourceHasCacheControlNoStore"
+              },
+              {
+                "type": "Circumstantial",
+                "reason": "JsNetworkRequestReceivedCacheControlNoStoreResource"
+              },
+              {
+                "type": "Circumstantial",
+                "reason": "BrowsingInstanceNotSwapped"
+              }
+            ]
+          ],
+          "note": "A fresh native redirect is safe but is not BFCache evidence. Checks visible DOM after server denial; pre-JavaScript cached-frame confidentiality is not proved"
+        }
+      }
+    ],
+    "assets": {
+      "boundary": "Exact real PHP response bytes passed unchanged to the browser-facing HTTP response; browser URL/status observed separately. Aborted navigations may evict CDP bodies and are not hashed as empty files.",
+      "forwardedResponses": 481,
+      "browserResponses": 46
+    },
+    "sourceUnchanged": "True",
+    "failure": null,
+    "cleanup": "browser and proxy closed",
+    "result": {
+      "pass": 9,
+      "unverified": 2,
+      "fail": 0
+    },
+    "exit": "Node 2 (acceptance blocked), PowerShell 1 (expected gate rejection)"
+  },
+  "cleanup": {
+    "postgres": "pg_ctl status: no server running",
+    "listenersOnTaskPorts": [],
+    "temporaryDotEnvExists": false
+  },
+  "acceptance": {
+    "A": "Existing local bounded PASS retained; not rerun",
+    "B": "BLOCKED",
+    "C": "BLOCKED",
+    "ownerDecisionMade": false
+  }
+}

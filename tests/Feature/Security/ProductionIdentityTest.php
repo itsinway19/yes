@@ -170,7 +170,7 @@ class ProductionIdentityTest extends TestCase
         $this->assertSame([], $response->headers->getCookies());
     }
 
-    public function test_renewal_preserves_canonical_deadlines_and_ordinary_document_reports_remaining_cookie_lease(): void
+    public function test_renewal_preserves_canonical_deadlines_and_document_observes_redis_availability_within_fixed_cookie_bound(): void
     {
         $user = User::factory()->create();
         $identity = $this->ownedLogin($this->freshGuest(), $user);
@@ -181,6 +181,7 @@ class ProductionIdentityTest extends TestCase
         $this->assertSame($identity['binding']['lineage'], $store->get('builderad.identity_lineage'));
         $store->put('builderad.identity_cookie_lease', time() + 30);
         $store->save();
+        $this->assertTrue($store->getHandler()->getCache()->touch($store->getId(), 30));
         $this->reloadGuard();
         $page = $this->get('/profile', ['Accept' => 'text/html']);
         $page->assertOk();
@@ -198,9 +199,7 @@ class ProductionIdentityTest extends TestCase
         $this->assertSame($before->absolute_expires_at, $after->absolute_expires_at);
         $this->assertSame($before->authenticated_at, $after->authenticated_at);
         $names = array_map(fn ($cookie) => $cookie->getName(), $response->headers->getCookies());
-        $this->assertContains(config('session.advertiser_cookie'), $names);
-        $this->assertContains('XSRF-TOKEN', $names);
-        $this->assertNotContains(config('session.advertiser_cookie').'-lineage', $names);
+        $this->assertSame([], $names, 'Renewal must not publish a stale credential or CSRF cookie.');
     }
 
     public function test_expired_current_credential_is_retired_without_cookie_delivery_or_protected_effect(): void

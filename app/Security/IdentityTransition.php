@@ -8,6 +8,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Cache\RedisStore;
 use Illuminate\Http\Request;
 use Illuminate\Session\CacheBasedSessionHandler;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -168,7 +169,12 @@ final class IdentityTransition
             $epoch = $baseEpoch + 1;
             $request->session()->put(['builderad.identity_lineage' => $lineage, 'builderad.identity_epoch' => $epoch]);
             if ($active) {
-                $request->session()->put('builderad.identity_cookie_lease', time() + (int) config('session.lifetime') * 60);
+                // Browser retention and Redis renewal are different horizons.
+                // Only an owned credential publication establishes this bound;
+                // renewal must never infer it from SQL for an older cookie.
+                $cookieDeadline = Carbon::parse($session->absolute_expires_at)->timestamp;
+                $request->session()->put('builderad.identity_cookie_deadline', $cookieDeadline);
+                $request->session()->put('builderad.identity_cookie_lease', min($cookieDeadline, time() + (int) config('session.lifetime') * 60));
             }
             $request->session()->save(); // S1; still no committed transport/SQL authority.
             if ($request->session()->getHandler()->read($request->session()->getId()) === '') {
@@ -189,6 +195,7 @@ final class IdentityTransition
             $this->mark($request, 'output', [
                 'credential' => SessionAuthority::sessionKey($request), 'epoch' => $epoch,
                 'csrf' => $request->session()->token(), 'lineage' => $lineage,
+                'cookie_deadline' => $request->session()->get('builderad.identity_cookie_deadline'),
             ]);
 
             return $receipt;

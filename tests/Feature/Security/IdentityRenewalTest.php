@@ -9,6 +9,7 @@ use Closure;
 use Illuminate\Cache\RedisStore;
 use Illuminate\Http\Request;
 use Illuminate\Session\SessionManager;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Mockery;
@@ -19,6 +20,8 @@ use Tests\TestCase;
 /** Real route, CSRF, PostgreSQL and Redis; injected failures are labeled separately. */
 class IdentityRenewalTest extends TestCase
 {
+    private array $loginCookies = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -48,6 +51,7 @@ class IdentityRenewalTest extends TestCase
         $this->withCookie(config('session.advertiser_cookie').'-lineage', $guest['binding']['lineage']);
         $this->resetGuard();
         $response = $this->post('/login', ['email' => $user->email, 'password' => 'password'], $this->headers($guest))->assertOk();
+        $this->loginCookies = $response->headers->getCookies();
         $this->withCookie(config('session.advertiser_cookie'), app('session')->driver()->getId());
         $this->resetGuard();
 
@@ -103,7 +107,9 @@ class IdentityRenewalTest extends TestCase
         $store = $cache->getStore();
         $this->assertGreaterThan(30, $store->connection()->ttl($store->getPrefix().$sid));
         $this->assertSame(1, $response->json('identity.renewalProtocol'));
-        $this->assertSame((int) config('session.lifetime') * 60000, $response->json('identity.leaseMilliseconds'));
+        $this->assertLessThanOrEqual((int) config('session.lifetime') * 60000, $response->json('identity.leaseMilliseconds'));
+        $this->assertGreaterThanOrEqual((int) config('session.lifetime') * 60000 - 2000, $response->json('identity.leaseMilliseconds'));
+        $this->assertSame([], $response->headers->getCookies(), 'Successful renewal must not overwrite a newer browser credential.');
         $this->assertSame($identity['binding'], $response->json('identity.binding'));
         $after = DB::table('security_sessions')->first();
         foreach (['idle_expires_at', 'absolute_expires_at', 'revoked_at', 'session_key_hash'] as $field) {
@@ -127,6 +133,56 @@ class IdentityRenewalTest extends TestCase
         $response = $this->post('/identity/renew', [], $this->headers($identity))->assertStatus(409);
         $this->assertFalse($cache->has($sid));
         $this->assertSame([], $response->headers->getCookies());
+    }
+
+    public function test_login_cookie_retention_is_bounded_by_canonical_absolute_deadline_and_reload_observes_ttl(): void
+    {
+        $this->login();
+        $deadline = Carbon::parse(DB::table('security_sessions')->value('absolute_expires_at'))->timestamp;
+        $session = app('session')->driver();
+        $session->setId($this->defaultCookies[config('session.advertiser_cookie')]);
+        $session->start();
+        $this->assertSame($deadline, $session->get('builderad.identity_cookie_deadline'));
+        $credentials = array_values(array_filter($this->loginCookies, fn ($cookie) => in_array($cookie->getName(), [config('session.advertiser_cookie'), 'XSRF-TOKEN'], true)));
+        $this->assertCount(2, $credentials);
+        foreach ($credentials as $cookie) {
+            $this->assertSame($deadline, $cookie->getExpiresTime());
+            $this->assertSame('/', $cookie->getPath());
+            $this->assertSame(config('session.same_site'), $cookie->getSameSite());
+        }
+        $this->assertTrue($credentials[0]->isHttpOnly() || $credentials[1]->isHttpOnly());
+        // A consumed initial lease is not a lost cookie: the new fixed bound
+        // and actual Redis TTL allow a fresh document without renewing either.
+        $session->put('builderad.identity_cookie_lease', time() - 1);
+        $session->save();
+        $this->resetGuard();
+        $before = DB::table('security_sessions')->first();
+        $response = $this->get('/identity/context', ['Accept' => 'application/json'])->assertOk();
+        $this->assertGreaterThan(1000, $response->json('identity.leaseMilliseconds'));
+        $this->assertSame([], $response->headers->getCookies());
+        $after = DB::table('security_sessions')->first();
+        $this->assertSame($before->idle_expires_at, $after->idle_expires_at);
+        $this->assertSame($before->absolute_expires_at, $after->absolute_expires_at);
+    }
+
+    public function test_legacy_cookie_is_not_silently_upgraded_or_renewed_past_its_known_horizon(): void
+    {
+        $identity = $this->login();
+        $session = app('session')->driver();
+        $session->setId($this->defaultCookies[config('session.advertiser_cookie')]);
+        $session->start();
+        $session->forget('builderad.identity_cookie_deadline');
+        $session->put('builderad.identity_cookie_lease', time() + 4);
+        $session->save();
+        $this->resetGuard();
+        $response = $this->post('/identity/renew', [], $this->headers($identity))->assertOk();
+        $this->assertGreaterThan(0, $response->json('identity.leaseMilliseconds'));
+        $this->assertLessThanOrEqual(4000, $response->json('identity.leaseMilliseconds'));
+        $this->assertSame([], $response->headers->getCookies());
+        $this->assertFalse(app('session')->driver()->has('builderad.identity_cookie_deadline'));
+        sleep(5); // Real Redis expiry, not a simulated browser or canonical deadline.
+        $this->resetGuard();
+        $this->post('/identity/renew', [], $this->headers($identity))->assertStatus(419);
     }
 
     public static function failedTouch(): array
@@ -207,11 +263,7 @@ class IdentityRenewalTest extends TestCase
         $this->assertSame('internal', $response->json('identity.binding.boundary'));
         $this->assertSame(1, $response->json('identity.renewalProtocol'));
         $names = array_map(fn ($cookie) => $cookie->getName(), $response->headers->getCookies());
-        $this->assertContains(config('session.internal_cookie'), $names);
-        $this->assertNotContains(config('session.advertiser_cookie'), $names);
-        foreach ($response->headers->getCookies() as $cookie) {
-            $this->assertSame('/internal', $cookie->getPath());
-        }
+        $this->assertSame([], $names, 'Neither cookie boundary may be published by renewal.');
         $after = DB::table('security_sessions')->first();
         $this->assertSame($before->idle_expires_at, $after->idle_expires_at);
         $this->assertSame($before->absolute_expires_at, $after->absolute_expires_at);

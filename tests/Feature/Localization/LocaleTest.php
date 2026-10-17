@@ -33,7 +33,7 @@ class LocaleTest extends TestCase
         $this->flushHeaders();
         $this->useIdentityDocument('/internal/login');
 
-        $this->withHeader('Referer', 'http://localhost/internal/login')
+        $this->withHeader('Referer', url('/internal/login'))
             ->post('/internal/locale', ['locale' => 'ar'])->assertRedirect('/internal/login');
         $this->get('/internal/login')->assertOk()->assertSee('lang="ar" dir="rtl"', false);
         $this->useIdentityDocument();
@@ -64,10 +64,13 @@ class LocaleTest extends TestCase
         $this->withHeader('Referer', 'http://localhost/internal/login')
             ->post('/locale', ['locale' => 'en'])->assertRedirect('/login');
         $this->useIdentityDocument('/internal/login');
-        $this->withHeader('Referer', 'http://localhost/login')
+        $this->withHeader('Referer', url('/login'))
             ->post('/internal/locale', ['locale' => 'en'])->assertRedirect('/internal/login');
-        $this->withHeader('Referer', 'http://localhost/internal/login?next=1')
+        $this->withHeader('Referer', url('/internal/login').'?next=1')
             ->post('/internal/locale', ['locale' => 'en'])->assertRedirect('/internal/login?next=1');
+        $differentPort = request()->getPort() === 8139 ? 8140 : 8139;
+        $this->withHeader('Referer', request()->getScheme().'://'.request()->getHost().':'.$differentPort.'/internal/login?next=1')
+            ->post('/internal/locale', ['locale' => 'en'])->assertRedirect('/internal/login');
         $this->useIdentityDocument();
         $this->withHeader('Referer', 'https://attacker.example/steal')
             ->post('/locale', ['locale' => 'fr'])->assertRedirect('/login');

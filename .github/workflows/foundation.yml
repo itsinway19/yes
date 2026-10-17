@@ -123,5 +123,7 @@ jobs:
           npm audit --audit-level=high
           php artisan test --compact
           npm test
+          npm run api:check
           php vendor/bin/pint --test
           npm run build
+          npm run build:goals-spa
