@@ -3,7 +3,7 @@
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
-if (getenv('GOALS_SPA_ONLY') !== 'account') {
+if (! in_array(getenv('GOALS_SPA_ONLY'), ['account', 'auth'], true)) {
     throw new RuntimeException('Explicit isolated account proof required');
 }
 if ($mode === 'account-email-actor') {

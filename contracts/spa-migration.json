@@ -161,6 +161,17 @@
       "cutover": "SecurityDevicesController shares its existing projection between a thin advertiser SpaPage method and the unchanged internal Inertia renderer. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including real virtual-authenticator enrollment, expired/consumed/invalid registration, cancellation, unknown writes, session closure and independent internal passkey login/enrollment/minimum/freshness. Existing authority and staff minima remain unchanged. Local journey acceptance only; no platform/release acceptance."
     },
     {
+      "id": "advertiser-auth-entry",
+      "journey": "Advertiser public entry, guest authentication, registration, recovery, email verification, fresh password confirmation and authenticated identity switch",
+      "routes": ["GET /", "GET /login", "GET /register", "GET /forgot-password", "GET /reset-password/{token}", "GET /verify-email", "GET /confirm-password", "GET /identity/switch"],
+      "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+      "businessOwners": ["App\\Security\\IdentityAuthentication", "App\\Security\\SessionAuthority", "App\\Security\\LifecycleAuthority", "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController", "App\\Http\\Controllers\\Auth\\RegisteredUserController", "App\\Http\\Controllers\\Auth\\PasskeySessionController", "App\\Http\\Controllers\\Auth\\NewPasswordController", "App\\Http\\Controllers\\Auth\\VerifyEmailController", "App\\Http\\Controllers\\Auth\\ConfirmablePasswordController"],
+      "apiContract": "contracts/application.openapi.json",
+      "tests": ["AuthEntrySpaTest", "AuthenticationTest", "RegistrationTest", "PasswordResetTest", "EmailVerificationTest", "PasswordConfirmationTest", "ProductionIdentityTest", "IdentityRenewalTest", "InternalAuthorityTest", "ClientVisibilityTest", "InertiaHistorySecurityTest", "tests/auth-entry-spa.test.mjs", "tests/Support/auth-entry-browser.mjs"],
+      "status": "LOCAL_JOURNEY_ACCEPTED",
+      "cutover": "Eight display routes leave the legacy renderer: static native Welcome and seven unified SPA entries. Fifteen integrated isolated Laravel/Chromium journeys pass with zero unhandled page errors, real virtual UV passkeys, signed mail verification, broker reset/expiry/reuse, native confirmation, pending staff enrollment, unknown deliveries without replay and late-read/Back/Forward protection. Seven unused public components are deleted; internal login, onboarding, devices and their N1/history/visibility consumers remain. The independently baseline-reproduced InitialVisit bootstrap rejection is handled only at its Promise owner, without changing cancellation tokens or identity authority. Physical devices, native BFCache/pre-JavaScript confidentiality, B/C, central Foundation and release acceptance remain separate."
+    },
+    {
       "id": "locale-command",
       "journey": "Switch the application language using the existing encrypted locale cookie",
       "routes": ["POST /locale"],

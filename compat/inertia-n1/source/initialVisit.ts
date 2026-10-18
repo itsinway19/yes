@@ -120,6 +120,9 @@ export class InitialVisit {
 
         this.fireInitialEvents(visitId)
       })
+      .catch((error) => {
+        if (!(error instanceof HttpCancelledError)) throw error
+      })
   }
 
   protected static fireInitialEvents(visitId: string): void {

@@ -2,20 +2,17 @@
 
 namespace Tests\Feature\Auth;
 
-use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
 {
     public function test_registration_screen_can_be_rendered(): void
     {
-        $response = $this->get('/register');
-
-        $response->assertStatus(200)->assertInertia(fn (Assert $page) => $page
-            ->component('Auth/Register')
-            ->where('passwordPolicy.min', 15)
-            ->where('passwordPolicy.max', 1024)
-            ->where('passwordPolicy.browserRules', 'minlength: 15; maxlength: 1024;'));
+        $this->useIdentityDocument('/register');
+        $this->getJson('/register')->assertOk()->assertJsonPath('data.kind', 'register')
+            ->assertJsonPath('data.passwordPolicy.min', 15)
+            ->assertJsonPath('data.passwordPolicy.max', 1024)
+            ->assertJsonPath('data.passwordPolicy.browserRules', 'minlength: 15; maxlength: 1024;');
     }
 
     public function test_new_users_can_register(): void

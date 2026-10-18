@@ -661,7 +661,7 @@ index 5c519c3..469c0a4 100644
    hrefToUrl,
    isSameUrlWithoutQueryOrHash,
 diff --git a/src/initialVisit.ts b/src/initialVisit.ts
-index dc62962..3af2893 100644
+index dc62962..108e678 100644
 --- a/src/initialVisit.ts
 +++ b/src/initialVisit.ts
 @@ -5,8 +5,10 @@ import { navigationType } from './navigationType'
@@ -748,6 +748,16 @@ index dc62962..3af2893 100644
  
      return true
    }
+@@ -112,6 +120,9 @@ export class InitialVisit {
+ 
+         this.fireInitialEvents(visitId)
+       })
++      .catch((error) => {
++        if (!(error instanceof HttpCancelledError)) throw error
++      })
+   }
+ 
+   protected static fireInitialEvents(visitId: string): void {
 diff --git a/src/navigation.ts b/src/navigation.ts
 new file mode 100644
 index 0000000..3c7af96 100644

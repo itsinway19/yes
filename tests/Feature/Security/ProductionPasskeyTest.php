@@ -26,7 +26,7 @@ class ProductionPasskeyTest extends PasskeyAssertionTest
     {
         $response = $this->get($internal ? '/internal/login' : '/login', ['Accept' => 'text/html']);
         $response->assertOk();
-        $identity = $response->viewData('page')['props']['identity'];
+        $identity = $internal ? $response->viewData('page')['props']['identity'] : $response->viewData('identity');
         Auth::forgetGuards();
         app('session')->forgetDrivers();
         app()->forgetInstance('session.store');

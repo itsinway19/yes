@@ -46,7 +46,7 @@ class IdentityRenewalTest extends TestCase
     private function login(): array
     {
         $user = User::factory()->create();
-        $guest = $this->get('/login', ['Accept' => 'text/html'])->assertOk()->viewData('page')['props']['identity'];
+        $guest = $this->get('/login', ['Accept' => 'text/html'])->assertOk()->viewData('identity');
         $this->withCookie(config('session.advertiser_cookie'), app('session')->driver()->getId());
         $this->withCookie(config('session.advertiser_cookie').'-lineage', $guest['binding']['lineage']);
         $this->resetGuard();

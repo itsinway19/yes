@@ -23,7 +23,7 @@ test('both dictionaries have complete, nonempty matching keys used by the login 
     }
 
     const files = [
-        'resources/js/Pages/Auth/Login.vue',
+        'resources/js/auth-entry/AuthEntryView.vue',
         'resources/js/Pages/Internal/Login.vue',
         'resources/js/Components/LanguageSwitcher.vue',
         'resources/js/Layouts/GuestLayout.vue',

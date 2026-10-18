@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Responses\AuthEntryPage;
 use App\Security\IdentityAuthentication;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -11,17 +12,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
     /**
      * Display the login view.
      */
-    public function create(): Response
+    public function create(): AuthEntryPage
     {
-        return Inertia::render('Auth/Login', [
+        return new AuthEntryPage('login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
         ]);
@@ -46,6 +45,7 @@ class AuthenticatedSessionController extends Controller
                 return $staffPending ? route('staff.onboarding', absolute: false)
                     : (string) $request->session()->pull('url.intended', route('dashboard', absolute: false));
             });
+
         } catch (AuthorizationException) {
             throw ValidationException::withMessages(['email' => trans('auth.failed')]);
         }

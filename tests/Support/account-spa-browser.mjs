@@ -214,7 +214,7 @@ export async function runAccountCases({ browser, check, login, meta, get, post, 
             assert.equal(await page.locator('[data-account-page]').count(), 0); return { endpoint: true, terminal: true, nativeDeparture: true };
         });
         await check('native email rejection retains validation; successful email revokes identity before departure and Back cannot restore it', 'account', async () => {
-            if ((await meta(page)).binding.principal !== fixture.a.user) await login(page, 'application'); await visit('/profile', 'profile');
+            if (new URL(page.url()).pathname === '/' || (await meta(page)).binding.principal !== fixture.a.user) await login(page, 'application'); await visit('/profile', 'profile');
             await page.locator('#account-email').fill('goals-b@example.test'); await page.locator('[data-account-profile] button').click();
             await ready(page, 'profile'); await page.locator('[data-account-profile] [role=alert]').waitFor(); assert.equal(command('account-inspect').email, 'goals-a@example.test');
             await page.locator('#account-email').fill('changed-account@example.test'); const closedBeforeDispatch = await observeClosure(page);
