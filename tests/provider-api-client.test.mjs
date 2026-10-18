@@ -121,7 +121,7 @@ test('X status preserves campaign arrays through actual PHP query parsing, separ
     const { client, requests } = fake();
     return client.reportStatus({ workspace: 'workspace', source: 'source' }, { provider: 'x', period: { ...period, campaign_ids: ['campaign1', 'campaign2'], placement: 'SPOTLIGHT', mode: 'ASYNC' } }).then(() => {
         const url = requests[0].url;
-        const parsed = JSON.parse(execFileSync(process.env.BUILDERAD_PHP ?? 'C:\\tools\\php85\\php.exe', ['-r', 'parse_str($argv[1], $query); echo json_encode($query,JSON_THROW_ON_ERROR);', url.search.slice(1)], { encoding: 'utf8' }));
+        const parsed = JSON.parse(execFileSync(process.env.BUILDERAD_PHP ?? (process.platform === 'win32' ? 'C:\\tools\\php85\\php.exe' : 'php'), ['-r', 'parse_str($argv[1], $query); echo json_encode($query,JSON_THROW_ON_ERROR);', url.search.slice(1)], { encoding: 'utf8' }));
         assert.deepEqual(parsed, { ...period, campaign_ids: ['campaign1', 'campaign2'], placement: 'SPOTLIGHT', mode: 'ASYNC' });
     });
 });

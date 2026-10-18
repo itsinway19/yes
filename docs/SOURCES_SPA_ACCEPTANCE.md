@@ -68,4 +68,10 @@ The runner creates a disposable database and synthetic identities, records sourc
 - Runtime matrix: **173 registered routes, 20 remaining legacy render routes**, down from 21. Six journeys are locally accepted; the dependency ceiling is 80 remaining files. These are separate measures, not equivalent completion counts.
 - Ready for independent review of this Sources slice. No known unresolved functional/security defect was observed within the exercised isolated scope.
 - Full final Foundation/remote CI, other browser/device families, real mobile background/pre-JavaScript cache behavior, production performance and real provider admission remain unexecuted here. Local journey acceptance is not final platform/release acceptance, deployment readiness or a claim that all Inertia has been retired.
-- No push, merge or deployment is authorized or performed.
+- At this local acceptance checkpoint, no push, merge or deployment was authorized or performed. Subsequent publication authorization and its CI evidence are recorded below.
+
+## Authorized publication: CI portability correction
+
+The owner subsequently authorized branch publication and Draft PR #37, but not merge, deployment or production activation. GitHub confirmed main/base `505da99f1c551f2f6143980ad624d1b591a6824d`; its Foundation run `39042703135` passed. The first candidate run `39106156930` checked the synthetic merge of that base and accepted head `1cf09fbe0447561ff5d9740b77c00b3d5c0ca47e`.
+
+That run passed 111 SPA-foundation tests and failed the X query-parser test before PHP execution: its fallback executable was a Windows-only path (`ENOENT` on Ubuntu). This test was new since the passing base; locked dependencies and the asserted X contract were unchanged. The bounded correction preserves `BUILDERAD_PHP`, uses the existing Windows default on Windows and PATH `php` on other platforms. Actual PHP `parse_str` and every payload assertion remain required; no test is skipped or weakened, and no application/security code changes. Later Foundation results and exact published/checkout SHAs belong to the PR checks, not to the earlier local browser run.
