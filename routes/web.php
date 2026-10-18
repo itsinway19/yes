@@ -43,17 +43,10 @@ use App\Http\Middleware\EnsureFreshAuthentication;
 use App\Http\Middleware\EnsurePendingStaffEnrollment;
 use App\Http\Middleware\RequireActionGrant;
 use App\Http\Middleware\RestoreBusinessAfterCallback;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return response()->view('welcome', ['locale' => app()->getLocale()])->header('Cache-Control', 'no-store');
 });
 
 Route::post('/locale', LocaleController::class)->name('locale.update');

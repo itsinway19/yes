@@ -10,7 +10,7 @@ class ClientVisibilityTest extends TestCase
 {
     private function receipt(): array
     {
-        return $this->get('/confirm-password')->original->getData()['page']['props']['clientVisibility'];
+        return $this->getJson('/confirm-password')->json('visibility');
     }
 
     public function test_probe_uses_real_page_authority_and_does_not_touch_idle_or_return_page_data(): void
@@ -20,9 +20,8 @@ class ClientVisibilityTest extends TestCase
         $receipt = $this->receipt();
         $db = DB::connection('pgsql_migrations');
         $before = $db->table('security_sessions')->where('user_id', $user->id)->first();
-        $this->get('/confirm-password', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1',
-            'X-Builderad-Visibility-Context' => $receipt['context']])
-            ->assertOk()->assertExactJson($receipt)->assertHeader('Cache-Control', 'no-store, private');
+        $this->getJson('/confirm-password', ['X-Builderad-Witness' => '1'])
+            ->assertOk()->assertExactJson(['visibility' => $receipt])->assertHeader('Cache-Control', 'no-store, private');
         $after = $db->table('security_sessions')->where('id', $before->id)->first();
         $this->assertSame($before->idle_expires_at, $after->idle_expires_at);
         $this->assertSame($before->last_seen_at, $after->last_seen_at);
@@ -59,5 +58,27 @@ class ClientVisibilityTest extends TestCase
         $this->actingAs(User::factory()->create());
         $this->get('/confirm-password', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1',
             'X-Builderad-Visibility-Context' => $receipt['context']])->assertStatus(409);
+    }
+
+    public function test_remaining_internal_devices_owns_real_legacy_visibility_probes(): void
+    {
+        $staff = User::factory()->create();
+        $db = DB::connection('pgsql_migrations');
+        $db->table('principal_lifecycles')->where('user_id', $staff->id)->update(['principal_class' => 'staff']);
+        $db->table('internal_personnel')->insert(['user_id' => $staff->id, 'kind' => 'employee', 'status' => 'active',
+            'attested_by' => $staff->id, 'attested_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        $db->table('passkeys')->insert(['user_id' => $staff->id, 'name' => 'Internal visibility fixture', 'credential_id' => 'visibility-'.$staff->id,
+            'credential' => '{}', 'created_at' => now(), 'updated_at' => now()]);
+        $this->actingAsInternal($staff);
+        $page = $this->get('/internal/security/devices')->assertOk();
+        $receipt = $page->viewData('page')['props']['clientVisibility'];
+        $this->assertTrue($page->viewData('page')['encryptHistory']);
+        $before = $db->table('security_sessions')->where('user_id', $staff->id)->first();
+        $this->get('/internal/security/devices', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1', 'X-Builderad-Visibility-Context' => $receipt['context']])
+            ->assertOk()->assertExactJson($receipt)->assertHeader('Cache-Control', 'no-store, private');
+        $after = $db->table('security_sessions')->where('id', $before->id)->first();
+        $this->assertSame($before->idle_expires_at, $after->idle_expires_at);
+        $this->assertSame($before->last_seen_at, $after->last_seen_at);
+        $this->get('/internal/security/devices', ['X-Builderad-Visibility' => '1', 'X-Builderad-Visibility-Context' => 'foreign'])->assertStatus(409);
     }
 }

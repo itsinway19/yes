@@ -33,7 +33,7 @@ export async function request<T>(url: string, options: RequestInit = {}, termina
         ? JSON.parse((await response.text()).trim().slice('data: '.length)) as T : await response.json() as T;
 }
 /** Fetch boundary shared by the generated Goals client and existing identity endpoints. */
-export async function protectedResponse(url: string, options: RequestInit = {}, terminal = false): Promise<Response> {
+export async function protectedResponse(url: string, options: RequestInit = {}, terminal: boolean | 'login' = false): Promise<Response> {
     if (status.value === 'closed') throw new Error('Document is closed');
     if (new URL(url, location.origin).origin !== location.origin) throw new Error('Application origin required');
     options.signal?.throwIfAborted();
@@ -51,6 +51,22 @@ export async function protectedResponse(url: string, options: RequestInit = {}, 
         if (!owned(captured)) throw new Error('Obsolete response');
         if ([401, 419].includes(response.status) || (response.status === 409 && body.identityConflict)) close();
         if (!response.ok) throw new TransportError(response.status, body);
+        if (terminal === 'login') {
+            const nonce = JSON.parse(atob(input.transition.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))).binding.nonce;
+            const result = body.transition;
+            const target = typeof body.redirect === 'string' ? new URL(body.redirect, location.origin) : undefined;
+            if (!result || result.lineage !== input.binding.lineage || result.boundary !== input.binding.boundary
+                || result.epoch !== input.binding.epoch + 1 || result.nonce !== nonce || result.kind !== 'login' || result.status !== 'active'
+                || !target || target.origin !== location.origin || target.pathname.startsWith('/internal/')) {
+                close(); throw new Error('Unowned authentication reply');
+            }
+            close();
+            if (typeof BroadcastChannel !== 'undefined') {
+                const hints = new BroadcastChannel('builderad-visibility'); hints.postMessage({ boundary: result.boundary, epoch: result.epoch }); hints.close();
+            }
+            location.assign(target.href);
+            return response;
+        }
         if (terminal) {
             // The existing terminal protocol intentionally emits no new document identity.
             const nonce = JSON.parse(atob(input.transition.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))).binding.nonce;
@@ -78,6 +94,7 @@ export function resumeLease() {
     if (remaining <= 0) { suspend(); status.value = 'unavailable'; return; }
     // Conservative transport lease. It never extends canonical idle/absolute authority.
     expiry = setTimeout(() => { if (owned(captured)) { suspend(); status.value = 'unavailable'; } }, remaining);
+    if (identity.binding.principal === 0) return;
     timer = setTimeout(async () => {
         const startedAt = Date.now();
         try {

@@ -18,8 +18,13 @@ final class SpaPage implements Responsable
             return $this->resource($request);
         }
 
+        $identity = app(IdentityDocument::class)->metadata($request);
+        $locale = app()->getLocale();
+
         return response()->view('spa', [
-            'identity' => app(IdentityDocument::class)->metadata($request), 'locale' => app()->getLocale(),
+            'identity' => $identity, 'locale' => $locale,
+            'bootstrap' => ['identity' => $identity, 'locale' => $locale, 'application' => true,
+                'documentState' => $request->user() ? 'authenticated' : 'guest'],
         ])->header('Cache-Control', 'no-store')->header('X-Builderad-Document-Location', $request->getRequestUri());
     }
 

@@ -37,8 +37,7 @@ class LocaleTest extends TestCase
             ->post('/internal/locale', ['locale' => 'ar'])->assertRedirect('/internal/login');
         $this->get('/internal/login')->assertOk()->assertSee('lang="ar" dir="rtl"', false);
         $this->useIdentityDocument();
-        $this->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => Inertia::getVersion()])->get('/login')
-            ->assertOk()->assertJsonPath('component', 'Auth/Login')->assertJsonPath('props.locale', 'ar');
+        $this->getJson('/login')->assertOk()->assertJsonPath('data.kind', 'login')->assertJsonPath('locale', 'ar');
     }
 
     public function test_invalid_or_unreadable_preference_falls_back_and_explicit_unsupported_submission_fails(): void
@@ -110,7 +109,7 @@ class LocaleTest extends TestCase
         $this->assertLessThan(array_search(ResolveLocale::class, $middleware, true),
             array_search(PreventRequestForgery::class, $middleware, true));
 
-        $document = $this->get('/login', ['Accept' => 'text/html'])->assertOk()->viewData('page')['props']['identity'];
+        $document = $this->get('/login', ['Accept' => 'text/html'])->assertOk()->viewData('identity');
         $advertiserToken = $this->app['session']->token();
         $this->app->detectEnvironment(fn () => 'local');
 

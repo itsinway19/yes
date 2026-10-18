@@ -5,6 +5,7 @@ import { spec as goals } from './goals-openapi.mjs';
 import { sourceContracts } from './sources-openapi.mjs';
 import { providerContracts } from './providers-openapi.mjs';
 import { accountContracts } from './account-openapi.mjs';
+import { authEntryContracts } from './auth-entry-openapi.mjs';
 
 const ref = name => ({ $ref: `#/components/schemas/${name}` });
 const text = { type: 'string' };
@@ -32,6 +33,7 @@ const purposeWrite = (operationId, selected) => ({ operationId, security, parame
 const sources = sourceContracts({ ref, text, uuid, object, list, nullable, version, response, json, errors, security, headers, workspaceParameter, envelope, resource });
 const providers = providerContracts({ ref, text, uuid, object, list, nullable, version, response, json, errors, security, headers, workspaceParameter });
 const account = accountContracts({ ref, text, object, list, nullable, response, json, errors, security, headers, envelope, resource });
+const authEntry = authEntryContracts({ ref, text, object, list, nullable, response, json, errors, security, headers, envelope, resource });
 
 export const spec = {
     openapi: '3.1.0',
@@ -79,6 +81,7 @@ export const spec = {
         ...sources.paths,
         ...providers.paths,
         ...account.paths,
+        ...authEntry.paths,
     },
     components: {
         securitySchemes: goals.components.securitySchemes,
@@ -116,6 +119,7 @@ export const spec = {
             ...sources.schemas,
             ...providers.schemas,
             ...account.schemas,
+            ...authEntry.schemas,
         },
     },
 };

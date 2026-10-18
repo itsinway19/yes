@@ -273,11 +273,10 @@ test('terminal departure rejects in-flight approval and every same-document reve
     assert.deepEqual(s.replaced, []);
     assert.deepEqual(s.visits, []);
 });
-test('all four advertiser logout entries use the single injected document operation', async () => {
+test('remaining legacy logout entries use injection and the unified SPA uses its existing terminal transport', async () => {
     const entries = [
         ['Layouts/AdvertiserLayout.vue', 1],
         ['Layouts/AuthenticatedLayout.vue', 2],
-        ['Pages/Auth/VerifyEmail.vue', 1],
     ];
     for (const [path, count] of entries) {
         const component = await readFile(new URL('../resources/js/' + path, import.meta.url), 'utf8');
@@ -289,4 +288,8 @@ test('all four advertiser logout entries use the single injected document operat
     const app = await readFile(new URL('../resources/js/app.ts', import.meta.url), 'utf8');
     assert.equal((app.match(/createLogoutOperation\(visibility.closeDocument\)/g) ?? []).length, 1);
     assert.match(app, /provide\(logoutKey, logout\)/);
+    const spa = await readFile(new URL('../resources/js/spa/main.ts', import.meta.url), 'utf8');
+    assert.match(spa, /import \{[^}]*logout[^}]*\} from '\.\/transport'/);
+    assert.match(spa, /void logout\(\)/);
+    assert.doesNotMatch(spa, /createLogoutOperation|fetch\(/);
 });

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Responses\AuthEntryPage;
 use App\Models\User;
 use App\Security\IdentityAuthentication;
 use App\Security\LifecycleAuthority;
@@ -14,8 +15,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
 use Throwable;
 
 class RegisteredUserController extends Controller
@@ -23,12 +22,12 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(): Response
+    public function create(): AuthEntryPage
     {
         $passwordRule = Rules\Password::defaults();
         $requirements = $passwordRule->appliedRules();
 
-        return Inertia::render('Auth/Register', [
+        return new AuthEntryPage('register', [
             'passwordPolicy' => [
                 'min' => $requirements['min'],
                 'max' => $requirements['max'],

@@ -3,25 +3,24 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Responses\AuthEntryPage;
 use App\Security\SessionAuthority;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class ConfirmablePasswordController extends Controller
 {
     /**
      * Show the confirm password view.
      */
-    public function show(Request $request): Response
+    public function show(Request $request): AuthEntryPage
     {
         $this->denyStaff($request);
 
-        return Inertia::render('Auth/ConfirmPassword');
+        return new AuthEntryPage('confirm-password');
     }
 
     /**

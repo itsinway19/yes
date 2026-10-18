@@ -41,7 +41,7 @@ class ProductionIdentityTest extends TestCase
     {
         $response = $this->get('/login', ['Accept' => 'text/html']);
         $response->assertOk();
-        $identity = $response->viewData('page')['props']['identity'];
+        $identity = $response->viewData('identity');
         $this->assertSame(0, $identity['binding']['principal']);
         $this->withCookie(config('session.advertiser_cookie'), app('session')->driver()->getId());
         $this->withCookie(config('session.advertiser_cookie').'-lineage', $identity['binding']['lineage']);
@@ -330,7 +330,7 @@ class ProductionIdentityTest extends TestCase
         $this->assertSame([], $context->headers->getCookies());
         $page = $this->get('/login', ['Accept' => 'text/html']);
         $page->assertOk();
-        $this->assertSame(0, $page->viewData('page')['props']['identity']['binding']['principal']);
+        $this->assertSame(0, $page->viewData('identity')['binding']['principal']);
         $this->assertSame(1, (int) DB::table('browser_identity_transitions')->value('epoch'));
     }
 
@@ -378,7 +378,7 @@ class ProductionIdentityTest extends TestCase
         $this->assertSame(0, DB::table('browser_identity_transitions')->count());
         $page = $this->get('/login', ['Accept' => 'text/html']);
         $page->assertOk();
-        $this->assertSame(0, $page->viewData('page')['props']['identity']['binding']['principal']);
+        $this->assertSame(0, $page->viewData('identity')['binding']['principal']);
         $this->assertNotNull(DB::table('security_sessions')->where('session_key_hash', $legacy)->value('revoked_at'));
         $this->assertSame('anonymous', DB::table('browser_identity_transitions')->value('status'));
     }
@@ -426,7 +426,7 @@ class ProductionIdentityTest extends TestCase
         $this->assertIsString($token);
         $page = $this->get('/reset-password/'.$token, ['Accept' => 'text/html']);
         $page->assertOk();
-        $reset = $page->viewData('page')['props']['identity'];
+        $reset = $page->viewData('identity');
         $input = ['token' => $token, 'email' => $user->email, 'password' => 'Dense-Unique-Fixture-Password-921!',
             'password_confirmation' => 'Dense-Unique-Fixture-Password-921!', '_token' => $reset['csrf'],
             '_identity_receipt' => $reset['receipt']];

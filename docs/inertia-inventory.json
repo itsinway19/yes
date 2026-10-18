@@ -6,18 +6,16 @@
       "method": "GET|HEAD",
       "uri": "/",
       "name": null,
-      "source": "routes/web.php:50",
+      "source": "routes/web.php:48",
       "authorization": [
         "web"
       ],
       "action": "Closure",
       "businessOwners": [],
-      "pages": [
-        "Welcome"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
+      "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -29,7 +27,7 @@
             "middleware": [
               "web"
             ],
-            "path": "routes/web.php:50"
+            "path": "routes/web.php:48"
           }
         ],
         "goalsEnabled": [
@@ -42,11 +40,54 @@
             "middleware": [
               "web"
             ],
-            "path": "routes/web.php:50"
+            "path": "routes/web.php:48"
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-auth-entry",
+        "journey": "Advertiser public entry, guest authentication, registration, recovery, email verification, fresh password confirmation and authenticated identity switch",
+        "routes": [
+          "GET /",
+          "GET /login",
+          "GET /register",
+          "GET /forgot-password",
+          "GET /reset-password/{token}",
+          "GET /verify-email",
+          "GET /confirm-password",
+          "GET /identity/switch"
+        ],
+        "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+        "businessOwners": [
+          "App\\Security\\IdentityAuthentication",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController",
+          "App\\Http\\Controllers\\Auth\\RegisteredUserController",
+          "App\\Http\\Controllers\\Auth\\PasskeySessionController",
+          "App\\Http\\Controllers\\Auth\\NewPasswordController",
+          "App\\Http\\Controllers\\Auth\\VerifyEmailController",
+          "App\\Http\\Controllers\\Auth\\ConfirmablePasswordController"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AuthEntrySpaTest",
+          "AuthenticationTest",
+          "RegistrationTest",
+          "PasswordResetTest",
+          "EmailVerificationTest",
+          "PasswordConfirmationTest",
+          "ProductionIdentityTest",
+          "IdentityRenewalTest",
+          "InternalAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/auth-entry-spa.test.mjs",
+          "tests/Support/auth-entry-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Eight display routes leave the legacy renderer: static native Welcome and seven unified SPA entries. Fifteen integrated isolated Laravel/Chromium journeys pass with zero unhandled page errors, real virtual UV passkeys, signed mail verification, broker reset/expiry/reuse, native confirmation, pending staff enrollment, unknown deliveries without replay and late-read/Back/Forward protection. Seven unused public components are deleted; internal login, onboarding, devices and their N1/history/visibility consumers remain. The independently baseline-reproduced InitialVisit bootstrap rejection is handled only at its Promise owner, without changing cancellation tokens or identity authority. Physical devices, native BFCache/pre-JavaScript confidentiality, B/C, central Foundation and release acceptance remain separate."
+      },
       "testLeads": [
         "tests/BB2SyntheticRuntimeWorker.php",
         "tests/commercial-operator.test.mjs",
@@ -56,6 +97,7 @@
         "tests/Feature/ArchitectureSourceOptionalityTest.php",
         "tests/Feature/Auth/AuthenticationTest.php",
         "tests/Feature/Auth/LogoutResponseCookieTest.php",
+        "tests/Feature/AuthEntrySpaTest.php",
         "tests/Feature/BusinessFoundationTest.php",
         "tests/Feature/CurrentIntentConcurrencyTest.php",
         "tests/Feature/CurrentIntentDatabaseTest.php",
@@ -84,6 +126,7 @@
         "tests/Support/advertiser-goals-browser.mjs",
         "tests/Support/advertiser-goals-server.php",
         "tests/Support/AdvertiserGoalsUiFixture.php",
+        "tests/Support/auth-entry-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
         "tests/Support/current-intent-browser.mjs",
         "tests/Support/CurrentIntentDurabilityProof.php",
@@ -166,9 +209,11 @@
       },
       "migration": null,
       "testLeads": [
+        "tests/auth-entry-spa.test.mjs",
         "tests/Feature/Security/PasskeyAssertionTest.php",
         "tests/Feature/Security/PasskeyBoundaryTest.php",
-        "tests/Feature/Security/ProductionPasskeyTest.php"
+        "tests/Feature/Security/ProductionPasskeyTest.php",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
@@ -229,14 +274,15 @@
       "testLeads": [
         "tests/Feature/Security/PasskeyAssertionTest.php",
         "tests/Feature/Security/PasskeyBoundaryTest.php",
-        "tests/Feature/Security/ProductionPasskeyTest.php"
+        "tests/Feature/Security/ProductionPasskeyTest.php",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
       "method": "GET|HEAD",
       "uri": "/business/start",
       "name": "business.start",
-      "source": "routes/web.php:85",
+      "source": "routes/web.php:78",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -322,7 +368,7 @@
       "method": "POST",
       "uri": "/business/start",
       "name": "business.start.store",
-      "source": "routes/web.php:86",
+      "source": "routes/web.php:79",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -416,12 +462,10 @@
       "businessOwners": [
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Auth/ConfirmPassword"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
+      "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -452,7 +496,50 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-auth-entry",
+        "journey": "Advertiser public entry, guest authentication, registration, recovery, email verification, fresh password confirmation and authenticated identity switch",
+        "routes": [
+          "GET /",
+          "GET /login",
+          "GET /register",
+          "GET /forgot-password",
+          "GET /reset-password/{token}",
+          "GET /verify-email",
+          "GET /confirm-password",
+          "GET /identity/switch"
+        ],
+        "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+        "businessOwners": [
+          "App\\Security\\IdentityAuthentication",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController",
+          "App\\Http\\Controllers\\Auth\\RegisteredUserController",
+          "App\\Http\\Controllers\\Auth\\PasskeySessionController",
+          "App\\Http\\Controllers\\Auth\\NewPasswordController",
+          "App\\Http\\Controllers\\Auth\\VerifyEmailController",
+          "App\\Http\\Controllers\\Auth\\ConfirmablePasswordController"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AuthEntrySpaTest",
+          "AuthenticationTest",
+          "RegistrationTest",
+          "PasswordResetTest",
+          "EmailVerificationTest",
+          "PasswordConfirmationTest",
+          "ProductionIdentityTest",
+          "IdentityRenewalTest",
+          "InternalAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/auth-entry-spa.test.mjs",
+          "tests/Support/auth-entry-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Eight display routes leave the legacy renderer: static native Welcome and seven unified SPA entries. Fifteen integrated isolated Laravel/Chromium journeys pass with zero unhandled page errors, real virtual UV passkeys, signed mail verification, broker reset/expiry/reuse, native confirmation, pending staff enrollment, unknown deliveries without replay and late-read/Back/Forward protection. Seven unused public components are deleted; internal login, onboarding, devices and their N1/history/visibility consumers remain. The independently baseline-reproduced InitialVisit bootstrap rejection is handled only at its Promise owner, without changing cancellation tokens or identity authority. Physical devices, native BFCache/pre-JavaScript confidentiality, B/C, central Foundation and release acceptance remain separate."
+      },
       "testLeads": [
         "tests/Feature/Auth/PasswordConfirmationTest.php",
         "tests/Feature/Security/ClientVisibilityTest.php",
@@ -523,7 +610,7 @@
       "method": "GET|HEAD",
       "uri": "/dashboard",
       "name": "dashboard",
-      "source": "routes/web.php:62",
+      "source": "routes/web.php:55",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -584,7 +671,8 @@
         "tests/Feature/Security/LifecycleActivationTest.php",
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
         "tests/Feature/Security/PasskeyAssertionTest.php",
-        "tests/Feature/Security/SessionAuthorityTest.php"
+        "tests/Feature/Security/SessionAuthorityTest.php",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
@@ -636,7 +724,9 @@
         ]
       },
       "migration": null,
-      "testLeads": []
+      "testLeads": [
+        "tests/Support/auth-entry-browser.mjs"
+      ]
     },
     {
       "method": "GET|HEAD",
@@ -649,12 +739,10 @@
       ],
       "action": "App\\Http\\Controllers\\Auth\\PasswordResetLinkController@create",
       "businessOwners": [],
-      "pages": [
-        "Auth/ForgotPassword"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
+      "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -685,10 +773,54 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-auth-entry",
+        "journey": "Advertiser public entry, guest authentication, registration, recovery, email verification, fresh password confirmation and authenticated identity switch",
+        "routes": [
+          "GET /",
+          "GET /login",
+          "GET /register",
+          "GET /forgot-password",
+          "GET /reset-password/{token}",
+          "GET /verify-email",
+          "GET /confirm-password",
+          "GET /identity/switch"
+        ],
+        "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+        "businessOwners": [
+          "App\\Security\\IdentityAuthentication",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController",
+          "App\\Http\\Controllers\\Auth\\RegisteredUserController",
+          "App\\Http\\Controllers\\Auth\\PasskeySessionController",
+          "App\\Http\\Controllers\\Auth\\NewPasswordController",
+          "App\\Http\\Controllers\\Auth\\VerifyEmailController",
+          "App\\Http\\Controllers\\Auth\\ConfirmablePasswordController"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AuthEntrySpaTest",
+          "AuthenticationTest",
+          "RegistrationTest",
+          "PasswordResetTest",
+          "EmailVerificationTest",
+          "PasswordConfirmationTest",
+          "ProductionIdentityTest",
+          "IdentityRenewalTest",
+          "InternalAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/auth-entry-spa.test.mjs",
+          "tests/Support/auth-entry-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Eight display routes leave the legacy renderer: static native Welcome and seven unified SPA entries. Fifteen integrated isolated Laravel/Chromium journeys pass with zero unhandled page errors, real virtual UV passkeys, signed mail verification, broker reset/expiry/reuse, native confirmation, pending staff enrollment, unknown deliveries without replay and late-read/Back/Forward protection. Seven unused public components are deleted; internal login, onboarding, devices and their N1/history/visibility consumers remain. The independently baseline-reproduced InitialVisit bootstrap rejection is handled only at its Promise owner, without changing cancellation tokens or identity authority. Physical devices, native BFCache/pre-JavaScript confidentiality, B/C, central Foundation and release acceptance remain separate."
+      },
       "testLeads": [
         "tests/Feature/Auth/PasswordResetTest.php",
-        "tests/Feature/Security/ProductionIdentityTest.php"
+        "tests/Feature/Security/ProductionIdentityTest.php",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
@@ -742,7 +874,8 @@
       "migration": null,
       "testLeads": [
         "tests/Feature/Auth/PasswordResetTest.php",
-        "tests/Feature/Security/ProductionIdentityTest.php"
+        "tests/Feature/Security/ProductionIdentityTest.php",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
@@ -800,7 +933,7 @@
       "method": "POST",
       "uri": "/identity/passkey",
       "name": null,
-      "source": "routes/web.php:352",
+      "source": "routes/web.php:345",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate"
@@ -854,7 +987,7 @@
       "method": "GET|HEAD",
       "uri": "/identity/passkey/options",
       "name": null,
-      "source": "routes/web.php:351",
+      "source": "routes/web.php:344",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate"
@@ -1002,7 +1135,7 @@
       "method": "GET|HEAD",
       "uri": "/identity/switch",
       "name": null,
-      "source": "routes/web.php:349",
+      "source": "routes/web.php:342",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate"
@@ -1011,12 +1144,10 @@
       "businessOwners": [
         "App\\Security\\IdentityAuthentication"
       ],
-      "pages": [
-        "Auth/Login"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
+      "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -1047,9 +1178,51 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-auth-entry",
+        "journey": "Advertiser public entry, guest authentication, registration, recovery, email verification, fresh password confirmation and authenticated identity switch",
+        "routes": [
+          "GET /",
+          "GET /login",
+          "GET /register",
+          "GET /forgot-password",
+          "GET /reset-password/{token}",
+          "GET /verify-email",
+          "GET /confirm-password",
+          "GET /identity/switch"
+        ],
+        "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+        "businessOwners": [
+          "App\\Security\\IdentityAuthentication",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController",
+          "App\\Http\\Controllers\\Auth\\RegisteredUserController",
+          "App\\Http\\Controllers\\Auth\\PasskeySessionController",
+          "App\\Http\\Controllers\\Auth\\NewPasswordController",
+          "App\\Http\\Controllers\\Auth\\VerifyEmailController",
+          "App\\Http\\Controllers\\Auth\\ConfirmablePasswordController"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AuthEntrySpaTest",
+          "AuthenticationTest",
+          "RegistrationTest",
+          "PasswordResetTest",
+          "EmailVerificationTest",
+          "PasswordConfirmationTest",
+          "ProductionIdentityTest",
+          "IdentityRenewalTest",
+          "InternalAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/auth-entry-spa.test.mjs",
+          "tests/Support/auth-entry-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Eight display routes leave the legacy renderer: static native Welcome and seven unified SPA entries. Fifteen integrated isolated Laravel/Chromium journeys pass with zero unhandled page errors, real virtual UV passkeys, signed mail verification, broker reset/expiry/reuse, native confirmation, pending staff enrollment, unknown deliveries without replay and late-read/Back/Forward protection. Seven unused public components are deleted; internal login, onboarding, devices and their N1/history/visibility consumers remain. The independently baseline-reproduced InitialVisit bootstrap rejection is handled only at its Promise owner, without changing cancellation tokens or identity authority. Physical devices, native BFCache/pre-JavaScript confidentiality, B/C, central Foundation and release acceptance remain separate."
+      },
       "testLeads": [
-        "tests/Feature/Localization/LocaleTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
         "tests/Support/account-spa-browser.mjs",
         "tests/Support/goals-spa-browser.mjs",
@@ -1063,7 +1236,7 @@
       "method": "POST",
       "uri": "/identity/switch",
       "name": null,
-      "source": "routes/web.php:350",
+      "source": "routes/web.php:343",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate"
@@ -1166,7 +1339,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/administration",
       "name": "internal.administration",
-      "source": "routes/web.php:266",
+      "source": "routes/web.php:259",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -1235,7 +1408,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/administration/commercial-markets",
       "name": "internal.commercial-market-preparation.index",
-      "source": "routes/web.php:271",
+      "source": "routes/web.php:264",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -1295,7 +1468,7 @@
       "method": "POST",
       "uri": "/internal/administration/commercial-markets",
       "name": "internal.commercial-market-preparation.store",
-      "source": "routes/web.php:274",
+      "source": "routes/web.php:267",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -1356,7 +1529,7 @@
       "method": "POST",
       "uri": "/internal/administration/commercial-markets/delegate",
       "name": "internal.commercial-market-preparation.delegate",
-      "source": "routes/web.php:275",
+      "source": "routes/web.php:268",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -1416,7 +1589,7 @@
       "method": "POST",
       "uri": "/internal/administration/commercial-markets/new-intent",
       "name": "internal.commercial-market-preparation.new-intent",
-      "source": "routes/web.php:276",
+      "source": "routes/web.php:269",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -1476,7 +1649,7 @@
       "method": "POST",
       "uri": "/internal/administration/commercial-markets/{approval}/operator",
       "name": "internal.commercial-market-preparation.operator",
-      "source": "routes/web.php:277",
+      "source": "routes/web.php:270",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -1536,7 +1709,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/administration/customers",
       "name": "internal.customers.index",
-      "source": "routes/web.php:268",
+      "source": "routes/web.php:261",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -1594,7 +1767,7 @@
       "method": "POST",
       "uri": "/internal/administration/customers/status",
       "name": "internal.customers.status",
-      "source": "routes/web.php:269",
+      "source": "routes/web.php:262",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -1653,7 +1826,7 @@
       "method": "POST",
       "uri": "/internal/auth/passkey",
       "name": "internal.auth.passkey.store",
-      "source": "routes/web.php:236",
+      "source": "routes/web.php:229",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\RedirectIfAuthenticated:internal",
@@ -1706,14 +1879,15 @@
       "migration": null,
       "testLeads": [
         "tests/Feature/Security/PasskeyAssertionTest.php",
-        "tests/Support/account-spa-browser.mjs"
+        "tests/Support/account-spa-browser.mjs",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
       "method": "GET|HEAD",
       "uri": "/internal/auth/passkey/options",
       "name": "internal.auth.passkey.options",
-      "source": "routes/web.php:234",
+      "source": "routes/web.php:227",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\RedirectIfAuthenticated:internal",
@@ -1772,7 +1946,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/business-types",
       "name": "internal.business-types.index",
-      "source": "routes/web.php:241",
+      "source": "routes/web.php:234",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -1835,7 +2009,7 @@
       "method": "POST",
       "uri": "/internal/business-types",
       "name": "internal.business-types.store",
-      "source": "routes/web.php:244",
+      "source": "routes/web.php:237",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -1899,7 +2073,7 @@
       "method": "POST",
       "uri": "/internal/business-types/{type}",
       "name": "internal.business-types.update",
-      "source": "routes/web.php:245",
+      "source": "routes/web.php:238",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -1961,7 +2135,7 @@
       "method": "POST",
       "uri": "/internal/business-types/{type}/guidance",
       "name": "internal.business-types.guidance",
-      "source": "routes/web.php:246",
+      "source": "routes/web.php:239",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2023,7 +2197,7 @@
       "method": "POST",
       "uri": "/internal/business-types/{type}/prior",
       "name": "internal.business-types.prior",
-      "source": "routes/web.php:247",
+      "source": "routes/web.php:240",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2085,7 +2259,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/commercial",
       "name": "internal.commercial.index",
-      "source": "routes/web.php:323",
+      "source": "routes/web.php:316",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2150,7 +2324,7 @@
       "method": "POST",
       "uri": "/internal/commercial/assignability",
       "name": "internal.commercial.assignability",
-      "source": "routes/web.php:331",
+      "source": "routes/web.php:324",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2215,7 +2389,7 @@
       "method": "POST",
       "uri": "/internal/commercial/audit/{obligation}/recover",
       "name": "internal.commercial.recover",
-      "source": "routes/web.php:333",
+      "source": "routes/web.php:326",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2280,7 +2454,7 @@
       "method": "POST",
       "uri": "/internal/commercial/catalog-references",
       "name": "internal.commercial.catalog",
-      "source": "routes/web.php:329",
+      "source": "routes/web.php:322",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2345,7 +2519,7 @@
       "method": "POST",
       "uri": "/internal/commercial/configurations",
       "name": "internal.commercial.configuration",
-      "source": "routes/web.php:330",
+      "source": "routes/web.php:323",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2410,7 +2584,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/commercial/contexts/{scope}",
       "name": "internal.commercial.context",
-      "source": "routes/web.php:326",
+      "source": "routes/web.php:319",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2472,7 +2646,7 @@
       "method": "POST",
       "uri": "/internal/commercial/grants",
       "name": "internal.commercial.grant",
-      "source": "routes/web.php:334",
+      "source": "routes/web.php:327",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2537,7 +2711,7 @@
       "method": "DELETE",
       "uri": "/internal/commercial/grants/{grant}",
       "name": "internal.commercial.revoke-grant",
-      "source": "routes/web.php:335",
+      "source": "routes/web.php:328",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2602,7 +2776,7 @@
       "method": "POST",
       "uri": "/internal/commercial/markets",
       "name": "internal.commercial.market",
-      "source": "routes/web.php:328",
+      "source": "routes/web.php:321",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2667,7 +2841,7 @@
       "method": "POST",
       "uri": "/internal/commercial/owner-mandate",
       "name": "internal.commercial.mandate",
-      "source": "routes/web.php:336",
+      "source": "routes/web.php:329",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2732,7 +2906,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/commercial/receipts/{command}",
       "name": "internal.commercial.receipt",
-      "source": "routes/web.php:325",
+      "source": "routes/web.php:318",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2794,7 +2968,7 @@
       "method": "POST",
       "uri": "/internal/commercial/registrations",
       "name": "internal.commercial.register",
-      "source": "routes/web.php:332",
+      "source": "routes/web.php:325",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2859,7 +3033,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/commercial/workspace-reference",
       "name": "internal.commercial.workspace",
-      "source": "routes/web.php:324",
+      "source": "routes/web.php:317",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2921,7 +3095,7 @@
       "method": "POST",
       "uri": "/internal/grants",
       "name": "internal.grants.store",
-      "source": "routes/web.php:297",
+      "source": "routes/web.php:290",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -2989,7 +3163,7 @@
       "method": "DELETE",
       "uri": "/internal/grants/{grant}",
       "name": "internal.grants.destroy",
-      "source": "routes/web.php:300",
+      "source": "routes/web.php:293",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -3101,7 +3275,7 @@
       "method": "POST",
       "uri": "/internal/identity/passkey",
       "name": null,
-      "source": "routes/web.php:357",
+      "source": "routes/web.php:350",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal"
@@ -3155,7 +3329,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/identity/passkey/options",
       "name": null,
-      "source": "routes/web.php:356",
+      "source": "routes/web.php:349",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal"
@@ -3297,7 +3471,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/identity/switch",
       "name": null,
-      "source": "routes/web.php:355",
+      "source": "routes/web.php:348",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal"
@@ -3394,7 +3568,7 @@
       "method": "POST",
       "uri": "/internal/locale",
       "name": "internal.locale.update",
-      "source": "routes/web.php:60",
+      "source": "routes/web.php:53",
       "authorization": [
         "web"
       ],
@@ -3441,7 +3615,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/login",
       "name": "internal.login",
-      "source": "routes/web.php:233",
+      "source": "routes/web.php:226",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\RedirectIfAuthenticated:internal"
@@ -3490,6 +3664,7 @@
       "testLeads": [
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
         "tests/Feature/Localization/LocaleTest.php",
+        "tests/Feature/Security/InertiaHistorySecurityTest.php",
         "tests/Feature/Security/InternalAuthorityTest.php",
         "tests/Feature/Security/PasskeyAssertionTest.php",
         "tests/Feature/Security/ProductionPasskeyTest.php",
@@ -3501,7 +3676,7 @@
       "method": "POST",
       "uri": "/internal/logout",
       "name": "internal.logout",
-      "source": "routes/web.php:249",
+      "source": "routes/web.php:242",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -3559,7 +3734,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/security/devices",
       "name": "internal.security.devices",
-      "source": "routes/web.php:251",
+      "source": "routes/web.php:244",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -3611,17 +3786,19 @@
       "migration": null,
       "testLeads": [
         "tests/application-api-client.test.mjs",
+        "tests/Feature/Security/ClientVisibilityTest.php",
         "tests/Feature/Security/InternalAuthorityTest.php",
         "tests/Feature/Security/PasskeyAssertionTest.php",
         "tests/Feature/Security/SecurityDevicesTest.php",
-        "tests/Feature/Security/ServiceAuthorityTest.php"
+        "tests/Feature/Security/ServiceAuthorityTest.php",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
       "method": "POST",
       "uri": "/internal/security/passkeys",
       "name": "internal.security.passkeys.store",
-      "source": "routes/web.php:261",
+      "source": "routes/web.php:254",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -3679,7 +3856,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/security/passkeys/options",
       "name": "internal.security.passkeys.options",
-      "source": "routes/web.php:259",
+      "source": "routes/web.php:252",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -3730,14 +3907,15 @@
       },
       "migration": null,
       "testLeads": [
-        "tests/Support/account-spa-browser.mjs"
+        "tests/Support/account-spa-browser.mjs",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
       "method": "DELETE",
       "uri": "/internal/security/passkeys/{passkey}",
       "name": "internal.security.passkeys.destroy",
-      "source": "routes/web.php:263",
+      "source": "routes/web.php:256",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -3793,7 +3971,7 @@
       "method": "POST",
       "uri": "/internal/security/sessions/revoke-others",
       "name": "internal.security.sessions.revoke-others",
-      "source": "routes/web.php:255",
+      "source": "routes/web.php:248",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -3854,7 +4032,7 @@
       "method": "POST",
       "uri": "/internal/security/sessions/sign-out-this-device",
       "name": "internal.security.sessions.sign-out-current",
-      "source": "routes/web.php:257",
+      "source": "routes/web.php:250",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -3910,7 +4088,7 @@
       "method": "DELETE",
       "uri": "/internal/security/sessions/{session}",
       "name": "internal.security.sessions.destroy",
-      "source": "routes/web.php:253",
+      "source": "routes/web.php:246",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -3969,7 +4147,7 @@
       "method": "POST",
       "uri": "/internal/service-grants",
       "name": "internal.service-grants.create",
-      "source": "routes/web.php:314",
+      "source": "routes/web.php:307",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -4031,7 +4209,7 @@
       "method": "DELETE",
       "uri": "/internal/service-grants/{grant}",
       "name": "internal.service-grants.destroy",
-      "source": "routes/web.php:317",
+      "source": "routes/web.php:310",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -4091,7 +4269,7 @@
       "method": "GET|HEAD",
       "uri": "/internal/services",
       "name": "internal.services.index",
-      "source": "routes/web.php:303",
+      "source": "routes/web.php:296",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -4152,7 +4330,7 @@
       "method": "POST",
       "uri": "/internal/services",
       "name": "internal.services.create",
-      "source": "routes/web.php:305",
+      "source": "routes/web.php:298",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -4214,7 +4392,7 @@
       "method": "POST",
       "uri": "/internal/services/{service}/revoke",
       "name": "internal.services.revoke",
-      "source": "routes/web.php:311",
+      "source": "routes/web.php:304",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -4274,7 +4452,7 @@
       "method": "POST",
       "uri": "/internal/services/{service}/rotate",
       "name": "internal.services.rotate",
-      "source": "routes/web.php:308",
+      "source": "routes/web.php:301",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -4334,7 +4512,7 @@
       "method": "POST",
       "uri": "/internal/staff",
       "name": "internal.staff.invite",
-      "source": "routes/web.php:279",
+      "source": "routes/web.php:272",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -4402,7 +4580,7 @@
       "method": "POST",
       "uri": "/internal/staff/{staff}/activate",
       "name": "internal.staff.activate",
-      "source": "routes/web.php:288",
+      "source": "routes/web.php:281",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -4468,7 +4646,7 @@
       "method": "POST",
       "uri": "/internal/staff/{staff}/attest",
       "name": "internal.staff.attest",
-      "source": "routes/web.php:285",
+      "source": "routes/web.php:278",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -4534,7 +4712,7 @@
       "method": "POST",
       "uri": "/internal/staff/{staff}/attest-factors",
       "name": "internal.staff.attest-factors",
-      "source": "routes/web.php:294",
+      "source": "routes/web.php:287",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -4600,7 +4778,7 @@
       "method": "POST",
       "uri": "/internal/staff/{staff}/resend-invitation",
       "name": "internal.staff.resend-invitation",
-      "source": "routes/web.php:282",
+      "source": "routes/web.php:275",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -4669,7 +4847,7 @@
       "method": "POST",
       "uri": "/internal/staff/{staff}/revoke",
       "name": "internal.staff.revoke",
-      "source": "routes/web.php:291",
+      "source": "routes/web.php:284",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate:internal",
@@ -4735,7 +4913,7 @@
       "method": "POST",
       "uri": "/locale",
       "name": "locale.update",
-      "source": "routes/web.php:59",
+      "source": "routes/web.php:52",
       "authorization": [
         "web"
       ],
@@ -4817,12 +4995,10 @@
       "businessOwners": [
         "App\\Security\\IdentityAuthentication"
       ],
-      "pages": [
-        "Auth/Login"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
+      "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -4853,14 +5029,59 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-auth-entry",
+        "journey": "Advertiser public entry, guest authentication, registration, recovery, email verification, fresh password confirmation and authenticated identity switch",
+        "routes": [
+          "GET /",
+          "GET /login",
+          "GET /register",
+          "GET /forgot-password",
+          "GET /reset-password/{token}",
+          "GET /verify-email",
+          "GET /confirm-password",
+          "GET /identity/switch"
+        ],
+        "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+        "businessOwners": [
+          "App\\Security\\IdentityAuthentication",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController",
+          "App\\Http\\Controllers\\Auth\\RegisteredUserController",
+          "App\\Http\\Controllers\\Auth\\PasskeySessionController",
+          "App\\Http\\Controllers\\Auth\\NewPasswordController",
+          "App\\Http\\Controllers\\Auth\\VerifyEmailController",
+          "App\\Http\\Controllers\\Auth\\ConfirmablePasswordController"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AuthEntrySpaTest",
+          "AuthenticationTest",
+          "RegistrationTest",
+          "PasswordResetTest",
+          "EmailVerificationTest",
+          "PasswordConfirmationTest",
+          "ProductionIdentityTest",
+          "IdentityRenewalTest",
+          "InternalAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/auth-entry-spa.test.mjs",
+          "tests/Support/auth-entry-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Eight display routes leave the legacy renderer: static native Welcome and seven unified SPA entries. Fifteen integrated isolated Laravel/Chromium journeys pass with zero unhandled page errors, real virtual UV passkeys, signed mail verification, broker reset/expiry/reuse, native confirmation, pending staff enrollment, unknown deliveries without replay and late-read/Back/Forward protection. Seven unused public components are deleted; internal login, onboarding, devices and their N1/history/visibility consumers remain. The independently baseline-reproduced InitialVisit bootstrap rejection is handled only at its Promise owner, without changing cancellation tokens or identity authority. Physical devices, native BFCache/pre-JavaScript confidentiality, B/C, central Foundation and release acceptance remain separate."
+      },
       "testLeads": [
+        "tests/auth-entry-spa.test.mjs",
         "tests/commercial-operator.test.mjs",
         "tests/Feature/ArchitectureSourceOptionalityTest.php",
         "tests/Feature/Auth/AuthenticationTest.php",
         "tests/Feature/Auth/PasswordResetTest.php",
         "tests/Feature/Auth/PasswordUpdateTest.php",
         "tests/Feature/Auth/RevokedSessionNavigationTest.php",
+        "tests/Feature/AuthEntrySpaTest.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
         "tests/Feature/CurrentIntentSecurityTest.php",
         "tests/Feature/Foundation/BaselineContractTest.php",
@@ -4891,6 +5112,7 @@
         "tests/Support/account-spa-browser.mjs",
         "tests/Support/advertiser-goals-browser.mjs",
         "tests/Support/AdvertiserGoalsUiFixture.php",
+        "tests/Support/auth-entry-browser.mjs",
         "tests/Support/business-context-spa-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
         "tests/Support/CurrentIntentUiFixture.php",
@@ -4972,10 +5194,12 @@
       },
       "migration": null,
       "testLeads": [
+        "tests/auth-entry-spa.test.mjs",
         "tests/Feature/ArchitectureSourceOptionalityTest.php",
         "tests/Feature/Auth/AuthenticationTest.php",
         "tests/Feature/Auth/PasswordUpdateTest.php",
         "tests/Feature/Auth/RevokedSessionNavigationTest.php",
+        "tests/Feature/AuthEntrySpaTest.php",
         "tests/Feature/CurrentIntentSecurityTest.php",
         "tests/Feature/Foundation/BaselineContractTest.php",
         "tests/Feature/Localization/LocaleTest.php",
@@ -4992,6 +5216,7 @@
         "tests/identity-protocol.test.mjs",
         "tests/Support/account-spa-browser.mjs",
         "tests/Support/advertiser-goals-browser.mjs",
+        "tests/Support/auth-entry-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
         "tests/Support/goals-spa-browser.mjs",
         "tests/Support/goals-spa-closure.mjs",
@@ -5069,6 +5294,7 @@
         "tests/Feature/Security/ProductionIdentityTest.php",
         "tests/identity-protocol.test.mjs",
         "tests/Support/account-spa-browser.mjs",
+        "tests/Support/auth-entry-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
         "tests/Support/goals-spa-browser.mjs",
         "tests/Support/goals-spa-closure.mjs",
@@ -5180,7 +5406,7 @@
       "method": "GET|HEAD",
       "uri": "/profile",
       "name": "profile.edit",
-      "source": "routes/web.php:221",
+      "source": "routes/web.php:214",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -5266,6 +5492,7 @@
         "tests/Feature/Security/ProductionIdentityTest.php",
         "tests/identity-protocol.test.mjs",
         "tests/Support/account-spa-browser.mjs",
+        "tests/Support/auth-entry-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
         "tests/Support/inertia-n1-browser.mjs",
         "tests/Support/inertia-official-browser.mjs",
@@ -5279,7 +5506,7 @@
       "method": "PATCH",
       "uri": "/profile",
       "name": "profile.update",
-      "source": "routes/web.php:222",
+      "source": "routes/web.php:215",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -5365,6 +5592,7 @@
         "tests/Feature/Security/ProductionIdentityTest.php",
         "tests/identity-protocol.test.mjs",
         "tests/Support/account-spa-browser.mjs",
+        "tests/Support/auth-entry-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
         "tests/Support/inertia-n1-browser.mjs",
         "tests/Support/inertia-official-browser.mjs",
@@ -5378,7 +5606,7 @@
       "method": "GET|HEAD",
       "uri": "/providers/google/callback",
       "name": "providers.google.callback",
-      "source": "routes/web.php:144",
+      "source": "routes/web.php:137",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -5532,7 +5760,7 @@
       "method": "GET|HEAD",
       "uri": "/providers/meta/callback",
       "name": "providers.meta.callback",
-      "source": "routes/web.php:184",
+      "source": "routes/web.php:177",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -5688,7 +5916,7 @@
       "method": "GET|HEAD",
       "uri": "/providers/snapchat/callback",
       "name": "providers.snapchat.callback",
-      "source": "routes/web.php:127",
+      "source": "routes/web.php:120",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -5842,7 +6070,7 @@
       "method": "GET|HEAD",
       "uri": "/providers/tiktok/callback",
       "name": "providers.tiktok.callback",
-      "source": "routes/web.php:145",
+      "source": "routes/web.php:138",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -5994,7 +6222,7 @@
       "method": "GET|HEAD",
       "uri": "/providers/x/callback",
       "name": "providers.x.callback",
-      "source": "routes/web.php:110",
+      "source": "routes/web.php:103",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -6155,12 +6383,10 @@
         "App\\Security\\IdentityAuthentication",
         "App\\Security\\LifecycleAuthority"
       ],
-      "pages": [
-        "Auth/Register"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
+      "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6191,10 +6417,54 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-auth-entry",
+        "journey": "Advertiser public entry, guest authentication, registration, recovery, email verification, fresh password confirmation and authenticated identity switch",
+        "routes": [
+          "GET /",
+          "GET /login",
+          "GET /register",
+          "GET /forgot-password",
+          "GET /reset-password/{token}",
+          "GET /verify-email",
+          "GET /confirm-password",
+          "GET /identity/switch"
+        ],
+        "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+        "businessOwners": [
+          "App\\Security\\IdentityAuthentication",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController",
+          "App\\Http\\Controllers\\Auth\\RegisteredUserController",
+          "App\\Http\\Controllers\\Auth\\PasskeySessionController",
+          "App\\Http\\Controllers\\Auth\\NewPasswordController",
+          "App\\Http\\Controllers\\Auth\\VerifyEmailController",
+          "App\\Http\\Controllers\\Auth\\ConfirmablePasswordController"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AuthEntrySpaTest",
+          "AuthenticationTest",
+          "RegistrationTest",
+          "PasswordResetTest",
+          "EmailVerificationTest",
+          "PasswordConfirmationTest",
+          "ProductionIdentityTest",
+          "IdentityRenewalTest",
+          "InternalAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/auth-entry-spa.test.mjs",
+          "tests/Support/auth-entry-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Eight display routes leave the legacy renderer: static native Welcome and seven unified SPA entries. Fifteen integrated isolated Laravel/Chromium journeys pass with zero unhandled page errors, real virtual UV passkeys, signed mail verification, broker reset/expiry/reuse, native confirmation, pending staff enrollment, unknown deliveries without replay and late-read/Back/Forward protection. Seven unused public components are deleted; internal login, onboarding, devices and their N1/history/visibility consumers remain. The independently baseline-reproduced InitialVisit bootstrap rejection is handled only at its Promise owner, without changing cancellation tokens or identity authority. Physical devices, native BFCache/pre-JavaScript confidentiality, B/C, central Foundation and release acceptance remain separate."
+      },
       "testLeads": [
         "tests/commercial-operator.test.mjs",
         "tests/Feature/Auth/RegistrationTest.php",
+        "tests/Feature/AuthEntrySpaTest.php",
         "tests/Feature/Commercial/CommercialScopeTest.php",
         "tests/Feature/Providers/ProviderAccessStoreTest.php",
         "tests/Feature/Security/LifecycleActivationTest.php",
@@ -6204,6 +6474,8 @@
         "tests/provider-api-client.test.mjs",
         "tests/sources-api-client.test.mjs",
         "tests/Support/account-spa-browser.mjs",
+        "tests/Support/auth-entry-browser.mjs",
+        "tests/Support/auth-entry-fixture.php",
         "tests/Support/DeclaredTargetMarketsLegacyFixture.php",
         "tests/Support/DisposableDatabaseReset.php",
         "tests/Support/IdentityTransitionFixture.php",
@@ -6264,9 +6536,11 @@
       "migration": null,
       "testLeads": [
         "tests/Feature/Auth/RegistrationTest.php",
+        "tests/Feature/AuthEntrySpaTest.php",
         "tests/Feature/Security/LifecycleActivationTest.php",
         "tests/Feature/Security/PasswordPolicyTest.php",
-        "tests/Feature/Security/ProductionIdentityTest.php"
+        "tests/Feature/Security/ProductionIdentityTest.php",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
@@ -6319,7 +6593,8 @@
       "migration": null,
       "testLeads": [
         "tests/Feature/Auth/PasswordResetTest.php",
-        "tests/Feature/Security/ProductionIdentityTest.php"
+        "tests/Feature/Security/ProductionIdentityTest.php",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
@@ -6335,12 +6610,10 @@
       "businessOwners": [
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Auth/ResetPassword"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
+      "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6371,14 +6644,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-auth-entry",
+        "journey": "Advertiser public entry, guest authentication, registration, recovery, email verification, fresh password confirmation and authenticated identity switch",
+        "routes": [
+          "GET /",
+          "GET /login",
+          "GET /register",
+          "GET /forgot-password",
+          "GET /reset-password/{token}",
+          "GET /verify-email",
+          "GET /confirm-password",
+          "GET /identity/switch"
+        ],
+        "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+        "businessOwners": [
+          "App\\Security\\IdentityAuthentication",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController",
+          "App\\Http\\Controllers\\Auth\\RegisteredUserController",
+          "App\\Http\\Controllers\\Auth\\PasskeySessionController",
+          "App\\Http\\Controllers\\Auth\\NewPasswordController",
+          "App\\Http\\Controllers\\Auth\\VerifyEmailController",
+          "App\\Http\\Controllers\\Auth\\ConfirmablePasswordController"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AuthEntrySpaTest",
+          "AuthenticationTest",
+          "RegistrationTest",
+          "PasswordResetTest",
+          "EmailVerificationTest",
+          "PasswordConfirmationTest",
+          "ProductionIdentityTest",
+          "IdentityRenewalTest",
+          "InternalAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/auth-entry-spa.test.mjs",
+          "tests/Support/auth-entry-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Eight display routes leave the legacy renderer: static native Welcome and seven unified SPA entries. Fifteen integrated isolated Laravel/Chromium journeys pass with zero unhandled page errors, real virtual UV passkeys, signed mail verification, broker reset/expiry/reuse, native confirmation, pending staff enrollment, unknown deliveries without replay and late-read/Back/Forward protection. Seven unused public components are deleted; internal login, onboarding, devices and their N1/history/visibility consumers remain. The independently baseline-reproduced InitialVisit bootstrap rejection is handled only at its Promise owner, without changing cancellation tokens or identity authority. Physical devices, native BFCache/pre-JavaScript confidentiality, B/C, central Foundation and release acceptance remain separate."
+      },
       "testLeads": []
     },
     {
       "method": "GET|HEAD",
       "uri": "/security/devices",
       "name": "security.devices",
-      "source": "routes/web.php:223",
+      "source": "routes/web.php:216",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -6463,20 +6779,23 @@
       },
       "testLeads": [
         "tests/account-spa.test.mjs",
+        "tests/auth-entry-spa.test.mjs",
         "tests/Feature/AccountSecuritySpaTest.php",
         "tests/Feature/Auth/PasswordUpdateTest.php",
+        "tests/Feature/AuthEntrySpaTest.php",
         "tests/Feature/BusinessFoundationTest.php",
         "tests/Feature/Security/ClientVisibilityTest.php",
         "tests/Feature/Security/SecurityDevicesTest.php",
         "tests/Feature/Security/SessionAuthorityTest.php",
-        "tests/Support/account-spa-browser.mjs"
+        "tests/Support/account-spa-browser.mjs",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
       "method": "POST",
       "uri": "/security/passkeys",
       "name": "security.passkeys.store",
-      "source": "routes/web.php:228",
+      "source": "routes/web.php:221",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -6570,7 +6889,7 @@
       "method": "GET|HEAD",
       "uri": "/security/passkeys/options",
       "name": "security.passkeys.options",
-      "source": "routes/web.php:227",
+      "source": "routes/web.php:220",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -6657,14 +6976,15 @@
       },
       "testLeads": [
         "tests/Feature/Security/PasskeyBoundaryTest.php",
-        "tests/Support/account-spa-browser.mjs"
+        "tests/Support/account-spa-browser.mjs",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
       "method": "DELETE",
       "uri": "/security/passkeys/{passkey}",
       "name": "security.passkeys.destroy",
-      "source": "routes/web.php:229",
+      "source": "routes/web.php:222",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -6755,7 +7075,7 @@
       "method": "POST",
       "uri": "/security/sessions/revoke-others",
       "name": "security.sessions.revoke-others",
-      "source": "routes/web.php:225",
+      "source": "routes/web.php:218",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -6851,7 +7171,7 @@
       "method": "POST",
       "uri": "/security/sessions/sign-out-this-device",
       "name": "security.sessions.sign-out-current",
-      "source": "routes/web.php:226",
+      "source": "routes/web.php:219",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -6943,7 +7263,7 @@
       "method": "DELETE",
       "uri": "/security/sessions/{session}",
       "name": "security.sessions.destroy",
-      "source": "routes/web.php:224",
+      "source": "routes/web.php:217",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -7037,7 +7357,7 @@
       "method": "GET|HEAD",
       "uri": "/staff/onboarding",
       "name": "staff.onboarding",
-      "source": "routes/web.php:100",
+      "source": "routes/web.php:93",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -7085,14 +7405,15 @@
       },
       "migration": null,
       "testLeads": [
-        "tests/Feature/Security/InternalAuthorityTest.php"
+        "tests/Feature/Security/InternalAuthorityTest.php",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
       "method": "POST",
       "uri": "/staff/onboarding/passkeys",
       "name": "staff.onboarding.passkeys.store",
-      "source": "routes/web.php:105",
+      "source": "routes/web.php:98",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -7145,7 +7466,7 @@
       "method": "GET|HEAD",
       "uri": "/staff/onboarding/passkeys/options",
       "name": "staff.onboarding.passkeys.options",
-      "source": "routes/web.php:103",
+      "source": "routes/web.php:96",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -7207,12 +7528,10 @@
       ],
       "action": "App\\Http\\Controllers\\Auth\\EmailVerificationPromptController",
       "businessOwners": [],
-      "pages": [
-        "Auth/VerifyEmail"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
+      "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -7243,14 +7562,59 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-auth-entry",
+        "journey": "Advertiser public entry, guest authentication, registration, recovery, email verification, fresh password confirmation and authenticated identity switch",
+        "routes": [
+          "GET /",
+          "GET /login",
+          "GET /register",
+          "GET /forgot-password",
+          "GET /reset-password/{token}",
+          "GET /verify-email",
+          "GET /confirm-password",
+          "GET /identity/switch"
+        ],
+        "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
+        "businessOwners": [
+          "App\\Security\\IdentityAuthentication",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController",
+          "App\\Http\\Controllers\\Auth\\RegisteredUserController",
+          "App\\Http\\Controllers\\Auth\\PasskeySessionController",
+          "App\\Http\\Controllers\\Auth\\NewPasswordController",
+          "App\\Http\\Controllers\\Auth\\VerifyEmailController",
+          "App\\Http\\Controllers\\Auth\\ConfirmablePasswordController"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AuthEntrySpaTest",
+          "AuthenticationTest",
+          "RegistrationTest",
+          "PasswordResetTest",
+          "EmailVerificationTest",
+          "PasswordConfirmationTest",
+          "ProductionIdentityTest",
+          "IdentityRenewalTest",
+          "InternalAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/auth-entry-spa.test.mjs",
+          "tests/Support/auth-entry-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Eight display routes leave the legacy renderer: static native Welcome and seven unified SPA entries. Fifteen integrated isolated Laravel/Chromium journeys pass with zero unhandled page errors, real virtual UV passkeys, signed mail verification, broker reset/expiry/reuse, native confirmation, pending staff enrollment, unknown deliveries without replay and late-read/Back/Forward protection. Seven unused public components are deleted; internal login, onboarding, devices and their N1/history/visibility consumers remain. The independently baseline-reproduced InitialVisit bootstrap rejection is handled only at its Promise owner, without changing cancellation tokens or identity authority. Physical devices, native BFCache/pre-JavaScript confidentiality, B/C, central Foundation and release acceptance remain separate."
+      },
       "testLeads": [
         "tests/Feature/Auth/EmailVerificationTest.php",
         "tests/Feature/Auth/RegistrationTest.php",
+        "tests/Feature/AuthEntrySpaTest.php",
         "tests/Feature/Security/InternalAuthorityTest.php",
         "tests/Feature/Security/LifecycleActivationTest.php",
         "tests/Feature/Security/PasswordPolicyTest.php",
-        "tests/Feature/Security/ProductionIdentityTest.php"
+        "tests/Feature/Security/ProductionIdentityTest.php",
+        "tests/Support/auth-entry-browser.mjs"
       ]
     },
     {
@@ -7312,14 +7676,15 @@
         "tests/Feature/Auth/EmailVerificationTest.php",
         "tests/Feature/Security/LifecycleActivationTest.php",
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
-        "tests/Feature/Security/ProductionIdentityTest.php"
+        "tests/Feature/Security/ProductionIdentityTest.php",
+        "tests/Support/auth-entry-fixture.php"
       ]
     },
     {
       "method": "GET|HEAD",
       "uri": "/workspaces",
       "name": "workspaces.index",
-      "source": "routes/web.php:195",
+      "source": "routes/web.php:188",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -7427,7 +7792,7 @@
       "method": "POST",
       "uri": "/workspaces",
       "name": "workspaces.store",
-      "source": "routes/web.php:196",
+      "source": "routes/web.php:189",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -7514,7 +7879,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}",
       "name": "workspaces.show",
-      "source": "routes/web.php:200",
+      "source": "routes/web.php:193",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -7665,7 +8030,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/business",
       "name": "workspaces.business.edit",
-      "source": "routes/web.php:87",
+      "source": "routes/web.php:80",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -7758,7 +8123,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/business",
       "name": "workspaces.business.update",
-      "source": "routes/web.php:89",
+      "source": "routes/web.php:82",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -7849,7 +8214,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/business/authority",
       "name": "workspaces.business.authority",
-      "source": "routes/web.php:95",
+      "source": "routes/web.php:88",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -7943,7 +8308,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/business/current-intent",
       "name": "workspaces.business.current-intent.update",
-      "source": "routes/web.php:93",
+      "source": "routes/web.php:86",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -8037,7 +8402,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/business/target-markets",
       "name": "workspaces.business.target-markets.update",
-      "source": "routes/web.php:91",
+      "source": "routes/web.php:84",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -8128,7 +8493,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/foundation",
       "name": "workspaces.foundation",
-      "source": "routes/web.php:208",
+      "source": "routes/web.php:201",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -8181,7 +8546,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/goals",
       "name": "workspaces.goals.edit",
-      "source": "routes/web.php:65",
+      "source": "routes/web.php:58",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -8265,7 +8630,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/goals",
       "name": "workspaces.goals.update",
-      "source": "routes/web.php:71",
+      "source": "routes/web.php:64",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -8350,7 +8715,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/goals/context",
       "name": "workspaces.goals.context",
-      "source": "routes/web.php:69",
+      "source": "routes/web.php:62",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -8438,7 +8803,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/goals/review",
       "name": "workspaces.goals.review",
-      "source": "routes/web.php:67",
+      "source": "routes/web.php:60",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -8520,7 +8885,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/object-purposes",
       "name": "workspaces.object-purposes.index",
-      "source": "routes/web.php:73",
+      "source": "routes/web.php:66",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -8615,7 +8980,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/object-purposes",
       "name": "workspaces.object-purposes.store",
-      "source": "routes/web.php:81",
+      "source": "routes/web.php:74",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -8713,7 +9078,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/object-purposes/context",
       "name": "workspaces.object-purposes.application.index",
-      "source": "routes/web.php:75",
+      "source": "routes/web.php:68",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -8808,7 +9173,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/object-purposes/{purpose}",
       "name": "workspaces.object-purposes.show",
-      "source": "routes/web.php:79",
+      "source": "routes/web.php:72",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -8903,7 +9268,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/object-purposes/{purpose}/context",
       "name": "workspaces.object-purposes.application.show",
-      "source": "routes/web.php:77",
+      "source": "routes/web.php:70",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -8998,7 +9363,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/object-purposes/{purpose}/revisions",
       "name": "workspaces.object-purposes.revise",
-      "source": "routes/web.php:83",
+      "source": "routes/web.php:76",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -9097,7 +9462,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/google",
       "name": "workspaces.providers.google.index",
-      "source": "routes/web.php:170",
+      "source": "routes/web.php:163",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -9246,7 +9611,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/google/connect",
       "name": "workspaces.providers.google.connect",
-      "source": "routes/web.php:176",
+      "source": "routes/web.php:169",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -9398,7 +9763,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/google/discovery/{flow}",
       "name": "workspaces.providers.google.discovery",
-      "source": "routes/web.php:172",
+      "source": "routes/web.php:165",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -9547,7 +9912,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/google/hierarchy/{flow}",
       "name": "workspaces.providers.google.hierarchy",
-      "source": "routes/web.php:174",
+      "source": "routes/web.php:167",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -9696,7 +10061,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/google/select",
       "name": "workspaces.providers.google.select",
-      "source": "routes/web.php:178",
+      "source": "routes/web.php:171",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -9848,7 +10213,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/google/{source}/disconnect",
       "name": "workspaces.providers.google.disconnect",
-      "source": "routes/web.php:180",
+      "source": "routes/web.php:173",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -10000,7 +10365,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/google/{source}/renew",
       "name": "workspaces.providers.google.renew",
-      "source": "routes/web.php:182",
+      "source": "routes/web.php:175",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -10152,7 +10517,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/google/{source}/report",
       "name": "workspaces.providers.google.report.status",
-      "source": "routes/web.php:160",
+      "source": "routes/web.php:153",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -10296,7 +10661,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/google/{source}/report",
       "name": "workspaces.providers.google.report.store",
-      "source": "routes/web.php:168",
+      "source": "routes/web.php:161",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -10440,7 +10805,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/google/{source}/report/{generation}/download",
       "name": "workspaces.providers.google.report.download",
-      "source": "routes/web.php:166",
+      "source": "routes/web.php:159",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -10584,7 +10949,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/meta",
       "name": "workspaces.providers.meta.index",
-      "source": "routes/web.php:185",
+      "source": "routes/web.php:178",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -10735,7 +11100,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/meta/connect",
       "name": "workspaces.providers.meta.connect",
-      "source": "routes/web.php:189",
+      "source": "routes/web.php:182",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -10889,7 +11254,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/meta/discovery/{flow}",
       "name": "workspaces.providers.meta.discovery",
-      "source": "routes/web.php:187",
+      "source": "routes/web.php:180",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -11040,7 +11405,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/meta/select",
       "name": "workspaces.providers.meta.select",
-      "source": "routes/web.php:191",
+      "source": "routes/web.php:184",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -11194,7 +11559,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/meta/{source}/disconnect",
       "name": "workspaces.providers.meta.disconnect",
-      "source": "routes/web.php:193",
+      "source": "routes/web.php:186",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -11348,7 +11713,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/meta/{source}/report",
       "name": "workspaces.providers.meta.report.status",
-      "source": "routes/web.php:162",
+      "source": "routes/web.php:155",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -11491,7 +11856,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/meta/{source}/report",
       "name": "workspaces.providers.meta.report.store",
-      "source": "routes/web.php:164",
+      "source": "routes/web.php:157",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -11634,7 +11999,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/snapchat",
       "name": "workspaces.providers.snapchat.index",
-      "source": "routes/web.php:132",
+      "source": "routes/web.php:125",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -11785,7 +12150,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/snapchat/connect",
       "name": "workspaces.providers.snapchat.connect",
-      "source": "routes/web.php:136",
+      "source": "routes/web.php:129",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -11939,7 +12304,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/snapchat/discovery/{flow}",
       "name": "workspaces.providers.snapchat.discovery",
-      "source": "routes/web.php:134",
+      "source": "routes/web.php:127",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -12090,7 +12455,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/snapchat/select",
       "name": "workspaces.providers.snapchat.select",
-      "source": "routes/web.php:138",
+      "source": "routes/web.php:131",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -12244,7 +12609,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/snapchat/{source}/disconnect",
       "name": "workspaces.providers.snapchat.disconnect",
-      "source": "routes/web.php:140",
+      "source": "routes/web.php:133",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -12398,7 +12763,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/snapchat/{source}/renew",
       "name": "workspaces.providers.snapchat.renew",
-      "source": "routes/web.php:142",
+      "source": "routes/web.php:135",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -12554,7 +12919,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/snapchat/{source}/report",
       "name": "workspaces.providers.snapchat.report.status",
-      "source": "routes/web.php:128",
+      "source": "routes/web.php:121",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -12699,7 +13064,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/snapchat/{source}/report",
       "name": "workspaces.providers.snapchat.report.store",
-      "source": "routes/web.php:130",
+      "source": "routes/web.php:123",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -12844,7 +13209,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/tiktok",
       "name": "workspaces.providers.tiktok.index",
-      "source": "routes/web.php:150",
+      "source": "routes/web.php:143",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -12993,7 +13358,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/tiktok/connect",
       "name": "workspaces.providers.tiktok.connect",
-      "source": "routes/web.php:154",
+      "source": "routes/web.php:147",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -13145,7 +13510,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/tiktok/discovery/{flow}",
       "name": "workspaces.providers.tiktok.discovery",
-      "source": "routes/web.php:152",
+      "source": "routes/web.php:145",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -13294,7 +13659,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/tiktok/select",
       "name": "workspaces.providers.tiktok.select",
-      "source": "routes/web.php:156",
+      "source": "routes/web.php:149",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -13446,7 +13811,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/tiktok/{source}/disconnect",
       "name": "workspaces.providers.tiktok.disconnect",
-      "source": "routes/web.php:158",
+      "source": "routes/web.php:151",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -13598,7 +13963,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/tiktok/{source}/report",
       "name": "workspaces.providers.tiktok.report.status",
-      "source": "routes/web.php:146",
+      "source": "routes/web.php:139",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -13741,7 +14106,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/tiktok/{source}/report",
       "name": "workspaces.providers.tiktok.report.store",
-      "source": "routes/web.php:148",
+      "source": "routes/web.php:141",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -13884,7 +14249,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/x",
       "name": "workspaces.providers.x.index",
-      "source": "routes/web.php:117",
+      "source": "routes/web.php:110",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -14032,7 +14397,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/x/connect",
       "name": "workspaces.providers.x.connect",
-      "source": "routes/web.php:121",
+      "source": "routes/web.php:114",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -14183,7 +14548,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/x/discovery/{flow}",
       "name": "workspaces.providers.x.discovery",
-      "source": "routes/web.php:119",
+      "source": "routes/web.php:112",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -14331,7 +14696,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/x/select",
       "name": "workspaces.providers.x.select",
-      "source": "routes/web.php:123",
+      "source": "routes/web.php:116",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -14482,7 +14847,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/x/{source}/campaigns",
       "name": "workspaces.providers.x.campaigns",
-      "source": "routes/web.php:111",
+      "source": "routes/web.php:104",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -14628,7 +14993,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/x/{source}/disconnect",
       "name": "workspaces.providers.x.disconnect",
-      "source": "routes/web.php:125",
+      "source": "routes/web.php:118",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -14779,7 +15144,7 @@
       "method": "GET|HEAD",
       "uri": "/workspaces/{workspace}/providers/x/{source}/report",
       "name": "workspaces.providers.x.report.status",
-      "source": "routes/web.php:113",
+      "source": "routes/web.php:106",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -14925,7 +15290,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/x/{source}/report",
       "name": "workspaces.providers.x.report.store",
-      "source": "routes/web.php:115",
+      "source": "routes/web.php:108",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -15071,7 +15436,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/reassess-owner-grant",
       "name": "workspaces.reassess-owner-grant",
-      "source": "routes/web.php:197",
+      "source": "routes/web.php:190",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -15158,7 +15523,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/services",
       "name": "workspaces.services.store",
-      "source": "routes/web.php:202",
+      "source": "routes/web.php:195",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -15296,7 +15661,7 @@
       "method": "DELETE",
       "uri": "/workspaces/{workspace}/services/{service}",
       "name": "workspaces.services.destroy",
-      "source": "routes/web.php:205",
+      "source": "routes/web.php:198",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -15434,7 +15799,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/source-audit/{obligation}/recover",
       "name": "workspaces.sources.recover",
-      "source": "routes/web.php:217",
+      "source": "routes/web.php:210",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -15573,7 +15938,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/source-grants",
       "name": "workspaces.sources.grant",
-      "source": "routes/web.php:213",
+      "source": "routes/web.php:206",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -15712,7 +16077,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/sources",
       "name": "workspaces.sources.command",
-      "source": "routes/web.php:215",
+      "source": "routes/web.php:208",
       "authorization": [
         "web",
         "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -15961,10 +16326,8 @@
         "App\\Security\\IdentityAuthentication",
         "App\\Security\\LifecycleAuthority"
       ],
-      "pages": [
-        "Auth/Register"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -16061,10 +16424,8 @@
       "businessOwners": [
         "App\\Security\\IdentityAuthentication"
       ],
-      "pages": [
-        "Auth/Login"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -16263,10 +16624,8 @@
       ],
       "action": "App\\Http\\Controllers\\Auth\\PasswordResetLinkController@create",
       "businessOwners": [],
-      "pages": [
-        "Auth/ForgotPassword"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -16360,10 +16719,8 @@
       "businessOwners": [
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Auth/ResetPassword"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -16454,10 +16811,8 @@
       ],
       "action": "App\\Http\\Controllers\\Auth\\EmailVerificationPromptController@__invoke",
       "businessOwners": [],
-      "pages": [
-        "Auth/VerifyEmail"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -16604,10 +16959,8 @@
       "businessOwners": [
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Auth/ConfirmPassword"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -16867,14 +17220,12 @@
       "method": "GET",
       "uri": "/",
       "name": null,
-      "source": "routes/web.php:50",
+      "source": "routes/web.php:48",
       "authorization": [],
       "action": "Closure",
       "businessOwners": [],
-      "pages": [
-        "Welcome"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -16888,7 +17239,7 @@
             "middleware": [
               "web"
             ],
-            "path": "routes/web.php:50"
+            "path": "routes/web.php:48"
           }
         ],
         "goalsEnabled": [
@@ -16901,7 +17252,7 @@
             "middleware": [
               "web"
             ],
-            "path": "routes/web.php:50"
+            "path": "routes/web.php:48"
           }
         ]
       }
@@ -16910,7 +17261,7 @@
       "method": "POST",
       "uri": "/locale",
       "name": "locale.update",
-      "source": "routes/web.php:59",
+      "source": "routes/web.php:52",
       "authorization": [],
       "action": "App\\Http\\Controllers\\LocaleController@__invoke",
       "businessOwners": [],
@@ -16951,7 +17302,7 @@
       "method": "POST",
       "uri": "/internal/locale",
       "name": "internal.locale.update",
-      "source": "routes/web.php:60",
+      "source": "routes/web.php:53",
       "authorization": [],
       "action": "App\\Http\\Controllers\\LocaleController@__invoke",
       "businessOwners": [],
@@ -16992,7 +17343,7 @@
       "method": "GET",
       "uri": "/dashboard",
       "name": "dashboard",
-      "source": "routes/web.php:62",
+      "source": "routes/web.php:55",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17045,7 +17396,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/goals",
       "name": "workspaces.goals.edit",
-      "source": "routes/web.php:65",
+      "source": "routes/web.php:58",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17095,7 +17446,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/goals/review",
       "name": "workspaces.goals.review",
-      "source": "routes/web.php:67",
+      "source": "routes/web.php:60",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17145,7 +17496,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/goals/context",
       "name": "workspaces.goals.context",
-      "source": "routes/web.php:69",
+      "source": "routes/web.php:62",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17198,7 +17549,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/goals",
       "name": "workspaces.goals.update",
-      "source": "routes/web.php:71",
+      "source": "routes/web.php:64",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17248,7 +17599,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/object-purposes",
       "name": "workspaces.object-purposes.index",
-      "source": "routes/web.php:73",
+      "source": "routes/web.php:66",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17299,7 +17650,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/object-purposes/context",
       "name": "workspaces.object-purposes.application.index",
-      "source": "routes/web.php:75",
+      "source": "routes/web.php:68",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17350,7 +17701,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/object-purposes/{purpose}/context",
       "name": "workspaces.object-purposes.application.show",
-      "source": "routes/web.php:77",
+      "source": "routes/web.php:70",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17401,7 +17752,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/object-purposes/{purpose}",
       "name": "workspaces.object-purposes.show",
-      "source": "routes/web.php:79",
+      "source": "routes/web.php:72",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17452,7 +17803,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/object-purposes",
       "name": "workspaces.object-purposes.store",
-      "source": "routes/web.php:81",
+      "source": "routes/web.php:74",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -17506,7 +17857,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/object-purposes/{purpose}/revisions",
       "name": "workspaces.object-purposes.revise",
-      "source": "routes/web.php:83",
+      "source": "routes/web.php:76",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -17560,7 +17911,7 @@
       "method": "GET",
       "uri": "/business/start",
       "name": "business.start",
-      "source": "routes/web.php:85",
+      "source": "routes/web.php:78",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17613,7 +17964,7 @@
       "method": "POST",
       "uri": "/business/start",
       "name": "business.start.store",
-      "source": "routes/web.php:86",
+      "source": "routes/web.php:79",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17666,7 +18017,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/business",
       "name": "workspaces.business.edit",
-      "source": "routes/web.php:87",
+      "source": "routes/web.php:80",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17719,7 +18070,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/business",
       "name": "workspaces.business.update",
-      "source": "routes/web.php:89",
+      "source": "routes/web.php:82",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17772,7 +18123,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/business/target-markets",
       "name": "workspaces.business.target-markets.update",
-      "source": "routes/web.php:91",
+      "source": "routes/web.php:84",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17825,7 +18176,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/business/current-intent",
       "name": "workspaces.business.current-intent.update",
-      "source": "routes/web.php:93",
+      "source": "routes/web.php:86",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -17878,7 +18229,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/business/authority",
       "name": "workspaces.business.authority",
-      "source": "routes/web.php:95",
+      "source": "routes/web.php:88",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -17934,7 +18285,7 @@
       "method": "GET",
       "uri": "/staff/onboarding",
       "name": "staff.onboarding",
-      "source": "routes/web.php:100",
+      "source": "routes/web.php:93",
       "authorization": [
         "['auth', EnsurePendingStaffEnrollment::class]"
       ],
@@ -17983,7 +18334,7 @@
       "method": "GET",
       "uri": "/staff/onboarding/passkeys/options",
       "name": "staff.onboarding.passkeys.options",
-      "source": "routes/web.php:103",
+      "source": "routes/web.php:96",
       "authorization": [
         "['auth', EnsurePendingStaffEnrollment::class.':true']"
       ],
@@ -18032,7 +18383,7 @@
       "method": "POST",
       "uri": "/staff/onboarding/passkeys",
       "name": "staff.onboarding.passkeys.store",
-      "source": "routes/web.php:105",
+      "source": "routes/web.php:98",
       "authorization": [
         "['auth', EnsurePendingStaffEnrollment::class.':true']"
       ],
@@ -18081,7 +18432,7 @@
       "method": "GET",
       "uri": "/providers/x/callback",
       "name": "providers.x.callback",
-      "source": "routes/web.php:110",
+      "source": "routes/web.php:103",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "RestoreBusinessAfterCallback::class"
@@ -18147,7 +18498,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/x/{source}/campaigns",
       "name": "workspaces.providers.x.campaigns",
-      "source": "routes/web.php:111",
+      "source": "routes/web.php:104",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -18208,7 +18559,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/x/{source}/report",
       "name": "workspaces.providers.x.report.status",
-      "source": "routes/web.php:113",
+      "source": "routes/web.php:106",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -18269,7 +18620,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/x/{source}/report",
       "name": "workspaces.providers.x.report.store",
-      "source": "routes/web.php:115",
+      "source": "routes/web.php:108",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -18330,7 +18681,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/x",
       "name": "workspaces.providers.x.index",
-      "source": "routes/web.php:117",
+      "source": "routes/web.php:110",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -18393,7 +18744,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/x/discovery/{flow}",
       "name": "workspaces.providers.x.discovery",
-      "source": "routes/web.php:119",
+      "source": "routes/web.php:112",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -18456,7 +18807,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/x/connect",
       "name": "workspaces.providers.x.connect",
-      "source": "routes/web.php:121",
+      "source": "routes/web.php:114",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -18522,7 +18873,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/x/select",
       "name": "workspaces.providers.x.select",
-      "source": "routes/web.php:123",
+      "source": "routes/web.php:116",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -18588,7 +18939,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/x/{source}/disconnect",
       "name": "workspaces.providers.x.disconnect",
-      "source": "routes/web.php:125",
+      "source": "routes/web.php:118",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -18654,7 +19005,7 @@
       "method": "GET",
       "uri": "/providers/snapchat/callback",
       "name": "providers.snapchat.callback",
-      "source": "routes/web.php:127",
+      "source": "routes/web.php:120",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "RestoreBusinessAfterCallback::class"
@@ -18723,7 +19074,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/snapchat/{source}/report",
       "name": "workspaces.providers.snapchat.report.status",
-      "source": "routes/web.php:128",
+      "source": "routes/web.php:121",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -18781,7 +19132,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/snapchat/{source}/report",
       "name": "workspaces.providers.snapchat.report.store",
-      "source": "routes/web.php:130",
+      "source": "routes/web.php:123",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -18839,7 +19190,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/snapchat",
       "name": "workspaces.providers.snapchat.index",
-      "source": "routes/web.php:132",
+      "source": "routes/web.php:125",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -18905,7 +19256,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/snapchat/discovery/{flow}",
       "name": "workspaces.providers.snapchat.discovery",
-      "source": "routes/web.php:134",
+      "source": "routes/web.php:127",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -18971,7 +19322,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/snapchat/connect",
       "name": "workspaces.providers.snapchat.connect",
-      "source": "routes/web.php:136",
+      "source": "routes/web.php:129",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -19040,7 +19391,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/snapchat/select",
       "name": "workspaces.providers.snapchat.select",
-      "source": "routes/web.php:138",
+      "source": "routes/web.php:131",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -19109,7 +19460,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/snapchat/{source}/disconnect",
       "name": "workspaces.providers.snapchat.disconnect",
-      "source": "routes/web.php:140",
+      "source": "routes/web.php:133",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -19178,7 +19529,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/snapchat/{source}/renew",
       "name": "workspaces.providers.snapchat.renew",
-      "source": "routes/web.php:142",
+      "source": "routes/web.php:135",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -19247,7 +19598,7 @@
       "method": "GET",
       "uri": "/providers/google/callback",
       "name": "providers.google.callback",
-      "source": "routes/web.php:144",
+      "source": "routes/web.php:137",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "RestoreBusinessAfterCallback::class"
@@ -19314,7 +19665,7 @@
       "method": "GET",
       "uri": "/providers/tiktok/callback",
       "name": "providers.tiktok.callback",
-      "source": "routes/web.php:145",
+      "source": "routes/web.php:138",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "RestoreBusinessAfterCallback::class"
@@ -19381,7 +19732,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/tiktok/{source}/report",
       "name": "workspaces.providers.tiktok.report.status",
-      "source": "routes/web.php:146",
+      "source": "routes/web.php:139",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -19439,7 +19790,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/tiktok/{source}/report",
       "name": "workspaces.providers.tiktok.report.store",
-      "source": "routes/web.php:148",
+      "source": "routes/web.php:141",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -19497,7 +19848,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/tiktok",
       "name": "workspaces.providers.tiktok.index",
-      "source": "routes/web.php:150",
+      "source": "routes/web.php:143",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -19561,7 +19912,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/tiktok/discovery/{flow}",
       "name": "workspaces.providers.tiktok.discovery",
-      "source": "routes/web.php:152",
+      "source": "routes/web.php:145",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -19625,7 +19976,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/tiktok/connect",
       "name": "workspaces.providers.tiktok.connect",
-      "source": "routes/web.php:154",
+      "source": "routes/web.php:147",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -19692,7 +20043,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/tiktok/select",
       "name": "workspaces.providers.tiktok.select",
-      "source": "routes/web.php:156",
+      "source": "routes/web.php:149",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -19759,7 +20110,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/tiktok/{source}/disconnect",
       "name": "workspaces.providers.tiktok.disconnect",
-      "source": "routes/web.php:158",
+      "source": "routes/web.php:151",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -19826,7 +20177,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/google/{source}/report",
       "name": "workspaces.providers.google.report.status",
-      "source": "routes/web.php:160",
+      "source": "routes/web.php:153",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -19885,7 +20236,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/meta/{source}/report",
       "name": "workspaces.providers.meta.report.status",
-      "source": "routes/web.php:162",
+      "source": "routes/web.php:155",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -19943,7 +20294,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/meta/{source}/report",
       "name": "workspaces.providers.meta.report.store",
-      "source": "routes/web.php:164",
+      "source": "routes/web.php:157",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -20001,7 +20352,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/google/{source}/report/{generation}/download",
       "name": "workspaces.providers.google.report.download",
-      "source": "routes/web.php:166",
+      "source": "routes/web.php:159",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -20060,7 +20411,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/google/{source}/report",
       "name": "workspaces.providers.google.report.store",
-      "source": "routes/web.php:168",
+      "source": "routes/web.php:161",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -20119,7 +20470,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/google",
       "name": "workspaces.providers.google.index",
-      "source": "routes/web.php:170",
+      "source": "routes/web.php:163",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -20183,7 +20534,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/google/discovery/{flow}",
       "name": "workspaces.providers.google.discovery",
-      "source": "routes/web.php:172",
+      "source": "routes/web.php:165",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -20247,7 +20598,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/google/hierarchy/{flow}",
       "name": "workspaces.providers.google.hierarchy",
-      "source": "routes/web.php:174",
+      "source": "routes/web.php:167",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -20311,7 +20662,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/google/connect",
       "name": "workspaces.providers.google.connect",
-      "source": "routes/web.php:176",
+      "source": "routes/web.php:169",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -20378,7 +20729,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/google/select",
       "name": "workspaces.providers.google.select",
-      "source": "routes/web.php:178",
+      "source": "routes/web.php:171",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -20445,7 +20796,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/google/{source}/disconnect",
       "name": "workspaces.providers.google.disconnect",
-      "source": "routes/web.php:180",
+      "source": "routes/web.php:173",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -20512,7 +20863,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/google/{source}/renew",
       "name": "workspaces.providers.google.renew",
-      "source": "routes/web.php:182",
+      "source": "routes/web.php:175",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -20579,7 +20930,7 @@
       "method": "GET",
       "uri": "/providers/meta/callback",
       "name": "providers.meta.callback",
-      "source": "routes/web.php:184",
+      "source": "routes/web.php:177",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "RestoreBusinessAfterCallback::class"
@@ -20648,7 +20999,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/meta",
       "name": "workspaces.providers.meta.index",
-      "source": "routes/web.php:185",
+      "source": "routes/web.php:178",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -20714,7 +21065,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/providers/meta/discovery/{flow}",
       "name": "workspaces.providers.meta.discovery",
-      "source": "routes/web.php:187",
+      "source": "routes/web.php:180",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -20780,7 +21131,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/meta/connect",
       "name": "workspaces.providers.meta.connect",
-      "source": "routes/web.php:189",
+      "source": "routes/web.php:182",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -20849,7 +21200,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/meta/select",
       "name": "workspaces.providers.meta.select",
-      "source": "routes/web.php:191",
+      "source": "routes/web.php:184",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -20918,7 +21269,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/providers/meta/{source}/disconnect",
       "name": "workspaces.providers.meta.disconnect",
-      "source": "routes/web.php:193",
+      "source": "routes/web.php:186",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -20987,7 +21338,7 @@
       "method": "GET",
       "uri": "/workspaces",
       "name": "workspaces.index",
-      "source": "routes/web.php:195",
+      "source": "routes/web.php:188",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -21042,7 +21393,7 @@
       "method": "POST",
       "uri": "/workspaces",
       "name": "workspaces.store",
-      "source": "routes/web.php:196",
+      "source": "routes/web.php:189",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -21097,7 +21448,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/reassess-owner-grant",
       "name": "workspaces.reassess-owner-grant",
-      "source": "routes/web.php:197",
+      "source": "routes/web.php:190",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class)\n        ->whereUuid('workspace'"
@@ -21155,7 +21506,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}",
       "name": "workspaces.show",
-      "source": "routes/web.php:200",
+      "source": "routes/web.php:193",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureBusinessContext::class"
@@ -21213,7 +21564,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/services",
       "name": "workspaces.services.store",
-      "source": "routes/web.php:202",
+      "source": "routes/web.php:195",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class)\n        ->whereUuid('workspace'"
@@ -21266,7 +21617,7 @@
       "method": "DELETE",
       "uri": "/workspaces/{workspace}/services/{service}",
       "name": "workspaces.services.destroy",
-      "source": "routes/web.php:205",
+      "source": "routes/web.php:198",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class)\n        ->whereUuid('workspace'"
@@ -21319,7 +21670,7 @@
       "method": "GET",
       "uri": "/workspaces/{workspace}/foundation",
       "name": "workspaces.foundation",
-      "source": "routes/web.php:208",
+      "source": "routes/web.php:201",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -21368,7 +21719,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/source-grants",
       "name": "workspaces.sources.grant",
-      "source": "routes/web.php:213",
+      "source": "routes/web.php:206",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -21422,7 +21773,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/sources",
       "name": "workspaces.sources.command",
-      "source": "routes/web.php:215",
+      "source": "routes/web.php:208",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -21476,7 +21827,7 @@
       "method": "POST",
       "uri": "/workspaces/{workspace}/source-audit/{obligation}/recover",
       "name": "workspaces.sources.recover",
-      "source": "routes/web.php:217",
+      "source": "routes/web.php:210",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -21530,7 +21881,7 @@
       "method": "GET",
       "uri": "/profile",
       "name": "profile.edit",
-      "source": "routes/web.php:221",
+      "source": "routes/web.php:214",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -21581,7 +21932,7 @@
       "method": "PATCH",
       "uri": "/profile",
       "name": "profile.update",
-      "source": "routes/web.php:222",
+      "source": "routes/web.php:215",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -21632,7 +21983,7 @@
       "method": "GET",
       "uri": "/security/devices",
       "name": "security.devices",
-      "source": "routes/web.php:223",
+      "source": "routes/web.php:216",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -21682,7 +22033,7 @@
       "method": "DELETE",
       "uri": "/security/sessions/{session}",
       "name": "security.sessions.destroy",
-      "source": "routes/web.php:224",
+      "source": "routes/web.php:217",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -21735,7 +22086,7 @@
       "method": "POST",
       "uri": "/security/sessions/revoke-others",
       "name": "security.sessions.revoke-others",
-      "source": "routes/web.php:225",
+      "source": "routes/web.php:218",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -21788,7 +22139,7 @@
       "method": "POST",
       "uri": "/security/sessions/sign-out-this-device",
       "name": "security.sessions.sign-out-current",
-      "source": "routes/web.php:226",
+      "source": "routes/web.php:219",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
@@ -21838,7 +22189,7 @@
       "method": "GET",
       "uri": "/security/passkeys/options",
       "name": "security.passkeys.options",
-      "source": "routes/web.php:227",
+      "source": "routes/web.php:220",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -21890,7 +22241,7 @@
       "method": "POST",
       "uri": "/security/passkeys",
       "name": "security.passkeys.store",
-      "source": "routes/web.php:228",
+      "source": "routes/web.php:221",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -21942,7 +22293,7 @@
       "method": "DELETE",
       "uri": "/security/passkeys/{passkey}",
       "name": "security.passkeys.destroy",
-      "source": "routes/web.php:229",
+      "source": "routes/web.php:222",
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -21994,7 +22345,7 @@
       "method": "GET",
       "uri": "/internal/login",
       "name": "internal.login",
-      "source": "routes/web.php:233",
+      "source": "routes/web.php:226",
       "authorization": [
         "'guest:internal'"
       ],
@@ -22043,7 +22394,7 @@
       "method": "GET",
       "uri": "/internal/auth/passkey/options",
       "name": "internal.auth.passkey.options",
-      "source": "routes/web.php:234",
+      "source": "routes/web.php:227",
       "authorization": [
         "'guest:internal'",
         "'throttle:12,1'"
@@ -22097,7 +22448,7 @@
       "method": "POST",
       "uri": "/internal/auth/passkey",
       "name": "internal.auth.passkey.store",
-      "source": "routes/web.php:236",
+      "source": "routes/web.php:229",
       "authorization": [
         "'guest:internal'",
         "'throttle:6,1'"
@@ -22151,7 +22502,7 @@
       "method": "GET",
       "uri": "/internal/business-types",
       "name": "internal.business-types.index",
-      "source": "routes/web.php:241",
+      "source": "routes/web.php:234",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "RequireActionGrant::class.':business.manage'"
@@ -22208,7 +22559,7 @@
       "method": "POST",
       "uri": "/internal/business-types",
       "name": "internal.business-types.store",
-      "source": "routes/web.php:244",
+      "source": "routes/web.php:237",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':business.manage', EnsureFreshAuthentication::class]"
@@ -22265,7 +22616,7 @@
       "method": "POST",
       "uri": "/internal/business-types/{type}",
       "name": "internal.business-types.update",
-      "source": "routes/web.php:245",
+      "source": "routes/web.php:238",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':business.manage', EnsureFreshAuthentication::class]"
@@ -22322,7 +22673,7 @@
       "method": "POST",
       "uri": "/internal/business-types/{type}/guidance",
       "name": "internal.business-types.guidance",
-      "source": "routes/web.php:246",
+      "source": "routes/web.php:239",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':business.manage', EnsureFreshAuthentication::class]"
@@ -22379,7 +22730,7 @@
       "method": "POST",
       "uri": "/internal/business-types/{type}/prior",
       "name": "internal.business-types.prior",
-      "source": "routes/web.php:247",
+      "source": "routes/web.php:240",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':business.manage', EnsureFreshAuthentication::class]"
@@ -22436,7 +22787,7 @@
       "method": "POST",
       "uri": "/internal/logout",
       "name": "internal.logout",
-      "source": "routes/web.php:249",
+      "source": "routes/web.php:242",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]"
       ],
@@ -22485,7 +22836,7 @@
       "method": "GET",
       "uri": "/internal/security/devices",
       "name": "internal.security.devices",
-      "source": "routes/web.php:251",
+      "source": "routes/web.php:244",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]"
       ],
@@ -22537,7 +22888,7 @@
       "method": "DELETE",
       "uri": "/internal/security/sessions/{session}",
       "name": "internal.security.sessions.destroy",
-      "source": "routes/web.php:253",
+      "source": "routes/web.php:246",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -22590,7 +22941,7 @@
       "method": "POST",
       "uri": "/internal/security/sessions/revoke-others",
       "name": "internal.security.sessions.revoke-others",
-      "source": "routes/web.php:255",
+      "source": "routes/web.php:248",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -22643,7 +22994,7 @@
       "method": "POST",
       "uri": "/internal/security/sessions/sign-out-this-device",
       "name": "internal.security.sessions.sign-out-current",
-      "source": "routes/web.php:257",
+      "source": "routes/web.php:250",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]"
       ],
@@ -22693,7 +23044,7 @@
       "method": "GET",
       "uri": "/internal/security/passkeys/options",
       "name": "internal.security.passkeys.options",
-      "source": "routes/web.php:259",
+      "source": "routes/web.php:252",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -22745,7 +23096,7 @@
       "method": "POST",
       "uri": "/internal/security/passkeys",
       "name": "internal.security.passkeys.store",
-      "source": "routes/web.php:261",
+      "source": "routes/web.php:254",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -22797,7 +23148,7 @@
       "method": "DELETE",
       "uri": "/internal/security/passkeys/{passkey}",
       "name": "internal.security.passkeys.destroy",
-      "source": "routes/web.php:263",
+      "source": "routes/web.php:256",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -22849,7 +23200,7 @@
       "method": "GET",
       "uri": "/internal/administration",
       "name": "internal.administration",
-      "source": "routes/web.php:266",
+      "source": "routes/web.php:259",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "RequireActionGrant::class.':staff.view'"
@@ -22910,7 +23261,7 @@
       "method": "GET",
       "uri": "/internal/administration/customers",
       "name": "internal.customers.index",
-      "source": "routes/web.php:268",
+      "source": "routes/web.php:261",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]"
       ],
@@ -22962,7 +23313,7 @@
       "method": "POST",
       "uri": "/internal/administration/customers/status",
       "name": "internal.customers.status",
-      "source": "routes/web.php:269",
+      "source": "routes/web.php:262",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -23015,7 +23366,7 @@
       "method": "GET",
       "uri": "/internal/administration/commercial-markets",
       "name": "internal.commercial-market-preparation.index",
-      "source": "routes/web.php:271",
+      "source": "routes/web.php:264",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]"
       ],
@@ -23068,7 +23419,7 @@
       "method": "POST",
       "uri": "/internal/administration/commercial-markets",
       "name": "internal.commercial-market-preparation.store",
-      "source": "routes/web.php:274",
+      "source": "routes/web.php:267",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -23122,7 +23473,7 @@
       "method": "POST",
       "uri": "/internal/administration/commercial-markets/delegate",
       "name": "internal.commercial-market-preparation.delegate",
-      "source": "routes/web.php:275",
+      "source": "routes/web.php:268",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -23176,7 +23527,7 @@
       "method": "POST",
       "uri": "/internal/administration/commercial-markets/new-intent",
       "name": "internal.commercial-market-preparation.new-intent",
-      "source": "routes/web.php:276",
+      "source": "routes/web.php:269",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -23230,7 +23581,7 @@
       "method": "POST",
       "uri": "/internal/administration/commercial-markets/{approval}/operator",
       "name": "internal.commercial-market-preparation.operator",
-      "source": "routes/web.php:277",
+      "source": "routes/web.php:270",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "EnsureFreshAuthentication::class"
@@ -23284,7 +23635,7 @@
       "method": "POST",
       "uri": "/internal/staff",
       "name": "internal.staff.invite",
-      "source": "routes/web.php:279",
+      "source": "routes/web.php:272",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':staff.invite', EnsureFreshAuthentication::class])\n        ->name('internal.staff.invite'"
@@ -23345,7 +23696,7 @@
       "method": "POST",
       "uri": "/internal/staff/{staff}/resend-invitation",
       "name": "internal.staff.resend-invitation",
-      "source": "routes/web.php:282",
+      "source": "routes/web.php:275",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':staff.invite', EnsureFreshAuthentication::class, 'throttle:3,1'])\n        ->whereUuid('staff'"
@@ -23408,7 +23759,7 @@
       "method": "POST",
       "uri": "/internal/staff/{staff}/attest",
       "name": "internal.staff.attest",
-      "source": "routes/web.php:285",
+      "source": "routes/web.php:278",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':staff.attest', EnsureFreshAuthentication::class])\n        ->whereUuid('staff'"
@@ -23469,7 +23820,7 @@
       "method": "POST",
       "uri": "/internal/staff/{staff}/activate",
       "name": "internal.staff.activate",
-      "source": "routes/web.php:288",
+      "source": "routes/web.php:281",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':staff.activate', EnsureFreshAuthentication::class])\n        ->whereUuid('staff'"
@@ -23530,7 +23881,7 @@
       "method": "POST",
       "uri": "/internal/staff/{staff}/revoke",
       "name": "internal.staff.revoke",
-      "source": "routes/web.php:291",
+      "source": "routes/web.php:284",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':staff.revoke', EnsureFreshAuthentication::class])\n        ->whereUuid('staff'"
@@ -23591,7 +23942,7 @@
       "method": "POST",
       "uri": "/internal/staff/{staff}/attest-factors",
       "name": "internal.staff.attest-factors",
-      "source": "routes/web.php:294",
+      "source": "routes/web.php:287",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':grant.manage', EnsureFreshAuthentication::class])\n        ->whereUuid('staff'"
@@ -23652,7 +24003,7 @@
       "method": "POST",
       "uri": "/internal/grants",
       "name": "internal.grants.store",
-      "source": "routes/web.php:297",
+      "source": "routes/web.php:290",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':grant.manage', EnsureFreshAuthentication::class])\n        ->name('internal.grants.store'"
@@ -23713,7 +24064,7 @@
       "method": "DELETE",
       "uri": "/internal/grants/{grant}",
       "name": "internal.grants.destroy",
-      "source": "routes/web.php:300",
+      "source": "routes/web.php:293",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':grant.manage', EnsureFreshAuthentication::class])\n        ->whereNumber('grant'"
@@ -23774,7 +24125,7 @@
       "method": "GET",
       "uri": "/internal/services",
       "name": "internal.services.index",
-      "source": "routes/web.php:303",
+      "source": "routes/web.php:296",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "RequireActionGrant::class.':service.manage'"
@@ -23829,7 +24180,7 @@
       "method": "POST",
       "uri": "/internal/services",
       "name": "internal.services.create",
-      "source": "routes/web.php:305",
+      "source": "routes/web.php:298",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':service.manage', EnsureFreshAuthentication::class])\n        ->name('internal.services.create'"
@@ -23884,7 +24235,7 @@
       "method": "POST",
       "uri": "/internal/services/{service}/rotate",
       "name": "internal.services.rotate",
-      "source": "routes/web.php:308",
+      "source": "routes/web.php:301",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':service.manage', EnsureFreshAuthentication::class])\n        ->whereUuid('service'"
@@ -23939,7 +24290,7 @@
       "method": "POST",
       "uri": "/internal/services/{service}/revoke",
       "name": "internal.services.revoke",
-      "source": "routes/web.php:311",
+      "source": "routes/web.php:304",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':service.manage', EnsureFreshAuthentication::class])\n        ->whereUuid('service'"
@@ -23994,7 +24345,7 @@
       "method": "POST",
       "uri": "/internal/service-grants",
       "name": "internal.service-grants.create",
-      "source": "routes/web.php:314",
+      "source": "routes/web.php:307",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':service.manage', EnsureFreshAuthentication::class])\n        ->name('internal.service-grants.create'"
@@ -24049,7 +24400,7 @@
       "method": "DELETE",
       "uri": "/internal/service-grants/{grant}",
       "name": "internal.service-grants.destroy",
-      "source": "routes/web.php:317",
+      "source": "routes/web.php:310",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class]",
         "[RequireActionGrant::class.':service.manage', EnsureFreshAuthentication::class])\n        ->whereNumber('grant'"
@@ -24104,7 +24455,7 @@
       "method": "GET",
       "uri": "/",
       "name": "index",
-      "source": "routes/web.php:323",
+      "source": "routes/web.php:316",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.'"
       ],
@@ -24134,7 +24485,7 @@
             "middleware": [
               "web"
             ],
-            "path": "routes/web.php:50"
+            "path": "routes/web.php:48"
           }
         ],
         "goalsEnabled": [
@@ -24147,7 +24498,7 @@
             "middleware": [
               "web"
             ],
-            "path": "routes/web.php:50"
+            "path": "routes/web.php:48"
           }
         ]
       }
@@ -24156,7 +24507,7 @@
       "method": "GET",
       "uri": "/workspace-reference",
       "name": "workspace",
-      "source": "routes/web.php:324",
+      "source": "routes/web.php:317",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.'"
       ],
@@ -24182,7 +24533,7 @@
       "method": "GET",
       "uri": "/receipts/{command}",
       "name": "receipt",
-      "source": "routes/web.php:325",
+      "source": "routes/web.php:318",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.'"
       ],
@@ -24208,7 +24559,7 @@
       "method": "GET",
       "uri": "/contexts/{scope}",
       "name": "context",
-      "source": "routes/web.php:326",
+      "source": "routes/web.php:319",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.'"
       ],
@@ -24234,7 +24585,7 @@
       "method": "POST",
       "uri": "/markets",
       "name": "market",
-      "source": "routes/web.php:328",
+      "source": "routes/web.php:321",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.'",
         "EnsureFreshAuthentication::class"
@@ -24261,7 +24612,7 @@
       "method": "POST",
       "uri": "/catalog-references",
       "name": "catalog",
-      "source": "routes/web.php:329",
+      "source": "routes/web.php:322",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.'",
         "EnsureFreshAuthentication::class"
@@ -24288,7 +24639,7 @@
       "method": "POST",
       "uri": "/configurations",
       "name": "configuration",
-      "source": "routes/web.php:330",
+      "source": "routes/web.php:323",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.'",
         "EnsureFreshAuthentication::class"
@@ -24315,7 +24666,7 @@
       "method": "POST",
       "uri": "/assignability",
       "name": "assignability",
-      "source": "routes/web.php:331",
+      "source": "routes/web.php:324",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.'",
         "EnsureFreshAuthentication::class"
@@ -24342,7 +24693,7 @@
       "method": "POST",
       "uri": "/registrations",
       "name": "register",
-      "source": "routes/web.php:332",
+      "source": "routes/web.php:325",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.'",
         "EnsureFreshAuthentication::class"
@@ -24369,7 +24720,7 @@
       "method": "POST",
       "uri": "/audit/{obligation}/recover",
       "name": "recover",
-      "source": "routes/web.php:333",
+      "source": "routes/web.php:326",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.'",
         "EnsureFreshAuthentication::class"
@@ -24396,7 +24747,7 @@
       "method": "POST",
       "uri": "/grants",
       "name": "grant",
-      "source": "routes/web.php:334",
+      "source": "routes/web.php:327",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.'",
         "EnsureFreshAuthentication::class"
@@ -24423,7 +24774,7 @@
       "method": "DELETE",
       "uri": "/grants/{grant}",
       "name": "revoke-grant",
-      "source": "routes/web.php:335",
+      "source": "routes/web.php:328",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.'",
         "EnsureFreshAuthentication::class"
@@ -24450,7 +24801,7 @@
       "method": "POST",
       "uri": "/owner-mandate",
       "name": "mandate",
-      "source": "routes/web.php:336",
+      "source": "routes/web.php:329",
       "authorization": [
         "['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.'",
         "EnsureFreshAuthentication::class"
@@ -24477,7 +24828,7 @@
       "method": "GET",
       "uri": "/identity/switch",
       "name": null,
-      "source": "routes/web.php:349",
+      "source": "routes/web.php:342",
       "authorization": [
         "'auth'"
       ],
@@ -24485,10 +24836,8 @@
       "businessOwners": [
         "App\\Security\\IdentityAuthentication"
       ],
-      "pages": [
-        "Auth/Login"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -24526,7 +24875,7 @@
       "method": "POST",
       "uri": "/identity/switch",
       "name": null,
-      "source": "routes/web.php:350",
+      "source": "routes/web.php:343",
       "authorization": [
         "'auth'"
       ],
@@ -24573,7 +24922,7 @@
       "method": "GET",
       "uri": "/identity/passkey/options",
       "name": null,
-      "source": "routes/web.php:351",
+      "source": "routes/web.php:344",
       "authorization": [
         "'auth'"
       ],
@@ -24624,7 +24973,7 @@
       "method": "POST",
       "uri": "/identity/passkey",
       "name": null,
-      "source": "routes/web.php:352",
+      "source": "routes/web.php:345",
       "authorization": [
         "'auth'"
       ],
@@ -24675,7 +25024,7 @@
       "method": "GET",
       "uri": "/internal/identity/switch",
       "name": null,
-      "source": "routes/web.php:355",
+      "source": "routes/web.php:348",
       "authorization": [
         "'auth:internal'"
       ],
@@ -24724,7 +25073,7 @@
       "method": "GET",
       "uri": "/internal/identity/passkey/options",
       "name": null,
-      "source": "routes/web.php:356",
+      "source": "routes/web.php:349",
       "authorization": [
         "'auth:internal'"
       ],
@@ -24775,7 +25124,7 @@
       "method": "POST",
       "uri": "/internal/identity/passkey",
       "name": null,
-      "source": "routes/web.php:357",
+      "source": "routes/web.php:350",
       "authorization": [
         "'auth:internal'"
       ],
@@ -24834,7 +25183,7 @@
         "middleware": [
           "web"
         ],
-        "path": "routes/web.php:50"
+        "path": "routes/web.php:48"
       },
       {
         "domain": null,
@@ -27114,7 +27463,7 @@
         "middleware": [
           "web"
         ],
-        "path": "routes/web.php:50"
+        "path": "routes/web.php:48"
       },
       {
         "domain": null,
@@ -29469,6 +29818,30 @@
       "resources/js/spa/destination.ts",
       "resources/js/navigationSettlement.ts"
     ],
+    "resources/js/auth-entry/AuthEntryView.vue": [
+      "vue",
+      "vue-router",
+      "@simplewebauthn/browser",
+      "resources/js/security/passkeyCeremony.ts",
+      "resources/js/spa/locale.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/spa/api.ts",
+      "resources/js/spa/nativeForm.ts",
+      "resources/js/auth-entry/state.ts"
+    ],
+    "resources/js/auth-entry/routes.ts": [
+      "vue-router",
+      "resources/js/auth-entry/state.ts",
+      "resources/js/auth-entry/AuthEntryView.vue"
+    ],
+    "resources/js/auth-entry/state.ts": [
+      "vue",
+      "vue-router",
+      "resources/js/api/generated/application",
+      "resources/js/spa/api.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/spa/query.ts"
+    ],
     "resources/js/bootstrap.ts": [
       "axios"
     ],
@@ -29772,65 +30145,6 @@
       "resources/js/spa/transport.ts",
       "resources/js/object-purpose/api.ts"
     ],
-    "resources/js/Pages/Auth/ConfirmPassword.vue": [
-      "resources/js/Layouts/GuestLayout.vue",
-      "resources/js/Components/InputError.vue",
-      "resources/js/Components/InputLabel.vue",
-      "resources/js/Components/PrimaryButton.vue",
-      "resources/js/Components/TextInput.vue",
-      "@inertiajs/vue3"
-    ],
-    "resources/js/Pages/Auth/ForgotPassword.vue": [
-      "resources/js/Layouts/GuestLayout.vue",
-      "resources/js/Components/InputError.vue",
-      "resources/js/Components/InputLabel.vue",
-      "resources/js/Components/PrimaryButton.vue",
-      "resources/js/Components/TextInput.vue",
-      "@inertiajs/vue3"
-    ],
-    "resources/js/Pages/Auth/Login.vue": [
-      "vue",
-      "@laravel/passkeys",
-      "@inertiajs/vue3",
-      "vue-i18n",
-      "resources/js/security/passkeyCeremony.ts",
-      "resources/js/localization/passkeyError.ts",
-      "resources/js/Components/Checkbox.vue",
-      "resources/js/Layouts/GuestLayout.vue",
-      "resources/js/Components/InputError.vue",
-      "resources/js/Components/InputLabel.vue",
-      "resources/js/Components/LanguageSwitcher.vue",
-      "resources/js/Components/PrimaryButton.vue",
-      "resources/js/Components/TextInput.vue",
-      "resources/js/identityProtocol.ts"
-    ],
-    "resources/js/Pages/Auth/Register.vue": [
-      "resources/js/Layouts/GuestLayout.vue",
-      "resources/js/Components/InputError.vue",
-      "resources/js/Components/InputLabel.vue",
-      "resources/js/Components/PrimaryButton.vue",
-      "resources/js/Components/TextInput.vue",
-      "@inertiajs/vue3",
-      "vue",
-      "resources/js/security/generatePassword.ts",
-      "resources/js/identityProtocol.ts"
-    ],
-    "resources/js/Pages/Auth/ResetPassword.vue": [
-      "resources/js/Layouts/GuestLayout.vue",
-      "resources/js/Components/InputError.vue",
-      "resources/js/Components/InputLabel.vue",
-      "resources/js/Components/PrimaryButton.vue",
-      "resources/js/Components/TextInput.vue",
-      "@inertiajs/vue3",
-      "vue"
-    ],
-    "resources/js/Pages/Auth/VerifyEmail.vue": [
-      "vue",
-      "resources/js/logout.ts",
-      "resources/js/Layouts/GuestLayout.vue",
-      "resources/js/Components/PrimaryButton.vue",
-      "@inertiajs/vue3"
-    ],
     "resources/js/Pages/Business/Index.vue": [
       "@inertiajs/vue3",
       "vue",
@@ -29913,9 +30227,6 @@
       "resources/js/Layouts/AuthenticatedLayout.vue",
       "resources/js/Layouts/InternalLayout.vue",
       "resources/js/Pages/Profile/Partials/UpdatePasswordForm.vue"
-    ],
-    "resources/js/Pages/Welcome.vue": [
-      "@inertiajs/vue3"
     ],
     "resources/js/Pages/Workspaces/Index.vue": [
       "@inertiajs/vue3",
@@ -30097,7 +30408,11 @@
       "resources/js/object-purpose/routes.ts",
       "resources/js/sources/routes.ts",
       "resources/js/account/routes.ts",
+      "resources/js/auth-entry/routes.ts",
       "resources/js/spa/locale.ts"
+    ],
+    "resources/js/spa/nativeForm.ts": [
+      "resources/js/spa/transport.ts"
     ],
     "resources/js/spa/presentation.ts": [
       "vue"
@@ -30171,23 +30486,23 @@
     "tests/client-visibility.test.mjs": 32,
     "tests/commercial-operator.test.mjs": 3,
     "tests/current-intent-interaction.test.mjs": 9,
-    "tests/Feature/Auth/RegistrationTest.php": 3,
     "tests/Feature/Commercial/CommercialMarketPreparationTest.php": 7,
     "tests/Feature/Commercial/CommercialScopeTest.php": 5,
     "tests/Feature/Foundation/BaselineContractTest.php": 5,
     "tests/Feature/GoalsSpaIntegrationTest.php": 1,
     "tests/Feature/GoalsSpaProofTest.php": 1,
-    "tests/Feature/Localization/LocaleTest.php": 8,
+    "tests/Feature/Localization/LocaleTest.php": 5,
     "tests/Feature/Security/ClientVisibilityTest.php": 5,
     "tests/Feature/Security/CustomerAdministrationTest.php": 5,
     "tests/Feature/Security/IdentityRenewalTest.php": 1,
-    "tests/Feature/Security/InertiaHistorySecurityTest.php": 1,
+    "tests/Feature/Security/InertiaHistorySecurityTest.php": 3,
     "tests/Feature/Security/InternalAuthorityTest.php": 8,
     "tests/Feature/Security/ProductionIdentityTest.php": 2,
     "tests/Feature/Security/ProductionPasskeyTest.php": 1,
     "tests/goals-api-client.test.mjs": 1,
     "tests/identity-protocol.test.mjs": 4,
     "tests/inertia-n1-artifact.test.mjs": 5,
+    "tests/inertia-n1-initial-visit.test.mjs": 2,
     "tests/inertia-n1.test.mjs": 10,
     "tests/inertia-retirement.test.mjs": 7,
     "tests/object-purpose-interaction.test.mjs": 5,
@@ -30195,6 +30510,7 @@
     "tests/spa-goals-interaction.test.mjs": 3,
     "tests/Support/account-spa-browser.mjs": 2,
     "tests/Support/advertiser-goals-server.php": 1,
+    "tests/Support/auth-entry-browser.mjs": 2,
     "tests/Support/client-visibility-browser.mjs": 16,
     "tests/Support/current-intent-browser.mjs": 3,
     "tests/Support/declared-target-markets-browser.mjs": 5,
@@ -30234,7 +30550,7 @@
   },
   "summary": {
     "registeredRoutes": 173,
-    "legacyRenderRoutes": 18,
+    "legacyRenderRoutes": 10,
     "locallyAcceptedJourneys": [
       "workspace-selection",
       "business-creation",
@@ -30243,7 +30559,8 @@
       "object-purpose",
       "source-management",
       "advertiser-profile",
-      "advertiser-security-devices"
+      "advertiser-security-devices",
+      "advertiser-auth-entry"
     ]
   },
   "unresolved": [
