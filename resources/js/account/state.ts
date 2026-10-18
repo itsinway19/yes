@@ -5,11 +5,11 @@ import { query } from '../spa/query';
 import { onClose, owned, resumeLease, scope, stamp, status } from '../spa/transport';
 import { readDevices, readProfile } from './api';
 export const profile = shallowRef<components['schemas']['AccountProfileResource']>();
-export const devices = shallowRef<components['schemas']['AccountDevicesResource']>();
+export const devices = shallowRef<components['schemas']['AccountDevicesResource'] | components['schemas']['InternalDevicesResource']>();
 export const outcomes = reactive({ profile: '', password: '', devices: '' });
 let serial = 0;
 export function clear() { serial++; profile.value = undefined; devices.value = undefined; void query.cancelQueries(); }
-export async function read(path: '/profile' | '/security/devices', passive = false) {
+export async function read(path: '/profile' | '/security/devices' | '/internal/security/devices', passive = false) {
     const captured = stamp(), attempt = ++serial;
     const queryKey = [scope, 'account', path];
     try {
@@ -22,11 +22,11 @@ export async function read(path: '/profile' | '/security/devices', passive = fal
         if (!('data' in value) || !value.visibility.protected || value.visibility.path !== path
             || JSON.stringify(value.visibility) !== JSON.stringify(witness.visibility)) throw Error('Unowned account presentation');
         if (path === '/profile') profile.value = value as components['schemas']['AccountProfileResource'];
-        else devices.value = value as components['schemas']['AccountDevicesResource'];
+        else devices.value = value as components['schemas']['AccountDevicesResource'] | components['schemas']['InternalDevicesResource'];
         status.value = 'ready'; resumeLease(); return value;
     } catch {
         if (owned(captured) && attempt === serial && status.value !== 'closed') status.value = 'unavailable';
     }
 }
-export const load = (route: RouteLocationNormalized, passive: boolean) => read(route.path as '/profile' | '/security/devices', passive);
+export const load = (route: RouteLocationNormalized, passive: boolean) => read(route.path as '/profile' | '/security/devices' | '/internal/security/devices', passive);
 onClose(() => { clear(); query.clear(); outcomes.profile = ''; outcomes.password = ''; outcomes.devices = ''; });

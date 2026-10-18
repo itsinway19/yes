@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { bootstrap } from './transport';
+import { bootstrap, internalBoundary } from './transport';
 import { api } from './api';
 import { applyDocumentLocale } from '../localization/documentLocale';
 
@@ -9,7 +9,7 @@ export async function switchLocale() {
     if (localeBusy.value) return;
     localeBusy.value = true;
     try {
-        const result = await api.POST('/locale', { body: { locale: locale.value === 'ar' ? 'en' : 'ar' } });
+        const result = await api.POST(internalBoundary ? '/internal/locale' : '/locale', { body: { locale: locale.value === 'ar' ? 'en' : 'ar' } });
         if (!result.data) throw Error('Missing locale acknowledgement');
         locale.value = result.data.locale;
         applyDocumentLocale(locale.value, document.documentElement);

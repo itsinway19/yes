@@ -24,7 +24,8 @@ final class SpaPage implements Responsable
         return response()->view('spa', [
             'identity' => $identity, 'locale' => $locale,
             'bootstrap' => ['identity' => $identity, 'locale' => $locale, 'application' => true,
-                'documentState' => $request->user() ? 'authenticated' : 'guest'],
+                'documentState' => $identity['binding']['principal'] > 0 ? 'authenticated' : 'guest',
+                'staffEnrollment' => $request->is('staff/onboarding')],
         ])->header('Cache-Control', 'no-store')->header('X-Builderad-Document-Location', $request->getRequestUri());
     }
 

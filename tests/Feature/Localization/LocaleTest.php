@@ -4,7 +4,6 @@ namespace Tests\Feature\Localization;
 
 use App\Http\Middleware\ResolveLocale;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
-use Inertia\Inertia;
 use Tests\TestCase;
 
 class LocaleTest extends TestCase
@@ -28,8 +27,8 @@ class LocaleTest extends TestCase
         $this->get('/login')->assertOk()->assertSee('lang="en" dir="ltr"', false);
         $this->useIdentityDocument('/internal/login');
         $this->get('/internal/login')->assertOk()->assertSee('lang="en" dir="ltr"', false);
-        $this->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => Inertia::getVersion()])->get('/internal/login')
-            ->assertOk()->assertJsonPath('component', 'Internal/Login')->assertJsonPath('props.locale', 'en');
+        $this->getJson('/internal/login')
+            ->assertOk()->assertJsonPath('data.kind', 'login')->assertJsonPath('locale', 'en');
         $this->flushHeaders();
         $this->useIdentityDocument('/internal/login');
 

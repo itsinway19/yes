@@ -1401,6 +1401,8 @@
       "migration": null,
       "testLeads": [
         "tests/commercial-operator.test.mjs",
+        "tests/Feature/Security/ClientVisibilityTest.php",
+        "tests/Feature/Security/InertiaHistorySecurityTest.php",
         "tests/Feature/Security/InternalAuthorityTest.php",
         "tests/TestCase.php"
       ]
@@ -3324,7 +3326,10 @@
         ]
       },
       "migration": null,
-      "testLeads": []
+      "testLeads": [
+        "tests/auth-entry-spa.test.mjs",
+        "tests/Support/internal-identity-browser.mjs"
+      ]
     },
     {
       "method": "GET|HEAD",
@@ -3465,6 +3470,7 @@
       },
       "migration": null,
       "testLeads": [
+        "tests/auth-entry-spa.test.mjs",
         "tests/Feature/Security/IdentityRenewalTest.php"
       ]
     },
@@ -3481,12 +3487,10 @@
       "businessOwners": [
         "App\\Security\\IdentityAuthentication"
       ],
-      "pages": [
-        "Internal/Login"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
+      "spaBoundary": "Existing unified Vue SPA/router/generated client and shared boundary-bound transport; staff_enrollment remains on web and internal authentication requires a separate server-owned document transition. Restoration loaders forward the existing passive-read intent without touching authority deadlines",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -3517,9 +3521,52 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-identity-staff-enrollment",
+        "journey": "Internal passkey-only login and identity switch, internal session/passkey management, and pending employee/founder enrollment without authority promotion",
+        "routes": [
+          "GET /internal/login",
+          "GET /internal/identity/switch",
+          "GET /internal/security/devices",
+          "GET /staff/onboarding"
+        ],
+        "spaBoundary": "Existing unified Vue SPA/router/generated client and shared boundary-bound transport; staff_enrollment remains on web and internal authentication requires a separate server-owned document transition. Restoration loaders forward the existing passive-read intent without touching authority deadlines",
+        "businessOwners": [
+          "App\\Security\\IdentityAuthentication",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\AuthorityVerifyPasskey",
+          "App\\Http\\Controllers\\Auth\\InternalAuthenticatedSessionController",
+          "App\\Http\\Controllers\\SecurityDevicesController",
+          "App\\Http\\Controllers\\PasskeyManagementController",
+          "App\\Http\\Controllers\\StaffOnboardingController"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalIdentitySpaTest",
+          "InternalAuthorityTest",
+          "ProductionIdentityTest",
+          "ProductionPasskeyTest",
+          "IdentityRenewalTest",
+          "PasskeyAssertionTest",
+          "PasskeyBoundaryTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "LocaleTest",
+          "tests/auth-entry-spa.test.mjs",
+          "tests/account-spa.test.mjs",
+          "tests/Support/internal-identity-browser.mjs",
+          "tests/Support/account-spa-browser.mjs",
+          "tests/Support/auth-entry-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four actual display routes now return SpaPage/AuthEntryPage instead of Inertia. The three unconsumed Internal/Login, Internal/Onboarding and Security/Devices components are removed. Isolated Laravel/Chromium internal journeys prove real signed UV login, A-to-B-to-A replacement with old reads suppressed, cancellation, pending employee/founder enrollment, signed verification, employee activation through existing HTTP owners, protected factor minima, freshness, uncertain writes without replay, selected-session revocation, CSRF fallback rejection, expiry and terminal logout. Shared advertiser Account/Auth regressions remain protected. Remaining Administration owns the tested N1 visibility/history behavior. Internal JSON device commands acknowledge the original writers; native commands retain redirects. No authority, guard, RLS, security timeout or N1 semantic change. Virtual factors and synthetic operator attestation are not physical independence acceptance. Final Foundation/CI, native BFCache, devices, B/C and release remain separate."
+      },
       "testLeads": [
-        "tests/Feature/Localization/LocaleTest.php"
+        "tests/auth-entry-spa.test.mjs",
+        "tests/Feature/InternalIdentitySpaTest.php",
+        "tests/Support/internal-identity-browser.mjs"
       ]
     },
     {
@@ -3625,12 +3672,10 @@
       "businessOwners": [
         "App\\Security\\IdentityAuthentication"
       ],
-      "pages": [
-        "Internal/Login"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
+      "spaBoundary": "Existing unified Vue SPA/router/generated client and shared boundary-bound transport; staff_enrollment remains on web and internal authentication requires a separate server-owned document transition. Restoration loaders forward the existing passive-read intent without touching authority deadlines",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -3661,15 +3706,59 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-identity-staff-enrollment",
+        "journey": "Internal passkey-only login and identity switch, internal session/passkey management, and pending employee/founder enrollment without authority promotion",
+        "routes": [
+          "GET /internal/login",
+          "GET /internal/identity/switch",
+          "GET /internal/security/devices",
+          "GET /staff/onboarding"
+        ],
+        "spaBoundary": "Existing unified Vue SPA/router/generated client and shared boundary-bound transport; staff_enrollment remains on web and internal authentication requires a separate server-owned document transition. Restoration loaders forward the existing passive-read intent without touching authority deadlines",
+        "businessOwners": [
+          "App\\Security\\IdentityAuthentication",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\AuthorityVerifyPasskey",
+          "App\\Http\\Controllers\\Auth\\InternalAuthenticatedSessionController",
+          "App\\Http\\Controllers\\SecurityDevicesController",
+          "App\\Http\\Controllers\\PasskeyManagementController",
+          "App\\Http\\Controllers\\StaffOnboardingController"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalIdentitySpaTest",
+          "InternalAuthorityTest",
+          "ProductionIdentityTest",
+          "ProductionPasskeyTest",
+          "IdentityRenewalTest",
+          "PasskeyAssertionTest",
+          "PasskeyBoundaryTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "LocaleTest",
+          "tests/auth-entry-spa.test.mjs",
+          "tests/account-spa.test.mjs",
+          "tests/Support/internal-identity-browser.mjs",
+          "tests/Support/account-spa-browser.mjs",
+          "tests/Support/auth-entry-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four actual display routes now return SpaPage/AuthEntryPage instead of Inertia. The three unconsumed Internal/Login, Internal/Onboarding and Security/Devices components are removed. Isolated Laravel/Chromium internal journeys prove real signed UV login, A-to-B-to-A replacement with old reads suppressed, cancellation, pending employee/founder enrollment, signed verification, employee activation through existing HTTP owners, protected factor minima, freshness, uncertain writes without replay, selected-session revocation, CSRF fallback rejection, expiry and terminal logout. Shared advertiser Account/Auth regressions remain protected. Remaining Administration owns the tested N1 visibility/history behavior. Internal JSON device commands acknowledge the original writers; native commands retain redirects. No authority, guard, RLS, security timeout or N1 semantic change. Virtual factors and synthetic operator attestation are not physical independence acceptance. Final Foundation/CI, native BFCache, devices, B/C and release remain separate."
+      },
       "testLeads": [
+        "tests/auth-entry-spa.test.mjs",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
+        "tests/Feature/InternalIdentitySpaTest.php",
         "tests/Feature/Localization/LocaleTest.php",
         "tests/Feature/Security/InertiaHistorySecurityTest.php",
         "tests/Feature/Security/InternalAuthorityTest.php",
         "tests/Feature/Security/PasskeyAssertionTest.php",
         "tests/Feature/Security/ProductionPasskeyTest.php",
         "tests/identity-protocol.test.mjs",
+        "tests/Support/internal-identity-browser.mjs",
         "tests/Support/logout-cookie-browser.mjs"
       ]
     },
@@ -3725,6 +3814,7 @@
       },
       "migration": null,
       "testLeads": [
+        "tests/auth-entry-spa.test.mjs",
         "tests/commercial-operator.test.mjs",
         "tests/Feature/Auth/LogoutResponseCookieTest.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -3746,12 +3836,10 @@
         "App\\Security\\IdentityAuthentication",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Security/Devices"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
+      "spaBoundary": "Existing unified Vue SPA/router/generated client and shared boundary-bound transport; staff_enrollment remains on web and internal authentication requires a separate server-owned document transition. Restoration loaders forward the existing passive-read intent without touching authority deadlines",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -3784,15 +3872,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-identity-staff-enrollment",
+        "journey": "Internal passkey-only login and identity switch, internal session/passkey management, and pending employee/founder enrollment without authority promotion",
+        "routes": [
+          "GET /internal/login",
+          "GET /internal/identity/switch",
+          "GET /internal/security/devices",
+          "GET /staff/onboarding"
+        ],
+        "spaBoundary": "Existing unified Vue SPA/router/generated client and shared boundary-bound transport; staff_enrollment remains on web and internal authentication requires a separate server-owned document transition. Restoration loaders forward the existing passive-read intent without touching authority deadlines",
+        "businessOwners": [
+          "App\\Security\\IdentityAuthentication",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\AuthorityVerifyPasskey",
+          "App\\Http\\Controllers\\Auth\\InternalAuthenticatedSessionController",
+          "App\\Http\\Controllers\\SecurityDevicesController",
+          "App\\Http\\Controllers\\PasskeyManagementController",
+          "App\\Http\\Controllers\\StaffOnboardingController"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalIdentitySpaTest",
+          "InternalAuthorityTest",
+          "ProductionIdentityTest",
+          "ProductionPasskeyTest",
+          "IdentityRenewalTest",
+          "PasskeyAssertionTest",
+          "PasskeyBoundaryTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "LocaleTest",
+          "tests/auth-entry-spa.test.mjs",
+          "tests/account-spa.test.mjs",
+          "tests/Support/internal-identity-browser.mjs",
+          "tests/Support/account-spa-browser.mjs",
+          "tests/Support/auth-entry-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four actual display routes now return SpaPage/AuthEntryPage instead of Inertia. The three unconsumed Internal/Login, Internal/Onboarding and Security/Devices components are removed. Isolated Laravel/Chromium internal journeys prove real signed UV login, A-to-B-to-A replacement with old reads suppressed, cancellation, pending employee/founder enrollment, signed verification, employee activation through existing HTTP owners, protected factor minima, freshness, uncertain writes without replay, selected-session revocation, CSRF fallback rejection, expiry and terminal logout. Shared advertiser Account/Auth regressions remain protected. Remaining Administration owns the tested N1 visibility/history behavior. Internal JSON device commands acknowledge the original writers; native commands retain redirects. No authority, guard, RLS, security timeout or N1 semantic change. Virtual factors and synthetic operator attestation are not physical independence acceptance. Final Foundation/CI, native BFCache, devices, B/C and release remain separate."
+      },
       "testLeads": [
         "tests/application-api-client.test.mjs",
-        "tests/Feature/Security/ClientVisibilityTest.php",
+        "tests/auth-entry-spa.test.mjs",
+        "tests/Feature/InternalIdentitySpaTest.php",
         "tests/Feature/Security/InternalAuthorityTest.php",
         "tests/Feature/Security/PasskeyAssertionTest.php",
         "tests/Feature/Security/SecurityDevicesTest.php",
         "tests/Feature/Security/ServiceAuthorityTest.php",
-        "tests/Support/auth-entry-browser.mjs"
+        "tests/Support/internal-identity-browser.mjs"
       ]
     },
     {
@@ -3909,7 +4039,8 @@
       "migration": null,
       "testLeads": [
         "tests/Support/account-spa-browser.mjs",
-        "tests/Support/auth-entry-browser.mjs"
+        "tests/Support/auth-entry-browser.mjs",
+        "tests/Support/internal-identity-browser.mjs"
       ]
     },
     {
@@ -4024,6 +4155,7 @@
       },
       "migration": null,
       "testLeads": [
+        "tests/Feature/InternalIdentitySpaTest.php",
         "tests/Feature/Security/PasskeyBoundaryTest.php",
         "tests/Feature/Security/SecurityDevicesTest.php",
         "tests/Support/account-spa-browser.mjs"
@@ -5086,6 +5218,7 @@
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
         "tests/Feature/CurrentIntentSecurityTest.php",
         "tests/Feature/Foundation/BaselineContractTest.php",
+        "tests/Feature/InternalIdentitySpaTest.php",
         "tests/Feature/Localization/LocaleTest.php",
         "tests/Feature/ProfileTest.php",
         "tests/Feature/Providers/ProviderAccessStoreTest.php",
@@ -5129,6 +5262,7 @@
         "tests/Support/IdentityTransitionWorker.php",
         "tests/Support/inertia-n1-browser.mjs",
         "tests/Support/inertia-official-browser.mjs",
+        "tests/Support/internal-identity-browser.mjs",
         "tests/Support/logout-cookie-browser.mjs",
         "tests/Support/logout-native-boundary-browser.mjs",
         "tests/Support/logout-terminal-browser.mjs",
@@ -5280,6 +5414,7 @@
       },
       "migration": null,
       "testLeads": [
+        "tests/auth-entry-spa.test.mjs",
         "tests/client-visibility.test.mjs",
         "tests/commercial-operator.test.mjs",
         "tests/Feature/Auth/AuthenticationTest.php",
@@ -5300,6 +5435,7 @@
         "tests/Support/goals-spa-browser.mjs",
         "tests/Support/goals-spa-closure.mjs",
         "tests/Support/inertia-official-browser.mjs",
+        "tests/Support/internal-identity-browser.mjs",
         "tests/Support/logout-cookie-browser.mjs",
         "tests/Support/logout-native-boundary-browser.mjs",
         "tests/Support/logout-terminal-browser.mjs",
@@ -6789,7 +6925,8 @@
         "tests/Feature/Security/SecurityDevicesTest.php",
         "tests/Feature/Security/SessionAuthorityTest.php",
         "tests/Support/account-spa-browser.mjs",
-        "tests/Support/auth-entry-browser.mjs"
+        "tests/Support/auth-entry-browser.mjs",
+        "tests/Support/internal-identity-browser.mjs"
       ]
     },
     {
@@ -6883,7 +7020,8 @@
       },
       "testLeads": [
         "tests/account-spa.test.mjs",
-        "tests/Support/account-spa-browser.mjs"
+        "tests/Support/account-spa-browser.mjs",
+        "tests/Support/internal-identity-browser.mjs"
       ]
     },
     {
@@ -7366,12 +7504,10 @@
       ],
       "action": "App\\Http\\Controllers\\StaffOnboardingController",
       "businessOwners": [],
-      "pages": [
-        "Internal/Onboarding"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
+      "spaBoundary": "Existing unified Vue SPA/router/generated client and shared boundary-bound transport; staff_enrollment remains on web and internal authentication requires a separate server-owned document transition. Restoration loaders forward the existing passive-read intent without touching authority deadlines",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -7404,10 +7540,53 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-identity-staff-enrollment",
+        "journey": "Internal passkey-only login and identity switch, internal session/passkey management, and pending employee/founder enrollment without authority promotion",
+        "routes": [
+          "GET /internal/login",
+          "GET /internal/identity/switch",
+          "GET /internal/security/devices",
+          "GET /staff/onboarding"
+        ],
+        "spaBoundary": "Existing unified Vue SPA/router/generated client and shared boundary-bound transport; staff_enrollment remains on web and internal authentication requires a separate server-owned document transition. Restoration loaders forward the existing passive-read intent without touching authority deadlines",
+        "businessOwners": [
+          "App\\Security\\IdentityAuthentication",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\AuthorityVerifyPasskey",
+          "App\\Http\\Controllers\\Auth\\InternalAuthenticatedSessionController",
+          "App\\Http\\Controllers\\SecurityDevicesController",
+          "App\\Http\\Controllers\\PasskeyManagementController",
+          "App\\Http\\Controllers\\StaffOnboardingController"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalIdentitySpaTest",
+          "InternalAuthorityTest",
+          "ProductionIdentityTest",
+          "ProductionPasskeyTest",
+          "IdentityRenewalTest",
+          "PasskeyAssertionTest",
+          "PasskeyBoundaryTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "LocaleTest",
+          "tests/auth-entry-spa.test.mjs",
+          "tests/account-spa.test.mjs",
+          "tests/Support/internal-identity-browser.mjs",
+          "tests/Support/account-spa-browser.mjs",
+          "tests/Support/auth-entry-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four actual display routes now return SpaPage/AuthEntryPage instead of Inertia. The three unconsumed Internal/Login, Internal/Onboarding and Security/Devices components are removed. Isolated Laravel/Chromium internal journeys prove real signed UV login, A-to-B-to-A replacement with old reads suppressed, cancellation, pending employee/founder enrollment, signed verification, employee activation through existing HTTP owners, protected factor minima, freshness, uncertain writes without replay, selected-session revocation, CSRF fallback rejection, expiry and terminal logout. Shared advertiser Account/Auth regressions remain protected. Remaining Administration owns the tested N1 visibility/history behavior. Internal JSON device commands acknowledge the original writers; native commands retain redirects. No authority, guard, RLS, security timeout or N1 semantic change. Virtual factors and synthetic operator attestation are not physical independence acceptance. Final Foundation/CI, native BFCache, devices, B/C and release remain separate."
+      },
       "testLeads": [
+        "tests/auth-entry-spa.test.mjs",
+        "tests/Feature/InternalIdentitySpaTest.php",
         "tests/Feature/Security/InternalAuthorityTest.php",
-        "tests/Support/auth-entry-browser.mjs"
+        "tests/Support/internal-identity-browser.mjs"
       ]
     },
     {
@@ -7461,7 +7640,9 @@
         ]
       },
       "migration": null,
-      "testLeads": []
+      "testLeads": [
+        "tests/Support/internal-identity-browser.mjs"
+      ]
     },
     {
       "method": "GET|HEAD",
@@ -7515,7 +7696,9 @@
       },
       "migration": null,
       "testLeads": [
-        "tests/Feature/Security/InternalAuthorityTest.php"
+        "tests/Feature/InternalIdentitySpaTest.php",
+        "tests/Feature/Security/InternalAuthorityTest.php",
+        "tests/Support/internal-identity-browser.mjs"
       ]
     },
     {
@@ -18292,10 +18475,8 @@
       ],
       "action": "App\\Http\\Controllers\\StaffOnboardingController@__invoke",
       "businessOwners": [],
-      "pages": [
-        "Internal/Onboarding"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -22354,10 +22535,8 @@
       "businessOwners": [
         "App\\Security\\IdentityAuthentication"
       ],
-      "pages": [
-        "Internal/Login"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -22846,10 +23025,8 @@
         "App\\Security\\IdentityAuthentication",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Security/Devices"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -25033,10 +25210,8 @@
       "businessOwners": [
         "App\\Security\\IdentityAuthentication"
       ],
-      "pages": [
-        "Internal/Login"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "HTTP_OR_DELEGATED",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -29776,6 +29951,7 @@
     ],
     "resources/js/account/api.ts": [
       "resources/js/spa/api.ts",
+      "resources/js/spa/transport.ts",
       "resources/js/api/generated/application"
     ],
     "resources/js/account/nativeEmail.ts": [
@@ -30188,24 +30364,6 @@
       "axios",
       "resources/js/Layouts/InternalLayout.vue"
     ],
-    "resources/js/Pages/Internal/Login.vue": [
-      "vue",
-      "@inertiajs/vue3",
-      "@laravel/passkeys",
-      "vue-i18n",
-      "resources/js/Layouts/GuestLayout.vue",
-      "resources/js/Components/LanguageSwitcher.vue",
-      "resources/js/localization/passkeyError.ts",
-      "resources/js/security/passkeyCeremony.ts",
-      "resources/js/identityProtocol.ts"
-    ],
-    "resources/js/Pages/Internal/Onboarding.vue": [
-      "vue",
-      "@inertiajs/vue3",
-      "@laravel/passkeys",
-      "resources/js/security/passkeyCeremony.ts",
-      "resources/js/Layouts/GuestLayout.vue"
-    ],
     "resources/js/Pages/Internal/Services.vue": [
       "vue",
       "@inertiajs/vue3",
@@ -30218,16 +30376,6 @@
       "resources/js/Components/TextInput.vue",
       "@inertiajs/vue3",
       "vue"
-    ],
-    "resources/js/Pages/Security/Devices.vue": [
-      "vue",
-      "resources/js/logout.ts",
-      "@inertiajs/vue3",
-      "@laravel/passkeys",
-      "resources/js/security/passkeyCeremony.ts",
-      "resources/js/Layouts/AuthenticatedLayout.vue",
-      "resources/js/Layouts/InternalLayout.vue",
-      "resources/js/Pages/Profile/Partials/UpdatePasswordForm.vue"
     ],
     "resources/js/Pages/Workspaces/Index.vue": [
       "@inertiajs/vue3",
@@ -30410,6 +30558,7 @@
       "resources/js/sources/routes.ts",
       "resources/js/account/routes.ts",
       "resources/js/auth-entry/routes.ts",
+      "resources/js/staff-enrollment/routes.ts",
       "resources/js/spa/locale.ts"
     ],
     "resources/js/spa/nativeForm.ts": [
@@ -30428,6 +30577,27 @@
       "vue",
       "resources/js/identityProtocol.ts",
       "resources/js/sessionLease.ts"
+    ],
+    "resources/js/staff-enrollment/routes.ts": [
+      "vue-router",
+      "resources/js/staff-enrollment/state.ts",
+      "resources/js/staff-enrollment/StaffEnrollmentView.vue"
+    ],
+    "resources/js/staff-enrollment/StaffEnrollmentView.vue": [
+      "vue",
+      "@simplewebauthn/browser",
+      "resources/js/spa/api.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/spa/locale.ts",
+      "resources/js/security/passkeyCeremony.ts",
+      "resources/js/staff-enrollment/state.ts"
+    ],
+    "resources/js/staff-enrollment/state.ts": [
+      "vue",
+      "vue-router",
+      "resources/js/api/generated/application",
+      "resources/js/spa/api.ts",
+      "resources/js/spa/transport.ts"
     ],
     "resources/js/types/global.d.ts": [
       "@inertiajs/core",
@@ -30492,7 +30662,6 @@
     "tests/Feature/Foundation/BaselineContractTest.php": 5,
     "tests/Feature/GoalsSpaIntegrationTest.php": 1,
     "tests/Feature/GoalsSpaProofTest.php": 1,
-    "tests/Feature/Localization/LocaleTest.php": 5,
     "tests/Feature/Security/ClientVisibilityTest.php": 5,
     "tests/Feature/Security/CustomerAdministrationTest.php": 5,
     "tests/Feature/Security/IdentityRenewalTest.php": 1,
@@ -30509,9 +30678,9 @@
     "tests/object-purpose-interaction.test.mjs": 5,
     "tests/provider-api-client.test.mjs": 1,
     "tests/spa-goals-interaction.test.mjs": 3,
-    "tests/Support/account-spa-browser.mjs": 2,
+    "tests/Support/account-spa-browser.mjs": 1,
     "tests/Support/advertiser-goals-server.php": 1,
-    "tests/Support/auth-entry-browser.mjs": 2,
+    "tests/Support/auth-entry-browser.mjs": 1,
     "tests/Support/client-visibility-browser.mjs": 16,
     "tests/Support/current-intent-browser.mjs": 3,
     "tests/Support/declared-target-markets-browser.mjs": 5,
@@ -30523,6 +30692,7 @@
     "tests/Support/inertia-n1-browser.mjs": 10,
     "tests/Support/inertia-n1-server.php": 8,
     "tests/Support/inertia-official-browser.mjs": 7,
+    "tests/Support/internal-identity-browser.mjs": 1,
     "tests/Support/logout-cookie-browser.mjs": 5,
     "tests/Support/logout-native-boundary-browser.mjs": 4,
     "tests/Support/logout-terminal-browser.mjs": 11,
@@ -30551,7 +30721,7 @@
   },
   "summary": {
     "registeredRoutes": 173,
-    "legacyRenderRoutes": 10,
+    "legacyRenderRoutes": 6,
     "locallyAcceptedJourneys": [
       "workspace-selection",
       "business-creation",
@@ -30561,7 +30731,8 @@
       "source-management",
       "advertiser-profile",
       "advertiser-security-devices",
-      "advertiser-auth-entry"
+      "advertiser-auth-entry",
+      "internal-identity-staff-enrollment"
     ]
   },
   "unresolved": [

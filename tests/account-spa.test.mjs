@@ -18,12 +18,26 @@ test('actual account helpers use the generated client, exact existing verbs and 
         return Response.json(request.method === 'POST' && new URL(request.url).pathname === '/security/passkeys' ? { id: 7, name: 'key' } : { saved: true }, { status: request.method === 'POST' && new URL(request.url).pathname === '/security/passkeys' ? 201 : 200 });
     });
     try {
-        const api = await compile('api.ts', { '../spa/api': moduleUrl(`export const api = globalThis.${key};`) });
+        const api = await compile('api.ts', { '../spa/api': moduleUrl(`export const api = globalThis.${key};`), '../spa/transport': moduleUrl('export const internalBoundary=false;') });
         await api.readProfile(); await api.readDevices(); await api.saveProfile({ name: 'Same', email: 'same@example.test' });
         await api.savePassword({ current_password: 'current', password: 'new', password_confirmation: 'new' }); await api.revokeSession(5); await api.revokeOthers();
         await api.passkeyOptions(); await api.storePasskey({ name: 'key', credential: { id: 'public', rawId: 'public', type: 'public-key', response: {} } }); await api.deletePasskey(7);
         assert.deepEqual(calls.map(call => call.method + ' ' + call.path), ['GET /profile', 'GET /security/devices', 'PATCH /profile', 'PUT /password', 'DELETE /security/sessions/5', 'POST /security/sessions/revoke-others', 'GET /security/passkeys/options', 'POST /security/passkeys', 'DELETE /security/passkeys/7']);
         assert.deepEqual(calls[2].body, { name: 'Same', email: 'same@example.test' });
+    } finally { delete globalThis[key]; }
+});
+
+test('internal device helpers retain the existing internal verbs without crossing the advertiser boundary', async () => {
+    const calls = [], key = 'internalApi' + crypto.randomUUID().replaceAll('-', '');
+    globalThis[key] = createApplicationClient('https://builderad.test', async request => {
+        calls.push(request.method + ' ' + new URL(request.url).pathname);
+        return Response.json({ saved: true });
+    });
+    try {
+        const api = await compile('api.ts', { '../spa/api': moduleUrl(`export const api=globalThis.${key};`), '../spa/transport': moduleUrl('export const internalBoundary=true;') });
+        await api.readDevices(); await api.revokeSession(5); await api.revokeOthers(); await api.passkeyOptions();
+        await api.storePasskey({ name: 'key', credential: { id: 'public', rawId: 'public', type: 'public-key', response: {} } }); await api.deletePasskey(7);
+        assert.deepEqual(calls, ['GET /internal/security/devices', 'DELETE /internal/security/sessions/5', 'POST /internal/security/sessions/revoke-others', 'GET /internal/security/passkeys/options', 'POST /internal/security/passkeys', 'DELETE /internal/security/passkeys/7']);
     } finally { delete globalThis[key]; }
 });
 test('native email handoff captures current evidence, closes before one native submission and never persists secrets', async () => {
