@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, reactive, ref } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import OperationsShell from './OperationsShell.vue';
-import BusinessTypeEditor from './BusinessTypeEditor.vue';
+import BusinessTypeEditor, { type BusinessType } from './BusinessTypeEditor.vue';
 import { businessTypes, businessBusy as busy, businessOutcome as outcome, readBusinessTypes, writeBusiness, type BusinessCommand } from './businessState';
 import { close, onClose, owned, stamp, TransportError } from '../spa/transport';
 import { locale } from '../spa/locale';
@@ -13,23 +13,32 @@ const form = reactive({ key: '', name_ar: '', name_en: '', active: true, errors:
 const error = ref(''), readbackFailed = ref(false), reviewed = ref(false);
 const locked = computed(() => busy.value || outcome.value === 'unknown' || readbackFailed.value);
 const cancellation = new AbortController(); let active = true;
+let confirmedSettlement: { type: number; settle: (type: BusinessType) => void } | undefined;
+function settleConfirmed(value: NonNullable<typeof businessTypes.value>) {
+    if (!confirmedSettlement) return;
+    const current = value.types.find(type => type.id === confirmedSettlement!.type);
+    if (current) { const settle = confirmedSettlement.settle; confirmedSettlement = undefined; settle(current); }
+}
 const canLeave = () => !['pending', 'unknown'].includes(outcome.value) || confirm(copy('يوجد أمر غير محسوم. المغادرة لا تعيد تنفيذه. هل تريد المتابعة؟', 'An operation is unresolved. Leaving never replays it. Continue?'));
 confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave);
 function beforeUnload(event: BeforeUnloadEvent) { if (['pending', 'unknown'].includes(outcome.value)) { event.preventDefault(); event.returnValue = ''; } }
 window.addEventListener('beforeunload', beforeUnload);
-const clearPrivate = () => { form.key = ''; form.name_ar = ''; form.name_en = ''; error.value = ''; };
+const clearPrivate = () => { form.key = ''; form.name_ar = ''; form.name_en = ''; error.value = ''; confirmedSettlement = undefined; };
 const closures = onClose(clearPrivate);
-onBeforeUnmount(() => { active = false; cancellation.abort(); if (outcome.value === 'pending') outcome.value = 'unknown'; busy.value = false; closures.delete(clearPrivate); if (confirmDeparture.value === canLeave) confirmDeparture.value = () => true; window.removeEventListener('beforeunload', beforeUnload); });
-async function review() { if (busy.value) return; const value = await readBusinessTypes(false, true); if (active) { readbackFailed.value = !value; reviewed.value = !!value; if (value && outcome.value === 'unknown') outcome.value = ''; } }
-async function perform(command: BusinessCommand) {
+onBeforeUnmount(() => { active = false; cancellation.abort(); confirmedSettlement = undefined; if (outcome.value === 'pending') outcome.value = 'unknown'; busy.value = false; closures.delete(clearPrivate); if (confirmDeparture.value === canLeave) confirmDeparture.value = () => true; window.removeEventListener('beforeunload', beforeUnload); });
+async function review() { if (busy.value) return; const value = await readBusinessTypes(false, true); if (active) { readbackFailed.value = !value; reviewed.value = !!value; if (value) { settleConfirmed(value); if (outcome.value === 'unknown') outcome.value = ''; } } }
+async function perform(command: BusinessCommand, settle?: (type: BusinessType) => void) {
     if (locked.value) return;
     const captured = stamp(); busy.value = true; outcome.value = 'pending'; error.value = ''; reviewed.value = false; form.errors = {};
     try {
         await writeBusiness(command, cancellation.signal);
         if (!active || !owned(captured)) return;
         outcome.value = 'acknowledged';
+        if (settle && 'type' in command) confirmedSettlement = { type: command.type, settle };
         if (command.kind === 'create') { form.key = ''; form.name_ar = ''; form.name_en = ''; form.active = true; form.recentlySuccessful = true; }
-        readbackFailed.value = !(await readBusinessTypes(false, true));
+        const value = await readBusinessTypes(false, true);
+        if (!active || !owned(captured)) return;
+        readbackFailed.value = !value; if (value) settleConfirmed(value);
     } catch (failure) {
         if (!active || !owned(captured)) return;
         if (failure instanceof TransportError && [403, 404, 409, 422, 429].includes(failure.status)) {

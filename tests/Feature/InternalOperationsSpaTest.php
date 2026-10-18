@@ -85,6 +85,7 @@ class InternalOperationsSpaTest extends TestCase
         $this->assertApplicationContract('InternalBusinessTypesResource', $resource);
         $projection = collect($resource['data']['types'])->firstWhere('id', $type->id);
         $this->assertSame(2, $projection['version']);
+        $this->assertSame('Updated catalog', $projection['name_en']);
         $this->assertSame(0, $projection['source_guidance'][0]['priority']);
         $this->assertTrue($projection['promotion_priors'][0]['approved']);
         $this->getJson('/internal/business-types', ['X-Builderad-Witness' => '1'])->assertExactJson(['visibility' => $resource['visibility']]);

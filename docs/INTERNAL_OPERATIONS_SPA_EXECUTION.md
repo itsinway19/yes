@@ -53,3 +53,44 @@ This closure is a separate documentation-only commit following the tested implem
 Runtime inventory and its check: **173 registered routes; 2 Inertia display routes; 48 dependency files**. The four actual operational display renderers no longer import/use Inertia and their dead components are removed. Original Laravel security/business writers and the remaining two commercial renderers/N1 protections are preserved. All recorded task-owned PostgreSQL/Redis/PHP/browser proof processes are stopped; proof ports were verified free. No Push, PR, Merge or Deployment occurred.
 
 **READY FOR INDEPENDENT REVIEW**
+
+## P2 concurrency remediation — 2026-10-19
+
+The independent review of `6cd246f6a621049d0e701f70d12aa484511b7fe2` superseded the preceding readiness statement with a proven P2 in the Business Type editor. This remediation began on that exact HEAD, the existing Slice 5 branch, and a clean worktree. No history was reset or rewritten.
+
+### Root cause and bounded correction
+
+The old replacement-prop watcher advanced `typeForm.version` without advancing its associated field values. A dirty v1 draft could therefore emit v2 after another operator's v2 read, bypassing the intended stale-version rejection. The same watcher also erased dirty Prior fields with `Object.assign(prior, current)`, including when the Prior server row itself had not changed. The latter is a reproduced connected draft-loss defect, not a separately assumed security finding.
+
+- The editor now keeps definition/Prior field baselines and immutable submission snapshots. Ordinary reads never rebase dirty or submitted drafts. Clean, unsubmitted drafts adopt all corresponding server fields and their version together.
+- Explicit discard/load actions replace fields and version together. Changing `type.id` clears definition, guidance and Prior drafts; submission identity and component lifetime checks prevent old callbacks from settling a reused component, including A→B→A.
+- The existing `emit('save')` gains only a local settlement callback. The existing parent invokes it after both the original writer's reliable acknowledgement and the existing visibility-admitted readback. No success is inferred from an unsolicited read, no version is incremented speculatively, and no writer or command framework is added.
+- An acknowledged write with failed readback retains its acknowledgement and settlement within the mounted parent until explicit successful read review. Lost ACK never installs that settlement, and later read review cannot promote the uncertain draft or replay the command.
+- After reliable ACK/readback, unedited fields adopt canonical server values and subsequent local edits are retained against that actual read version. If a later server change overlaps those subsequent local edits, the editor conservatively retains the original draft/version instead of automatically rebasing over the conflict. Explicit discard/load remains available. Prior settlement similarly consumes the actual SQL approval/version rather than fabricating approval or a version.
+
+Production changes are limited to `BusinessTypeEditor.vue` and its existing parent `BusinessTypesView.vue`. Other changes are the focused Vue regression, its registration in the existing SPA test script, one additional assertion in the existing PHP business-contract test, and this evidence note. SQL Version Guard, Laravel controllers/authority, SessionAuthority, RLS, contracts, transport and N1 are unchanged.
+
+### Before/after and server evidence
+
+- `tests/business-type-editor-concurrency.test.mjs` compiles and mounts the actual Vue SFCs using the repository's established custom-renderer pattern. It exercises the real editor emits and actual parent settlement handler; only the HTTP read/write ports are controlled in this focused Vue test. It is not represented as a Chromium/Laravel end-to-end run.
+- Identical final 14-case regression against both reviewed SFCs loaded read-only via `git show`: **13 FAIL / 1 PASS**, retained in `storage/logs/slice5-p2-vue-reviewed-baseline-final.log`. The primary failure is an emitted version **2 instead of 1** after B's read. Dirty Prior erasure is independently reproduced in the same suite. No worktree reset or baseline source substitution was performed.
+- Corrected actual SFCs: **14/14 PASS**; together with the 12 affected existing operation/client tests: **26/26 PASS**, `storage/logs/slice5-p2-affected-vue-final.log`. Cases cover clean/dirty reads, actual parent ACK/readback, readback failure/review, lost ACK without resend/promotion, explicit reload, identity reuse/late callbacks, connected Prior preservation/settlement and overlapping post-ACK changes.
+- Reused the existing real Laravel/PostgreSQL test `test_business_catalog_actual_sql_projection_and_json_commands_preserve_native_response_and_versions`, adding only an assertion that B's `Updated catalog` field remains after stale-v1 rejection. **1 PASS / 21 assertions**, `storage/logs/slice5-p2-stale-sql.log`; isolated PostgreSQL roles/RLS and Redis under the official guarded runner. Evidence: `storage/framework/testing/goals-spa-946707aa-fdbc-4a8f-b462-60a2a1123dd9`. Its run-time source-unchanged check passed and all owned processes stopped. No server implementation or SQL assertion was weakened.
+- Final affected SPA build, including TypeScript: **PASS**, `storage/logs/slice5-p2-spa-build-final.log`. The modified PHP test's focused Pint check passed. Runtime inventory/check and the unchanged Inertia ceiling passed: **173 registered routes / 2 legacy display routes / 48 dependency files**.
+
+The focused Vue emit-v1 proof and the actual Laravel/SQL stale-v1 rejection/B-preservation proof compose the requested concurrency contract. They are deliberately distinguished from a new full-browser concurrency proof.
+
+### Final repaired file fingerprints (SHA-256)
+
+- `resources/js/internal-operations/BusinessTypeEditor.vue`: `32023A39227353303CA54976A9A27F9F16EEF7F60FD04E318282645730E0B93D`
+- `resources/js/internal-operations/BusinessTypesView.vue`: `9B8B07C7C674D69AE536FF362FE6C3F6CBC392ACEAEE804B0D69F9855F15D3BE`
+- `tests/business-type-editor-concurrency.test.mjs`: `B18598A5B984D0068E0264E473A9D2250A67480FE91214190169DA4B9FA54240`
+- Rebuilt SPA manifest: `F27D0529F3F63EDF3ADC737482E1580FA7A53C3D01A0385C05890D90136A5D18`
+
+### Impact and targeted independent re-review handoff
+
+The previous 13-case Chromium and asset-byte evidence remains historical evidence for `95d6414` / reviewed `6cd246f`, not a claim that those journeys ran on the repair. Business editor/parent concurrency acceptance is replaced by the focused evidence above and requires targeted independent re-review. Unchanged server guards and unrelated operational journeys are not reimplemented or automatically rerun. No Foundation, full Chromium suite, legacy build, physical-device, native BFCache, B/C, release or production acceptance is claimed for this remediation. The affected unified SPA was rebuilt; the legacy entry does not import this editor.
+
+Review only the repair diff from `6cd246f6a621049d0e701f70d12aa484511b7fe2`, the two Vue field/version and ACK/readback paths, the 14-case red/green regression, and the strengthened existing PHP stale-version assertion. This implementation session has not itself issued a new independent acceptance. The local repair commit contains this note; its SHA and final Git status are supplied in the handoff report.
+
+**READY FOR TARGETED INDEPENDENT RE-REVIEW**
