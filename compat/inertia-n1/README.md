@@ -43,6 +43,10 @@ An upgrade requires a separate review and new provenance, not a guard bypass.
 
 ## Behavioral boundaries
 
+- `InitialVisit.handleDefault()` owns its bootstrap Promise rejection. Expected
+  cancellation skips initial success events; unrelated failures remain rejected.
+  The regression exercises a real preparing token inside `page.set()` and its
+  `navigation.wait()`, superseding request, late resolver and newer settlement.
 - Request tokens distinguish preparation, native commitment and settlement.
   Cancelled preparation releases its async wait, so the Response queue can accept
   a newer response even if old crypto never completes. Old continuations cannot
