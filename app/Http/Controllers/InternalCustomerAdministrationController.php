@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Foundation\Tenancy\PrincipalContext;
+use App\Http\Responses\SpaPage;
 use App\Security\SessionAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Inertia\Inertia;
 
 final class InternalCustomerAdministrationController
 {
@@ -33,7 +33,7 @@ final class InternalCustomerAdministrationController
             throw $error;
         }
 
-        return Inertia::render('Internal/Customers', [
+        return new SpaPage([
             ...json_decode($result->result, true, flags: JSON_THROW_ON_ERROR),
             'filters' => ['kind' => $input['kind'] ?? 'users', 'search' => $input['search'] ?? '', 'status' => $input['status'] ?? '', 'page' => (int) ($input['page'] ?? 1)],
             'freshAuthentication' => app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user()),

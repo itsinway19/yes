@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class InertiaHistorySecurityTest extends TestCase
 {
-    public function test_remaining_administration_enables_history_encryption_and_migrated_documents_have_no_inertia_payload(): void
+    public function test_remaining_commercial_enables_history_encryption_and_migrated_documents_have_no_inertia_payload(): void
     {
         $this->get('/internal/login')->assertViewIs('spa')->assertDontSee('data-page=', false);
         $this->get('/login')->assertViewIs('spa')->assertDontSee('data-page=', false);
@@ -18,14 +18,15 @@ class InertiaHistorySecurityTest extends TestCase
         $staff = User::factory()->create();
         $db = DB::connection('pgsql_migrations');
         $db->table('principal_lifecycles')->where('user_id', $staff->id)->update(['principal_class' => 'staff']);
-        $db->table('internal_personnel')->insert(['user_id' => $staff->id, 'kind' => 'employee', 'status' => 'active',
-            'attested_by' => $staff->id, 'attested_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        $db->table('internal_personnel')->insert(['user_id' => $staff->id, 'kind' => 'founder', 'status' => 'active',
+            'attested_by' => $staff->id, 'attested_at' => now(), 'factor_independence_attested_by' => $staff->id, 'factor_independence_attested_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
         $db->table('passkeys')->insert(['user_id' => $staff->id, 'name' => 'History fixture', 'credential_id' => 'history-'.$staff->id,
             'credential' => '{}', 'created_at' => now(), 'updated_at' => now()]);
+        $db->table('passkeys')->insert(['user_id' => $staff->id, 'name' => 'Second synthetic founder factor', 'credential_id' => 'second-legacy-'.$staff->id, 'credential' => '{}', 'created_at' => now(), 'updated_at' => now()]);
         $db->table('security_action_grants')->insert(['subject_user_id' => $staff->id, 'source' => 'founder_bootstrap',
             'action' => 'staff.view', 'scope_kind' => 'platform', 'subject_generation' => 1,
             'reason' => 'remaining legacy history fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
-        $this->actingAsInternal($staff)->get('/internal/administration')
+        $this->actingAsInternal($staff)->get('/internal/commercial')
             ->assertViewHas('page', fn ($page) => $page['encryptHistory'] === true);
     }
 

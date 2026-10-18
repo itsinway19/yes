@@ -7,7 +7,6 @@ use App\Security\GrantAuthority;
 use App\Security\LifecycleAuthority;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class CustomerAdministrationTest extends TestCase
@@ -16,11 +15,11 @@ class CustomerAdministrationTest extends TestCase
     {
         $customer = User::factory()->create(['name' => 'Customer Proof']);
         $founder = $this->staff('founder');
-        $this->actingAsInternal($founder)->get('/internal/administration/customers?search=Customer%20Proof')
-            ->assertOk()->assertInertia(fn (Assert $p) => $p->component('Internal/Customers')->has('rows', 1)
-            ->where('rows.0.public_id', $customer->public_id)->where('total', 1)->missing('rows.0.password'));
-        $this->get('/internal/administration/customers?selected='.$customer->public_id)->assertOk()
-            ->assertInertia(fn (Assert $p) => $p->where('details.name', 'Customer Proof'));
+        $this->actingAsInternal($founder)->getJson('/internal/administration/customers?search=Customer%20Proof')
+            ->assertOk()->assertJsonCount(1, 'data.rows')->assertJsonPath('data.rows.0.public_id', $customer->public_id)
+            ->assertJsonPath('data.total', 1)->assertJsonMissingPath('data.rows.0.password');
+        $this->getJson('/internal/administration/customers?selected='.$customer->public_id)->assertOk()
+            ->assertJsonPath('data.details.name', 'Customer Proof');
         $this->actingAsInternal($this->staff())->get('/internal/administration/customers')->assertForbidden();
     }
 
@@ -55,8 +54,8 @@ class CustomerAdministrationTest extends TestCase
         $this->actingAsInternal($this->staff('founder'))->withCredentials();
         $input = $this->decision('workspaces', $workspace->public_id, 'active', 0);
         $this->postJson('/internal/administration/customers/status', $input)->assertOk()->assertJsonPath('status', 'suspended');
-        $this->get('/internal/administration/customers?kind=workspaces&selected='.$workspace->public_id)->assertOk()
-            ->assertInertia(fn (Assert $p) => $p->where('rows.0.status', 'suspended')->has('details.members', 1)->has('details.history', 1));
+        $this->getJson('/internal/administration/customers?kind=workspaces&selected='.$workspace->public_id)->assertOk()
+            ->assertJsonPath('data.rows.0.status', 'suspended')->assertJsonCount(1, 'data.details.members')->assertJsonCount(1, 'data.details.history');
         $this->actingAs($customer)->get('/workspaces/'.$workspace->public_id.'/foundation')->assertForbidden();
         $this->actingAsInternal($this->staff('founder'))->withCredentials();
         $this->postJson('/internal/administration/customers/status', $this->decision('workspaces', $workspace->public_id, 'active', 0, 'reactivate'))->assertConflict();

@@ -4,26 +4,26 @@ namespace App\Http\Controllers;
 
 use App\Business\PromotionProduct;
 use App\Foundation\Tenancy\PrincipalContext;
+use App\Http\Responses\SpaPage;
 use App\Providers\Ads\Provider;
 use App\Security\SessionAuthority;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
 
 final class InternalBusinessTypeController
 {
-    public function index(): Response
+    public function index(): SpaPage
     {
         $db = DB::connection('pgsql_authority');
         $guidance = $db->table('business_source_guidance')->get()->groupBy('business_type_id');
         $priors = $db->table('business_promotion_priors')->get()->groupBy('business_type_id');
 
-        return Inertia::render('Internal/BusinessTypes', [
+        return new SpaPage([
             'types' => $db->table('business_types')->orderBy('id')->get()->map(fn ($type) => [
                 ...(array) $type, 'source_guidance' => $guidance->get($type->id, collect())->values(),
                 'promotion_priors' => $priors->get($type->id, collect())->values(),
@@ -35,19 +35,19 @@ final class InternalBusinessTypeController
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         return $this->write($request, 'type_create', null, $request->validate($this->typeRules()));
     }
 
-    public function update(Request $request, int $type): RedirectResponse
+    public function update(Request $request, int $type): RedirectResponse|JsonResponse
     {
         return $this->write($request, 'type_update', $type, $request->validate([
             ...$this->typeRules(), 'version' => ['required', 'integer', 'min:1'],
         ]));
     }
 
-    public function guidance(Request $request, int $type): RedirectResponse
+    public function guidance(Request $request, int $type): RedirectResponse|JsonResponse
     {
         return $this->write($request, 'guidance', $type, $request->validate([
             'provider' => ['required', Rule::enum(Provider::class)], 'priority' => ['required', 'integer', 'between:0,1000'],
@@ -56,7 +56,7 @@ final class InternalBusinessTypeController
         ]));
     }
 
-    public function prior(Request $request, int $type): RedirectResponse
+    public function prior(Request $request, int $type): RedirectResponse|JsonResponse
     {
         $input = $request->validate([
             'id' => ['sometimes', 'integer', 'min:1'], 'version' => ['required_with:id', 'integer', 'min:1'],
@@ -81,7 +81,7 @@ final class InternalBusinessTypeController
             'active' => ['required', 'boolean']];
     }
 
-    private function write(Request $request, string $kind, ?int $type, array $input): RedirectResponse
+    private function write(Request $request, string $kind, ?int $type, array $input): RedirectResponse|JsonResponse
     {
         try {
             DB::transaction(function () use ($request, $kind, $type, $input): void {
@@ -100,6 +100,8 @@ final class InternalBusinessTypeController
             throw $error;
         }
 
-        return redirect()->route('internal.business-types.index');
+        return $request->expectsJson()
+            ? response()->json(['saved' => true])->header('Cache-Control', 'no-store')
+            : redirect()->route('internal.business-types.index');
     }
 }

@@ -2,19 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Responses\SpaPage;
 use App\Security\GrantAuthority;
 use App\Security\ServiceIdentityAuthority;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Inertia\Inertia;
-use Inertia\Response;
 
 final class InternalServiceController
 {
-    public function index(Request $request): Response
+    public function index(Request $request): SpaPage
     {
-        return Inertia::render('Internal/Services', [
+        return new SpaPage([
             'services' => DB::table('service_identities')->orderBy('name')
                 ->get(['public_id', 'name', 'status', 'version']),
             'scopes' => DB::table('service_workspace_scopes as scope')
@@ -29,33 +29,38 @@ final class InternalServiceController
                 ->orderBy('identity.name')
                 ->get(['grant_record.id', 'identity.name as service_name', 'grant_record.reason',
                     DB::raw('builderad_workspace_public_by_id(grant_record.workspace_id) AS workspace_public_id')]),
-            'newCredential' => $request->session()->get('serviceCredential'),
         ]);
     }
 
-    public function create(Request $request, ServiceIdentityAuthority $authority): RedirectResponse
+    public function create(Request $request, ServiceIdentityAuthority $authority): RedirectResponse|JsonResponse
     {
         $input = $request->validate(['name' => ['required', 'string', 'min:2', 'max:120']]);
         $secret = DB::connection('pgsql_authority')->transaction(fn () => $authority->create($request, $input['name']));
 
-        return back()->with('serviceCredential', $secret);
+        return $request->expectsJson()
+            ? response()->json($secret)->header('Cache-Control', 'no-store')
+            : back()->with('serviceCredential', $secret);
     }
 
-    public function rotate(Request $request, string $service, ServiceIdentityAuthority $authority): RedirectResponse
+    public function rotate(Request $request, string $service, ServiceIdentityAuthority $authority): RedirectResponse|JsonResponse
     {
         $secret = DB::connection('pgsql_authority')->transaction(fn () => $authority->rotate($request, $service));
 
-        return back()->with('serviceCredential', $secret);
+        return $request->expectsJson()
+            ? response()->json($secret)->header('Cache-Control', 'no-store')
+            : back()->with('serviceCredential', $secret);
     }
 
-    public function revoke(Request $request, string $service, ServiceIdentityAuthority $authority): RedirectResponse
+    public function revoke(Request $request, string $service, ServiceIdentityAuthority $authority): RedirectResponse|JsonResponse
     {
         DB::connection('pgsql_authority')->transaction(fn () => $authority->revoke($request, $service));
 
-        return back();
+        return $request->expectsJson()
+            ? response()->json(['saved' => true])->header('Cache-Control', 'no-store')
+            : back();
     }
 
-    public function grant(Request $request, GrantAuthority $grants): RedirectResponse
+    public function grant(Request $request, GrantAuthority $grants): RedirectResponse|JsonResponse
     {
         $input = $request->validate([
             'service' => ['required', 'uuid'],
@@ -66,13 +71,17 @@ final class InternalServiceController
             $request, $input['service'], $input['workspace'], $input['reason'],
         ));
 
-        return back();
+        return $request->expectsJson()
+            ? response()->json(['saved' => true])->header('Cache-Control', 'no-store')
+            : back();
     }
 
-    public function revokeGrant(Request $request, int $grant, GrantAuthority $grants): RedirectResponse
+    public function revokeGrant(Request $request, int $grant, GrantAuthority $grants): RedirectResponse|JsonResponse
     {
         DB::connection('pgsql_authority')->transaction(fn () => $grants->revokeServiceGrant($request, $grant));
 
-        return back();
+        return $request->expectsJson()
+            ? response()->json(['saved' => true])->header('Cache-Control', 'no-store')
+            : back();
     }
 }

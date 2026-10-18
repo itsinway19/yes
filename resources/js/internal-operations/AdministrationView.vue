@@ -1,102 +1,98 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
+import { onBeforeRouteLeave } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import InternalLayout from '@/Layouts/InternalLayout.vue';
 import ProviderBrand from '@/Components/ProviderBrand.vue';
+import OperationsShell from './OperationsShell.vue';
+import { administration, adminOutcome as outcome, invitation as invite, grantDraft as grant, readAdministration } from './adminState';
+import * as commands from './adminApi';
+import { close, onClose, owned, stamp, TransportError } from '../spa/transport';
+import { confirmDeparture } from '../spa/presentation';
 
-type Person = {
-    public_id: string;
-    name: string;
-    email: string;
-    kind: 'founder' | 'employee';
-    status: 'pending' | 'active' | 'revoked';
-    attested_at: string | null;
-    factor_independence_attested_at: string | null;
-    email_verified_at: string | null;
-    passkey_count: number;
-};
-type StaffGrant = { id: number; action: string; reason: string; public_id: string; name: string };
-
-const props = defineProps<{
-    people: Person[];
-    staffGrants: StaffGrant[];
-    grantableActions: string[];
-    canAttestFactors: boolean;
-    permissions: Record<string, boolean>;
-    metaOperatorStatus: { application_configured: boolean; notice_links_configured: boolean } | null;
-    googleOperatorStatus: { application_configured: boolean; notice_links_configured: boolean } | null;
-    tiktokOperatorStatus: { application_configured: boolean; notice_links_configured: boolean } | null;
-    xOperatorStatus: { application_configured: boolean; notice_links_configured: boolean } | null;
-    snapchatOperatorStatus: { application_configured: boolean; notice_links_configured: boolean } | null;
-}>();
+const props = computed(() => administration.value!);
+type Person = NonNullable<typeof administration.value>['people'][number];
+const people = computed(() => props.value.people), staffGrants = computed(() => props.value.staffGrants);
+const grantableActions = computed(() => props.value.grantableActions), canAttestFactors = computed(() => props.value.canAttestFactors);
 const { t, locale } = useI18n({ useScope: 'global' });
-const actionLabelKeys: Record<string, string> = {
-    'staff.view': 'actionStaffView', 'staff.invite': 'actionStaffInvite',
-    'staff.attest': 'actionStaffAttest', 'staff.activate': 'actionStaffActivate',
-    'staff.revoke': 'actionStaffRevoke', 'grant.manage': 'actionGrantManage',
-    'service.manage': 'actionServiceManage', 'business.manage': 'actionBusinessManage',
-};
+const copy = (arabic: string, english: string) => locale.value === 'ar' ? arabic : english;
+const actionLabelKeys: Record<string, string> = { 'staff.view': 'actionStaffView', 'staff.invite': 'actionStaffInvite', 'staff.attest': 'actionStaffAttest', 'staff.activate': 'actionStaffActivate', 'staff.revoke': 'actionStaffRevoke', 'grant.manage': 'actionGrantManage', 'service.manage': 'actionServiceManage', 'business.manage': 'actionBusinessManage' };
 function actionLabel(action: string) { return t(`admin.${actionLabelKeys[action] ?? 'actionUnknown'}`); }
-const invite = useForm({ name: '', email: '' });
-const grant = useForm({ staff: '', action: '', reason: '' });
-const busy = ref('');
-const actionError = ref('');
-
-function inviteEmployee() {
-    invite.post(route('internal.staff.invite'), {
-        preserveScroll: true,
-        onSuccess: () => invite.reset(),
-    });
+const busy = ref(''), actionError = ref(''), refreshFailed = ref(false);
+const reviewed = ref(false);
+const locked = computed(() => !!busy.value || outcome.value === 'unknown' || refreshFailed.value);
+const cancellation = new AbortController(); let active = true;
+const canLeave = () => !['pending', 'unknown'].includes(outcome.value) || confirm(copy('يوجد أمر غير محسوم. المغادرة لا تعيد تنفيذه. هل تريد المتابعة؟', 'An operation is unresolved. Leaving never replays it. Continue?'));
+confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave);
+const closures = onClose(clearError);
+const beforeUnload = (event: BeforeUnloadEvent) => { if (['pending', 'unknown'].includes(outcome.value)) { event.preventDefault(); event.returnValue = ''; } };
+window.addEventListener('beforeunload', beforeUnload);
+onBeforeUnmount(() => { active = false; cancellation.abort(); if (outcome.value === 'pending') outcome.value = 'unknown'; if (confirmDeparture.value === canLeave) confirmDeparture.value = () => true; closures.delete(clearError); window.removeEventListener('beforeunload', beforeUnload); });
+function clearError() { actionError.value = ''; }
+async function review() {
+    if (busy.value) return;
+    const value = await readAdministration(false, true);
+    if (active) { refreshFailed.value = !value; reviewed.value = !!value; if (value && outcome.value === 'unknown') outcome.value = ''; }
 }
-
-function staffAction(person: Person, action: 'attest' | 'activate' | 'revoke' | 'resend-invitation' | 'attest-factors') {
-    actionError.value = '';
-    busy.value = `${person.public_id}:${action}`;
-    router.post(route(`internal.staff.${action}`, person.public_id), {}, {
-        preserveScroll: true,
-        onError: () => { actionError.value = 'staffActionError'; },
-        onFinish: () => { busy.value = ''; },
-    });
+async function perform(key: string, operation: () => Promise<unknown>, acknowledged?: () => void) {
+    if (locked.value) return;
+    const captured = stamp(); busy.value = key; actionError.value = ''; reviewed.value = false; outcome.value = 'pending';
+    try {
+        await operation();
+        if (!active || !owned(captured)) return;
+        outcome.value = 'acknowledged'; acknowledged?.();
+        refreshFailed.value = !(await readAdministration(false, true));
+    } catch (error) {
+        if (!active || !owned(captured)) return;
+        if (error instanceof TransportError && [403, 404, 409, 422, 429].includes(error.status)) {
+            outcome.value = 'rejected';
+            const errors = Object.fromEntries(Object.entries(error.body.errors ?? {}).map(([field, values]) => [field, values[0]]));
+            invite.errors = errors; grant.errors = errors;
+            actionError.value = error.body.message ?? copy('رفض الخادم الأمر.', 'The server rejected the command.');
+            if (error.status === 403) close();
+        } else {
+            outcome.value = 'unknown';
+            actionError.value = copy('قد يكون الأمر نُفّذ دون وصول الإقرار. لن نعيده تلقائيًا؛ راجع الحالة أولًا.', 'The command may have committed without acknowledgement. It will not replay; review state first.');
+        }
+    } finally { if (active) busy.value = ''; }
 }
-
-function issueGrant() {
-    grant.post(route('internal.grants.store'), {
-        preserveScroll: true,
-        onSuccess: () => grant.reset(),
-    });
+async function inviteEmployee() {
+    invite.processing = true; invite.errors = {};
+    try { await perform('invite', () => commands.inviteEmployee({ name: invite.name, email: invite.email }, cancellation.signal), () => { invite.name = ''; invite.email = ''; invite.recentlySuccessful = true; }); }
+    finally { invite.processing = false; }
 }
-
-function revokeGrant(id: number) {
-    actionError.value = '';
-    busy.value = `grant:${id}`;
-    router.delete(route('internal.grants.destroy', id), {
-        preserveScroll: true,
-        onError: () => { actionError.value = 'grantActionError'; },
-        onFinish: () => { busy.value = ''; },
-    });
+const staffAction = (person: Person, action: Parameters<typeof commands.staffAction>[1]) => perform(person.public_id + ':' + action, () => commands.staffAction(person.public_id, action, cancellation.signal));
+async function issueGrant() {
+    grant.processing = true; grant.errors = {};
+    try { await perform('grant', () => commands.issueGrant({ staff: grant.staff, action: grant.action, reason: grant.reason }, cancellation.signal), () => { grant.staff = ''; grant.action = ''; grant.reason = ''; }); }
+    finally { grant.processing = false; }
 }
-
+const revokeGrant = (id: number) => perform('grant:' + id, () => commands.revokeGrant(id, cancellation.signal));
 const providers = computed(() => [
-    { key: 'meta', name: 'Meta', status: props.metaOperatorStatus },
-    { key: 'google', name: 'Google Ads', status: props.googleOperatorStatus },
-    { key: 'tiktok', name: 'TikTok', status: props.tiktokOperatorStatus },
-    { key: 'x', name: 'X', status: props.xOperatorStatus },
-    { key: 'snapchat', name: 'Snapchat', status: props.snapchatOperatorStatus },
+    { key: 'meta', name: 'Meta', status: props.value.metaOperatorStatus },
+    { key: 'google', name: 'Google Ads', status: props.value.googleOperatorStatus },
+    { key: 'tiktok', name: 'TikTok', status: props.value.tiktokOperatorStatus },
+    { key: 'x', name: 'X', status: props.value.xOperatorStatus },
+    { key: 'snapchat', name: 'Snapchat', status: props.value.snapchatOperatorStatus },
 ].filter(provider => provider.status !== null));
 const xEnvironmentNames = ['BB2_X_CONSUMER_KEY', 'BB2_X_CONSUMER_SECRET', 'BB2_X_REDIRECT_URI', 'BB2_X_PRIVACY_URL', 'BB2_X_NOTICE_REVISION'];
 </script>
 
 <template>
-    <Head :title="t('admin.title')" />
-    <InternalLayout>
+    <OperationsShell>
         <template #header>
             <p class="admin-eyebrow">{{ t('admin.operatingWorkspace') }}</p>
             <h1>{{ t('admin.title') }}</h1>
             <p class="admin-heading-description">{{ t('admin.pageIntro') }}</p>
         </template>
-        <div class="admin-administration">
-            <Link v-if="$page.props.auth.canManageCommercialPreparation" :href="route('internal.commercial-market-preparation.index')" class="admin-action">{{ locale === 'en' ? 'Add a commercial market' : 'إضافة سوق تجاري' }}</Link>
+        <div class="operation-outcome" role="status" data-operation-outcome>
+            <p v-if="outcome === 'acknowledged'">{{ copy('وصل إقرار نجاح الأمر من الخادم.', 'The server acknowledged command success.') }}</p>
+            <p v-if="outcome === 'unknown'">{{ copy('نتيجة الأمر غير مؤكدة؛ لا إعادة تلقائية.', 'Command outcome is unknown; no automatic replay.') }}</p>
+            <p v-if="reviewed">{{ copy('هذه قراءة حالية وليست إقرارًا بالأمر السابق. بدء أمر جديد يحتاج قرارك الصريح.', 'This is a current read, not acknowledgement of the earlier command. A new command requires your explicit decision.') }}</p>
+            <p v-if="refreshFailed" role="alert">{{ copy('تعذر تحديث العرض. لا يعني ذلك فشل الكتابة المقر بها؛ القوائم السابقة ليست إثباتًا لنتيجة الأمر.', 'Readback failed. An acknowledged write remains acknowledged; the previous list does not prove the outcome.') }}</p>
+            <button type="button" data-operation-review :disabled="!!busy" @click="review">{{ copy('مراجعة الحالة دون إعادة الأمر', 'Review state without replay') }}</button>
+        </div>
+        <fieldset :disabled="locked" class="admin-administration" data-administration>
+            <a v-if="props.canManageCommercialPreparation" href="/internal/administration/commercial-markets" class="admin-action">{{ locale === 'en' ? 'Add a commercial market' : 'إضافة سوق تجاري' }}</a>
             <p v-if="actionError" role="alert" class="admin-error admin-action-error">{{ t(`admin.${actionError}`) }}</p>
             <section class="admin-section" aria-labelledby="staff-title">
                 <header class="admin-section-heading"><div><h2 id="staff-title">{{ t('admin.staffTitle') }}</h2><p class="admin-description">{{ t('admin.staffContext') }}</p></div></header>
@@ -114,7 +110,7 @@ const xEnvironmentNames = ['BB2_X_CONSUMER_KEY', 'BB2_X_CONSUMER_SECRET', 'BB2_X
                 </details>
                 <div class="admin-entity-head" aria-hidden="true"><span>{{ t('admin.identity') }}</span><span>{{ t('admin.eligibility') }}</span><span>{{ t('admin.authentication') }}</span><span>{{ t('admin.actions') }}</span></div>
                 <ul class="admin-entity-list" :aria-label="t('admin.staffList')">
-                    <li v-for="person in people" :key="person.public_id" class="admin-entity-row">
+                    <li v-for="person in people" :key="person.public_id" :data-person-id="person.public_id" class="admin-entity-row">
                         <div class="admin-identity"><h3>{{ person.name }}</h3><bdi dir="ltr" class="admin-email">{{ person.email }}</bdi><span class="admin-kind">{{ t(person.kind === 'founder' ? 'admin.founder' : 'admin.employee') }}</span><details class="admin-detail"><summary>{{ t('admin.recordId') }}</summary><code dir="ltr">{{ person.public_id }}</code></details></div>
                         <div class="admin-eligibility"><span class="admin-mobile-label">{{ t('admin.eligibility') }}</span><span class="admin-status" :class="`admin-status-${person.status}`">{{ t(`admin.status.${person.status}`) }}</span><p v-if="person.status === 'pending'" class="admin-evidence">{{ t('admin.attestation') }}: {{ t(person.attested_at ? 'admin.attested' : 'admin.pending') }}</p></div>
                         <div class="admin-authentication"><span class="admin-mobile-label">{{ t('admin.authentication') }}</span><template v-if="person.status === 'pending'"><p class="admin-evidence">{{ t('admin.email') }}: <strong>{{ t(person.email_verified_at ? 'admin.verified' : 'admin.pending') }}</strong></p><p class="admin-evidence">{{ t('admin.passkeys') }}: <strong>{{ person.passkey_count }}</strong></p></template><template v-else-if="person.status === 'active' && person.kind === 'employee'"><p class="admin-evidence">{{ t('admin.passkeys') }}: <strong>{{ person.passkey_count }}</strong></p><p class="admin-evidence">{{ t('admin.factorIndependence') }}: <strong>{{ t(person.factor_independence_attested_at ? 'admin.attested' : 'admin.notAttested') }}</strong></p></template></div>
@@ -143,7 +139,7 @@ const xEnvironmentNames = ['BB2_X_CONSUMER_KEY', 'BB2_X_CONSUMER_SECRET', 'BB2_X
             </section>
             <section v-if="providers.length" class="admin-section admin-providers" aria-labelledby="providers-title">
                 <header class="admin-section-heading"><div><h2 id="providers-title">{{ t('admin.providersTitle') }}</h2><p class="admin-description">{{ t('admin.providersContext') }}</p></div></header>
-                <Link v-if="props.permissions['service.manage']" :href="route('internal.services.index')" class="admin-text-link">{{ t('admin.manageServices') }} <span aria-hidden="true">↗</span></Link>
+                <a v-if="props.permissions['service.manage']" href="/internal/services" class="admin-text-link">{{ t('admin.manageServices') }} <span aria-hidden="true">↗</span></a>
                 <div class="admin-provider-head" aria-hidden="true"><span>{{ t('admin.provider') }}</span><span>{{ t('admin.localApplication') }}</span><span>{{ t('admin.localNotices') }}</span></div>
                 <details v-for="provider in providers" :key="provider.key" class="admin-provider-row admin-provider-details" :aria-labelledby="`${provider.key}-operator-title`">
                     <summary class="admin-provider-summary">
@@ -155,9 +151,9 @@ const xEnvironmentNames = ['BB2_X_CONSUMER_KEY', 'BB2_X_CONSUMER_SECRET', 'BB2_X
                     <div class="admin-provider-detail-body"><p class="admin-provider-disclaimer">{{ t(`admin.providers.${provider.key}.disclaimer`) }}</p><dl class="admin-provider-definitions"><div><dt>{{ t(`admin.providers.${provider.key}.application`) }}</dt><dd>{{ t(provider.status!.application_configured ? (['meta', 'google'].includes(provider.key) ? 'admin.technicallyConfigured' : 'admin.locallyComplete') : 'admin.incomplete') }}</dd></div><div><dt>{{ t(`admin.providers.${provider.key}.notice`) }}</dt><dd>{{ t(provider.status!.notice_links_configured ? (['meta', 'google'].includes(provider.key) ? 'admin.technicalNotice' : 'admin.locallyComplete') : 'admin.incomplete') }}</dd></div></dl><p v-if="provider.key !== 'meta'" class="admin-description">{{ t(`admin.providers.${provider.key}.environment`) }}</p><ul v-if="provider.key === 'x'" class="admin-environment-names"><li v-for="name in xEnvironmentNames" :key="name"><code dir="ltr">{{ name }}</code></li></ul><p v-if="provider.key === 'x'" class="admin-description">{{ t('admin.providers.x.deferred') }}</p></div>
                 </details>
             </section>
-            <Link v-else-if="props.permissions['service.manage']" :href="route('internal.services.index')" class="admin-text-link">{{ t('admin.manageServices') }}</Link>
-        </div>
-    </InternalLayout>
+            <a v-else-if="props.permissions['service.manage']" href="/internal/services" class="admin-text-link">{{ t('admin.manageServices') }}</a>
+        </fieldset>
+    </OperationsShell>
 </template>
 
 <style scoped>.admin-provider-name{display:flex;align-items:center;gap:10px}</style>

@@ -1,20 +1,26 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import axios from 'axios';
-import InternalLayout from '@/Layouts/InternalLayout.vue';
+import OperationsShell from './OperationsShell.vue';
+import { customers, changeCustomerStatus, readCustomers, type CustomerCommand } from './customerState';
+import { bootstrap, close, logout, onClose, owned, stamp, TransportError } from '../spa/transport';
+import { confirmDeparture } from '../spa/presentation';
 
 type Kind = 'users' | 'workspaces';
 type Decision = 'suspend' | 'reactivate';
 type Row = { public_id: string; name: string; status: string; revision: number; email?: string; email_verified_at?: string | null; workspace_count?: number; can_reactivate?: boolean; business_type_ar?: string | null; business_type_en?: string | null; owner_name?: string | null; owner_email?: string | null; market_label?: string | null; member_count?: number };
 type History = { decision: Decision; reason: string; occurred_at: string; actor_name: string };
 type Details = { public_id?: string; name: string; email?: string; workspaces?: { public_id: string; name: string; status: string; role: string }[]; members?: { name: string; email: string; role: string; status: string }[]; history: History[] };
-type Payload = { command_id: string; kind: Kind; target: string; decision: Decision; reason: string; expected_status: string; expected_revision: number };
-const props = defineProps<{ filters: { kind: Kind; search: string; status: string; page: number }; rows: Row[]; total: number; details: Details | null; freshAuthentication: boolean }>();
+type Payload = CustomerCommand;
+const props = computed(() => customers.value! as { filters: { kind: Kind; search: string; status: string; page: number }; rows: Row[]; total: number; details: Details | null; freshAuthentication: boolean });
+const router = useRouter(), currentRoute = useRoute();
+const cancellation = new AbortController(); let active = true;
+const acknowledged = ref(false), refreshFailed = ref(false);
 const { t, locale } = useI18n({ useScope: 'global' });
-const search = ref(props.filters.search);
-const status = ref(props.filters.status);
+const filters = computed(() => props.value.filters), rows = computed(() => props.value.rows), total = computed(() => props.value.total), details = computed(() => props.value.details), freshAuthentication = computed(() => props.value.freshAuthentication);
+const search = ref(props.value.filters.search);
+const status = ref(props.value.filters.status);
 const navigating = ref(false);
 const detailToggleTarget = ref<string | null>(null);
 const confirmation = ref<{ row: Row; decision: Decision; kind: Kind } | null>(null);
@@ -26,7 +32,7 @@ const error = ref('');
 const success = ref('');
 const reasonInput = ref<HTMLInputElement | null>(null);
 const result = ref<HTMLDivElement | null>(null);
-const draftKey = `builderad.customer-status.v1.${usePage().props.auth.user.id}`;
+const draftKey = `builderad.customer-status.v1.${bootstrap.identity.binding.principal}`;
 const reauthenticating = ref(false);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function saveDraft(): boolean {
@@ -36,7 +42,7 @@ function saveDraft(): boolean {
         return true;
     } catch { error.value = t('customers.storageError'); return false; }
 }
-function clearDraft() { try { sessionStorage.removeItem(draftKey); } catch { /* The server-confirmed outcome remains authoritative. */ } }
+function clearDraft() { try { sessionStorage.removeItem(draftKey); } catch {} }
 try {
     const stored = sessionStorage.getItem(draftKey);
     if (stored && stored.length <= 4096) {
@@ -49,64 +55,63 @@ try {
             && Number.isSafeInteger(payload.expected_revision) && payload.expected_revision >= 0 && validStatuses.includes(payload.expected_status)
             && (payload.decision === 'reactivate' ? payload.expected_status === (payload.kind === 'users' ? 'disabled' : 'suspended') : payload.expected_status !== 'disabled' && payload.expected_status !== 'suspended')
             && typeof draft.name === 'string' && draft.name.length > 0 && draft.name.length <= 255) {
-            frozen.value = { command_id: payload.command_id, kind: payload.kind, target: payload.target, decision: payload.decision, reason: payload.reason, expected_status: payload.expected_status, expected_revision: payload.expected_revision };
+            frozen.value = { command_id: payload.command_id, kind: payload.kind, target: payload.target, decision: payload.decision, reason: payload.reason, expected_status: payload.expected_status as Payload['expected_status'], expected_revision: payload.expected_revision };
             confirmation.value = { kind: payload.kind, decision: payload.decision, row: { public_id: payload.target, name: draft.name, status: payload.expected_status, revision: payload.expected_revision } };
             reason.value = payload.reason; uncertain.value = true; error.value = t('customers.uncertainError');
         }
     }
 } catch { error.value = t('customers.storageError'); }
-const locked = computed(() => busy.value || uncertain.value);
-const pages = computed(() => Math.max(1, Math.ceil(props.total / 25)));
-const statusChoices = computed(() => props.filters.kind === 'users' ? ['pending', 'current', 'disabled'] : ['active', 'suspended', 'archived']);
+const locked = computed(() => busy.value || uncertain.value || refreshFailed.value);
+const pages = computed(() => Math.max(1, Math.ceil(props.value.total / 25)));
+const statusChoices = computed(() => props.value.filters.kind === 'users' ? ['pending', 'current', 'disabled'] : ['active', 'suspended', 'archived']);
 function statusLabel(value: string) { return t(`customers.status.${value}`, t('customers.unknownStatus')); }
 function roleLabel(value: string) { return t(`customers.role.${value}`, t('customers.member')); }
 function decisionFor(row: Row): Decision | null {
-    if (props.filters.kind === 'users') return row.status === 'pending' || row.status === 'current' ? 'suspend' : row.status === 'disabled' && row.can_reactivate ? 'reactivate' : null;
+    if (props.value.filters.kind === 'users') return row.status === 'pending' || row.status === 'current' ? 'suspend' : row.status === 'disabled' && row.can_reactivate ? 'reactivate' : null;
     return row.status === 'active' ? 'suspend' : row.status === 'suspended' ? 'reactivate' : null;
 }
-function load(kind = props.filters.kind, page = 1, selected?: string, applyFilters = false) {
+function load(kind = props.value.filters.kind, page = 1, selected?: string, applyFilters = false) {
     if (locked.value) return;
     confirmation.value = null;
     error.value = '';
-    const changingKind = kind !== props.filters.kind;
+    const changingKind = kind !== props.value.filters.kind;
     if (changingKind) { search.value = ''; status.value = ''; }
-    navigating.value = true;
-    router.get(route('internal.customers.index'), { kind, search: changingKind ? '' : applyFilters ? search.value : props.filters.search, status: changingKind ? '' : applyFilters ? status.value : props.filters.status, page, ...(selected ? { selected } : {}) }, { preserveScroll: true, preserveState: true, onFinish: async () => {
-        navigating.value = false;
-        if (detailToggleTarget.value) {
-            await nextTick(); document.getElementById(`customer-toggle-${detailToggleTarget.value}`)?.focus(); detailToggleTarget.value = null;
-        }
-    } });
+    void router.push({ path: '/internal/administration/customers', query: { kind, search: changingKind ? '' : applyFilters ? search.value : props.value.filters.search, status: changingKind ? '' : applyFilters ? status.value : props.value.filters.status, page, ...(selected ? { selected } : {}) } });
 }
 function toggleDetails(row: Row) {
     if (locked.value || navigating.value) return;
     detailToggleTarget.value = row.public_id;
-    load(props.filters.kind, props.filters.page, props.details?.public_id === row.public_id ? undefined : row.public_id);
+    load(props.value.filters.kind, props.value.filters.page, props.value.details?.public_id === row.public_id ? undefined : row.public_id);
 }
 async function confirm(row: Row) {
     const decision = decisionFor(row);
     if (!decision || locked.value) return;
     error.value = ''; success.value = ''; reason.value = ''; frozen.value = null;
-    confirmation.value = { row, decision, kind: props.filters.kind };
+    confirmation.value = { row, decision, kind: props.value.filters.kind };
     await nextTick(); reasonInput.value?.focus();
 }
 async function submit() {
-    if (busy.value || !props.freshAuthentication || !confirmation.value) return;
+    if (busy.value || !props.value.freshAuthentication || !confirmation.value) return;
     if (!frozen.value) {
         const selected = confirmation.value;
         if (!reason.value.trim()) { reasonInput.value?.focus(); return; }
-        frozen.value = { command_id: crypto.randomUUID(), kind: selected.kind, target: selected.row.public_id, decision: selected.decision, reason: reason.value.trim(), expected_status: selected.row.status, expected_revision: selected.row.revision };
+        frozen.value = { command_id: crypto.randomUUID(), kind: selected.kind, target: selected.row.public_id, decision: selected.decision, reason: reason.value.trim(), expected_status: selected.row.status as Payload['expected_status'], expected_revision: selected.row.revision };
     }
     if (!saveDraft()) return;
     const alreadyUncertain = uncertain.value;
-    busy.value = true; error.value = ''; success.value = '';
+    const captured = stamp();
+    busy.value = true; error.value = ''; success.value = ''; acknowledged.value = false;
     try {
-        await axios.post(route('internal.customers.status'), frozen.value);
+        await changeCustomerStatus(frozen.value, cancellation.signal);
+        if (!active || !owned(captured)) return;
+        acknowledged.value = true;
         success.value = t(`customers.${frozen.value.decision}Success`);
-        clearDraft(); frozen.value = null; uncertain.value = false; confirmation.value = null; busy.value = false;
-        router.reload({ only: ['rows', 'total', 'details', 'freshAuthentication'] });
+        clearDraft(); frozen.value = null; uncertain.value = false; confirmation.value = null;
+        refreshFailed.value = !(await readCustomers(currentRoute.query as Parameters<typeof readCustomers>[0], false, true));
     } catch (failure) {
-        const code = axios.isAxiosError(failure) ? failure.response?.status : undefined;
+        if (!active || !owned(captured)) return;
+        const code = failure instanceof TransportError ? failure.status : undefined;
+        if (code === 403) { close(); return; }
         if (alreadyUncertain && (code === 401 || code === 403 || code === 419)) {
             uncertain.value = true; error.value = t('customers.reauthenticateUncertain');
         } else if (code === 403 || code === 409 || code === 422) {
@@ -120,20 +125,24 @@ async function submit() {
         busy.value = false; await nextTick(); result.value?.focus();
     }
 }
+async function review() {
+    if (busy.value) return;
+    refreshFailed.value = !(await readCustomers(currentRoute.query as Parameters<typeof readCustomers>[0], false, true));
+}
 function signInAgain() {
     if (busy.value || reauthenticating.value || !saveDraft()) return;
     reauthenticating.value = true;
-    router.post(route('internal.logout'), {}, { onFinish: () => { reauthenticating.value = false; } });
+    void logout();
 }
-// Only the explicit logout can leave an unresolved operation; the tab draft carries no authority.
-const removeBefore = router.on('before', event => {
-    const visit = event.detail.visit;
-    const logout = reauthenticating.value && visit.method === 'post' && visit.url.href === new URL(route('internal.logout'), window.location.origin).href;
-    if (locked.value && !logout) event.preventDefault();
-});
+const canLeave = () => !locked.value || reauthenticating.value;
+confirmDeparture.value = canLeave;
+onBeforeRouteLeave(canLeave);
 function beforeUnload(event: BeforeUnloadEvent) { if (locked.value && !reauthenticating.value) { event.preventDefault(); event.returnValue = ''; } }
 window.addEventListener('beforeunload', beforeUnload);
-onBeforeUnmount(() => { removeBefore(); window.removeEventListener('beforeunload', beforeUnload); });
+const clearPrivate = () => { confirmation.value = null; frozen.value = null; reason.value = ''; search.value = ''; error.value = ''; success.value = ''; };
+const closures = onClose(clearPrivate);
+onBeforeUnmount(() => { active = false; cancellation.abort(); if (confirmDeparture.value === canLeave) confirmDeparture.value = () => true; closures.delete(clearPrivate); window.removeEventListener('beforeunload', beforeUnload); });
+
 function date(value: string) {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? value : new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(parsed);
@@ -141,10 +150,11 @@ function date(value: string) {
 </script>
 
 <template>
-    <Head :title="t('customers.title')" />
-    <InternalLayout>
+    <OperationsShell>
         <template #header><p class="admin-eyebrow">{{ t('admin.operatingWorkspace') }}</p><h1>{{ t('customers.title') }}</h1><p class="admin-heading-description">{{ t('customers.intro') }}</p></template>
-        <div class="admin-administration customer-administration" :aria-busy="busy || navigating">
+        <div data-customers class="admin-administration customer-administration" :aria-busy="busy || navigating">
+            <p v-if="acknowledged" role="status" data-customer-ack>{{ locale === 'ar' ? 'وصل إقرار نجاح الأمر من الخادم.' : 'The server acknowledged command success.' }}</p>
+            <div v-if="refreshFailed" role="alert" data-customer-readback>{{ locale === 'ar' ? 'تعذر تحديث العرض. إقرار الأمر مستقل عن هذه القراءة.' : 'Readback failed. The command acknowledgement is separate.' }} <button type="button" @click="review">{{ locale === 'ar' ? 'تحديث القراءة فقط' : 'Refresh read only' }}</button></div>
             <nav class="customer-tabs" :aria-label="t('customers.categories')">
                 <button v-for="kind in (['users', 'workspaces'] as const)" :key="kind" type="button" class="customer-tab" :aria-current="filters.kind === kind ? 'page' : undefined" :disabled="locked || navigating" @click="load(kind)">{{ t(`customers.${kind}`) }}</button>
             </nav>
@@ -182,7 +192,7 @@ function date(value: string) {
                 <nav v-if="pages > 1" class="customer-pagination" :aria-label="t('customers.pagination')"><button type="button" class="admin-action" :disabled="filters.page <= 1 || locked || navigating" @click="load(filters.kind, filters.page - 1)">{{ t('customers.previous') }}</button><span>{{ t('customers.pageCount', { page: filters.page, pages }) }}</span><button type="button" class="admin-action" :disabled="filters.page >= pages || locked || navigating" @click="load(filters.kind, filters.page + 1)">{{ t('customers.next') }}</button></nav>
             </section>
         </div>
-    </InternalLayout>
+    </OperationsShell>
 </template>
 
 <style scoped>

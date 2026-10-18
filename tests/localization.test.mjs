@@ -29,7 +29,8 @@ test('both dictionaries have complete, nonempty matching keys used by the login 
         'resources/js/Layouts/GuestLayout.vue',
         'resources/js/localization/passkeyError.ts',
         'resources/js/Layouts/InternalLayout.vue',
-        'resources/js/Pages/Internal/Administration.vue',
+        'resources/js/internal-operations/AdministrationView.vue',
+        'resources/js/internal-operations/CustomersView.vue',
     ];
     for (const file of files) {
         const source = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
