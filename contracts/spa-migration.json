@@ -139,6 +139,28 @@
       "cutover": "WorkspaceController@show serves only SpaPage; Business/Sources, Workspaces/Show and their eight dead Source components are deleted. All five native OAuth/discovery/selection, exact Source/workspace isolation, original-command recovery, reports through real canonical workers, Google hierarchy/CSV and X campaigns are browser-tested against isolated Laravel with synthetic native providers. Source drafts and unresolved commands are session/account-bound and never replay automatically. Meta bootstrap reuses its exact immutable configuration Source under the same existing fresh-owner/A003 gates. No SessionAuthority, WorkspaceContext, RLS, N1 or shared transport change. Local journey evidence is not live provider approval, production, native device/BFCache or final Foundation/CI acceptance."
     },
     {
+      "id": "advertiser-profile",
+      "journey": "Read own account, edit name, preserve native email validation and fully retire the old identity before a terminal email handoff",
+      "routes": ["GET /profile", "PATCH /profile"],
+      "spaBoundary": "Canonical Profile uses the existing shared SPA; email changes remain an explicit native Laravel form/redirect boundary after synchronous shared document closure",
+      "businessOwners": ["App\\Http\\Controllers\\ProfileController", "App\\Security\\LifecycleAuthority", "App\\Security\\SessionAuthority", "App\\Security\\IdentityLifecycle"],
+      "apiContract": "contracts/application.openapi.json",
+      "tests": ["ProfileTest", "AccountSecuritySpaTest", "ProductionIdentityTest", "ClientVisibilityTest", "InertiaHistorySecurityTest", "tests/account-spa.test.mjs", "tests/Support/account-spa-browser.mjs"],
+      "status": "LOCAL_JOURNEY_ACCEPTED",
+      "cutover": "Legacy advertiser Profile/Edit and its information form are removed. Existing native redirects, email revocation, notices and Inertia.clearHistory remain. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including native email validation, terminal closure before dispatch, Back denial and committed lost acknowledgement without replay. Local journey acceptance only; Foundation, devices and B/C remain separate."
+    },
+    {
+      "id": "advertiser-security-devices",
+      "journey": "Manage own advertiser sessions/password/passkeys with real WebAuthn, fresh authentication and no automatic uncertain-command replay while retaining internal legacy behavior",
+      "routes": ["GET /security/devices", "DELETE /security/sessions/{session}", "POST /security/sessions/revoke-others", "POST /security/sessions/sign-out-this-device", "GET /security/passkeys/options", "POST /security/passkeys", "DELETE /security/passkeys/{passkey}", "PUT /password"],
+      "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+      "businessOwners": ["App\\Http\\Controllers\\SecurityDevicesController", "App\\Http\\Controllers\\PasskeyManagementController", "App\\Http\\Controllers\\Auth\\PasswordController", "App\\Security\\SessionAuthority", "Laravel\\Passkeys\\Actions\\StorePasskey", "Laravel\\Passkeys\\Actions\\DeletePasskey"],
+      "apiContract": "contracts/application.openapi.json",
+      "tests": ["AccountSecuritySpaTest", "SecurityDevicesTest", "PasswordUpdateTest", "PasskeyBoundaryTest", "InternalAuthorityTest", "ProductionIdentityTest", "tests/account-spa.test.mjs", "tests/Support/account-spa-browser.mjs"],
+      "status": "LOCAL_JOURNEY_ACCEPTED",
+      "cutover": "SecurityDevicesController shares its existing projection between a thin advertiser SpaPage method and the unchanged internal Inertia renderer. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including real virtual-authenticator enrollment, expired/consumed/invalid registration, cancellation, unknown writes, session closure and independent internal passkey login/enrollment/minimum/freshness. Existing authority and staff minima remain unchanged. Local journey acceptance only; no platform/release acceptance."
+    },
+    {
       "id": "locale-command",
       "journey": "Switch the application language using the existing encrypted locale cookie",
       "routes": ["POST /locale"],

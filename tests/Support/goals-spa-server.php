@@ -3,6 +3,7 @@
 use App\Security\DisposableTestDatabaseGuard;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 if (PHP_SAPI !== 'cli-server' || getenv('GOALS_SPA_PROOF') !== 'enabled') {
     http_response_code(404);
@@ -28,6 +29,10 @@ try {
     app(DisposableTestDatabaseGuard::class)->assertSafe();
     if (getenv('GOALS_SPA_ONLY') === 'sources') {
         require __DIR__.'/sources-spa-runtime.php';
+    }
+    if (getenv('GOALS_SPA_ONLY') === 'account') {
+        Http::preventStrayRequests();
+        Http::fake(['api.pwnedpasswords.com/*' => Http::response(str_repeat('0', 35).':0')]);
     }
 } finally {
     $app->instance('env', $environment);

@@ -55,6 +55,9 @@ if ($mode === 'setup') {
     $fixture = json_decode(file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
     $who = $argv[2] ?? 'a';
     $user = $fixture[$who]['user'];
+    if (str_starts_with($mode, 'account-')) {
+        require __DIR__.'/account-spa-fixture.php';
+    }
     $workspace = $fixture[$who]['workspaces'][0]['id'];
     if (str_starts_with($mode, 'source-')) {
         require __DIR__.'/sources-spa-fixture.php';

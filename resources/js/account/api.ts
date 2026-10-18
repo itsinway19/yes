@@ -1,0 +1,15 @@
+import { api } from '../spa/api';
+import type { components } from '../api/generated/application';
+export type ProfileCommand = components['schemas']['AccountProfileCommand'];
+export type PasswordCommand = components['schemas']['AccountPasswordCommand'];
+export type PasskeyCommand = components['schemas']['AccountPasskeyCommand'];
+const required = <Value>(value: Value | undefined): Value => { if (!value) throw Error('Account acknowledgement unavailable'); return value; };
+export const readProfile = async (headers = {}, signal?: AbortSignal) => required((await api.GET('/profile', { headers, signal })).data);
+export const readDevices = async (headers = {}, signal?: AbortSignal) => required((await api.GET('/security/devices', { headers, signal })).data);
+export const saveProfile = async (body: ProfileCommand, signal?: AbortSignal) => required((await api.PATCH('/profile', { body, signal })).data);
+export const savePassword = async (body: PasswordCommand, signal?: AbortSignal) => required((await api.PUT('/password', { body, signal })).data);
+export const revokeSession = async (session: number, signal?: AbortSignal) => required((await api.DELETE('/security/sessions/{session}', { params: { path: { session } }, signal })).data);
+export const revokeOthers = async (signal?: AbortSignal) => required((await api.POST('/security/sessions/revoke-others', { signal })).data);
+export const passkeyOptions = async (signal?: AbortSignal) => required((await api.GET('/security/passkeys/options', { signal })).data);
+export const storePasskey = async (body: PasskeyCommand, signal?: AbortSignal) => required((await api.POST('/security/passkeys', { body, signal })).data);
+export const deletePasskey = async (passkey: number, signal?: AbortSignal) => required((await api.DELETE('/security/passkeys/{passkey}', { params: { path: { passkey } }, signal })).data);

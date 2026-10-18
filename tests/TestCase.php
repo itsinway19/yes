@@ -33,7 +33,7 @@ abstract class TestCase extends BaseTestCase
         $this->withCredentials();
         $response = $this->get($path, ['Accept' => 'text/html']);
         $response->assertOk();
-        $identity = $response->viewData('page')['props']['identity'];
+        $identity = $response->original->getData()['identity'] ?? $response->viewData('page')['props']['identity'];
         $this->identityFixtureHeaders($identity);
         $this->ownedIdentityFixture = true;
 

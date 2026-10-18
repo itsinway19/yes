@@ -4,6 +4,7 @@ import openapiTS, { astToString } from 'openapi-typescript';
 import { spec as goals } from './goals-openapi.mjs';
 import { sourceContracts } from './sources-openapi.mjs';
 import { providerContracts } from './providers-openapi.mjs';
+import { accountContracts } from './account-openapi.mjs';
 
 const ref = name => ({ $ref: `#/components/schemas/${name}` });
 const text = { type: 'string' };
@@ -30,6 +31,7 @@ const purposeRead = (operationId, selected, contextual) => ({ operationId, secur
 const purposeWrite = (operationId, selected) => ({ operationId, security, parameters: [workspaceParameter, ...(selected ? [purposeParameter] : [])], requestBody: { required: true, ...json(ref('PurposeCommand')) }, responses: { 201: response(ref('PurposeAcknowledgement')), ...errors }, description: 'Original fresh-authenticated Meta-only HTTP admission edge and canonical SQL writer. Command identity is idempotent; uncertain delivery is never automatically replayed or replaced.' });
 const sources = sourceContracts({ ref, text, uuid, object, list, nullable, version, response, json, errors, security, headers, workspaceParameter, envelope, resource });
 const providers = providerContracts({ ref, text, uuid, object, list, nullable, version, response, json, errors, security, headers, workspaceParameter });
+const account = accountContracts({ ref, text, object, list, nullable, response, json, errors, security, headers, envelope, resource });
 
 export const spec = {
     openapi: '3.1.0',
@@ -76,6 +78,7 @@ export const spec = {
         },
         ...sources.paths,
         ...providers.paths,
+        ...account.paths,
     },
     components: {
         securitySchemes: goals.components.securitySchemes,
@@ -112,6 +115,7 @@ export const spec = {
             MetaPurposeSnapshot: { allOf: [ref('PurposeSnapshot'), object({ included_objects: list(ref('MetaPurposeObject')), excluded_objects: list(ref('MetaPurposeObject')) }, undefined, true)] },
             ...sources.schemas,
             ...providers.schemas,
+            ...account.schemas,
         },
     },
 };

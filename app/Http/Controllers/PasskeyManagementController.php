@@ -61,7 +61,7 @@ final class PasskeyManagementController extends Controller
         return response()->json(['id' => $passkey->id, 'name' => $passkey->name], 201);
     }
 
-    public function destroy(Request $request, Passkey $passkey, DeletePasskey $delete): RedirectResponse
+    public function destroy(Request $request, Passkey $passkey, DeletePasskey $delete): RedirectResponse|JsonResponse
     {
         DB::connection('pgsql_authority')->transaction(function () use ($request, $passkey, $delete): void {
             $user = User::on('pgsql_authority')->whereKey($request->user()->id)->sharedLock()->firstOrFail();
@@ -82,7 +82,8 @@ final class PasskeyManagementController extends Controller
                 fn () => $request->user()->notify(new SecurityNotice('passkey_removed')));
         });
 
-        return back();
+        return ! $request->is('internal/*') && $request->expectsJson()
+            ? response()->json(['saved' => true])->header('Cache-Control', 'no-store') : back();
     }
 
     private function audit(Request $request, string $event): void

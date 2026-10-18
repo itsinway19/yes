@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Notifications\SecurityMail;
 use App\Notifications\SecurityNotice;
 use App\Security\SessionAuthority;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,7 @@ class PasswordController extends Controller
     /**
      * Update the user's password.
      */
-    public function update(Request $request, SessionAuthority $sessions): RedirectResponse
+    public function update(Request $request, SessionAuthority $sessions): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'current_password' => ['required', 'current_password'],
@@ -39,6 +40,7 @@ class PasswordController extends Controller
                 fn () => $user->notify(new SecurityNotice('password_changed')));
         });
 
-        return back();
+        return $request->expectsJson()
+            ? response()->json(['saved' => true])->header('Cache-Control', 'no-store') : back();
     }
 }

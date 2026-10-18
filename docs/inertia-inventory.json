@@ -455,8 +455,11 @@
       "migration": null,
       "testLeads": [
         "tests/Feature/Auth/PasswordConfirmationTest.php",
+        "tests/Feature/Security/ClientVisibilityTest.php",
+        "tests/Feature/Security/InertiaHistorySecurityTest.php",
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
-        "tests/Feature/Security/ProductionIdentityTest.php"
+        "tests/Feature/Security/ProductionIdentityTest.php",
+        "tests/Support/account-spa-browser.mjs"
       ]
     },
     {
@@ -509,8 +512,11 @@
       "migration": null,
       "testLeads": [
         "tests/Feature/Auth/PasswordConfirmationTest.php",
+        "tests/Feature/Security/ClientVisibilityTest.php",
+        "tests/Feature/Security/InertiaHistorySecurityTest.php",
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
-        "tests/Feature/Security/ProductionIdentityTest.php"
+        "tests/Feature/Security/ProductionIdentityTest.php",
+        "tests/Support/account-spa-browser.mjs"
       ]
     },
     {
@@ -1045,6 +1051,7 @@
       "testLeads": [
         "tests/Feature/Localization/LocaleTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
+        "tests/Support/account-spa-browser.mjs",
         "tests/Support/goals-spa-browser.mjs",
         "tests/Support/goals-spa-closure.mjs",
         "tests/Support/goals-spa-restoration.mjs",
@@ -1102,6 +1109,7 @@
       "migration": null,
       "testLeads": [
         "tests/Feature/Security/ProductionIdentityTest.php",
+        "tests/Support/account-spa-browser.mjs",
         "tests/Support/goals-spa-browser.mjs",
         "tests/Support/goals-spa-closure.mjs",
         "tests/Support/goals-spa-restoration.mjs",
@@ -1697,7 +1705,8 @@
       },
       "migration": null,
       "testLeads": [
-        "tests/Feature/Security/PasskeyAssertionTest.php"
+        "tests/Feature/Security/PasskeyAssertionTest.php",
+        "tests/Support/account-spa-browser.mjs"
       ]
     },
     {
@@ -1755,7 +1764,9 @@
         ]
       },
       "migration": null,
-      "testLeads": []
+      "testLeads": [
+        "tests/Support/account-spa-browser.mjs"
+      ]
     },
     {
       "method": "GET|HEAD",
@@ -3660,7 +3671,9 @@
         ]
       },
       "migration": null,
-      "testLeads": []
+      "testLeads": [
+        "tests/Support/account-spa-browser.mjs"
+      ]
     },
     {
       "method": "GET|HEAD",
@@ -3716,7 +3729,9 @@
         ]
       },
       "migration": null,
-      "testLeads": []
+      "testLeads": [
+        "tests/Support/account-spa-browser.mjs"
+      ]
     },
     {
       "method": "DELETE",
@@ -3831,7 +3846,8 @@
       "migration": null,
       "testLeads": [
         "tests/Feature/Security/PasskeyBoundaryTest.php",
-        "tests/Feature/Security/SecurityDevicesTest.php"
+        "tests/Feature/Security/SecurityDevicesTest.php",
+        "tests/Support/account-spa-browser.mjs"
       ]
     },
     {
@@ -4872,6 +4888,7 @@
         "tests/localization.test.mjs",
         "tests/passkey-ceremony.test.mjs",
         "tests/SA01BrowserFixture.php",
+        "tests/Support/account-spa-browser.mjs",
         "tests/Support/advertiser-goals-browser.mjs",
         "tests/Support/AdvertiserGoalsUiFixture.php",
         "tests/Support/business-context-spa-browser.mjs",
@@ -4973,6 +4990,7 @@
         "tests/Feature/Security/SessionAuthorityTest.php",
         "tests/Feature/Security/WorkspaceCreationTest.php",
         "tests/identity-protocol.test.mjs",
+        "tests/Support/account-spa-browser.mjs",
         "tests/Support/advertiser-goals-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
         "tests/Support/goals-spa-browser.mjs",
@@ -5050,6 +5068,7 @@
         "tests/Feature/Security/PasskeyAssertionTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
         "tests/identity-protocol.test.mjs",
+        "tests/Support/account-spa-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
         "tests/Support/goals-spa-browser.mjs",
         "tests/Support/goals-spa-closure.mjs",
@@ -5077,8 +5096,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -5111,13 +5130,50 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-security-devices",
+        "journey": "Manage own advertiser sessions/password/passkeys with real WebAuthn, fresh authentication and no automatic uncertain-command replay while retaining internal legacy behavior",
+        "routes": [
+          "GET /security/devices",
+          "DELETE /security/sessions/{session}",
+          "POST /security/sessions/revoke-others",
+          "POST /security/sessions/sign-out-this-device",
+          "GET /security/passkeys/options",
+          "POST /security/passkeys",
+          "DELETE /security/passkeys/{passkey}",
+          "PUT /password"
+        ],
+        "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+        "businessOwners": [
+          "App\\Http\\Controllers\\SecurityDevicesController",
+          "App\\Http\\Controllers\\PasskeyManagementController",
+          "App\\Http\\Controllers\\Auth\\PasswordController",
+          "App\\Security\\SessionAuthority",
+          "Laravel\\Passkeys\\Actions\\StorePasskey",
+          "Laravel\\Passkeys\\Actions\\DeletePasskey"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AccountSecuritySpaTest",
+          "SecurityDevicesTest",
+          "PasswordUpdateTest",
+          "PasskeyBoundaryTest",
+          "InternalAuthorityTest",
+          "ProductionIdentityTest",
+          "tests/account-spa.test.mjs",
+          "tests/Support/account-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "SecurityDevicesController shares its existing projection between a thin advertiser SpaPage method and the unchanged internal Inertia renderer. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including real virtual-authenticator enrollment, expired/consumed/invalid registration, cancellation, unknown writes, session closure and independent internal passkey login/enrollment/minimum/freshness. Existing authority and staff minima remain unchanged. Local journey acceptance only; no platform/release acceptance."
+      },
       "testLeads": [
+        "tests/Feature/AccountSecuritySpaTest.php",
         "tests/Feature/Auth/PasswordConfirmationTest.php",
         "tests/Feature/Auth/PasswordResetTest.php",
         "tests/Feature/Auth/PasswordUpdateTest.php",
         "tests/Feature/Security/PasswordPolicyTest.php",
-        "tests/Feature/Security/ProductionIdentityTest.php"
+        "tests/Feature/Security/ProductionIdentityTest.php",
+        "tests/Support/account-spa-browser.mjs"
       ]
     },
     {
@@ -5136,12 +5192,10 @@
         "App\\Security\\LifecycleAuthority",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Profile/Edit"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
+      "spaBoundary": "Canonical Profile uses the existing shared SPA; email changes remain an explicit native Laravel form/redirect boundary after synchronous shared document closure",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -5174,19 +5228,46 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-profile",
+        "journey": "Read own account, edit name, preserve native email validation and fully retire the old identity before a terminal email handoff",
+        "routes": [
+          "GET /profile",
+          "PATCH /profile"
+        ],
+        "spaBoundary": "Canonical Profile uses the existing shared SPA; email changes remain an explicit native Laravel form/redirect boundary after synchronous shared document closure",
+        "businessOwners": [
+          "App\\Http\\Controllers\\ProfileController",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\IdentityLifecycle"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "ProfileTest",
+          "AccountSecuritySpaTest",
+          "ProductionIdentityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/account-spa.test.mjs",
+          "tests/Support/account-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Legacy advertiser Profile/Edit and its information form are removed. Existing native redirects, email revocation, notices and Inertia.clearHistory remain. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including native email validation, terminal closure before dispatch, Back denial and committed lost acknowledgement without replay. Local journey acceptance only; Foundation, devices and B/C remain separate."
+      },
       "testLeads": [
+        "tests/account-spa.test.mjs",
+        "tests/Feature/AccountSecuritySpaTest.php",
         "tests/Feature/BusinessFoundationTest.php",
         "tests/Feature/ProfileTest.php",
-        "tests/Feature/Security/ClientVisibilityTest.php",
         "tests/Feature/Security/InertiaHistorySecurityTest.php",
         "tests/Feature/Security/LifecycleActivationTest.php",
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
         "tests/identity-protocol.test.mjs",
+        "tests/Support/account-spa-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
         "tests/Support/inertia-n1-browser.mjs",
-        "tests/Support/inertia-n1-server.php",
         "tests/Support/inertia-official-browser.mjs",
         "tests/Support/logout-cookie-browser.mjs",
         "tests/Support/logout-native-boundary-browser.mjs",
@@ -5212,8 +5293,8 @@
       ],
       "pages": [],
       "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Canonical Profile uses the existing shared SPA; email changes remain an explicit native Laravel form/redirect boundary after synchronous shared document closure",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -5246,16 +5327,44 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-profile",
+        "journey": "Read own account, edit name, preserve native email validation and fully retire the old identity before a terminal email handoff",
+        "routes": [
+          "GET /profile",
+          "PATCH /profile"
+        ],
+        "spaBoundary": "Canonical Profile uses the existing shared SPA; email changes remain an explicit native Laravel form/redirect boundary after synchronous shared document closure",
+        "businessOwners": [
+          "App\\Http\\Controllers\\ProfileController",
+          "App\\Security\\LifecycleAuthority",
+          "App\\Security\\SessionAuthority",
+          "App\\Security\\IdentityLifecycle"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "ProfileTest",
+          "AccountSecuritySpaTest",
+          "ProductionIdentityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/account-spa.test.mjs",
+          "tests/Support/account-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Legacy advertiser Profile/Edit and its information form are removed. Existing native redirects, email revocation, notices and Inertia.clearHistory remain. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including native email validation, terminal closure before dispatch, Back denial and committed lost acknowledgement without replay. Local journey acceptance only; Foundation, devices and B/C remain separate."
+      },
       "testLeads": [
+        "tests/account-spa.test.mjs",
+        "tests/Feature/AccountSecuritySpaTest.php",
         "tests/Feature/BusinessFoundationTest.php",
         "tests/Feature/ProfileTest.php",
-        "tests/Feature/Security/ClientVisibilityTest.php",
         "tests/Feature/Security/InertiaHistorySecurityTest.php",
         "tests/Feature/Security/LifecycleActivationTest.php",
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
         "tests/identity-protocol.test.mjs",
+        "tests/Support/account-spa-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
         "tests/Support/inertia-n1-browser.mjs",
         "tests/Support/inertia-official-browser.mjs",
@@ -6094,6 +6203,7 @@
         "tests/Feature/Sources/SourceRegistryTest.php",
         "tests/provider-api-client.test.mjs",
         "tests/sources-api-client.test.mjs",
+        "tests/Support/account-spa-browser.mjs",
         "tests/Support/DeclaredTargetMarketsLegacyFixture.php",
         "tests/Support/DisposableDatabaseReset.php",
         "tests/Support/IdentityTransitionFixture.php",
@@ -6274,17 +6384,15 @@
         "Illuminate\\Auth\\Middleware\\Authenticate",
         "App\\Http\\Middleware\\EnsureCurrentPrincipal"
       ],
-      "action": "App\\Http\\Controllers\\SecurityDevicesController@index",
+      "action": "App\\Http\\Controllers\\SecurityDevicesController@application",
       "businessOwners": [
         "App\\Security\\IdentityAuthentication",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Security/Devices"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
+      "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6292,7 +6400,7 @@
             "method": "GET|HEAD",
             "uri": "security/devices",
             "name": "security.devices",
-            "action": "App\\Http\\Controllers\\SecurityDevicesController@index",
+            "action": "App\\Http\\Controllers\\SecurityDevicesController@application",
             "middleware": [
               "web",
               "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -6307,7 +6415,7 @@
             "method": "GET|HEAD",
             "uri": "security/devices",
             "name": "security.devices",
-            "action": "App\\Http\\Controllers\\SecurityDevicesController@index",
+            "action": "App\\Http\\Controllers\\SecurityDevicesController@application",
             "middleware": [
               "web",
               "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -6317,13 +6425,51 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-security-devices",
+        "journey": "Manage own advertiser sessions/password/passkeys with real WebAuthn, fresh authentication and no automatic uncertain-command replay while retaining internal legacy behavior",
+        "routes": [
+          "GET /security/devices",
+          "DELETE /security/sessions/{session}",
+          "POST /security/sessions/revoke-others",
+          "POST /security/sessions/sign-out-this-device",
+          "GET /security/passkeys/options",
+          "POST /security/passkeys",
+          "DELETE /security/passkeys/{passkey}",
+          "PUT /password"
+        ],
+        "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+        "businessOwners": [
+          "App\\Http\\Controllers\\SecurityDevicesController",
+          "App\\Http\\Controllers\\PasskeyManagementController",
+          "App\\Http\\Controllers\\Auth\\PasswordController",
+          "App\\Security\\SessionAuthority",
+          "Laravel\\Passkeys\\Actions\\StorePasskey",
+          "Laravel\\Passkeys\\Actions\\DeletePasskey"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AccountSecuritySpaTest",
+          "SecurityDevicesTest",
+          "PasswordUpdateTest",
+          "PasskeyBoundaryTest",
+          "InternalAuthorityTest",
+          "ProductionIdentityTest",
+          "tests/account-spa.test.mjs",
+          "tests/Support/account-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "SecurityDevicesController shares its existing projection between a thin advertiser SpaPage method and the unchanged internal Inertia renderer. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including real virtual-authenticator enrollment, expired/consumed/invalid registration, cancellation, unknown writes, session closure and independent internal passkey login/enrollment/minimum/freshness. Existing authority and staff minima remain unchanged. Local journey acceptance only; no platform/release acceptance."
+      },
       "testLeads": [
+        "tests/account-spa.test.mjs",
+        "tests/Feature/AccountSecuritySpaTest.php",
         "tests/Feature/Auth/PasswordUpdateTest.php",
         "tests/Feature/BusinessFoundationTest.php",
         "tests/Feature/Security/ClientVisibilityTest.php",
         "tests/Feature/Security/SecurityDevicesTest.php",
-        "tests/Feature/Security/SessionAuthorityTest.php"
+        "tests/Feature/Security/SessionAuthorityTest.php",
+        "tests/Support/account-spa-browser.mjs"
       ]
     },
     {
@@ -6343,8 +6489,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6379,8 +6525,46 @@
           }
         ]
       },
-      "migration": null,
-      "testLeads": []
+      "migration": {
+        "id": "advertiser-security-devices",
+        "journey": "Manage own advertiser sessions/password/passkeys with real WebAuthn, fresh authentication and no automatic uncertain-command replay while retaining internal legacy behavior",
+        "routes": [
+          "GET /security/devices",
+          "DELETE /security/sessions/{session}",
+          "POST /security/sessions/revoke-others",
+          "POST /security/sessions/sign-out-this-device",
+          "GET /security/passkeys/options",
+          "POST /security/passkeys",
+          "DELETE /security/passkeys/{passkey}",
+          "PUT /password"
+        ],
+        "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+        "businessOwners": [
+          "App\\Http\\Controllers\\SecurityDevicesController",
+          "App\\Http\\Controllers\\PasskeyManagementController",
+          "App\\Http\\Controllers\\Auth\\PasswordController",
+          "App\\Security\\SessionAuthority",
+          "Laravel\\Passkeys\\Actions\\StorePasskey",
+          "Laravel\\Passkeys\\Actions\\DeletePasskey"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AccountSecuritySpaTest",
+          "SecurityDevicesTest",
+          "PasswordUpdateTest",
+          "PasskeyBoundaryTest",
+          "InternalAuthorityTest",
+          "ProductionIdentityTest",
+          "tests/account-spa.test.mjs",
+          "tests/Support/account-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "SecurityDevicesController shares its existing projection between a thin advertiser SpaPage method and the unchanged internal Inertia renderer. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including real virtual-authenticator enrollment, expired/consumed/invalid registration, cancellation, unknown writes, session closure and independent internal passkey login/enrollment/minimum/freshness. Existing authority and staff minima remain unchanged. Local journey acceptance only; no platform/release acceptance."
+      },
+      "testLeads": [
+        "tests/account-spa.test.mjs",
+        "tests/Support/account-spa-browser.mjs"
+      ]
     },
     {
       "method": "GET|HEAD",
@@ -6399,8 +6583,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6435,9 +6619,45 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-security-devices",
+        "journey": "Manage own advertiser sessions/password/passkeys with real WebAuthn, fresh authentication and no automatic uncertain-command replay while retaining internal legacy behavior",
+        "routes": [
+          "GET /security/devices",
+          "DELETE /security/sessions/{session}",
+          "POST /security/sessions/revoke-others",
+          "POST /security/sessions/sign-out-this-device",
+          "GET /security/passkeys/options",
+          "POST /security/passkeys",
+          "DELETE /security/passkeys/{passkey}",
+          "PUT /password"
+        ],
+        "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+        "businessOwners": [
+          "App\\Http\\Controllers\\SecurityDevicesController",
+          "App\\Http\\Controllers\\PasskeyManagementController",
+          "App\\Http\\Controllers\\Auth\\PasswordController",
+          "App\\Security\\SessionAuthority",
+          "Laravel\\Passkeys\\Actions\\StorePasskey",
+          "Laravel\\Passkeys\\Actions\\DeletePasskey"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AccountSecuritySpaTest",
+          "SecurityDevicesTest",
+          "PasswordUpdateTest",
+          "PasskeyBoundaryTest",
+          "InternalAuthorityTest",
+          "ProductionIdentityTest",
+          "tests/account-spa.test.mjs",
+          "tests/Support/account-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "SecurityDevicesController shares its existing projection between a thin advertiser SpaPage method and the unchanged internal Inertia renderer. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including real virtual-authenticator enrollment, expired/consumed/invalid registration, cancellation, unknown writes, session closure and independent internal passkey login/enrollment/minimum/freshness. Existing authority and staff minima remain unchanged. Local journey acceptance only; no platform/release acceptance."
+      },
       "testLeads": [
-        "tests/Feature/Security/PasskeyBoundaryTest.php"
+        "tests/Feature/Security/PasskeyBoundaryTest.php",
+        "tests/Support/account-spa-browser.mjs"
       ]
     },
     {
@@ -6457,8 +6677,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6493,7 +6713,42 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-security-devices",
+        "journey": "Manage own advertiser sessions/password/passkeys with real WebAuthn, fresh authentication and no automatic uncertain-command replay while retaining internal legacy behavior",
+        "routes": [
+          "GET /security/devices",
+          "DELETE /security/sessions/{session}",
+          "POST /security/sessions/revoke-others",
+          "POST /security/sessions/sign-out-this-device",
+          "GET /security/passkeys/options",
+          "POST /security/passkeys",
+          "DELETE /security/passkeys/{passkey}",
+          "PUT /password"
+        ],
+        "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+        "businessOwners": [
+          "App\\Http\\Controllers\\SecurityDevicesController",
+          "App\\Http\\Controllers\\PasskeyManagementController",
+          "App\\Http\\Controllers\\Auth\\PasswordController",
+          "App\\Security\\SessionAuthority",
+          "Laravel\\Passkeys\\Actions\\StorePasskey",
+          "Laravel\\Passkeys\\Actions\\DeletePasskey"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AccountSecuritySpaTest",
+          "SecurityDevicesTest",
+          "PasswordUpdateTest",
+          "PasskeyBoundaryTest",
+          "InternalAuthorityTest",
+          "ProductionIdentityTest",
+          "tests/account-spa.test.mjs",
+          "tests/Support/account-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "SecurityDevicesController shares its existing projection between a thin advertiser SpaPage method and the unchanged internal Inertia renderer. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including real virtual-authenticator enrollment, expired/consumed/invalid registration, cancellation, unknown writes, session closure and independent internal passkey login/enrollment/minimum/freshness. Existing authority and staff minima remain unchanged. Local journey acceptance only; no platform/release acceptance."
+      },
       "testLeads": []
     },
     {
@@ -6514,8 +6769,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6550,9 +6805,46 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-security-devices",
+        "journey": "Manage own advertiser sessions/password/passkeys with real WebAuthn, fresh authentication and no automatic uncertain-command replay while retaining internal legacy behavior",
+        "routes": [
+          "GET /security/devices",
+          "DELETE /security/sessions/{session}",
+          "POST /security/sessions/revoke-others",
+          "POST /security/sessions/sign-out-this-device",
+          "GET /security/passkeys/options",
+          "POST /security/passkeys",
+          "DELETE /security/passkeys/{passkey}",
+          "PUT /password"
+        ],
+        "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+        "businessOwners": [
+          "App\\Http\\Controllers\\SecurityDevicesController",
+          "App\\Http\\Controllers\\PasskeyManagementController",
+          "App\\Http\\Controllers\\Auth\\PasswordController",
+          "App\\Security\\SessionAuthority",
+          "Laravel\\Passkeys\\Actions\\StorePasskey",
+          "Laravel\\Passkeys\\Actions\\DeletePasskey"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AccountSecuritySpaTest",
+          "SecurityDevicesTest",
+          "PasswordUpdateTest",
+          "PasskeyBoundaryTest",
+          "InternalAuthorityTest",
+          "ProductionIdentityTest",
+          "tests/account-spa.test.mjs",
+          "tests/Support/account-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "SecurityDevicesController shares its existing projection between a thin advertiser SpaPage method and the unchanged internal Inertia renderer. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including real virtual-authenticator enrollment, expired/consumed/invalid registration, cancellation, unknown writes, session closure and independent internal passkey login/enrollment/minimum/freshness. Existing authority and staff minima remain unchanged. Local journey acceptance only; no platform/release acceptance."
+      },
       "testLeads": [
-        "tests/Feature/Security/SecurityDevicesTest.php"
+        "tests/Feature/AccountSecuritySpaTest.php",
+        "tests/Feature/Security/SecurityDevicesTest.php",
+        "tests/Support/account-spa-browser.mjs"
       ]
     },
     {
@@ -6572,8 +6864,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6606,9 +6898,45 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-security-devices",
+        "journey": "Manage own advertiser sessions/password/passkeys with real WebAuthn, fresh authentication and no automatic uncertain-command replay while retaining internal legacy behavior",
+        "routes": [
+          "GET /security/devices",
+          "DELETE /security/sessions/{session}",
+          "POST /security/sessions/revoke-others",
+          "POST /security/sessions/sign-out-this-device",
+          "GET /security/passkeys/options",
+          "POST /security/passkeys",
+          "DELETE /security/passkeys/{passkey}",
+          "PUT /password"
+        ],
+        "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+        "businessOwners": [
+          "App\\Http\\Controllers\\SecurityDevicesController",
+          "App\\Http\\Controllers\\PasskeyManagementController",
+          "App\\Http\\Controllers\\Auth\\PasswordController",
+          "App\\Security\\SessionAuthority",
+          "Laravel\\Passkeys\\Actions\\StorePasskey",
+          "Laravel\\Passkeys\\Actions\\DeletePasskey"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AccountSecuritySpaTest",
+          "SecurityDevicesTest",
+          "PasswordUpdateTest",
+          "PasskeyBoundaryTest",
+          "InternalAuthorityTest",
+          "ProductionIdentityTest",
+          "tests/account-spa.test.mjs",
+          "tests/Support/account-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "SecurityDevicesController shares its existing projection between a thin advertiser SpaPage method and the unchanged internal Inertia renderer. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including real virtual-authenticator enrollment, expired/consumed/invalid registration, cancellation, unknown writes, session closure and independent internal passkey login/enrollment/minimum/freshness. Existing authority and staff minima remain unchanged. Local journey acceptance only; no platform/release acceptance."
+      },
       "testLeads": [
-        "tests/Feature/Security/SecurityDevicesTest.php"
+        "tests/Feature/Security/SecurityDevicesTest.php",
+        "tests/Support/account-spa-browser.mjs"
       ]
     },
     {
@@ -6629,8 +6957,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -6665,7 +6993,42 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "advertiser-security-devices",
+        "journey": "Manage own advertiser sessions/password/passkeys with real WebAuthn, fresh authentication and no automatic uncertain-command replay while retaining internal legacy behavior",
+        "routes": [
+          "GET /security/devices",
+          "DELETE /security/sessions/{session}",
+          "POST /security/sessions/revoke-others",
+          "POST /security/sessions/sign-out-this-device",
+          "GET /security/passkeys/options",
+          "POST /security/passkeys",
+          "DELETE /security/passkeys/{passkey}",
+          "PUT /password"
+        ],
+        "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
+        "businessOwners": [
+          "App\\Http\\Controllers\\SecurityDevicesController",
+          "App\\Http\\Controllers\\PasskeyManagementController",
+          "App\\Http\\Controllers\\Auth\\PasswordController",
+          "App\\Security\\SessionAuthority",
+          "Laravel\\Passkeys\\Actions\\StorePasskey",
+          "Laravel\\Passkeys\\Actions\\DeletePasskey"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "AccountSecuritySpaTest",
+          "SecurityDevicesTest",
+          "PasswordUpdateTest",
+          "PasskeyBoundaryTest",
+          "InternalAuthorityTest",
+          "ProductionIdentityTest",
+          "tests/account-spa.test.mjs",
+          "tests/Support/account-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "SecurityDevicesController shares its existing projection between a thin advertiser SpaPage method and the unchanged internal Inertia renderer. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including real virtual-authenticator enrollment, expired/consumed/invalid registration, cancellation, unknown writes, session closure and independent internal passkey login/enrollment/minimum/freshness. Existing authority and staff minima remain unchanged. Local journey acceptance only; no platform/release acceptance."
+      },
       "testLeads": [
         "tests/Feature/Security/SecurityDevicesTest.php"
       ]
@@ -21177,10 +21540,8 @@
         "App\\Security\\LifecycleAuthority",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Profile/Edit"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -21275,15 +21636,13 @@
       "authorization": [
         "['auth', EnsureCurrentPrincipal::class]"
       ],
-      "action": "App\\Http\\Controllers\\SecurityDevicesController@index",
+      "action": "App\\Http\\Controllers\\SecurityDevicesController@application",
       "businessOwners": [
         "App\\Security\\IdentityAuthentication",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Security/Devices"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -21293,7 +21652,7 @@
             "method": "GET|HEAD",
             "uri": "security/devices",
             "name": "security.devices",
-            "action": "App\\Http\\Controllers\\SecurityDevicesController@index",
+            "action": "App\\Http\\Controllers\\SecurityDevicesController@application",
             "middleware": [
               "web",
               "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -21308,7 +21667,7 @@
             "method": "GET|HEAD",
             "uri": "security/devices",
             "name": "security.devices",
-            "action": "App\\Http\\Controllers\\SecurityDevicesController@index",
+            "action": "App\\Http\\Controllers\\SecurityDevicesController@application",
             "middleware": [
               "web",
               "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -25716,7 +26075,7 @@
         "method": "GET|HEAD",
         "uri": "security/devices",
         "name": "security.devices",
-        "action": "App\\Http\\Controllers\\SecurityDevicesController@index",
+        "action": "App\\Http\\Controllers\\SecurityDevicesController@application",
         "middleware": [
           "web",
           "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -27996,7 +28355,7 @@
         "method": "GET|HEAD",
         "uri": "security/devices",
         "name": "security.devices",
-        "action": "App\\Http\\Controllers\\SecurityDevicesController@index",
+        "action": "App\\Http\\Controllers\\SecurityDevicesController@application",
         "middleware": [
           "web",
           "Illuminate\\Auth\\Middleware\\Authenticate",
@@ -29053,6 +29412,39 @@
     ]
   },
   "imports": {
+    "resources/js/account/AccountView.vue": [
+      "vue",
+      "vue-router",
+      "@simplewebauthn/browser",
+      "resources/js/security/passkeyCeremony.ts",
+      "resources/js/spa/locale.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/account/state.ts",
+      "resources/js/account/api.ts",
+      "resources/js/account/nativeEmail.ts",
+      "resources/js/spa/presentation.ts"
+    ],
+    "resources/js/account/api.ts": [
+      "resources/js/spa/api.ts",
+      "resources/js/api/generated/application"
+    ],
+    "resources/js/account/nativeEmail.ts": [
+      "resources/js/spa/transport.ts",
+      "resources/js/account/api.ts"
+    ],
+    "resources/js/account/routes.ts": [
+      "vue-router",
+      "resources/js/account/state.ts",
+      "resources/js/account/AccountView.vue"
+    ],
+    "resources/js/account/state.ts": [
+      "vue",
+      "resources/js/api/generated/application",
+      "vue-router",
+      "resources/js/spa/query.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/account/api.ts"
+    ],
     "resources/js/api/application.ts": [
       "openapi-fetch",
       "resources/js/api/generated/application"
@@ -29276,7 +29668,6 @@
       "resources/js/types/inertia-n1"
     ],
     "resources/js/Layouts/AdvertiserLayout.vue": [
-      "@inertiajs/vue3",
       "vue",
       "resources/js/logout.ts",
       "resources/js/Components/LanguageSwitcher.vue",
@@ -29505,11 +29896,6 @@
       "@inertiajs/vue3",
       "resources/js/Layouts/InternalLayout.vue"
     ],
-    "resources/js/Pages/Profile/Edit.vue": [
-      "resources/js/Layouts/AuthenticatedLayout.vue",
-      "resources/js/Pages/Profile/Partials/UpdateProfileInformationForm.vue",
-      "@inertiajs/vue3"
-    ],
     "resources/js/Pages/Profile/Partials/UpdatePasswordForm.vue": [
       "resources/js/Components/InputError.vue",
       "resources/js/Components/InputLabel.vue",
@@ -29517,13 +29903,6 @@
       "resources/js/Components/TextInput.vue",
       "@inertiajs/vue3",
       "vue"
-    ],
-    "resources/js/Pages/Profile/Partials/UpdateProfileInformationForm.vue": [
-      "resources/js/Components/InputError.vue",
-      "resources/js/Components/InputLabel.vue",
-      "resources/js/Components/PrimaryButton.vue",
-      "resources/js/Components/TextInput.vue",
-      "@inertiajs/vue3"
     ],
     "resources/js/Pages/Security/Devices.vue": [
       "vue",
@@ -29717,6 +30096,7 @@
       "resources/js/business-context/routes.ts",
       "resources/js/object-purpose/routes.ts",
       "resources/js/sources/routes.ts",
+      "resources/js/account/routes.ts",
       "resources/js/spa/locale.ts"
     ],
     "resources/js/spa/presentation.ts": [
@@ -29799,13 +30179,12 @@
     "tests/Feature/GoalsSpaProofTest.php": 1,
     "tests/Feature/Localization/LocaleTest.php": 8,
     "tests/Feature/Security/ClientVisibilityTest.php": 5,
-    "tests/Feature/Security/CustomerAdministrationTest.php": 6,
+    "tests/Feature/Security/CustomerAdministrationTest.php": 5,
     "tests/Feature/Security/IdentityRenewalTest.php": 1,
     "tests/Feature/Security/InertiaHistorySecurityTest.php": 1,
     "tests/Feature/Security/InternalAuthorityTest.php": 8,
     "tests/Feature/Security/ProductionIdentityTest.php": 2,
     "tests/Feature/Security/ProductionPasskeyTest.php": 1,
-    "tests/Feature/Security/SecurityDevicesTest.php": 4,
     "tests/goals-api-client.test.mjs": 1,
     "tests/identity-protocol.test.mjs": 4,
     "tests/inertia-n1-artifact.test.mjs": 5,
@@ -29814,6 +30193,7 @@
     "tests/object-purpose-interaction.test.mjs": 5,
     "tests/provider-api-client.test.mjs": 1,
     "tests/spa-goals-interaction.test.mjs": 3,
+    "tests/Support/account-spa-browser.mjs": 2,
     "tests/Support/advertiser-goals-server.php": 1,
     "tests/Support/client-visibility-browser.mjs": 16,
     "tests/Support/current-intent-browser.mjs": 3,
@@ -29854,14 +30234,16 @@
   },
   "summary": {
     "registeredRoutes": 173,
-    "legacyRenderRoutes": 20,
+    "legacyRenderRoutes": 18,
     "locallyAcceptedJourneys": [
       "workspace-selection",
       "business-creation",
       "advertiser-goals",
       "business-context",
       "object-purpose",
-      "source-management"
+      "source-management",
+      "advertiser-profile",
+      "advertiser-security-devices"
     ]
   },
   "unresolved": [

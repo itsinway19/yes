@@ -45,6 +45,7 @@ function leave() { if (logout) void logout.start(() => true); }
                                 </NavLink>
                                 <NavLink
                                     :href="route('security.devices')"
+                                    native
                                     :active="route().current('security.devices')"
                                 >
                                     الأمان والأجهزة
@@ -84,10 +85,11 @@ function leave() { if (logout) void logout.start(() => true); }
                                     <template #content>
                                         <DropdownLink
                                             :href="route('profile.edit')"
+                                            native
                                         >
                                             Profile
                                         </DropdownLink>
-                                        <DropdownLink :href="route('security.devices')">
+                                        <DropdownLink :href="route('security.devices')" native>
                                             الأمان والأجهزة
                                         </DropdownLink>
                                         <button
@@ -163,6 +165,7 @@ function leave() { if (logout) void logout.start(() => true); }
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
                             :href="route('security.devices')"
+                            native
                             :active="route().current('security.devices')"
                         >
                             الأمان والأجهزة
@@ -186,7 +189,7 @@ function leave() { if (logout) void logout.start(() => true); }
                         </div>
 
                         <div class="mt-3 space-y-1">
-                            <ResponsiveNavLink :href="route('profile.edit')">
+                            <ResponsiveNavLink :href="route('profile.edit')" native>
                                 Profile
                             </ResponsiveNavLink>
                             <button

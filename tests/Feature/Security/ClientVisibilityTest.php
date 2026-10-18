@@ -10,7 +10,7 @@ class ClientVisibilityTest extends TestCase
 {
     private function receipt(): array
     {
-        return $this->get('/profile')->original->getData()['page']['props']['clientVisibility'];
+        return $this->get('/confirm-password')->original->getData()['page']['props']['clientVisibility'];
     }
 
     public function test_probe_uses_real_page_authority_and_does_not_touch_idle_or_return_page_data(): void
@@ -20,7 +20,7 @@ class ClientVisibilityTest extends TestCase
         $receipt = $this->receipt();
         $db = DB::connection('pgsql_migrations');
         $before = $db->table('security_sessions')->where('user_id', $user->id)->first();
-        $this->get('/profile', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1',
+        $this->get('/confirm-password', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1',
             'X-Builderad-Visibility-Context' => $receipt['context']])
             ->assertOk()->assertExactJson($receipt)->assertHeader('Cache-Control', 'no-store, private');
         $after = $db->table('security_sessions')->where('id', $before->id)->first();
@@ -32,7 +32,7 @@ class ClientVisibilityTest extends TestCase
     {
         $this->actingAs(User::factory()->create());
         $receipt = $this->receipt();
-        $this->get('/profile', ['X-Builderad-Visibility' => '1'])->assertStatus(409);
+        $this->get('/confirm-password', ['X-Builderad-Visibility' => '1'])->assertStatus(409);
         $this->get('/security/devices', ['X-Builderad-Visibility' => '1',
             'X-Builderad-Visibility-Context' => $receipt['context']])->assertStatus(409);
     }
@@ -45,7 +45,7 @@ class ClientVisibilityTest extends TestCase
         $db = DB::connection('pgsql_migrations');
         $db->table('security_sessions')->where('user_id', $user->id)->update(['idle_expires_at' => now()->subMinute()]);
         $deadline = $db->table('security_sessions')->where('user_id', $user->id)->value('idle_expires_at');
-        $this->get('/profile', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1',
+        $this->get('/confirm-password', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1',
             'X-Builderad-Visibility-Context' => $receipt['context']])->assertStatus(409)
             ->assertJsonPath('identityConflict', true);
         $this->assertSame($deadline, $db->table('security_sessions')->where('user_id', $user->id)->value('idle_expires_at'));
@@ -57,7 +57,7 @@ class ClientVisibilityTest extends TestCase
         $receipt = $this->receipt();
         $this->post('/logout');
         $this->actingAs(User::factory()->create());
-        $this->get('/profile', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1',
+        $this->get('/confirm-password', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1',
             'X-Builderad-Visibility-Context' => $receipt['context']])->assertStatus(409);
     }
 }
