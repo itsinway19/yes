@@ -123,6 +123,7 @@
         "tests/SA01BrowserFixture.php",
         "tests/SessionTouchCommandWorker.php",
         "tests/spa-router.test.mjs",
+        "tests/Support/account-spa-browser.mjs",
         "tests/Support/advertiser-goals-browser.mjs",
         "tests/Support/advertiser-goals-server.php",
         "tests/Support/AdvertiserGoalsUiFixture.php",
