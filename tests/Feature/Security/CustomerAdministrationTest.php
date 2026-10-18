@@ -127,7 +127,8 @@ class CustomerAdministrationTest extends TestCase
         // Simulate a new authenticated session through the actual session issuer.
         $this->app['session']->driver()->regenerate();
         $this->actingAs($customer)->get('/workspaces/'.$workspace->public_id.'/foundation')->assertForbidden();
-        $this->get('/workspaces')->assertOk()->assertInertia(fn (Assert $p) => $p->has('reassessableWorkspaces', 1));
+        $this->getJson('/workspaces')->assertOk()->assertJsonCount(1, 'data.reassessableWorkspaces')
+            ->assertJsonPath('data.reassessableWorkspaces.0.public_id', $workspace->public_id);
         $this->post('/workspaces/'.$workspace->public_id.'/reassess-owner-grant')->assertRedirect();
         $this->get('/workspaces/'.$workspace->public_id.'/foundation')->assertOk();
         DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $customer->id)->where('action', 'workspace.view')->update(['status' => 'revoked', 'revoked_at' => now()]);
