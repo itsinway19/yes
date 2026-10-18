@@ -1358,12 +1358,10 @@
         "App\\Security\\GrantAuthority",
         "App\\Security\\StaffAuthority"
       ],
-      "pages": [
-        "Internal/Administration"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -1398,12 +1396,63 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": [
         "tests/commercial-operator.test.mjs",
-        "tests/Feature/Security/ClientVisibilityTest.php",
-        "tests/Feature/Security/InertiaHistorySecurityTest.php",
+        "tests/Feature/InternalOperationsSpaTest.php",
         "tests/Feature/Security/InternalAuthorityTest.php",
+        "tests/internal-operations-spa.test.mjs",
+        "tests/Support/internal-operations-browser.mjs",
         "tests/TestCase.php"
       ]
     },
@@ -1464,7 +1513,8 @@
       "migration": null,
       "testLeads": [
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
-        "tests/SA01BrowserFixture.php"
+        "tests/SA01BrowserFixture.php",
+        "tests/Support/internal-operations-browser.mjs"
       ]
     },
     {
@@ -1525,7 +1575,8 @@
       "migration": null,
       "testLeads": [
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
-        "tests/SA01BrowserFixture.php"
+        "tests/SA01BrowserFixture.php",
+        "tests/Support/internal-operations-browser.mjs"
       ]
     },
     {
@@ -1723,12 +1774,10 @@
         "App\\Foundation\\Tenancy\\PrincipalContext",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Internal/Customers"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -1761,9 +1810,61 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": [
-        "tests/Feature/Security/CustomerAdministrationTest.php"
+        "tests/Feature/InternalOperationsSpaTest.php",
+        "tests/Feature/Security/CustomerAdministrationTest.php",
+        "tests/internal-operations-spa.test.mjs"
       ]
     },
     {
@@ -1784,8 +1885,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -1820,9 +1921,60 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": [
-        "tests/Feature/Security/CustomerAdministrationTest.php"
+        "tests/Feature/Security/CustomerAdministrationTest.php",
+        "tests/Support/internal-operations-browser.mjs"
       ]
     },
     {
@@ -1963,12 +2115,10 @@
         "App\\Providers\\Ads\\Provider",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Internal/BusinessTypes"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -2003,9 +2153,62 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": [
-        "tests/Feature/BusinessFoundationTest.php"
+        "tests/Feature/BusinessFoundationTest.php",
+        "tests/Feature/InternalOperationsSpaTest.php",
+        "tests/internal-operations-spa.test.mjs",
+        "tests/Support/internal-operations-browser.mjs"
       ]
     },
     {
@@ -2029,8 +2232,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -2067,9 +2270,62 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": [
-        "tests/Feature/BusinessFoundationTest.php"
+        "tests/Feature/BusinessFoundationTest.php",
+        "tests/Feature/InternalOperationsSpaTest.php",
+        "tests/internal-operations-spa.test.mjs",
+        "tests/Support/internal-operations-browser.mjs"
       ]
     },
     {
@@ -2093,8 +2349,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -2131,7 +2387,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": []
     },
     {
@@ -2155,8 +2461,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -2193,7 +2499,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": []
     },
     {
@@ -2217,8 +2573,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -2255,7 +2611,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": []
     },
     {
@@ -2320,7 +2726,10 @@
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
         "tests/Feature/Commercial/CommercialScopeTest.php",
-        "tests/SA01BrowserFixture.php"
+        "tests/Feature/Security/ClientVisibilityTest.php",
+        "tests/Feature/Security/InertiaHistorySecurityTest.php",
+        "tests/SA01BrowserFixture.php",
+        "tests/Support/internal-operations-browser.mjs"
       ]
     },
     {
@@ -3119,8 +3528,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -3157,9 +3566,61 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": [
-        "tests/Feature/Security/InternalAuthorityTest.php"
+        "tests/Feature/InternalOperationsSpaTest.php",
+        "tests/Feature/Security/InternalAuthorityTest.php",
+        "tests/Support/internal-operations-browser.mjs"
       ]
     },
     {
@@ -3187,8 +3648,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -3225,7 +3686,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": []
     },
     {
@@ -4295,8 +4806,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -4333,9 +4844,60 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": [
-        "tests/Feature/Security/ServiceAuthorityTest.php"
+        "tests/Feature/Security/ServiceAuthorityTest.php",
+        "tests/Support/internal-operations-browser.mjs"
       ]
     },
     {
@@ -4357,8 +4919,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -4395,7 +4957,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": []
     },
     {
@@ -4414,12 +5026,10 @@
         "App\\Security\\GrantAuthority",
         "App\\Security\\ServiceIdentityAuthority"
       ],
-      "pages": [
-        "Internal/Services"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -4454,9 +5064,62 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": [
-        "tests/Feature/Security/ServiceAuthorityTest.php"
+        "tests/Feature/InternalOperationsSpaTest.php",
+        "tests/Feature/Security/ServiceAuthorityTest.php",
+        "tests/internal-operations-spa.test.mjs",
+        "tests/Support/internal-operations-browser.mjs"
       ]
     },
     {
@@ -4478,8 +5141,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -4516,9 +5179,62 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": [
-        "tests/Feature/Security/ServiceAuthorityTest.php"
+        "tests/Feature/InternalOperationsSpaTest.php",
+        "tests/Feature/Security/ServiceAuthorityTest.php",
+        "tests/internal-operations-spa.test.mjs",
+        "tests/Support/internal-operations-browser.mjs"
       ]
     },
     {
@@ -4540,8 +5256,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -4578,7 +5294,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": []
     },
     {
@@ -4600,8 +5366,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -4638,7 +5404,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": []
     },
     {
@@ -4666,8 +5482,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -4704,9 +5520,61 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": [
-        "tests/Feature/Security/InternalAuthorityTest.php"
+        "tests/Feature/InternalOperationsSpaTest.php",
+        "tests/Feature/Security/InternalAuthorityTest.php",
+        "tests/Support/internal-operations-browser.mjs"
       ]
     },
     {
@@ -4734,8 +5602,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -4772,7 +5640,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": []
     },
     {
@@ -4800,8 +5718,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -4838,7 +5756,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": []
     },
     {
@@ -4866,8 +5834,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -4904,7 +5872,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": []
     },
     {
@@ -4933,8 +5951,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -4973,7 +5991,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": []
     },
     {
@@ -5001,8 +6069,8 @@
       ],
       "pages": [],
       "legacyBehavior": "HTTP_OR_DELEGATED",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -5039,7 +6107,57 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "internal-operations",
+        "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
+        "routes": [
+          "GET /internal/administration",
+          "GET /internal/administration/customers",
+          "GET /internal/business-types",
+          "GET /internal/services",
+          "POST /internal/staff",
+          "POST /internal/staff/{staff}/resend-invitation",
+          "POST /internal/staff/{staff}/attest",
+          "POST /internal/staff/{staff}/activate",
+          "POST /internal/staff/{staff}/revoke",
+          "POST /internal/staff/{staff}/attest-factors",
+          "POST /internal/grants",
+          "DELETE /internal/grants/{grant}",
+          "POST /internal/administration/customers/status",
+          "POST /internal/business-types",
+          "POST /internal/business-types/{type}",
+          "POST /internal/business-types/{type}/guidance",
+          "POST /internal/business-types/{type}/prior",
+          "POST /internal/services",
+          "POST /internal/services/{service}/rotate",
+          "POST /internal/services/{service}/revoke",
+          "POST /internal/service-grants",
+          "DELETE /internal/service-grants/{grant}"
+        ],
+        "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
+        "businessOwners": [
+          "App\\Security\\StaffAuthority",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\ServiceIdentityAuthority",
+          "App\\Foundation\\Tenancy\\PrincipalContext",
+          "PostgreSQL builderad_customer_status",
+          "PostgreSQL builderad_business_config"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "InternalOperationsSpaTest",
+          "InternalAuthorityTest",
+          "CustomerAdministrationTest",
+          "BusinessFoundationTest",
+          "ServiceAuthorityTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/internal-operations-spa.test.mjs",
+          "tests/Support/internal-operations-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
+      },
       "testLeads": []
     },
     {
@@ -5263,6 +6381,7 @@
         "tests/Support/inertia-n1-browser.mjs",
         "tests/Support/inertia-official-browser.mjs",
         "tests/Support/internal-identity-browser.mjs",
+        "tests/Support/internal-operations-browser.mjs",
         "tests/Support/logout-cookie-browser.mjs",
         "tests/Support/logout-native-boundary-browser.mjs",
         "tests/Support/logout-terminal-browser.mjs",
@@ -5357,6 +6476,7 @@
         "tests/Support/goals-spa-closure.mjs",
         "tests/Support/inertia-n1-browser.mjs",
         "tests/Support/inertia-official-browser.mjs",
+        "tests/Support/internal-operations-browser.mjs",
         "tests/Support/logout-cookie-browser.mjs",
         "tests/Support/logout-native-boundary-browser.mjs",
         "tests/Support/logout-terminal-browser.mjs",
@@ -7021,7 +8141,8 @@
       "testLeads": [
         "tests/account-spa.test.mjs",
         "tests/Support/account-spa-browser.mjs",
-        "tests/Support/internal-identity-browser.mjs"
+        "tests/Support/internal-identity-browser.mjs",
+        "tests/Support/internal-operations-browser.mjs"
       ]
     },
     {
@@ -7967,6 +9088,7 @@
         "tests/Feature/Security/WorkspaceCreationTest.php",
         "tests/Feature/WorkspaceSpaIntegrationTest.php",
         "tests/Support/advertiser-goals-browser.mjs",
+        "tests/Support/internal-operations-browser.mjs",
         "tests/Support/ObjectPurposeTestCase.php",
         "tests/Support/sources-spa-browser.mjs",
         "tests/Support/workspace-spa-browser.mjs"
@@ -8054,6 +9176,7 @@
         "tests/Feature/Security/WorkspaceCreationTest.php",
         "tests/Feature/WorkspaceSpaIntegrationTest.php",
         "tests/Support/advertiser-goals-browser.mjs",
+        "tests/Support/internal-operations-browser.mjs",
         "tests/Support/ObjectPurposeTestCase.php",
         "tests/Support/sources-spa-browser.mjs",
         "tests/Support/workspace-spa-browser.mjs"
@@ -22694,10 +23817,8 @@
         "App\\Providers\\Ads\\Provider",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Internal/BusinessTypes"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -23394,10 +24515,8 @@
         "App\\Security\\GrantAuthority",
         "App\\Security\\StaffAuthority"
       ],
-      "pages": [
-        "Internal/Administration"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -23448,10 +24567,8 @@
         "App\\Foundation\\Tenancy\\PrincipalContext",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Internal/Customers"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -24313,10 +25430,8 @@
         "App\\Security\\GrantAuthority",
         "App\\Security\\ServiceIdentityAuthority"
       ],
-      "pages": [
-        "Internal/Services"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -30078,12 +31193,6 @@
       "resources/js/navigationSettlement.ts"
     ],
     "resources/js/Components/ApplicationLogo.vue": [],
-    "resources/js/Components/Business/BusinessTypeEditor.vue": [
-      "vue",
-      "resources/js/Components/ProviderBrand.vue",
-      "@inertiajs/vue3",
-      "resources/js/localization/business.ts"
-    ],
     "resources/js/Components/Business/CurrentIntentEditor.vue": [
       "resources/js/business-context/commands.ts",
       "vue",
@@ -30217,6 +31326,101 @@
       "@inertiajs/core",
       "resources/js/types/inertia-n1"
     ],
+    "resources/js/internal-operations/adminApi.ts": [
+      "resources/js/spa/api.ts",
+      "resources/js/api/generated/application"
+    ],
+    "resources/js/internal-operations/AdministrationView.vue": [
+      "vue",
+      "vue-router",
+      "vue-i18n",
+      "resources/js/Components/ProviderBrand.vue",
+      "resources/js/internal-operations/OperationsShell.vue",
+      "resources/js/internal-operations/adminState.ts",
+      "resources/js/internal-operations/adminApi.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/spa/presentation.ts"
+    ],
+    "resources/js/internal-operations/adminState.ts": [
+      "vue",
+      "resources/js/api/generated/application",
+      "resources/js/spa/api.ts",
+      "resources/js/spa/transport.ts"
+    ],
+    "resources/js/internal-operations/businessState.ts": [
+      "vue",
+      "resources/js/api/generated/application",
+      "resources/js/spa/api.ts",
+      "resources/js/spa/transport.ts"
+    ],
+    "resources/js/internal-operations/BusinessTypeEditor.vue": [
+      "vue",
+      "resources/js/Components/ProviderBrand.vue",
+      "resources/js/internal-operations/businessState.ts",
+      "resources/js/spa/locale.ts",
+      "resources/js/localization/businessCopy.ts"
+    ],
+    "resources/js/internal-operations/BusinessTypesView.vue": [
+      "vue",
+      "vue-router",
+      "resources/js/internal-operations/OperationsShell.vue",
+      "resources/js/internal-operations/BusinessTypeEditor.vue",
+      "resources/js/internal-operations/businessState.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/spa/locale.ts",
+      "resources/js/spa/presentation.ts"
+    ],
+    "resources/js/internal-operations/customerState.ts": [
+      "vue",
+      "openapi-fetch",
+      "resources/js/api/generated/application",
+      "resources/js/spa/api.ts",
+      "resources/js/spa/transport.ts"
+    ],
+    "resources/js/internal-operations/CustomersView.vue": [
+      "vue",
+      "vue-router",
+      "vue-i18n",
+      "resources/js/internal-operations/OperationsShell.vue",
+      "resources/js/internal-operations/customerState.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/spa/presentation.ts"
+    ],
+    "resources/js/internal-operations/OperationsShell.vue": [
+      "vue-router",
+      "resources/js/spa/locale.ts"
+    ],
+    "resources/js/internal-operations/routes.ts": [
+      "vue-router",
+      "resources/js/internal-operations/adminState.ts",
+      "resources/js/internal-operations/customerState.ts",
+      "resources/js/internal-operations/businessState.ts",
+      "resources/js/internal-operations/serviceState.ts",
+      "resources/js/internal-operations/ServicesView.vue",
+      "resources/js/internal-operations/BusinessTypesView.vue",
+      "resources/js/internal-operations/AdministrationView.vue",
+      "resources/js/internal-operations/CustomersView.vue"
+    ],
+    "resources/js/internal-operations/serviceApi.ts": [
+      "resources/js/spa/api.ts",
+      "resources/js/api/generated/application"
+    ],
+    "resources/js/internal-operations/serviceState.ts": [
+      "vue",
+      "resources/js/api/generated/application",
+      "resources/js/spa/api.ts",
+      "resources/js/spa/transport.ts"
+    ],
+    "resources/js/internal-operations/ServicesView.vue": [
+      "vue",
+      "vue-router",
+      "resources/js/api/generated/application",
+      "resources/js/internal-operations/OperationsShell.vue",
+      "resources/js/internal-operations/serviceState.ts",
+      "resources/js/internal-operations/serviceApi.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/spa/presentation.ts"
+    ],
     "resources/js/Layouts/AdvertiserLayout.vue": [
       "vue",
       "resources/js/logout.ts",
@@ -30332,19 +31536,6 @@
       "resources/js/Layouts/AuthenticatedLayout.vue",
       "@inertiajs/vue3"
     ],
-    "resources/js/Pages/Internal/Administration.vue": [
-      "vue",
-      "vue-i18n",
-      "@inertiajs/vue3",
-      "resources/js/Layouts/InternalLayout.vue",
-      "resources/js/Components/ProviderBrand.vue"
-    ],
-    "resources/js/Pages/Internal/BusinessTypes.vue": [
-      "@inertiajs/vue3",
-      "resources/js/Layouts/InternalLayout.vue",
-      "resources/js/Components/Business/BusinessTypeEditor.vue",
-      "resources/js/localization/business.ts"
-    ],
     "resources/js/Pages/Internal/Commercial.vue": [
       "vue",
       "@inertiajs/vue3",
@@ -30355,18 +31546,6 @@
       "vue",
       "@inertiajs/vue3",
       "axios",
-      "resources/js/Layouts/InternalLayout.vue"
-    ],
-    "resources/js/Pages/Internal/Customers.vue": [
-      "vue",
-      "@inertiajs/vue3",
-      "vue-i18n",
-      "axios",
-      "resources/js/Layouts/InternalLayout.vue"
-    ],
-    "resources/js/Pages/Internal/Services.vue": [
-      "vue",
-      "@inertiajs/vue3",
       "resources/js/Layouts/InternalLayout.vue"
     ],
     "resources/js/Pages/Profile/Partials/UpdatePasswordForm.vue": [
@@ -30559,6 +31738,7 @@
       "resources/js/account/routes.ts",
       "resources/js/auth-entry/routes.ts",
       "resources/js/staff-enrollment/routes.ts",
+      "resources/js/internal-operations/routes.ts",
       "resources/js/spa/locale.ts"
     ],
     "resources/js/spa/nativeForm.ts": [
@@ -30662,11 +31842,10 @@
     "tests/Feature/Foundation/BaselineContractTest.php": 5,
     "tests/Feature/GoalsSpaIntegrationTest.php": 1,
     "tests/Feature/GoalsSpaProofTest.php": 1,
+    "tests/Feature/InternalOperationsSpaTest.php": 1,
     "tests/Feature/Security/ClientVisibilityTest.php": 5,
-    "tests/Feature/Security/CustomerAdministrationTest.php": 5,
     "tests/Feature/Security/IdentityRenewalTest.php": 1,
     "tests/Feature/Security/InertiaHistorySecurityTest.php": 3,
-    "tests/Feature/Security/InternalAuthorityTest.php": 8,
     "tests/Feature/Security/ProductionIdentityTest.php": 2,
     "tests/Feature/Security/ProductionPasskeyTest.php": 1,
     "tests/goals-api-client.test.mjs": 1,
@@ -30693,6 +31872,7 @@
     "tests/Support/inertia-n1-server.php": 8,
     "tests/Support/inertia-official-browser.mjs": 7,
     "tests/Support/internal-identity-browser.mjs": 1,
+    "tests/Support/internal-operations-browser.mjs": 6,
     "tests/Support/logout-cookie-browser.mjs": 5,
     "tests/Support/logout-native-boundary-browser.mjs": 4,
     "tests/Support/logout-terminal-browser.mjs": 11,
@@ -30721,7 +31901,7 @@
   },
   "summary": {
     "registeredRoutes": 173,
-    "legacyRenderRoutes": 6,
+    "legacyRenderRoutes": 2,
     "locallyAcceptedJourneys": [
       "workspace-selection",
       "business-creation",
@@ -30732,7 +31912,8 @@
       "advertiser-profile",
       "advertiser-security-devices",
       "advertiser-auth-entry",
-      "internal-identity-staff-enrollment"
+      "internal-identity-staff-enrollment",
+      "internal-operations"
     ]
   },
   "unresolved": [

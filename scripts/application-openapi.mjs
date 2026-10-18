@@ -6,6 +6,7 @@ import { sourceContracts } from './sources-openapi.mjs';
 import { providerContracts } from './providers-openapi.mjs';
 import { accountContracts } from './account-openapi.mjs';
 import { authEntryContracts } from './auth-entry-openapi.mjs';
+import { internalOperationsContracts } from './internal-operations-openapi.mjs';
 
 const ref = name => ({ $ref: `#/components/schemas/${name}` });
 const text = { type: 'string' };
@@ -34,6 +35,7 @@ const sources = sourceContracts({ ref, text, uuid, object, list, nullable, versi
 const providers = providerContracts({ ref, text, uuid, object, list, nullable, version, response, json, errors, security, headers, workspaceParameter });
 const account = accountContracts({ ref, text, object, list, nullable, response, json, errors, security, headers, envelope, resource });
 const authEntry = authEntryContracts({ ref, text, object, list, nullable, response, json, errors, security, headers, envelope, resource });
+const internalOperations = internalOperationsContracts({ ref, text, uuid, object, list, nullable, response, json, errors, security, headers, envelope, resource });
 
 export const spec = {
     openapi: '3.1.0',
@@ -82,6 +84,7 @@ export const spec = {
         ...providers.paths,
         ...account.paths,
         ...authEntry.paths,
+        ...internalOperations.paths,
     },
     components: {
         securitySchemes: goals.components.securitySchemes,
@@ -120,6 +123,7 @@ export const spec = {
             ...providers.schemas,
             ...account.schemas,
             ...authEntry.schemas,
+            ...internalOperations.schemas,
         },
     },
 };

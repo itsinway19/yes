@@ -37,10 +37,10 @@ function closeMenu() {
             <div class="admin-header-actions"><LanguageSwitcher route-name="internal.locale.update" /><button ref="menuButton" type="button" class="admin-action admin-menu-button" :aria-expanded="menuOpen" aria-controls="internal-menu" @click="menuOpen = !menuOpen">{{ t(menuOpen ? 'admin.closeMenu' : 'admin.menu') }}</button></div>
         </header>
         <aside class="admin-sidebar" :class="{ 'admin-sidebar-open': menuOpen }">
-            <Link :href="route($page.props.auth.canInternalAdministration ? 'internal.administration' : 'internal.security.devices')" class="admin-brand"><ApplicationLogo class="admin-brand-logo" aria-hidden="true" /><span class="admin-brand-copy"><span dir="ltr" class="admin-brand-name">Builderad</span><span class="admin-eyebrow">{{ t('admin.internal') }}</span></span></Link>
+            <a :href="route($page.props.auth.canInternalAdministration ? 'internal.administration' : 'internal.security.devices')" class="admin-brand"><ApplicationLogo class="admin-brand-logo" aria-hidden="true" /><span class="admin-brand-copy"><span dir="ltr" class="admin-brand-name">Builderad</span><span class="admin-eyebrow">{{ t('admin.internal') }}</span></span></a>
             <nav id="internal-menu" :aria-label="t('admin.navigation')" class="admin-navigation">
                 <p class="admin-nav-heading">{{ t('admin.workspace') }}</p>
-                <Link v-for="item in navigation" :key="item.key" :href="route(item.route)" :aria-current="route().current(item.route) ? 'page' : undefined" class="admin-nav-link" @click="menuOpen = false"><span>{{ t(`admin.${item.key}`) }}</span></Link>
+                <component :is="['internal.commercial.index', 'internal.commercial-market-preparation.index'].includes(item.route) ? Link : 'a'" v-for="item in navigation" :key="item.key" :href="route(item.route)" :aria-current="route().current(item.route) ? 'page' : undefined" class="admin-nav-link" @click="menuOpen = false"><span>{{ t(`admin.${item.key}`) }}</span></component>
             </nav>
             <div class="admin-sidebar-footer"><span class="admin-eyebrow">{{ t('admin.internalAccess') }}</span><button type="button" @click="logout?.start(() => true)" class="admin-logout">{{ t('admin.logout') }}</button></div>
         </aside>

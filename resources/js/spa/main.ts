@@ -15,6 +15,7 @@ import { sourceRoutes } from '../sources/routes';
 import { accountRoutes } from '../account/routes';
 import { authEntryRoutes } from '../auth-entry/routes';
 import { staffEnrollmentRoutes } from '../staff-enrollment/routes';
+import { internalOperationsRoutes } from '../internal-operations/routes';
 import { locale, localeBusy, switchLocale } from './locale';
 const root = (document.getElementById('application-spa') ?? document.getElementById('goals-spa'))!;
 watch(status, value => { root.dataset.state = value; }, { immediate: true, flush: 'sync' });
@@ -26,7 +27,7 @@ const load = (to: RouteLocationNormalized, passive: boolean) => {
     if (!activePresentation) { status.value = 'unavailable'; return; }
     return activePresentation.load(to, passive);
 };
-const router = createApplicationRouter([...workspaceRoutes, ...goalsRoutes, ...businessContextRoutes, ...objectPurposeRoutes, ...sourceRoutes, ...accountRoutes, ...authEntryRoutes, ...staffEnrollmentRoutes], {
+const router = createApplicationRouter([...workspaceRoutes, ...goalsRoutes, ...businessContextRoutes, ...objectPurposeRoutes, ...sourceRoutes, ...accountRoutes, ...authEntryRoutes, ...staffEnrollmentRoutes, ...internalOperationsRoutes], {
     suspend: clearDisplay,
     load,
     unavailable: () => { status.value = 'unavailable'; },
