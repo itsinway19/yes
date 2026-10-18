@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
 import { inject } from 'vue';
 import { logoutKey } from '@/logout';
 import LanguageSwitcher from '@/Components/LanguageSwitcher.vue';
@@ -15,7 +14,7 @@ const { locale, t } = useBusinessCopy();
         <header class="business-header">
             <a :href="route('dashboard')" class="business-brand" dir="ltr">Builderad<span v-if="businessName" :dir="locale === 'ar' ? 'rtl' : 'ltr'">{{ businessName }}</span></a>
             <nav :aria-label="t('home')"><a :href="route('workspaces.index')">{{ t('businesses') }}</a><a v-if="workspaceId" :href="route('workspaces.business.edit', workspaceId)">{{ t('context') }}</a><a v-if="workspaceId" :href="route('workspaces.goals.edit', workspaceId)">{{ t('goalsTitle') }}</a></nav>
-            <div class="business-account"><LanguageSwitcher route-name="locale.update" :preserve-state="preserveDraftsOnLocaleChange" /><details><summary>{{ t('profile') }}</summary><div class="business-account-menu"><Link :href="route('profile.edit')">{{ t('profile') }}</Link><Link :href="route('security.devices')">{{ t('security') }}</Link><button type="button" @click="leave">{{ t('logout') }}</button></div></details></div>
+            <div class="business-account"><LanguageSwitcher route-name="locale.update" :preserve-state="preserveDraftsOnLocaleChange" /><details><summary>{{ t('profile') }}</summary><div class="business-account-menu"><a :href="route('profile.edit')">{{ t('profile') }}</a><a :href="route('security.devices')">{{ t('security') }}</a><button type="button" @click="leave">{{ t('logout') }}</button></div></details></div>
         </header>
         <main id="business-content" tabindex="-1" class="business-main"><slot /></main>
     </div>

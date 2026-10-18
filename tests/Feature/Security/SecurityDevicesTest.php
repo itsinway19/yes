@@ -7,7 +7,6 @@ use App\Security\SessionAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class SecurityDevicesTest extends TestCase
@@ -28,13 +27,10 @@ class SecurityDevicesTest extends TestCase
             ]);
         }
 
-        $this->actingAs($user)->get('/security/devices')->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Security/Devices')
-                ->has('passkeys', 1)
-                ->where('passkeys.0.provider', 'Microsoft Password Manager')
-                ->missing('passkeys.0.credential')
-                ->etc());
+        $this->actingAs($user)->getJson('/security/devices')->assertOk()
+            ->assertJsonCount(1, 'data.passkeys')
+            ->assertJsonPath('data.passkeys.0.provider', 'Microsoft Password Manager')
+            ->assertJsonMissingPath('data.passkeys.0.credential');
     }
 
     public function test_user_sees_and_revokes_only_their_own_sessions(): void
@@ -45,9 +41,7 @@ class SecurityDevicesTest extends TestCase
         $otherId = $this->insertSession($user->id, 'second-browser');
         $foreignId = $this->insertSession($other->id, 'foreign-browser');
 
-        $this->get('/security/devices')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Security/Devices')
-            ->has('sessions', 2));
+        $this->getJson('/security/devices')->assertOk()->assertJsonCount(2, 'data.sessions');
 
         $this->delete('/security/sessions/'.$foreignId)->assertNotFound();
         $this->assertNull(DB::table('security_sessions')->where('id', $foreignId)->value('revoked_at'));

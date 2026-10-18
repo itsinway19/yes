@@ -3,40 +3,48 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Http\Responses\SpaPage;
 use App\Notifications\SecurityMail;
 use App\Notifications\SecurityNotice;
 use App\Security\IdentityLifecycle;
 use App\Security\LifecycleAuthority;
 use App\Security\SessionAuthority;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
-use Inertia\Response;
 
 class ProfileController extends Controller
 {
     /**
      * Display the user's profile form.
      */
-    public function edit(Request $request): Response
+    public function edit(Request $request): SpaPage
     {
-        return Inertia::render('Profile/Edit', [
+        if (! $request->expectsJson()) {
+            $request->session()->keep(['errors', '_old_input', 'status']);
+        }
+
+        return new SpaPage([
+            'user' => $request->user()->only(['name', 'email', 'email_verified_at']),
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'canChangeEmail' => DB::table('principal_lifecycles')
                 ->where('user_id', $request->user()->id)
                 ->where('principal_class', 'advertiser')->exists(),
             'status' => session('status'),
+            'errors' => $request->session()->get('errors')?->getBag('default')->messages() ?? [],
+            'old' => ['name' => $request->old('name'), 'email' => $request->old('email')],
         ]);
     }
 
     /**
      * Update the user's profile information.
      */
-    public function update(ProfileUpdateRequest $request, LifecycleAuthority $lifecycles, SessionAuthority $sessions): RedirectResponse
+    public function update(ProfileUpdateRequest $request, LifecycleAuthority $lifecycles, SessionAuthority $sessions): RedirectResponse|JsonResponse
     {
         $changed = DB::connection('pgsql_authority')->transaction(function () use ($request, $lifecycles, $sessions): bool {
             $oldEmail = $request->user()->email;
@@ -64,6 +72,8 @@ class ProfileController extends Controller
             return Redirect::route('login')->with('status', __('security.email.reauthenticate'));
         }
 
-        return Redirect::route('profile.edit');
+        return $request->expectsJson()
+            ? response()->json(['saved' => true])->header('Cache-Control', 'no-store')
+            : Redirect::route('profile.edit');
     }
 }

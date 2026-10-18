@@ -185,7 +185,7 @@ class ProductionIdentityTest extends TestCase
         $this->reloadGuard();
         $page = $this->get('/profile', ['Accept' => 'text/html']);
         $page->assertOk();
-        $document = $page->viewData('page')['props']['identity'];
+        $document = $page->viewData('identity');
         $this->assertLessThanOrEqual(30000, $document['leaseMilliseconds']);
         $this->assertGreaterThan(0, $document['leaseMilliseconds']);
         $this->assertSame([], $page->headers->getCookies());
@@ -292,7 +292,7 @@ class ProductionIdentityTest extends TestCase
         $this->reloadGuard();
         $profile = $this->get('/profile', ['Accept' => 'text/html']);
         $profile->assertOk();
-        $this->assertSame(1, $profile->viewData('page')['props']['identity']['binding']['lifecycle']);
+        $this->assertSame(1, $profile->viewData('identity')['binding']['lifecycle']);
         $this->post('/locale', ['locale' => 'en'], $this->headers($identity))->assertStatus(409);
     }
 
@@ -303,7 +303,7 @@ class ProductionIdentityTest extends TestCase
         $credential = $identity['binding']['credential'];
         $this->post('/confirm-password', ['password' => 'password'], $this->headers($identity))->assertRedirect();
         $this->put('/password', ['current_password' => 'password', 'password' => 'Dense-Unique-Fixture-Password-921!',
-            'password_confirmation' => 'Dense-Unique-Fixture-Password-921!'], $this->headers($identity))->assertRedirect();
+            'password_confirmation' => 'Dense-Unique-Fixture-Password-921!'], $this->headers($identity))->assertOk()->assertExactJson(['saved' => true]);
         $this->assertTrue(Hash::check('Dense-Unique-Fixture-Password-921!', $user->fresh()->password));
         $this->assertSame($credential, DB::table('browser_identity_transitions')->value('current_session_key_hash'));
         $native = $this->post('/locale', ['locale' => 'en', '_token' => $identity['csrf'], '_identity_receipt' => $identity['receipt']], ['Accept' => 'text/html']);

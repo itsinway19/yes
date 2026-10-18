@@ -220,7 +220,7 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::get('/security/devices', [SecurityDevicesController::class, 'index'])->name('security.devices');
+    Route::get('/security/devices', [SecurityDevicesController::class, 'application'])->name('security.devices');
     Route::delete('/security/sessions/{session}', [SecurityDevicesController::class, 'destroy'])->middleware(EnsureFreshAuthentication::class)->whereNumber('session')->name('security.sessions.destroy');
     Route::post('/security/sessions/revoke-others', [SecurityDevicesController::class, 'destroyOthers'])->middleware(EnsureFreshAuthentication::class)->name('security.sessions.revoke-others');
     Route::post('/security/sessions/sign-out-this-device', [SecurityDevicesController::class, 'destroyCurrent'])->name('security.sessions.sign-out-current');

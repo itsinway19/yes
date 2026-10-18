@@ -87,9 +87,13 @@ export function resumeLease() {
         } catch { if (owned(captured) && status.value !== 'closed') { suspend(); status.value = 'unavailable'; } }
     }, Math.max(1, remaining * 0.7));
 }
-export async function logout() {
+export function documentEvidence() {
+    if (status.value === 'closed') throw new Error('Document is closed');
+    return { receipt: identity.receipt, transition: identity.transition, csrf: identity.csrf };
+}
+export async function logout(endpoint = '/logout') {
     // Close the UI before the actual existing server-owned terminal transition.
-    const work = request<{ redirect: string }>('/logout', { method: 'POST' }, true);
+    const work = request<{ redirect: string }>(endpoint, { method: 'POST' }, true);
     status.value = 'checking';
     try { const result = await work; close(); location.replace(result.redirect); }
     catch { close(); }

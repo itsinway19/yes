@@ -11,7 +11,7 @@ class InertiaHistorySecurityTest extends TestCase
     public function test_public_and_protected_pages_enable_official_history_encryption(): void
     {
         $this->get('/login')->assertViewHas('page', fn ($page) => $page['encryptHistory'] === true);
-        $this->actingAs(User::factory()->create())->get('/profile')
+        $this->actingAs(User::factory()->create())->get('/confirm-password')
             ->assertViewHas('page', fn ($page) => $page['encryptHistory'] === true);
     }
 
@@ -21,8 +21,8 @@ class InertiaHistorySecurityTest extends TestCase
         $this->useIdentityDocument();
         $this->postJson('/login', ['email' => $user->email, 'password' => 'password'])
             ->assertOk()->assertJsonPath('transition.epoch', 1);
-        $this->get('/profile')->assertViewHas('page', fn ($page) => $page['clearHistory'] === true);
-        $this->get('/profile')->assertViewHas('page', fn ($page) => empty($page['clearHistory']));
+        $this->get('/confirm-password')->assertViewHas('page', fn ($page) => $page['clearHistory'] === true);
+        $this->get('/confirm-password')->assertViewHas('page', fn ($page) => empty($page['clearHistory']));
     }
 
     public function test_logout_sets_clear_history_after_invalidating_the_session(): void
