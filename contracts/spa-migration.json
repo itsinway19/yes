@@ -194,6 +194,17 @@
       "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
     },
     {
+      "id": "final-commercial-displays",
+      "journey": "Commercial market preparation, composite founder intents, approved references, immutable configuration, assignability, beneficiary registration, command receipts and audit recovery",
+      "routes": ["GET /internal/commercial", "GET /internal/administration/commercial-markets"],
+      "spaBoundary": "Existing unified application, shared Vue Router, generated same-origin API and visibility-admitted transport; no new authority or command protocol",
+      "businessOwners": ["App\\Http\\Controllers\\CommercialController", "App\\Http\\Controllers\\CommercialMarketPreparationController", "App\\Commercial\\MarketRegistry", "App\\Commercial\\ApprovedCatalogReference", "App\\Commercial\\RegisterCommercialScope", "App\\Commercial\\CommercialAuditDelivery", "App\\Security\\GrantAuthority", "App\\Security\\SessionAuthority", "PostgreSQL authority/RLS"],
+      "apiContract": "contracts/application.openapi.json",
+      "tests": ["CommercialScopeTest", "CommercialMarketPreparationTest", "ClientVisibilityTest", "InertiaHistorySecurityTest", "tests/commercial-preparation-spa.test.mjs", "tests/commercial-editor-concurrency.test.mjs", "tests/Support/commercial-spa-browser.mjs"],
+      "status": "LOCAL_JOURNEY_ACCEPTED",
+      "cutover": "Both existing displays now return SpaPage without private bootstrap data. Original writers, composite intent/target/child binding, frozen command versions, contract-specific explicit retries, exact receipt fingerprints and current server authority remain. Final proof and dependency classification are recorded separately in FINAL_COMMERCIAL_SPA_EXECUTION.md. Zero render routes is not dependency-removal or release acceptance; N1/runtime, legacy entry/assets, old test-consumed components and shared visibility/history protections remain pending their separately authorized removal assessment."
+    },
+    {
       "id": "locale-command",
       "journey": "Switch the application language using the existing encrypted locale cookie",
       "routes": ["POST /locale"],

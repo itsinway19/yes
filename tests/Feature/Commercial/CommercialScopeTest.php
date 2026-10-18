@@ -10,7 +10,6 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Testing\Fluent\AssertableJson;
-use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Symfony\Component\Process\Process;
@@ -21,6 +20,39 @@ use Tests\TestCase;
 class CommercialScopeTest extends TestCase
 {
     use ApplicationContractAssertions;
+
+    public function test_spa_commercial_projection_and_receipt_provenance_match_real_sql_commands(): void
+    {
+        $market = $this->market('Synthetic SPA market', 'USD');
+        $projection = $this->getJson('/internal/commercial')->assertOk()->assertJsonPath('data.markets.0.revision', 2)->json();
+        $this->assertApplicationContract('CommercialOperationsResource', $projection);
+        $registration = $this->registration($market);
+        $registered = $this->postJson('/internal/commercial/registrations', $registration)->assertOk()->json();
+        $this->assertApplicationContract('CommercialEffectResult', $registered);
+        $this->assertApplicationContract('CommercialContextResult', $this->getJson('/internal/commercial/contexts/'.$registration['scope_id'])->assertOk()->json());
+        $this->assertApplicationContract('CommercialOperationsResource', $this->getJson('/internal/commercial')->assertOk()->json());
+        $input = ['command_id' => $this->id(), 'reason_code' => 'synthetic_configuration', 'market_id' => $market['market'],
+            'configuration_id' => null, 'expected_revision' => 2];
+        $this->postJson('/internal/commercial/assignability', $input)->assertOk()->assertJsonPath('revision', 3);
+        $this->getJson('/internal/commercial/receipts/'.$input['command_id'])->assertForbidden();
+        $this->grant($this->operator, 'ReadCommercialRegistrationReceipt', $market['market']);
+        $receipt = $this->getJson('/internal/commercial/receipts/'.$input['command_id'])->assertOk()->json();
+        $this->assertApplicationContract('CommercialCommandReceipt', $receipt);
+        $this->assertIsString($receipt['result']);
+        foreach ([['assignability', $input], ['register', $registration]] as [$kind, $body]) {
+            $record = $this->getJson('/internal/commercial/receipts/'.$body['command_id'])->assertOk()->json();
+            $process = new Process([getenv('BUILDERAD_NODE') ?: (PHP_OS_FAMILY === 'Windows' ? 'C:\\tools\\node24\\node.exe' : 'node'), base_path('tests/Support/validate-commercial-receipt.mjs')], base_path());
+            $process->setInput(json_encode(['command' => ['kind' => $kind, 'body' => $body], 'receipt' => $record, 'principal' => $this->operator->id], JSON_THROW_ON_ERROR));
+            $process->mustRun();
+            $this->assertSame(['matches' => true], json_decode($process->getOutput(), true));
+            $body['reason_code'] = 'different_frozen_request';
+            $process->setInput(json_encode(['command' => ['kind' => $kind, 'body' => $body], 'receipt' => $record, 'principal' => $this->operator->id], JSON_THROW_ON_ERROR));
+            $process->mustRun();
+            $this->assertSame(['matches' => false], json_decode($process->getOutput(), true));
+        }
+        $this->postJson('/internal/commercial/assignability', [...$input, 'command_id' => $this->id()])->assertConflict();
+        $this->assertSame(3, $this->owner()->table('commercial_market_assignability')->where('market_id', $market['market'])->value('revision'));
+    }
 
     public function test_review_source_commercial_contract_preserves_absence_and_exact_market_uuid(): void
     {
@@ -99,7 +131,7 @@ class CommercialScopeTest extends TestCase
             $this->assertSqlDenied(fn () => $this->owner()->table($table)->limit(1)->update($table === 'commercial_market_configuration_versions'
                 ? ['denomination_code' => 'USD'] : ($table === 'commercial_market_assignments' ? ['denomination_code' => 'USD'] : ['reason_code' => 'rewrite'])), '23514');
         }
-        $this->get('/internal/commercial')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Internal/Commercial')->has('markets', 2)->has('configurations', 4));
+        $this->getJson('/internal/commercial')->assertOk()->assertJsonCount(2, 'data.markets')->assertJsonCount(4, 'data.configurations');
     }
 
     public function test_commercial_country_never_populates_or_overwrites_declared_markets(): void
@@ -242,7 +274,7 @@ class CommercialScopeTest extends TestCase
         $this->postCommand('assignability', ['market_id' => $jo['market'], 'configuration_id' => $jo['configuration'], 'expected_revision' => 1])->assertForbidden();
         $this->postCommand('assignability', ['market_id' => $sa['market'], 'configuration_id' => null, 'expected_revision' => 2])->assertForbidden();
         $this->grant($ungranted, 'ReadCommercialMarketRegistry', $sa['market']);
-        $this->get('/internal/commercial')->assertOk()->assertInertia(fn (Assert $page) => $page->has('markets', 1)->where('markets.0.id', $sa['market'])->has('configurations', 1));
+        $this->getJson('/internal/commercial')->assertOk()->assertJsonCount(1, 'data.markets')->assertJsonPath('data.markets.0.id', $sa['market'])->assertJsonCount(1, 'data.configurations');
         $this->assertSame($sa['configuration'], $this->owner()->table('commercial_market_assignability')->where('market_id', $sa['market'])->value('configuration_id'));
     }
 
@@ -743,9 +775,8 @@ class CommercialScopeTest extends TestCase
             ->where('action', 'RegisterCommercialScope')->update(['status' => 'revoked', 'revoked_at' => now()]);
         $this->postJson('/internal/commercial/registrations', $input)->assertForbidden();
         $this->assertSame(1, $this->owner()->table('commercial_scopes')->count());
-        $this->get('/internal/commercial')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('catalogReferences.0.approval_reference', 'synthetic:approved')
-            ->where('catalogReferences.0.catalog_version', '1')->missing('catalogReferences.0.producer_transaction'));
+        $this->getJson('/internal/commercial')->assertOk()->assertJsonPath('data.catalogReferences.0.approval_reference', 'synthetic:approved')
+            ->assertJsonPath('data.catalogReferences.0.catalog_version', '1')->assertJsonMissingPath('data.catalogReferences.0.producer_transaction');
     }
 
     private function blockingHolder(string $sql, array $bindings, string $consumerConnection = 'pgsql', ?int $expiryGrantId = null): Process

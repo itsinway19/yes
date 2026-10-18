@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class InertiaHistorySecurityTest extends TestCase
 {
-    public function test_remaining_commercial_enables_history_encryption_and_migrated_documents_have_no_inertia_payload(): void
+    public function test_commercial_and_migrated_documents_have_no_legacy_history_or_private_bootstrap_payload(): void
     {
         $this->get('/internal/login')->assertViewIs('spa')->assertDontSee('data-page=', false);
         $this->get('/login')->assertViewIs('spa')->assertDontSee('data-page=', false);
@@ -27,7 +27,10 @@ class InertiaHistorySecurityTest extends TestCase
             'action' => 'staff.view', 'scope_kind' => 'platform', 'subject_generation' => 1,
             'reason' => 'remaining legacy history fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
         $this->actingAsInternal($staff)->get('/internal/commercial')
-            ->assertViewHas('page', fn ($page) => $page['encryptHistory'] === true);
+            ->assertViewIs('spa')->assertDontSee('data-page=', false)->assertDontSee($staff->email);
+        $this->get('/internal/administration/commercial-markets')
+            ->assertViewIs('spa')->assertDontSee('data-page=', false)->assertDontSee($staff->email)
+            ->assertDontSee('intentBinding', false)->assertDontSee('recordedMarkets', false);
     }
 
     public function test_login_replaces_the_guest_document_and_does_not_restore_an_inertia_history_payload(): void
