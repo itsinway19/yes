@@ -5,19 +5,31 @@ import { parse, compileScript } from '@vue/compiler-sfc';
 import ts from 'typescript';
 import { createRenderer, nextTick, reactive, h } from 'vue';
 
-// Exercise the real compiled component; only HTTP and host elements are replaced.
 const transport = { gets: [], posts: [], get: async () => ({}), post: async () => ({}) };
 globalThis.__bb2ReportTransport = transport;
 globalThis.Document = class {};
 globalThis.ShadowRoot = class {};
-const http = 'data:text/javascript;base64,' + Buffer.from(`export default {
-get: async (...a) => { globalThis.__bb2ReportTransport.gets.push(a); return { data: await globalThis.__bb2ReportTransport.get(...a) }; },
-post: async (...a) => { globalThis.__bb2ReportTransport.posts.push(a); return { data: await globalThis.__bb2ReportTransport.post(...a) }; },
-isCancel: () => false, isAxiosError: e => e.isAxiosError === true };`).toString('base64');
-const { descriptor } = parse(await readFile(new URL('../resources/js/Pages/Workspaces/ProviderReportRequest.vue', import.meta.url), 'utf8'));
+const drafts = new Map(); globalThis.__reportDrafts = drafts;
+globalThis.window = { addEventListener() {}, removeEventListener() {} };
+globalThis.confirm = () => true;
+const moduleUrl = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
+const ports = {
+    './api': moduleUrl(`const runtime = globalThis.__bb2ReportTransport;
+        const url = (target, provider) => '/workspaces/' + target.workspace + '/providers/' + provider + '/' + target.source + '/report';
+        export const providers = {
+            reportStatus: async (target, selection) => { const args = [url(target, selection.provider), { params: selection.period, signal: target.signal }]; runtime.gets.push(args); return runtime.get(...args); },
+            report: async (target, selection) => { const args = [url(target, selection.provider), selection.command, { signal: target.signal }]; runtime.posts.push(args); return runtime.post(...args); },
+            campaigns: async () => ({ campaigns: [], continuation: null })
+        };`),
+    './commands': moduleUrl(`const drafts = globalThis.__reportDrafts;
+        export const remember = (workspace, feature, value) => { drafts.set(workspace + feature, JSON.parse(JSON.stringify(value))); return true; };
+        export const restore = (workspace, feature) => structuredClone(drafts.get(workspace + feature));`),
+    '../spa/transport': moduleUrl('export class TransportError extends Error {}'),
+};
+const { descriptor } = parse(await readFile(new URL('../resources/js/sources/ProviderReportRequest.vue', import.meta.url), 'utf8'));
 let output = ts.transpileModule(compileScript(descriptor, { id: 'bb2-report', inlineTemplate: true }).content,
     { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
-for (const [original, replacement] of Object.entries({ vue: import.meta.resolve('vue'), axios: http })) {
+for (const [original, replacement] of Object.entries({ vue: import.meta.resolve('vue'), ...ports })) {
     output = output.replaceAll(`from "${original}"`, `from ${JSON.stringify(replacement)}`).replaceAll(`from '${original}'`, `from ${JSON.stringify(replacement)}`);
 }
 const component = (await import('data:text/javascript;base64,' + Buffer.from(output).toString('base64'))).default;
@@ -44,7 +56,8 @@ const renderer = createRenderer({
 });
 const nodes = (root, predicate) => [root, ...root.children.flatMap(child => nodes(child, () => true))].filter(predicate);
 const text = root => root.text + root.children.map(text).join('');
-function mount(provider = 'google') {
+function mount(provider = 'google', retain = false) {
+    if (!retain) drafts.clear();
     transport.gets = []; transport.posts = [];
     transport.get = async () => ({ generation: 0, timezone: 'Asia/Amman', deadline: new Date(Date.now() + 300000).toISOString(), last_run: null });
     transport.post = async () => ({ queued: true });
@@ -72,6 +85,41 @@ test('uncertain HTTP acknowledgement retries the same command without repeated s
     assert.deepEqual(transport.posts[0][1], transport.posts[1][1]);
     assert.equal(transport.gets.length, 1);
     view.unmount();
+});
+
+test('unmount and remount retain unknown original report rather than resetting its version or period', async () => {
+    const view = mount(); await dates(view.root);
+    transport.post = async () => { throw Error('lost acknowledgement'); };
+    await submit(view.root); await nextTick();
+    const original = JSON.parse(JSON.stringify(transport.posts[0][1])); view.unmount();
+    const restored = mount('google', true); restored.props.version = 9; await nextTick();
+    assert.equal(transport.posts.length, 0);
+    const inputs = nodes(restored.root, node => node.tag === 'input' && node.props.type === 'date');
+    assert.equal(inputs[0].value, '2026-09-01'); assert.equal(inputs[0].props.disabled, true);
+    await submit(restored.root); await nextTick();
+    assert.deepEqual(transport.posts[0][1], original); assert.equal(transport.gets.length, 0);
+    restored.unmount();
+});
+
+test('X status and report use the same whitespace-delimited campaign IDs', async () => {
+    const view = mount('x'); await dates(view.root);
+    const input = nodes(view.root, node => node.tag === 'input' && String(node.props.id).startsWith('x-campaigns-'))[0];
+    input.value = 'campaign1 campaign2'; input.listeners.input({ target: input }); await nextTick();
+    await submit(view.root); await nextTick();
+    assert.deepEqual(transport.gets[0][1].params.campaign_ids, ['campaign1', 'campaign2']);
+    assert.deepEqual(transport.posts[0][1].campaign_ids, ['campaign1', 'campaign2']); view.unmount();
+});
+
+test('explicit new periods archive every unknown command without replaying or overwriting earlier ones', async () => {
+    const view = mount(); await dates(view.root); transport.post = async () => { throw Error('lost acknowledgement'); };
+    const originals = [];
+    for (const index of [0, 1]) {
+        await submit(view.root); await nextTick(); originals.push(JSON.parse(JSON.stringify(transport.posts[index][1])));
+        await nodes(view.root, node => node.tag === 'button' && /مراجعة فترة أو طلب جديد/.test(text(node)))[0].props.onClick(); await nextTick();
+        assert.equal(transport.posts.length, index + 1);
+    }
+    assert.deepEqual(drafts.get('workspacereport:google:source:previous').map(value => value.command), originals);
+    assert.notEqual(originals[0].command_id, originals[1].command_id); view.unmount();
 });
 
 for (const provider of ['meta', 'google', 'tiktok', 'snapchat', 'x']) test(`${provider} waiting ends at the original deadline even without a new journal generation`, async () => {

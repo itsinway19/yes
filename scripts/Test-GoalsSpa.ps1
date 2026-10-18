@@ -1,4 +1,4 @@
-param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='')
+param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation','workspaces','context','purpose','sources')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='', [switch]$CreateBrowserFixture)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $proofRoot=Split-Path -Parent $PSScriptRoot
@@ -36,7 +36,10 @@ function Get-ProofSource {
  $proofFiles=@(& git ls-files --cached --others --exclude-standard)
  $proofFiles+=@('public/build/manifest.json','public/build/goals-spa/manifest.json')|Where-Object{Test-Path -LiteralPath (Join-Path $proofRoot $_)}
  $proofMap=[ordered]@{}
- foreach($proofFile in ($proofFiles|Sort-Object -Unique)){$proofMap[$proofFile]=(Get-FileHash -LiteralPath (Join-Path $proofRoot $proofFile) -Algorithm SHA256).Hash}
+ foreach($proofFile in ($proofFiles|Sort-Object -Unique)){
+  $proofSourcePath=Join-Path $proofRoot $proofFile
+  $proofMap[$proofFile]=if(Test-Path -LiteralPath $proofSourcePath -PathType Leaf){(Get-FileHash -LiteralPath $proofSourcePath -Algorithm SHA256).Hash}else{'<deleted>'}
+ }
  return $proofMap|ConvertTo-Json -Depth 4
 }
 function Invoke-ProofPsql([string[]]$Arguments) {
@@ -118,12 +121,13 @@ try {
   if($LASTEXITCODE -ne 0){throw 'Focused/affected acceptance checks failed; evidence retained'}
  }
  if($Phase -notin @('Focused','Affected','Foundation')) {
-  if(-not $ReuseRun){
+  if(-not $ReuseRun -or $CreateBrowserFixture){
    Invoke-ProofPhp @('artisan','migrate','--database=pgsql_migrations','--force')
    Invoke-ProofPhp @('tests/Support/GoalsSpaFixture.php','setup')
   }
   $proofSourceBefore=Get-ProofSource
   [IO.File]::WriteAllText((Join-Path $proofRun 'source-manifest.json'),$proofSourceBefore)
+  $env:GOALS_SPA_ONLY=$BrowserSelection
   foreach($proofPort in @(8136,8137)){
    $env:APP_ENV='local'
    $proofServer=Start-Process -FilePath 'C:\tools\php85\php.exe' -ArgumentList @('-S',"localhost:$proofPort",'-t','public','tests/Support/goals-spa-server.php') -WorkingDirectory $proofRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $proofRun "server-$proofPort.log") -RedirectStandardError (Join-Path $proofRun "server-$proofPort-error.log")

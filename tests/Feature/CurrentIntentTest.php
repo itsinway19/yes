@@ -10,7 +10,6 @@ use App\Security\GrantAuthority;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class CurrentIntentTest extends TestCase
@@ -46,9 +45,9 @@ class CurrentIntentTest extends TestCase
         $workspace = $this->business();
         $url = $this->url($workspace);
         $value = $this->value();
-        $this->postJson($url, $this->command($value))->assertRedirect('/workspaces/'.$workspace->public_id.'/business');
+        $this->postJson($url, $this->command($value))->assertOk()->assertJsonPath('redirect', '/workspaces/'.$workspace->public_id.'/business');
         $before = $this->stored($workspace);
-        $this->postJson($url, $this->command($value))->assertRedirect();
+        $this->postJson($url, $this->command($value))->assertOk();
         $this->assertEquals($before, $this->stored($workspace));
         $next = $value;
         $next['outcome']['meaning'] = 'Changed desired result';
@@ -56,11 +55,11 @@ class CurrentIntentTest extends TestCase
             $this->withSession(['locale' => $locale])->postJson($url, $this->command($next))->assertUnprocessable()->assertJsonValidationErrors('version');
             $this->assertEquals($before, $this->stored($workspace));
         }
-        $this->postJson($url, $this->command($next, 1))->assertRedirect();
+        $this->postJson($url, $this->command($next, 1))->assertOk();
         $this->projection($workspace, 2, $next);
-        $this->postJson($url, $this->command(null, 2))->assertRedirect();
+        $this->postJson($url, $this->command(null, 2))->assertOk();
         $this->projection($workspace, 3, null);
-        $this->postJson($url, $this->command(null, 0))->assertRedirect();
+        $this->postJson($url, $this->command(null, 0))->assertOk();
         $this->assertSame(3, count($this->stored($workspace)[1]));
     }
 
@@ -135,7 +134,7 @@ class CurrentIntentTest extends TestCase
         $this->assertLessThanOrEqual(81920, strlen($json));
         $body = $json.str_repeat(' ', 81920 - strlen($json));
         $this->assertSame(81920, strlen($body));
-        $this->raw($workspace, $body)->assertRedirect();
+        $this->raw($workspace, $body)->assertOk();
         $this->projection($workspace, 1, $value);
         $before = $this->stored($workspace);
         $this->raw($workspace, $body.' ')->assertStatus(413);
@@ -218,7 +217,7 @@ class CurrentIntentTest extends TestCase
         foreach (['UTC', 'Europe/Istanbul', 'America/New_York', 'Etc/GMT+3'] as $i => $zone) {
             $value = $this->value();
             $value['horizon'] = ['deadline_date' => '2026-10-05', 'timezone' => $zone];
-            $this->postJson($this->url($workspace), $this->command($value, $i))->assertRedirect();
+            $this->postJson($this->url($workspace), $this->command($value, $i))->assertOk();
         }
         $evidence = ['query' => $query['query'], 'explain' => $plan, 'discoveryMilliseconds' => $elapsed,
             'candidateCount' => count($candidates), 'optionCount' => count($options), 'statementTimeout' => '15s',
@@ -276,7 +275,7 @@ class CurrentIntentTest extends TestCase
         $this->assertSame(0, (int) DB::connection('pgsql_migrations')->table('workspaces')->where('id', $workspace->id)->value('business_context_version'));
         $this->assertSame(0, DB::connection('pgsql_migrations')->table('business_current_intent_events')->count());
         $value['horizon']['deadline_date'] = '2011-12-31';
-        $this->postJson($this->url($workspace), $this->command($value))->assertRedirect()->assertSessionHasNoErrors();
+        $this->postJson($this->url($workspace), $this->command($value))->assertOk()->assertSessionHasNoErrors();
         $this->assertSame(1, (int) DB::connection('pgsql_migrations')->table('workspaces')->where('id', $workspace->id)->value('business_context_version'));
         $this->assertSame(1, DB::connection('pgsql_migrations')->table('business_current_intent_events')->count());
     }
@@ -285,21 +284,21 @@ class CurrentIntentTest extends TestCase
     {
         $workspace = $this->business();
         $value = $this->value();
-        $this->postJson($this->url($workspace), $this->command($value))->assertRedirect();
+        $this->postJson($this->url($workspace), $this->command($value))->assertOk();
         $db = DB::connection('pgsql_migrations');
         $definition = $db->scalar("SELECT pg_get_functiondef('builderad_current_intent_timezone_name_allowed(text)'::regprocedure)");
         try {
             $db->unprepared("CREATE OR REPLACE FUNCTION builderad_current_intent_timezone_name_allowed(p_zone text) RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path=public,pg_temp AS \$\$ SELECT p_zone='UTC' \$\$");
             $before = $this->stored($workspace);
-            $this->postJson($this->url($workspace), $this->command($value, 0))->assertRedirect();
+            $this->postJson($this->url($workspace), $this->command($value, 0))->assertOk();
             $this->assertEquals($before, $this->stored($workspace));
             $value['quantity'] = '999';
-            $this->postJson($this->url($workspace), $this->command($value, 1))->assertRedirect();
+            $this->postJson($this->url($workspace), $this->command($value, 1))->assertOk();
             $value['direction'] = 'preserve_value';
-            $this->postJson($this->url($workspace), $this->command($value, 2))->assertRedirect();
-            $this->get('/workspaces/'.$workspace->public_id.'/business')->assertInertia(fn (Assert $page) => $page
-                ->where('timezoneOptions', ['UTC'])->where('business.currentIntent.value.horizon.timezone', 'Europe/Istanbul')
-                ->where('business.currentIntent.value.horizon.deadline_date', '2026-10-05')->where('business.version', 3));
+            $this->postJson($this->url($workspace), $this->command($value, 2))->assertOk();
+            $this->getJson('/workspaces/'.$workspace->public_id.'/business')->assertOk()->assertJsonPath('data.timezoneOptions', ['UTC'])
+                ->assertJsonPath('data.business.currentIntent.value.horizon.timezone', 'Europe/Istanbul')
+                ->assertJsonPath('data.business.currentIntent.value.horizon.deadline_date', '2026-10-05')->assertJsonPath('data.business.version', 3);
             $before = $this->stored($workspace);
             $changed = $value;
             $changed['horizon']['deadline_date'] = '2026-10-06';
@@ -389,13 +388,12 @@ class CurrentIntentTest extends TestCase
         $value = $this->value();
         $this->assertSame(1, $this->write($workspace, $value, 0));
         $this->projection($workspace, 1, $value);
-        $this->get('/workspaces/'.$workspace->public_id.'/business')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Business/Context')->where('business.currentIntent.state', 'PRESENT')->where('business.version', 1)
-            ->where('business.currentIntent.version', 1)->where('version', 1)->where('workspace.business_context_version', 1));
+        $this->getJson('/workspaces/'.$workspace->public_id.'/business')->assertOk()->assertJsonPath('data.business.currentIntent.state', 'PRESENT')->assertJsonPath('data.business.version', 1)
+            ->assertJsonPath('data.business.currentIntent.version', 1)->assertJsonPath('data.version', 1)->assertJsonPath('data.workspace.business_context_version', 1);
         $type = DB::connection('pgsql_migrations')->table('business_types')->where('key', 'real_estate')->value('id');
         $this->post('/workspaces/'.$workspace->public_id.'/business', ['business_type_id' => $type, 'version' => 1])->assertRedirect();
-        $this->get('/workspaces/'.$workspace->public_id)->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Business/Sources')->where('business.currentIntent.state', 'PRESENT')->where('business.version', 2));
+        $this->getJson('/workspaces/'.$workspace->public_id)->assertOk()
+            ->assertJsonPath('data.business.currentIntent.state', 'PRESENT')->assertJsonPath('data.business.version', 2);
         $this->assertSame(3, $this->write($workspace, null, 2));
         $this->projection($workspace, 3, null);
         $this->assertSame(2, DB::connection('pgsql_migrations')->table('business_current_intent_events')->count());

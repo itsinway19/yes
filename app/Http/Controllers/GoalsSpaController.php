@@ -16,13 +16,25 @@ final class GoalsSpaController extends Controller
     public function show(Request $request, string $workspace, WorkspaceContext $context,
         AdvertiserGoalPreferences $goals, BusinessContext $business): mixed
     {
+        return $this->respond($request, $workspace, $context, $goals, $business, false);
+    }
+
+    public function context(Request $request, string $workspace, WorkspaceContext $context,
+        AdvertiserGoalPreferences $goals, BusinessContext $business): mixed
+    {
+        return $this->respond($request, $workspace, $context, $goals, $business, true);
+    }
+
+    private function respond(Request $request, string $workspace, WorkspaceContext $context,
+        AdvertiserGoalPreferences $goals, BusinessContext $business, bool $jsonOnly): mixed
+    {
         $witness = $request->header('X-Goals-Witness') === '1';
         if ($witness || $request->header('X-Goals-Passive') === '1') {
             $request->attributes->set('builderad.visibility_probe', true);
         }
 
-        return $context->run($request->user(), $workspace, function (Workspace $active) use ($request, $goals, $business, $witness) {
-            if ($request->expectsJson()) {
+        return $context->run($request->user(), $workspace, function (Workspace $active) use ($request, $goals, $business, $witness, $jsonOnly) {
+            if ($jsonOnly || $request->expectsJson()) {
                 $visibility = app(ClientVisibility::class)->describe($request);
                 if ($witness) {
                     return response()->json(['visibility' => $visibility])->header('Cache-Control', 'no-store');

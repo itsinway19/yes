@@ -6,7 +6,7 @@ use App\Models\User;
 use App\Security\GrantAuthority;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Inertia\Testing\AssertableInertia as Assert;
+use Illuminate\Testing\Fluent\AssertableJson;
 use Tests\Support\ObjectPurposeTestCase;
 use Tests\TestCase;
 
@@ -35,15 +35,17 @@ class ArchitectureSourceOptionalityTest extends TestCase
         $intent = ['direction' => 'increase_value', 'scope' => 'business_wide', 'description' => null,
             'outcome' => ['meaning' => 'Completed bookings', 'clarification' => null, 'count_unit' => null], 'quantity' => null, 'horizon' => null];
         $this->postJson($url.'/current-intent', ['command' => 'replace', 'version' => 2, 'value' => $intent,
-            'confirmations' => ['declaration' => true, 'business_wide' => true, 'outcome' => true, 'acceptance_clear' => true]])->assertRedirect($url);
-        $this->get($url)->assertInertia(fn (Assert $page) => $page->component('Business/Context')
-            ->where('workspace.name', 'Confirmed business')->where('business.version', 3)
-            ->where('business.targetMarketsDeclared', true)->where('business.targetMarkets.0.code', 'AE')
-            ->where('business.targetMarkets.1.code', 'SA')->where('business.currentIntent.value', $intent));
+            'confirmations' => ['declaration' => true, 'business_wide' => true, 'outcome' => true, 'acceptance_clear' => true]])->assertOk()->assertJsonPath('redirect', $url);
+        $this->get($url)->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
+        $context = $this->getJson($url)->assertOk()->assertJsonPath('data.workspace.name', 'Confirmed business')->assertJsonPath('data.business.version', 3)
+            ->assertJsonPath('data.business.targetMarketsDeclared', true)->assertJsonPath('data.business.targetMarkets.0.code', 'AE')
+            ->assertJsonPath('data.business.targetMarkets.1.code', 'SA');
+        $context->assertJson(fn (AssertableJson $json) => $json->where('data.business.currentIntent.value', $intent)->etc());
         $this->get('/workspaces/'.$workspace->public_id)->assertOk();
 
         $goalUrl = '/workspaces/'.$workspace->public_id.'/goals';
-        $this->get($goalUrl)->assertInertia(fn (Assert $page) => $page->component('Business/Goals'));
+        $this->get($goalUrl)->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
+        $this->getJson($goalUrl.'/context')->assertOk()->assertJsonCount(4, 'catalog');
         $this->postJson($goalUrl, ['version' => 0, 'value' => [
             'goals' => ['sales', 'customers'], 'priority' => 'sales',
             'results' => ['sales' => ['actual_sales'], 'customers' => []],

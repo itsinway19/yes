@@ -8,7 +8,6 @@ use App\Security\LifecycleAuthority;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
-use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class OwnerGrantReassessmentTest extends TestCase
@@ -44,11 +43,10 @@ class OwnerGrantReassessmentTest extends TestCase
             ->whereNull('revoked_at')->value('authenticated_at');
         $this->assertGreaterThanOrEqual($changedAt, $authenticatedAt);
         $this->get('/workspaces/'.$workspace->public_id)->assertForbidden();
-        $this->get('/workspaces')->assertInertia(fn (Assert $page) => $page
-            ->component('Business/Index')
-            ->has('workspaces', 0)
-            ->has('reassessableWorkspaces', 1)
-            ->where('reassessableWorkspaces.0.public_id', $workspace->public_id));
+        $this->getJson('/workspaces')->assertOk()
+            ->assertJsonCount(0, 'data.workspaces')
+            ->assertJsonCount(1, 'data.reassessableWorkspaces')
+            ->assertJsonPath('data.reassessableWorkspaces.0.public_id', $workspace->public_id);
 
         $this->post('/workspaces/'.$workspace->public_id.'/reassess-owner-grant')
             ->assertRedirect(route('workspaces.show', $workspace->public_id));
@@ -135,9 +133,7 @@ class OwnerGrantReassessmentTest extends TestCase
 
         $this->assertSame(3, (int) DB::table('principal_lifecycles')
             ->where('user_id', $owner->id)->value('generation'));
-        $this->get('/workspaces')->assertInertia(fn (Assert $page) => $page
-            ->component('Business/Index')
-            ->has('reassessableWorkspaces', 0));
+        $this->getJson('/workspaces')->assertOk()->assertJsonCount(0, 'data.reassessableWorkspaces');
         $this->post('/workspaces/'.$workspace->public_id.'/reassess-owner-grant')
             ->assertForbidden();
         $this->assertSame(0, DB::table('security_action_grants')

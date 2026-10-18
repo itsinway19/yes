@@ -1,17 +1,23 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { Link, router, useForm } from '@inertiajs/vue3';
-import { useBusinessCopy } from '@/localization/business';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { remember, restore } from '@/business-context/drafts';
+import { refresh, useBusinessForm } from '@/business-context/commands';
+import { useBusinessCopy } from '@/localization/businessCopy';
+import { locale } from '@/spa/locale';
 type Country = { code: string; name_ar: string; name_en: string };
 const props = defineProps<{ workspaceId: string; business: { targetMarketsDeclared: boolean; targetMarkets: Country[]; version: number; canManage: boolean }; countryOptions: Country[]; savedContextVersion?: number }>();
 const emit = defineEmits<{ saved: [version: number] }>();
-const { t, localized } = useBusinessCopy();
+const { t, localized } = useBusinessCopy(locale);
 const query = ref('');
-const form = useForm({ country_codes: props.business.targetMarkets.map(country => country.code), version: props.business.version });
 const codeKey = (codes: string[]) => [...codes].sort().join(',');
-let baselineCodes = codeKey(form.country_codes);
+type Draft = { country_codes: string[]; version: number; baselineCodes: string; conflict: string; pending: boolean };
+const retained = props.business.canManage ? restore<Draft>(props.workspaceId, 'markets') : undefined;
+const saved = retained && (codeKey(retained.country_codes) !== retained.baselineCodes || retained.conflict || retained.pending) ? retained : undefined;
+const form = useBusinessForm(saved ? { country_codes: saved.country_codes, version: saved.version } : { country_codes: props.business.targetMarkets.map(country => country.code), version: props.business.version }, 'markets');
+if (saved?.pending) form.errors = { value: t('intentTransportError') };
+let baselineCodes = saved?.baselineCodes ?? codeKey(form.country_codes);
 let saving = false;
-const conflict = ref('');
+const conflict = ref(saved?.conflict ?? '');
 watch(() => form.errors.version, message => { if (message) conflict.value = message; });
 watch(() => props.business.version, version => {
     // A refreshed canonical revision does not authorize rebasing an older draft.
@@ -24,7 +30,7 @@ watch(() => props.savedContextVersion, version => {
     if (version !== undefined && codeKey(props.business.targetMarkets.map(country => country.code)) === baselineCodes) form.version = version;
 });
 function review() {
-    router.reload({ onSuccess: () => {
+    void refresh(props.workspaceId, { onSuccess: () => {
         form.version = props.business.version;
         baselineCodes = codeKey(props.business.targetMarkets.map(country => country.code));
     } });
@@ -40,7 +46,7 @@ function save() {
     const submittedCodes = codeKey(form.country_codes);
     const submittedVersion = form.version;
     saving = true;
-    form.post(route('workspaces.business.target-markets.update', props.workspaceId), { preserveScroll: true, onSuccess: () => {
+    void form.submit(props.workspaceId, { onSuccess: () => {
         conflict.value = '';
         if (codeKey(form.country_codes) === submittedCodes) {
             // The redirect can include a later commit: use its values and revision together.
@@ -54,6 +60,8 @@ function save() {
         emit('saved', props.business.version);
     }, onFinish: () => { saving = false; } });
 }
+defineExpose({ hasUnsaved: () => codeKey(form.country_codes) !== baselineCodes, pending: () => form.processing });
+onBeforeUnmount(() => { if (props.business.canManage) remember(props.workspaceId, 'markets', { country_codes: form.country_codes, version: form.version, baselineCodes, conflict: conflict.value, pending: form.processing }); });
 </script>
 <template>
     <section class="target-markets biz-divider" aria-labelledby="target-markets-heading">
@@ -77,13 +85,14 @@ function save() {
                     <p v-if="!filtered.length" role="status">{{ t('marketsNoResults') }}</p>
                 </fieldset>
                 <p v-if="form.errors.country_codes" role="alert" class="biz-error">{{ form.errors.country_codes }}</p>
+                <p v-if="form.errors.value" role="alert" class="biz-error">{{ form.errors.value }}</p>
                 <div v-if="conflict" role="alert" class="biz-error"><p>{{ conflict }}</p>
                     <button type="button" class="biz-link" @click="review">{{ t('marketsReview') }}</button>
                     <p>{{ t('marketsSummary') }}: <template v-if="business.targetMarketsDeclared"><span v-for="(country, index) in business.targetMarkets" :key="country.code">{{ index ? '، ' : '' }}{{ localized(country) }}</span></template><span v-else>{{ t('marketsUnknown') }}</span></p>
                 </div>
                 <p v-if="form.recentlySuccessful" role="status" class="biz-success">{{ t('saved') }}</p>
                 <div class="markets-actions"><button type="submit" class="biz-button" :disabled="form.processing">{{ form.processing ? t('saving') : t('marketsSave') }}</button>
-                    <Link :href="route('workspaces.show', workspaceId)" class="biz-link">{{ t('marketsLater') }}</Link>
+                    <a :href="`/workspaces/${workspaceId}`" class="biz-link">{{ t('marketsLater') }}</a>
                 </div>
             </form>
         </template>

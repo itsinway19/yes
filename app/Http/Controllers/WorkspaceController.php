@@ -5,25 +5,25 @@ namespace App\Http\Controllers;
 use App\Business\BusinessContext;
 use App\Commercial\RegisterCommercialScope;
 use App\Foundation\Tenancy\WorkspaceContext;
+use App\Http\Responses\SpaPage;
 use App\Models\Workspace;
 use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use App\Security\WorkspaceAuthority;
 use App\Sources\SourceRegistry;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
 
 final class WorkspaceController extends Controller
 {
-    public function index(Request $request, WorkspaceAuthority $authority, GrantAuthority $grants): Response
+    public function index(Request $request, WorkspaceAuthority $authority, GrantAuthority $grants): SpaPage
     {
-        return Inertia::render('Business/Index', [
+        return new SpaPage([
             'workspaces' => $authority->visibleTo(
                 $request->user(),
                 (int) $request->session()->get('a001_generation', 0),
@@ -32,7 +32,7 @@ final class WorkspaceController extends Controller
         ]);
     }
 
-    public function reassessOwnerGrant(Request $request, string $workspace, GrantAuthority $grants): RedirectResponse
+    public function reassessOwnerGrant(Request $request, string $workspace, GrantAuthority $grants): RedirectResponse|JsonResponse
     {
         try {
             $grants->reassessOwnerWorkspaceGrants($request, $workspace);
@@ -43,20 +43,22 @@ final class WorkspaceController extends Controller
             throw $exception;
         }
 
-        return redirect()->route('workspaces.show', $workspace);
+        return $request->expectsJson()
+            ? response()->json(['redirect' => route('workspaces.show', $workspace, absolute: false)])->header('Cache-Control', 'no-store')
+            : redirect()->route('workspaces.show', $workspace);
     }
 
-    public function show(Request $request, string $workspace, WorkspaceContext $context, GrantAuthority $grants): Response
+    public function show(Request $request, string $workspace, WorkspaceContext $context, GrantAuthority $grants): SpaPage
     {
         return $context->run(
             $request->user(),
             $workspace,
-            function (Workspace $activeWorkspace) use ($request, $grants): Response {
+            function (Workspace $activeWorkspace) use ($request, $grants): SpaPage {
                 $isOwner = DB::table('workspace_ownerships')
                     ->where('workspace_id', $activeWorkspace->id)
                     ->where('responsible_owner_user_id', $request->user()->id)->exists();
 
-                return Inertia::render('Business/Sources', [
+                $data = [
                     'business' => app(BusinessContext::class)->projection($request, $activeWorkspace),
                     'guidance' => app(BusinessContext::class)->guidance($activeWorkspace),
                     'commercial' => app(RegisterCommercialScope::class)->advertiserProjection($activeWorkspace->id),
@@ -77,7 +79,9 @@ final class WorkspaceController extends Controller
                         ->where('scope.status', 'active')
                         ->orderBy('identity.name')
                         ->get(['identity.public_id', 'identity.name', 'scope.purpose']),
-                ]);
+                ];
+
+                return new SpaPage($data);
             },
             $request,
         );

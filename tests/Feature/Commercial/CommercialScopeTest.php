@@ -9,15 +9,37 @@ use App\Security\GrantAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Testing\Fluent\AssertableJson;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Symfony\Component\Process\Process;
+use Tests\Support\ApplicationContractAssertions;
 use Tests\Support\RowLockReadiness;
 use Tests\TestCase;
 
 class CommercialScopeTest extends TestCase
 {
+    use ApplicationContractAssertions;
+
+    public function test_review_source_commercial_contract_preserves_absence_and_exact_market_uuid(): void
+    {
+        [$beneficiary, $workspace] = $this->workspace();
+        $absent = $this->actingAs($beneficiary)->getJson('/workspaces/'.$workspace)->assertOk()
+            ->assertJsonPath('data.commercial.context', null)->json();
+        $this->assertApplicationContract('WorkspaceSourcesResource', $absent);
+        $this->actingAsInternal($this->operator);
+        $market = $this->market('Synthetic contract market', 'JOD');
+        $input = $this->registration($market, $workspace);
+        $this->postJson('/internal/commercial/registrations', $input)->assertOk();
+        $workspaceId = $this->owner()->table('workspaces')->where('public_id', $workspace)->value('id');
+        $this->grant($beneficiary, 'ReadCommercialContextAdvertiser', $input['scope_id'], $workspaceId);
+        $present = $this->actingAs($beneficiary)->getJson('/workspaces/'.$workspace)->assertOk()
+            ->assertJsonPath('data.commercial.context.market_id', $market['market'])->json();
+        $this->assertIsString($present['data']['commercial']['context']['market_id']);
+        $this->assertApplicationContract('WorkspaceSourcesResource', $present);
+    }
+
     private User $operator;
 
     protected function setUp(): void
@@ -128,9 +150,9 @@ class CommercialScopeTest extends TestCase
             ->assertJsonPath('amount_state', 'UNKNOWN');
         $workspaceId = $this->owner()->table('workspaces')->where('public_id', $workspace)->value('id');
         $this->grant($beneficiary, 'ReadCommercialContextAdvertiser', $input['scope_id'], $workspaceId);
-        $this->actingAs($beneficiary)->get('/workspaces/'.$workspace)->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('commercial.state', 'CONTEXT_RECORDED')->where('commercial.context.scope_id', $input['scope_id'])
-            ->where('commercial.agreement_state', 'UNKNOWN')->where('commercial.amount_state', 'UNKNOWN'));
+        $this->actingAs($beneficiary)->getJson('/workspaces/'.$workspace)->assertOk()->assertJson(fn (AssertableJson $page) => $page
+            ->where('data.commercial.state', 'CONTEXT_RECORDED')->where('data.commercial.context.scope_id', $input['scope_id'])
+            ->where('data.commercial.agreement_state', 'UNKNOWN')->where('data.commercial.amount_state', 'UNKNOWN')->etc());
     }
 
     public function test_registration_retry_receipt_conflict_and_competing_initial_association(): void
@@ -157,18 +179,18 @@ class CommercialScopeTest extends TestCase
         $this->postJson('/internal/commercial/registrations', $input)->assertOk();
         $workspace = $this->owner()->table('workspaces')->where('public_id', $input['workspace_public_id'])->first();
         $beneficiary = User::on('pgsql_authority')->findOrFail($this->owner()->table('workspace_ownerships')->where('workspace_id', $workspace->id)->value('responsible_owner_user_id'));
-        $this->actingAs($beneficiary)->get('/workspaces/'.$workspace->public_id)->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->where('commercial.state', 'UNAVAILABLE')->where('commercial.context', null));
+        $this->actingAs($beneficiary)->getJson('/workspaces/'.$workspace->public_id)->assertOk()
+            ->assertJson(fn (AssertableJson $page) => $page->where('data.commercial.state', 'UNAVAILABLE')->where('data.commercial.context', null)->etc());
         $this->grant($beneficiary, 'ReadCommercialContextAdvertiser', $input['scope_id'], $workspace->id);
         $this->owner()->table('workspaces')->where('id', $workspace->id)->update(['currency_code' => 'USD', 'timezone' => 'Asia/Tokyo']);
         $this->withHeader('Accept-Language', 'en')->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
-            ->get('/workspaces/'.$workspace->public_id.'?locale=en')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('commercial.context.market_id', $sa['market'])->where('commercial.context.denomination_code', 'SAR')
-            ->where('commercial.context.configuration_id', $sa['configuration'])->where('commercial.amount_state', 'UNKNOWN')
-            ->missing('commercial.context.actor_user_id')->missing('commercial.context.audit'));
+            ->getJson('/workspaces/'.$workspace->public_id.'?locale=en')->assertOk()->assertJson(fn (AssertableJson $page) => $page
+            ->where('data.commercial.context.market_id', $sa['market'])->where('data.commercial.context.denomination_code', 'SAR')
+            ->where('data.commercial.context.configuration_id', $sa['configuration'])->where('data.commercial.amount_state', 'UNKNOWN')
+            ->missing('data.commercial.context.actor_user_id')->missing('data.commercial.context.audit')->etc());
         [$other, $otherWorkspace] = $this->workspace();
-        $this->actingAs($other)->get('/workspaces/'.$workspace->public_id)->assertForbidden();
-        $this->get('/workspaces/'.$otherWorkspace)->assertOk()->assertInertia(fn (Assert $page) => $page->where('commercial.context', null));
+        $this->actingAs($other)->getJson('/workspaces/'.$workspace->public_id)->assertForbidden();
+        $this->getJson('/workspaces/'.$otherWorkspace)->assertOk()->assertJson(fn (AssertableJson $page) => $page->where('data.commercial.context', null)->etc());
         $this->grant($other, 'ReadCommercialContextAdvertiser', $input['scope_id'], $workspace->id);
         // Exact grant without membership still cannot reveal the other beneficiary.
         DB::transaction(function () use ($other): void {

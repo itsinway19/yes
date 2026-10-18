@@ -25,11 +25,11 @@ function leave() { if (logout) void logout.start(() => true); }
                         <div class="flex">
                             <!-- Logo -->
                             <div class="flex shrink-0 items-center">
-                                <Link :href="route('dashboard')">
+                                <a :href="route('dashboard')">
                                     <ApplicationLogo
                                         class="block h-9 w-auto fill-current text-gray-800"
                                     />
-                                </Link>
+                                </a>
                             </div>
 
                             <!-- Navigation Links -->
@@ -38,6 +38,7 @@ function leave() { if (logout) void logout.start(() => true); }
                             >
                                 <NavLink
                                     :href="route('dashboard')"
+                                    native
                                     :active="route().current('dashboard')"
                                 >
                                     Dashboard
@@ -48,7 +49,7 @@ function leave() { if (logout) void logout.start(() => true); }
                                 >
                                     الأمان والأجهزة
                                 </NavLink>
-                                <NavLink :href="route('workspaces.index')" :active="route().current('workspaces.index')">مساحات العمل</NavLink>
+                                <NavLink :href="route('workspaces.index')" :active="route().current('workspaces.index')" native>مساحات العمل</NavLink>
                             </div>
                         </div>
 
@@ -155,6 +156,7 @@ function leave() { if (logout) void logout.start(() => true); }
                     <div class="space-y-1 pb-3 pt-2">
                         <ResponsiveNavLink
                             :href="route('dashboard')"
+                            native
                             :active="route().current('dashboard')"
                         >
                             Dashboard
@@ -165,7 +167,7 @@ function leave() { if (logout) void logout.start(() => true); }
                         >
                             الأمان والأجهزة
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('workspaces.index')" :active="route().current('workspaces.index')">مساحات العمل</ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('workspaces.index')" :active="route().current('workspaces.index')" native>مساحات العمل</ResponsiveNavLink>
                     </div>
 
                     <!-- Responsive Settings Options -->

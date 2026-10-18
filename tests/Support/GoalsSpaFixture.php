@@ -56,9 +56,14 @@ if ($mode === 'setup') {
     $who = $argv[2] ?? 'a';
     $user = $fixture[$who]['user'];
     $workspace = $fixture[$who]['workspaces'][0]['id'];
+    if (str_starts_with($mode, 'source-')) {
+        require __DIR__.'/sources-spa-fixture.php';
+    }
     match ($mode) {
         'expire' => $db->table('security_sessions')->where('user_id', $user)->update(['idle_expires_at' => now()->subSecond()]),
         'revoke' => $db->table('security_sessions')->where('user_id', $user)->update(['revoked_at' => now()]),
+        'deny-create' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('action', 'workspace.create')->update(['status' => 'revoked', 'revoked_at' => now()]),
+        'restore-create' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('action', 'workspace.create')->update(['status' => 'active', 'revoked_at' => null]),
         'deny' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('workspace_id', $workspace)->where('action', 'business.context.manage')->update(['status' => 'revoked', 'revoked_at' => now()]),
         'restore' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('workspace_id', $workspace)->where('action', 'business.context.manage')->update(['status' => 'active', 'revoked_at' => null]),
         'deny-view' => $db->table('workspace_memberships')->where('user_id', $user)->where('workspace_id', $workspace)->update(['status' => 'revoked', 'revoked_at' => now()]),
@@ -88,6 +93,9 @@ echo json_encode(['database' => $db->selectOne('select current_database() db, cu
     'rls' => $db->select("select relname,relrowsecurity,relforcerowsecurity from pg_class where relname in ('workspaces','advertiser_goal_preferences')"),
     'goals' => $db->table('advertiser_goal_preferences')->get(),
     'runtimeUnscopedGoals' => DB::connection('pgsql')->table('advertiser_goal_preferences')->count(),
+    'purposeCount' => $db->table('object_purposes')->count(),
+    'purposeRevisionCount' => $db->table('object_purpose_revisions')->count(),
+    'purposeReceiptCount' => $db->table('object_purpose_command_receipts')->count(),
     'transitions' => $db->table('browser_identity_transitions')->get(['lineage_id', 'epoch', 'principal_id', 'current_session_key_hash', 'status', 'kind']),
     'sessions' => $db->table('security_sessions')->get(['session_key_hash', 'idle_expires_at', 'absolute_expires_at', 'revoked_at']),
     'effects' => $db->table('advertiser_goal_preference_events')->count()], JSON_THROW_ON_ERROR).PHP_EOL;

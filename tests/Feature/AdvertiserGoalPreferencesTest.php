@@ -11,7 +11,6 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Inertia\Testing\AssertableInertia as Assert;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
@@ -88,8 +87,9 @@ class AdvertiserGoalPreferencesTest extends TestCase
     public function test_persisted_three_goals_results_priority_reload_and_no_implicit_declaration_effect(): void
     {
         $before = $this->protectedState();
-        $this->get($this->url())->assertInertia(fn (Assert $page) => $page->component('Business/Goals')
-            ->where('preferences.version', 0)->where('preferences.value.goals', [])->has('catalog', 4));
+        $this->get($this->url())->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
+        $this->getJson($this->url().'/context')->assertOk()->assertJsonPath('preferences.version', 0)
+            ->assertJsonPath('preferences.value.goals', [])->assertJsonCount(4, 'catalog');
         $first = $this->save(self::value())->assertOk()->assertJsonPath('version', 1)->json();
         $this->getJson($this->url())->assertExactJson($first);
         $second = self::value();

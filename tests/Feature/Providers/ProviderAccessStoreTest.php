@@ -76,6 +76,7 @@ use App\Providers\Ads\X\XSourceBootstrap;
 use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use App\Sources\EffectiveCapability;
+use App\Sources\SourceRegistry;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Dotenv\Dotenv;
@@ -94,10 +95,29 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
+use Tests\Support\ApplicationContractAssertions;
 use Tests\TestCase;
 
 class ProviderAccessStoreTest extends TestCase
 {
+    use ApplicationContractAssertions;
+
+    public function test_review_google_offline_recovery_reaches_the_existing_oauth_consent_boundary(): void
+    {
+        $http = new Factory;
+        $http->preventStrayRequests();
+        $this->configureGoogleHttp($http);
+        $base = '/workspaces/'.$this->workspace.'/providers/google';
+        $intent = $this->getJson($base)->assertOk()->json('connect_intent');
+        $command = ['intent' => $intent, 'recover_offline_grant' => true];
+        $this->assertApplicationContract('GoogleConnectCommand', $command);
+        $url = $this->postJson($base.'/connect', $command)->assertOk()->json('authorization_url');
+        parse_str(parse_url($url, PHP_URL_QUERY), $query);
+        $this->assertSame('consent', $query['prompt']);
+        $this->assertSame('offline', $query['access_type']);
+        $http->assertNothingSent();
+    }
+
     private User $actor;
 
     private int $workspaceId;
@@ -1457,6 +1477,61 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame(1, $this->owner()->table('source_registry')->where('family', 'meta')->where('namespace', 'ad_account')->where('declared_external_id', '123')->count());
         $this->assertSame('reconnect', $this->owner()->table('provider_access_events')->orderByDesc('version')->value('effect'));
         $this->assertStringNotContainsString('synthetic-native-token', $result->getContent());
+        $next = $this->getJson($base)->assertOk()->json('connect_intent');
+        $this->postJson($base.'/connect', ['intent' => $next])->assertOk();
+        $this->assertSame(1, $this->owner()->table('source_registry')->where('namespace', 'facebook_login_configuration')->count());
+    }
+
+    public function test_meta_web_repeated_connect_reuses_the_exact_login_source_without_repeating_registration(): void
+    {
+        $http = new Factory;
+        $http->preventStrayRequests();
+        $this->configureMetaWeb($http);
+        $base = '/workspaces/'.$this->workspace.'/providers/meta';
+        foreach ([1, 2] as $attempt) {
+            $snapshot = $this->getJson($base);
+            $this->assertSame(200, $snapshot->status(), $snapshot->getContent());
+            $intent = $snapshot->json('connect_intent');
+            $this->postJson($base.'/connect', ['intent' => $intent])->assertOk();
+        }
+        $source = $this->owner()->table('source_registry')->where('workspace_id', $this->workspaceId)
+            ->where('family', 'meta')->where('namespace', 'facebook_login_configuration')->sole();
+        $this->assertSame('999', $source->declared_external_id);
+        $this->assertSame('UNVERIFIED', $source->status);
+        $this->assertSame(1, (int) $source->version);
+        $this->assertSame(1, $this->owner()->table('source_command_receipts')->where('source_id', $source->id)->count());
+        $this->assertSame(['provider.connect', 'source.read', 'source.register'], $this->owner()->table('security_action_grants')
+            ->where('source_target_id', $source->id)->where('status', 'active')->orderBy('action')->pluck('action')->all());
+        $this->assertSame(0, $this->owner()->table('provider_access')->count());
+        $http->assertNothingSent();
+        $this->actingAs(User::factory()->create())->postJson($base.'/connect', ['intent' => $intent])->assertForbidden();
+        $this->assertSame(1, $this->owner()->table('source_registry')->where('namespace', 'facebook_login_configuration')->count());
+    }
+
+    public function test_meta_web_repeated_connect_cannot_revive_a_revoked_login_source(): void
+    {
+        $http = new Factory;
+        $http->preventStrayRequests();
+        $this->configureMetaWeb($http);
+        $base = '/workspaces/'.$this->workspace.'/providers/meta';
+        $intent = $this->getJson($base)->assertOk()->json('connect_intent');
+        $this->postJson($base.'/connect', ['intent' => $intent])->assertOk();
+        $source = $this->owner()->table('source_registry')->where('namespace', 'facebook_login_configuration')->sole();
+        $this->withinWorkspace(function (Request $request) use ($source): void {
+            app(GrantAuthority::class)->requestSourceGrant($request, $this->workspaceId, ['source_id' => $source->id,
+                'resource' => '999', 'operation' => 'discovery.read', 'purpose' => 'advertising_analysis',
+                'action' => 'source.manage', 'decision' => 'authorize', 'expires_at' => null, 'reason' => 'synthetic_explicit_login_revocation']);
+            $workspace = Workspace::findOrFail($this->workspaceId);
+            app(SourceRegistry::class)->command($request, $workspace, ['source_id' => $source->id, 'command_id' => (string) Str::uuid(),
+                'effect' => 'revoke', 'resource' => '999', 'operation' => 'discovery.read', 'purpose' => 'advertising_analysis',
+                'expected_version' => 1, 'reason' => 'synthetic_explicit_login_revocation']);
+        });
+        $intent = $this->getJson($base)->assertOk()->json('connect_intent');
+        $this->postJson($base.'/connect', ['intent' => $intent])->assertForbidden();
+        $this->assertSame('REVOKED', $this->owner()->table('source_registry')->where('id', $source->id)->value('status'));
+        $this->assertSame(2, $this->owner()->table('source_command_receipts')->where('source_id', $source->id)->count());
+        $this->assertSame(0, $this->owner()->table('provider_access')->count());
+        $http->assertNothingSent();
     }
 
     public function test_meta_web_flow_configuration_notice_changes_and_extra_input_never_become_authority(): void
@@ -3213,6 +3288,8 @@ class ProviderAccessStoreTest extends TestCase
         $command = ['command_id' => (string) Str::uuid(), 'expected_version' => 2];
         $renewed = $this->postJson($base.'/renew', $command)->assertOk()->assertJsonPath('receipt.version', 3)
             ->assertJsonPath('access.connection', 'CONNECTED')->assertJsonPath('access.axes.privacy_purpose', 'UNKNOWN');
+        $this->assertApplicationContract('SnapchatRenewalOutcome', $renewed->json());
+        $this->assertApplicationContract('SnapchatRenewalSuccess', $renewed->json());
         $this->assertSame($renewed->json('receipt'), $this->postJson($base.'/renew', $command)->assertOk()->json('receipt'));
         $cipher = $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->value('encrypted_credentials');
         $stored = json_decode(Crypt::decryptString($cipher), true, flags: JSON_THROW_ON_ERROR);
@@ -3233,6 +3310,9 @@ class ProviderAccessStoreTest extends TestCase
         $base = '/workspaces/'.$this->workspace.'/providers/snapchat';
         $denied = $this->postJson($base.'/'.$scope->sourceId.'/renew', ['command_id' => (string) Str::uuid(), 'expected_version' => 2])
             ->assertStatus(502)->assertJsonPath('reason', 'snapchat_reconnect_required');
+        $denied->assertJsonPath('status', 'PROVIDER_ACTION_REQUIRED')->assertJsonMissingPath('receipt');
+        $this->assertApplicationContract('SnapchatRenewalOutcome', $denied->json());
+        $this->assertApplicationContract('SnapchatRenewalActionRequired', $denied->json());
         $this->assertStringNotContainsString('synthetic-private-error', $denied->getContent());
         $this->assertSame($old, $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->value('encrypted_credentials'));
         $connections = $this->getJson($base)->assertOk()->json('connections');

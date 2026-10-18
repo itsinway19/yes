@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Middleware\ResolveLocale;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
@@ -11,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 final class LocaleController extends Controller
 {
-    public function __invoke(Request $request): RedirectResponse
+    public function __invoke(Request $request): RedirectResponse|JsonResponse
     {
         $destination = $this->safeDestination($request);
         try {
@@ -33,7 +34,9 @@ final class LocaleController extends Controller
             'lax',
         ));
 
-        return redirect()->to($destination);
+        return $request->expectsJson()
+            ? response()->json(['locale' => $locale])->header('Cache-Control', 'no-store')
+            : redirect()->to($destination);
     }
 
     private function safeDestination(Request $request): string

@@ -58,7 +58,10 @@ final class MetaConnectionController extends Controller
             $fresh = app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user());
             $intent = null;
             if ($owner && $fresh) {
-                $scope = new ProviderScope($w->id, (string) Str::uuid7(), Provider::Meta, $settings->configurationId,
+                DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->id, SessionAuthority::sessionKey($request)]);
+                $existing = DB::table('source_registry')->where('workspace_id', $w->id)->where('family', 'meta')
+                    ->where('namespace', 'facebook_login_configuration')->where('declared_external_id', $settings->configurationId)->value('id');
+                $scope = new ProviderScope($w->id, $existing ?? (string) Str::uuid7(), Provider::Meta, $settings->configurationId,
                     'discovery.read', 'advertising_analysis');
                 $intent = $flows->issue($request, $scope, 0, $coordinator->configurationBinding(), 'connect',
                     ['command' => (string) Str::uuid(), 'workspace' => $w->public_id]);

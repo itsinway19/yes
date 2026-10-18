@@ -14,6 +14,31 @@ use Tests\TestCase;
 
 class ServiceAuthorityTest extends TestCase
 {
+    public function test_application_service_scope_acknowledgements_use_the_original_authority_and_revocation(): void
+    {
+        $owner = User::factory()->create();
+        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($owner, 1);
+        $this->actingAs($owner)->post('/workspaces', ['name' => 'Service SPA scope', 'slug' => 'service-spa-scope'])->assertRedirect();
+        $database = DB::connection('pgsql_migrations');
+        $workspace = $database->table('workspaces')->sole();
+        $manager = $this->serviceManager();
+        $this->actingAsInternal($manager)->get('/internal/security/devices')->assertOk();
+        $secret = $this->serviceCredentialFrom($this->post('/internal/services', ['name' => 'Synthetic SPA service'])->assertRedirect());
+        $path = '/workspaces/'.$workspace->public_id.'/services';
+        $this->actingAs($owner)->postJson($path, ['service' => $secret['public_id'], 'purpose' => 'short'])->assertUnprocessable();
+        $this->postJson($path, ['service' => $secret['public_id'], 'purpose' => 'Explicit synthetic service scope'])
+            ->assertOk()->assertJsonPath('redirect', '/workspaces/'.$workspace->public_id);
+        $scope = $database->table('service_workspace_scopes')->sole();
+        $this->assertSame('active', $scope->status);
+        $this->assertSame('Explicit synthetic service scope', $scope->purpose);
+        $this->assertDenied(fn () => app(ServiceWorkspaceContext::class)->run($secret['public_id'], $secret['credential'], $workspace->public_id, fn () => null));
+        $this->deleteJson($path.'/'.$secret['public_id'])->assertOk()->assertJsonPath('redirect', '/workspaces/'.$workspace->public_id);
+        $this->assertSame('revoked', $database->table('service_workspace_scopes')->sole()->status);
+        $this->actingAs(User::factory()->create())->postJson($path, ['service' => $secret['public_id'], 'purpose' => 'Forbidden cross-Workspace scope'])->assertForbidden();
+        $this->deleteJson($path.'/'.$secret['public_id'])->assertForbidden();
+        $this->assertSame('revoked', $database->table('service_workspace_scopes')->sole()->status);
+    }
+
     public function test_service_requires_independent_identity_owner_scope_and_action_grant(): void
     {
         $owner = User::factory()->create();

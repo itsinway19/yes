@@ -1,15 +1,22 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
-import { computed, reactive, ref, watch } from 'vue';
-import { useBusinessCopy } from '@/localization/business';
+import { useRoute } from 'vue-router';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { useBusinessCopy } from '@/localization/businessCopy';
+import { locale } from '@/spa/locale';
+import { forget, remember, restore, unresolved, submitPurpose, retryPurpose, refreshPurpose } from '@/object-purpose/commands';
+import type { PurposeAcknowledgement, PurposeCommand } from '@/object-purpose/api';
 import type { PurposeItem, PurposeObject, PurposeSnapshot, PurposeIntent } from '@/types/object-purpose';
 const props = defineProps<{ workspaceId: string; purpose: PurposeItem | null; contextVersion: number; dtmTransitionVersion: number; currentIntent: { value: PurposeIntent | null; version: number } | null }>();
-const { t } = useBusinessCopy();
+const { t } = useBusinessCopy(locale);
+const emit = defineEmits<{ saved: [reply: PurposeAcknowledgement] }>();
+const route = useRoute();
+const workspaceKey = props.workspaceId, purposeKey = props.purpose?.purpose_id ?? null;
+const pending = computed(() => unresolved(workspaceKey, purposeKey));
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const object = (): PurposeObject => ({ provider: 'meta', account_namespace: 'meta_ads_account', account_id: '', object_kind: 'campaign', object_id: '', incarnation: null });
 const last = () => props.purpose?.history.at(-1);
 const baseline = ref(clone(props.purpose));
-const saved = last()?.snapshot;
+let saved = last()?.snapshot;
 // Preserve the instant and PostgreSQL microseconds when reusing a retained boundary.
 const retainedInstant = (value: string | null | undefined) => (value ?? '').replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
 const intentReference = ref(saved?.intent ? clone(saved.intent) : (props.currentIntent?.value ? { version: props.contextVersion, value: clone(props.currentIntent.value), statement: '' } : null));
@@ -23,10 +30,20 @@ const draft = reactive({ meaning: saved?.meaning ?? '', qualifications: saved?.q
     intentEnabled: saved?.intent !== null && saved?.intent !== undefined, intentStatement: saved?.intent?.statement ?? '', operation: 'replace', reason: '' });
 const flags = reactive({ meaning: false, scope: false, authority: false, identity: false, standing: false, dtm: false, intent: false, historical: false, transition: false });
 type Flag = keyof typeof flags;
-const processing = ref(false), changed = ref(false), reviewed = ref(false), errors = ref<Record<string,string>>({});
+const processing = ref(false), settling = ref(false), changed = ref(false), reviewed = ref(false), errors = ref<Record<string,string>>({});
 let commandId: string | null = null;
+let savedSuccessfully = false, initialSignature = JSON.stringify(draft);
 const reset = () => { for (const key of Object.keys(flags) as Flag[]) flags[key] = false; };
-watch(() => JSON.stringify(draft), () => { reset(); commandId = null; errors.value = {}; });
+type Draft = { baseline: PurposeItem | null; draft: typeof draft; flags: typeof flags; intentReference: typeof intentReference.value; commandId: string | null; changed: boolean; reviewed: boolean; initialSignature: string; contextVersion: number; dtmTransitionVersion: number; dirty: boolean };
+const retained = restore<Draft>(workspaceKey, purposeKey);
+if (retained?.dirty) {
+    baseline.value = retained.baseline; saved = retained.baseline?.history.at(-1)?.snapshot;
+    Object.assign(draft, retained.draft); Object.assign(flags, retained.flags); intentReference.value = retained.intentReference;
+    commandId = retained.commandId; changed.value = retained.changed; reviewed.value = retained.reviewed; initialSignature = retained.initialSignature;
+    if ((props.purpose?.head_version ?? 0) !== (baseline.value?.head_version ?? 0) || (draft.intentEnabled && retained.contextVersion !== props.contextVersion) || (draft.dtmMode.startsWith('current_') && retained.dtmTransitionVersion !== props.dtmTransitionVersion)) { changed.value = true; reviewed.value = false; reset(); }
+}
+const dirty = computed(() => JSON.stringify(draft) !== initialSignature || Object.values(flags).some(Boolean));
+watch(() => JSON.stringify(draft), () => { reset(); commandId = null; errors.value = {}; savedSuccessfully = false; });
 watch(() => props.purpose?.head_version, () => { changed.value = true; reviewed.value = false; reset(); });
 watch(() => props.contextVersion, () => {
     if (draft.intentEnabled) { changed.value = true; reviewed.value = false; reset(); }
@@ -43,7 +60,7 @@ const required = computed<Flag[]>(() => ['meaning', 'scope', 'authority', 'ident
 const flagLabels = computed<Record<Flag,string>>(() => ({ meaning: t('purposeConfirmMeaning'), scope: t('purposeConfirmScope'), authority: t('purposeConfirmAuthority'), identity: t('purposeConfirmIdentity'), standing: t('purposeConfirmStanding'), dtm: t('purposeConfirmDtm'), intent: t('purposeConfirmIntent'), historical: t('purposeConfirmHistorical'), transition: t('purposeConfirmTransition') }));
 const nullable = (v: string) => v.trim() === '' ? null : v;
 const codes = (v: string) => v.split(',').map(code => code.trim()).filter(Boolean);
-function review() { router.reload({ onSuccess: () => { reviewed.value = true; changed.value = true; } }); }
+function review() { void refreshPurpose(route, { onSuccess: () => { reviewed.value = true; changed.value = true; } }); }
 function adopt() {
     baseline.value = clone(props.purpose);
     changed.value = reviewed.value = false; reset(); commandId = null; errors.value = {};
@@ -54,7 +71,7 @@ function useCurrentIntentReference() {
     reset(); commandId = null;
 }
 function save() {
-    if (processing.value || changed.value || !required.value.every(key => flags[key])) return;
+    if (processing.value || settling.value || pending.value || changed.value || !required.value.every(key => flags[key])) return;
     if (!withdrawing.value && (!draft.meaning.trim() || !draft.source.trim() || !draft.identity_basis.trim() || !draft.authority_basis.trim() || !draft.effective_basis.trim())) return;
     if (historical.value && !(withdrawing.value ? draft.reason : draft.historical_support).trim()) return;
     if (baseline.value && draft.operation !== 'replace' && !draft.reason.trim()) return;
@@ -73,16 +90,23 @@ function save() {
         correction_reason: draft.operation === 'correct' && baseline.value ? nullable(draft.reason) : null,
         withdrawal_reason: withdrawing.value ? nullable(draft.reason) : null, confirmations: clone(flags) };
     processing.value = true;
-    router.post(baseline.value ? route('workspaces.object-purposes.revise', [props.workspaceId, baseline.value.purpose_id]) : route('workspaces.object-purposes.store', props.workspaceId), clone(command), {
-        preserveScroll: true, onError: value => { errors.value = value; reset(); },
-        onHttpException: response => { if ([403,409,422].includes(response.status)) { changed.value = true; reviewed.value = false; reset(); return false; } },
-        onNetworkError: () => { errors.value = { declaration: t('purposeStale') }; return false; },
-        onSuccess: () => { reset(); commandId = null; }, onFinish: () => { processing.value = false; },
-    });
+    void submitPurpose(props.workspaceId, clone(command) as PurposeCommand, callbacks());
 }
+function callbacks() {
+    return { onError: (value: Record<string, string>) => { errors.value = value; reset(); },
+        onHttpException: (response: { status: number }) => { if ([403,409,422].includes(response.status)) { changed.value = true; reviewed.value = false; reset(); return false; } },
+        onNetworkError: () => { errors.value = { declaration: t('purposeStale') }; return false; },
+        onSuccess: (reply: PurposeAcknowledgement) => { reset(); commandId = null; savedSuccessfully = true; settling.value = true; forget(workspaceKey, purposeKey); emit('saved', reply); }, onFinish: () => { processing.value = false; },
+    };
+}
+function retry() { if (!pending.value || pending.value.busy) return; processing.value = true; void retryPurpose(workspaceKey, purposeKey, callbacks()); }
+defineExpose({ hasUnsaved: () => !savedSuccessfully && (dirty.value || !!pending.value), pending: () => processing.value || !!pending.value?.busy });
+onBeforeUnmount(() => { if (!savedSuccessfully) remember(workspaceKey, purposeKey, { baseline: baseline.value, draft, flags, intentReference: intentReference.value, commandId, changed: changed.value, reviewed: reviewed.value, initialSignature, contextVersion: props.contextVersion, dtmTransitionVersion: props.dtmTransitionVersion, dirty: dirty.value || !!pending.value }); });
 </script>
 <template>
-<form data-purpose="form" class="biz-form grid gap-4 mt-8" @submit.prevent="save">
+<form data-purpose="form" :data-purpose-version="baseline?.head_version ?? 0" class="biz-form grid gap-4 mt-8" @submit.prevent="save">
+    <aside v-if="pending?.uncertain" role="alert"><p>{{ t('purposeUnknownDelivery') }}</p><button type="button" data-purpose="retry-original" class="biz-link" :disabled="pending.busy || processing" @click="retry">{{ t('purposeRetryOriginal') }}</button></aside>
+    <fieldset class="purpose-fields grid gap-4" :disabled="processing || settling || !!pending"><legend class="sr-only">{{ t('purposeTitle') }}</legend>
     <p class="biz-lead">{{ t('purposeIntro') }}</p>
     <div v-if="changed" role="alert"><p>{{ t('purposeStale') }}</p><button type="button" data-purpose="review" class="biz-link" :disabled="processing" @click="review">{{ t('purposeReview') }}</button><button v-if="reviewed" type="button" data-purpose="adopt" class="biz-link" :disabled="processing" @click="adopt">{{ t('purposeAdopt') }}</button></div>
     <label v-if="purpose">{{ t('purposeOperation') }}<select v-model="draft.operation" data-purpose="operation"><option value="replace">{{ t('purposeReplace') }}</option><option value="correct">{{ t('purposeCorrect') }}</option><option value="withdraw">{{ t('purposeWithdraw') }}</option></select></label>
@@ -125,6 +149,7 @@ function save() {
     <div v-if="baseline"><p>{{ t('purposeAffected') }}</p><ul><li v-for="revision in baseline.history" :key="revision.revision_id">{{ revision.version }} · {{ revision.revision_id }} · {{ revision.effective_from }}</li></ul></div>
     <label v-for="key in required" :key="key"><input v-model="flags[key]" :data-purpose="`confirm-${key}`" type="checkbox" /> {{ flagLabels[key] }}</label>
     <p v-for="(message,field) in errors" :key="field" role="alert" class="biz-error">{{ message }}</p>
-    <button type="submit" class="biz-button" :disabled="processing || changed">{{ t('purposeSubmit') }}</button>
+    <button type="submit" data-purpose="save" class="biz-button" :disabled="processing || settling || changed || !!pending">{{ t('purposeSubmit') }}</button>
+    </fieldset>
 </form>
 </template>

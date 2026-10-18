@@ -33,20 +33,26 @@ await new Promise(resolve=>proxy.listen(8138,'localhost',resolve));
 const onlyRestoration=process.env.GOALS_SPA_ONLY==='restoration';
 const onlyClosure=process.env.GOALS_SPA_ONLY==='closure';
 const onlyRetention=process.env.GOALS_SPA_ONLY==='retention';
+const onlyFoundation=process.env.GOALS_SPA_ONLY==='foundation';
+const onlyWorkspaces=process.env.GOALS_SPA_ONLY==='workspaces';
+const onlyContext=process.env.GOALS_SPA_ONLY==='context';
+const onlyPurpose=process.env.GOALS_SPA_ONLY==='purpose';
+const onlySources=process.env.GOALS_SPA_ONLY==='sources';
 const closure=process.env.GOALS_SPA_CLOSURE==='enabled';
 const result={head:spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim(),selection:process.env.GOALS_SPA_ONLY??'all',kind:'Real Laravel + dedicated Redis + PostgreSQL runtime/RLS + Chromium; synthetic users only',cases:[],wire,errors:[],assets:[],findings:[],unverified:[]};
 let browser;
 const until=async(fn,message='checkpoint')=>{const end=Date.now()+15000;while(!fn()){if(Date.now()>end)throw Error(message);await new Promise(resolve=>setTimeout(resolve,15));}};
 function command(mode,who='a'){
  const child=spawnSync('C:/tools/php85/php.exe',['tests/Support/GoalsSpaFixture.php',mode,who],{encoding:'utf8',env:{...process.env,APP_ENV:'testing'}});
- assert.equal(child.status,0,child.stderr||child.stdout);return JSON.parse(child.stdout.trim());
+ assert.equal(child.status,0,child.stderr||child.stdout);
+ try{return JSON.parse(child.stdout.trim());}catch{throw Error('Fixture '+mode+' did not return JSON: '+child.stdout+' '+child.stderr);}
 }
 const workspace=fixture.a.workspaces[0].public_id,other=fixture.a.workspaces[1].public_id,foreign=fixture.b.workspaces[0].public_id;
-const target=(mode,id=workspace,review=false)=>mode==='spa'?`/spa/workspaces/${id}/goals${review?'/review':''}`:`/workspaces/${id}/goals`;
-const meta=page=>page.evaluate(()=>{const raw=document.getElementById('goals-bootstrap')?.textContent;return raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);});
+const target=(mode,id=workspace,review=false)=>`${mode==='spa'?'/spa':''}/workspaces/${id}/goals${review?'/review':''}`;
+const meta=page=>page.evaluate(()=>{const raw=(document.getElementById('application-bootstrap')??document.getElementById('goals-bootstrap'))?.textContent;return raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);});
 async function post(page,url,body,extra={}){
  return page.evaluate(async({url,body,extra})=>{
-  const raw=document.getElementById('goals-bootstrap')?.textContent;
+  const raw=(document.getElementById('application-bootstrap')??document.getElementById('goals-bootstrap'))?.textContent;
   const identity=raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);
   const response=await fetch(url,{method:'POST',credentials:'same-origin',redirect:'manual',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':identity.csrf,'X-Builderad-Document':identity.receipt,'X-Builderad-Transition':identity.transition,...extra},body:body?JSON.stringify(body):undefined});
   return {status:response.status,body:await response.json()};
@@ -54,7 +60,7 @@ async function post(page,url,body,extra={}){
 }
 async function get(page,url,extra={}){
  return page.evaluate(async({url,extra})=>{
-  const raw=document.getElementById('goals-bootstrap')?.textContent;
+  const raw=(document.getElementById('application-bootstrap')??document.getElementById('goals-bootstrap'))?.textContent;
   const identity=raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);
   const response=await fetch(url,{headers:{Accept:'application/json','X-Builderad-Document':identity.receipt,...extra},cache:'no-store'});
   const text=await response.text();let body;try{body=JSON.parse(text);}catch{body=text;}
@@ -63,8 +69,8 @@ async function get(page,url,extra={}){
 }
 const ready=(page,mode)=>page.waitForFunction(mode=>{
  const workspace=location.pathname.match(/workspaces\/([^/]+)\/goals/)?.[1];
- return mode==='spa'?document.getElementById('goals-spa')?.dataset.state==='ready'&&!!document.querySelector(`#goals-spa [data-spa-private] a[href="/spa/workspaces/${workspace}/goals"], #goals-spa [data-spa-private] a[href="/spa/workspaces/${workspace}/goals/review"]`)
- :document.documentElement.dataset.visibility==='ready'&&document.getElementById('app')?.__vue_app__?.config.globalProperties.$page.props.workspace?.public_id===workspace;
+ const root=document.querySelector('[data-application-spa]');
+ return root?.dataset.state==='ready'&&!!root.querySelector(`[data-goals-workspace="${workspace}"]`);
 },mode);
 async function login(page,mode,who='a'){
  await page.goto('http://localhost:8138/login');
@@ -72,8 +78,7 @@ async function login(page,mode,who='a'){
  await page.goto('http://localhost:8138'+target(mode,fixture[who].workspaces[0].public_id));await ready(page,mode);
 }
 async function visit(page,mode,url){
- if(mode==='spa')await page.evaluate(url=>__goalsSpa.router.push(url),url);
- else await page.evaluate(url=>document.getElementById('app').__vue_app__.config.globalProperties.$inertia.visit(url),url);
+ await page.evaluate(url=>__goalsSpa.router.push(url),url);
  await page.waitForURL('http://localhost:8138'+url);await ready(page,mode);
 }
 const selected=(page,id)=>page.locator(`[data-goals="select-${id}"]`);
@@ -90,14 +95,33 @@ try{
   const {runRestorationAcceptance}=await import('./goals-spa-restoration.mjs');
   await runRestorationAcceptance({browser,check,login,get,post,target,fixture,workspace,foreign,command,wire,before,until,result});
  }
- if(!onlyRestoration&&!onlyClosure&&!onlyRetention)await runGoalsContractCases({browser,check,login,meta,fixture,result});
- for(const mode of onlyRestoration||onlyClosure||onlyRetention?[]:['inertia','spa']){
+ if(onlyFoundation){
+  const {runFoundationCases}=await import('./spa-foundation-browser.mjs');
+  await runFoundationCases({browser,check,login,ready,visit,target,until,result,workspace,other,command,run});
+ }
+ if(onlyWorkspaces){
+  const {runWorkspaceCases}=await import('./workspace-spa-browser.mjs');
+  await runWorkspaceCases({browser,check,login,meta,result,fixture,command,run});
+ }
+ if(onlyContext){const {runBusinessContextCases}=await import('./business-context-spa-browser.mjs');await runBusinessContextCases({browser,check,login,meta,get,post,command,fixture,result,run,until,held});}
+ if(onlyPurpose){const {runObjectPurposeCases}=await import('./object-purpose-spa-browser.mjs');await runObjectPurposeCases({browser,check,login,meta,get,post,command,fixture,result,run,until,held});}
+ if(onlySources){const {runSourceCases}=await import('./sources-spa-browser.mjs');await runSourceCases({browser,check,login,meta,get,post,command,fixture,result,run,until,held});}
+ if(!onlyRestoration&&!onlyClosure&&!onlyRetention&&!onlyFoundation&&!onlyWorkspaces&&!onlyContext&&!onlyPurpose&&!onlySources)await runGoalsContractCases({browser,check,login,meta,fixture,result});
+ for(const mode of onlyRestoration||onlyClosure||onlyRetention||onlyFoundation||onlyWorkspaces||onlyContext||onlyPurpose||onlySources?[]:['application']){
   const context=await browser.newContext({viewport:{width:1280,height:900}});let page=await context.newPage();page.setDefaultTimeout(15000);
   page.on('dialog',dialog=>dialog.accept());page.on('pageerror',error=>result.errors.push({mode,message:error.message}));
   context.on('response',response=>{if(response.url().includes('/build/')&&response.status()===200)result.assets.push({url:response.url(),status:response.status()});});
   await check('real password login and canonical Goals read',mode,async()=>{await login(page,mode);assert.equal((await meta(page)).binding.principal,fixture.a.user);const data=await get(page,`/workspaces/${workspace}/goals`);assert.equal(data.status,200);return {principal:fixture.a.user,version:data.body.version};});
   await page.screenshot({path:path.join(run,mode+'-desktop.png'),fullPage:true});
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(run,mode+'-mobile-viewport.png'),fullPage:true});await page.setViewportSize({width:1280,height:900});
+  await check('canonical Goals locale change preserves choices and translates the workflow',mode,async()=>{
+   const choices=await selected(page,'sales').isChecked();
+   await page.locator('[data-application="locale"]').click();await page.waitForFunction(()=>document.documentElement.lang==='en');
+   assert.equal(await page.locator('.goals-screen h1').innerText(),'What is your business goal now?');
+   assert.equal(await selected(page,'sales').isChecked(),choices);
+   await page.locator('[data-application="locale"]').click();await page.waitForFunction(()=>document.documentElement.lang==='ar');
+   return {locales:['ar','en'],sameDraft:true};
+  });
   await check('RLS foreign workspace and CSRF denial preserve effects',mode,async()=>{
    const initial=command('inspect');assert.equal((await get(page,`/workspaces/${foreign}/goals`)).status,403);
    const originVerified=await post(page,`/workspaces/${workspace}/goals`,{value:{},version:0},{'X-CSRF-TOKEN':'wrong'});assert.equal(originVerified.status,422,'Laravel 13 accepts verified same-origin before token fallback; malformed Goals still fails validation');
@@ -112,8 +136,8 @@ try{
    await visit(page,mode,target(mode,other));assert.equal(await page.evaluate(()=>__proofDocument),token);
    await page.goBack({waitUntil:'commit'});await ready(page,mode);assert.equal(await selected(page,'sales').isChecked(),desired);
    await page.reload();await ready(page,mode);const canonical=(await get(page,`/workspaces/${workspace}/goals`)).body;
-   assert.equal(await selected(page,'sales').isChecked(),canonical.value.goals.includes('sales'),'Reload reset matches the current explicit Inertia contract');
-   if(mode==='spa')assert.equal(await page.evaluate(()=>JSON.stringify(history.state).includes('preferences')),false);
+   assert.equal(await selected(page,'sales').isChecked(),canonical.value.goals.includes('sales'),'Reload resets to canonical values in a new identity document');
+   assert.equal(await page.evaluate(()=>JSON.stringify(history.state).includes('preferences')),false);
   });
   await check('canonical validation, stale version 409, and no repeated effect from retry',mode,async()=>{
    const data=(await get(page,`/workspaces/${workspace}/goals`)).body;
@@ -134,20 +158,20 @@ try{
    await page.locator('[data-goals="adopt"]').click();const count=command('inspect').effects;
    const saved=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`/workspaces/${workspace}/goals`);
    await page.locator('[data-goals="continue"]').click();assert.equal((await saved).status(),200);
-   await page.waitForURL(url=>mode==='spa'?url.pathname.endsWith('/review'):url.pathname===`/workspaces/${workspace}`);
+   await page.waitForURL(url=>url.pathname.endsWith('/review'));
    assert.equal(command('inspect').effects,count+1);await visit(page,mode,target(mode));
   });
   await check('late read and rapid visits cannot publish the wrong Workspace',mode,async()=>{
    let once=true;
-   const latePath=mode==='spa'?`/spa/api/workspaces/${other}/goals`:`/workspaces/${other}/goals`;
+   const latePath=mode==='spa'?`/spa/api/workspaces/${other}/goals`:`/workspaces/${other}/goals/context`;
    await page.route('**/*',async route=>{const req=route.request();if(once&&new URL(req.url()).pathname===latePath&&req.headers()['x-builderad-visibility']!=='1'&&req.headers()['x-goals-witness']!=='1'){once=false;await route.continue({headers:{...req.headers(),'X-Proof-Hold':'late-'+mode}});}else await route.continue();});
-   await page.evaluate(({mode,url})=>{if(mode==='spa')void __goalsSpa.router.push(url);else document.getElementById('app').__vue_app__.config.globalProperties.$inertia.visit(url);},{mode,url:target(mode,other)});
+   await page.evaluate(url=>{void __goalsSpa.router.push(url);},target(mode,other));
    await until(()=>held.has('late-'+mode));await visit(page,mode,target(mode));held.get('late-'+mode).deliver();held.delete('late-'+mode);await page.waitForTimeout(150);await ready(page,mode);
    assert.equal(new URL(page.url()).pathname,target(mode));await page.unroute('**/*');
-   await page.evaluate(({mode,urls})=>{for(const url of urls){if(mode==='spa')void __goalsSpa.router.push(url);else document.getElementById('app').__vue_app__.config.globalProperties.$inertia.visit(url);}},{mode,urls:[target(mode,other),target(mode),target(mode,other)]});
+   await page.evaluate(urls=>{for(const url of urls)void __goalsSpa.router.push(url);},[target(mode,other),target(mode),target(mode,other)]);
    await page.waitForURL('http://localhost:8138'+target(mode,other));await ready(page,mode);await visit(page,mode,target(mode));
   });
-  if(mode==='spa')await check('authorized finite SSE updates only the matching document and Workspace',mode,async()=>{
+  await check('authorized finite SSE updates only the matching document and Workspace',mode,async()=>{
    const data=(await get(page,`/workspaces/${workspace}/goals`)).body;
    const changed={goals:['growth'],priority:'growth',results:{growth:[]}};
    const saved=await post(page,`/workspaces/${workspace}/goals`,{value:changed,version:data.version});assert.equal(saved.status,200);
@@ -158,7 +182,7 @@ try{
    assert.equal(await page.evaluate(({workspace,binding,version})=>__goalsSpa.applyEvent({workspace,binding:{...binding,principal:-1},version},workspace),{workspace,binding:id.binding,version:saved.body.version+1}),false);
    return {transport:'real HTTP text/event-stream',version:saved.body.version};
   });
-  await check('matched warm local Workspace navigation observations',mode,async()=>{
+  await check('bounded warm local Workspace navigation observations',mode,async()=>{
    const base=(await get(page,`/workspaces/${workspace}/goals`)).body;
    assert.equal((await post(page,`/workspaces/${workspace}/goals`,{value:{goals:['sales','customers','growth'],priority:'sales',results:{sales:['actual_sales'],customers:['serious_inquiries'],growth:[]}},version:base.version})).status,200);
    const samples=[];
@@ -174,6 +198,19 @@ try{
    const waiting=post(page,`/workspaces/${workspace}/goals`,{value:{goals:['customers'],priority:'customers',results:{customers:[]}},version:data.version},{'X-Proof-Before':'deny-'+mode});
    await until(()=>before.has('deny-'+mode));command('deny');const count=command('inspect').effects;
    before.get('deny-'+mode)();before.delete('deny-'+mode);assert.equal((await waiting).status,403);assert.equal(command('inspect').effects,count);command('restore');
+  });
+  await check('read-only canonical Goals preserves outcomes and exposes no writer controls',mode,async()=>{
+   const count=command('inspect').effects;const canonical=(await get(page,`/workspaces/${workspace}/goals`)).body;
+   command('deny');
+   try{
+    await page.reload();await ready(page,mode);
+    assert.equal(await page.locator('[data-goals="continue"]').count(),0);
+    assert.equal(await page.locator('[data-goals="form"] input[type="checkbox"]').count(),0);
+    const selectedGoal=canonical.value.goals[0];
+    if(selectedGoal)await page.locator(`[data-goals="view-${selectedGoal}"]`).click();
+    assert.deepEqual((await get(page,`/workspaces/${workspace}/goals`)).body,canonical);assert.equal(command('inspect').effects,count);
+    return {writerControls:0,canonicalUnchanged:true};
+   }finally{command('restore');await page.reload();await ready(page,mode);}
   });
   await check('cookie-free renewal preserves credential and canonical deadlines',mode,async()=>{
    const old=command('inspect');const identity=await meta(page);const session=old.sessions.find(row=>row.session_key_hash===identity.binding.credential);
@@ -195,10 +232,10 @@ try{
   });
   await check('logout terminal transition denies further effects',mode,async()=>{
    const count=command('inspect').effects;const oldIdentity=await meta(page);
-   if(mode==='spa'){
+   {
     const ended=page.waitForResponse(response=>response.request().method()==='POST'&&new URL(response.url()).pathname==='/logout');
     await page.locator('[data-spa="logout"]').click();assert.equal((await ended).status(),200);await page.waitForURL('http://localhost:8138/');
-   }else assert.equal((await post(page,'/logout')).status,200);
+   }
    assert.equal((await get(page,`/workspaces/${foreign}/goals`,{'X-Builderad-Document':oldIdentity.receipt})).status,409);assert.equal(command('inspect').effects,count);
   });
   await context.close();
@@ -212,7 +249,7 @@ try{
   }
  }
  // Exact HTTP ownership experiment, shared backend and actual cookie delivery.
- for(const mode of onlyRestoration||onlyRetention?[]:['inertia','spa']){
+ for(const mode of onlyRestoration||onlyRetention||onlyFoundation||onlyWorkspaces||onlyContext||onlyPurpose||onlySources?[]:['application']){
   const context=await browser.newContext();const page=await context.newPage();page.on('dialog',d=>d.accept());await login(page,mode);
   await check('reversed real renewal/login cookie delivery',mode,async()=>{
    const originalIdentity=await meta(page);
@@ -247,18 +284,18 @@ try{
   const {runClosureCases}=await import('./goals-spa-closure.mjs');
   await runClosureCases({browser,check,login,get,post,meta,ready,visit,target,selected,command,until,held,wire,result,fixture,workspace,other,foreign,run,hash});
  }
- for(const mode of onlyClosure||onlyRetention?[]:['inertia','spa']){
+ for(const mode of onlyClosure||onlyRetention||onlyFoundation||onlyWorkspaces||onlyContext||onlyPurpose||onlySources?[]:['application']){
   for(const fault of onlyRestoration?[]:['load','render']){
    const context=await browser.newContext();const page=await context.newPage();page.on('dialog',d=>d.accept());
    await page.goto('http://localhost:8138/login');assert.equal((await post(page,'/login',{email:'goals-a@example.test',password:'DisposableGoalsProof42!'})).status,200);
    await check('actual component '+fault+' failure closes private presentation',mode,async()=>{
-    const pattern=mode==='spa'?/\/build\/goals-spa\/assets\/GoalsEditor-[^/]+\.js/:/\/build\/assets\/Goals-[^/]+\.js/;
+    const pattern=/\/build\/goals-spa\/assets\/GoalsEditor-[^/]+\.js/;
     await page.route(pattern,route=>fault==='load'?route.abort('failed'):route.fulfill({status:200,contentType:'text/javascript',body:'export default {setup(){throw new Error("GOALS_PROOF_RENDER_FAILURE")}}'}));
     await page.goto('http://localhost:8138'+target(mode));
-    await page.waitForFunction(mode=>mode==='spa'?__goalsSpa.status.value==='unavailable':document.documentElement.dataset.visibility==='unavailable',mode);
+    await page.waitForFunction(()=>__goalsSpa.status.value==='unavailable');
     assert.equal(await page.locator('[data-goals="form"]').count(),0);return {fault,fixture:'browser-only injection into the component module response; library/source files unchanged'};
    });
-   if(mode==='spa'&&fault==='render')await check('terminal closure survives synthetic lifecycle notifications without requests',mode,async()=>{
+   if(fault==='render')await check('terminal closure survives synthetic lifecycle notifications without requests',mode,async()=>{
     const mark=wire.length;const state=await page.evaluate(()=>{__goalsSpa.close();dispatchEvent(new PageTransitionEvent('pagehide'));dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));return __goalsSpa.status.value;});
     assert.equal(state,'closed');await page.waitForTimeout(100);assert.equal(wire.slice(mark).filter(row=>row.path.startsWith('/spa/api/')).length,0);
     return {classification:'synthetic lifecycle handler probe; not native BFCache evidence'};
@@ -279,13 +316,14 @@ try{
     }
     const wireMark=wire.length;await page.goBack({waitUntil:'commit'});
     await until(()=>wire.slice(wireMark).some(row=>row.status===409||row.status===401||row.status===403||(row.status===302&&row.path===target(mode)&&row.location?.endsWith('/login'))),'restoration must cause actual server denial or native login redirect');
-    await page.waitForFunction(()=>{const form=document.querySelector('[data-goals="form"]');return !form||getComputedStyle(form).visibility==='hidden'||!form.getClientRects().length||!!form.closest('#goals-spa:not([data-state="ready"])');});
+    await page.waitForFunction(()=>{const form=document.querySelector('[data-goals="form"]');return !form||getComputedStyle(form).visibility==='hidden'||!form.getClientRects().length||!!form.closest('[data-application-spa]:not([data-state="ready"])');});
     const native=shows.slice(mark).some(event=>event.persisted&&event.trusted);
     if(!native)result.unverified.push({mode,gate:'native BFCache '+transition,reason:'No trusted persisted event; fresh-document path does not prove BFCache'});
     return {result:native?'PASS':'UNVERIFIED',observedPath:native?'native-bfcache':'fresh-document',freshDocumentSafety:native?'NOT_EXERCISED':'PASS',shows:shows.slice(mark),notRestored,note:'A fresh native redirect is safe but is not BFCache evidence. Checks visible DOM after server denial; pre-JavaScript cached-frame confidentiality is not proved'};
    });await context.close();
   }
  }
+ assert.deepEqual(result.errors,[],'Ordinary application journeys must not emit unhandled page errors');
  result.database=command('inspect');
  const servedAssets=wire.filter(row=>row.path.startsWith('/build/')&&row.status===200&&row.sentHash);
  for(const asset of servedAssets){const local=path.join(process.cwd(),'public',new URL(asset.path,'http://localhost:8138').pathname.slice(1));const bytes=await readFile(local);assert.equal(hash(bytes),asset.sentHash,'Forwarded HTTP asset differs from this candidate: '+asset.path);assert.equal(bytes.length,asset.sentBytes);}

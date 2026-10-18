@@ -9,7 +9,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Inertia\Testing\AssertableInertia as Assert;
+use Illuminate\Testing\Fluent\AssertableJson as Assert;
 use Tests\TestCase;
 
 class BusinessFoundationTest extends TestCase
@@ -93,8 +93,8 @@ class BusinessFoundationTest extends TestCase
         $workspace = $db->table('workspaces')->first();
         $this->assertSame($this->type(), $workspace->business_type_id);
         $this->get('/dashboard')->assertRedirect(route('workspaces.show', $workspace->public_id));
-        $this->get('/workspaces/'.$workspace->public_id)->assertInertia(fn (Assert $page) => $page
-            ->component('Business/Sources')->where('business.type.key', 'real_estate')->has('guidance.sources', 5));
+        $this->getJson('/workspaces/'.$workspace->public_id)->assertJson(fn (Assert $page) => $page
+            ->where('data.business.type.key', 'real_estate')->has('data.guidance.sources', 5)->etc());
     }
 
     public function test_gate_preserves_destination_security_and_existing_identity(): void
@@ -106,8 +106,8 @@ class BusinessFoundationTest extends TestCase
         $this->get('/workspaces/'.$workspace->public_id.'?tab=sources')->assertRedirect(route('workspaces.business.edit', $workspace->public_id));
         $this->get('/profile')->assertOk();
         $this->get('/security/devices')->assertOk();
-        $this->get('/workspaces/'.$workspace->public_id.'/business')->assertInertia(fn (Assert $page) => $page
-            ->component('Business/Context')->where('workspace.name', 'Original business')->where('canManage', true));
+        $this->get('/workspaces/'.$workspace->public_id.'/business')->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
+        $this->getJson('/workspaces/'.$workspace->public_id.'/business')->assertOk()->assertJsonPath('data.workspace.name', 'Original business')->assertJsonPath('data.canManage', true);
         $this->classify($workspace)->assertRedirect('/workspaces/'.$workspace->public_id.'?tab=sources');
         $db = DB::connection('pgsql_migrations');
         $this->assertSame(1, $db->table('workspaces')->count());
@@ -166,12 +166,11 @@ class BusinessFoundationTest extends TestCase
                 'created_at' => now(), 'updated_at' => now()]);
         }
         $this->actingAs($member);
-        $this->get('/workspaces/'.$workspace->public_id.'/business')->assertInertia(fn (Assert $page) => $page->where('canManage', true));
+        $this->getJson('/workspaces/'.$workspace->public_id.'/business')->assertOk()->assertJsonPath('data.canManage', true);
         $this->classify($workspace)->assertRedirect();
         $db->table('security_action_grants')->where('subject_user_id', $member->id)->where('action', 'business.context.manage')
             ->update(['status' => 'revoked', 'revoked_at' => now()]);
-        $this->get('/workspaces/'.$workspace->public_id.'/business')->assertInertia(fn (Assert $page) => $page
-            ->where('canManage', false)->where('canRequestAuthority', false));
+        $this->getJson('/workspaces/'.$workspace->public_id.'/business')->assertOk()->assertJsonPath('data.canManage', false)->assertJsonPath('data.canRequestAuthority', false);
     }
 
     public function test_change_is_versioned_and_does_not_rewrite_previous_context(): void
@@ -193,7 +192,7 @@ class BusinessFoundationTest extends TestCase
         $db = DB::connection('pgsql_migrations');
         $db->table('business_types')->where('id', $this->type())->update(['active' => false]);
         $this->classify($workspace, 'real_estate', 1)->assertRedirect();
-        $this->get('/workspaces/'.$workspace->public_id)->assertInertia(fn (Assert $page) => $page->where('business.type.active', false));
+        $this->getJson('/workspaces/'.$workspace->public_id)->assertJson(fn (Assert $page) => $page->where('data.business.type.active', false)->etc());
         $this->classify($workspace, 'ecommerce', 1)->assertRedirect();
         $this->classify($workspace, 'real_estate', 2)->assertSessionHasErrors('business_type_id');
         $this->expectException(QueryException::class);
@@ -213,8 +212,8 @@ class BusinessFoundationTest extends TestCase
                 'priority' => 1, 'rationale_ar' => 'تفسير اختبار مضبوط لغرض اكتساب البيانات', 'rationale_en' => $rationale, 'active' => true])->assertRedirect();
         }
         $this->actingAs($user);
-        $this->get('/workspaces/'.$a->public_id)->assertInertia(fn (Assert $page) => $page->where('guidance.sources.0.provider', 'google'));
-        $this->get('/workspaces/'.$b->public_id)->assertInertia(fn (Assert $page) => $page->where('guidance.sources.0.provider', 'meta'));
+        $this->getJson('/workspaces/'.$a->public_id)->assertJson(fn (Assert $page) => $page->where('data.guidance.sources.0.provider', 'google')->etc());
+        $this->getJson('/workspaces/'.$b->public_id)->assertJson(fn (Assert $page) => $page->where('data.guidance.sources.0.provider', 'meta')->etc());
         $this->get('/dashboard')->assertRedirect(route('workspaces.index'));
     }
 
@@ -229,11 +228,11 @@ class BusinessFoundationTest extends TestCase
         $input = $this->prior();
         $this->withCredentials()->postJson($url, [...$input, 'provider' => 'meta'])->assertUnprocessable()->assertJsonValidationErrors('product');
         $this->post($url, [...$input, 'approved' => false])->assertRedirect();
-        $this->actingAs($advertiser)->get('/workspaces/'.$workspace->public_id)->assertInertia(fn (Assert $page) => $page->has('guidance.priors', 0));
+        $this->actingAs($advertiser)->getJson('/workspaces/'.$workspace->public_id)->assertJson(fn (Assert $page) => $page->has('data.guidance.priors', 0)->etc());
         $this->administrator();
         $row = DB::connection('pgsql_migrations')->table('business_promotion_priors')->first();
         $this->post($url, [...$input, 'id' => $row->id, 'version' => $row->version, 'active' => false])->assertRedirect();
-        $this->actingAs($advertiser)->get('/workspaces/'.$workspace->public_id)->assertInertia(fn (Assert $page) => $page->has('guidance.priors', 0));
+        $this->actingAs($advertiser)->getJson('/workspaces/'.$workspace->public_id)->assertJson(fn (Assert $page) => $page->has('data.guidance.priors', 0)->etc());
         $this->administrator();
         $row = DB::connection('pgsql_migrations')->table('business_promotion_priors')->first();
         $this->post($url, [...$input, 'id' => $row->id, 'version' => $row->version])->assertRedirect();

@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\PasskeySessionController;
 use App\Http\Controllers\BusinessContextController;
 use App\Http\Controllers\CommercialController;
 use App\Http\Controllers\CommercialMarketPreparationController;
+use App\Http\Controllers\GoalsSpaController;
 use App\Http\Controllers\GoogleConnectionController;
 use App\Http\Controllers\GoogleReportController;
 use App\Http\Controllers\InternalAdministrationController;
@@ -63,10 +64,18 @@ Route::get('/dashboard', [BusinessContextController::class, 'entry'])
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
     Route::get('/workspaces/{workspace}/goals', [AdvertiserGoalPreferencesController::class, 'edit'])
         ->whereUuid('workspace')->name('workspaces.goals.edit');
+    Route::get('/workspaces/{workspace}/goals/review', [AdvertiserGoalPreferencesController::class, 'edit'])
+        ->whereUuid('workspace')->name('workspaces.goals.review');
+    Route::get('/workspaces/{workspace}/goals/context', [GoalsSpaController::class, 'context'])
+        ->whereUuid('workspace')->name('workspaces.goals.context');
     Route::post('/workspaces/{workspace}/goals', [AdvertiserGoalPreferencesController::class, 'update'])
         ->whereUuid('workspace')->name('workspaces.goals.update');
     Route::get('/workspaces/{workspace}/object-purposes', [ObjectPurposeController::class, 'index'])
         ->whereUuid('workspace')->name('workspaces.object-purposes.index');
+    Route::get('/workspaces/{workspace}/object-purposes/context', [ObjectPurposeController::class, 'applicationIndex'])
+        ->whereUuid('workspace')->name('workspaces.object-purposes.application.index');
+    Route::get('/workspaces/{workspace}/object-purposes/{purpose}/context', [ObjectPurposeController::class, 'applicationShow'])
+        ->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.object-purposes.application.show');
     Route::get('/workspaces/{workspace}/object-purposes/{purpose}', [ObjectPurposeController::class, 'show'])
         ->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.object-purposes.show');
     Route::post('/workspaces/{workspace}/object-purposes', [ObjectPurposeController::class, 'store'])
