@@ -10,7 +10,6 @@ use App\Security\GrantAuthority;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class CurrentIntentTest extends TestCase
@@ -393,8 +392,8 @@ class CurrentIntentTest extends TestCase
             ->assertJsonPath('data.business.currentIntent.version', 1)->assertJsonPath('data.version', 1)->assertJsonPath('data.workspace.business_context_version', 1);
         $type = DB::connection('pgsql_migrations')->table('business_types')->where('key', 'real_estate')->value('id');
         $this->post('/workspaces/'.$workspace->public_id.'/business', ['business_type_id' => $type, 'version' => 1])->assertRedirect();
-        $this->get('/workspaces/'.$workspace->public_id)->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Business/Sources')->where('business.currentIntent.state', 'PRESENT')->where('business.version', 2));
+        $this->getJson('/workspaces/'.$workspace->public_id)->assertOk()
+            ->assertJsonPath('data.business.currentIntent.state', 'PRESENT')->assertJsonPath('data.business.version', 2);
         $this->assertSame(3, $this->write($workspace, null, 2));
         $this->projection($workspace, 3, null);
         $this->assertSame(2, DB::connection('pgsql_migrations')->table('business_current_intent_events')->count());

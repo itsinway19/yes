@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import axios from 'axios';
+import { providers } from './api';
+import { TransportError } from '../spa/transport';
+import { remember, restore } from './commands';
+import type { ReportPeriod, ReportCommand } from './providers';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 const props = defineProps<{ workspaceId: string; sourceId: string; version: number; allowed: boolean; provider: 'meta' | 'google' | 'tiktok' | 'snapchat' | 'x' }>();
@@ -8,8 +11,8 @@ type Command = { campaign_ids?: string[]; placement?: string; mode?: string; sta
 const start = ref('');
 const end = ref('');
 const campaignIds = ref('');
-const placement = ref('ALL_ON_TWITTER');
-const mode = ref('ASYNC');
+const placement = ref<'ALL_ON_TWITTER' | 'SPOTLIGHT' | 'TREND'>('ALL_ON_TWITTER');
+const mode = ref<'SYNC' | 'ASYNC'>('ASYNC');
 const campaigns = ref<{ id: string; label: string }[]>([]);
 const campaignContinuation = ref<string | null>(null);
 const periodInput = () => ({ start_date: start.value, end_date: end.value, ...(props.provider === 'x' ? { campaign_ids: campaignIds.value.split(/[\s,]+/).filter(Boolean), placement: placement.value, mode: mode.value } : props.provider === 'meta' ? { mode: mode.value } : {}) });
@@ -42,13 +45,14 @@ const base = `/workspaces/${encodeURIComponent(props.workspaceId)}/providers/${p
 const key = () => `${props.version}:${start.value}:${end.value}:${campaignIds.value}:${placement.value}:${mode.value}`;
 
 watch([start, end, campaignIds, placement, mode, () => props.version], () => {
-    command.value = null; status.value = null; waiting.value = false;
+    if (command.value) return;
+    status.value = null; waiting.value = false;
     submittedGeneration.value = null; submittedDeadline.value = null; error.value = ''; message.value = '';
-});
+}, { flush: 'sync' });
 
 function fail(failure: unknown) {
-    if (!active || axios.isCancel(failure)) return;
-    const code = axios.isAxiosError(failure) ? failure.response?.status : null;
+    if (!active || (failure instanceof Error && failure.name === 'AbortError')) return;
+    const code = failure instanceof TransportError ? failure.status : null;
     error.value = code === 403 ? 'لا يتوفر الإذن الحالي لسحب هذه البيانات. حدّث حالة الربط وتحقق من الصلاحيات.'
         : code === 422 ? 'راجع الفترة المحددة. قد تحتاج تحديث الحالة لبدء طلب جديد.'
             : code === 503 ? 'إعداد سحب تقارير المنصة غير مكتمل. راجع مسؤول الخدمة.'
@@ -60,16 +64,19 @@ function coverageLabel(coverage: string): string {
 }
 
 async function fetchStatus() {
-    return (await axios.get<Status>(base, { params: periodInput(), signal: cancellation.signal })).data;
+    const selection: ReportPeriod = props.provider === 'x'
+            ? { provider: 'x', period: { start_date: start.value, end_date: end.value, campaign_ids: campaignIds.value.split(/[\s,]+/).filter(Boolean), placement: placement.value, mode: mode.value } }
+        : props.provider === 'meta' ? { provider: 'meta', period: { start_date: start.value, end_date: end.value, mode: mode.value } }
+            : { provider: props.provider, period: { start_date: start.value, end_date: end.value } };
+    return providers.reportStatus({ workspace: props.workspaceId, source: props.sourceId, signal: cancellation.signal }, selection);
 }
 
 async function loadCampaigns(continuation: string | null = null) {
     if (busy.value || !props.allowed || props.provider !== 'x') return;
     busy.value = true; error.value = '';
     try {
-        const response = await axios.get<{ campaigns: { id: string; label: string }[]; continuation: string | null }>(base.replace(/\/report$/, '/campaigns'),
-            { params: continuation ? { continuation } : {}, signal: cancellation.signal });
-        if (active) { campaigns.value = response.data.campaigns; campaignContinuation.value = response.data.continuation; }
+        const response = await providers.campaigns(props.workspaceId, props.sourceId, continuation ?? undefined, cancellation.signal);
+        if (active) { campaigns.value = response.campaigns; campaignContinuation.value = response.continuation; }
     } catch (failure) { fail(failure); }
     finally { if (active) busy.value = false; }
 }
@@ -91,7 +98,7 @@ async function refresh() {
             waiting.value = false; submittedDeadline.value = null;
             message.value = 'انتهت مهلة تنفيذ الطلب السابق. الحالة المعروضة هي آخر نتيجة محفوظة؛ يمكنك طلب سحب جديد عند الحاجة.';
         }
-        if (command.value && Date.parse(command.value.deadline) <= Date.now()) command.value = null;
+        if (command.value && Date.parse(command.value.deadline) <= Date.now()) message.value = 'مهلة الأمر الأصلي انتهت؛ نتيجته السابقة غير مؤكدة. راجع الحالة قبل اختيار فترة جديدة.';
     } catch (failure) { fail(failure); }
     finally { if (active) busy.value = false; }
 }
@@ -107,36 +114,64 @@ async function submit() {
             command.value = { ...periodInput(), command_id: crypto.randomUUID(),
                 expected_version: props.version, expected_generation: current.generation, deadline: current.deadline };
         }
-        const pending = command.value;
-        await axios.post(base, pending, { signal: cancellation.signal });
+            const pending = command.value;
+        if (!saveDraft()) throw Error('Source request storage unavailable');
+        const selection: ReportCommand = props.provider === 'x'
+            ? { provider: 'x', command: { ...pending, campaign_ids: pending.campaign_ids!, placement: pending.placement as 'ALL_ON_TWITTER' | 'SPOTLIGHT' | 'TREND', mode: pending.mode as 'SYNC' | 'ASYNC' } }
+            : props.provider === 'meta' ? { provider: 'meta', command: { ...pending, mode: pending.mode as 'SYNC' | 'ASYNC' } }
+                : { provider: props.provider, command: pending };
+        await providers.report({ workspace: props.workspaceId, source: props.sourceId, signal: cancellation.signal }, selection);
         if (!active || view !== key()) return;
         submittedGeneration.value = pending.expected_generation; submittedDeadline.value = pending.deadline; command.value = null; waiting.value = true;
+        saveDraft();
         message.value = 'تم إرسال طلب السحب ليعمل في الخلفية. حدّث الحالة لاحقًا لمعرفة نتيجة هذه الفترة.';
     } catch (failure) { fail(failure); }
     finally { if (active) busy.value = false; }
 }
 
-onBeforeUnmount(() => { active = false; cancellation.abort(); });
+type Draft = { start: string; end: string; campaignIds: string; placement: typeof placement.value; mode: typeof mode.value; command: Command | null; waiting: boolean; submittedGeneration: number | null; submittedDeadline: string | null; googleMetrics: string[] };
+const feature = 'report:' + props.provider + ':' + props.sourceId;
+const saved = restore<Draft>(props.workspaceId, feature);
+if (saved) {
+    start.value = saved.start; end.value = saved.end; campaignIds.value = saved.campaignIds; placement.value = saved.placement; mode.value = saved.mode;
+    command.value = saved.command; waiting.value = saved.waiting; submittedGeneration.value = saved.submittedGeneration; submittedDeadline.value = saved.submittedDeadline; googleMetrics.value = saved.googleMetrics;
+}
+async function newPeriod() {
+    if (busy.value || !confirm('نتيجة الأمر السابق قد تكون غير مؤكدة. هل تريد بدء فترة أو طلب جديد صراحةً؟')) return;
+    const previous = restore<unknown[]>(props.workspaceId, feature + ':previous') ?? [];
+    if (!remember(props.workspaceId, feature + ':previous', [...previous, { command: command.value, submittedGeneration: submittedGeneration.value, submittedDeadline: submittedDeadline.value }])) return;
+    command.value = null; waiting.value = false; status.value = null; submittedGeneration.value = null; submittedDeadline.value = null;
+    saveDraft();
+}
+function saveDraft() {
+    return remember(props.workspaceId, feature, { start: start.value, end: end.value, campaignIds: campaignIds.value, placement: placement.value, mode: mode.value, command: command.value, waiting: waiting.value, submittedGeneration: submittedGeneration.value, submittedDeadline: submittedDeadline.value, googleMetrics: googleMetrics.value });
+}
+const beforeUnload = (event: BeforeUnloadEvent) => { if (command.value) { saveDraft(); event.preventDefault(); event.returnValue = ''; } };
+window.addEventListener('beforeunload', beforeUnload);
+onBeforeUnmount(() => {
+    saveDraft(); window.removeEventListener('beforeunload', beforeUnload);
+    active = false; cancellation.abort();
+});
 </script>
 
 <template>
-    <div class="mt-4 rounded-xl border border-slate-200 p-4" :aria-busy="busy">
+    <div class="mt-4 rounded-xl border border-slate-200 p-4" :aria-busy="busy" :data-source-report="provider" :data-report-source="sourceId">
         <h4 class="text-sm font-semibold text-slate-900">سحب بيانات الحملات من {{ ({ meta: 'Meta', google: 'Google', tiktok: 'TikTok', snapchat: 'Snapchat', x: 'X' })[provider] }}</h4>
         <p v-if="!allowed" class="mt-2 text-sm leading-6 text-slate-600">يتطلب السحب ربطًا صالحًا وإذنًا حاليًا واكتمال إثبات استخدام البيانات. الربط وحده لا يكفي.</p>
         <form v-else class="mt-3 flex flex-wrap items-end gap-3" @submit.prevent="submit">
-            <div><label :for="`${provider}-report-start-${sourceId}`" class="block text-sm text-slate-700">من تاريخ</label><input :id="`${provider}-report-start-${sourceId}`" v-model="start" required type="date" :disabled="busy" class="mt-1 rounded-lg border-slate-300 text-sm" /></div>
-            <div><label :for="`${provider}-report-end-${sourceId}`" class="block text-sm text-slate-700">إلى تاريخ</label><input :id="`${provider}-report-end-${sourceId}`" v-model="end" required type="date" :min="start || undefined" :disabled="busy" class="mt-1 rounded-lg border-slate-300 text-sm" /></div>
-            <div v-if="provider === 'meta'"><label :for="`meta-mode-${sourceId}`" class="block text-sm text-slate-700">نوع تقرير Meta</label><select :id="`meta-mode-${sourceId}`" v-model="mode" :disabled="busy" class="mt-1 rounded-lg border-slate-300 text-sm"><option value="ASYNC">تقرير تاريخي في الخلفية</option><option value="SYNC">قراءة مباشرة في عامل الخلفية</option></select>
+            <div><label :for="`${provider}-report-start-${sourceId}`" class="block text-sm text-slate-700">من تاريخ</label><input :id="`${provider}-report-start-${sourceId}`" v-model="start" required type="date" :disabled="busy || !!command" class="mt-1 rounded-lg border-slate-300 text-sm" /></div>
+            <div><label :for="`${provider}-report-end-${sourceId}`" class="block text-sm text-slate-700">إلى تاريخ</label><input :id="`${provider}-report-end-${sourceId}`" v-model="end" required type="date" :min="start || undefined" :disabled="busy || !!command" class="mt-1 rounded-lg border-slate-300 text-sm" /></div>
+            <div v-if="provider === 'meta'"><label :for="`meta-mode-${sourceId}`" class="block text-sm text-slate-700">نوع تقرير Meta</label><select :id="`meta-mode-${sourceId}`" v-model="mode" :disabled="busy || !!command" class="mt-1 rounded-lg border-slate-300 text-sm"><option value="ASYNC">تقرير تاريخي في الخلفية</option><option value="SYNC">قراءة مباشرة في عامل الخلفية</option></select>
                 <p class="mt-1 text-xs text-slate-600">نتابع معالجة التقرير ضمن مهلة الطلب. عدم اكتماله خلال المهلة لا يعني توفر بيانات مكتملة.</p>
             </div>
             <template v-if="provider === 'x'">
-                <div class="w-full"><button type="button" :disabled="busy" @click="loadCampaigns()" class="text-sm text-indigo-700 underline">اختيار الحملات من حساب X</button>
-                    <ul v-if="campaigns.length" class="mt-2 max-h-48 overflow-auto"><li v-for="campaign in campaigns" :key="campaign.id" class="py-1"><label class="text-sm"><input type="checkbox" :disabled="busy" :checked="campaignIds.split(/[\s,]+/).includes(campaign.id)" @change="toggleCampaign(campaign.id, ($event.target as HTMLInputElement).checked)" class="me-2" />{{ campaign.label }} <span dir="ltr" class="text-xs text-slate-500">{{ campaign.id }}</span></label></li></ul>
-                    <button v-if="campaignContinuation" type="button" :disabled="busy" @click="loadCampaigns(campaignContinuation)" class="mt-2 text-sm text-indigo-700 underline">الحملات التالية</button>
+                <div class="w-full"><button type="button" :disabled="busy || !!command" @click="loadCampaigns()" class="text-sm text-indigo-700 underline">اختيار الحملات من حساب X</button>
+                    <ul v-if="campaigns.length" class="mt-2 max-h-48 overflow-auto"><li v-for="campaign in campaigns" :key="campaign.id" class="py-1"><label class="text-sm"><input type="checkbox" :disabled="busy || !!command" :checked="campaignIds.split(/[\s,]+/).includes(campaign.id)" @change="toggleCampaign(campaign.id, ($event.target as HTMLInputElement).checked)" class="me-2" />{{ campaign.label }} <span dir="ltr" class="text-xs text-slate-500">{{ campaign.id }}</span></label></li></ul>
+                    <button v-if="campaignContinuation" type="button" :disabled="busy || !!command" @click="loadCampaigns(campaignContinuation)" class="mt-2 text-sm text-indigo-700 underline">الحملات التالية</button>
                 </div>
-                <div><label :for="`x-campaigns-${sourceId}`" class="block text-sm text-slate-700">معرّفات الحملات (حتى 20، مفصولة بفاصلة)</label><input :id="`x-campaigns-${sourceId}`" v-model="campaignIds" required :disabled="busy" dir="ltr" class="mt-1 rounded-lg border-slate-300 text-sm" /></div>
-                <div><label :for="`x-placement-${sourceId}`" class="block text-sm text-slate-700">موضع الإعلان</label><select :id="`x-placement-${sourceId}`" v-model="placement" :disabled="busy" class="mt-1 rounded-lg border-slate-300 text-sm"><option value="ALL_ON_TWITTER">إعلانات X</option><option value="SPOTLIGHT">Spotlight</option><option value="TREND">Trend</option></select></div>
-                <div><label :for="`x-mode-${sourceId}`" class="block text-sm text-slate-700">نوع السحب</label><select :id="`x-mode-${sourceId}`" v-model="mode" :disabled="busy" class="mt-1 rounded-lg border-slate-300 text-sm"><option value="ASYNC">تقرير تاريخي في الخلفية (حتى 90 يومًا)</option><option value="SYNC">فترة قصيرة (حتى 7 أيام)</option></select></div>
+                <div><label :for="`x-campaigns-${sourceId}`" class="block text-sm text-slate-700">معرّفات الحملات (حتى 20، مفصولة بفاصلة)</label><input :id="`x-campaigns-${sourceId}`" v-model="campaignIds" required :disabled="busy || !!command" dir="ltr" class="mt-1 rounded-lg border-slate-300 text-sm" /></div>
+                <div><label :for="`x-placement-${sourceId}`" class="block text-sm text-slate-700">موضع الإعلان</label><select :id="`x-placement-${sourceId}`" v-model="placement" :disabled="busy || !!command" class="mt-1 rounded-lg border-slate-300 text-sm"><option value="ALL_ON_TWITTER">إعلانات X</option><option value="SPOTLIGHT">Spotlight</option><option value="TREND">Trend</option></select></div>
+                <div><label :for="`x-mode-${sourceId}`" class="block text-sm text-slate-700">نوع السحب</label><select :id="`x-mode-${sourceId}`" v-model="mode" :disabled="busy || !!command" class="mt-1 rounded-lg border-slate-300 text-sm"><option value="ASYNC">تقرير تاريخي في الخلفية (حتى 90 يومًا)</option><option value="SYNC">فترة قصيرة (حتى 7 أيام)</option></select></div>
                 <p class="w-full text-xs text-slate-600">تُحسب الحدود حسب المنطقة الزمنية للحساب. تبقى مواضع الإعلان منفصلة.</p>
             </template>
             <button type="submit" :disabled="busy || waiting" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{{ command ? 'إعادة تأكيد الطلب' : 'طلب سحب البيانات' }}</button>
@@ -153,6 +188,7 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
             <p v-else role="status" class="text-sm text-slate-700">اختر مقياسًا واحدًا على الأقل لتنزيل التقرير.</p>
             <p class="mt-2 text-xs leading-5 text-slate-600">نسخة محفوظة من هذا السحب؛ يبقى الإنفاق وحالة الحملة والفترة ومصدر البيانات في كل تنزيل. اختيار المقاييس لا يطلب سحبًا جديدًا. تبقى القيم غير المتاحة مجهولة، والتحويلات منسوبة للمنصة. قد تقرّب برامج الجداول الأرقام الطويلة عند فتح الملف؛ استورد أعمدتها كنص للحفاظ على دقتها.</p>
         </div>
+        <button v-if="command || waiting" type="button" :disabled="busy" class="mt-3 text-sm underline" @click="newPeriod">مراجعة فترة أو طلب جديد</button>
         <p v-if="message" role="status" class="mt-3 text-sm text-slate-700">{{ message }}</p>
         <p v-if="error" role="alert" class="mt-3 text-sm text-red-700">{{ error }}</p>
     </div>

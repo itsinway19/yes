@@ -20,8 +20,8 @@ globalThis.__scopeStatus = ref('ready');
 globalThis.__scopeError = class extends Error { constructor(status, body) { super('HTTP ' + status); this.status = status; this.body = body; } };
 const moduleUrl = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
 const ports = {
-    './api': moduleUrl(`export const sources = { command: async (workspace, command) => {
-        const args = ['/workspaces/' + workspace + '/sources', command, { headers: { Accept: 'application/json' } }];
+    './api': moduleUrl(`export const sources = { command: async (workspace, command, signal) => {
+        const args = ['/workspaces/' + workspace + '/sources', command, { signal, headers: { Accept: 'application/json' } }];
         globalThis.__bb1Transport.requests.push(args);
         return (await globalThis.__bb1Transport.send(...args)).data;
     } };`),
@@ -99,6 +99,15 @@ test('server choices only, native selection/submission, bounded payload, loading
 });
 test('absence of server authorization renders no scope declaration form', () => {
     const view = mount(declaration.component, { choices: [] }); assert.equal(nodes(view.root, n => n.tag === 'form').length, 0); view.unmount();
+});
+
+test('an unmounted scope form aborts its request and an ignored abort cannot refresh a different presentation', async () => {
+    const view = mount(); await select(view.root);
+    let acknowledge; transport.send = () => new Promise(resolve => { acknowledge = resolve; });
+    const request = submit(view.root); await nextTick(); const signal = transport.requests[0][2].signal;
+    assert.equal(signal.aborted, false); view.unmount(); assert.equal(signal.aborted, true);
+    acknowledge({ data: { version: 8 } }); await request; await nextTick();
+    assert.equal(transport.reloads.length, 0); assert.equal(stored.size, 1);
 });
 test('field validation is visible beside the choice and retry retains the command identity', async () => {
     const view = mount(); await select(view.root);

@@ -10,7 +10,6 @@ use App\Security\GrantAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class DeclaredTargetMarketsTest extends TestCase
@@ -222,8 +221,8 @@ class DeclaredTargetMarketsTest extends TestCase
         $db = DB::connection('pgsql_migrations');
         $type = $db->table('business_types')->where('key', 'real_estate')->value('id');
         $this->post('/workspaces/'.$workspace->public_id.'/business', ['business_type_id' => $type, 'version' => 0])->assertRedirect();
-        $this->get('/workspaces/'.$workspace->public_id)->assertInertia(fn (Assert $page) => $page->component('Business/Sources')
-            ->where('business.targetMarketsDeclared', false)->where('business.targetMarkets', []));
+        $this->getJson('/workspaces/'.$workspace->public_id)->assertOk()
+            ->assertJsonPath('data.business.targetMarketsDeclared', false)->assertJsonPath('data.business.targetMarkets', []);
         $this->assertSame(0, $db->table('business_target_market_events')->count());
     }
 

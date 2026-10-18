@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, reactive, onBeforeUnmount } from 'vue';
 import ProviderBrand from '@/Components/ProviderBrand.vue';
-import { router, useForm } from '@inertiajs/vue3';
-import SourceCapabilityStatus from './SourceCapabilityStatus.vue';
+import { submit, remember, restore } from './commands';
+import { read } from './state';
+import { stamp, owned, TransportError } from '../spa/transport';
+import type { SourceCommand, SourceAuthorityCommand } from './client';
+import SourceCapabilityStatus from '../Pages/Workspaces/SourceCapabilityStatus.vue';
 import DeclareSourceScope from './DeclareSourceScope.vue';
 
 type Scope = { resource: string; operation: string; purpose: string };
@@ -13,40 +16,50 @@ type Item = Scope & { id: string; family: string; namespace: string; declared_ex
 type Authority = { source_target_id: string; source_resource: string; source_operation: string; source_purpose: string };
 const props = defineProps<{ workspaceId: string; candidateId: string; canRequestAuthority: boolean;
     sources: { state: string; items: Item[]; registration_authorities: Authority[] } }>();
-const grant = useForm({ source_id: props.candidateId, resource: '', operation: '', purpose: '', action: 'source.register',
+const grant = reactive({ source_id: props.candidateId, resource: '', operation: '', purpose: '', action: 'source.register',
     decision: 'authorize', reason: 'owner_explicit_request', expires_at: '' });
-const registration = useForm({ command_id: crypto.randomUUID(), source_id: '', resource: '', operation: '', purpose: '',
+const registration = reactive({ command_id: crypto.randomUUID(), source_id: '', resource: '', operation: '', purpose: '',
     effect: 'register', expected_version: 0, reason: 'owner_declared_identity', family: 'meta', namespace: '', external_id: '', label: '' });
 const busy = ref(false);
 const failure = ref('');
-function requestGrant() {
-    grant.post(route('workspaces.sources.grant', props.workspaceId), { preserveScroll: true });
+type Fields = { errors: Record<string, string>; processing: boolean };
+const grantFields = reactive<Fields>({ errors: {}, processing: false });
+const registrationFields = reactive<Fields>({ errors: {}, processing: false });
+const saved = restore<{ grant: typeof grant; registration: typeof registration }>(props.workspaceId, 'registry');
+if (saved) { Object.assign(grant, saved.grant); Object.assign(registration, saved.registration); }
+onBeforeUnmount(() => remember(props.workspaceId, 'registry', { grant: { ...grant }, registration: { ...registration } }));
+async function run(command: Parameters<typeof submit>[0], fields?: Fields) {
+    if (busy.value) return;
+    const captured = stamp(); busy.value = true; failure.value = '';
+    if (fields) { fields.processing = true; fields.errors = {}; }
+    try {
+        await submit(command);
+        if (!owned(captured)) return;
+        await read(props.workspaceId, true);
+        if (!owned(captured)) return;
+        if (command.effect === 'registry' && command.body.effect === 'register') registration.command_id = crypto.randomUUID();
+    } catch (error) {
+        if (!owned(captured)) return;
+        if (fields && error instanceof TransportError) fields.errors = Object.fromEntries(Object.entries(error.body.errors ?? {}).map(([field, messages]) => [field, messages[0]]));
+        failure.value = error instanceof TransportError ? 'رفض الخادم الطلب أو تغيرت الصلاحية. احتفظ بالمسودة وراجع الحالة الحالية.' : 'نتيجة الأمر غير مؤكدة. أعد إرسال الأمر الأصلي المحفوظ فقط.';
+    } finally { busy.value = false; if (fields) fields.processing = false; }
 }
-function registerSource(a: Authority) {
-    Object.assign(registration, { source_id: a.source_target_id, resource: a.source_resource, operation: a.source_operation, purpose: a.source_purpose });
-    registration.post(route('workspaces.sources.command', props.workspaceId), {
-        preserveScroll: true, onSuccess: () => { registration.command_id = crypto.randomUUID(); },
-    });
+function requestGrant() {
+    void run({ workspace: props.workspaceId, effect: 'grant', body: { ...grant, expires_at: grant.expires_at || null } as SourceAuthorityCommand }, grantFields);
+}
+function registerSource(authority: Authority) {
+    Object.assign(registration, { source_id: authority.source_target_id, resource: authority.source_resource, operation: authority.source_operation, purpose: authority.source_purpose });
+    void run({ workspace: props.workspaceId, effect: 'registry', body: { ...registration, effect: 'register' } }, registrationFields);
 }
 function manage(item: Item, effect: 'rename' | 'revoke') {
     const label = effect === 'rename' ? window.prompt('الاسم المعلن الجديد', item.label) : undefined;
     if (effect === 'rename' && !label) return;
-    busy.value = true;
-    router.post(route('workspaces.sources.command', props.workspaceId), {
-        command_id: crypto.randomUUID(), source_id: item.id, resource: item.resource, operation: item.operation, purpose: item.purpose,
-        effect, expected_version: item.version, reason: effect === 'revoke' ? 'owner_source_revocation' : 'owner_label_correction',
-        ...(label ? { label } : {}),
-    }, { preserveScroll: true, onError: () => { failure.value = 'تعذّر تنفيذ الأمر؛ أعد تحميل الحالة قبل المحاولة.'; },
-        onFinish: () => { busy.value = false; } });
+    const common = { command_id: crypto.randomUUID(), source_id: item.id, resource: item.resource, operation: item.operation, purpose: item.purpose,
+        expected_version: item.version, reason: effect === 'revoke' ? 'owner_source_revocation' : 'owner_label_correction' };
+    const body: SourceCommand = effect === 'rename' ? { ...common, effect, label: label! } : { ...common, effect };
+    void run({ workspace: props.workspaceId, effect: 'registry', body });
 }
-function recover(obligation: string) {
-    if (busy.value) return;
-    busy.value = true;
-    router.post(route('workspaces.sources.recover', [props.workspaceId, obligation]), {}, {
-        preserveScroll: true, onError: () => { failure.value = 'تعذّر تسليم التدقيق؛ تبقى حالة التسليم مستقلة عن التسجيل.'; },
-        onFinish: () => { busy.value = false; },
-    });
-}
+function recover(obligation: string) { void run({ workspace: props.workspaceId, effect: 'audit', source: obligation }); }
 </script>
 
 <template>
@@ -61,8 +74,8 @@ function recover(obligation: string) {
             <label>الغرض (رمز)<input v-model="grant.purpose" required dir="ltr" class="mt-1 w-full rounded border-slate-300" /></label>
             <label>الفعل<select v-model="grant.action" class="mt-1 w-full rounded border-slate-300"><option>source.register</option><option>source.read</option><option>source.manage</option><option>source.audit.recover</option></select></label>
             <label>القرار<select v-model="grant.decision" class="mt-1 w-full rounded border-slate-300"><option value="authorize">منح الصلاحية المحددة</option><option value="revoke">سحب الصلاحية المحددة</option></select></label>
-            <p v-for="(message, field) in grant.errors" :key="field" role="alert" class="text-sm text-red-700">{{ message }}</p>
-            <button :disabled="grant.processing" class="rounded bg-indigo-700 px-4 py-2 text-white disabled:opacity-50">تأكيد القرار الصريح</button>
+            <p v-for="(message, field) in grantFields.errors" :key="field" role="alert" class="text-sm text-red-700">{{ message }}</p>
+            <button :disabled="busy || grantFields.processing" class="rounded bg-indigo-700 px-4 py-2 text-white disabled:opacity-50">تأكيد القرار الصريح</button>
         </form>
         <form v-if="canRequestAuthority && sources.registration_authorities.length" class="mt-6 grid gap-3 sm:grid-cols-2" @submit.prevent>
             <h3 class="font-medium sm:col-span-2">تسجيل الهوية المعلنة</h3>
@@ -70,8 +83,8 @@ function recover(obligation: string) {
             <label>نطاق المعرّف<input v-model="registration.namespace" required maxlength="80" class="mt-1 w-full rounded border-slate-300" /></label>
             <label>معرّف الحساب المعلن<input v-model="registration.external_id" required maxlength="180" class="mt-1 w-full rounded border-slate-300" /></label>
             <label>الاسم المعلن<input v-model="registration.label" required maxlength="120" class="mt-1 w-full rounded border-slate-300" /></label>
-            <p v-for="(message, field) in registration.errors" :key="field" role="alert" class="text-sm text-red-700">{{ message }}</p>
-            <button v-for="a in sources.registration_authorities" :key="a.source_target_id + a.source_operation + a.source_purpose" type="button" :disabled="registration.processing" class="rounded bg-indigo-700 px-4 py-2 text-white disabled:opacity-50" @click="registerSource(a)">تسجيل غير متحقق: {{ a.source_resource }} / {{ a.source_operation }} / {{ a.source_purpose }}</button>
+            <p v-for="(message, field) in registrationFields.errors" :key="field" role="alert" class="text-sm text-red-700">{{ message }}</p>
+            <button v-for="a in sources.registration_authorities" :key="a.source_target_id + a.source_operation + a.source_purpose" type="button" :data-register-source="a.source_target_id" :disabled="busy || registrationFields.processing" class="rounded bg-indigo-700 px-4 py-2 text-white disabled:opacity-50" @click="registerSource(a)">تسجيل غير متحقق: {{ a.source_resource }} / {{ a.source_operation }} / {{ a.source_purpose }}<span class="block" dir="ltr">{{ a.source_target_id }}</span></button>
         </form>
         <p v-if="!sources.items.length" class="mt-5 text-sm text-slate-600">لا توجد مصادر قابلة للعرض بصلاحية المصدر الحالية. منح عرض المساحة وحده لا يكفي.</p>
         <article v-for="item in sources.items" :key="item.id + item.resource + item.operation + item.purpose" class="mt-5 border-t border-slate-200 pt-5">

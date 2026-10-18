@@ -16,11 +16,19 @@ if ($asset && is_file($asset) && str_starts_with($asset, realpath($root.'/public
 }
 require $root.'/vendor/autoload.php';
 $app = require $root.'/bootstrap/app.php';
+$proofStorage = getenv('LARAVEL_STORAGE_PATH');
+if (! is_string($proofStorage) || realpath($proofStorage) === false || realpath($proofStorage) !== realpath(getenv('GOALS_SPA_RUN').'/laravel')) {
+    throw new RuntimeException('The server requires the recorded isolated proof storage.');
+}
+$app->useStoragePath($proofStorage);
 $app->make(Kernel::class)->bootstrap();
 $environment = $app->environment();
 $app->instance('env', 'testing');
 try {
     app(DisposableTestDatabaseGuard::class)->assertSafe();
+    if (getenv('GOALS_SPA_ONLY') === 'sources') {
+        require __DIR__.'/sources-spa-runtime.php';
+    }
 } finally {
     $app->instance('env', $environment);
 }

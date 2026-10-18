@@ -56,6 +56,9 @@ if ($mode === 'setup') {
     $who = $argv[2] ?? 'a';
     $user = $fixture[$who]['user'];
     $workspace = $fixture[$who]['workspaces'][0]['id'];
+    if (str_starts_with($mode, 'source-')) {
+        require __DIR__.'/sources-spa-fixture.php';
+    }
     match ($mode) {
         'expire' => $db->table('security_sessions')->where('user_id', $user)->update(['idle_expires_at' => now()->subSecond()]),
         'revoke' => $db->table('security_sessions')->where('user_id', $user)->update(['revoked_at' => now()]),

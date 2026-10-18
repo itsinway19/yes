@@ -12,7 +12,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Inertia\Testing\AssertableInertia as Assert;
+use Illuminate\Testing\Fluent\AssertableJson as Assert;
 use RuntimeException;
 use Symfony\Component\Process\Process;
 use Tests\Support\RowLockReadiness;
@@ -60,7 +60,7 @@ class SourceRegistryTest extends TestCase
         $this->assertSame(6, $this->owner()->table('source_registry')->count());
         $this->assertSame(6, $this->owner()->table('source_command_receipts')->count());
         $this->assertSame(6, $this->owner()->table('source_audit_obligations')->count());
-        $this->get('/workspaces/'.$this->workspace)->assertOk()->assertInertia(fn (Assert $p) => $p
+        $this->sourceProjection('/workspaces/'.$this->workspace, fn (Assert $p) => $p
             ->has('sources.items', 6)->where('sources.items.0.identity_verification', 'UNVERIFIED')
             ->where('sources.items.0.capability.state', 'UNKNOWN')->where('sources.items.0.capability.last_verified_at', null)
             ->where('sources.items.0.axes.provider_permission', 'UNKNOWN')->where('sources.items.0.audit_delivery.0.state', 'PENDING'));
@@ -101,10 +101,14 @@ class SourceRegistryTest extends TestCase
     {
         $sessionId = $this->app['session']->driver()->getId();
         $expected = hash_hmac('sha256', $sessionId, (string) config('app.key'));
-        $this->get('/workspaces/'.$this->workspace)->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('auth.sessionContextId', $expected)->where('sources.state', 'NO_VISIBLE_SOURCE_AUTHORITY'));
-        $this->get('/workspaces/'.$this->workspace)->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('auth.sessionContextId', $expected));
+        foreach ([1, 2] as $attempt) {
+            $response = $this->get('/workspaces/'.$this->workspace)->assertOk()->assertViewIs('spa')
+                ->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false)
+                ->assertDontSee('sourceCandidateId', false)->assertDontSee('commercial', false);
+            $this->assertSame($expected, $response->viewData('identity')['binding']['context']);
+            $this->assertSame($this->actor->id, $response->viewData('identity')['binding']['principal']);
+        }
+        $this->sourceProjection('/workspaces/'.$this->workspace, fn (Assert $page) => $page->where('sources.state', 'NO_VISIBLE_SOURCE_AUTHORITY'));
         $this->assertNotSame($sessionId, $expected);
     }
 
@@ -118,7 +122,7 @@ class SourceRegistryTest extends TestCase
         $this->command($this->transition('revoke', 2))->assertOk()->assertJsonPath('version', 3);
         $this->command($this->transition('rename', 3, ['label' => 'Revive']))->assertUnprocessable();
         $this->assertSame(3, $this->owner()->table('source_versions')->count());
-        $this->get('/workspaces/'.$this->workspace)->assertOk()->assertInertia(fn (Assert $p) => $p
+        $this->sourceProjection('/workspaces/'.$this->workspace, fn (Assert $p) => $p
             ->where('sources.items.0.capability.state', 'REVOKED')->where('sources.items.0.can_manage', false));
         $this->denied(fn () => $this->owner()->table('source_versions')->update(['snapshot' => '{}']), '23514');
     }
@@ -130,9 +134,9 @@ class SourceRegistryTest extends TestCase
         $this->command($other)->assertForbidden();
         $this->grantFixture('source.manage', ['source_operation' => 'discovery.read']);
         $this->command($other)->assertOk();
-        $this->get('/workspaces/'.$this->workspace)->assertInertia(fn (Assert $p) => $p->has('sources.items', 1));
+        $this->sourceProjection('/workspaces/'.$this->workspace, fn (Assert $p) => $p->has('sources.items', 1));
         $this->grantFixture('source.read', ['source_operation' => 'discovery.read']);
-        $this->get('/workspaces/'.$this->workspace)->assertInertia(fn (Assert $p) => $p->has('sources.items', 2));
+        $this->sourceProjection('/workspaces/'.$this->workspace, fn (Assert $p) => $p->has('sources.items', 2));
     }
 
     public function test_exact_action_target_purpose_expiry_revocation_and_generation_are_enforced(): void
@@ -179,7 +183,7 @@ class SourceRegistryTest extends TestCase
         $this->grantFixture('source.read', ['subject_user_id' => $member->id, 'granted_by' => $member->id]);
         $this->grantFixture('source.manage', ['subject_user_id' => $member->id, 'granted_by' => $member->id]);
         $this->actingAs($member);
-        $this->get('/workspaces/'.$this->workspace)->assertOk()->assertInertia(fn (Assert $p) => $p->has('sources.items', 1)
+        $this->sourceProjection('/workspaces/'.$this->workspace, fn (Assert $p) => $p->has('sources.items', 1)
             ->where('canRequestSourceAuthority', false)->where('sources.items.0.can_manage', false));
         $this->command($this->transition('revoke', 1))->assertForbidden();
         $this->postJson('/workspaces/'.$this->workspace.'/source-grants', $this->grantInput('source.manage'))->assertForbidden();
@@ -225,7 +229,7 @@ class SourceRegistryTest extends TestCase
         $second = $this->command($this->input)->assertOk()->json();
         $this->assertNotSame($first['source_id'], $second['source_id']);
         $this->assertSame(2, $this->owner()->table('source_registry')->count());
-        $this->get('/workspaces/'.$public)->assertInertia(fn (Assert $p) => $p->has('sources.items', 1));
+        $this->sourceProjection('/workspaces/'.$public, fn (Assert $p) => $p->has('sources.items', 1));
         $request = $this->request();
         app(WorkspaceContext::class)->run($other, $public, function () use ($request, $first): void {
             DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$this->workspaceId, SessionAuthority::sessionKey($request)]);
@@ -320,7 +324,7 @@ class SourceRegistryTest extends TestCase
         $this->command($this->input)->assertOk();
         $this->owner()->table('security_action_grants')->where('scope_kind', 'source')->where('action', 'source.read')
             ->update(['status' => 'revoked', 'revoked_at' => now()]);
-        $this->get('/workspaces/'.$this->workspace)->assertOk()->assertInertia(fn (Assert $p) => $p
+        $this->sourceProjection('/workspaces/'.$this->workspace, fn (Assert $p) => $p
             ->has('sources.items', 0)->where('sources.state', 'NO_VISIBLE_SOURCE_AUTHORITY'));
         $this->owner()->table('workspace_ownerships')->where('workspace_id', $this->workspaceId)->delete();
         $this->command($this->transition('revoke', 1))->assertForbidden();
@@ -457,7 +461,7 @@ class SourceRegistryTest extends TestCase
         $b = $this->command($this->transition('declare_scope', 1, ['operation' => 'discovery.read']))->assertOk()->json();
         $this->owner()->table('security_action_grants')->where('action', 'source.audit.recover')->where('source_operation', 'report.read')
             ->update(['status' => 'revoked', 'revoked_at' => now()]);
-        $this->get('/workspaces/'.$this->workspace)->assertOk()->assertInertia(function (Assert $p) use ($a, $b): void {
+        $this->sourceProjection('/workspaces/'.$this->workspace, function (Assert $p) use ($a, $b): void {
             $p->has('sources.items', 2);
             foreach ([0, 1] as $index) {
                 $p->where("sources.items.$index.audit_delivery.0.id", $a['obligation_id'])
@@ -478,7 +482,7 @@ class SourceRegistryTest extends TestCase
         $this->postJson($this->recoveryUrl($b['obligation_id']))->assertOk();
         $this->assertSame(1, $this->owner()->table('security_source_audit_custody')->count());
         $this->assertSame(1, $this->owner()->table('source_audit_delivery')->where('obligation_id', $b['obligation_id'])->value('attempts'));
-        $this->get('/workspaces/'.$this->workspace)->assertInertia(fn (Assert $p) => $p
+        $this->sourceProjection('/workspaces/'.$this->workspace, fn (Assert $p) => $p
             ->where('sources.items.0.audit_delivery.1.can_recover', false)
             ->where('sources.items.0.audit_delivery.1.recovery_reason', 'already_acknowledged')
             ->where('sources.items.0.capability.state', 'REVOKED')->has('sources.items.0.scope_choices', 0));
@@ -487,7 +491,7 @@ class SourceRegistryTest extends TestCase
     public function test_recovery_projection_does_not_authorize_effect_or_leak_across_workspaces(): void
     {
         $receipt = $this->command($this->input)->assertOk()->json();
-        $this->get('/workspaces/'.$this->workspace)->assertInertia(fn (Assert $p) => $p->where('sources.items.0.audit_delivery.0.can_recover', true));
+        $this->sourceProjection('/workspaces/'.$this->workspace, fn (Assert $p) => $p->where('sources.items.0.audit_delivery.0.can_recover', true));
         foreach (['source_resource' => 'wrong-resource', 'source_operation' => 'wrong.operation', 'source_purpose' => 'wrong_purpose'] as $field => $value) {
             $this->owner()->table('security_action_grants')->where('action', 'source.audit.recover')->update([$field => $value]);
             $this->postJson($this->recoveryUrl($receipt['obligation_id']))->assertForbidden();
@@ -499,7 +503,7 @@ class SourceRegistryTest extends TestCase
         $this->postJson($this->recoveryUrl($receipt['obligation_id']))->assertForbidden();
         [$other, $wid, $public] = $this->workspaceFixture();
         $this->actingAs($other);
-        $this->get('/workspaces/'.$public)->assertInertia(fn (Assert $p) => $p->has('sources.items', 0));
+        $this->sourceProjection('/workspaces/'.$public, fn (Assert $p) => $p->has('sources.items', 0));
         $this->postJson('/workspaces/'.$public.'/source-audit/'.$receipt['obligation_id'].'/recover')->assertForbidden();
         $this->actingAs($this->actor);
         $this->owner()->table('principal_lifecycles')->where('user_id', $this->actor->id)->update(['generation' => 2]);
@@ -516,14 +520,14 @@ class SourceRegistryTest extends TestCase
         $this->grantFixture('source.manage', ['source_resource' => 'expired', 'expires_at' => now()->subSecond()]);
         $this->grantFixture('source.manage', ['source_resource' => 'revoked', 'status' => 'revoked', 'revoked_at' => now()]);
         $this->grantFixture('source.manage', ['source_resource' => 'other-source', 'source_target_id' => (string) Str::uuid7()]);
-        $this->get('/workspaces/'.$this->workspace)->assertInertia(fn (Assert $p) => $p
+        $this->sourceProjection('/workspaces/'.$this->workspace, fn (Assert $p) => $p
             ->where('sources.items.0.scope_choices', [$scope])->where('sources.items.0.version', 1));
         $this->grantFixture('source.read', ['source_resource' => $scope['resource'], 'source_operation' => $scope['operation'], 'source_purpose' => $scope['purpose']]);
         $input = $this->transition('declare_scope', 1, $scope);
         $receipt = $this->command($input)->assertOk()->assertJsonPath('version', 2)->json();
         $this->command($input)->assertExactJson($receipt);
         $this->command([...$input, 'reason' => 'changed_payload'])->assertConflict();
-        $this->get('/workspaces/'.$this->workspace)->assertInertia(fn (Assert $p) => $p
+        $this->sourceProjection('/workspaces/'.$this->workspace, fn (Assert $p) => $p
             ->has('sources.items', 2)->where('sources.items', fn ($items) => collect($items)->contains('resource', $scope['resource']))
             ->where('sources.items.1.version', 2)->where('sources.items.1.capability.state', 'UNKNOWN')
             ->where('sources.items.1.identity_verification', 'UNVERIFIED')->has('sources.items.0.scope_choices', 0));
@@ -550,7 +554,7 @@ class SourceRegistryTest extends TestCase
         $this->actingAs($other)->postJson('/workspaces/'.$public.'/sources', $input)->assertForbidden();
         $this->actingAs($this->actor);
         $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['authenticated_at' => now()->subHour()]);
-        $this->get('/workspaces/'.$this->workspace)->assertInertia(fn (Assert $p) => $p->has('sources.items.0.scope_choices', 0)
+        $this->sourceProjection('/workspaces/'.$this->workspace, fn (Assert $p) => $p->has('sources.items.0.scope_choices', 0)
             ->where('sources.items.0.audit_delivery.0.recovery_reason', 'fresh_authentication_required'));
         $this->command($input)->assertForbidden();
         $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['authenticated_at' => now()]);
@@ -820,6 +824,15 @@ class SourceRegistryTest extends TestCase
     {
         return array_intersect_key($this->input, array_flip(['source_id', 'resource', 'operation', 'purpose', 'reason']))
             + ['action' => $action, 'decision' => 'authorize'];
+    }
+
+    private function sourceProjection(string $path, callable $assertion): void
+    {
+        $this->getJson($path)->assertOk()->assertJson(fn (Assert $page) => $page
+            ->has('data', function (Assert $data) use ($assertion): void {
+                $assertion($data);
+                $data->etc();
+            })->etc());
     }
 
     private function transition(string $effect, int $version, array $extra = []): array

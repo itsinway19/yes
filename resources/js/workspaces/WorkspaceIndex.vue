@@ -31,9 +31,9 @@ async function reassess(workspace: string) {
         <h1>{{ copy('اختر النشاط الذي تعمل عليه', 'Choose your business') }}</h1>
         <p>{{ copy('لكل نشاط سياقه ومصادره الخاصة. اختر نشاطًا للمتابعة.', 'Each business has its own context and sources. Choose one to continue.') }}</p>
         <div class="workspace-list">
-            <a v-for="workspace in data?.workspaces" :key="workspace.public_id" :href="`/workspaces/${workspace.public_id}`" class="workspace-row">
+            <RouterLink v-for="workspace in data?.workspaces" :key="workspace.public_id" :to="`/workspaces/${workspace.public_id}`" class="workspace-row">
                 <span>{{ workspace.name }}</span><span>{{ copy('متابعة', 'Continue') }}</span>
-            </a>
+            </RouterLink>
             <p v-if="!data?.workspaces.length">{{ copy('لا توجد أنشطة متاحة لك حاليًا.', 'No businesses are available to you yet.') }}</p>
         </div>
         <section v-if="data?.reassessableWorkspaces.length" class="workspace-list">

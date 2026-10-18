@@ -37,13 +37,15 @@ const onlyFoundation=process.env.GOALS_SPA_ONLY==='foundation';
 const onlyWorkspaces=process.env.GOALS_SPA_ONLY==='workspaces';
 const onlyContext=process.env.GOALS_SPA_ONLY==='context';
 const onlyPurpose=process.env.GOALS_SPA_ONLY==='purpose';
+const onlySources=process.env.GOALS_SPA_ONLY==='sources';
 const closure=process.env.GOALS_SPA_CLOSURE==='enabled';
 const result={head:spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim(),selection:process.env.GOALS_SPA_ONLY??'all',kind:'Real Laravel + dedicated Redis + PostgreSQL runtime/RLS + Chromium; synthetic users only',cases:[],wire,errors:[],assets:[],findings:[],unverified:[]};
 let browser;
 const until=async(fn,message='checkpoint')=>{const end=Date.now()+15000;while(!fn()){if(Date.now()>end)throw Error(message);await new Promise(resolve=>setTimeout(resolve,15));}};
 function command(mode,who='a'){
  const child=spawnSync('C:/tools/php85/php.exe',['tests/Support/GoalsSpaFixture.php',mode,who],{encoding:'utf8',env:{...process.env,APP_ENV:'testing'}});
- assert.equal(child.status,0,child.stderr||child.stdout);return JSON.parse(child.stdout.trim());
+ assert.equal(child.status,0,child.stderr||child.stdout);
+ try{return JSON.parse(child.stdout.trim());}catch{throw Error('Fixture '+mode+' did not return JSON: '+child.stdout+' '+child.stderr);}
 }
 const workspace=fixture.a.workspaces[0].public_id,other=fixture.a.workspaces[1].public_id,foreign=fixture.b.workspaces[0].public_id;
 const target=(mode,id=workspace,review=false)=>`${mode==='spa'?'/spa':''}/workspaces/${id}/goals${review?'/review':''}`;
@@ -103,8 +105,9 @@ try{
  }
  if(onlyContext){const {runBusinessContextCases}=await import('./business-context-spa-browser.mjs');await runBusinessContextCases({browser,check,login,meta,get,post,command,fixture,result,run,until,held});}
  if(onlyPurpose){const {runObjectPurposeCases}=await import('./object-purpose-spa-browser.mjs');await runObjectPurposeCases({browser,check,login,meta,get,post,command,fixture,result,run,until,held});}
- if(!onlyRestoration&&!onlyClosure&&!onlyRetention&&!onlyFoundation&&!onlyWorkspaces&&!onlyContext&&!onlyPurpose)await runGoalsContractCases({browser,check,login,meta,fixture,result});
- for(const mode of onlyRestoration||onlyClosure||onlyRetention||onlyFoundation||onlyWorkspaces||onlyContext||onlyPurpose?[]:['application']){
+ if(onlySources){const {runSourceCases}=await import('./sources-spa-browser.mjs');await runSourceCases({browser,check,login,meta,get,post,command,fixture,result,run,until,held});}
+ if(!onlyRestoration&&!onlyClosure&&!onlyRetention&&!onlyFoundation&&!onlyWorkspaces&&!onlyContext&&!onlyPurpose&&!onlySources)await runGoalsContractCases({browser,check,login,meta,fixture,result});
+ for(const mode of onlyRestoration||onlyClosure||onlyRetention||onlyFoundation||onlyWorkspaces||onlyContext||onlyPurpose||onlySources?[]:['application']){
   const context=await browser.newContext({viewport:{width:1280,height:900}});let page=await context.newPage();page.setDefaultTimeout(15000);
   page.on('dialog',dialog=>dialog.accept());page.on('pageerror',error=>result.errors.push({mode,message:error.message}));
   context.on('response',response=>{if(response.url().includes('/build/')&&response.status()===200)result.assets.push({url:response.url(),status:response.status()});});
@@ -246,7 +249,7 @@ try{
   }
  }
  // Exact HTTP ownership experiment, shared backend and actual cookie delivery.
- for(const mode of onlyRestoration||onlyRetention||onlyFoundation||onlyWorkspaces||onlyContext||onlyPurpose?[]:['application']){
+ for(const mode of onlyRestoration||onlyRetention||onlyFoundation||onlyWorkspaces||onlyContext||onlyPurpose||onlySources?[]:['application']){
   const context=await browser.newContext();const page=await context.newPage();page.on('dialog',d=>d.accept());await login(page,mode);
   await check('reversed real renewal/login cookie delivery',mode,async()=>{
    const originalIdentity=await meta(page);
@@ -281,7 +284,7 @@ try{
   const {runClosureCases}=await import('./goals-spa-closure.mjs');
   await runClosureCases({browser,check,login,get,post,meta,ready,visit,target,selected,command,until,held,wire,result,fixture,workspace,other,foreign,run,hash});
  }
- for(const mode of onlyClosure||onlyRetention||onlyFoundation||onlyWorkspaces||onlyContext||onlyPurpose?[]:['application']){
+ for(const mode of onlyClosure||onlyRetention||onlyFoundation||onlyWorkspaces||onlyContext||onlyPurpose||onlySources?[]:['application']){
   for(const fault of onlyRestoration?[]:['load','render']){
    const context=await browser.newContext();const page=await context.newPage();page.on('dialog',d=>d.accept());
    await page.goto('http://localhost:8138/login');assert.equal((await post(page,'/login',{email:'goals-a@example.test',password:'DisposableGoalsProof42!'})).status,200);

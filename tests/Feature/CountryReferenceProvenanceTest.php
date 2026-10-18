@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Security\GrantAuthority;
 use Illuminate\Support\Facades\DB;
-use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class CountryReferenceProvenanceTest extends TestCase
@@ -70,9 +69,9 @@ class CountryReferenceProvenanceTest extends TestCase
             $this->assertSame(array_column($catalog, 'code'), array_column($changed, 'code'));
             $this->assertNotSame($this->localization($catalog), $this->localization($changed));
             $this->assertEquals($before, $snapshot());
-            $this->get($url)->assertInertia(fn (Assert $page) => $page->where('business.targetMarkets.0.code', 'AE')
-                ->where('business.targetMarkets.0.name_en', 'Synthetic display correction')->where('business.targetMarkets.0.name_ar', 'تصحيح عرض اصطناعي')
-                ->where('business.version', 1)->where('business.targetMarketsDeclared', true));
+            $this->getJson($url)->assertOk()->assertJsonPath('data.business.targetMarkets.0.code', 'AE')
+                ->assertJsonPath('data.business.targetMarkets.0.name_en', 'Synthetic display correction')->assertJsonPath('data.business.targetMarkets.0.name_ar', 'تصحيح عرض اصطناعي')
+                ->assertJsonPath('data.business.version', 1)->assertJsonPath('data.business.targetMarketsDeclared', true);
         } finally {
             $db->table('country_references')->where('code', 'AE')->update(['name_en' => $old->name_en, 'name_ar' => $old->name_ar]);
         }

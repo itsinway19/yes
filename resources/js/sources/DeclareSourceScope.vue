@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { sources } from './api';
 import { read } from './state';
 import { bootstrap, status, TransportError } from '../spa/transport';
@@ -21,6 +21,9 @@ const context = ref('');
 const pending = ref<Pending | null>(null);
 const pendingCommand = computed<Command | null>(() => pending.value ? JSON.parse(pending.value.payload) as Command : null);
 const storageReady = ref(false);
+const cancellation = new AbortController();
+let active = true;
+onBeforeUnmount(() => { active = false; cancellation.abort(); });
 
 function currentIdentity(): { user: number; session: string } | null {
     const binding = bootstrap.identity.binding;
@@ -89,7 +92,7 @@ watch(selected, () => {
 });
 
 function refresh() {
-    void read(props.workspaceId, true);
+    if (active) void read(props.workspaceId, true);
 }
 function clearPending(key: string): boolean {
     try {
@@ -106,7 +109,8 @@ async function sendOriginal(record: Pending, wasUncertain: boolean) {
     errors.value = {};
     message.value = '';
     try {
-        await sources.command(props.workspaceId, command);
+        await sources.command(props.workspaceId, command, cancellation.signal);
+        if (!active) return;
         const cleared = clearPending(key);
         if (context.value === key) {
             commandId.value = crypto.randomUUID();
@@ -117,6 +121,7 @@ async function sendOriginal(record: Pending, wasUncertain: boolean) {
             refresh();
         }
     } catch (error) {
+        if (!active) return;
         const status = error instanceof TransportError ? error.status : undefined;
         if (status === 422 || status === 409 || (!wasUncertain && [401, 403, 419].includes(status ?? 0))
             || (status !== undefined && status >= 400 && status < 500 && ![408, 419, 425, 429].includes(status)
@@ -143,7 +148,7 @@ async function sendOriginal(record: Pending, wasUncertain: boolean) {
             message.value = 'رُفض الطلب. حدّث الحالة قبل تقديم طلب جديد.';
         }
     } finally {
-        busy.value = false;
+        if (active) busy.value = false;
     }
 }
 async function declareScope() {

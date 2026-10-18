@@ -18,9 +18,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 final class WorkspaceController extends Controller
 {
@@ -51,12 +48,12 @@ final class WorkspaceController extends Controller
             : redirect()->route('workspaces.show', $workspace);
     }
 
-    public function show(Request $request, string $workspace, WorkspaceContext $context, GrantAuthority $grants): Response|HttpResponse
+    public function show(Request $request, string $workspace, WorkspaceContext $context, GrantAuthority $grants): SpaPage
     {
         return $context->run(
             $request->user(),
             $workspace,
-            function (Workspace $activeWorkspace) use ($request, $grants): Response|HttpResponse {
+            function (Workspace $activeWorkspace) use ($request, $grants): SpaPage {
                 $isOwner = DB::table('workspace_ownerships')
                     ->where('workspace_id', $activeWorkspace->id)
                     ->where('responsible_owner_user_id', $request->user()->id)->exists();
@@ -84,9 +81,7 @@ final class WorkspaceController extends Controller
                         ->get(['identity.public_id', 'identity.name', 'scope.purpose']),
                 ];
 
-                return $request->expectsJson()
-                    ? (new SpaPage($data))->resource($request)
-                    : Inertia::render('Business/Sources', $data);
+                return new SpaPage($data);
             },
             $request,
         );
