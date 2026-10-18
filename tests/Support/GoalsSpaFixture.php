@@ -55,6 +55,9 @@ if ($mode === 'setup') {
     $fixture = json_decode(file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
     $who = $argv[2] ?? 'a';
     $user = $fixture[$who]['user'];
+    if (str_starts_with($mode, 'internal-')) {
+        require __DIR__.'/internal-identity-fixture.php';
+    }
     if (str_starts_with($mode, 'auth-')) {
         require __DIR__.'/auth-entry-fixture.php';
     }

@@ -4,7 +4,7 @@ import { useRoute, RouterLink } from 'vue-router';
 import { startAuthentication, type PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
 import { runPasskeyOperation, cancelPasskeyOperation } from '../security/passkeyCeremony';
 import { locale } from '../spa/locale';
-import { bootstrap, onClose, close, TransportError } from '../spa/transport';
+import { bootstrap, onClose, close, TransportError, internalBoundary } from '../spa/transport';
 import { api } from '../spa/api';
 import { submitDocument } from '../spa/nativeForm';
 import { entry } from './state';
@@ -47,17 +47,19 @@ async function passkey() {
     busy.value = true; failure.value = '';
     ceremonyCancellation = new AbortController();
     const switching = bootstrap.identity.binding.principal > 0;
+    const optionsPath = internalBoundary ? (switching ? '/internal/identity/passkey/options' : '/internal/auth/passkey/options') : (switching ? '/identity/passkey/options' : '/auth/passkey/options');
+    const submitPath = internalBoundary ? (switching ? '/internal/identity/passkey' : '/internal/auth/passkey') : (switching ? '/identity/passkey' : '/auth/passkey');
     let submitted = false;
     try {
-        const operation = runPasskeyOperation('login', { options: switching ? '/identity/passkey/options' : '/auth/passkey/options', submit: switching ? '/identity/passkey' : '/auth/passkey' }, async () => {
-            const result = await api.GET(switching ? '/identity/passkey/options' : '/auth/passkey/options', { signal: ceremonyCancellation!.signal });
+        const operation = runPasskeyOperation('login', { options: optionsPath, submit: submitPath }, async () => {
+            const result = await api.GET(optionsPath, { signal: ceremonyCancellation!.signal });
             ceremonyCancellation!.signal.throwIfAborted();
             if (!active || !result.data) throw Error('Ceremony unavailable');
             const credential = await startAuthentication({ optionsJSON: result.data.options as unknown as PublicKeyCredentialRequestOptionsJSON });
             ceremonyCancellation!.signal.throwIfAborted();
             if (active) {
                 submitted = true;
-                const result = await api.POST(switching ? '/identity/passkey' : '/auth/passkey', { body: { credential: { ...credential, response: { ...credential.response } } } });
+                const result = await api.POST(submitPath, { body: { credential: { ...credential, response: { ...credential.response } } } });
                 if (!result.data) throw Error('Missing passkey acknowledgement');
             }
         });
@@ -73,10 +75,10 @@ async function passkey() {
             <h1>{{ title }}</h1>
             <p v-if="configuration.status" role="status">{{ configuration.status }}</p>
             <p v-if="failure" role="alert">{{ failure }}</p>
-            <a v-if="recoveryRequired" data-auth-recover href="/login" @click="close">{{ copy('فتح مستند دخول جديد دون إعادة الطلب', 'Open a new sign-in document without replay') }}</a>
+            <a v-if="recoveryRequired" data-auth-recover :href="internalBoundary ? '/internal/login' : '/login'" @click="close">{{ copy('فتح مستند دخول جديد دون إعادة الطلب', 'Open a new sign-in document without replay') }}</a>
             <p v-if="errors.credential" role="alert">{{ errors.credential[0] }}</p>
             <section v-if="configuration.kind === 'verify-email'"><p>{{ copy('أرسلنا رابط التحقق. افتحه في هذا المتصفح لإكمال التحقق بواسطة Laravel.', 'Open the verification link in this browser to complete server verification.') }}</p><button data-auth-resend :disabled="busy" @click="busy = true; submitDocument('/email/verification-notification', {})">{{ copy('إعادة إرسال رابط التحقق', 'Resend verification link') }}</button></section>
-            <form v-else @submit.prevent="submit" :aria-busy="busy">
+            <form v-else-if="!internalBoundary" @submit.prevent="submit" :aria-busy="busy">
                 <label v-if="configuration.kind === 'register'" for="name">{{ copy('الاسم', 'Name') }}<input id="name" v-model="form.name" required maxlength="255" autocomplete="name" :disabled="busy" /><span role="alert">{{ errors.name?.[0] }}</span></label>
                 <label v-if="configuration.kind !== 'confirm-password'" for="email">{{ copy('البريد الإلكتروني', 'Email') }}<input id="email" v-model="form.email" required type="email" maxlength="255" autocomplete="username" dir="ltr" :disabled="busy" /><span id="email-error" role="alert">{{ errors.email?.[0] }}</span></label>
                 <label v-if="configuration.kind !== 'forgot-password'" for="password">{{ copy('كلمة المرور', 'Password') }}<input id="password" v-model="form.password" required type="password" :autocomplete="configuration.kind === 'register' || configuration.kind === 'reset-password' ? 'new-password' : 'current-password'" :minlength="configuration.passwordPolicy?.min" :maxlength="configuration.passwordPolicy?.max ?? undefined" :passwordrules="configuration.passwordPolicy?.browserRules" :disabled="busy" /><span role="alert">{{ errors.password?.[0] }}</span></label>
@@ -85,7 +87,7 @@ async function passkey() {
                 <button type="submit" :disabled="busy || recoveryRequired">{{ submitLabel }}</button>
             </form>
             <template v-if="configuration.kind === 'login'"><button type="button" data-auth-passkey :disabled="busy || recoveryRequired" @click="passkey">{{ copy('الدخول بمفتاح مرور', 'Sign in with passkey') }}</button><button v-if="operationId" data-auth-cancel @click="cancel">{{ copy('إلغاء عملية المتصفح', 'Cancel browser ceremony') }}</button><a v-if="configuration.canResetPassword" href="/forgot-password">{{ copy('نسيت كلمة المرور', 'Forgot password') }}</a></template>
-            <nav><RouterLink v-if="bootstrap.identity.binding.principal === 0" :to="configuration.kind === 'register' ? '/login' : '/register'">{{ configuration.kind === 'register' ? copy('تسجيل الدخول', 'Sign in') : copy('حساب جديد', 'Create account') }}</RouterLink> · <a href="/">{{ copy('الرئيسية', 'Home') }}</a></nav>
+            <nav><RouterLink v-if="!internalBoundary && bootstrap.identity.binding.principal === 0" :to="configuration.kind === 'register' ? '/login' : '/register'">{{ configuration.kind === 'register' ? copy('تسجيل الدخول', 'Sign in') : copy('حساب جديد', 'Create account') }}</RouterLink> · <a :href="internalBoundary ? '/internal/security/devices' : '/'">{{ copy('الرئيسية', 'Home') }}</a></nav>
             <p>{{ copy('تغييرات الهوية تتم داخل مستند جديد يختاره Laravel. لا تُعد إرسال طلب مجهول النتيجة تلقائيًا.', 'Identity changes use a new server-selected document. Uncertain requests are never replayed automatically.') }}</p>
         </template>
     </main>

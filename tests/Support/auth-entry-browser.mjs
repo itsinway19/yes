@@ -226,14 +226,13 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             await page.goto('http://localhost:8138/verify-email'); await ready('verify-email');
             const link = (await mailLinks('auth-staff@example.test', '/verify-email/')).at(-1);
             await page.goto(link); await page.waitForURL('http://localhost:8138/staff/onboarding');
-            await page.waitForFunction(() => document.documentElement.dataset.visibility === 'ready');
-            assert.equal(await page.locator('#application-spa').count(), 0);
-            assert.equal(await page.locator('script[data-page][type="application/json"]').textContent().then(value => JSON.parse(value).component), 'Internal/Onboarding');
+            await page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready' && document.querySelector('[data-staff-enrollment]'));
+            assert.equal(await page.locator('[data-page]').count(), 0);
             assert.equal((await get(page, '/dashboard')).status, 403);
             await page.goto('http://localhost:8138/identity/switch'); await ready('login');
             await page.locator('#email').fill('goals-b@example.test'); await page.locator('#password').fill('DisposableGoalsProof42!');
             await page.locator('[data-auth-entry] button[type=submit]').click(); await privateReady(); await logout();
-            return { signedVerification: true, onboardingStillInertia: true, staffActivation: false, dashboardDenied: 403 };
+            return { signedVerification: true, onboardingUnifiedSpa: true, staffActivation: false, dashboardDenied: 403 };
         });
         await check('C real confirmation rejects wrong password and restores access to a server fresh-authentication gate', 'auth', async () => {
             await login('b', '/security/devices'); command('account-age-auth', 'b');
@@ -247,7 +246,7 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             assert.equal((await get(page, '/security/passkeys/options')).status, 200);
             return { wrongPasswordRejected: true, freshGateBefore: 403, freshGateAfter: 200, canonicalSessionOwner: true };
         });
-        await check('C internal legacy passkey login, guard separation, N1 visibility and lifecycle denial remain independent', 'auth', async () => {
+        await check('C internal passkey login, guard separation and lifecycle denial remain independent', 'auth', async () => {
             if (onlyInternal) await login('b', '/security/devices');
             if (authenticatorClient) await authenticatorClient.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId });
             const cdp = await context.newCDPSession(page); await cdp.send('WebAuthn.enable');
@@ -255,18 +254,18 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             await page.goto('http://localhost:8138/security/devices'); await privateReady();
             await page.locator('#account-key-name').fill('Independent internal key'); await page.locator('[data-account-passkey] button[type=submit]').click(); await page.locator('[data-passkey-id]').waitFor();
             command('account-staff', 'b'); await page.goto('http://localhost:8138/internal/login');
-            await page.waitForFunction(() => document.documentElement.dataset.visibility === 'ready');
+            await page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready' && document.querySelector('[data-auth-passkey]'));
             const verified = page.waitForResponse(reply => reply.request().method() === 'POST' && new URL(reply.url()).pathname === '/internal/auth/passkey');
-            await page.getByRole('button', { name: 'الدخول بمفتاح المرور', exact: true }).click();
+            await page.locator('[data-auth-passkey]').click();
             assert.equal((await verified).status(), 200);
-            await page.waitForURL('http://localhost:8138/internal/security/devices'); await page.waitForFunction(() => document.documentElement.dataset.visibility === 'ready');
-            assert.equal(await page.locator('#application-spa').count(), 0); assert.equal((await meta(page)).binding.boundary, 'internal');
-            const settled = page.waitForResponse(reply => new URL(reply.url()).pathname === '/internal/security/devices' && reply.request().headers()['x-builderad-visibility'] === '1');
-            await page.getByRole('button', { name: 'حذف المفتاح', exact: true }).click(); await page.getByText('تعذّر حذف مفتاح المرور.', { exact: true }).waitFor();
-            await settled; await page.waitForFunction(() => document.documentElement.dataset.visibility === 'ready');
+            await page.waitForURL('http://localhost:8138/internal/security/devices'); await privateReady();
+            assert.equal(await page.locator('[data-page]').count(), 0); assert.equal((await meta(page)).binding.boundary, 'internal');
+            const rejected = page.waitForResponse(reply => reply.request().method() === 'DELETE' && new URL(reply.url()).pathname.includes('/internal/security/passkeys/'));
+            await page.locator('[data-account-delete-key]').click(); assert.equal((await rejected).status(), 422);
+            await page.getByText('راجع المدخلات والحالة الحالية؛ لم نؤكد تنفيذ الطلب.', { exact: true }).waitFor();
             assert.equal(command('account-inspect', 'b').keys.length, 1);
             command('account-age-auth', 'b'); assert.equal((await get(page, '/internal/security/passkeys/options')).status, 403);
-            return { internalLegacy: true, realSignedAssertion: true, boundary: 'internal', employeeMinimum: true, freshDenial: 403 };
+            return { internalUnifiedSpa: true, realSignedAssertion: true, boundary: 'internal', employeeMinimum: true, freshDenial: 403 };
         });
         await check('C guest navigation cancels an older real Laravel read before Back and Forward restoration', 'auth', async () => {
             await context.clearCookies(); await page.goto('http://localhost:8138/login'); await ready('login');

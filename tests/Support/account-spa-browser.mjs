@@ -259,25 +259,24 @@ export async function runAccountCases({ browser, check, login, meta, get, post, 
                 const credential = await staff.evaluate(async options => (await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options) })).toJSON(), options.body.options);
                 assert.equal((await raw(staff, '/internal/auth/passkey', { credential })).status, 200);
                 await staff.goto('http://localhost:8138/internal/security/devices');
-                await staff.waitForFunction(() => document.querySelector('[data-page]') && !document.getElementById('application-spa'));
-                await staff.waitForFunction(() => document.documentElement.dataset.visibility === 'ready');
+                await ready(staff, 'devices'); assert.equal(await staff.locator('[data-page]').count(), 0);
                 const initial = command('account-inspect', 'b'); assert.equal(initial.keys.length, 1);
                 await staff.getByRole('button', { name: 'حذف المفتاح', exact: true }).click();
-                try { await staff.getByText('تعذّر حذف مفتاح المرور.', { exact: true }).waitFor(); }
+                try { await staff.getByText('راجع المدخلات والحالة الحالية؛ لم نؤكد تنفيذ الطلب.', { exact: true }).waitFor(); }
                 catch (error) { result.internalFailure = await staff.evaluate(() => ({ visibility: document.documentElement.dataset.visibility, text: document.body.innerText, page: document.querySelector('[data-page]')?.getAttribute('data-page') })); throw error; }
                 assert.equal(command('account-inspect', 'b').keys.length, 1);
                 await cdp.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId: key }); key = await authenticator(cdp);
-                const inputs = staff.locator('input[type=text]'); await inputs.last().fill('Internal second real key');
+                await staff.locator('#account-key-name').fill('Internal second real key');
                 const added = staff.waitForResponse(reply => reply.request().method() === 'POST' && new URL(reply.url()).pathname === '/internal/security/passkeys');
                 await staff.getByRole('button', { name: 'إضافة مفتاح مرور', exact: true }).click(); assert.equal((await added).status(), 201);
-                await staff.getByText('Internal second real key', { exact: true }).waitFor(); assert.equal(command('account-inspect', 'b').keys.length, 2);
+                await staff.locator('[data-passkey-id]').filter({ hasText: 'Internal second real key' }).waitFor(); assert.equal(command('account-inspect', 'b').keys.length, 2);
                 await staff.getByRole('button', { name: 'حذف المفتاح', exact: true }).first().click();
                 await staff.waitForFunction(() => [...document.querySelectorAll('button')].filter(button => button.textContent.trim() === 'حذف المفتاح').length === 1);
                 command('account-age-auth', 'b');
                 assert.equal((await get(staff, '/internal/security/passkeys/options')).status, 403);
                 assert.equal((await raw(staff, '/internal/security/passkeys/' + command('account-inspect', 'b').keys[0].id, null, 'DELETE')).status, 403);
                 assert.equal((await raw(staff, '/internal/security/sessions/revoke-others')).status, 403);
-                return { legacyInertia: true, realSignedLogin: true, realRegistration: 201, employeeMinimum: true, freshAuthentication: 403, noAdvertiserGuardReuse: true };
+                return { unifiedSpa: true, realSignedLogin: true, realRegistration: 201, employeeMinimum: true, freshAuthentication: 403, noAdvertiserGuardReuse: true };
             } finally { await staffContext.close(); }
         });
     } finally { await page.unrouteAll({ behavior: 'ignoreErrors' }); await context.close(); }

@@ -3,7 +3,7 @@ import { createApp, defineComponent, h, ref, watch } from 'vue';
 import { RouterLink, RouterView, type RouteLocationNormalized } from 'vue-router';
 import { createI18n } from 'vue-i18n';
 import { messages } from '../localization/messages';
-import { bootstrap, status, suspend, logout } from './transport';
+import { bootstrap, status, suspend, logout, internalBoundary } from './transport';
 import { confirmDeparture } from './presentation';
 import { createApplicationRouter, type ApplicationPresentation } from './router';
 import { goalsRoutes } from '../goals-spa/routes';
@@ -14,6 +14,7 @@ import { objectPurposeRoutes } from '../object-purpose/routes';
 import { sourceRoutes } from '../sources/routes';
 import { accountRoutes } from '../account/routes';
 import { authEntryRoutes } from '../auth-entry/routes';
+import { staffEnrollmentRoutes } from '../staff-enrollment/routes';
 import { locale, localeBusy, switchLocale } from './locale';
 const root = (document.getElementById('application-spa') ?? document.getElementById('goals-spa'))!;
 watch(status, value => { root.dataset.state = value; }, { immediate: true, flush: 'sync' });
@@ -25,7 +26,7 @@ const load = (to: RouteLocationNormalized, passive: boolean) => {
     if (!activePresentation) { status.value = 'unavailable'; return; }
     return activePresentation.load(to, passive);
 };
-const router = createApplicationRouter([...workspaceRoutes, ...goalsRoutes, ...businessContextRoutes, ...objectPurposeRoutes, ...sourceRoutes, ...accountRoutes, ...authEntryRoutes], {
+const router = createApplicationRouter([...workspaceRoutes, ...goalsRoutes, ...businessContextRoutes, ...objectPurposeRoutes, ...sourceRoutes, ...accountRoutes, ...authEntryRoutes, ...staffEnrollmentRoutes], {
     suspend: clearDisplay,
     load,
     unavailable: () => { status.value = 'unavailable'; },
@@ -37,13 +38,15 @@ const i18n = createI18n({ legacy: false, locale: locale.value, fallbackLocale: '
 watch(locale, value => { i18n.global.locale.value = value; });
 const app = createApp(defineComponent({ setup: () => () => h('div', { dir: locale.value === 'ar' ? 'rtl' : 'ltr' }, [
     h('header', { style: 'display:flex;gap:20px;padding:18px;flex-wrap:wrap;align-items:center' }, [h('strong', 'BuilderAd'),
-        bootstrap.application && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: '/workspaces' }, () => copy('أنشطتي', 'My businesses')) : null,
+        bootstrap.application && !internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: '/workspaces' }, () => copy('أنشطتي', 'My businesses')) : null,
         bootstrap.application && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/business` }, () => copy('سياق النشاط', 'Business context')) : null,
         bootstrap.application && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/goals` }, () => copy('الأهداف', 'Goals')) : null,
         bootstrap.application && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/object-purposes` }, () => copy('الغرض الإعلاني', 'Object purpose')) : null,
-        bootstrap.application && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: '/profile' }, () => copy('الحساب', 'Account')) : null,
+        bootstrap.application && !internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: '/profile' }, () => copy('الحساب', 'Account')) : null,
         bootstrap.application && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}` }, () => copy('المصادر', 'Sources')) : null,
-        bootstrap.application && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: '/security/devices' }, () => copy('الأمان', 'Security')) : null,
+        bootstrap.application && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: internalBoundary ? '/internal/security/devices' : '/security/devices' }, () => copy('الأمان', 'Security')) : null,
+        internalBoundary && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: '/internal/identity/switch' }, () => copy('تبديل الهوية الداخلية', 'Switch internal identity')) : null,
+        internalBoundary && bootstrap.identity.binding.principal > 0 ? h('a', { href: '/internal/administration' }, copy('الإدارة', 'Administration')) : null,
         bootstrap.application ? h('button', { disabled: localeBusy.value || status.value !== 'ready', 'data-application': 'locale', onClick: async () => { localeError.value = false; try { await switchLocale(); } catch { localeError.value = true; } } }, locale.value === 'ar' ? 'English' : 'العربية') : null,
         bootstrap.identity.binding.principal > 0 ? h('button', { onClick: () => { if(confirmDeparture.value())void logout(); }, disabled: status.value !== 'ready', 'data-spa': 'logout' }, copy('تسجيل الخروج', 'Sign out')) : null]),
     localeError.value ? h('p', { role: 'alert' }, copy('تعذّر حفظ اللغة. حاول مجددًا.', 'The language change could not be confirmed. Try again.')) : null,

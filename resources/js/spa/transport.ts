@@ -2,7 +2,8 @@ import { ref } from 'vue';
 import type { IdentityMetadata } from '../identityProtocol';
 import { remainingSessionLease } from '../sessionLease';
 
-export const bootstrap = JSON.parse((document.getElementById('application-bootstrap') ?? document.getElementById('goals-bootstrap'))!.textContent!) as { identity: IdentityMetadata; locale: 'ar' | 'en'; application?: boolean };
+export const bootstrap = JSON.parse((document.getElementById('application-bootstrap') ?? document.getElementById('goals-bootstrap'))!.textContent!) as { identity: IdentityMetadata; locale: 'ar' | 'en'; application?: boolean; staffEnrollment?: boolean };
+export const internalBoundary = bootstrap.identity.binding.boundary === 'internal';
 let identity = bootstrap.identity;
 let leaseExpiresAt = Date.now() + identity.leaseMilliseconds;
 export const scope = JSON.stringify(Object.fromEntries(Object.entries(identity.binding).filter(([key]) => key !== 'generation')));
@@ -57,7 +58,7 @@ export async function protectedResponse(url: string, options: RequestInit = {}, 
             const target = typeof body.redirect === 'string' ? new URL(body.redirect, location.origin) : undefined;
             if (!result || result.lineage !== input.binding.lineage || result.boundary !== input.binding.boundary
                 || result.epoch !== input.binding.epoch + 1 || result.nonce !== nonce || result.kind !== 'login' || result.status !== 'active'
-                || !target || target.origin !== location.origin || target.pathname.startsWith('/internal/')) {
+                || !target || target.origin !== location.origin || target.pathname.startsWith('/internal/') !== internalBoundary) {
                 close(); throw new Error('Unowned authentication reply');
             }
             close();
@@ -72,7 +73,7 @@ export async function protectedResponse(url: string, options: RequestInit = {}, 
             const nonce = JSON.parse(atob(input.transition.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))).binding.nonce;
             const result = body.transition;
             if (!result || result.lineage !== input.binding.lineage || result.boundary !== input.binding.boundary
-                || result.epoch !== input.binding.epoch + 1 || result.nonce !== nonce || result.kind !== 'logout' || result.status !== 'closed' || body.redirect !== '/') {
+                || result.epoch !== input.binding.epoch + 1 || result.nonce !== nonce || result.kind !== 'logout' || result.status !== 'closed' || body.redirect !== (internalBoundary ? '/internal/login' : '/')) {
                 close(); throw new Error('Unowned terminal reply');
             }
             return response;
@@ -98,7 +99,7 @@ export function resumeLease() {
     timer = setTimeout(async () => {
         const startedAt = Date.now();
         try {
-            const result = await request<{ identity: IdentityMetadata }>('/identity/renew', { method: 'POST' });
+            const result = await request<{ identity: IdentityMetadata }>(internalBoundary ? '/internal/identity/renew' : '/identity/renew', { method: 'POST' });
             if (!owned(captured) || status.value !== 'ready' || !equal(result.identity)) return;
             identity = result.identity; leaseExpiresAt = Date.now() + remainingSessionLease(identity.leaseMilliseconds, startedAt); resumeLease();
         } catch { if (owned(captured) && status.value !== 'closed') { suspend(); status.value = 'unavailable'; } }
@@ -108,7 +109,7 @@ export function documentEvidence() {
     if (status.value === 'closed') throw new Error('Document is closed');
     return { receipt: identity.receipt, transition: identity.transition, csrf: identity.csrf };
 }
-export async function logout(endpoint = '/logout') {
+export async function logout(endpoint = internalBoundary ? '/internal/logout' : '/logout') {
     // Close the UI before the actual existing server-owned terminal transition.
     const work = request<{ redirect: string }>(endpoint, { method: 'POST' }, true);
     status.value = 'checking';

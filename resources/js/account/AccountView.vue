@@ -4,7 +4,7 @@ import { RouterLink, useRoute, onBeforeRouteLeave } from 'vue-router';
 import { startRegistration, type PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/browser';
 import { runPasskeyOperation, cancelPasskeyOperation } from '../security/passkeyCeremony';
 import { locale } from '../spa/locale';
-import { onClose, owned, stamp, TransportError, logout } from '../spa/transport';
+import { onClose, owned, stamp, TransportError, logout, internalBoundary } from '../spa/transport';
 import { profile, devices, outcomes, read } from './state';
 import * as account from './api';
 import { changeEmail } from './nativeEmail';
@@ -84,7 +84,7 @@ async function addPasskey() {
     await perform('devices', async () => {
         ceremonyCancellation = new AbortController();
         const signal = AbortSignal.any([cancellation.signal, ceremonyCancellation.signal]);
-        const operation = runPasskeyOperation('device-registration', { options: '/security/passkeys/options', submit: '/security/passkeys' }, async () => {
+        const operation = runPasskeyOperation('device-registration', { options: internalBoundary ? '/internal/security/passkeys/options' : '/security/passkeys/options', submit: internalBoundary ? '/internal/security/passkeys' : '/security/passkeys' }, async () => {
             const options = await account.passkeyOptions(signal);
             signal.throwIfAborted();
             if (!active) throw new DOMException('Unmounted', 'AbortError');
@@ -108,7 +108,8 @@ const seen = (value: string) => new Intl.DateTimeFormat(locale.value, { dateStyl
 
 <template>
     <main data-spa-private data-account-page class="business-main account-page" :data-account-kind="profileData ? 'profile' : 'devices'">
-        <nav><RouterLink to="/profile">{{ copy('الحساب', 'Account') }}</RouterLink> · <RouterLink to="/security/devices">{{ copy('الأمان والأجهزة', 'Security and devices') }}</RouterLink></nav>
+        <nav v-if="internalBoundary"><a href="/internal/administration">{{ copy('الإدارة', 'Administration') }}</a> · <RouterLink to="/internal/identity/switch">{{ copy('تبديل الهوية الداخلية', 'Switch internal identity') }}</RouterLink></nav>
+        <nav v-else><RouterLink to="/profile">{{ copy('الحساب', 'Account') }}</RouterLink> · <RouterLink to="/security/devices">{{ copy('الأمان والأجهزة', 'Security and devices') }}</RouterLink></nav>
         <h1>{{ profileData ? copy('معلومات الحساب', 'Account information') : copy('الأمان والأجهزة', 'Security and devices') }}</h1>
         <p v-if="message" role="status">{{ message }}</p><p v-if="failure" role="alert">{{ failure }}</p>
         <p v-if="Object.values(outcomes).includes('unknown')" role="alert">{{ copy('يوجد طلب غير مؤكد. لا يعني فقد الرد أن العملية لم تُنفذ.', 'A request is unresolved. A missing response does not mean it was not executed.') }}</p>
@@ -129,15 +130,16 @@ const seen = (value: string) => new Intl.DateTimeFormat(locale.value, { dateStyl
                 <button data-account-revoke-others :disabled="!!busy || !!outcomes.devices || devicesData.sessions.length < 2" @click="perform('devices', () => account.revokeOthers(cancellation.signal), copy('انتهت الجلسات الأخرى.', 'Other sessions ended.'))">{{ copy('إنهاء كل الجلسات الأخرى', 'End all other sessions') }}</button>
                 <ul><li v-for="session in devicesData.sessions" :key="session.id" :data-session-id="session.id"><span>{{ session.description }} · {{ seen(session.last_seen_at) }}</span><strong v-if="session.current"> {{ copy('هذه الجلسة', 'This session') }}</strong>
                     <button v-else :disabled="!!busy || !!outcomes.devices" data-account-revoke @click="perform('devices', () => account.revokeSession(session.id, cancellation.signal), copy('انتهت الجلسة المحددة.', 'Selected session ended.'))">{{ copy('إنهاء الجلسة', 'End session') }}</button></li></ul>
-                <button data-account-logout :disabled="!!busy" @click="logout('/security/sessions/sign-out-this-device')">{{ copy('تسجيل الخروج من هذا الجهاز', 'Sign out on this device') }}</button>
+                <button data-account-logout :disabled="!!busy" @click="logout(internalBoundary ? '/internal/security/sessions/sign-out-this-device' : '/security/sessions/sign-out-this-device')">{{ copy('تسجيل الخروج من هذا الجهاز', 'Sign out on this device') }}</button>
             </section>
-            <section><h2>{{ copy('كلمة المرور', 'Password') }}</h2><p>{{ copy('استخدم كلمة مرور طويلة وفريدة. تنتهي الجلسات الأخرى فقط وفق عقد Laravel.', 'Use a long unique password. Laravel ends other sessions while retaining the current session.') }}</p>
+            <section v-if="!internalBoundary"><h2>{{ copy('كلمة المرور', 'Password') }}</h2><p>{{ copy('استخدم كلمة مرور طويلة وفريدة. تنتهي الجلسات الأخرى فقط وفق عقد Laravel.', 'Use a long unique password. Laravel ends other sessions while retaining the current session.') }}</p>
                 <form data-account-password @submit.prevent="savePassword">
                     <label v-for="field in (['current_password', 'password', 'password_confirmation'] as const)" :key="field" :for="`account-${field}`">{{ field === 'current_password' ? copy('كلمة المرور الحالية', 'Current password') : field === 'password' ? copy('كلمة المرور الجديدة', 'New password') : copy('تأكيد كلمة المرور', 'Confirm password') }}<input :id="`account-${field}`" v-model="passwords[field]" required type="password" :autocomplete="field === 'current_password' ? 'current-password' : 'new-password'" :disabled="!!busy || !!outcomes.password" /><span v-if="errorFor(field)" role="alert">{{ errorFor(field) }}</span></label>
                     <button type="submit" :disabled="!!busy || !!outcomes.password">{{ copy('حفظ كلمة المرور', 'Save password') }}</button>
                 </form>
                 <a href="/confirm-password">{{ copy('تأكيد الدخول من مستند المصادقة', 'Confirm sign-in in the authentication document') }}</a>
             </section>
+            <p v-if="internalBoundary"><a href="/internal/identity/switch">{{ copy('لتحديث المصادقة الداخلية، أعد الدخول بمفتاح المرور.', 'Reauthenticate with an internal passkey for fresh authentication.') }}</a></p>
             <section><h2>{{ copy('مفاتيح المرور', 'Passkeys') }}</h2><form data-account-passkey @submit.prevent="addPasskey"><label for="account-key-name">{{ copy('اسم المفتاح', 'Key name') }}<input id="account-key-name" v-model="keyName" required maxlength="255" :disabled="!!busy || !!outcomes.devices" /></label><button type="submit" :disabled="!!busy || !!outcomes.devices">{{ copy('إضافة مفتاح مرور', 'Add passkey') }}</button><button v-if="operationId" type="button" data-account-cancel @click="cancel">{{ copy('إلغاء عملية المتصفح', 'Cancel browser operation') }}</button></form>
                 <ul><li v-for="key in devicesData.passkeys" :key="key.id" :data-passkey-id="key.id">{{ key.name }} · {{ key.provider ?? copy('مُصدّق غير معروف', 'Unknown authenticator') }} · {{ seen(key.created_at) }}<span v-if="key.last_used_at">{{ copy('آخر دخول به:', 'Last used:') }} {{ seen(key.last_used_at) }}</span><button :disabled="!!busy || !!outcomes.devices" data-account-delete-key @click="perform('devices', () => account.deletePasskey(key.id, cancellation.signal), copy('حُذف المفتاح.', 'Passkey deleted.'))">{{ copy('حذف المفتاح', 'Delete passkey') }}</button></li></ul><p v-if="!devicesData.passkeys.length">{{ copy('لم تضف مفاتيح مرور بعد.', 'No passkeys yet.') }}</p>
             </section>

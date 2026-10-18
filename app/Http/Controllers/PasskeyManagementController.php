@@ -82,7 +82,7 @@ final class PasskeyManagementController extends Controller
                 fn () => $request->user()->notify(new SecurityNotice('passkey_removed')));
         });
 
-        return ! $request->is('internal/*') && $request->expectsJson()
+        return $request->expectsJson()
             ? response()->json(['saved' => true])->header('Cache-Control', 'no-store') : back();
     }
 
