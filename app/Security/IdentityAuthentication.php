@@ -6,7 +6,6 @@ use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
 use Throwable;
 
 /** Orchestration of the existing guard/ceremony, not credential verification. */
@@ -38,7 +37,6 @@ final class IdentityAuthentication
             throw new IdentityTransitionConflict;
         }
         IdentityCookies::own($request, 'transition');
-        Inertia::clearHistory();
 
         return response()->json(['transition' => $result, 'identity' => $this->documents->fresh($request),
             'redirect' => $this->target($request, $destination())])->header('Cache-Control', 'no-store');
@@ -54,7 +52,6 @@ final class IdentityAuthentication
             throw new IdentityTransitionConflict;
         }
         IdentityCookies::own($request, 'terminal');
-        Inertia::clearHistory();
 
         return response()->json(['transition' => $result,
             'redirect' => $captured['boundary'] === 'internal' ? '/internal/login' : '/'])

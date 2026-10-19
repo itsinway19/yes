@@ -3,7 +3,7 @@ import type { GoalValue } from '../Components/Business/goalSelection';
 export type { Preferences } from '../api/goals';
 import type { Preferences } from '../api/goals';
 export type Draft = { baseline: Preferences; draft: GoalValue };
-// Like Inertia's deliberate reload reset: drafts live only in this admitted document.
+// Drafts live only in this admitted document and reset on reload.
 // Vue Router History contains no draft. A closed identity document loses every draft.
 const memory = new Map<string, Draft>();
 export async function restore(workspace: string): Promise<Draft | undefined> {

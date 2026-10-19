@@ -5,7 +5,6 @@ namespace App\Security;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 final class ExpiredSecuritySession extends AuthorizationException
@@ -24,7 +23,6 @@ final class ExpiredSecuritySession extends AuthorizationException
                 // Another committed identity owns the lineage: retire no other input.
             }
             IdentityCookies::own($request, 'terminal');
-            Inertia::clearHistory();
             $destination = $request->is('internal/*') ? '/internal/login' : '/login';
             if ($request->expectsJson()) {
                 return response()->json(['message' => $this->getMessage(), 'identityConflict' => true,
@@ -39,7 +37,6 @@ final class ExpiredSecuritySession extends AuthorizationException
         Auth::guard($internal ? 'internal' : 'web')->logoutCurrentDevice();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        Inertia::clearHistory();
 
         $message = 'انتهت صلاحية جلستك أو تم تسجيل خروجها. سجّل الدخول مجددًا.';
 

@@ -129,3 +129,5 @@ jobs:
           php vendor/bin/pint --test
           npm run build
           npm run build:goals-spa
+          npm run test:runtime-retirement
+          node scripts/runtime-retirement.mjs --assets

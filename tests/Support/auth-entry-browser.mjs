@@ -5,8 +5,9 @@ import path from 'node:path';
 export async function runAuthEntryCases({ browser, check, meta, get, post, command, fixture, result, run }) {
     const onlyInternal = process.env.AUTH_ENTRY_ONLY === 'internal';
     const completion = process.env.AUTH_ENTRY_ONLY === 'completion';
+    const passkeyExpiry = process.env.AUTH_ENTRY_ONLY === 'passkey-expiry';
     const runCheck = check;
-    check = (name, mode, action) => (onlyInternal && !name.startsWith('C internal')) || (completion && !name.startsWith('C ') && !name.startsWith('B pending staff')) ? Promise.resolve() : runCheck(name, mode, action);
+    check = (name, mode, action) => (onlyInternal && !name.startsWith('C internal')) || (completion && !name.startsWith('C ') && !name.startsWith('B pending staff')) || (passkeyExpiry && !name.startsWith('A actual virtual') && !name.startsWith('A cancelled and expired')) ? Promise.resolve() : runCheck(name, mode, action);
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } }), page = await context.newPage();
     page.setDefaultTimeout(20000); page.on('dialog', dialog => dialog.accept());
     context.on('page', current => current.on('pageerror', error => result.errors.push({ mode: 'auth', message: error.message, stack: error.stack, url: current.url(), case: result.cases.at(-1)?.name })));
