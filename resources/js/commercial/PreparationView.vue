@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, shallowRef } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import OperationsShell from '../internal-operations/OperationsShell.vue';
 import { preparationData, readPreparation, writePreparation, type PreparationCommand } from './preparationState';
@@ -20,6 +20,26 @@ const error = ref(''), readbackFailed = ref(false), result = ref<unknown>();
 const restorationFailed = ref(false), reviewed = ref(false);
 const storageKey = `commercial-preparation-spa:v1:${bootstrap.identity.binding.principal}`;
 const cancellation = new AbortController(); let active = true;
+type OperatorCommand = Extract<PreparationCommand, { kind: 'operator' }>;
+const operatorReview = shallowRef<{ command: OperatorCommand; data: NonNullable<typeof preparationData.value>; owner: ReturnType<typeof stamp> }>();
+const operatorHistory = ref<{ command: OperatorCommand; outcome: 'unknown' }[]>([]);
+function operatorArchiveKey(command: OperatorCommand) {
+    return `${storageKey}:reviewed:operator:${encodeURIComponent(JSON.stringify({ approval: command.approval, operator: command.body.operator, reason: command.body.reason }))}`;
+}
+function readOperatorArchive(command: OperatorCommand) {
+    const saved = sessionStorage.getItem(operatorArchiveKey(command));
+    if (!saved) return;
+    const entry = JSON.parse(saved), original = parsePreparationAttempt(JSON.stringify(entry.command));
+    if (entry.outcome !== 'unknown' || original?.kind !== 'operator' || operatorArchiveKey(original) !== operatorArchiveKey(command)) throw Error('Invalid operator archive');
+    return { command: original, outcome: 'unknown' as const };
+}
+function currentOperatorReview() {
+    const review = operatorReview.value;
+    return active && !busy.value && !readbackFailed.value && review && owned(review.owner)
+        && review.command === pending.value && review.data === preparationData.value
+        && review.data.approvals.some(approval => approval.id === review.command.approval && approval.consumed) ? review : undefined;
+}
+const canRetireOperator = computed(() => !!currentOperatorReview());
 const locked = computed(() => busy.value || !!pending.value || readbackFailed.value || restorationFailed.value);
 const eligibleApprovals = computed(() => data.value.approvals.filter(approval => approval.active && approval.canAuthorize && !approval.consumed));
 const operatorPeople = computed(() => data.value.people.filter(person => person.kind !== 'founder'));
@@ -30,10 +50,23 @@ function retain(command: PreparationCommand | undefined) {
     } catch { error.value = copy('تعذر حفظ الطلب الأصلي؛ لم يُرسل أمر جديد.', 'The original request could not be retained; no new command was sent.'); return false; }
 }
 try {
+    for (let index = 0; index < sessionStorage.length; index++) {
+        const key = sessionStorage.key(index);
+        if (!key?.startsWith(`${storageKey}:reviewed:operator:`)) continue;
+        const saved = JSON.parse(sessionStorage.getItem(key)!);
+        const command = parsePreparationAttempt(JSON.stringify(saved.command));
+        if (command?.kind !== 'operator' || operatorArchiveKey(command) !== key) throw Error('Invalid operator history');
+        const entry = readOperatorArchive(command);
+        if (entry) operatorHistory.value.push(entry);
+    }
     const legacyKey = `commercial-market-approval:v2:${bootstrap.identity.binding.principal}`;
     const current = sessionStorage.getItem(storageKey), saved = current ?? sessionStorage.getItem(legacyKey);
     const candidate = parsePreparationAttempt(saved);
-    if (candidate) {
+    if (candidate?.kind === 'operator' && readOperatorArchive(candidate)) {
+        outcome.value = 'unknown';
+        sessionStorage.removeItem(storageKey);
+        if (!current) sessionStorage.removeItem(legacyKey);
+    } else if (candidate) {
         pending.value = candidate; outcome.value = 'unknown';
         if (!current) { if (!retain(candidate)) restorationFailed.value = true; else sessionStorage.removeItem(legacyKey); }
     }
@@ -42,15 +75,36 @@ const canLeave = () => !pending.value || confirm(copy('يوجد طلب غير م
 confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave);
 function beforeUnload(event: BeforeUnloadEvent) { if (pending.value) { event.preventDefault(); event.returnValue = ''; } }
 window.addEventListener('beforeunload', beforeUnload);
-const clearPrivate = () => { identity.value = { intentId: null, intentBinding: null }; Object.assign(form, { country_code: '', denomination_code: '', administrator: '', label: '', reason: '', expires_at: '' }); Object.assign(operator, { approval: '', operator: '', reason: '' }); Object.assign(delegation, { market_id: '', operator: '', reason: '', expires_at: '' }); pending.value = undefined; result.value = undefined; error.value = ''; };
+const clearPrivate = () => { operatorReview.value = undefined; operatorHistory.value = []; identity.value = { intentId: null, intentBinding: null }; Object.assign(form, { country_code: '', denomination_code: '', administrator: '', label: '', reason: '', expires_at: '' }); Object.assign(operator, { approval: '', operator: '', reason: '' }); Object.assign(delegation, { market_id: '', operator: '', reason: '', expires_at: '' }); pending.value = undefined; result.value = undefined; error.value = ''; };
 const closures = onClose(clearPrivate);
 onBeforeUnmount(() => { active = false; cancellation.abort(); clearPrivate(); closures.delete(clearPrivate); window.removeEventListener('beforeunload', beforeUnload); if (confirmDeparture.value === canLeave) confirmDeparture.value = () => true; });
 async function review() {
     if (busy.value) return;
-    const captured = stamp(), current = await readPreparation(false, true);
-    if (!active || !owned(captured)) return;
-    readbackFailed.value = !current;
-    reviewed.value = !!current;
+    const captured = stamp(), command = pending.value;
+    busy.value = true; reviewed.value = false; operatorReview.value = undefined;
+    try {
+        const current = await readPreparation(false, true);
+        if (!active || !owned(captured) || pending.value !== command) return;
+        readbackFailed.value = !current;
+        reviewed.value = !!current;
+        if (current && current === preparationData.value && command?.kind === 'operator') operatorReview.value = { command, data: current, owner: captured };
+    } finally { if (active) busy.value = false; }
+}
+function archiveRetiredOperator() {
+    const review = currentOperatorReview();
+    if (!review || !confirm(copy('إنهاء متابعة تعيين المشغّل مع حفظ الطلب الأصلي بنتيجة غير محسومة؟ استهلاك الاعتماد لا يثبت نجاح التفويض.', 'End operator follow-up and retain the original request as unknown? Consumed approval does not prove authorization succeeded.'))
+        || currentOperatorReview() !== review) return;
+    try {
+        let entry = readOperatorArchive(review.command);
+        if (!entry) {
+            entry = { command: review.command, outcome: 'unknown' };
+            sessionStorage.setItem(operatorArchiveKey(review.command), JSON.stringify(entry));
+        }
+        if (currentOperatorReview() !== review) return;
+        if (!operatorHistory.value.some(item => operatorArchiveKey(item.command) === operatorArchiveKey(review.command))) operatorHistory.value.push(entry);
+        if (!retain(undefined)) return;
+        operatorReview.value = undefined; outcome.value = 'unknown'; error.value = '';
+    } catch { error.value = copy('تعذر أرشفة المتابعة؛ احتُفظ بالطلب الأصلي غير المحسوم.', 'Follow-up could not be archived; the original unresolved request is retained.'); }
 }
 function archiveUncertainIntent() {
     if (busy.value || !reviewed.value || readbackFailed.value || pending.value?.kind !== 'newIntent'
@@ -71,7 +125,7 @@ async function send(command: PreparationCommand, retry = false) {
     if (busy.value || (!retry && locked.value) || (retry && (command !== pending.value || command.kind === 'newIntent'))) return;
     const frozen = JSON.parse(JSON.stringify(command)) as PreparationCommand;
     if (!retain(frozen)) return;
-    const captured = stamp(); busy.value = true; outcome.value = 'pending'; error.value = ''; reviewed.value = false;
+    const captured = stamp(); busy.value = true; outcome.value = 'pending'; error.value = ''; reviewed.value = false; operatorReview.value = undefined;
     try {
         const acknowledgement = await writePreparation(frozen, cancellation.signal);
         if (!active || !owned(captured)) return;
@@ -112,7 +166,9 @@ function prepare() {
             <button v-if="pending && pending.kind !== 'newIntent'" :disabled="busy || !data.freshAuthentication" @click="send(pending, true)">{{ copy('إعادة المحاولة صراحة بالطلب نفسه', 'Explicitly retry the same request') }}</button>
             <p v-if="pending?.kind === 'newIntent'">{{ copy('لم يُؤكد إصدار الهوية الجديدة. لا يُعاد الإصدار تلقائيًا؛ راجع الحالة دون افتراض نجاح الطلب.', 'New intent issuance is unconfirmed. It is not replayed automatically; review state without assuming success.') }}</p>
             <button v-if="pending?.kind === 'newIntent' && reviewed" :disabled="busy || readbackFailed" @click="archiveUncertainIntent">{{ copy('أرشفة المحاولة غير المحسومة وتحميل الهوية الحالية', 'Archive unresolved attempt and load current identity') }}</button>
+            <button v-if="canRetireOperator" @click="archiveRetiredOperator">{{ copy('إنهاء متابعة المشغّل — إبقاء النتيجة الأصلية غير محسومة', 'End operator follow-up — keep original outcome unknown') }}</button>
         </section>
+        <details v-if="operatorHistory.length" data-operator-review-history><summary>{{ copy('سجل متابعة المشغّل المحلي — النتائج غير محسومة', 'Local operator follow-up history — outcomes unknown') }}</summary><article v-for="entry in operatorHistory" :key="operatorArchiveKey(entry.command)"><p>{{ copy('استهلاك الاعتماد لا يثبت نجاح التفويض الأصلي.', 'Consumed approval does not prove original authorization succeeded.') }}</p><pre>{{ entry }}</pre></article></details>
         <p v-if="!data.freshAuthentication">{{ copy('يلزم دخول حديث للتنفيذ.', 'Fresh authentication is required to execute.') }} <button :disabled="busy" @click="logout()">{{ copy('تجديد الدخول', 'Renew sign-in') }}</button></p>
         <section v-if="data.canPrepare">
             <h2>{{ copy('إضافة سوق', 'Add market') }}</h2>
