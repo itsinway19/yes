@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Commercial\MarketRegistry;
+use App\Http\Responses\SpaPage;
 use App\Models\User;
+use App\Security\ClientVisibility;
 use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -12,7 +14,6 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Inertia\Inertia;
 
 final class CommercialMarketPreparationController
 {
@@ -49,7 +50,7 @@ final class CommercialMarketPreparationController
             ->where('u.id', '<>', $request->user()->id)->whereExists(fn ($q) => $q->selectRaw('1')->from('passkeys')->whereColumn('passkeys.user_id', 'u.id'))
             ->orderBy('u.name')->get(['u.public_id', 'u.name', 'p.kind']);
 
-        return Inertia::render('Internal/CommercialMarketPreparation', [
+        $data = [
             'canPrepare' => $canPrepare, 'intentId' => $canPrepare ? $request->session()->get('commercial_market_preparation_intent') : null,
             'intentBinding' => $canPrepare ? $this->issueIntentBinding($request) : null,
             'people' => $people, 'approvals' => $approvals,
@@ -57,7 +58,13 @@ final class CommercialMarketPreparationController
             'freshAuthentication' => app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user()),
             'directRecorded' => $canPrepare && $db->scalar('SELECT builderad_commercial_preparation_consumed(?::uuid)', [$request->session()->get('commercial_market_direct_target')]),
             'recordedMarkets' => $canPrepare ? $markets->inspect($request)['markets'] : [],
-        ]);
+        ];
+
+        if ($request->header('X-Builderad-Visibility') === '1') {
+            return response()->json(app(ClientVisibility::class)->describe($request))->header('Cache-Control', 'no-store');
+        }
+
+        return new SpaPage($data);
     }
 
     public function store(Request $request, GrantAuthority $grants, MarketRegistry $markets)
@@ -154,7 +161,7 @@ final class CommercialMarketPreparationController
         $request->session()->put('commercial_market_preparation_intent', (string) Str::uuid7());
         $request->session()->put('commercial_market_direct_target', (string) Str::uuid7());
 
-        return redirect()->route('internal.commercial-market-preparation.index');
+        return $request->expectsJson() ? response()->json(['saved' => true]) : redirect()->route('internal.commercial-market-preparation.index');
     }
 
     public function operator(Request $request, string $approval, GrantAuthority $grants)

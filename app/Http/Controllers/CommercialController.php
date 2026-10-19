@@ -6,13 +6,14 @@ use App\Commercial\ApprovedCatalogReference;
 use App\Commercial\CommercialAuditDelivery;
 use App\Commercial\MarketRegistry;
 use App\Commercial\RegisterCommercialScope;
+use App\Http\Responses\SpaPage;
 use App\Models\User;
+use App\Security\ClientVisibility;
 use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Inertia\Inertia;
 
 final class CommercialController
 {
@@ -46,7 +47,7 @@ final class CommercialController
             ->get(['o.id', 'o.command_id', 'o.target_id', 'd.state', 'd.attempts', 'd.acknowledgment_id',
                 DB::raw('builderad_workspace_public_by_id(o.workspace_id) AS workspace_public_id')]);
 
-        return Inertia::render('Internal/Commercial', [
+        $data = [
             ...$registry, 'countryOptions' => config('commercial.countries'), 'currencyOptions' => config('commercial.currencies'), 'currencyNames' => config('commercial.currency_names'), 'targets' => $targets, 'obligations' => $obligations,
             'founderAccess' => $founder, 'newCatalogReferenceId' => $referenceId,
             'newMarketTargets' => $targets->where('action', 'ConfigureCommercialMarket')->filter(fn ($t) => ! DB::connection('pgsql_authority')->scalar('SELECT builderad_commercial_preparation_consumed(?::uuid)', [$t->target_id]))
@@ -55,7 +56,13 @@ final class CommercialController
             'newConfigurationId' => (string) Str::uuid7(), 'result' => $request->session()->get('commercialResult'),
             // Presentation evidence only; every effect still performs its existing fresh/current checks.
             'freshAuthentication' => app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user()),
-        ]);
+        ];
+
+        if ($request->header('X-Builderad-Visibility') === '1') {
+            return response()->json(app(ClientVisibility::class)->describe($request))->header('Cache-Control', 'no-store');
+        }
+
+        return new SpaPage($data);
     }
 
     public function market(Request $request, MarketRegistry $markets)

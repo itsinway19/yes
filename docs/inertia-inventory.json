@@ -1469,15 +1469,14 @@
       "action": "App\\Http\\Controllers\\CommercialMarketPreparationController@index",
       "businessOwners": [
         "App\\Commercial\\MarketRegistry",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Internal/CommercialMarketPreparation"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
+      "spaBoundary": "Existing unified application, shared Vue Router, generated same-origin API and visibility-admitted transport; no new authority or command protocol",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -1510,10 +1509,45 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "final-commercial-displays",
+        "journey": "Commercial market preparation, composite founder intents, approved references, immutable configuration, assignability, beneficiary registration, command receipts and audit recovery",
+        "routes": [
+          "GET /internal/commercial",
+          "GET /internal/administration/commercial-markets"
+        ],
+        "spaBoundary": "Existing unified application, shared Vue Router, generated same-origin API and visibility-admitted transport; no new authority or command protocol",
+        "businessOwners": [
+          "App\\Http\\Controllers\\CommercialController",
+          "App\\Http\\Controllers\\CommercialMarketPreparationController",
+          "App\\Commercial\\MarketRegistry",
+          "App\\Commercial\\ApprovedCatalogReference",
+          "App\\Commercial\\RegisterCommercialScope",
+          "App\\Commercial\\CommercialAuditDelivery",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\SessionAuthority",
+          "PostgreSQL authority/RLS"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "CommercialScopeTest",
+          "CommercialMarketPreparationTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/commercial-preparation-spa.test.mjs",
+          "tests/commercial-editor-concurrency.test.mjs",
+          "tests/Support/commercial-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Both existing displays now return SpaPage without private bootstrap data. Original writers, composite intent/target/child binding, frozen command versions, contract-specific explicit retries, exact receipt fingerprints and current server authority remain. Final proof and dependency classification are recorded separately in FINAL_COMMERCIAL_SPA_EXECUTION.md. Zero render routes is not dependency-removal or release acceptance; N1/runtime, legacy entry/assets, old test-consumed components and shared visibility/history protections remain pending their separately authorized removal assessment."
+      },
       "testLeads": [
+        "tests/commercial-preparation-spa.test.mjs",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
+        "tests/Feature/Security/InertiaHistorySecurityTest.php",
         "tests/SA01BrowserFixture.php",
+        "tests/Support/commercial-operator-followup-browser.mjs",
+        "tests/Support/commercial-spa-browser.mjs",
         "tests/Support/internal-operations-browser.mjs"
       ]
     },
@@ -1531,6 +1565,7 @@
       "action": "App\\Http\\Controllers\\CommercialMarketPreparationController@store",
       "businessOwners": [
         "App\\Commercial\\MarketRegistry",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -1574,8 +1609,12 @@
       },
       "migration": null,
       "testLeads": [
+        "tests/commercial-preparation-spa.test.mjs",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
+        "tests/Feature/Security/InertiaHistorySecurityTest.php",
         "tests/SA01BrowserFixture.php",
+        "tests/Support/commercial-operator-followup-browser.mjs",
+        "tests/Support/commercial-spa-browser.mjs",
         "tests/Support/internal-operations-browser.mjs"
       ]
     },
@@ -1593,6 +1632,7 @@
       "action": "App\\Http\\Controllers\\CommercialMarketPreparationController@delegate",
       "businessOwners": [
         "App\\Commercial\\MarketRegistry",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -1653,6 +1693,7 @@
       "action": "App\\Http\\Controllers\\CommercialMarketPreparationController@newIntent",
       "businessOwners": [
         "App\\Commercial\\MarketRegistry",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -1713,6 +1754,7 @@
       "action": "App\\Http\\Controllers\\CommercialMarketPreparationController@operator",
       "businessOwners": [
         "App\\Commercial\\MarketRegistry",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -2680,15 +2722,14 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Internal/Commercial"
-      ],
-      "legacyBehavior": "INERTIA",
-      "spaBoundary": "NOT_MIGRATED",
-      "apiContract": "NOT_CONTRACTED",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
+      "spaBoundary": "Existing unified application, shared Vue Router, generated same-origin API and visibility-admitted transport; no new authority or command protocol",
+      "apiContract": "contracts/application.openapi.json",
       "runtime": {
         "goalsDisabled": [
           {
@@ -2721,7 +2762,38 @@
           }
         ]
       },
-      "migration": null,
+      "migration": {
+        "id": "final-commercial-displays",
+        "journey": "Commercial market preparation, composite founder intents, approved references, immutable configuration, assignability, beneficiary registration, command receipts and audit recovery",
+        "routes": [
+          "GET /internal/commercial",
+          "GET /internal/administration/commercial-markets"
+        ],
+        "spaBoundary": "Existing unified application, shared Vue Router, generated same-origin API and visibility-admitted transport; no new authority or command protocol",
+        "businessOwners": [
+          "App\\Http\\Controllers\\CommercialController",
+          "App\\Http\\Controllers\\CommercialMarketPreparationController",
+          "App\\Commercial\\MarketRegistry",
+          "App\\Commercial\\ApprovedCatalogReference",
+          "App\\Commercial\\RegisterCommercialScope",
+          "App\\Commercial\\CommercialAuditDelivery",
+          "App\\Security\\GrantAuthority",
+          "App\\Security\\SessionAuthority",
+          "PostgreSQL authority/RLS"
+        ],
+        "apiContract": "contracts/application.openapi.json",
+        "tests": [
+          "CommercialScopeTest",
+          "CommercialMarketPreparationTest",
+          "ClientVisibilityTest",
+          "InertiaHistorySecurityTest",
+          "tests/commercial-preparation-spa.test.mjs",
+          "tests/commercial-editor-concurrency.test.mjs",
+          "tests/Support/commercial-spa-browser.mjs"
+        ],
+        "status": "LOCAL_JOURNEY_ACCEPTED",
+        "cutover": "Both existing displays now return SpaPage without private bootstrap data. Original writers, composite intent/target/child binding, frozen command versions, contract-specific explicit retries, exact receipt fingerprints and current server authority remain. Final proof and dependency classification are recorded separately in FINAL_COMMERCIAL_SPA_EXECUTION.md. Zero render routes is not dependency-removal or release acceptance; N1/runtime, legacy entry/assets, old test-consumed components and shared visibility/history protections remain pending their separately authorized removal assessment."
+      },
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
@@ -2729,6 +2801,8 @@
         "tests/Feature/Security/ClientVisibilityTest.php",
         "tests/Feature/Security/InertiaHistorySecurityTest.php",
         "tests/SA01BrowserFixture.php",
+        "tests/Support/commercial-operator-followup-browser.mjs",
+        "tests/Support/commercial-spa-browser.mjs",
         "tests/Support/internal-operations-browser.mjs"
       ]
     },
@@ -2749,6 +2823,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -2794,7 +2869,8 @@
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
-        "tests/Feature/Commercial/CommercialScopeTest.php"
+        "tests/Feature/Commercial/CommercialScopeTest.php",
+        "tests/Support/commercial-spa-browser.mjs"
       ]
     },
     {
@@ -2814,6 +2890,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -2879,6 +2956,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -2924,7 +3002,8 @@
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
-        "tests/Feature/Commercial/CommercialScopeTest.php"
+        "tests/Feature/Commercial/CommercialScopeTest.php",
+        "tests/Support/commercial-spa-browser.mjs"
       ]
     },
     {
@@ -2944,6 +3023,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -2989,7 +3069,8 @@
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
-        "tests/Feature/Commercial/CommercialScopeTest.php"
+        "tests/Feature/Commercial/CommercialScopeTest.php",
+        "tests/Support/commercial-spa-browser.mjs"
       ]
     },
     {
@@ -3008,6 +3089,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -3071,6 +3153,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -3136,6 +3219,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -3201,6 +3285,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -3246,7 +3331,8 @@
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
-        "tests/Feature/Commercial/CommercialScopeTest.php"
+        "tests/Feature/Commercial/CommercialScopeTest.php",
+        "tests/Support/commercial-operator-followup-browser.mjs"
       ]
     },
     {
@@ -3266,6 +3352,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -3330,6 +3417,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -3393,6 +3481,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -3438,7 +3527,8 @@
       "testLeads": [
         "tests/CommercialMarketRecordingWorker.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
-        "tests/Feature/Commercial/CommercialScopeTest.php"
+        "tests/Feature/Commercial/CommercialScopeTest.php",
+        "tests/Support/commercial-spa-browser.mjs"
       ]
     },
     {
@@ -3457,6 +3547,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -6367,6 +6458,7 @@
         "tests/Support/auth-entry-browser.mjs",
         "tests/Support/business-context-spa-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
+        "tests/Support/commercial-operator-followup-browser.mjs",
         "tests/Support/CurrentIntentUiFixture.php",
         "tests/Support/DeclaredTargetMarketsDurabilityProof.php",
         "tests/Support/DeclaredTargetMarketsUiFixture.php",
@@ -6536,7 +6628,9 @@
       "testLeads": [
         "tests/auth-entry-spa.test.mjs",
         "tests/client-visibility.test.mjs",
+        "tests/commercial-editor-concurrency.test.mjs",
         "tests/commercial-operator.test.mjs",
+        "tests/commercial-preparation-spa.test.mjs",
         "tests/Feature/Auth/AuthenticationTest.php",
         "tests/Feature/Auth/LogoutResponseCookieTest.php",
         "tests/Feature/Auth/PasswordResetTest.php",
@@ -7733,6 +7827,7 @@
         "tests/Support/account-spa-browser.mjs",
         "tests/Support/auth-entry-browser.mjs",
         "tests/Support/auth-entry-fixture.php",
+        "tests/Support/commercial-spa-browser.mjs",
         "tests/Support/DeclaredTargetMarketsLegacyFixture.php",
         "tests/Support/DisposableDatabaseReset.php",
         "tests/Support/IdentityTransitionFixture.php",
@@ -8141,6 +8236,7 @@
       "testLeads": [
         "tests/account-spa.test.mjs",
         "tests/Support/account-spa-browser.mjs",
+        "tests/Support/commercial-operator-followup-browser.mjs",
         "tests/Support/internal-identity-browser.mjs",
         "tests/Support/internal-operations-browser.mjs"
       ]
@@ -24668,13 +24764,12 @@
       "action": "App\\Http\\Controllers\\CommercialMarketPreparationController@index",
       "businessOwners": [
         "App\\Commercial\\MarketRegistry",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Internal/CommercialMarketPreparation"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -24722,6 +24817,7 @@
       "action": "App\\Http\\Controllers\\CommercialMarketPreparationController@store",
       "businessOwners": [
         "App\\Commercial\\MarketRegistry",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -24776,6 +24872,7 @@
       "action": "App\\Http\\Controllers\\CommercialMarketPreparationController@delegate",
       "businessOwners": [
         "App\\Commercial\\MarketRegistry",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -24830,6 +24927,7 @@
       "action": "App\\Http\\Controllers\\CommercialMarketPreparationController@newIntent",
       "businessOwners": [
         "App\\Commercial\\MarketRegistry",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -24884,6 +24982,7 @@
       "action": "App\\Http\\Controllers\\CommercialMarketPreparationController@operator",
       "businessOwners": [
         "App\\Commercial\\MarketRegistry",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -25758,13 +25857,12 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
-      "pages": [
-        "Internal/Commercial"
-      ],
-      "legacyBehavior": "INERTIA",
+      "pages": [],
+      "legacyBehavior": "SPA_RESOURCE",
       "spaBoundary": "NOT_MIGRATED",
       "apiContract": "NOT_CONTRACTED",
       "runtime": {
@@ -25810,6 +25908,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -25836,6 +25935,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -25862,6 +25962,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -25889,6 +25990,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -25916,6 +26018,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -25943,6 +26046,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -25970,6 +26074,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -25997,6 +26102,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -26024,6 +26130,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -26051,6 +26158,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -26078,6 +26186,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -26105,6 +26214,7 @@
         "App\\Commercial\\CommercialAuditDelivery",
         "App\\Commercial\\MarketRegistry",
         "App\\Commercial\\RegisterCommercialScope",
+        "App\\Security\\ClientVisibility",
         "App\\Security\\GrantAuthority",
         "App\\Security\\SessionAuthority"
       ],
@@ -31192,6 +31302,56 @@
       "resources/js/identityProtocol.ts",
       "resources/js/navigationSettlement.ts"
     ],
+    "resources/js/commercial/OperationsEditor.vue": [
+      "vue",
+      "vue-router",
+      "resources/js/spa/transport.ts",
+      "resources/js/spa/presentation.ts",
+      "resources/js/spa/locale.ts",
+      "resources/js/commercial/operationsState.ts",
+      "resources/js/commercial/receiptProvenance.ts",
+      "resources/js/internal-operations/OperationsShell.vue"
+    ],
+    "resources/js/commercial/operationsState.ts": [
+      "vue",
+      "resources/js/api/generated/application",
+      "resources/js/spa/api.ts",
+      "resources/js/spa/transport.ts"
+    ],
+    "resources/js/commercial/OperationsView.vue": [
+      "resources/js/commercial/OperationsEditor.vue",
+      "resources/js/commercial/operationsState.ts"
+    ],
+    "resources/js/commercial/preparationAttempt.ts": [
+      "resources/js/commercial/preparationState.ts"
+    ],
+    "resources/js/commercial/preparationState.ts": [
+      "vue",
+      "resources/js/api/generated/application",
+      "resources/js/spa/api.ts",
+      "resources/js/spa/transport.ts"
+    ],
+    "resources/js/commercial/PreparationView.vue": [
+      "vue",
+      "vue-router",
+      "resources/js/internal-operations/OperationsShell.vue",
+      "resources/js/commercial/preparationState.ts",
+      "resources/js/spa/transport.ts",
+      "resources/js/spa/locale.ts",
+      "resources/js/spa/presentation.ts",
+      "resources/js/commercial/preparationAttempt.ts"
+    ],
+    "resources/js/commercial/receiptProvenance.ts": [
+      "resources/js/commercial/operationsState.ts",
+      "resources/js/api/generated/application"
+    ],
+    "resources/js/commercial/routes.ts": [
+      "vue-router",
+      "resources/js/commercial/preparationState.ts",
+      "resources/js/commercial/operationsState.ts",
+      "resources/js/commercial/OperationsView.vue",
+      "resources/js/commercial/PreparationView.vue"
+    ],
     "resources/js/Components/ApplicationLogo.vue": [],
     "resources/js/Components/Business/CurrentIntentEditor.vue": [
       "resources/js/business-context/commands.ts",
@@ -31739,6 +31899,7 @@
       "resources/js/auth-entry/routes.ts",
       "resources/js/staff-enrollment/routes.ts",
       "resources/js/internal-operations/routes.ts",
+      "resources/js/commercial/routes.ts",
       "resources/js/spa/locale.ts"
     ],
     "resources/js/spa/nativeForm.ts": [
@@ -31837,15 +31998,13 @@
     "tests/client-visibility.test.mjs": 32,
     "tests/commercial-operator.test.mjs": 3,
     "tests/current-intent-interaction.test.mjs": 9,
-    "tests/Feature/Commercial/CommercialMarketPreparationTest.php": 7,
-    "tests/Feature/Commercial/CommercialScopeTest.php": 5,
     "tests/Feature/Foundation/BaselineContractTest.php": 5,
     "tests/Feature/GoalsSpaIntegrationTest.php": 1,
     "tests/Feature/GoalsSpaProofTest.php": 1,
     "tests/Feature/InternalOperationsSpaTest.php": 1,
-    "tests/Feature/Security/ClientVisibilityTest.php": 5,
+    "tests/Feature/Security/ClientVisibilityTest.php": 4,
     "tests/Feature/Security/IdentityRenewalTest.php": 1,
-    "tests/Feature/Security/InertiaHistorySecurityTest.php": 3,
+    "tests/Feature/Security/InertiaHistorySecurityTest.php": 2,
     "tests/Feature/Security/ProductionIdentityTest.php": 2,
     "tests/Feature/Security/ProductionPasskeyTest.php": 1,
     "tests/goals-api-client.test.mjs": 1,
@@ -31901,7 +32060,7 @@
   },
   "summary": {
     "registeredRoutes": 173,
-    "legacyRenderRoutes": 2,
+    "legacyRenderRoutes": 0,
     "locallyAcceptedJourneys": [
       "workspace-selection",
       "business-creation",
@@ -31913,7 +32072,8 @@
       "advertiser-security-devices",
       "advertiser-auth-entry",
       "internal-identity-staff-enrollment",
-      "internal-operations"
+      "internal-operations",
+      "final-commercial-displays"
     ]
   },
   "unresolved": [

@@ -60,7 +60,7 @@ class ClientVisibilityTest extends TestCase
             'X-Builderad-Visibility-Context' => $receipt['context']])->assertStatus(409);
     }
 
-    public function test_remaining_commercial_owns_real_legacy_visibility_probes(): void
+    public function test_commercial_spa_preserves_existing_visibility_probe_authority_and_idle_deadlines(): void
     {
         $staff = User::factory()->create();
         $db = DB::connection('pgsql_migrations');
@@ -74,9 +74,8 @@ class ClientVisibilityTest extends TestCase
             'action' => 'staff.view', 'scope_kind' => 'platform', 'subject_generation' => 1,
             'reason' => 'remaining legacy visibility fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
         $this->actingAsInternal($staff);
-        $page = $this->get('/internal/commercial')->assertOk();
-        $receipt = $page->viewData('page')['props']['clientVisibility'];
-        $this->assertTrue($page->viewData('page')['encryptHistory']);
+        $this->get('/internal/commercial')->assertOk()->assertViewIs('spa')->assertDontSee('data-page=', false);
+        $receipt = $this->getJson('/internal/commercial')->assertOk()->json('visibility');
         $before = $db->table('security_sessions')->where('user_id', $staff->id)->first();
         $this->get('/internal/commercial', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1', 'X-Builderad-Visibility-Context' => $receipt['context']])
             ->assertOk()->assertExactJson($receipt)->assertHeader('Cache-Control', 'no-store, private');

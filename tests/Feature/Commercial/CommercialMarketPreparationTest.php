@@ -6,12 +6,65 @@ use App\Models\User;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Inertia\Testing\AssertableInertia as Assert;
 use Symfony\Component\Process\Process;
+use Tests\Support\ApplicationContractAssertions;
 use Tests\TestCase;
 
 class CommercialMarketPreparationTest extends TestCase
 {
+    use ApplicationContractAssertions;
+
+    public function test_spa_preparation_projection_binding_and_new_intent_preserve_original_writers(): void
+    {
+        $founder = $this->staff('founder');
+        $administrator = $this->staff();
+        $this->actingAsInternal($founder)->withCredentials();
+        $path = '/internal/administration/commercial-markets';
+        $first = $this->getJson($path)->assertOk()->assertJsonPath('data.canPrepare', true)->json();
+        $this->assertApplicationContract('CommercialPreparationResource', $first);
+        $intent = $first['data']['intentId'];
+        $binding = json_decode(Crypt::decryptString($first['data']['intentBinding']), true, flags: JSON_THROW_ON_ERROR);
+        $again = $this->getJson($path)->assertOk()->json();
+        $this->assertSame($intent, $again['data']['intentId']);
+        $this->assertSame($binding, json_decode(Crypt::decryptString($again['data']['intentBinding']), true, flags: JSON_THROW_ON_ERROR));
+        $this->postJson($path.'/new-intent')->assertConflict();
+        $input = ['mode' => 'direct', 'intent_id' => $intent, 'intent_binding' => $first['data']['intentBinding'],
+            'country_code' => 'JO', 'denomination_code' => 'USD', 'reason' => 'Synthetic contract proof'];
+        $result = $this->postJson($path, $input)->assertOk()->json();
+        $this->assertApplicationContract('CommercialPreparationAcknowledgement', $result);
+        $replay = $this->postJson($path, $input)->assertOk()->json();
+        $this->assertSame($result, $replay);
+        $present = $this->getJson($path)->assertOk()->assertJsonPath('data.directRecorded', true)->json();
+        $this->assertApplicationContract('CommercialPreparationResource', $present);
+        $this->postJson($path.'/new-intent')->assertOk()->assertExactJson(['saved' => true]);
+        $this->assertNotSame($intent, $this->getJson($path)->assertOk()->json('data.intentId'));
+        $native = $this->getJson($path)->assertOk()->json('data');
+        $approval = ['intent_id' => $native['intentId'], 'intent_binding' => $native['intentBinding'],
+            'administrator' => $administrator->public_id, 'label' => 'Synthetic delegated market',
+            'reason' => 'Synthetic delegated contract proof', 'expires_at' => now()->addHour()->toIso8601String()];
+        $approved = $this->postJson($path, $approval)->assertOk()->json();
+        $this->assertApplicationContract('CommercialPreparationAcknowledgement', $approved);
+        $this->assertApplicationContract('CommercialPreparationResource', $this->getJson($path)->assertOk()->json());
+        $this->post($path.'/new-intent')->assertRedirect(route('internal.commercial-market-preparation.index'));
+        $this->actingAsInternal($administrator)->withCredentials();
+        $this->postJson($path, $input)->assertForbidden();
+        $this->assertSame(1, DB::connection('pgsql_migrations')->table('commercial_markets')->count());
+        $this->assertSame(2, DB::connection('pgsql_migrations')->table('commercial_command_results')->count());
+    }
+
+    public function test_spa_preparation_empty_projection_and_witness_use_existing_visibility_contract(): void
+    {
+        $this->actingAsInternal($this->staff('founder'))->withCredentials();
+        $path = '/internal/administration/commercial-markets';
+        $resource = $this->getJson($path)->assertOk()->assertJsonPath('data.approvals', [])
+            ->assertJsonPath('data.recordedMarkets', [])->assertJsonPath('data.directRecorded', false)->json();
+        $this->assertApplicationContract('CommercialPreparationResource', $resource);
+        $witness = $this->withHeader('X-Builderad-Witness', '1')->getJson($path)->assertOk()->json();
+        $this->assertSame($resource['visibility'], $witness['visibility']);
+        $this->assertArrayNotHasKey('data', $witness);
+        $this->assertArrayNotHasKey('intentBinding', $witness);
+    }
+
     public function test_country_command_replays_after_new_login_with_same_generated_identities(): void
     {
         config(['session.driver' => 'redis', 'session.connection' => 'default']);
@@ -19,14 +72,14 @@ class CommercialMarketPreparationTest extends TestCase
         app()->forgetInstance('session.store');
         $founder = $this->staff('founder');
         $this->actingAsInternal($founder)->withCredentials();
-        $page = $this->get('/internal/administration/commercial-markets')->assertOk()->viewData('page')['props'];
+        $page = $this->getJson('/internal/administration/commercial-markets')->assertOk()->json('data');
         $input = ['mode' => 'direct', 'intent_id' => $page['intentId'], 'intent_binding' => $page['intentBinding'],
             'country_code' => 'JO', 'denomination_code' => 'USD'];
         $original = $this->postJson('/internal/administration/commercial-markets', $input)->assertOk()->json();
         $this->post('/internal/logout')->assertOk()->assertJsonPath('redirect', '/internal/login')
             ->assertJsonPath('transition.status', 'closed');
         $this->actingAsInternal($founder)->withCredentials();
-        $newPage = $this->get('/internal/administration/commercial-markets')->assertOk()->viewData('page')['props'];
+        $newPage = $this->getJson('/internal/administration/commercial-markets')->assertOk()->json('data');
         $this->assertNotSame($page['intentId'], $newPage['intentId']);
         $replayed = $this->postJson('/internal/administration/commercial-markets', $input)->assertOk()->json();
         $this->assertSame($original['market_id'], $replayed['market_id']);
@@ -42,7 +95,7 @@ class CommercialMarketPreparationTest extends TestCase
         app()->forgetInstance('session.store');
         $founder = $this->staff('founder');
         $this->actingAsInternal($founder)->withCredentials();
-        $page = $this->get('/internal/administration/commercial-markets')->assertOk()->viewData('page')['props'];
+        $page = $this->getJson('/internal/administration/commercial-markets')->assertOk()->json('data');
         $input = ['mode' => 'direct', 'intent_id' => $page['intentId'], 'intent_binding' => $page['intentBinding'],
             'country_code' => 'SA', 'denomination_code' => 'SAR'];
         $binding = json_decode(Crypt::decryptString($page['intentBinding']), true);
@@ -61,8 +114,8 @@ class CommercialMarketPreparationTest extends TestCase
     {
         $founder = $this->staff('founder');
         $this->actingAsInternal($founder)->withCredentials();
-        $page = $this->get('/internal/administration/commercial-markets')->assertOk();
-        $input = ['intent_id' => $page->viewData('page')['props']['intentId'],
+        $page = $this->getJson('/internal/administration/commercial-markets')->assertOk();
+        $input = ['intent_id' => $page->json('data')['intentId'],
             'mode' => 'direct', 'label' => 'السوق السعودي', 'reason' => 'إنشاء السوق بواسطة المؤسس'];
         $first = $this->postJson('/internal/administration/commercial-markets', $input)->assertOk();
         $market = $first->json('market_id');
@@ -82,15 +135,15 @@ class CommercialMarketPreparationTest extends TestCase
             'configuration_id' => $configuration, 'catalog_reference_id' => $reference, 'denomination_code' => 'SAR', 'reason_code' => 'founder_configuration'])->assertOk();
         $this->postJson('/internal/commercial/assignability', ['command_id' => (string) Str::uuid7(), 'market_id' => $market,
             'configuration_id' => $configuration, 'expected_revision' => 1, 'reason_code' => 'founder_enable'])->assertOk();
-        $this->get('/internal/commercial')->assertOk()->assertInertia(fn (Assert $p) => $p->where('founderAccess', true)->has('markets', 1));
+        $this->getJson('/internal/commercial')->assertOk()->assertJsonPath('data.founderAccess', true)->assertJsonCount(1, 'data.markets');
         $this->assertSame(4, $db->table('commercial_command_results')->count());
         $beneficiary = User::factory()->create();
         $workspace = $db->table('workspaces')->insertGetId(['business_type_id' => $db->table('business_types')->where('key', 'professional_services')->value('id'),
             'name' => 'Founder beneficiary', 'slug' => 'founder-'.Str::uuid7(), 'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
         $db->table('workspace_memberships')->insert(['workspace_id' => $workspace, 'user_id' => $beneficiary->id, 'role' => 'owner', 'status' => 'active', 'created_at' => now()]);
         $db->table('workspace_ownerships')->insert(['workspace_id' => $workspace, 'responsible_owner_user_id' => $beneficiary->id, 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
-        $page = $this->get('/internal/commercial')->assertOk();
-        $scope = (array) collect($page->viewData('page')['props']['targets'])->firstWhere('action', 'RegisterCommercialScope');
+        $page = $this->getJson('/internal/commercial')->assertOk();
+        $scope = (array) collect($page->json('data')['targets'])->firstWhere('action', 'RegisterCommercialScope');
         $registration = ['command_id' => (string) Str::uuid7(), 'scope_id' => $scope['target_id'], 'workspace_public_id' => $scope['workspace_public_id'],
             'market_id' => $market, 'configuration_id' => $configuration, 'catalog_reference_id' => $reference, 'denomination_code' => 'SAR', 'reason_code' => 'founder_registration'];
         $this->postJson('/internal/commercial/registrations', $registration)->assertOk();
@@ -98,9 +151,9 @@ class CommercialMarketPreparationTest extends TestCase
         $this->getJson('/internal/commercial/contexts/'.$scope['target_id'])->assertOk();
         $this->assertSame(0, $db->table('security_action_grants')->where('scope_kind', 'commercial')->count());
         $this->post('/internal/administration/commercial-markets/new-intent')->assertRedirect();
-        $newPage = $this->get('/internal/administration/commercial-markets')->assertOk();
-        $this->assertNotSame($input['intent_id'], $newPage->viewData('page')['props']['intentId']);
-        $minimal = ['mode' => 'direct', 'intent_id' => $newPage->viewData('page')['props']['intentId'], 'label' => 'السوق الكويتي'];
+        $newPage = $this->getJson('/internal/administration/commercial-markets')->assertOk();
+        $this->assertNotSame($input['intent_id'], $newPage->json('data')['intentId']);
+        $minimal = ['mode' => 'direct', 'intent_id' => $newPage->json('data')['intentId'], 'label' => 'السوق الكويتي'];
         $second = $this->postJson('/internal/administration/commercial-markets', $minimal)->assertOk()->json('market_id');
         $this->assertNotSame($market, $second);
         $this->postJson('/internal/administration/commercial-markets', $minimal)->assertOk()->assertJsonPath('market_id', $second);
@@ -122,8 +175,8 @@ class CommercialMarketPreparationTest extends TestCase
     {
         $founder = $this->staff('founder');
         $this->actingAsInternal($founder)->withCredentials();
-        $page = $this->get('/internal/administration/commercial-markets')->assertOk();
-        $input = ['mode' => 'direct', 'intent_id' => $page->viewData('page')['props']['intentId'], 'country_code' => 'JO', 'denomination_code' => 'USD'];
+        $page = $this->getJson('/internal/administration/commercial-markets')->assertOk();
+        $input = ['mode' => 'direct', 'intent_id' => $page->json('data')['intentId'], 'country_code' => 'JO', 'denomination_code' => 'USD'];
         $first = $this->postJson('/internal/administration/commercial-markets', $input)->assertOk();
         $market = $first->json('market_id');
         $configuration = $first->json('configuration_id');
@@ -143,7 +196,7 @@ class CommercialMarketPreparationTest extends TestCase
         $this->postJson('/internal/administration/commercial-markets', ['mode' => 'direct', 'intent_id' => $input['intent_id'], 'country_code' => 'JO'])->assertUnprocessable();
         $this->postJson('/internal/commercial/assignability', ['command_id' => (string) Str::uuid7(), 'market_id' => $market,
             'configuration_id' => $configuration, 'expected_revision' => 1, 'reason_code' => 'incomplete_denied'])->assertUnprocessable();
-        $this->get('/internal/commercial')->assertOk()->assertInertia(fn (Assert $p) => $p->where('markets.0.country_code', 'JO')->where('configurations.0.denomination_code', 'USD'));
+        $this->getJson('/internal/commercial')->assertOk()->assertJsonPath('data.markets.0.country_code', 'JO')->assertJsonPath('data.configurations.0.denomination_code', 'USD');
         $this->actingAsInternal($this->staff());
         $this->postJson('/internal/administration/commercial-markets', $input)->assertForbidden();
     }
@@ -151,8 +204,8 @@ class CommercialMarketPreparationTest extends TestCase
     public function test_country_creation_rolls_back_identity_country_receipts_and_notes_if_initial_configuration_fails(): void
     {
         $this->actingAsInternal($this->staff('founder'))->withCredentials();
-        $page = $this->get('/internal/administration/commercial-markets')->assertOk();
-        $input = ['mode' => 'direct', 'intent_id' => $page->viewData('page')['props']['intentId'], 'country_code' => 'SA', 'denomination_code' => 'USD'];
+        $page = $this->getJson('/internal/administration/commercial-markets')->assertOk();
+        $input = ['mode' => 'direct', 'intent_id' => $page->json('data')['intentId'], 'country_code' => 'SA', 'denomination_code' => 'USD'];
         $db = DB::connection('pgsql_migrations');
         $db->unprepared("CREATE FUNCTION country_configuration_test_failure() RETURNS trigger LANGUAGE plpgsql AS \$\$ BEGIN RAISE EXCEPTION 'synthetic configuration failure' USING ERRCODE='23514'; END \$\$; CREATE TRIGGER country_configuration_test_failure BEFORE INSERT ON commercial_market_configuration_versions FOR EACH ROW EXECUTE FUNCTION country_configuration_test_failure()");
         try {
@@ -187,9 +240,9 @@ class CommercialMarketPreparationTest extends TestCase
         $employee = $this->staff();
         $outsider = $this->staff();
         $this->actingAsInternal($founder)->withCredentials();
-        $page = $this->get('/internal/administration/commercial-markets')->assertOk();
+        $page = $this->getJson('/internal/administration/commercial-markets')->assertOk();
         $market = $this->postJson('/internal/administration/commercial-markets', ['mode' => 'direct',
-            'intent_id' => $page->viewData('page')['props']['intentId'], 'label' => 'Delegated market', 'reason' => 'Founder creation'])->assertOk()->json('market_id');
+            'intent_id' => $page->json('data')['intentId'], 'label' => 'Delegated market', 'reason' => 'Founder creation'])->assertOk()->json('market_id');
         $payload = ['market_id' => $market, 'operator' => $employee->public_id, 'permission' => 'manage', 'reason' => 'Optional delegation', 'expires_at' => now()->addDay()->toIso8601String()];
         $this->postJson('/internal/administration/commercial-markets/delegate', [...$payload, 'operator' => $founder->public_id])->assertForbidden();
         $this->postJson('/internal/administration/commercial-markets/delegate', $payload)->assertOk();
@@ -211,9 +264,9 @@ class CommercialMarketPreparationTest extends TestCase
     private function input(User $admin): array
     {
         $intent = (string) Str::uuid7();
-        $page = $this->get('/internal/administration/commercial-markets');
+        $page = $this->getJson('/internal/administration/commercial-markets');
         if ($page->status() === 200) {
-            $intent = $page->viewData('page')['props']['intentId'];
+            $intent = $page->json('data')['intentId'];
         } else {
             $this->withSession(['commercial_market_preparation_intent' => $intent]);
         }
@@ -227,8 +280,8 @@ class CommercialMarketPreparationTest extends TestCase
         $admin = $this->staff();
         $operator = $this->staff();
         $this->actingAsInternal($founder)->withCredentials();
-        $page = $this->get('/internal/administration/commercial-markets')->assertOk()->assertInertia(fn (Assert $p) => $p->component('Internal/CommercialMarketPreparation')->where('canPrepare', true)->has('intentId'));
-        $input = ['intent_id' => $page->viewData('page')['props']['intentId'], 'administrator' => $admin->public_id,
+        $page = $this->getJson('/internal/administration/commercial-markets')->assertOk()->assertJsonPath('data.canPrepare', true)->assertJsonStructure(['data' => ['intentId']]);
+        $input = ['intent_id' => $page->json('data')['intentId'], 'administrator' => $admin->public_id,
             'label' => 'Owner approved market', 'reason' => 'owner:market:approval', 'expires_at' => now()->addDay()->toIso8601String()];
         $response = $this->postJson('/internal/administration/commercial-markets', $input)->assertOk();
         $target = $response->json('target_id');
@@ -244,12 +297,12 @@ class CommercialMarketPreparationTest extends TestCase
         $this->postJson('/internal/administration/commercial-markets/'.$input['intent_id'].'/operator', $grant)->assertOk();
         $this->assertSame(2, $db->table('security_action_grants')->where('subject_user_id', $operator->id)->where('commercial_target_id', $target)->count());
         $this->actingAsInternal($operator);
-        $this->get('/internal/administration/commercial-markets')->assertForbidden();
+        $this->getJson('/internal/administration/commercial-markets')->assertForbidden();
         $command = ['command_id' => (string) Str::uuid7(), 'reason_code' => 'approved_market', 'market_id' => $target, 'label' => $input['label']];
         $this->postJson('/internal/commercial/markets', $command)->assertOk();
         $this->postJson('/internal/commercial/markets', $command)->assertOk();
         $this->postJson('/internal/commercial/markets', [...$command, 'command_id' => (string) Str::uuid7()])->assertConflict();
-        $this->get('/internal/commercial')->assertOk()->assertInertia(fn (Assert $p) => $p->where('markets.0.id', $target)->has('newMarketTargets', 0));
+        $this->getJson('/internal/commercial')->assertOk()->assertJsonPath('data.markets.0.id', $target)->assertJsonCount(0, 'data.newMarketTargets');
         $this->assertSame(1, $db->table('security_commercial_market_approvals')->count());
         $this->assertSame(3, $db->table('security_action_grants')->where('commercial_target_id', $target)->count());
     }
@@ -306,7 +359,7 @@ class CommercialMarketPreparationTest extends TestCase
         $this->postJson($path, $payload)->assertForbidden();
         $this->actingAsInternal($founder);
         $this->postJson('/internal/administration/commercial-markets', $input)->assertForbidden();
-        $this->get('/internal/administration/commercial-markets')->assertOk()->assertInertia(fn (Assert $p) => $p->has('approvals', 1)->where('approvals.0.active', false));
+        $this->getJson('/internal/administration/commercial-markets')->assertOk()->assertJsonCount(1, 'data.approvals')->assertJsonPath('data.approvals.0.active', false);
         $this->assertSame(1, $db->table('security_commercial_market_approvals')->count());
     }
 
