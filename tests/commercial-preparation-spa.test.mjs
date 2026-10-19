@@ -92,23 +92,24 @@ const content = root => root.text + root.children.map(content).join('');
 async function settle() { await nextTick(); await new Promise(setImmediate); await nextTick(); }
 const reviewLabel = 'Review current state — not an acknowledgement';
 const retireLabel = 'End operator follow-up — keep original outcome unknown';
-async function mountPreparation({ saved = originalOperator, storage, data = projection(), principal = 7 } = {}) {
+async function mountPreparation({ saved = originalOperator, storage, data = projection(), principal = 7, boundary = 'internal', admitted = true, reader } = {}) {
     globalThis.Document = class {};
     globalThis.ShadowRoot = class {};
     globalThis.document = { activeElement: null, getElementById: () => null };
     globalThis.window = { addEventListener() {}, removeEventListener() {} };
     const values = storage ?? new Map(saved ? [[activeKey, JSON.stringify(saved)]] : []);
-    const runtime = { data: shallowRef(data), writes: [], revision: 0, closed: false, callbacks: new Set(), confirm: () => true,
+    const runtime = { data: shallowRef(data), status: ref(admitted ? 'ready' : 'checking'), logouts: 0, writes: [], revision: 0, closed: false, callbacks: new Set(), confirm: () => true,
         saveFailure: false, deleteFailure: false, reader: async () => runtime.data.value,
         writer: async () => { throw Error('Lost ACK'); } };
+    if (reader) runtime.reader = () => reader(runtime);
     globalThis.confirm = () => runtime.confirm();
     globalThis.sessionStorage = { get length() { return values.size; }, key: index => [...values.keys()][index],
         getItem: key => values.get(key) ?? null,
-        setItem(key, value) { if (runtime.saveFailure && key.includes(':reviewed:')) throw Error('Archive unavailable'); values.set(key, value); if (runtime.failAfterSave && key.includes(':reviewed:')) throw Error('Archive saved before interruption'); },
-        removeItem(key) { if (runtime.deleteFailure && key === activeKey) throw Error('Active cleanup unavailable'); values.delete(key); } };
+        setItem(key, value) { if (runtime.draftSaveFailure && key.startsWith('commercial-preparation-draft:')) throw Error('Draft unavailable'); if (runtime.saveFailure && key.includes(':reviewed:')) throw Error('Archive unavailable'); values.set(key, value); if (runtime.failAfterSave && key.includes(':reviewed:')) throw Error('Archive saved before interruption'); },
+        removeItem(key) { if (runtime.draftDeleteFailure && key.startsWith('commercial-preparation-draft:')) throw Error('Draft cleanup unavailable'); if (runtime.deleteFailure && key === activeKey) throw Error('Active cleanup unavailable'); values.delete(key); } };
     const key = 'preparationView' + crypto.randomUUID().replaceAll('-', ''); globalThis[key] = runtime;
     const vue = import.meta.resolve('vue');
-    const transportUrl = moduleUrl(`const runtime=globalThis.${key};export const bootstrap={identity:{binding:{principal:${principal}}}},stamp=()=>runtime.revision,owned=value=>value===runtime.revision&&!runtime.closed,logout=async()=>{},onClose=callback=>{runtime.callbacks.add(callback);return runtime.callbacks},close=()=>{runtime.closed=true;runtime.revision++;runtime.callbacks.forEach(callback=>callback())};export class TransportError extends Error{constructor(status){super('HTTP '+status);this.status=status}}`);
+    const transportUrl = moduleUrl(`const runtime=globalThis.${key};export const status=runtime.status,bootstrap={identity:{binding:{principal:${principal},boundary:${JSON.stringify(boundary)}}}},stamp=()=>runtime.revision,owned=value=>value===runtime.revision&&!runtime.closed,logout=async()=>{runtime.logouts++},onClose=callback=>{runtime.callbacks.add(callback);return runtime.callbacks},close=()=>{runtime.closed=true;runtime.status.value='closed';runtime.revision++;runtime.callbacks.forEach(callback=>callback())};export class TransportError extends Error{constructor(status){super('HTTP '+status);this.status=status}}`);
     const ports = { vue, 'vue-router': moduleUrl('export const onBeforeRouteLeave=()=>{};'),
         '../internal-operations/OperationsShell.vue': moduleUrl(`import {h} from ${JSON.stringify(vue)};export default{setup(props,{slots}){return()=>h('main',{},[slots.header?.(),slots.default?.()])}}`),
         './preparationState': moduleUrl(`const runtime=globalThis.${key};export const preparationData=runtime.data,readPreparation=(...args)=>runtime.reader(...args),writePreparation=command=>{runtime.writes.push(structuredClone(command));return runtime.writer(command)};`),
@@ -150,6 +151,160 @@ async function prepareDirect(view) {
     await prepareForm(view).props.onSubmit({ preventDefault() {} }); await settle();
 }
 const directData = () => ({ ...projection(), approvals: [], countryOptions: { JO: { ar: 'الأردن', en: 'Jordan', currency: 'JOD' } }, currencyOptions: ['JOD', 'USD'] });
+const humanDraftKey = 'commercial-preparation-draft:v1:internal:7';
+const humanFields = { mode: 'direct', country_code: 'JO', denomination_code: 'USD', label: '', reason: 'Review retained human note' };
+const humanRecord = fields => JSON.stringify({ version: 1, principal: 7, boundary: 'internal', ...humanFields, ...fields });
+const draftStorage = fields => new Map([[humanDraftKey, humanRecord(fields)]]);
+const reasonField = view => nodes(prepareForm(view)).find(node => node.tag === 'input' && node.props.type !== 'datetime-local');
+async function enterHumanDraft(view) {
+    await choose(field(view, 'preparation-country'), 'JO'); await choose(field(view, 'preparation-currency'), 'USD');
+    await enter(reasonField(view), humanFields.reason);
+}
+
+test('S7-R01 T1 same principal renews only after retaining human fields and restores once with current intent', async () => {
+    let view = await mountPreparation({ saved: null, data: { ...directData(), freshAuthentication: false } });
+    const values = view.values;
+    try {
+        await enterHumanDraft(view); await view.click('Renew sign-in');
+        assert.equal(view.runtime.logouts, 1); assert.equal(values.get(humanDraftKey), humanRecord());
+        assert.equal(view.runtime.writes.length, 0);
+    } finally { view.stop(); }
+    view = await mountPreparation({ storage: values, data: { ...directData(), intentId: approvalA, intentBinding: 'new-document-current-binding' } });
+    try {
+        assert.equal(field(view, 'preparation-country').value, 'JO'); assert.equal(field(view, 'preparation-currency').value, 'USD');
+        assert.equal(reasonField(view).value, humanFields.reason); assert.equal(values.has(humanDraftKey), false);
+        assert.equal(view.runtime.writes.length, 0);
+        await prepareForm(view).props.onSubmit({ preventDefault() {} }); await settle();
+        assert.equal(view.runtime.writes[0].body.intent_id, approvalA);
+        assert.equal(view.runtime.writes[0].body.intent_binding, 'new-document-current-binding');
+    } finally { view.stop(); }
+});
+
+test('S7-R01 T2 principal and boundary isolate the retained human draft', async () => {
+    for (const identity of [{ principal: 8 }, { boundary: 'advertiser' }]) {
+        const view = await mountPreparation({ saved: null, storage: draftStorage(), data: directData(), ...identity });
+        try { assert.equal(reasonField(view).value, ''); assert.equal(view.values.has(humanDraftKey), true); assert.equal(view.runtime.writes.length, 0); }
+        finally { view.stop(); }
+    }
+});
+
+test('S7-R01 T3 document admission and admitted current read precede private draft restoration', async () => {
+    let finish, reads = 0;
+    const view = await mountPreparation({ storage: draftStorage(), data: directData(), admitted: false,
+        reader: runtime => { reads++; return new Promise(resolve => { finish = () => resolve(runtime.data.value); }); } });
+    try {
+        assert.equal(reads, 0); assert.equal(reasonField(view).value, ''); assert.equal(view.values.has(humanDraftKey), true);
+        view.runtime.status.value = 'ready'; await settle(); assert.equal(reads, 1); assert.equal(reasonField(view).value, '');
+        finish(); await settle(); assert.equal(reasonField(view).value, humanFields.reason);
+    } finally { view.stop(); }
+});
+
+test('S7-R01 T4 changed country and currency options are not restored as valid selections', async () => {
+    const view = await mountPreparation({ storage: draftStorage(), data: { ...directData(), countryOptions: {}, currencyOptions: ['EUR'] } });
+    try {
+        assert.equal(field(view, 'preparation-country').value, ''); assert.equal(field(view, 'preparation-currency').value, '');
+        assert.equal(reasonField(view).value, humanFields.reason); assert.equal(view.runtime.writes.length, 0);
+    } finally { view.stop(); }
+});
+
+test('S7-R01 T5 failed storage blocks renewal and preserves the in-document human draft', async () => {
+    const view = await mountPreparation({ saved: null, data: { ...directData(), freshAuthentication: false } });
+    try {
+        await enterHumanDraft(view); view.runtime.draftSaveFailure = true; await view.click('Renew sign-in');
+        assert.equal(view.runtime.logouts, 0); assert.equal(reasonField(view).value, humanFields.reason);
+        assert.ok(content(view.root).includes('Details could not be saved before renewing sign-in.'));
+        assert.equal(view.values.has(humanDraftKey), false);
+    } finally { view.stop(); }
+});
+
+test('S7-R01 T6 corrupt, foreign-owner and authority-bearing records never restore', async () => {
+    for (const saved of ['{bad', humanRecord({ version: 2 }), humanRecord({ principal: 8 }), humanRecord({ intent_id: approvalA }), humanRecord({ reason: 42 })]) {
+        const view = await mountPreparation({ storage: new Map([[humanDraftKey, saved]]), data: directData() });
+        try { assert.equal(reasonField(view).value, ''); assert.equal(view.runtime.writes.length, 0); assert.equal(view.values.get(humanDraftKey), saved); }
+        finally { view.stop(); }
+    }
+});
+
+test('S7-R01 T7 human restoration neither replaces nor retries a retained UNKNOWN command', async () => {
+    const values = draftStorage(); values.set(activeKey, JSON.stringify(originalOperator));
+    const view = await mountPreparation({ storage: values, data: directData() });
+    try {
+        assert.equal(reasonField(view).value, humanFields.reason); assert.equal(values.get(activeKey), JSON.stringify(originalOperator));
+        assert.ok(content(view.root).includes('Outcome unknown; no automatic replay.')); assert.equal(view.runtime.writes.length, 0);
+    } finally { view.stop(); }
+});
+
+test('S7-R01 T8 restoring human fields performs no automatic commercial write', async () => {
+    const view = await mountPreparation({ storage: draftStorage(), data: directData() });
+    try { await settle(); assert.equal(reasonField(view).value, humanFields.reason); assert.deepEqual(view.runtime.writes, []); assert.equal(view.runtime.logouts, 0); }
+    finally { view.stop(); }
+});
+
+test('S7-R01 T9 denied reads, terminal closure and obsolete completions cannot publish human fields', async () => {
+    for (const action of ['denied', 'close', 'obsolete', 'unmount']) {
+        let finish;
+        const view = await mountPreparation({ storage: draftStorage(), data: directData(), reader: runtime => new Promise(resolve => { finish = () => resolve(action === 'denied' ? undefined : runtime.data.value); }) });
+        let stopped = false;
+        try {
+            if (action === 'close') view.transport.close();
+            if (action === 'obsolete') view.runtime.revision++;
+            if (action === 'unmount') { view.stop(); stopped = true; }
+            finish(); await settle(); assert.equal(view.values.has(humanDraftKey), true);
+            if (!stopped) assert.equal(reasonField(view).value, '');
+            assert.equal(view.runtime.writes.length, 0);
+        } finally { if (!stopped) view.stop(); }
+    }
+});
+
+test('S7-R01 T10 explicit discard removes saved fields and successful consumption does not restore twice', async () => {
+    const values = draftStorage(); let view = await mountPreparation({ storage: values, data: directData() });
+    try { assert.equal(reasonField(view).value, humanFields.reason); assert.equal(values.has(humanDraftKey), false); }
+    finally { view.stop(); }
+    view = await mountPreparation({ storage: values, data: directData() });
+    try {
+        assert.equal(reasonField(view).value, ''); await enterHumanDraft(view);
+        values.set(humanDraftKey, humanRecord()); await view.click('Discard draft and load displayed state');
+        assert.equal(values.has(humanDraftKey), false); assert.equal(reasonField(view).value, '');
+    } finally { view.stop(); }
+});
+
+test('S7-R01 failed consumption is visible and the same saved record is not reapplied in this document', async () => {
+    const view = await mountPreparation({ storage: draftStorage(), data: directData(), admitted: false });
+    try {
+        view.runtime.draftDeleteFailure = true; view.runtime.status.value = 'ready'; await settle();
+        assert.equal(reasonField(view).value, humanFields.reason); assert.equal(view.values.has(humanDraftKey), true);
+        assert.ok(content(view.root).includes('The restored draft could not be removed from this tab.'));
+        await enter(reasonField(view), 'New edit after restore');
+        view.runtime.status.value = 'checking'; await settle(); view.runtime.status.value = 'ready'; await settle();
+        assert.equal(reasonField(view).value, 'New edit after restore');
+        await view.click('Discard draft and load displayed state'); assert.equal(reasonField(view).value, 'New edit after restore');
+        view.runtime.draftDeleteFailure = false; await view.click('Discard draft and load displayed state');
+        assert.equal(view.values.has(humanDraftKey), false); assert.equal(reasonField(view).value, '');
+    } finally { view.stop(); }
+});
+
+test('S7-R01 restoration uses the latest admitted intent rather than the first projection', async () => {
+    const view = await mountPreparation({ storage: draftStorage(), data: directData(), reader: runtime => {
+        runtime.data.value = { ...directData(), intentId: approvalA, intentBinding: 'admitted-read-current-intent' };
+        return runtime.data.value;
+    } });
+    try {
+        assert.equal(view.runtime.writes.length, 0);
+        await prepareForm(view).props.onSubmit({ preventDefault() {} }); await settle();
+        assert.equal(view.runtime.writes[0].body.intent_id, approvalA);
+        assert.equal(view.runtime.writes[0].body.intent_binding, 'admitted-read-current-intent');
+    } finally { view.stop(); }
+});
+
+test('S7-R01 delegated display restores label and note but never administrator, expiry or approval', async () => {
+    const view = await mountPreparation({ storage: draftStorage({ mode: 'delegated', label: 'Human market label' }), data: directData() });
+    try {
+        const inputs = nodes(prepareForm(view)).filter(node => node.tag === 'input');
+        assert.equal(inputs[0].value, 'Human market label'); assert.equal(inputs[1].value, ''); assert.equal(inputs[2].value, humanFields.reason);
+        assert.equal(nodes(prepareForm(view)).filter(node => node.tag === 'select')[1].value, '');
+        assert.equal(view.runtime.writes.length, 0);
+    } finally { view.stop(); }
+});
 
 test('actual direct preparation needs neither employee, expiry nor reason and freezes country plus independent currency', async () => {
     const view = await mountPreparation({ saved: null, data: directData() });

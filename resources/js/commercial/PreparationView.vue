@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, shallowRef } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, shallowRef, watch } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import OperationsShell from '../internal-operations/OperationsShell.vue';
 import { preparationData, readPreparation, writePreparation, type PreparationCommand } from './preparationState';
-import { bootstrap, close, logout, onClose, owned, stamp, TransportError } from '../spa/transport';
+import { bootstrap, close, logout, onClose, owned, stamp, status, TransportError } from '../spa/transport';
 import { locale } from '../spa/locale';
 import { confirmDeparture } from '../spa/presentation';
 import { parsePreparationAttempt } from './preparationAttempt';
@@ -19,6 +19,10 @@ const busy = ref(false), outcome = ref<'' | 'pending' | 'acknowledged' | 'unknow
 const error = ref(''), readbackFailed = ref(false), result = ref<unknown>();
 const restorationFailed = ref(false), reviewed = ref(false);
 const storageKey = `commercial-preparation-spa:v1:${bootstrap.identity.binding.principal}`;
+const draftOwner = { principal: bootstrap.identity.binding.principal, boundary: bootstrap.identity.binding.boundary };
+const draftKey = `commercial-preparation-draft:v1:${draftOwner.boundary}:${draftOwner.principal}`;
+const renewing = ref(false), restoringDraft = ref(false);
+let draftChecked = false;
 const cancellation = new AbortController(); let active = true;
 type OperatorCommand = Extract<PreparationCommand, { kind: 'operator' }>;
 const operatorReview = shallowRef<{ command: OperatorCommand; data: NonNullable<typeof preparationData.value>; owner: ReturnType<typeof stamp> }>();
@@ -40,7 +44,7 @@ function currentOperatorReview() {
         && review.data.approvals.some(approval => approval.id === review.command.approval && approval.consumed) ? review : undefined;
 }
 const canRetireOperator = computed(() => !!currentOperatorReview());
-const locked = computed(() => busy.value || !!pending.value || readbackFailed.value || restorationFailed.value);
+const locked = computed(() => busy.value || renewing.value || restoringDraft.value || !!pending.value || readbackFailed.value || restorationFailed.value);
 const eligibleApprovals = computed(() => data.value.approvals.filter(approval => approval.active && approval.canAuthorize && !approval.consumed));
 const operatorPeople = computed(() => data.value.people.filter(person => person.kind !== 'founder'));
 function retain(command: PreparationCommand | undefined) {
@@ -71,15 +75,57 @@ try {
         if (!current) { if (!retain(candidate)) restorationFailed.value = true; else sessionStorage.removeItem(legacyKey); }
     }
 } catch { restorationFailed.value = true; error.value = copy('تعذر قراءة الطلب المحفوظ. احتُفظ به ولم يُستبدل أو يُرسل.', 'The retained request could not be read. It was preserved, not replaced or sent.'); }
-const canLeave = () => !pending.value || confirm(copy('يوجد طلب غير محسوم محفوظ. المغادرة لا تعيد إرساله. متابعة؟', 'An unresolved request is retained. Leaving does not replay it. Continue?'));
+const canLeave = () => renewing.value || !pending.value || confirm(copy('يوجد طلب غير محسوم محفوظ. المغادرة لا تعيد إرساله. متابعة؟', 'An unresolved request is retained. Leaving does not replay it. Continue?'));
 confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave);
-function beforeUnload(event: BeforeUnloadEvent) { if (pending.value) { event.preventDefault(); event.returnValue = ''; } }
+function beforeUnload(event: BeforeUnloadEvent) { if (pending.value && !renewing.value) { event.preventDefault(); event.returnValue = ''; } }
 window.addEventListener('beforeunload', beforeUnload);
 const clearPrivate = () => { operatorReview.value = undefined; operatorHistory.value = []; identity.value = { intentId: null, intentBinding: null }; Object.assign(form, { country_code: '', denomination_code: '', administrator: '', label: '', reason: '', expires_at: '' }); Object.assign(operator, { approval: '', operator: '', reason: '' }); Object.assign(delegation, { market_id: '', operator: '', reason: '', expires_at: '' }); pending.value = undefined; result.value = undefined; error.value = ''; };
 const closures = onClose(clearPrivate);
 onBeforeUnmount(() => { active = false; cancellation.abort(); clearPrivate(); closures.delete(clearPrivate); window.removeEventListener('beforeunload', beforeUnload); if (confirmDeparture.value === canLeave) confirmDeparture.value = () => true; });
+function humanDraft() {
+    return { version: 1, ...draftOwner, mode: form.mode, country_code: form.country_code, denomination_code: form.denomination_code, label: form.label, reason: form.reason };
+}
+async function renewLogin() {
+    if (!active || status.value !== 'ready' || busy.value || renewing.value || restoringDraft.value) return;
+    try {
+        const saved = JSON.stringify(humanDraft());
+        sessionStorage.setItem(draftKey, saved);
+        if (sessionStorage.getItem(draftKey) !== saved) throw Error('Draft retention was not confirmed');
+    } catch { error.value = copy('تعذر حفظ البيانات قبل تجديد الدخول.', 'Details could not be saved before renewing sign-in.'); return; }
+    renewing.value = true;
+    await logout();
+}
+async function restoreHumanDraft() {
+    if (draftChecked || !active || status.value !== 'ready') return;
+    draftChecked = true;
+    const captured = stamp();
+    try {
+        const saved = sessionStorage.getItem(draftKey);
+        if (!saved) return;
+        if (saved.length > 4096) throw Error('Invalid retained draft');
+        const draft = JSON.parse(saved);
+        const keys = ['version', 'principal', 'boundary', 'mode', 'country_code', 'denomination_code', 'label', 'reason'];
+        if (!draft || typeof draft !== 'object' || Array.isArray(draft) || Object.keys(draft).length !== keys.length
+            || !Object.keys(draft).every(key => keys.includes(key)) || draft.version !== 1
+            || draft.principal !== draftOwner.principal || draft.boundary !== draftOwner.boundary
+            || !['direct', 'delegated'].includes(draft.mode)
+            || !['country_code', 'denomination_code', 'label', 'reason'].every(key => typeof draft[key] === 'string' && draft[key].length <= (key === 'country_code' || key === 'denomination_code' ? 3 : 120))) throw Error('Invalid retained draft');
+        restoringDraft.value = true;
+        const current = await readPreparation(false, true);
+        if (!active || !owned(captured) || status.value !== 'ready' || !current || current !== preparationData.value || !current.canPrepare
+            || sessionStorage.getItem(draftKey) !== saved) return;
+        identity.value = { intentId: current.intentId, intentBinding: current.intentBinding };
+        Object.assign(form, { mode: draft.mode, label: draft.label, reason: draft.reason,
+            country_code: Object.hasOwn(current.countryOptions, draft.country_code) ? draft.country_code : '',
+            denomination_code: current.currencyOptions.includes(draft.denomination_code) ? draft.denomination_code : '' });
+        try { sessionStorage.removeItem(draftKey); }
+        catch { error.value = copy('تعذر حذف المسودة المستعادة من هذا التبويب. تخلص منها صراحة قبل المغادرة؛ قد تعود عند تحميل مستند آخر.', 'The restored draft could not be removed from this tab. Explicitly discard it before leaving; another document may restore it again.'); }
+    } catch { if (active && owned(captured)) error.value = copy('تعذر استعادة المسودة البشرية؛ لم تُستخدم البيانات المحفوظة. يمكنك التخلص منها صراحة.', 'The human draft could not be restored; retained data was not used. You can explicitly discard it.'); }
+    finally { if (active) restoringDraft.value = false; }
+}
+watch(status, () => { void restoreHumanDraft(); }, { immediate: true });
 async function review() {
-    if (busy.value) return;
+    if (busy.value || restoringDraft.value) return;
     const captured = stamp(), command = pending.value;
     busy.value = true; reviewed.value = false; operatorReview.value = undefined;
     try {
@@ -118,6 +164,8 @@ function archiveUncertainIntent() {
 }
 function reloadDraft() {
     if (locked.value || !confirm(copy('التخلص من المسودة وتحميل هوية العرض الحالية؟', 'Discard the draft and load the current displayed identity?'))) return;
+    try { sessionStorage.removeItem(draftKey); }
+    catch { error.value = copy('تعذر حذف المسودة المحفوظة؛ لم يُؤكد التخلص منها.', 'The retained draft could not be removed; discard was not confirmed.'); return; }
     identity.value = { intentId: data.value.intentId, intentBinding: data.value.intentBinding };
     Object.assign(form, { country_code: '', denomination_code: '', administrator: '', label: '', reason: '', expires_at: '' });
 }
@@ -169,7 +217,7 @@ function prepare() {
             <button v-if="canRetireOperator" @click="archiveRetiredOperator">{{ copy('إنهاء متابعة المشغّل — إبقاء النتيجة الأصلية غير محسومة', 'End operator follow-up — keep original outcome unknown') }}</button>
         </section>
         <details v-if="operatorHistory.length" data-operator-review-history><summary>{{ copy('سجل متابعة المشغّل المحلي — النتائج غير محسومة', 'Local operator follow-up history — outcomes unknown') }}</summary><article v-for="entry in operatorHistory" :key="operatorArchiveKey(entry.command)"><p>{{ copy('استهلاك الاعتماد لا يثبت نجاح التفويض الأصلي.', 'Consumed approval does not prove original authorization succeeded.') }}</p><pre>{{ entry }}</pre></article></details>
-        <p v-if="!data.freshAuthentication">{{ copy('يلزم دخول حديث للتنفيذ.', 'Fresh authentication is required to execute.') }} <button :disabled="busy" @click="logout()">{{ copy('تجديد الدخول', 'Renew sign-in') }}</button></p>
+        <p v-if="!data.freshAuthentication || pending">{{ copy('يلزم دخول حديث للتنفيذ. تجديد الدخول يحفظ حقول السوق البشرية فقط دون صلاحيات.', 'Fresh authentication is required to execute. Renewal retains only human market fields, not authority.') }} <button :disabled="busy || renewing || restoringDraft" @click="renewLogin">{{ copy('تجديد الدخول', 'Renew sign-in') }}</button></p>
         <section v-if="data.canPrepare">
             <h2>{{ copy('إضافة سوق', 'Add market') }}</h2>
             <form data-commercial-prepare @submit.prevent="prepare"><fieldset :disabled="locked">

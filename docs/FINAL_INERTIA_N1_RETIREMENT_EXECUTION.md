@@ -1,6 +1,6 @@
 # Final Inertia/N1 runtime retirement — Slice 7
 
-**Current status: READY FOR INDEPENDENT REVIEW — LOCAL CONFIGURATION ONLY.** The Owner explicitly limits local acceptance to the documented Chromium 145 configuration; no production, other-browser or real-device acceptance. Earlier checkpoint/blocker narratives below are retained as historical evidence and superseded by **Resumed closure and final local gates** at the end. No historical failed run is rewritten as successful.
+**Current status: READY FOR TARGETED INDEPENDENT RE-REVIEW — S7-R01.** The reviewed checkpoint received S7-R01/P2; its targeted correction and evidence are recorded at the end. This is not executor acceptance of Slice 7. The Owner limits local evidence to the documented Chromium 145 configuration; no production, other-browser or real-device acceptance. Earlier readiness/blocker narratives remain historical, not the current review verdict. No historical failed run is rewritten as successful.
 
 ## Baseline and acceptance contract
 
@@ -296,3 +296,68 @@ All **401 checked production/runtime/build inputs** still match the accepted res
 All task-started database/Redis/PHP/browser/proxy processes are stopped before handoff. Independent local follow-up commit and its exact SHA/clean Git status are reported in the handoff; the commit does not retroactively change test provenance. No Push, PR, new CI run, Merge, Deployment, production enablement, worktree/evidence deletion or next slice.
 
 **READY FOR INDEPENDENT REVIEW — LOCAL CONFIGURATION ONLY**
+
+## S7-R01 — human market draft renewal remediation — 2026-10-19
+
+### Baseline, cause and precise production scope
+
+Preflight: branch `codex/ba-inertia-retirement-007`, clean working tree, HEAD **`100883f8c6fb79916d2914aa0fdc56d8223723f4`**, matching the independently reviewed candidate. S7-R01 applies unchanged. Historical `CommercialMarketPreparation.vue` at `3c82c41` saved `country_code`, `denomination_code`, `label`, `reason` before logout, keyed by user, and restored human text/valid current options. It used no stored authentication authority. `PreparationView.vue` instead called `logout()` directly; its retained-command contract did not replace this legitimate unsent-draft capability. Historical case 26 was incorrectly classified RETIRE.
+
+Only production change: `resources/js/commercial/PreparationView.vue`. No Laravel controller/authority, SessionAuthority, SQL/RLS, commercial writer, transport, identity runtime, dependency or PostgreSQL deadline is changed. Current single SPA and existing logout/login/admission/read contracts remain owners. INV-004 canonical ownership, INV-005 honest outcome states and INV-007 decision/authority separation are preserved: retained text cannot authorize an effect.
+
+### Draft lifecycle and identity boundary
+
+- The explicit renewal action serializes only the four human fields, UI `mode`, schema version and Principal/Boundary metadata under `commercial-preparation-draft:v1:<boundary>:<principal>` in `sessionStorage`. The separate existing `commercial-preparation-spa` pending/UNKNOWN keys are unchanged. No intent/binding, command, revision, receipt, credential, grant, fresh-authentication or passkey evidence enters the human record.
+- `setItem` and matching readback must succeed before existing logout starts. Storage failure leaves the live fields and displays an error without starting renewal. Inflight writes/restoration cannot race renewal; a confirmed renewal departure avoids the unrelated pending-command departure prompt without retrying that command.
+- The component does not read/apply the record before the current document is ready. It then makes the existing real witnessed `readPreparation(false, true)` and requires current ownership, active component, ready status, identical admitted projection, `canPrepare`, and an unchanged saved record before publishing fields. A stale, denied, closed or unmounted completion cannot publish or consume it.
+- Record keys, owner, version, mode, string types and lengths are checked strictly; corrupt/extra-authority-bearing records are not used and remain available for explicit discard. Country/currency are filtered against the current server options; removed choices become empty, not a guessed default. Intent/binding for a later explicit command come only from the current read.
+- Successful application removes the saved record; explicit existing draft discard also removes it before clearing fields. Delete failure is surfaced, not called consumption. A document-local one-shot check prevents repeated application over new edits in the same document. Another document may restore the retained record if deletion failed; the UI explicitly warns of this limitation. No physical JavaScript memory-erasure guarantee is claimed.
+
+### Red/green and final required gates
+
+Before the production correction, the new actual-SFC focused tests produced **9 FAIL / 2 PASS** in `s7-r01-red.log`. The positive renewal/restoration, storage-failure, admission/read, consumption and UNKNOWN-isolation assertions failed; already-absent cross-owner/corrupt restoration negatives passed. This is retained as a failed run, not rewritten. Final actual-component suite has **30 PASS**: original 17 preparation cases plus **13** targeted cases (T1–T10, deletion-failure once-per-document behavior, latest admitted intent, delegated label/note without administrator/expiry). No assertion was weakened to obtain green.
+
+| Gate | Executed result |
+| --- | --- |
+| Actual preparation + transport + router + auth closure focus | 56 PASS before two additional final preparation cases; final official suites below include all 13 new cases |
+| `scripts/builderad.ps1 npm test` | **213 PASS / 0 FAIL**, `s7-r01-final-frontend.log` |
+| `scripts/builderad.ps1 npm run test:spa-foundation` | **212 PASS / 0 FAIL**, `s7-r01-final-spa.log` |
+| `scripts/builderad.ps1 npm run build` | PASS: `vue-tsc` and clean production Vite build, `s7-r01-build.log` |
+| Runtime source/assets guard and its negative/lock tests | PASS; **2/2** guard tests |
+| Inertia ceiling and runtime inventory/check | PASS: **173 registered routes / 0 Inertia displays / 120 frontend modules**; generated diff only new discovered testLeads and its rendered references |
+| Existing PHP projection/witness prerequisites | **2 PASS / 37 assertions**, official isolated acceptance runner; no new PHP code or additional unrelated PHP suite |
+| Actual targeted Chromium | **3 PASS / 0 errors / 0 HTTP 5xx**: real UV setup plus the two journeys below |
+
+### Actual Chromium journey, not mocked authentication
+
+Official guarded `Test-GoalsSpa.ps1 -Phase Acceptance -BrowserSelection auth -TestFilter test_spa_preparation_ -CreateBrowserFixture -ReuseRun <recorded owned run>`, with `INTERNAL_OPERATIONS_SLICE5=enabled`, `INTERNAL_OPERATIONS_CASES=draft-renewal`. PostgreSQL 18 disposable database/three roles/RLS, dedicated Redis 6397, actual Laravel HTTP and production SPA assets; only synthetic users, virtual UV keys and isolated mail. Runner reported **STOPPED / EXIT=0**.
+
+1. Account A with stale fresh authentication enters **JO / USD / Review retained human note**, selects renewal, receives actual HTTP 200 logout, and reaches a new guest login document. Exact saved record has only permitted fields/metadata. Actual virtual-UV login admits A in a new internal document. A held real commercial GET proves no private draft display or early consumption while admission/read is incomplete. Releasing it restores the choices/note, consumes storage, and reload does not reapply. Existing UNKNOWN key remains absent; **0 commercial writes** and unchanged server approval/grant/market counts.
+2. Account B is enrolled with two real virtual-UV ceremonies and existing isolated staff/founder fixture, not a mocked authority result. A retains a second human draft through actual logout; the same original tab then signs in using B's actual resident credential. Laravel admits B; B's commercial UI has empty human fields, A's record remains unconsumed under A's key, and **0 commercial writes** / unchanged commercial server counts.
+
+Both journeys use Chromium **145.0.7632.6**, local HTTP configuration only. Served-byte verification PASS: **669 forwarded / 636 browser-observed asset responses**. No page errors or HTTP 5xx. No real device, native cached-frame restoration or production environment is accepted.
+
+### Fingerprints, exact-state attribution and prior evidence
+
+Artifacts under `storage/framework/testing/`:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `s7-r01-red.log` | `80246300abda3116fc250df09dff7693a47db23529d1a2fa199c51c40527ec32` |
+| `s7-r01-final-browser-results.json` | `316e031cc6488b34c4facdb5de86b12960db724386240a3a27d5a3f7344374ea` |
+| `s7-r01-final-source-manifest.json` | `d830b16424d2e6ebf20eefa9e6fb082b12d35447ae55e7a48e1cf05cbbd469b0` |
+| `s7-r01-final-frontend.log` | `b886c206402ec7b1d1d2ebc008042dd1482a65ffb5a628e155160baeb080123e` |
+| `s7-r01-final-spa.log` | `3d23e2f834a14f3b22f748134f8681d6333948f902c178e247f0c2a8515322ec` |
+| Production `PreparationView.vue` | `39010070ca6a47e035705704e37f2b327cce019ca6e31dec24d033eb83dfa787` |
+| Targeted `commercial-draft-renewal-browser.mjs` | `d754f4cb223fe3b6d104e1d1b4749a2d111bdbc61b535d81d9075bcb60e3c19e` |
+| Production `assets/main-BrTLNuYj.js` | `39cc0a177c701feacb13469867c06e3fd8d0d0f2b28efa1fcf1ebadcc861e4ac` |
+
+`s7-r01-final-source-unchanged.txt` is **True**. Browser evidence identifies the reviewed HEAD plus its exact dirty-source manifest, not falsely a clean post-commit run. **404** production/runtime/build/targeted-harness inputs match that manifest with **0 mismatches**. After the browser run, two additional SFC cases and documentation/generated testLeads were added; official final suites then verified the final test file. Application/build/browser-harness bytes were not changed after their proof. The earlier non-final `s7-r01-browser-results.json` copy was made before runner completion from the prior reused run; it is **not S7-R01 execution evidence**. Only the explicitly final artifacts above are claimed here; archives remain intact.
+
+Earlier browser evidence does **not** cover this newly restored storage/renewal path. The two new journeys own that proof. Previously demonstrated 15-case BFCache exclusion retains only its exact old-path/configuration meaning; it is not promoted into acceptance of cached restoration with this new draft or physical-device confidentiality. New logout clears/unmounts private fields, admission gates their next publication, and the tested new-document paths are covered above. Native pre-JavaScript cached-frame behavior remains UNVERIFIED/outside the Owner's local acceptance scope. Unchanged PHP authority/contention evidence is reused, not rerun or presented as a new comprehensive aggregate. No central Foundation, publication or Slice 7 self-acceptance.
+
+### Handoff
+
+S7-R01 implementation and focused evidence are ready for the independent reviewer to decide closure. The incorrect historical case-26 retirement is replaced, not waived. A–D runtime/dependency/display removal remains protected by the final guards; affected E/F identity/presentation/build evidence is updated as scoped above. All task-owned database/Redis/PHP/browser/proxy processes are stopped. The independent local remediation commit and final clean Git state are supplied with the handoff. No Push, PR, Merge, Deployment, worktree cleanup or next slice.
+
+**READY FOR TARGETED INDEPENDENT RE-REVIEW**

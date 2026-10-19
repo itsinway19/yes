@@ -5,8 +5,8 @@ import { messages } from '../../resources/js/localization/messages.ts';
 
 export async function runAuthEntryCases({ browser, check, meta, get, post, command, fixture, result, run, until, held }) {
     const selected = process.env.INTERNAL_OPERATIONS_CASES;
-    if (selected && !['business', 'services', 'commercial', 'operator-followup'].includes(selected)) throw Error('Unknown operations proof selection');
-    const verify = (name, mode, execute) => !selected || name.startsWith('A real signed') || (!['commercial', 'operator-followup'].includes(selected) && name.startsWith(selected === 'business' ? 'B business' : 'C ')) ? check(name, mode, execute) : undefined;
+    if (selected && !['business', 'services', 'commercial', 'operator-followup', 'draft-renewal'].includes(selected)) throw Error('Unknown operations proof selection');
+    const verify = (name, mode, execute) => !selected || name.startsWith('A real signed') || (!['commercial', 'operator-followup', 'draft-renewal'].includes(selected) && name.startsWith(selected === 'business' ? 'B business' : 'C ')) ? check(name, mode, execute) : undefined;
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await context.newPage(); page.setDefaultTimeout(20000); page.on('dialog', dialog => dialog.accept());
     page.on('pageerror', error => result.errors.push({ mode: 'operations', message: error.message, stack: error.stack }));
@@ -280,6 +280,10 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
         if (selected === 'operator-followup') {
             const { runOperatorFollowup } = await import('./commercial-operator-followup-browser.mjs');
             await runOperatorFollowup({ browser, page, ready, check, get, post, command, result });
+        }
+        if (selected === 'draft-renewal') {
+            const { runDraftRenewal } = await import('./commercial-draft-renewal-browser.mjs');
+            await runDraftRenewal({ browser, page, ready, check, meta, command, fixture, result, cdp, authenticator: currentAuthenticator });
         }
     } finally { await page.unrouteAll({ behavior: 'ignoreErrors' }); await context.close(); }
 }

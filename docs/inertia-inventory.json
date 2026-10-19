@@ -1548,6 +1548,7 @@
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
         "tests/Feature/Security/InertiaHistorySecurityTest.php",
         "tests/SA01BrowserFixture.php",
+        "tests/Support/commercial-draft-renewal-browser.mjs",
         "tests/Support/commercial-operator-followup-browser.mjs",
         "tests/Support/commercial-spa-browser.mjs",
         "tests/Support/internal-operations-browser.mjs"
@@ -1615,6 +1616,7 @@
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
         "tests/Feature/Security/InertiaHistorySecurityTest.php",
         "tests/SA01BrowserFixture.php",
+        "tests/Support/commercial-draft-renewal-browser.mjs",
         "tests/Support/commercial-operator-followup-browser.mjs",
         "tests/Support/commercial-spa-browser.mjs",
         "tests/Support/internal-operations-browser.mjs"
@@ -4421,7 +4423,8 @@
         "tests/auth-entry-spa.test.mjs",
         "tests/Feature/Auth/LogoutResponseCookieTest.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
-        "tests/Feature/Security/PasskeyAssertionTest.php"
+        "tests/Feature/Security/PasskeyAssertionTest.php",
+        "tests/Support/commercial-draft-renewal-browser.mjs"
       ]
     },
     {
@@ -6457,6 +6460,7 @@
         "tests/Support/auth-entry-browser.mjs",
         "tests/Support/business-context-spa-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
+        "tests/Support/commercial-draft-renewal-browser.mjs",
         "tests/Support/commercial-operator-followup-browser.mjs",
         "tests/Support/CurrentIntentUiFixture.php",
         "tests/Support/DeclaredTargetMarketsDurabilityProof.php",
@@ -6646,6 +6650,7 @@
         "tests/Support/account-spa-browser.mjs",
         "tests/Support/auth-entry-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
+        "tests/Support/commercial-draft-renewal-browser.mjs",
         "tests/Support/goals-spa-browser.mjs",
         "tests/Support/goals-spa-closure.mjs",
         "tests/Support/inertia-official-browser.mjs",
@@ -8239,6 +8244,7 @@
       "testLeads": [
         "tests/account-spa.test.mjs",
         "tests/Support/account-spa-browser.mjs",
+        "tests/Support/commercial-draft-renewal-browser.mjs",
         "tests/Support/commercial-operator-followup-browser.mjs",
         "tests/Support/internal-identity-browser.mjs",
         "tests/Support/internal-operations-browser.mjs"
