@@ -5,7 +5,7 @@ namespace App\Providers\Ads;
 use InvalidArgumentException;
 use LogicException;
 
-/** Server-only material; never an Inertia/model/queue payload. */
+/** Server-only material; never a browser/model/queue payload. */
 final readonly class ProviderCredentials
 {
     public function __construct(#[\SensitiveParameter] private array $values)

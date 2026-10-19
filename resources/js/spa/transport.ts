@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import type { IdentityMetadata } from '../identityProtocol';
+import type { IdentityMetadata } from './identity';
 import { remainingSessionLease } from '../sessionLease';
 
 export const bootstrap = JSON.parse((document.getElementById('application-bootstrap') ?? document.getElementById('goals-bootstrap'))!.textContent!) as { identity: IdentityMetadata; locale: 'ar' | 'en'; application?: boolean; staffEnrollment?: boolean };

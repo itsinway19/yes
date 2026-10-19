@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Inertia\Inertia;
 
 /** Request/document binding layered over, never replacing, canonical admission. */
 final class IdentityDocument
@@ -80,11 +79,6 @@ final class IdentityDocument
             }
             if ($lineage === null) {
                 $request->session()->put(['builderad.identity_lineage' => $selected, 'builderad.identity_epoch' => (int) $row->epoch]);
-                // A new anonymous document after credential loss or retirement
-                // cannot retain history belonging to the previous principal.
-                if ((int) $row->epoch > 0) {
-                    Inertia::clearHistory();
-                }
             }
             $lineage = $selected;
         }
@@ -127,7 +121,6 @@ final class IdentityDocument
         Auth::guard($this->boundary($request) === 'internal' ? 'internal' : 'web')->logoutCurrentDevice();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        Inertia::clearHistory();
         if ($row) {
             $request->session()->put(['builderad.identity_lineage' => $row->lineage_id, 'builderad.identity_epoch' => (int) $row->epoch]);
         }

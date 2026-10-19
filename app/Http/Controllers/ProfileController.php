@@ -16,7 +16,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Redirect;
-use Inertia\Inertia;
 
 class ProfileController extends Controller
 {
@@ -67,7 +66,6 @@ class ProfileController extends Controller
         });
         if ($changed) {
             app(IdentityLifecycle::class)->expire($request);
-            Inertia::clearHistory();
 
             return Redirect::route('login')->with('status', __('security.email.reauthenticate'));
         }

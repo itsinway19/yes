@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
 use Laravel\Passkeys\Actions\GenerateVerificationOptions;
 use Laravel\Passkeys\Http\Requests\PasskeyVerificationRequest;
 use Laravel\Passkeys\Passkeys;
@@ -121,7 +120,6 @@ final class PasskeySessionController extends Controller
         }
 
         PasskeyCeremonyTrace::record($request, 'login_assertion_accepted');
-        Inertia::clearHistory();
 
         return $result;
     }

@@ -176,6 +176,36 @@ export async function runCommercialCases({ page, ready, check, get, post, comman
         const recovered = await recovery; assert.equal(recovered.status(), 200); assert.equal((await recovered.json()).state, 'acknowledged');
         return { actualRegistration: true, exactConfiguration: configuration, contextRead: true, auditCustody: 'acknowledged' };
     });
+    await check('B definitive stale-revision 409 waits for an actual admitted read and explicit review without replay', 'commercial', async () => {
+        await nextCommand(); await page.locator('[data-primary-availability]').click();
+        const originalRevision = Number(await page.locator('#commercial-expected_revision').inputValue());
+        const competitor = await post(page, '/internal/commercial/assignability', { command_id: crypto.randomUUID(), market_id: market, configuration_id: null, expected_revision: originalRevision, reason_code: 'commercial_assignability' });
+        assert.equal(competitor.status, 200, JSON.stringify(competitor));
+        const newRevision = competitor.body.revision; assert.equal(newRevision, originalRevision + 1);
+        const heldRead = 'commercial-definitive-conflict-read'; let reads = 0, writes = 0;
+        await page.route('**/internal/commercial', async route => {
+            if (route.request().method() === 'GET' && route.request().headers().accept === 'application/json' && !route.request().headers()['x-builderad-witness'] && reads++ === 0)
+                await route.continue({ headers: { ...route.request().headers(), 'X-Proof-Hold': heldRead } });
+            else await route.continue();
+        });
+        await page.route('**/internal/commercial/assignability', route => { writes++; return route.continue(); });
+        try {
+            const response = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/internal/commercial/assignability');
+            await page.getByRole('button', { name: 'تحديث الإتاحة', exact: true }).click();
+            const rejected = await response; assert.equal(rejected.status(), 409); assert.equal(rejected.request().postDataJSON().expected_revision, originalRevision);
+            await until(() => held.has(heldRead)); assert.equal(held.get(heldRead).row.status, 200);
+            const review = page.locator('[data-conflict-review]'); assert.equal(await review.count(), 0); assert.equal(writes, 1);
+            held.get(heldRead).deliver(); held.delete(heldRead); await review.waitFor();
+            assert.equal(await page.locator('#commercial-expected_revision').inputValue(), String(originalRevision));
+            assert.equal(writes, 1); await review.click();
+            assert.equal(await page.locator('#commercial-expected_revision').inputValue(), String(newRevision));
+            assert.equal(writes, 1);
+            await page.locator('#commercial-configuration_id').selectOption(configuration);
+            await uiCommand('/internal/commercial/assignability', () => page.getByRole('button', { name: 'تحديث الإتاحة', exact: true }).click());
+            assert.equal(writes, 2);
+            return { originalRevision, newRevision, realLaravel409: true, heldActualRead: true, automaticReplay: false, explicitNewCommand: true };
+        } finally { await page.unroute('**/internal/commercial'); await page.unroute('**/internal/commercial/assignability'); }
+    });
     await check('C operational navigation and Chromium Back Forward preserve document ownership across commercial displays', 'commercial', async () => {
         const identityBefore = await page.locator('#application-bootstrap').textContent();
         await page.getByRole('link', { name: 'العملاء', exact: true }).click(); await ready('[data-customers]');

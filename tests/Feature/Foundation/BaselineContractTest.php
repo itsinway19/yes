@@ -56,8 +56,8 @@ class BaselineContractTest extends TestCase
             config_path('session.php') => "env('APP_NAME', 'Builderad')).'-session'",
             config_path('mail.php') => "env('APP_NAME', 'Builderad')",
             config_path('logging.php') => "env('APP_NAME', 'Builderad')",
-            resource_path('js/app.ts') => "import.meta.env.VITE_APP_NAME || 'Builderad'",
-            resource_path('views/app.blade.php') => "config('app.name', 'Builderad')",
+            resource_path('js/spa/main.ts') => "h('strong', 'BuilderAd')",
+            resource_path('views/spa.blade.php') => '<title>BuilderAd</title>',
         ];
 
         foreach ($sources as $path => $expected) {
@@ -89,15 +89,21 @@ class BaselineContractTest extends TestCase
         $this->assertStringContainsString('PostgreSQL 18.x only', $readme);
     }
 
-    public function test_server_and_client_inertia_adapters_use_major_version_three(): void
+    public function test_removed_server_and_client_runtime_dependencies_cannot_reappear(): void
     {
-        $server = InstalledVersions::getPrettyVersion('inertiajs/inertia-laravel');
-        $this->assertNotNull($server);
-        $this->assertStringStartsWith('v3.', $server);
+        $this->assertFalse(InstalledVersions::isInstalled('inertiajs/inertia-laravel'));
 
         $package = json_decode(file_get_contents(base_path('package-lock.json')), true, flags: JSON_THROW_ON_ERROR);
-        $this->assertStringStartsWith('3.', $package['packages']['node_modules/@inertiajs/vue3']['version']);
-        $this->assertStringStartsWith('3.', $package['packages']['node_modules/@inertiajs/core']['version']);
+        foreach (array_keys($package['packages']) as $path) {
+            $this->assertStringNotContainsString('@inertiajs/', $path);
+        }
+        $composer = json_decode(file_get_contents(base_path('composer.lock')), true, flags: JSON_THROW_ON_ERROR);
+        foreach ([...$composer['packages'], ...$composer['packages-dev']] as $dependency) {
+            $this->assertStringNotContainsString('inertia', strtolower($dependency['name']));
+        }
+        $this->assertFileDoesNotExist(base_path('compat/inertia-n1/build.mjs'));
+        $this->assertFileDoesNotExist(resource_path('js/app.ts'));
+        $this->assertStringContainsString("input: 'resources/js/spa/main.ts'", file_get_contents(base_path('vite.config.js')));
     }
 
     public function test_builderad_configuration_fallbacks_are_postgresql_and_redis(): void
