@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Redis;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Predis\Connection\Resource\Exception\StreamInitException;
 use RuntimeException;
+use Symfony\Component\Process\InputStream;
 use Symfony\Component\Process\Process;
 use Tests\Support\IdentityTransitionFixture;
 use Tests\TestCase;
@@ -318,40 +319,55 @@ class IdentityTransitionTest extends TestCase
         $this->evidence('migration-permissions', ['canonical_fingerprint_before' => $fingerprint, 'canonical_fingerprint_after' => $this->canonicalFingerprint(), 'runtime_publication' => false, 'authority_delete' => false]);
     }
 
-    public function test_same_base_race_observes_real_row_blocker_then_rejects_loser_before_authentication(): void
+    public static function workerPreparationDelays(): array
+    {
+        return ['immediate' => [0], 'beyond transaction idle limit' => [16000]];
+    }
+
+    #[DataProvider('workerPreparationDelays')]
+    public function test_same_base_race_observes_real_row_blocker_then_rejects_loser_before_authentication(int $preparationDelayMilliseconds): void
     {
         $user = User::factory()->create();
         $lineage = $this->transitions->create('advertiser');
         $request = IdentityTransitionFixture::request();
-        $worker = null;
-        $proof = [];
-        Event::listen(IdentitySessionPrepared::class, function () use ($lineage, $user, &$worker, &$proof): void {
-            $holder = (int) DB::connection('pgsql_authority')->selectOne('SELECT pg_backend_pid() AS pid')->pid;
-            $worker = $this->worker($lineage, $user->email);
-            $this->waitOutput($worker, 'ATTEMPT');
-            preg_match('/BOOTED (\d+)/', $worker->getOutput(), $match);
-            $pid = (int) $match[1];
-            $deadline = microtime(true) + 10;
-            do {
-                $blocked = DB::connection('pgsql_migrations')->selectOne('SELECT ? = ANY(pg_blocking_pids(?)) AS observed', [$holder, $pid])->observed;
-                if ($blocked) {
-                    break;
-                }
-                $this->assertTrue($worker->isRunning(), 'Worker exited before contention.');
-                usleep(10000);
-            } while (microtime(true) < $deadline);
-            $this->assertTrue($blocked, 'The real lineage row blocker was not observed.');
-            $proof = ['holder_pid' => $holder, 'waiter_pid' => $pid, 'actual_blocker_observed' => true];
-        });
+        $input = new InputStream;
+        $preparationStarted = hrtime(true);
+        $worker = $this->worker($lineage, $user->email, 'race', $input, $preparationDelayMilliseconds);
+        $proof = ['worker_preparation_delay_ms' => $preparationDelayMilliseconds];
         try {
+            $this->waitOutput($worker, 'READY');
+            $proof['worker_preparation_elapsed_ms'] = (hrtime(true) - $preparationStarted) / 1000000;
+            $this->assertGreaterThanOrEqual($preparationDelayMilliseconds, $proof['worker_preparation_elapsed_ms']);
+            $this->assertSame(0, DB::connection('pgsql_authority')->transactionLevel());
+            $proof['worker_ready_before_publish'] = true;
+            Event::listen(IdentitySessionPrepared::class, function () use ($worker, $input, &$proof): void {
+                $holder = (int) DB::connection('pgsql_authority')->selectOne('SELECT pg_backend_pid() AS pid')->pid;
+                $input->write("CONTEND\n");
+                $input->close();
+                $this->waitOutput($worker, 'ATTEMPT');
+                preg_match('/BOOTED (\d+)/', $worker->getOutput(), $match);
+                $pid = (int) $match[1];
+                $deadline = microtime(true) + 10;
+                do {
+                    $blocked = DB::connection('pgsql_migrations')->selectOne('SELECT ? = ANY(pg_blocking_pids(?)) AS observed', [$holder, $pid])->observed;
+                    if ($blocked) {
+                        break;
+                    }
+                    $this->assertTrue($worker->isRunning(), 'Worker exited before contention.');
+                    usleep(10000);
+                } while (microtime(true) < $deadline);
+                $this->assertTrue($blocked, 'The real lineage row blocker was not observed.');
+                $proof += ['holder_pid' => $holder, 'waiter_pid' => $pid, 'actual_blocker_observed' => true];
+            });
             $this->transitions->login($request, $lineage, 'advertiser', 0, bin2hex(random_bytes(32)), fn () => IdentityTransitionFixture::authenticate($request, $user->email));
             $this->assertSame(0, $worker->wait());
             $this->assertStringContainsString('STALE AUTH_CALLS=0', $worker->getOutput());
             $this->assertSame(1, DB::table('security_sessions')->count());
             $proof['pass'] = true;
         } finally {
-            $this->evidence('same-epoch-race', [...$proof, 'worker_output' => $worker?->getOutput()]);
-            if ($worker?->isRunning()) {
+            $input->close();
+            $this->evidence('same-epoch-race-'.$preparationDelayMilliseconds, [...$proof, 'worker_output' => $worker->getOutput()]);
+            if ($worker->isRunning()) {
                 $worker->stop();
             }
         }
@@ -408,13 +424,17 @@ class IdentityTransitionTest extends TestCase
         }
     }
 
-    private function worker(string $lineage, string $email, string $mode = 'race'): Process
+    private function worker(string $lineage, string $email, string $mode = 'race', ?InputStream $input = null, int $preparationDelayMilliseconds = 0): Process
     {
         $worker = new Process([PHP_BINARY, base_path('tests/Support/IdentityTransitionWorker.php')], base_path(), [
             'P2A_LINEAGE' => $lineage, 'P2A_NONCE' => bin2hex(random_bytes(32)),
             'P2A_EMAIL' => $email, 'P2A_WORKER_MODE' => $mode,
+            'P2A_PREPARATION_DELAY_MS' => (string) $preparationDelayMilliseconds,
         ]);
         $worker->setTimeout(25);
+        if ($input) {
+            $worker->setInput($input);
+        }
         $worker->start();
 
         return $worker;

@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import { runAuthEntryCases as runExistingAuthentication } from './auth-entry-browser.mjs';
 
 export async function runAuthEntryCases(harness) {
+    if (process.env.RETIREMENT_RESTORATION_ONLY === 'enabled') {
+        const { runRestorationControls } = await import('./runtime-retirement-restoration.mjs');
+        return runRestorationControls(harness);
+    }
     const { browser, check, get, command, fixture, result, until, held } = harness;
     const origin = 'http://localhost:8138';
     async function ready(page, selector = '[data-account-kind="profile"]') {

@@ -90,7 +90,6 @@
       },
       "testLeads": [
         "tests/BB2SyntheticRuntimeWorker.php",
-        "tests/commercial-operator.test.mjs",
         "tests/current-intent-interaction.test.mjs",
         "tests/CurrentIntentCommandWorker.php",
         "tests/Feature/AdvertiserGoalPreferencesTest.php",
@@ -123,6 +122,7 @@
         "tests/SA01BrowserFixture.php",
         "tests/SessionTouchCommandWorker.php",
         "tests/spa-router.test.mjs",
+        "tests/spa-transport.test.mjs",
         "tests/Support/account-spa-browser.mjs",
         "tests/Support/advertiser-goals-browser.mjs",
         "tests/Support/advertiser-goals-server.php",
@@ -147,6 +147,7 @@
         "tests/Support/ObjectPurposeTestCase.php",
         "tests/Support/ProtectedClientStateFixture.php",
         "tests/Support/runtime-retirement-browser.mjs",
+        "tests/Support/runtime-retirement-restoration.mjs",
         "tests/Support/sources-spa-fixture.php",
         "tests/target-markets-interaction.test.mjs",
         "tests/TestCase.php",
@@ -925,7 +926,6 @@
         "tests/Feature/Security/IdentityRenewalTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
         "tests/goals-api-client.test.mjs",
-        "tests/identity-protocol.test.mjs",
         "tests/Support/goals-spa-browser.mjs",
         "tests/Support/goals-spa-closure.mjs",
         "tests/Support/inertia-n1-browser.mjs"
@@ -1128,7 +1128,7 @@
       "testLeads": [
         "tests/Feature/Security/IdentityRenewalTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
-        "tests/identity-protocol.test.mjs",
+        "tests/spa-transport.test.mjs",
         "tests/Support/goals-spa-browser.mjs",
         "tests/Support/goals-spa-closure.mjs"
       ]
@@ -1232,6 +1232,7 @@
         "tests/Support/goals-spa-restoration.mjs",
         "tests/Support/inertia-n1-browser.mjs",
         "tests/Support/runtime-retirement-browser.mjs",
+        "tests/Support/runtime-retirement-restoration.mjs",
         "tests/Support/sources-spa-browser.mjs"
       ]
     },
@@ -1291,6 +1292,7 @@
         "tests/Support/goals-spa-restoration.mjs",
         "tests/Support/inertia-n1-browser.mjs",
         "tests/Support/runtime-retirement-browser.mjs",
+        "tests/Support/runtime-retirement-restoration.mjs",
         "tests/Support/sources-spa-browser.mjs"
       ]
     },
@@ -1335,9 +1337,7 @@
         ]
       },
       "migration": null,
-      "testLeads": [
-        "tests/identity-protocol.test.mjs"
-      ]
+      "testLeads": []
     },
     {
       "method": "GET|HEAD",
@@ -1451,7 +1451,6 @@
         "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
       },
       "testLeads": [
-        "tests/commercial-operator.test.mjs",
         "tests/Feature/InternalOperationsSpaTest.php",
         "tests/Feature/Security/InternalAuthorityTest.php",
         "tests/internal-operations-spa.test.mjs",
@@ -3875,8 +3874,7 @@
       },
       "migration": null,
       "testLeads": [
-        "tests/Feature/Security/IdentityRenewalTest.php",
-        "tests/identity-protocol.test.mjs"
+        "tests/Feature/Security/IdentityRenewalTest.php"
       ]
     },
     {
@@ -4261,7 +4259,8 @@
       },
       "migration": null,
       "testLeads": [
-        "tests/Feature/Localization/LocaleTest.php"
+        "tests/Feature/Localization/LocaleTest.php",
+        "tests/spa-locale.test.mjs"
       ]
     },
     {
@@ -4362,7 +4361,7 @@
         "tests/Feature/Security/InternalAuthorityTest.php",
         "tests/Feature/Security/PasskeyAssertionTest.php",
         "tests/Feature/Security/ProductionPasskeyTest.php",
-        "tests/identity-protocol.test.mjs",
+        "tests/spa-transport.test.mjs",
         "tests/Support/internal-identity-browser.mjs",
         "tests/Support/logout-cookie-browser.mjs"
       ]
@@ -4420,7 +4419,6 @@
       "migration": null,
       "testLeads": [
         "tests/auth-entry-spa.test.mjs",
-        "tests/commercial-operator.test.mjs",
         "tests/Feature/Auth/LogoutResponseCookieTest.php",
         "tests/Feature/Commercial/CommercialMarketPreparationTest.php",
         "tests/Feature/Security/PasskeyAssertionTest.php"
@@ -6322,9 +6320,8 @@
         "tests/Feature/Security/ProductionIdentityTest.php",
         "tests/Feature/Security/SecurityMailTest.php",
         "tests/Feature/WorkspaceSpaIntegrationTest.php",
-        "tests/identity-protocol.test.mjs",
-        "tests/Support/inertia-n1-browser.mjs",
-        "tests/target-markets-interaction.test.mjs"
+        "tests/spa-locale.test.mjs",
+        "tests/Support/inertia-n1-browser.mjs"
       ]
     },
     {
@@ -6420,7 +6417,6 @@
       },
       "testLeads": [
         "tests/auth-entry-spa.test.mjs",
-        "tests/commercial-operator.test.mjs",
         "tests/Feature/ArchitectureSourceOptionalityTest.php",
         "tests/Feature/Auth/AuthenticationTest.php",
         "tests/Feature/Auth/PasswordResetTest.php",
@@ -6451,10 +6447,10 @@
         "tests/Feature/Security/SecurityMailTest.php",
         "tests/Feature/Security/SessionAuthorityTest.php",
         "tests/Feature/Security/WorkspaceCreationTest.php",
-        "tests/identity-protocol.test.mjs",
         "tests/localization.test.mjs",
         "tests/passkey-ceremony.test.mjs",
         "tests/SA01BrowserFixture.php",
+        "tests/spa-transport.test.mjs",
         "tests/Support/account-spa-browser.mjs",
         "tests/Support/advertiser-goals-browser.mjs",
         "tests/Support/AdvertiserGoalsUiFixture.php",
@@ -6484,6 +6480,7 @@
         "tests/Support/ProductionIdentityWorker.php",
         "tests/Support/ProtectedClientStateFixture.php",
         "tests/Support/runtime-retirement-browser.mjs",
+        "tests/Support/runtime-retirement-restoration.mjs",
         "tests/Support/sources-spa-browser.mjs",
         "tests/Support/sources-spa-fixture.php",
         "tests/Support/spa-foundation-browser.mjs",
@@ -6563,7 +6560,7 @@
         "tests/Feature/Security/SecurityMailTest.php",
         "tests/Feature/Security/SessionAuthorityTest.php",
         "tests/Feature/Security/WorkspaceCreationTest.php",
-        "tests/identity-protocol.test.mjs",
+        "tests/spa-transport.test.mjs",
         "tests/Support/account-spa-browser.mjs",
         "tests/Support/advertiser-goals-browser.mjs",
         "tests/Support/auth-entry-browser.mjs",
@@ -6632,9 +6629,7 @@
       "migration": null,
       "testLeads": [
         "tests/auth-entry-spa.test.mjs",
-        "tests/client-visibility.test.mjs",
         "tests/commercial-editor-concurrency.test.mjs",
-        "tests/commercial-operator.test.mjs",
         "tests/commercial-preparation-spa.test.mjs",
         "tests/Feature/Auth/AuthenticationTest.php",
         "tests/Feature/Auth/LogoutResponseCookieTest.php",
@@ -6647,7 +6642,7 @@
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
         "tests/Feature/Security/PasskeyAssertionTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
-        "tests/identity-protocol.test.mjs",
+        "tests/spa-transport.test.mjs",
         "tests/Support/account-spa-browser.mjs",
         "tests/Support/auth-entry-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
@@ -6659,6 +6654,7 @@
         "tests/Support/logout-native-boundary-browser.mjs",
         "tests/Support/logout-terminal-browser.mjs",
         "tests/Support/logout-terminal-server.php",
+        "tests/Support/runtime-retirement-restoration.mjs",
         "tests/Unit/IdentityCookiesTest.php"
       ]
     },
@@ -6846,7 +6842,6 @@
         "tests/Feature/Security/LifecycleActivationTest.php",
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
-        "tests/identity-protocol.test.mjs",
         "tests/Support/account-spa-browser.mjs",
         "tests/Support/auth-entry-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
@@ -6856,6 +6851,7 @@
         "tests/Support/logout-native-boundary-browser.mjs",
         "tests/Support/logout-terminal-browser.mjs",
         "tests/Support/runtime-retirement-browser.mjs",
+        "tests/Support/runtime-retirement-restoration.mjs",
         "tests/Unit/IdentityCookiesTest.php"
       ]
     },
@@ -6947,7 +6943,6 @@
         "tests/Feature/Security/LifecycleActivationTest.php",
         "tests/Feature/Security/OwnerGrantReassessmentTest.php",
         "tests/Feature/Security/ProductionIdentityTest.php",
-        "tests/identity-protocol.test.mjs",
         "tests/Support/account-spa-browser.mjs",
         "tests/Support/auth-entry-browser.mjs",
         "tests/Support/client-visibility-browser.mjs",
@@ -6957,6 +6952,7 @@
         "tests/Support/logout-native-boundary-browser.mjs",
         "tests/Support/logout-terminal-browser.mjs",
         "tests/Support/runtime-retirement-browser.mjs",
+        "tests/Support/runtime-retirement-restoration.mjs",
         "tests/Unit/IdentityCookiesTest.php"
       ]
     },
@@ -7820,7 +7816,7 @@
         "cutover": "Eight display routes leave the legacy renderer: static native Welcome and seven unified SPA entries. Fifteen integrated isolated Laravel/Chromium journeys pass with zero unhandled page errors, real virtual UV passkeys, signed mail verification, broker reset/expiry/reuse, native confirmation, pending staff enrollment, unknown deliveries without replay and late-read/Back/Forward protection. Seven unused public components are deleted; internal login, onboarding, devices and their N1/history/visibility consumers remain. The independently baseline-reproduced InitialVisit bootstrap rejection is handled only at its Promise owner, without changing cancellation tokens or identity authority. Physical devices, native BFCache/pre-JavaScript confidentiality, B/C, central Foundation and release acceptance remain separate."
       },
       "testLeads": [
-        "tests/commercial-operator.test.mjs",
+        "tests/commercial-editor-concurrency.test.mjs",
         "tests/Feature/Auth/RegistrationTest.php",
         "tests/Feature/AuthEntrySpaTest.php",
         "tests/Feature/Commercial/CommercialScopeTest.php",
@@ -31865,8 +31861,6 @@
     "app/Http/Middleware/SpaPresentation.php": 2,
     "resources/views/goals-spa.blade.php": 2,
     "resources/views/spa.blade.php": 1,
-    "tests/client-visibility.test.mjs": 32,
-    "tests/commercial-operator.test.mjs": 3,
     "tests/current-intent-interaction.test.mjs": 9,
     "tests/Feature/Foundation/BaselineContractTest.php": 5,
     "tests/Feature/GoalsSpaIntegrationTest.php": 1,
@@ -31878,15 +31872,12 @@
     "tests/Feature/Security/ProductionIdentityTest.php": 2,
     "tests/Feature/Security/ProductionPasskeyTest.php": 1,
     "tests/goals-api-client.test.mjs": 1,
-    "tests/identity-protocol.test.mjs": 4,
-    "tests/inertia-n1-artifact.test.mjs": 5,
-    "tests/inertia-n1-initial-visit.test.mjs": 2,
-    "tests/inertia-n1.test.mjs": 10,
     "tests/inertia-retirement.test.mjs": 7,
     "tests/object-purpose-interaction.test.mjs": 5,
     "tests/provider-api-client.test.mjs": 1,
     "tests/runtime-retirement.test.mjs": 9,
     "tests/spa-goals-interaction.test.mjs": 3,
+    "tests/spa-transport.test.mjs": 1,
     "tests/Support/account-spa-browser.mjs": 1,
     "tests/Support/advertiser-goals-server.php": 1,
     "tests/Support/auth-entry-browser.mjs": 1,
@@ -31908,6 +31899,7 @@
     "tests/Support/logout-terminal-browser.mjs": 11,
     "tests/Support/object-purpose-spa-browser.mjs": 2,
     "tests/Support/runtime-retirement-browser.mjs": 1,
+    "tests/Support/runtime-retirement-restoration.mjs": 1,
     "tests/Support/sources-spa-browser.mjs": 1,
     "tests/Support/spa-foundation-browser.mjs": 1,
     "tests/Support/workspace-spa-browser.mjs": 2,

@@ -35,8 +35,7 @@ const messages = moduleUrl(ts.transpileModule(await readFile(new URL('../resourc
     { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText);
 const neutralCopy = moduleUrl(rewrite(ts.transpileModule(await readFile(new URL('../resources/js/localization/businessCopy.ts', import.meta.url), 'utf8'),
     { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText, { './messages': messages }));
-const copy = moduleUrl(rewrite(ts.transpileModule(await readFile(new URL('../resources/js/localization/business.ts', import.meta.url), 'utf8'),
-    { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText, { './businessCopy': neutralCopy }));
+const copy = neutralCopy;
 async function compile(path, extra = {}) {
     const { descriptor } = parse(await readFile(new URL('../resources/js/' + path, import.meta.url), 'utf8'));
     const source = compileScript(descriptor, { id: 'dtm-test', inlineTemplate: true }).content;
@@ -49,9 +48,6 @@ const markets = await compile('Components/Business/TargetMarketsEditor.vue');
 const layout = moduleUrl(`export default { template: '<main><slot /></main>' };`);
 const context = await compile('business-context/ContextForm.vue', { '@/Layouts/AdvertiserLayout.vue': layout,
     '@/Components/Business/TargetMarketsEditor.vue': markets.url, '@/Components/Business/CurrentIntentEditor.vue': editor.url });
-const languageSwitcher = await compile('Components/LanguageSwitcher.vue', {
-    '@/localization/messages': messages, 'vue-i18n': moduleUrl('export const useI18n = () => ({ t: key => key });'),
-});
 function element(tag, text = '') {
     return { tag, text, children: [], props: {}, listeners: {}, parent: null, value: '', checked: false, multiple: false,
         get options() { return this.children.filter(child => child.tag === 'option'); },

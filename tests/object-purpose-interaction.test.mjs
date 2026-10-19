@@ -34,8 +34,7 @@ const messages = moduleUrl(ts.transpileModule(await readFile(new URL('../resourc
     { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText);
 const neutralCopy = moduleUrl(rewrite(ts.transpileModule(await readFile(new URL('../resources/js/localization/businessCopy.ts', import.meta.url), 'utf8'),
     { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText, { './messages': messages }));
-const copy = moduleUrl(rewrite(ts.transpileModule(await readFile(new URL('../resources/js/localization/business.ts', import.meta.url), 'utf8'),
-    { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText, { './businessCopy': neutralCopy }));
+const copy = neutralCopy;
 async function compile(path, extra = {}) {
     const { descriptor } = parse(await readFile(new URL('../resources/js/' + path, import.meta.url), 'utf8'));
     const source = compileScript(descriptor, { id: 'dtm-test', inlineTemplate: true }).content;

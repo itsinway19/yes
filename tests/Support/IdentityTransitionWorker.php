@@ -17,7 +17,16 @@ app(DisposableTestDatabaseGuard::class)->assertSafe();
 $pid = DB::connection('pgsql_authority')->selectOne('SELECT pg_backend_pid() AS pid')->pid;
 echo 'BOOTED '.$pid.PHP_EOL;
 flush();
+usleep((int) (getenv('P2A_PREPARATION_DELAY_MS') ?: 0) * 1000);
 $request = IdentityTransitionFixture::request();
+if (getenv('P2A_WORKER_MODE') === 'race') {
+    echo 'READY'.PHP_EOL;
+    flush();
+    if (trim((string) fgets(STDIN)) !== 'CONTEND') {
+        fwrite(STDERR, 'Invalid fixture readiness gate'.PHP_EOL);
+        exit(1);
+    }
+}
 $calls = 0;
 if (getenv('P2A_WORKER_MODE') === 'interrupt') {
     Event::listen(IdentitySessionPrepared::class, function () use ($request): void {

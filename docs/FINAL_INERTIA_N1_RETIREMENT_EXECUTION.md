@@ -1,5 +1,7 @@
 # Final Inertia/N1 runtime retirement — Slice 7
 
+**Current status: READY FOR INDEPENDENT REVIEW — LOCAL CONFIGURATION ONLY.** The Owner explicitly limits local acceptance to the documented Chromium 145 configuration; no production, other-browser or real-device acceptance. Earlier checkpoint/blocker narratives below are retained as historical evidence and superseded by **Resumed closure and final local gates** at the end. No historical failed run is rewritten as successful.
+
 ## Baseline and acceptance contract
 
 Approved base: `e579d01e74f3fa6c480cafd9348181791569f038`. One new worktree/branch: `C:/dev/builderad-worktrees/ba-inertia-retirement-007`, `codex/ba-inertia-retirement-007`. Base/main were fetched and matched; starting checkout was clean. No earlier worktree or evidence archive may be changed. No publication is authorized.
@@ -151,3 +153,146 @@ Stop further retirement/acceptance changes at this checkpoint. The smallest next
 Progress may be committed only as an explicitly **BLOCKED local checkpoint**, not as the final accepted execution commit; the handoff supplies its actual SHA and clean/dirty status. The complete deletion/modified-file list is the checkpoint diff against the approved base; retained shared components and each active server modification are classified above. All task-started database/Redis/PHP/browser/proxy processes are stopped before handoff. No Push, PR, Merge, deployment, worktree/evidence deletion or next slice is performed.
 
 **BLOCKED**
+
+## Targeted closure follow-up — 2026-10-19
+
+### Starting state and acceptance criteria
+
+Verified branch `codex/ba-inertia-retirement-007`, clean checkout, HEAD `24ffeb843325588c3db53685ee32da5a45d12088`, parent `e579d01e74f3fa6c480cafd9348181791569f038`. No new worktree, reset, rebase or repeated runtime removal. Criteria: map each old test's live guarantee before retirement, pass the actual-owner frontend gates, verify affected server/browser contracts and current production assets, and assess Security Cases A/B/C independently. BFCache functioning is **not** an acceptance requirement; confidentiality is. A fresh navigation or synthetic event is not native cached-frame proof.
+
+### Test migration and narrow production correction
+
+Full auditable matrix: [SLICE7_TEST_MIGRATION_MATRIX.md](SLICE7_TEST_MIGRATION_MATRIX.md). It lists the ten former failing entries, individual legacy identity/visibility/N1 cases, both InitialVisit scenarios and **all 46** old Commercial/Preparation cases. Current Intent, Target Markets, Object Purpose and localization retain their behavioral assertions against actual production components and `businessCopy`. Actual `spa/locale` tests replace the deleted switcher's transport/remount assumptions. Current transport/router/account/auth tests protect binding, CSRF, finite lease ownership, closure, late JSON/results, cancellation and non-replay. Framework queue/encryption/artifact tests retire only after generic replacements are proved. Six obsolete harness files and `test:inertia-n1` are removed; the checkpoint's Git history and every execution archive remain intact. Official npm entry points change last, after proof/mapping, not merely to hide imports.
+
+One current UI defect was exposed: a definitive Commercial 409 entered `idle`, hiding its explicit review action; it also advertised a refresh that it never requested. Existing server writers and optimistic guards were correct and unchanged. The smallest correction is confined to `commercial/OperationsEditor.vue`: display the conflict section, request one existing admitted read after a **definitive** 409, enable explicit review only after readback, and allow explicit read retry after readback failure. Fields and original revision stay frozen until the user's review. An already-uncertain write is not resolved by 409/readback and is never automatically replayed. No new forms, transport, writer or command framework. Authority remains Laravel; INV-007 decision/authority separation is preserved. No PHP, SQL/RLS, SessionAuthority, WorkspaceContext, N1 or security-timeout change in this follow-up.
+
+Failing-before evidence: `slice7-followup-commercial-editor-localized.log` (missing review action), `slice7-conflict-read-before.log` (zero admitted reads). Passing actual-SFC replacements cover the held read, explicit revision adoption, failed-read recovery, original command/receipt provenance, storage failure, principal isolation, unknown ACKs and late responses. Harness-only select-element initialization failures are retained in earlier `slice7-followup-*` logs, not hidden or attributed to production.
+
+### Final executed gates and affected browser proof
+
+| Verification | Actual outcome / evidence under `storage/framework/testing/` |
+| --- | --- |
+| Official `npm test` | **200 PASS / 0 FAIL**, `slice7-official-frontend-closure.log` |
+| Official `test:spa-foundation` | **199 PASS / 0 FAIL**, `slice7-official-spa-closure.log`; includes **39** current commercial SFC/state cases, not the retired 46 counted again |
+| TypeScript and clean single production build | PASS, `slice7-followup-production-build.log`; Vite empties the output directory. Later changes are test/report/inventory only, not build inputs |
+| OpenAPI drift | Goals and Application match; no contract change |
+| Runtime/dependency negative guards and assets | PASS; no production import/call of removed runtime and no package in final locks; prior clean installs remain applicable because dependency definitions/locks did not change |
+| Inventory/check and legacy ceiling | PASS: **173 registered matrix routes, 0 Inertia displays, 120 frontend modules**. One deliberately rejected `X-Inertia` request discriminator remains; it is not a runtime consumer |
+| Laravel selected security/commercial aggregate | **92 PASS / 1 ERROR**, 3,337 reported assertions, 297.68s; `slice7-followup-php-console.log`. This aggregate remains FAILED |
+| Failed race, exact isolated rerun | **1 PASS / 72 assertions**, 47.63s; `slice7-followup-race-focused.log`; actual row blocker and loser `STALE AUTH_CALLS=0` observed, unchanged timeouts |
+| Browser preparation per isolated run | **2 PASS / 37 assertions**, official PostgreSQL/three-role/RLS/Redis runner, disposable synthetic fixtures only |
+| Affected Commercial Chromium | **7 PASS / 0 FAIL / 0 unhandled page errors**; `slice7-commercial-recovery-browser-results.json`. Real UV internal login; reference/configuration/assignability writers; committed lost ACK/full receipt fingerprint; beneficiary/context/audit; definitive stale revision **4 → server 5 → real 409**, held admitted read, no write until explicit new command; shared-router Back/Forward; A→B→A and session-revoked late response closure |
+
+The commercial proof verifies all delivered asset bytes against this tree: **273 forwarded responses / 270 observed browser asset responses**, no mismatch. `slice7-commercial-recovery-source-unchanged.txt` is **True**. Its source manifest records the exact dirty executable state, not a fictitious clean commit. Only report/ledger metadata and regenerated inventory may follow that manifest; production code/assets stay unchanged. WebAuthn HTTP 500 from the earlier checkpoint did not recur in the newly executed signed-UV prerequisite. The prior isolated expiry success is reused with its original 61-second/422 assertions; a complete auth-suite rerun is not claimed.
+
+### The PHP failure is not reclassified as green
+
+Last authoritative passing baseline was independently fetched **read-only** from GitHub: [Foundation 39213089180](https://github.com/42Huss/builderad/actions/runs/39213089180), success for exact `e579d01e74f3fa6c480cafd9348181791569f038`, runner **ubuntu-24.04**. Current execution is Windows, PHP 8.5/PostgreSQL 18/isolated Redis. The failed IdentityTransition race test, worker, fixture, `IdentityTransition.php`, `SessionAuthority.php` and SQL bootstrap match that base byte-for-byte; this follow-up's only production edit is the Vue conflict UI. However, the earlier checkpoint removed middleware/providers/dependencies relative to the base, and baseline CI uses a different OS: those comparisons do not exonerate the checkpoint or establish materially identical worker bootstrap. Historical CI is not current-candidate acceptance.
+
+The aggregate error is in `test_same_base_race_observes_real_row_blocker_then_rejects_loser_before_authentication`, rollback after PostgreSQL terminated an idle transaction (`13:12:16`, PostgreSQL connection PID 11900; the failed proof did not retain a holder PID). Preserved failed evidence `slice7-followup-same-epoch-failed.json` has worker `BOOTED 13056` but **no ATTEMPT** and no observed row blocker. Thus the failed attempt does not prove real lock contention. On the exact focused rerun, holder **22004**, waiter **19332**, `actual_blocker_observed=true`, `pass=true`, output `BOOTED → ATTEMPT → STALE AUTH_CALLS=0` are recorded. No timeout, assertion or authority was changed. The reason the first worker stalled before ATTEMPT remains **UNRESOLVED**; neither a product regression nor an unrelated/flaky environment cause is established by a passing retry. Original aggregate logs/XML and PostgreSQL logs remain archived by the official runner. Do not describe this as a fresh 93/93 successful aggregate.
+
+### Security Cases A/B/C and restoration investigation
+
+**A — Active transition:** current transport/router/component gates PASS, plus the new real commercial A→B→A/session-revocation proof and unchanged earlier account-switch held-response proof. Closed/superseded ownership cannot publish late data. This is presentation integrity, not client authority.
+
+**B — JavaScript-controlled restoration:** earlier actual-witness hold/offline synthetic restoration remains applicable: JS must obtain current admission before reveal. Current account/auth witness tests and real SPA Back/Forward pass. Synthetic `persisted=true` is labeled synthetic, never native BFCache evidence.
+
+**C — Native pre-JavaScript restoration: UNVERIFIED.** No trusted native cached restoration with pre-admission/compositor confidentiality has been accepted. The new focused harness keeps production assets and protected response `Cache-Control: no-store, private`; it does not change caching, cookie or authority policies to force eligibility. Intended controls are passive observation, explicit Page/CDP observation, and script-disabled return, each for unchanged identity, logout, identity switch, session revocation and offline return.
+
+Actual browser: **Chromium 145.0.7632.6**, Windows headless executable `chromium-1208/chrome-win64/chrome.exe`. The second artifact records the actual task-owned OS process command line, including `--headless`, `--remote-debugging-pipe`, the automation default feature switches, and absence of both `--disable-back-forward-cache` and `--enable-automation`. This is not stock headed Chrome or production hosting evidence. Even the passive variant is Playwright/CDP underneath; no assertion of a CDP-free observation is made.
+
+Two attempts are preserved, not promoted into an accepted 15-case matrix:
+
+1. `slice7-restoration-passive-attempt.json`: five passive cases reached measured fresh-navigation/offline outcomes; changed document markers, trusted `persisted=false`, and Chromium `notRestoredReasons` included `response-cache-control-no-store` and `response-cache-control-no-store-with-js-network-request` (plus `masked`). These observations support bounded exclusion for those executions, not a no-store-only theorem. **The aggregate failed**: the observer called `crypto.randomUUID` in initial `about:blank` where unavailable, producing observer page errors; `Browser.getBrowserCommandLine` then refused because enable-automation is absent. The observer is corrected with a non-authority correlation fallback and OS read-only flag capture, not browser-flag changes.
+2. `slice7-restoration-network-failure.json`: corrected unchanged-identity passive case PASS, no unhandled page errors, actual protected headers and process arguments recorded. Next case failed **before authentication**, `page.goto('/profile') → net::ERR_NETWORK_IO_SUSPENDED`. Later CDP/script-disabled comparisons are **NOT_EXECUTED** in that attempt. A read-only Windows power-event probe supplied no wake-event corroboration; a sleep/environment cause is not established. The separate commercial browser run succeeded afterward but does not establish the cause or make this failed restoration aggregate green.
+
+Observer microtasks are explicitly labeled **not an all-event-handlers or compositor barrier**. The initial artifact's `after-handlers` label was inaccurate: an init observer's microtask may precede later application listeners. Its `privateRendered` sample is neither proof of disclosure nor proof of closure before a cached frame. The final harness corrects the label. The prior checkpoint's script-disabled DOM snapshot was a fresh-document observation with no native persisted event, not native cached-frame proof. No screenshot/pageshow/empty fresh HTML is substituted for Security C.
+
+Stop expansion of this affected investigation rather than patching application security to overcome an unestablished browser cause. The next bounded technical work is to reproduce the network-suspension boundary in a stable isolated Chromium run and finish the same security-config control matrix, preserving OS/browser/asset provenance. If supported production configurations can restore cached frames, independent pre-JavaScript/compositor evidence is still needed. Alternatively the Owner/security reviewer must explicitly define and accept a supported configuration boundary where exclusion is demonstrated. Such a boundary would not certify other browsers/devices/hosting. No residual-risk acceptance, new encryption runtime, blanket cache-policy change or BFCache functionality requirement is adopted here.
+
+### Evidence fingerprints and effect on earlier evidence
+
+Stable files under `storage/framework/testing/`:
+
+- `slice7-commercial-recovery-browser-results.json`: SHA-256 `16e6533a412ae856a1ddc7f0a515b72dc0997506ca5219514b4ed9479d0e23de`.
+- `slice7-commercial-recovery-source-manifest.json`: SHA-256 `fa14528ced3ba7b547d6204086679adfa02d8d717d79974a336e34f954da9a2b`.
+- Sole entry `resources/js/spa/main.ts` → `assets/main-DTcOrnAu.js`, SHA-256 `de974a722dca8ec7c71da530b4e41395f2e335e57bec9fa38d6d3d6b0eca8091`; **42 distinct delivered production assets** verified.
+- `slice7-restoration-passive-attempt.json`: SHA-256 `09441c7e14bbff22c2c31492f75ebf3975388573dd64947d5b4bc48097c80c7b`.
+- `slice7-restoration-network-failure.json`: SHA-256 `bc6f3a4f404691ffb0cce686cc9b9f4609d75a92b349aee1e5b3c77b9f368549`.
+
+Both restoration source-unchanged records and the final commercial record are True. Previous application evidence is reused only for unchanged ownership/security paths, not the corrected Commercial 409 path or final asset hashes. The fresh commercial execution covers that correction. Earlier HTTP 500, PHP aggregate error, observer failures and network-suspension failure remain visible; none is deleted or assigned an invented cause. No live provider, real device, native mobile background, stock-browser BFCache or production performance acceptance is claimed.
+
+### Acceptance gates before resumed closure
+
+| Gate | Current result |
+| --- | --- |
+| A — ZERO_INERTIA_DISPLAY_ROUTES | VERIFIED: 0 / 173 |
+| B — ZERO_INERTIA_RUNTIME_CONSUMERS | VERIFIED for production sources, default build, delivered/guarded assets |
+| C — N1_RUNTIME_REMOVED | VERIFIED; obsolete implementation harnesses/official command retired after mapped replacements |
+| D — DIRECT_DEPENDENCIES_REMOVED | VERIFIED: no restored package/alias/compatibility shim; locks unchanged from clean-install checkpoint |
+| E — SECURITY_CONTRACTS_PRESERVED | **BLOCKED** overall: Cases A/B locally verified within stated bounds; Case C UNVERIFIED; no authority change or demonstrated disclosure |
+| F — PRODUCTION_BUILD_AND_REQUIRED_TESTS_VERIFIED | Build/TypeScript/contracts/guards/frontend/SPA/affected commercial browser PASS; **not an unqualified green aggregate**: PHP 92+error with focused recovery PASS, and restoration comparison incomplete/failed |
+
+An independent local follow-up commit descends from `24ffeb8`; its exact SHA and final Git cleanliness are supplied in the execution handoff, not attributed retroactively to a dirty test run. All task-started PostgreSQL/Redis/PHP/Chromium/proxy processes are stopped. No Push, PR, new Foundation invocation, Merge, Deployment, worktree/archive cleanup or next slice. Historical Foundation was read only.
+
+**BLOCKED — UNRESOLVED ACCEPTANCE GATES**
+
+## Resumed closure and final local gates — 2026-10-19
+
+### Owner-approved acceptance boundary
+
+Owner response: **local acceptance for this environment only; no production or other-device acceptance**. Tested configuration: Windows, Chromium **145.0.7632.6**, the recorded headless/remote-debugging-pipe launch arguments, actual production SPA assets and unchanged Laravel security/cache policy on the isolated local HTTP origin. This is the scope of the local gates below, not a general claim about supported browser/device/hosting combinations. Independent review remains required; this report does not authorize publication, merge or deployment.
+
+### Restoration comparison completed, not waived
+
+Final attempt: **15 PASS / 0 FAIL / 0 unhandled page errors / 0 HTTP 5xx**. All five actions (unchanged identity, logout, identity switch, session revocation, offline return) executed in all three modes (passive, Page/CDP-observed, scripts disabled). Source-unchanged record: **True**. Actual served asset verification PASS: **1,645 forwarded / 1,604 browser-observed asset responses**. The earlier `ERR_NETWORK_IO_SUSPENDED` did not recur; its cause remains unestablished and the failed artifact is preserved, not declared flaky or retrospectively green.
+
+| Mode | Actual return | Native evidence / visibility |
+| --- | --- | --- |
+| Passive | 4 fresh documents + 1 offline navigation failure | Trusted pageshow events are not persisted; fresh-navigation/document markers recorded; offline private presentation absent |
+| Page/CDP observed | 4 fresh documents + 1 offline navigation failure | Frame type `Navigation`, never `BackForwardCacheRestore`; actual not-restored reasons recorded |
+| Scripts disabled | 4 fresh documents + 1 offline navigation failure | Same navigation classification; all five DOM snapshots have **0 private roots / 0 rendered private roots**, before script re-enablement |
+
+Observed not-restored reasons include `MainResourceHasCacheControlNoStore`, `JsNetworkRequestReceivedCacheControlNoStoreResource`, and `BrowsingInstanceNotSwapped`; passive PerformanceNavigationTiming supplies the corresponding browser reasons where available. This is measured exclusion in these executions, **not** an assumption from no-store alone. No eligibility difference was observed between the three modes on these routes. That does not prove CDP/script disabling never affects an otherwise eligible page. Script-disabled resource failures are recorded as expected observer-induced script suppression, not as changed production CSP.
+
+Security Case C is therefore accepted locally as **BFCache exclusion for the tested paths/configuration**. Native cached restoration itself was **NOT_EXERCISED**; confidentiality of a truly restored cached frame outside this configuration remains **UNVERIFIED**. Lack of `persisted=true` is not treated as a functional failure or forced by weakening production policy. Owner scope confirmation, rather than an executor waiver, bounds this conclusion.
+
+### PHP readiness blocker: controlled reproduction and bounded correction
+
+The two-test predecessor/race probe passed **2 tests / 82 assertions** without changes, refuting an immediately reproducible predecessor-only failure. A controlled worker preparation delay then exposed the orchestration defect: the old test starts/prepares a worker **while the publishing transaction already holds its row**. A **16-second fixture preparation delay**, with original PostgreSQL **15-second idle-in-transaction** and worker **25-second** timeouts, reproduced the same rollback/connection failure. PostgreSQL explicitly terminated the idle connection; the worker subsequently committed after the expired parent released its row. Preserved before-fix proof: `BOOTED → ATTEMPT → COMMITTED 1 AUTH_CALLS=1`, with no valid observed-blocker proof. This establishes the preparation-under-lock failure mechanism. It does not invent a physical cause for the original worker's startup latency.
+
+Correction is confined to `tests/Feature/Security/IdentityTransitionTest.php` and its existing `tests/Support/IdentityTransitionWorker.php`. The existing Symfony Process/InputStream pattern is used to prepare the real worker/session first, emit `READY`, then let the parent acquire its real row and explicitly release `CONTEND`. Only then does the worker emit `ATTEMPT` and attempt the real authority operation. No authority, SQL, test timeout, authentication outcome or original contention assertion changes. No production identity protocol, writer or command framework is introduced. The interrupt-worker path remains covered by the full affected class.
+
+Regression data runs both immediate preparation and **16 seconds of real preparation delay**. A monotonic elapsed-time assertion confirms the delay was actually exercised. The test also asserts zero authority transaction nesting at readiness, observes the exact parent PID in `pg_blocking_pids(waiter)`, requires worker success with `STALE AUTH_CALLS=0`, and still requires exactly one canonical security session.
+
+Final affected verification: **24 PASS / 1,308 reported assertions / 67.37s**, including the complete IdentityTransition class and existing RowLockReadiness unit cases. Both immediate and delayed cases have `worker_ready_before_publish=true`, `actual_blocker_observed=true`, `pass=true`. Immediate holder/waiter **23036/18824**; delayed holder/waiter **3532/10752**. Delayed measured preparation **17,153.4202ms**; worker output `BOOTED → READY → ATTEMPT → STALE AUTH_CALLS=0`. Pint on both changed PHP test files PASS.
+
+The initial **92 PASS / 1 ERROR** aggregate and all before-fix failures remain FAILED historical evidence. Final verification reuses its unaffected passing cases and reruns the entire affected class plus readiness unit protection after correction. No fresh 94/94 aggregate or central Foundation run is claimed. Production authority and security deadlines are unchanged. This is a verified test-orchestration correction, not a relaxation of PostgreSQL or a claim that arbitrary slow workers are harmless in production.
+
+### Final evidence and reuse boundaries
+
+Under `storage/framework/testing/`:
+
+- `slice7-restoration-resumed-browser-results.json`: SHA-256 `00be94379629aa2cdb68fd2fa8b97deec486d675114d670cb703ac29fd9c7aff`.
+- `slice7-restoration-resumed-source-manifest.json`: SHA-256 `b74748bee00051f229b67330c9daf27d23af9e5fc8bf78153f6c4126fd49576b`; corresponding source-unchanged **True**.
+- `slice7-race-delayed-before-proof.json`: SHA-256 `d1606218b709caa82b5af20dc98b306b86f509d441a66907fe0e633de16fee67`; failed execution/XML in `slice7-race-delayed-before.log` and `.xml`.
+- `slice7-race-corrected-0-proof.json`: SHA-256 `b4831385384113a1c66e3c757ac7066bd17d7bf13f0f8757c4069f4adb73f011`.
+- `slice7-race-corrected-16000-proof.json`: SHA-256 `3f75e59c61290617a65d4898abfeb0bf5247a2d1403519b612a9898d797975b9`.
+- `slice7-identity-readiness-corrected.log` / `.xml`: 24 passing cases; `slice7-identity-readiness-inputs.json`, SHA-256 `96c10b489181e41ea8f49d68ddca45ed3f00638786ab3ebb3e53bc5a3967fb3e`, explicitly labeled **post-run digests**, with no source edits during the execution. It is not mislabeled an automatic browser manifest.
+
+All **401 checked production/runtime/build inputs** still match the accepted restoration manifest. The later PHP edits affect only the test worker/class, not any browser route/controller or build input. The earlier 7-case commercial proof remains valid for unchanged application code and its own harness. The complete 15-case restoration run covers the revised restoration harness; old observer/network-failure artifacts are retained separately. Frontend **200 PASS**, SPA **199 PASS**, contracts, TypeScript, clean production build, runtime/dependency guards and inventory evidence remain applicable to unchanged relevant inputs. No redundant full-suite/build rerun substitutes for this file-state comparison.
+
+### Final gates
+
+| Gate | Result in Owner-approved local scope |
+| --- | --- |
+| A — ZERO_INERTIA_DISPLAY_ROUTES | PASS: **0 / 173 registered routes** |
+| B — ZERO_INERTIA_RUNTIME_CONSUMERS | PASS: source/default build/current production assets |
+| C — N1_RUNTIME_REMOVED | PASS: no runtime/build/alias; generic protection mapped before old harness retirement |
+| D — DIRECT_DEPENDENCIES_REMOVED | PASS: definitions/locks/previous unchanged clean installs; no compatibility shim |
+| E — SECURITY_CONTRACTS_PRESERVED | PASS locally: Security A/B real admission/late-response proofs; Security C measured exclusion for documented configuration. Native cached frames elsewhere remain UNVERIFIED and outside accepted scope |
+| F — PRODUCTION_BUILD_AND_REQUIRED_TESTS_VERIFIED | PASS locally using exact-state evidence and corrected affected PHP class. Historical failed aggregates preserved; no claim of a new full Foundation/aggregate run |
+
+All task-started database/Redis/PHP/browser/proxy processes are stopped before handoff. Independent local follow-up commit and its exact SHA/clean Git status are reported in the handoff; the commit does not retroactively change test provenance. No Push, PR, new CI run, Merge, Deployment, production enablement, worktree/evidence deletion or next slice.
+
+**READY FOR INDEPENDENT REVIEW — LOCAL CONFIGURATION ONLY**
