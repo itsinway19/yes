@@ -175,6 +175,7 @@ function date(value: string) {
             </form>
             <section class="admin-section" :aria-labelledby="'customer-list-title'">
                 <header class="admin-section-heading customer-list-heading"><h2 id="customer-list-title">{{ t(`customers.${filters.kind}`) }} <span class="customer-count">{{ total }}</span></h2><p class="admin-description">{{ t('customers.pageCount', { page: filters.page, pages }) }}</p></header>
+                <div class="customer-column-headings" aria-hidden="true"><span>{{ locale === 'ar' ? 'السجل' : 'Record' }}</span><span>{{ locale === 'ar' ? 'الحالة والارتباطات' : 'Status and relationships' }}</span><span>{{ locale === 'ar' ? 'الإجراءات' : 'Actions' }}</span></div>
                 <ul class="customer-list">
                     <li v-for="row in rows" :key="row.public_id" class="customer-row">
                         <div class="customer-identity"><h3>{{ row.name }}</h3><template v-if="filters.kind === 'users'"><bdi class="admin-email" dir="ltr">{{ row.email }}</bdi><p class="customer-meta">{{ t(row.email_verified_at ? 'customers.emailVerified' : 'customers.emailPending') }}</p></template><template v-else><p class="customer-meta">{{ (locale === 'ar' ? row.business_type_ar : row.business_type_en) || t('customers.businessNotSet') }}</p><p class="customer-meta">{{ t('customers.owner') }}: {{ row.owner_name || t('customers.ownerUnavailable') }}</p><p class="customer-meta">{{ t('customers.market') }}: {{ row.market_label || t('customers.marketNotSet') }}</p></template></div>
@@ -197,6 +198,8 @@ function date(value: string) {
 
 <style scoped>
 .customer-administration { min-inline-size: 0; }
+.customer-column-headings { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,.9fr) auto; gap:24px; padding:10px 0; border-block:1px solid var(--admin-line); color:var(--admin-muted); font-size:12px; background:var(--admin-group); }
+.customer-column-headings > :last-child { min-inline-size:180px; }
 .customer-tabs { display:flex; gap:24px; border-block-end:1px solid var(--admin-line); margin-block-end:22px; }
 .customer-tab { padding:12px 2px; border-block-end:3px solid transparent; font-size:15px; font-weight:600; color:var(--admin-muted); }
 .customer-tab[aria-current] { border-color:var(--admin-accent); color:var(--admin-ink); }
@@ -227,6 +230,6 @@ function date(value: string) {
 .customer-administration :is(button,input,select,a):focus-visible { outline:2px solid var(--admin-accent); outline-offset:3px; }
 .customer-administration button:disabled { opacity:.55; cursor:not-allowed; }
 .customer-result:focus { outline:none; }
-@media(max-width:850px) { .customer-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; } .customer-row>.customer-actions { grid-column:1/-1; } }
+@media(max-width:850px) { .customer-column-headings { display:none; } .customer-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; } .customer-row>.customer-actions { grid-column:1/-1; } }
 @media(max-width:580px) { .customer-filters { grid-template-columns:1fr; } .customer-filters>button { margin-block-start:0; } .customer-row { grid-template-columns:1fr; } .customer-row>.customer-actions { grid-column:auto; } .customer-confirmation { padding:16px; } .customer-tabs { gap:18px; } }
 </style>

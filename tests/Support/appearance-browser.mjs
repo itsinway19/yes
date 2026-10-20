@@ -36,7 +36,11 @@ async function session(kind) {
     page.on('pageerror', error => errors.push(error.message));
     page.on('dialog', dialog => dialog.accept());
     page.on('request', request => requests.push({ page: kind, method: request.method(), path: new URL(request.url()).pathname }));
-    page.on('response', response => { if (new URL(response.url()).pathname.includes('/build/') && response.status() === 200) assets.set(new URL(response.url()).pathname, response); });
+    page.on('response', response => {
+        if (new URL(response.url()).pathname.includes('/build/') && response.status() === 200) {
+            assets.set(new URL(response.url()).pathname, response.body().then(hash).catch(error => ({ error: error.message })));
+        }
+    });
     return page;
 }
 const ready = page => page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready');
@@ -92,11 +96,11 @@ try {
     await check('Abandoning local draft and ordinary navigation never applies or fetches theme', async () => {
         await page.locator('#appearance-primary').fill('#112233');
         const initial = requests.length;
-        await page.locator('[data-internal-operations] nav a[href="/internal/administration"]').click();
+        await page.locator('[data-admin-sidebar] a[href="/internal/administration"]').click();
         await ready(page); await page.locator('[data-administration]').waitFor();
         assert.equal(requests.slice(initial).filter(request => request.path === appearancePath).length, 0);
         assert.equal(await rootColor(page), '#ffff00');
-        await page.locator('[data-internal-operations] nav a[href="'+appearancePath+'"]').click(); await ready(page); await page.locator('#appearance-primary').waitFor();
+        await page.locator('[data-admin-sidebar] a[href="'+appearancePath+'"]').click(); await ready(page); await page.locator('#appearance-primary').waitFor();
         assert.equal(await page.locator('#appearance-primary').inputValue(), '#ffff00');
     });
     await check('Lost acknowledgement remains unknown without replay or false success', async () => {
@@ -126,8 +130,10 @@ try {
         await advertiser.reload(); await ready(advertiser); assert.equal(await rootColor(advertiser), '#008866');
         await publish(page, '#155f53'); await advertiser.reload(); await ready(advertiser); assert.equal(await rootColor(advertiser), '#155f53');
     });
-    for (const [asset, response] of assets) {
-        assert.equal(hash(await response.body()), hash(await readFile(path.join(process.cwd(), 'public', asset))));
+    for (const [asset, pendingHash] of assets) {
+        const actualHash = await pendingHash;
+        assert.equal(typeof actualHash, 'string', `${asset}: ${JSON.stringify(actualHash)}`);
+        assert.equal(actualHash, hash(await readFile(path.join(process.cwd(), 'public', asset))));
     }
     assert.equal(errors.length, 0, errors.join('\n'));
     await writeFile(path.join(run, 'appearance-browser-results.json'), JSON.stringify({ results, errors, assets: [...assets.keys()], headlessChromium: true, syntheticSessions: true, productionBuild: true }, null, 2));

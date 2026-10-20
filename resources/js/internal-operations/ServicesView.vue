@@ -3,6 +3,8 @@ import { computed, onBeforeUnmount, reactive, ref, shallowRef } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import type { components } from '../api/generated/application';
 import OperationsShell from './OperationsShell.vue';
+import { locale } from '../spa/locale';
+const copy = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 import { services as resource, serviceOutcome as outcome, readServices } from './serviceState';
 import * as commands from './serviceApi';
 import { close, onClose, owned, stamp, TransportError } from '../spa/transport';
@@ -57,50 +59,58 @@ function selectScope(scope: Scope) { grant.service = scope.service_public_id; gr
 </script>
 <template>
     <OperationsShell>
-        <template #header><h1 class="text-xl font-semibold text-slate-900">الخدمات المستقلة</h1></template>
-        <main data-services dir="rtl" class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
-            <p v-if="outcome === 'acknowledged'" role="status" data-service-ack>وصل إقرار نجاح الأمر من الخادم.</p>
-            <p v-if="outcome === 'unknown'" role="alert" data-service-unknown>نتيجة الأمر غير مؤكدة. قد يكون السر أُصدر ولم يصل، وقد يكون السر القديم أُبطل بالتدوير. لا استرداد للقيمة ولا إعادة تلقائية. راجع الحالة ثم قرر صراحةً بدء عملية جديدة.</p>
-            <p v-if="readbackFailed" role="alert" data-service-readback>تعذر تحديث القائمة. إقرار نجاح الأمر مستقل عن هذه القراءة.</p>
-            <p v-if="reviewed" role="status">هذه قراءة حالية فقط، وليست إقرارًا بوصول السر السابق.</p>
-            <button v-if="outcome === 'unknown' || readbackFailed" data-service-review type="button" :disabled="!!busy" @click="review">مراجعة الحالة دون إعادة الأمر</button>
-            <p v-if="error" role="alert" class="rounded-xl bg-red-50 p-4 text-sm text-red-700">{{ error }}</p>
-            <section data-service-credential v-if="newCredential" class="rounded-2xl border border-amber-300 bg-amber-50 p-6" aria-labelledby="credential-title">
-                <h2 id="credential-title" class="font-semibold text-amber-950">اعتماد الخدمة — يظهر مرة واحدة</h2>
-                <p class="mt-2 text-sm text-amber-900">احفظ الاعتماد في مخزن أسرار مناسب. لن تُعرض قيمته مجددًا، وتدويره يبطل القيمة السابقة فورًا.</p>
-                <p class="mt-3 text-xs text-amber-900" dir="ltr">{{ newCredential.public_id }}</p>
-                <code class="mt-2 block break-all rounded-lg bg-white p-3 text-sm text-slate-900" dir="ltr">{{ newCredential.credential }}</code>
-                <button type="button" class="mt-3 text-sm font-medium text-amber-900 underline" @click="newCredential = null">إخفاء الاعتماد</button>
+        <template #header>
+            <p class="admin-eyebrow">{{ copy('الدليل والخدمات', 'Catalog and services') }}</p>
+            <h1>{{ copy('هويات الخدمات', 'Service identities') }}</h1>
+            <p>{{ copy('أنشئ هويات مستقلة للخدمات، وأدر اعتمادها ونطاقات الوصول الممنوحة لها.', 'Create independent service identities and manage their credentials and granted access.') }}</p>
+        </template>
+        <div data-services class="services-page">
+            <div v-if="outcome || readbackFailed || reviewed" class="operation-outcome">
+                <p v-if="outcome === 'acknowledged'" role="status" data-service-ack>{{ copy('وصل إقرار نجاح الأمر من الخادم.', 'The server acknowledged command success.') }}</p>
+                <p v-if="outcome === 'unknown'" role="alert" data-service-unknown>{{ copy('نتيجة الأمر غير مؤكدة. قد يكون السر أُصدر ولم يصل، وقد يكون السر القديم أُبطل بالتدوير. لا استرداد للقيمة ولا إعادة تلقائية. راجع الحالة ثم قرر صراحةً بدء عملية جديدة.', 'The command outcome is unknown. A credential may have been issued without arriving, and rotation may have invalidated the previous credential. Its value cannot be recovered and the command will not replay. Review the state before explicitly starting a new operation.') }}</p>
+                <p v-if="readbackFailed" role="alert" data-service-readback>{{ copy('تعذر تحديث القائمة. إقرار نجاح الأمر مستقل عن هذه القراءة.', 'The list could not be refreshed. Command acknowledgement is separate from this read.') }}</p>
+                <p v-if="reviewed" role="status">{{ copy('هذه قراءة حالية فقط، وليست إقرارًا بوصول السر السابق.', 'This is a current read, not acknowledgement that the previous credential arrived.') }}</p>
+                <button v-if="outcome === 'unknown' || readbackFailed" data-service-review type="button" :disabled="!!busy" @click="review">{{ copy('مراجعة الحالة دون إعادة الأمر', 'Review state without replay') }}</button>
+            </div>
+            <p v-if="error" role="alert" class="admin-action-error">{{ error }}</p>
+            <section v-if="newCredential" data-service-credential class="service-credential" aria-labelledby="credential-title">
+                <h2 id="credential-title">{{ copy('اعتماد الخدمة — يظهر مرة واحدة', 'Service credential — shown once') }}</h2>
+                <p>{{ copy('احفظ الاعتماد في مخزن أسرار مناسب. لن تُعرض قيمته مجددًا، وتدويره يبطل القيمة السابقة فورًا.', 'Save this credential in a suitable secret store. Its value will not appear again. Rotation immediately invalidates the previous value.') }}</p>
+                <p dir="ltr">{{ newCredential.public_id }}</p>
+                <code dir="ltr">{{ newCredential.credential }}</code>
+                <button type="button" class="admin-action" @click="newCredential = null">{{ copy('إخفاء الاعتماد', 'Hide credential') }}</button>
             </section>
-            <fieldset :disabled="locked"><section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="service-create-title">
-                <h2 id="service-create-title" class="text-lg font-semibold text-slate-900">هوية خدمة جديدة</h2>
-                <p class="mt-2 text-sm text-slate-600">الهوية وحدها لا تمنح وصولًا إلى أي مساحة. يوافق مالك المساحة على نطاقها، ثم تُصدر الإدارة منحة الفعل.</p>
-                <form class="mt-5 flex flex-col gap-3 sm:flex-row" @submit.prevent="createService">
-                    <div class="flex-1"><label for="service-name" class="block text-sm font-medium text-slate-700">اسم الخدمة</label><input id="service-name" v-model="create.name" required minlength="2" maxlength="120" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /><p v-if="create.errors.name" role="alert" class="mt-1 text-sm text-red-700">{{ create.errors.name }}</p></div>
-                    <button type="submit" :disabled="create.processing" class="self-end rounded-lg ba-brand-button px-4 py-2.5 text-sm font-semibold  disabled:opacity-50">{{ create.processing ? 'جارٍ الإنشاء…' : 'إنشاء الهوية' }}</button>
-                </form>
-                <ul class="mt-6 divide-y divide-slate-100 border-t border-slate-100">
-                    <li v-for="service in services" :key="service.public_id" :data-service-id="service.public_id" class="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div><p class="font-medium text-slate-900">{{ service.name }} <span class="text-xs text-slate-500">{{ service.status === 'enabled' ? 'نشطة' : 'ملغاة' }}</span></p><p class="mt-1 text-xs text-slate-600" dir="ltr">{{ service.public_id }}</p></div>
-                        <div v-if="service.status === 'enabled'" class="flex gap-4"><button type="button" :disabled="!!busy" class="text-sm text-[var(--ba-primary-ink)] underline disabled:opacity-50" @click="action(service.public_id, 'rotate')">تدوير الاعتماد</button><button type="button" :disabled="!!busy" class="text-sm text-red-700 underline disabled:opacity-50" @click="action(service.public_id, 'revoke')">إلغاء الهوية</button></div>
-                    </li>
-                    <li v-if="!services.length" class="py-4 text-sm text-slate-600">لا توجد خدمات.</li>
-                </ul>
-            </section>
-            <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="scopes-title">
-                <h2 id="scopes-title" class="text-lg font-semibold text-slate-900">نطاقات وافق عليها المالكون</h2>
-                <ul class="mt-4 divide-y divide-slate-100 border-t border-slate-100"><li v-for="scope in scopes" :key="`${scope.service_public_id}:${scope.workspace_public_id}`" class="flex flex-col gap-2 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"><div><strong>{{ scope.service_name }}</strong><p class="text-xs text-slate-600" dir="ltr">{{ scope.workspace_public_id }}</p><p class="text-slate-600">{{ scope.purpose }}</p></div><button type="button" class="self-start text-[var(--ba-primary-ink)] underline" @click="selectScope(scope)">اختيار للمنحة</button></li><li v-if="!scopes.length" class="py-4 text-sm text-slate-600">لم يوافق أي مالك على نطاق خدمة بعد.</li></ul>
-            </section>
-            <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="service-grants-title">
-                <h2 id="service-grants-title" class="text-lg font-semibold text-slate-900">منحة عرض مساحة للخدمة</h2>
-                <form class="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_2fr_auto] md:items-end" @submit.prevent="issueGrant">
-                    <div><label for="grant-service" class="block text-sm font-medium text-slate-700">الخدمة</label><input id="grant-service" v-model="grant.service" required dir="ltr" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /><p v-if="grant.errors.service" role="alert" class="mt-1 text-xs text-red-700">{{ grant.errors.service }}</p></div>
-                    <div><label for="grant-workspace" class="block text-sm font-medium text-slate-700">المساحة</label><input id="grant-workspace" v-model="grant.workspace" required dir="ltr" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /><p v-if="grant.errors.workspace" role="alert" class="mt-1 text-xs text-red-700">{{ grant.errors.workspace }}</p></div>
-                    <div><label for="grant-reason" class="block text-sm font-medium text-slate-700">السبب</label><input id="grant-reason" v-model="grant.reason" required minlength="10" maxlength="128" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /><p v-if="grant.errors.reason" role="alert" class="mt-1 text-xs text-red-700">{{ grant.errors.reason }}</p></div>
-                    <button type="submit" :disabled="grant.processing" class="rounded-lg ba-brand-button px-4 py-2.5 text-sm font-semibold  disabled:opacity-50">{{ grant.processing ? 'جارٍ المنح…' : 'إصدار المنحة' }}</button>
-                </form>
-                <ul class="mt-6 divide-y divide-slate-100 border-t border-slate-100"><li v-for="item in grants" :key="item.id" class="flex flex-col gap-2 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"><div><strong>{{ item.service_name }}</strong><p class="text-xs text-slate-600" dir="ltr">{{ item.workspace_public_id }}</p><p class="text-slate-600">{{ item.reason }}</p></div><button type="button" :disabled="!!busy" class="self-start text-red-700 underline disabled:opacity-50" @click="revokeGrant(item.id)">سحب المنحة</button></li><li v-if="!grants.length" class="py-4 text-sm text-slate-600">لا توجد منح خدمة نشطة.</li></ul>
-            </section></fieldset>
-        </main>
+            <fieldset :disabled="locked">
+                <section class="admin-section" aria-labelledby="service-create-title">
+                    <h2 id="service-create-title">{{ copy('هوية خدمة جديدة', 'New service identity') }}</h2>
+                    <p>{{ copy('الهوية وحدها لا تمنح وصولًا إلى أي مساحة. يوافق مالك المساحة على نطاقها، ثم تُصدر الإدارة منحة الفعل.', 'An identity alone grants no workspace access. The workspace owner approves its scope, then administration issues the action grant.') }}</p>
+                    <form class="admin-form service-create-form" @submit.prevent="createService">
+                        <div class="admin-field"><label for="service-name">{{ copy('اسم الخدمة', 'Service name') }}</label><input id="service-name" v-model="create.name" required minlength="2" maxlength="120" :aria-invalid="!!create.errors.name" :aria-describedby="create.errors.name ? 'service-name-error' : undefined" /><p v-if="create.errors.name" id="service-name-error" role="alert" class="admin-error">{{ create.errors.name }}</p></div>
+                        <button type="submit" :disabled="create.processing" class="admin-action admin-action-primary">{{ create.processing ? copy('جارٍ الإنشاء…', 'Creating…') : copy('إنشاء الهوية', 'Create identity') }}</button>
+                    </form>
+                    <ul class="service-list">
+                        <li v-for="service in services" :key="service.public_id" :data-service-id="service.public_id">
+                            <div><strong>{{ service.name }}</strong> <span class="admin-status" :class="service.status === 'enabled' ? 'admin-status-active' : 'admin-status-revoked'">{{ service.status === 'enabled' ? copy('نشطة', 'Active') : copy('ملغاة', 'Revoked') }}</span><p dir="ltr">{{ service.public_id }}</p></div>
+                            <div v-if="service.status === 'enabled'" class="admin-actions"><button type="button" :disabled="!!busy" class="admin-action" @click="action(service.public_id, 'rotate')">{{ copy('تدوير الاعتماد', 'Rotate credential') }}</button><button type="button" :disabled="!!busy" class="admin-action admin-action-danger" @click="action(service.public_id, 'revoke')">{{ copy('إلغاء الهوية', 'Revoke identity') }}</button></div>
+                        </li>
+                        <li v-if="!services.length" class="admin-empty">{{ copy('لا توجد خدمات.', 'No services yet.') }}</li>
+                    </ul>
+                </section>
+                <section class="admin-section" aria-labelledby="scopes-title">
+                    <h2 id="scopes-title">{{ copy('نطاقات وافق عليها المالكون', 'Owner-approved scopes') }}</h2>
+                    <ul class="service-list"><li v-for="scope in scopes" :key="`${scope.service_public_id}:${scope.workspace_public_id}`"><div><strong>{{ scope.service_name }}</strong><p dir="ltr">{{ scope.workspace_public_id }}</p><p class="admin-description">{{ scope.purpose }}</p></div><button type="button" class="admin-action" @click="selectScope(scope)">{{ copy('اختيار للمنحة', 'Select for grant') }}</button></li><li v-if="!scopes.length" class="admin-empty">{{ copy('لم يوافق أي مالك على نطاق خدمة بعد.', 'No owner has approved a service scope yet.') }}</li></ul>
+                </section>
+                <section class="admin-section" aria-labelledby="service-grants-title">
+                    <h2 id="service-grants-title">{{ copy('منحة عرض مساحة للخدمة', 'Workspace view grant') }}</h2>
+                    <form class="admin-form service-grant-form" @submit.prevent="issueGrant">
+                        <div class="admin-field"><label for="grant-service">{{ copy('الخدمة', 'Service') }}</label><input id="grant-service" v-model="grant.service" required dir="ltr" :aria-invalid="!!grant.errors.service" :aria-describedby="grant.errors.service ? 'service-grant-service-error' : undefined" /><p v-if="grant.errors.service" id="service-grant-service-error" role="alert" class="admin-error">{{ grant.errors.service }}</p></div>
+                        <div class="admin-field"><label for="grant-workspace">{{ copy('المساحة', 'Workspace') }}</label><input id="grant-workspace" v-model="grant.workspace" required dir="ltr" :aria-invalid="!!grant.errors.workspace" :aria-describedby="grant.errors.workspace ? 'service-grant-workspace-error' : undefined" /><p v-if="grant.errors.workspace" id="service-grant-workspace-error" role="alert" class="admin-error">{{ grant.errors.workspace }}</p></div>
+                        <div class="admin-field"><label for="grant-reason">{{ copy('السبب', 'Reason') }}</label><input id="grant-reason" v-model="grant.reason" required minlength="10" maxlength="128" :aria-invalid="!!grant.errors.reason" :aria-describedby="grant.errors.reason ? 'service-grant-reason-error' : undefined" /><p v-if="grant.errors.reason" id="service-grant-reason-error" role="alert" class="admin-error">{{ grant.errors.reason }}</p></div>
+                        <button type="submit" :disabled="grant.processing" class="admin-action admin-action-primary">{{ grant.processing ? copy('جارٍ المنح…', 'Granting…') : copy('إصدار المنحة', 'Issue grant') }}</button>
+                    </form>
+                    <ul class="service-list"><li v-for="item in grants" :key="item.id"><div><strong>{{ item.service_name }}</strong><p dir="ltr">{{ item.workspace_public_id }}</p><p class="admin-description">{{ item.reason }}</p></div><button type="button" :disabled="!!busy" class="admin-action admin-action-danger" @click="revokeGrant(item.id)">{{ copy('سحب المنحة', 'Revoke grant') }}</button></li><li v-if="!grants.length" class="admin-empty">{{ copy('لا توجد منح خدمة نشطة.', 'No active service grants.') }}</li></ul>
+                </section>
+            </fieldset>
+        </div>
     </OperationsShell>
 </template>

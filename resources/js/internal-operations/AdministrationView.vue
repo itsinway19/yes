@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import ProviderBrand from '@/Components/ProviderBrand.vue';
@@ -18,6 +18,8 @@ const copy = (arabic: string, english: string) => locale.value === 'ar' ? arabic
 const actionLabelKeys: Record<string, string> = { 'staff.view': 'actionStaffView', 'staff.invite': 'actionStaffInvite', 'staff.attest': 'actionStaffAttest', 'staff.activate': 'actionStaffActivate', 'staff.revoke': 'actionStaffRevoke', 'grant.manage': 'actionGrantManage', 'service.manage': 'actionServiceManage', 'business.manage': 'actionBusinessManage' };
 function actionLabel(action: string) { return t(`admin.${actionLabelKeys[action] ?? 'actionUnknown'}`); }
 const busy = ref(''), actionError = ref(''), refreshFailed = ref(false);
+const inviteDisclosure = ref<HTMLDetailsElement | null>(null), inviteName = ref<HTMLInputElement | null>(null);
+async function showInvitation() { if (!inviteDisclosure.value) return; inviteDisclosure.value.open = true; await nextTick(); inviteName.value?.focus(); }
 const reviewed = ref(false);
 const locked = computed(() => !!busy.value || outcome.value === 'unknown' || refreshFailed.value);
 const cancellation = new AbortController(); let active = true;
@@ -83,8 +85,9 @@ const xEnvironmentNames = ['BB2_X_CONSUMER_KEY', 'BB2_X_CONSUMER_SECRET', 'BB2_X
             <p class="admin-eyebrow">{{ t('admin.operatingWorkspace') }}</p>
             <h1>{{ t('admin.title') }}</h1>
             <p class="admin-heading-description">{{ t('admin.pageIntro') }}</p>
+            <button v-if="props.permissions['staff.invite']" type="button" data-admin-primary-action class="admin-action admin-action-primary ba-admin-heading-action" :disabled="locked" @click="showInvitation">{{ t('admin.inviteTitle') }}</button>
         </template>
-        <div class="operation-outcome" role="status" data-operation-outcome>
+        <div v-if="outcome || reviewed || refreshFailed" class="operation-outcome" role="status" data-operation-outcome>
             <p v-if="outcome === 'acknowledged'">{{ copy('وصل إقرار نجاح الأمر من الخادم.', 'The server acknowledged command success.') }}</p>
             <p v-if="outcome === 'unknown'">{{ copy('نتيجة الأمر غير مؤكدة؛ لا إعادة تلقائية.', 'Command outcome is unknown; no automatic replay.') }}</p>
             <p v-if="reviewed">{{ copy('هذه قراءة حالية وليست إقرارًا بالأمر السابق. بدء أمر جديد يحتاج قرارك الصريح.', 'This is a current read, not acknowledgement of the earlier command. A new command requires your explicit decision.') }}</p>
@@ -96,12 +99,12 @@ const xEnvironmentNames = ['BB2_X_CONSUMER_KEY', 'BB2_X_CONSUMER_SECRET', 'BB2_X
             <p v-if="actionError" role="alert" class="admin-error admin-action-error">{{ t(`admin.${actionError}`) }}</p>
             <section class="admin-section" aria-labelledby="staff-title">
                 <header class="admin-section-heading"><div><h2 id="staff-title">{{ t('admin.staffTitle') }}</h2><p class="admin-description">{{ t('admin.staffContext') }}</p></div></header>
-                <details v-if="props.permissions['staff.invite']" class="admin-disclosure admin-form-disclosure">
+                <details v-if="props.permissions['staff.invite']" ref="inviteDisclosure" class="admin-disclosure admin-form-disclosure">
                     <summary>{{ t('admin.inviteTitle') }}<span class="admin-disclosure-hint">{{ t('admin.newEmployee') }}</span></summary>
                     <div class="admin-disclosure-body">
                         <p class="admin-description">{{ t('admin.inviteContext') }}</p>
                         <form class="admin-form admin-invite-form" @submit.prevent="inviteEmployee">
-                            <div class="admin-field"><label for="staff-name">{{ t('admin.name') }}</label><input id="staff-name" v-model="invite.name" required maxlength="255" autocomplete="name" :aria-invalid="!!invite.errors.name" :aria-describedby="invite.errors.name ? 'staff-name-error' : undefined" /><p v-if="invite.errors.name" id="staff-name-error" role="alert" class="admin-error">{{ invite.errors.name }}</p></div>
+                            <div class="admin-field"><label for="staff-name">{{ t('admin.name') }}</label><input id="staff-name" ref="inviteName" v-model="invite.name" required maxlength="255" autocomplete="name" :aria-invalid="!!invite.errors.name" :aria-describedby="invite.errors.name ? 'staff-name-error' : undefined" /><p v-if="invite.errors.name" id="staff-name-error" role="alert" class="admin-error">{{ invite.errors.name }}</p></div>
                             <div class="admin-field"><label for="staff-email">{{ t('admin.email') }}</label><input id="staff-email" v-model="invite.email" type="email" required maxlength="255" dir="ltr" autocomplete="email" :aria-invalid="!!invite.errors.email" :aria-describedby="invite.errors.email ? 'staff-email-error' : undefined" /><p v-if="invite.errors.email" id="staff-email-error" role="alert" class="admin-error">{{ invite.errors.email }}</p></div>
                             <button type="submit" :disabled="invite.processing" class="admin-action admin-action-primary">{{ t(invite.processing ? 'admin.sending' : 'admin.sendInvite') }}</button>
                         </form>
