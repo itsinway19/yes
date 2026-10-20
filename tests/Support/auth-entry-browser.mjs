@@ -150,6 +150,32 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             await logout();
             return { productionAssets: true, realBackForward: true, crossWorkspace: true, humanDraftRetained: true, draftIsolation: true, navigationWrites: 0 };
         });
+        await check('A same-record Workspace updates honor actual editor guards and passive history conceals old data', 'auth', async () => {
+            const first=fixture.a.workspaces[0].public_id,second=fixture.a.workspaces[1].public_id;
+            const target=id=>`/workspaces/${id}/goals`;
+            const goalsReady=id=>page.waitForFunction(id=>document.getElementById('application-spa')?.dataset.state==='ready'&&document.querySelector(`[data-goals-workspace="${id}"]`),id);
+            await login('a',target(first));await goalsReady(first);
+            const choice=page.locator('[data-goals^="select-"]').first(),selector=await choice.getAttribute('data-goals');await choice.check();
+            page.removeAllListeners('dialog');page.on('dialog',dialog=>dialog.dismiss());
+            await page.evaluate(path=>document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(path),target(first)+'?review=1');
+            assert.equal(new URL(page.url()).search,'','Unsaved guard rejects same-record query updates too');
+            await page.evaluate(path=>document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(path),target(second));
+            assert.equal(new URL(page.url()).pathname,target(first));assert.equal(await choice.isChecked(),true);
+            page.removeAllListeners('dialog');page.on('dialog',dialog=>dialog.accept());
+            await page.evaluate(path=>document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(path),target(second));await goalsReady(second);
+            assert.equal(await page.locator(`[data-goals="${selector}"]`).isChecked(),false);
+            let once=true;await page.route(`**${target(first)}/context`,async route=>{
+                if(once){once=false;await route.continue({headers:{...route.request().headers(),'X-Proof-Hold':'passive-history-source'}});}else await route.continue();
+            });
+            await page.evaluate(()=>history.back());await until(()=>held.has('passive-history-source'));
+            assert.equal(new URL(page.url()).pathname,target(first));
+            assert.equal(await page.locator('[data-spa-private]:visible').count(),0);
+            assert.equal(await page.locator(`[data-goals-workspace="${second}"]`).count(),1,'Source editor remains mounted while hidden');
+            held.get('passive-history-source').deliver();held.delete('passive-history-source');await goalsReady(first);
+            assert.equal(await page.locator(`[data-goals="${selector}"]`).isChecked(),true);
+            await page.unroute(`**${target(first)}/context`);await logout();
+            return {sameRecordDeniedUpdate:true,acceptedUpdate:true,scopedDraft:true,actualHistory:true,hiddenBeforeTargetAdmission:true,sourceLifetimeRetained:true};
+        });
         await check('A actual virtual resident UV passkey enrollment and native passkey login retain server verification and consumed-document denial', 'auth', async () => {
             const cdp = await context.newCDPSession(page); await cdp.send('WebAuthn.enable');
             authenticatorClient = cdp;
@@ -191,6 +217,10 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
                 const response = await fetch('/auth/passkey', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': identity.csrf, 'X-Builderad-Document': identity.receipt, 'X-Builderad-Transition': identity.transition }, body: JSON.stringify({ credential: {} }) }); return response.status;
             }, captured);
             assert.ok([409, 419].includes(old)); assert.ok(command('account-inspect').audit.includes('passkey_login_verified'));
+            const freshOptions = await get(page, '/identity/passkey/options'); assert.equal(freshOptions.status, 200);
+            const unusedAssertion = await page.evaluate(async options => (await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options) })).toJSON(), freshOptions.body.options);
+            assert.equal((await post(page, '/identity/passkey', { credential: unusedAssertion }, { 'X-Builderad-Transition': 'invalid-transition' })).status, 409);
+            assert.equal((await get(page, '/profile')).body.data.user.email, 'goals-a@example.test');
             await logout(); return { virtualAuthenticator: true, realUvAssertion: true, nativeSignIn: true, consumedInput: old, audit: true };
         });
         await check('A cancelled and expired real WebAuthn assertions never authenticate or replay automatically', 'auth', async () => {
@@ -406,12 +436,13 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
                 await route.fulfill({ response }).catch(error => { assert.match(error.message, /cancel|abort|closed|handled/i); });
             });
             try {
-                await page.evaluate(() => { void __goalsSpa.router.push('/forgot-password'); }); await captured;
-                await page.evaluate(() => { void __goalsSpa.router.push('/register'); }); await ready('register');
+                await page.evaluate(() => { void document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push('/forgot-password'); }); await captured;
+                await page.evaluate(() => { void document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push('/register'); }); await ready('register');
                 release(); await page.unrouteAll({ behavior: 'wait' });
                 assert.equal(await page.locator('[data-auth-kind="forgot-password"]').count(), 0);
                 assert.equal(await page.locator('#password').inputValue(), '');
-                await page.goBack(); await ready('forgot-password'); await page.goForward(); await ready('register');
+                // The cancelled candidate was never admitted and must not enter history.
+                await page.goBack(); await ready('login'); await page.goForward(); await ready('register');
                 assert.equal((await meta(page)).binding.principal, 0);
                 return { realLateLaravelRead: true, cancelledCandidateNotPublished: true, localBackForward: true, nativeBFCache: 'NOT_PROVEN' };
             } finally { release(); }

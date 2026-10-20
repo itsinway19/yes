@@ -392,9 +392,15 @@ class CommercialMarketPreparationTest extends TestCase
             }
             $this->assertStringContainsString($marker, $process->getOutput(), $process->getErrorOutput());
         };
+        $launch = [];
         try {
+            $launch['firstBefore'] = microtime(true);
             $first->start();
+            $launch['firstAfter'] = microtime(true);
+            $launch['firstLauncherPid'] = $first->getPid();
             $second->start();
+            $launch['secondAfter'] = microtime(true);
+            $launch['secondLauncherPid'] = $second->getPid();
             $waitForOutput($first, 'PID=');
             $waitForOutput($second, 'PID=');
             file_put_contents($release.'-hold-start', 'start');
@@ -426,6 +432,18 @@ class CommercialMarketPreparationTest extends TestCase
         } catch (ProcessTimedOutException $error) {
             $this->fail($error->getMessage().' First: '.$first->getOutput().' / '.$first->getErrorOutput().' Second: '.$second->getOutput().' / '.$second->getErrorOutput());
         } finally {
+            $evidence = ['launch' => $launch, 'observedAt' => microtime(true)];
+            foreach (['hold' => $first, 'race' => $second] as $mode => $process) {
+                $trace = $release.'-'.$mode.'-timing.jsonl';
+                $evidence[$mode] = ['output' => $process->getOutput(), 'error' => $process->getErrorOutput(),
+                    'running' => $process->isRunning(), 'trace' => is_file($trace) ? file_get_contents($trace) : null];
+            }
+            $evidencePath = storage_path('framework/testing/commercial-worker-'.Str::uuid().'.json');
+            if (! is_dir(dirname($evidencePath))) {
+                mkdir(dirname($evidencePath), 0777, true);
+            }
+            file_put_contents($evidencePath, json_encode($evidence, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+            fwrite(STDERR, 'COMMERCIAL_WORKER_EVIDENCE='.$evidencePath.PHP_EOL);
             file_put_contents($release, 'release');
             foreach ([$first, $second] as $process) {
                 if ($process->isRunning()) {
