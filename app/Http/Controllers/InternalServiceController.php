@@ -14,6 +14,10 @@ final class InternalServiceController
 {
     public function index(Request $request): SpaPage
     {
+        if (! SpaPage::needsData($request)) {
+            return new SpaPage([]);
+        }
+
         return new SpaPage([
             'services' => DB::table('service_identities')->orderBy('name')
                 ->get(['public_id', 'name', 'status', 'version']),

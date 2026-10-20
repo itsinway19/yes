@@ -64,7 +64,23 @@ async function passkey() {
             }
         });
         operationId.value = operation.id; await operation.promise;
-    } catch { if (active) { recoveryRequired.value = submitted; failure.value = copy('لم يكتمل طلب مفتاح المرور. لم نؤكد تسجيل الدخول؛ يمكنك فتح مستند دخول جديد دون إعادة الطلب تلقائيًا.', 'Passkey sign-in was not confirmed. Open a new sign-in document; no request is replayed automatically.'); } }
+    } catch (error) {
+        if (active) {
+            if (error instanceof TransportError) {
+                // A submitted transition may invalidate the old session even on known rejection.
+                recoveryRequired.value = submitted || ![403, 422, 429].includes(error.status);
+                errors.value = error.body.errors ?? {};
+                failure.value = error.body.message ?? copy('رفض الخادم طلب مفتاح المرور.', 'The server rejected passkey sign-in.');
+            } else if (!submitted) {
+                failure.value = ceremonyCancellation?.signal.aborted || (error instanceof Error && error.name === 'NotAllowedError')
+                    ? copy('أُلغيت محاولة مفتاح المرور في المتصفح؛ لم يُرسل طلب الدخول.', 'The browser ceremony was cancelled; sign-in was not submitted.')
+                    : copy('تعذر إكمال المفتاح في المتصفح؛ لم يُرسل طلب الدخول.', 'The browser ceremony could not complete; sign-in was not submitted.');
+            } else {
+                recoveryRequired.value = true;
+                failure.value = copy('نتيجة طلب مفتاح المرور غير مؤكدة. افتح مستند دخول جديد دون إعادة الطلب.', 'Passkey sign-in is uncertain. Open a new sign-in document without replaying the request.');
+            }
+        }
+    }
     finally { operationId.value = null; if (active) busy.value = false; }
 }
 </script>
@@ -75,7 +91,7 @@ async function passkey() {
             <h1>{{ title }}</h1>
             <p v-if="configuration.status" role="status">{{ configuration.status }}</p>
             <p v-if="failure" role="alert">{{ failure }}</p>
-            <a v-if="recoveryRequired" data-auth-recover :href="internalBoundary ? '/internal/login' : '/login'" @click="close">{{ copy('فتح مستند دخول جديد دون إعادة الطلب', 'Open a new sign-in document without replay') }}</a>
+            <a v-if="recoveryRequired" data-auth-recover :href="internalBoundary ? '/internal/login' : '/login'" @click="close('handoff')">{{ copy('فتح مستند دخول جديد دون إعادة الطلب', 'Open a new sign-in document without replay') }}</a>
             <p v-if="errors.credential" role="alert">{{ errors.credential[0] }}</p>
             <section v-if="configuration.kind === 'verify-email'"><p>{{ copy('أرسلنا رابط التحقق. افتحه في هذا المتصفح لإكمال التحقق بواسطة Laravel.', 'Open the verification link in this browser to complete server verification.') }}</p><button data-auth-resend :disabled="busy" @click="busy = true; submitDocument('/email/verification-notification', {})">{{ copy('إعادة إرسال رابط التحقق', 'Resend verification link') }}</button></section>
             <form v-else-if="!internalBoundary" @submit.prevent="submit" :aria-busy="busy">

@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Commercial\ApprovedCatalogReference;
 use App\Commercial\CommercialAuditDelivery;
+use App\Commercial\CommercialContext;
 use App\Commercial\MarketRegistry;
 use App\Commercial\RegisterCommercialScope;
 use App\Http\Responses\SpaPage;
 use App\Models\User;
-use App\Security\ClientVisibility;
 use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use Illuminate\Http\Request;
@@ -19,6 +19,11 @@ final class CommercialController
 {
     public function index(Request $request, MarketRegistry $markets)
     {
+        if (! SpaPage::needsData($request)) {
+            return app(CommercialContext::class)->run($request, function () {
+                return new SpaPage([]);
+            });
+        }
         $registry = $markets->inspect($request);
         $founder = app(GrantAuthority::class)->canPrepareCommercialMarket($request);
         $targets = DB::table('security_action_grants')->where('subject_user_id', $request->user()->id)
@@ -57,10 +62,6 @@ final class CommercialController
             // Presentation evidence only; every effect still performs its existing fresh/current checks.
             'freshAuthentication' => app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user()),
         ];
-
-        if ($request->header('X-Builderad-Visibility') === '1') {
-            return response()->json(app(ClientVisibility::class)->describe($request))->header('Cache-Control', 'no-store');
-        }
 
         return new SpaPage($data);
     }

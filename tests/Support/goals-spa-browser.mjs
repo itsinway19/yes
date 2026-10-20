@@ -14,9 +14,13 @@ const fixture=JSON.parse(await readFile(path.join(run,'fixture.json')));
 const hash=v=>createHash('sha256').update(v).digest('hex');
 const wire=[],held=new Map(),before=new Map();let turn=0;
 const proxy=http.createServer((req,res)=>{
- const row={path:req.url,method:req.method,start:performance.now(),hold:req.headers['x-proof-hold'],cookies:[]};wire.push(row);
+ const correlation=req.headers['x-proof-correlation']??crypto.randomUUID();
+ req.headers['x-proof-correlation']=correlation;
+ const row={correlation,arrivalUnix:Date.now(),path:req.url,method:req.method,start:performance.now(),hold:req.headers['x-proof-hold'],cookies:[]};wire.push(row);
  const forward=()=>{
+  row.dispatch=performance.now();
   const outgoing=http.request({hostname:'localhost',port:turn++%2?8137:8136,path:req.url,method:req.method,headers:req.headers},source=>{
+   row.headers=performance.now();
    const chunks=[];source.on('data',chunk=>chunks.push(chunk));source.on('end',()=>{
     const bytes=Buffer.concat(chunks);row.status=source.statusCode;row.location=source.headers.location;row.bytes=bytes.length;row.finished=performance.now();row.serverDate=source.headers.date;row.cacheControl=source.headers['cache-control'];row.cookies=(source.headers['set-cookie']??[]).map(cookie=>({name:cookie.split('=')[0],hash:hash(cookie),expires:cookie.match(/;\s*expires=([^;]+)/i)?.[1],maxAge:cookie.match(/;\s*max-age=([^;]+)/i)?.[1]}));
     row.bodyHash=hash(bytes);
@@ -24,6 +28,7 @@ const proxy=http.createServer((req,res)=>{
     if(row.hold)held.set(row.hold,{deliver,discard:()=>{row.discarded=performance.now();res.destroy();},row,bytes,headers:source.headers});else deliver();
    });
   });
+  outgoing.on('socket',socket=>{row.socket=performance.now();socket.once('connect',()=>row.connected=performance.now());});
   outgoing.on('error',error=>{row.error=error.message;if(!res.destroyed){res.writeHead(502);res.end();}});
   req.pipe(outgoing);
  };
@@ -50,11 +55,11 @@ function command(mode,who='a'){
  try{return JSON.parse(child.stdout.trim());}catch{throw Error('Fixture '+mode+' did not return JSON: '+child.stdout+' '+child.stderr);}
 }
 const workspace=fixture.a.workspaces[0].public_id,other=fixture.a.workspaces[1].public_id,foreign=fixture.b.workspaces[0].public_id;
-const target=(mode,id=workspace,review=false)=>`${mode==='spa'?'/spa':''}/workspaces/${id}/goals${review?'/review':''}`;
-const meta=page=>page.evaluate(()=>{const raw=(document.getElementById('application-bootstrap')??document.getElementById('goals-bootstrap'))?.textContent;return raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);});
+const target=(mode,id=workspace,review=false)=>`/workspaces/${id}/goals${review?'/review':''}`;
+const meta=page=>page.evaluate(()=>{const raw=document.getElementById('application-bootstrap')?.textContent;return raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);});
 async function post(page,url,body,extra={}){
  return page.evaluate(async({url,body,extra})=>{
-  const raw=(document.getElementById('application-bootstrap')??document.getElementById('goals-bootstrap'))?.textContent;
+  const raw=document.getElementById('application-bootstrap')?.textContent;
   const identity=raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);
   const response=await fetch(url,{method:'POST',credentials:'same-origin',redirect:'manual',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':identity.csrf,'X-Builderad-Document':identity.receipt,'X-Builderad-Transition':identity.transition,...extra},body:body?JSON.stringify(body):undefined});
   return {status:response.status,body:await response.json()};
@@ -62,7 +67,7 @@ async function post(page,url,body,extra={}){
 }
 async function get(page,url,extra={}){
  return page.evaluate(async({url,extra})=>{
-  const raw=(document.getElementById('application-bootstrap')??document.getElementById('goals-bootstrap'))?.textContent;
+  const raw=document.getElementById('application-bootstrap')?.textContent;
   const identity=raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);
   const response=await fetch(url,{headers:{Accept:'application/json','X-Builderad-Document':identity.receipt,...extra},cache:'no-store'});
   const text=await response.text();let body;try{body=JSON.parse(text);}catch{body=text;}
@@ -93,6 +98,21 @@ async function check(name,mode,fn){
 try{
  browser=await chromium.launch({headless:true,ignoreDefaultArgs:['--disable-back-forward-cache'],executablePath:'C:/Users/stoma/AppData/Local/ms-playwright/chromium-1208/chrome-win64/chrome.exe'});
  result.browser=browser.version();
+ const newContext=browser.newContext.bind(browser);
+ browser.newContext=async options=>{
+  const context=await newContext(options);
+  await context.addInitScript(()=>{
+   const original=window.fetch;
+   window.fetch=async(input,init)=>{
+    const request=new Request(input,init),correlation=crypto.randomUUID(),started=performance.now(),createdUnix=Date.now();
+    request.headers.set('X-Proof-Correlation',correlation);
+    try {const response=await original(request);console.debug('PROOF_HTTP '+JSON.stringify({correlation,createdUnix,path:new URL(request.url).pathname,phase:'headers',ms:performance.now()-started,status:response.status}));return response;}
+    catch(error){console.debug('PROOF_HTTP '+JSON.stringify({correlation,createdUnix,path:new URL(request.url).pathname,phase:'rejected',ms:performance.now()-started,error:error.name}));throw error;}
+   };
+  });
+  context.on('page',page=>page.on('console',message=>{if(message.text().startsWith('PROOF_HTTP '))(result.clientTiming??=[]).push(JSON.parse(message.text().slice(11)));}));
+  return context;
+ };
  if(onlyRestoration){
   const {runRestorationAcceptance}=await import('./goals-spa-restoration.mjs');
   await runRestorationAcceptance({browser,check,login,get,post,target,fixture,workspace,foreign,command,wire,before,until,result});
@@ -167,7 +187,7 @@ try{
   });
   await check('late read and rapid visits cannot publish the wrong Workspace',mode,async()=>{
    let once=true;
-   const latePath=mode==='spa'?`/spa/api/workspaces/${other}/goals`:`/workspaces/${other}/goals/context`;
+   const latePath=mode==='spa'?`/workspaces/${other}/goals/context`:`/workspaces/${other}/goals/context`;
    await page.route('**/*',async route=>{const req=route.request();if(once&&new URL(req.url()).pathname===latePath&&req.headers()['x-builderad-visibility']!=='1'&&req.headers()['x-goals-witness']!=='1'){once=false;await route.continue({headers:{...req.headers(),'X-Proof-Hold':'late-'+mode}});}else await route.continue();});
    await page.evaluate(url=>{void __goalsSpa.router.push(url);},target(mode,other));
    await until(()=>held.has('late-'+mode));await visit(page,mode,target(mode));held.get('late-'+mode).deliver();held.delete('late-'+mode);await page.waitForTimeout(150);await ready(page,mode);
@@ -301,7 +321,7 @@ try{
    });
    if(fault==='render')await check('terminal closure survives synthetic lifecycle notifications without requests',mode,async()=>{
     const mark=wire.length;const state=await page.evaluate(()=>{__goalsSpa.close();dispatchEvent(new PageTransitionEvent('pagehide'));dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));return __goalsSpa.status.value;});
-    assert.equal(state,'closed');await page.waitForTimeout(100);assert.equal(wire.slice(mark).filter(row=>row.path.startsWith('/spa/api/')).length,0);
+    assert.equal(state,'closed');await page.waitForTimeout(100);assert.equal(wire.slice(mark).filter(row=>row.path.includes('/goals/context')).length,0);
     return {classification:'synthetic lifecycle handler probe; not native BFCache evidence'};
    });await context.close();
   }
@@ -334,7 +354,7 @@ try{
  for(const asset of result.assets)assert.ok(servedAssets.some(row=>row.path===new URL(asset.url).pathname),'Browser asset has no verified network origin: '+asset.url);
  result.assetVerification={boundary:'Exact real PHP response bytes passed unchanged to the browser-facing HTTP response; browser URL/status observed separately. Aborted navigations may evict CDP bodies and are not hashed as empty files.',forwardedResponses:servedAssets.length,browserResponses:result.assets.length};
  result.servedAssetsVerified=true;
- result.unverified.push('Real mobile background and pre-JavaScript cached frames','SSE reconnect/gaps/open-channel revocation','Production performance distributions and full Foundation on final dirty state');
+ result.unverified.push('Real mobile background and pre-JavaScript cached frames','SSE reconnect/gaps/open-channel revocation','Production performance distributions; Foundation acceptance is recorded separately');
  result.acceptance=result.findings.length||result.unverified.some(value=>typeof value==='object'&&value.gate?.startsWith('native BFCache'))?'BLOCKED':'REQUIRED_GATES_REVIEW';
  if(result.acceptance==='BLOCKED')process.exitCode=2;
 }catch(error){result.failure=error.stack;process.exitCode=1;}

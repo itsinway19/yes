@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import ts from 'typescript';
 import 'vue';
+import { createMemoryHistory } from 'vue-router';
+import { createApplicationRouter } from '../resources/js/spa/router.ts';
 
 const compiled = ts.transpileModule(await readFile(new URL('../resources/js/spa/transport.ts', import.meta.url), 'utf8'),
     { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
@@ -30,7 +32,7 @@ test('late responses cannot publish after presentation ownership is suspended', 
     let deliver;
     globalThis.fetch = () => new Promise(resolve => { deliver = resolve; });
     const pending = client.protectedResponse('/read');
-    client.suspend();
+    client.close();
     deliver(response(200, { private: 'old workspace' }));
     await assert.rejects(pending, /Obsolete response/);
     client.close();
@@ -67,7 +69,7 @@ test('observed identity failures still close the document after consumer cancell
         const pending = client.protectedResponse('/provider-read', { signal: caller.signal });
         caller.abort(); deliver(response(status, body, evidence));
         await assert.rejects(pending);
-        assert.equal(client.status.value, 'closed');
+        assert.equal(client.documentStatus.value, 'closed');
     }
 });
 
@@ -79,14 +81,13 @@ test('CAS and permission errors preserve their contract while identity/CSRF fail
         [409, { identityConflict: true }, true],
     ]) {
         const client = await transport();
-        client.status.value = 'ready';
         globalThis.fetch = async () => response(status, body);
         await assert.rejects(client.protectedResponse('/read'), error => {
             assert.equal(error.status, status);
             assert.deepEqual(error.body, body);
             return true;
         });
-        assert.equal(client.status.value, terminal ? 'closed' : 'ready');
+        assert.equal(client.documentStatus.value, terminal ? 'closed' : 'active');
         client.close();
     }
 });
@@ -97,7 +98,7 @@ test('changed identity binding closes presentation and cannot deliver successful
         ...identity, binding: { ...identity.binding, principal: 2 },
     });
     await assert.rejects(client.protectedResponse('/read'), /Document binding changed/);
-    assert.equal(client.status.value, 'closed');
+    assert.equal(client.documentStatus.value, 'closed');
 });
 
 test('uncertain mutation delivery is attempted once and reported without replay', async () => {
@@ -122,7 +123,7 @@ test('all signed document binding dimensions must match before private response 
         const changed = { ...identity, binding: { ...identity.binding, [key]: typeof identity.binding[key] === 'number' ? 99 : 'foreign' } };
         globalThis.fetch = async () => response(200, { private: 'foreign' }, changed);
         await assert.rejects(client.request('/private'), /Document binding changed/);
-        assert.equal(client.status.value, 'closed', key);
+        assert.equal(client.documentStatus.value, 'closed', key);
     }
 });
 
@@ -137,17 +138,55 @@ test('document CSRF and receipt own the shared request and ordinary replies cann
     client.close();
 });
 
-test('one current lease timer survives repeated arming; suspension and terminal closure suppress queued renewal', async context => {
+test('one document lease timer survives repeated starts and terminal closure suppresses queued renewal', async context => {
     context.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 0 });
     const client = await transport(); let calls = 0;
     globalThis.fetch = async () => { calls++; return response(200, { identity }); };
     try {
-        client.status.value = 'ready'; client.resumeLease(); client.resumeLease(); client.resumeLease();
+        client.startLease(); client.startLease(); client.startLease();
         context.mock.timers.tick(41999); assert.equal(calls, 0);
         context.mock.timers.tick(1); await new Promise(setImmediate); assert.equal(calls, 1);
-        client.suspend(); context.mock.timers.tick(60000); await new Promise(setImmediate); assert.equal(calls, 1);
-        client.status.value = 'ready'; client.resumeLease(); assert.equal(client.status.value, 'unavailable');
+        client.close(); context.mock.timers.tick(60000); await new Promise(setImmediate); assert.equal(calls, 1);
+        client.startLease(); assert.equal(client.documentStatus.value, 'closed');
         client.close(); context.mock.timers.tick(120000); assert.equal(calls, 1);
+    } finally { client.close(); context.mock.timers.reset(); }
+});
+
+test('frequent navigation and a stalled candidate cannot defer or abort document renewal', async context => {
+    context.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 0 });
+    const client = await transport();
+    let renewals = 0, release, entered;
+    const waiting = new Promise(resolve => { entered = resolve; });
+    const router = createApplicationRouter([
+        { path: '/first', component: {} }, { path: '/second', component: {} }, { path: '/stalled', component: {} },
+    ], {
+        pending() {}, failed() {}, commit(_route, publish) { publish(); },
+        prepare: async (route, _passive, signal) => {
+            if (route.path === '/stalled') { entered(); await new Promise(resolve => { release = resolve; }); }
+            return () => { assert.equal(signal.aborted, false); };
+        },
+    }, createMemoryHistory());
+    globalThis.fetch = async url => { assert.equal(url, '/identity/renew'); renewals++; return response(200, { identity }); };
+    try {
+        client.startLease();
+        for (let i = 0; i < 40; i++) { await router.push(i % 2 ? '/first' : '/second'); context.mock.timers.tick(1000); }
+        const stalled = router.push('/stalled'); await waiting;
+        context.mock.timers.tick(2000); await new Promise(setImmediate);
+        assert.equal(renewals, 1); assert.equal(client.documentStatus.value, 'active');
+        await router.push('/second'); release(); await stalled;
+        assert.equal(renewals, 1); assert.equal(client.documentStatus.value, 'active');
+    } finally { router.cancelCandidate(); client.close(); context.mock.timers.reset(); }
+});
+
+test('an identity rejection during renewal closes the document and no late success can reopen it', async context => {
+    context.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 0 });
+    const client = await transport(); let calls = 0;
+    globalThis.fetch = async () => { calls++; return response(409, { identityConflict: true }); };
+    try {
+        client.startLease(); context.mock.timers.tick(42000); await new Promise(setImmediate);
+        assert.equal(client.documentStatus.value, 'closed'); assert.equal(calls, 1);
+        client.startLease(); context.mock.timers.tick(120000); assert.equal(calls, 1);
+        await assert.rejects(client.protectedResponse('/private'), /closed/);
     } finally { client.close(); context.mock.timers.reset(); }
 });
 
@@ -156,9 +195,9 @@ test('renewal failure stops without polling or automatic replacement and a late 
     const client = await transport(); let calls = 0, deliver;
     globalThis.fetch = () => { calls++; return new Promise(resolve => { deliver = resolve; }); };
     try {
-        client.status.value = 'ready'; client.resumeLease(); context.mock.timers.tick(42000);
+        client.startLease(); context.mock.timers.tick(42000);
         client.close(); deliver(response(200, { identity })); await new Promise(setImmediate);
-        context.mock.timers.tick(120000); assert.equal(client.status.value, 'closed'); assert.equal(calls, 1);
+        context.mock.timers.tick(120000); assert.equal(client.documentStatus.value, 'closed'); assert.equal(calls, 1);
     } finally { client.close(); context.mock.timers.reset(); }
 });
 
@@ -166,8 +205,8 @@ test('delayed JSON cannot mutate evidence after the document revision changes', 
     const client = await transport(); let deliver, started;
     const entered = new Promise(resolve => { started = resolve; });
     globalThis.fetch = async () => ({ clone: () => ({ headers: new Headers({ 'Content-Type': 'application/json' }), json: () => { started(); return new Promise(resolve => { deliver = resolve; }); } }) });
-    const pending = client.protectedResponse('/private'); await entered; client.suspend(); deliver({});
-    await assert.rejects(pending, /Obsolete response/); assert.equal(client.documentEvidence().receipt, identity.receipt); client.close();
+    const pending = client.protectedResponse('/private'); await entered; client.close(); deliver({});
+    await assert.rejects(pending, /Obsolete response/); assert.throws(() => client.documentEvidence(), /closed/);
 });
 
 test('logout validates its captured nonce, lineage, next epoch, boundary and destination before native departure', async () => {
@@ -179,7 +218,7 @@ test('logout validates its captured nonce, lineage, next epoch, boundary and des
         const client = await transport(metadata);
         globalThis.fetch = async () => { calls++; return Response.json({ redirect: invalid?.redirect ?? '/', transition: { ...valid, ...invalid } }); };
         await client.logout();
-        assert.equal(client.status.value, 'closed'); assert.equal(calls, 1); assert.equal(destination, invalid ? undefined : '/');
+        assert.equal(client.documentStatus.value, 'closed'); assert.equal(calls, 1); assert.equal(destination, invalid ? undefined : '/');
         await assert.rejects(client.request('/private'), /Document is closed/);
     }
 });
@@ -188,7 +227,7 @@ test('lost authentication ACK never replays credentials or admits a new document
     const client = await transport(); let calls = 0;
     globalThis.fetch = async () => { calls++; throw Error('lost authentication ACK'); };
     await assert.rejects(client.protectedResponse('/login', { method: 'POST', body: '{"password":"test"}' }, 'login'), /lost authentication ACK/);
-    assert.equal(calls, 1); assert.equal(client.status.value, 'checking'); client.close();
+    assert.equal(calls, 1); assert.equal(client.documentStatus.value, 'active'); client.close();
 });
 
 test('ordinary metadata cannot extend lease expiry and failed renewal stops without polling', async context => {
@@ -199,10 +238,10 @@ test('ordinary metadata cannot extend lease expiry and failed renewal stops with
         return response(200, {}, { ...identity, leaseMilliseconds: 999999 });
     };
     try {
-        await client.request('/private'); client.status.value = 'ready'; client.resumeLease();
+        await client.request('/private'); client.startLease();
         context.mock.timers.tick(42000); await new Promise(setImmediate);
-        assert.equal(renewals, 1); assert.equal(client.status.value, 'unavailable');
+        assert.equal(renewals, 1); assert.equal(client.documentStatus.value, 'unavailable');
         context.mock.timers.tick(120000); await new Promise(setImmediate); assert.equal(renewals, 1);
-        assert.notEqual(client.status.value, 'ready');
+        assert.notEqual(client.documentStatus.value, 'active');
     } finally { client.close(); context.mock.timers.reset(); }
 });

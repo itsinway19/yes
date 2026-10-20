@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref } from 'vue';
-import { onBeforeRouteLeave, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 import ContextForm from './ContextForm.vue';
 import { current } from './state';
 import { confirmDeparture } from '../spa/presentation';
@@ -18,7 +18,7 @@ async function continueTo(destination: string) {
 }
 const canLeave = () => !editor.value?.pending() && (!editor.value?.hasUnsaved() || confirm(locale.value === 'ar' ? 'لديك مسودات غير محفوظة. هل تريد مغادرة الصفحة؟' : 'You have unsaved drafts. Leave this page?'));
 confirmDeparture.value = canLeave;
-onBeforeRouteLeave(canLeave);
+onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 const beforeUnload = (event: BeforeUnloadEvent) => { if (editor.value?.hasUnsaved() || editor.value?.pending()) { event.preventDefault(); event.returnValue = ''; } };
 window.addEventListener('beforeunload', beforeUnload);
 onBeforeUnmount(() => { if (confirmDeparture.value === canLeave) confirmDeparture.value = () => true; window.removeEventListener('beforeunload', beforeUnload); });

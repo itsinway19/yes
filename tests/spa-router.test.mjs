@@ -3,114 +3,76 @@ import assert from 'node:assert/strict';
 import { createMemoryHistory } from 'vue-router';
 import { createApplicationRouter } from '../resources/js/spa/router.ts';
 
-test('the shared router never publishes the target of a cancelled navigation', async () => {
-    const events = [];
-    let status = 'checking';
-    const router = createApplicationRouter([
-        { path: '/first', component: {} },
-        { path: '/second', component: {}, beforeEnter: () => false },
-    ], {
-        suspend: () => { status = 'checking'; events.push('suspend'); },
-        load: route => { status = 'ready'; events.push(route.path); },
-        unavailable: () => events.push('unavailable'),
+const deferred = () => { let resolve, reject; const promise = new Promise((yes,no)=>{resolve=yes;reject=no}); return {promise,resolve,reject}; };
+function fixture(routes, prepare = async route => () => {}) {
+    const state = { view: '', pending: false, concealed: false, failures: 0, publications: [], signals: [] };
+    const router = createApplicationRouter(routes, {
+        pending: (active, passive) => { state.pending = active; if(active && passive)state.concealed=true; },
+        prepare: async (route, passive, signal) => { state.signals.push({path:route.path,passive,signal}); return prepare(route,passive,signal); },
+        commit: (route, publish) => { publish(); state.view = route.path; state.publications.push(route.path); state.pending = false; },
+        failed: () => { state.failures++; state.pending = false; },
     }, createMemoryHistory());
-    await router.push('/first');
-    assert.deepEqual(events, ['suspend', '/first']);
-    await router.push('/second');
-    assert.equal(router.currentRoute.value.path, '/first');
-    assert.deepEqual(events.filter(event => event.startsWith('/')), ['/first', '/first']);
-    assert.equal(events.includes('unavailable'), false);
-    assert.equal(status, 'ready');
+    return {router,state};
+}
+const routes = () => ['/first','/second','/newer'].map(path=>({path,component:{}}));
+
+test('source route and admitted presentation remain unchanged until the target is fully prepared', async () => {
+    const waiting=deferred(), entered=deferred();
+    const {router,state}=fixture(routes(),async route=>{if(route.path==='/second'){entered.resolve();await waiting.promise;}return ()=>{};});
+    await router.push('/first');const pending=router.push('/second');await entered.promise;
+    assert.equal(router.currentRoute.value.path,'/first');assert.equal(state.view,'/first');assert.equal(state.pending,true);
+    waiting.resolve();await pending;assert.equal(router.currentRoute.value.path,'/second');assert.equal(state.view,'/second');
+});
+test('rejected data or witness never commits a target or destroys the admitted source', async()=>{
+    const {router,state}=fixture(routes(),async route=>{if(route.path==='/second')throw Error('403 or witness refused');return ()=>{};});
+    await router.push('/first');await router.push('/second');assert.equal(router.currentRoute.value.path,'/first');assert.equal(state.view,'/first');assert.equal(state.failures,1);assert.deepEqual(state.publications,['/first']);
+});
+test('a route guard abort does not publish the target or reload the source',async()=>{
+    const {router,state}=fixture([...routes(),{path:'/denied',component:{},beforeEnter:()=>false}]);
+    await router.push('/first');await router.push('/denied');assert.equal(state.view,'/first');assert.deepEqual(state.publications,['/first']);assert.equal(state.pending,false);
+});
+test('component loading failure rejects only its own candidate',async()=>{
+    const {router,state}=fixture([...routes(),{path:'/broken',component:()=>Promise.reject(Error('missing chunk'))}]);
+    await router.push('/first');await assert.rejects(router.push('/broken'),/missing chunk/);assert.equal(state.view,'/first');assert.equal(state.pending,false);
+});
+test('a superseded data request is aborted and cannot publish over a newer route even if it ignores abort',async()=>{
+    const waiting=deferred(),entered=deferred();let obsoleteSignal;
+    const {router,state}=fixture(routes(),async(route,_passive,signal)=>{if(route.path==='/second'){obsoleteSignal=signal;entered.resolve();await waiting.promise;}return ()=>{};});
+    await router.push('/first');const obsolete=router.push('/second');await entered.promise;await router.push('/newer');waiting.resolve();await obsolete;
+    assert.equal(obsoleteSignal.aborted,true);assert.equal(state.view,'/newer');assert.deepEqual(state.publications,['/first','/newer']);
+});
+for(const rejects of [false,true])test(`a delayed superseded chunk (${rejects?'rejected':'resolved'}) cannot change the admitted newer view`,async()=>{
+    const chunk=deferred(),entered=deferred();
+    const {router,state}=fixture([...routes(),{path:'/chunk',component:()=>{entered.resolve();return chunk.promise;}}]);
+    await router.push('/first');const old=router.push('/chunk');await entered.promise;await router.push('/newer');
+    const result=rejects?assert.rejects(old,/old chunk/):old;rejects?chunk.reject(Error('old chunk')):chunk.resolve({});await result;
+    assert.equal(state.view,'/newer');assert.equal(state.failures,0);
+});
+test('rapid A to B to A cancels B even when A is a duplicated navigation',async()=>{
+    const chunk=deferred(),entered=deferred();
+    const {router,state}=fixture([...routes(),{path:'/chunk',component:()=>{entered.resolve();return chunk.promise;}}]);
+    await router.push('/first');const old=router.push('/chunk');await entered.promise;await router.push('/first');chunk.resolve({});await old;
+    assert.equal(state.view,'/first');assert.deepEqual(state.publications,['/first']);assert.equal(state.pending,false);
+});
+test('history traversal asks for passive evidence; ordinary navigation does not',async()=>{
+    const {router,state}=fixture(routes());await router.push('/first');await router.push('/second');
+    const done=deferred();router.afterEach(to=>{if(to.path==='/first')done.resolve();});router.back();await done.promise;
+    assert.equal(state.signals.at(-1).passive,true);assert.equal(state.signals[1].passive,false);
+});
+test('a bounded stalled lazy candidate releases progress without destroying the source',async t=>{
+    t.mock.timers.enable({apis:['setTimeout']});const entered=deferred(),chunk=deferred();
+    const {router,state}=fixture([...routes(),{path:'/stalled',component:()=>{entered.resolve();return chunk.promise;}}]);
+    await router.push('/first');const old=router.push('/stalled');await entered.promise;t.mock.timers.tick(30000);
+    assert.equal(state.pending,false);assert.equal(state.view,'/first');assert.equal(state.failures,1);
+    chunk.resolve({});await old;assert.equal(router.currentRoute.value.path,'/first');t.mock.timers.reset();
 });
 
-test('component loading failure closes presentation and cannot publish the failed route', async () => {
-    const events = [];
-    const router = createApplicationRouter([
-        { path: '/first', component: {} },
-        { path: '/broken', component: async () => { throw Error('chunk unavailable'); } },
-    ], {
-        suspend: () => events.push('suspend'),
-        load: route => events.push(route.path),
-        unavailable: () => events.push('unavailable'),
-    }, createMemoryHistory());
-    await router.push('/first');
-    await assert.rejects(router.push('/broken'), /chunk unavailable/);
-    assert.equal(router.currentRoute.value.path, '/first');
-    assert.equal(events.includes('/broken'), false);
-    assert.equal(events.at(-1), 'unavailable');
-});
-
-test('a delayed component from a superseded navigation cannot publish over the newer route', async () => {
-    const published = [];
-    let release;
-    let started;
-    const entered = new Promise(resolve => { started = resolve; });
-    const chunk = new Promise(resolve => { release = resolve; });
-    const router = createApplicationRouter([
-        { path: '/first', component: {} },
-        { path: '/delayed', component: () => { started(); return chunk; } },
-        { path: '/newer', component: {} },
-    ], {
-        suspend: () => {},
-        load: route => published.push(route.path),
-        unavailable: () => assert.fail('Superseded work is not a component error'),
-    }, createMemoryHistory());
-    await router.push('/first');
-    const obsolete = router.push('/delayed');
-    await entered;
-    await router.push('/newer');
-    release({ default: {} });
-    await obsolete;
-    assert.equal(router.currentRoute.value.path, '/newer');
-    assert.deepEqual(published, ['/first', '/newer']);
-});
-
-test('failure of a superseded component cannot close the newer accepted presentation', async () => {
-    const events = [];
-    let rejectChunk;
-    let started;
-    const entered = new Promise(resolve => { started = resolve; });
-    const chunk = new Promise((_resolve, reject) => { rejectChunk = reject; });
-    const router = createApplicationRouter([
-        { path: '/first', component: {} },
-        { path: '/delayed', component: () => { started(); return chunk; } },
-        { path: '/newer', component: {} },
-    ], {
-        suspend: () => events.push('suspend'),
-        load: route => events.push(route.path),
-        unavailable: () => events.push('unavailable'),
-    }, createMemoryHistory());
-    await router.push('/first');
-    const obsolete = router.push('/delayed');
-    await entered;
-    await router.push('/newer');
-    const checkpoint = [...events];
-    rejectChunk(Error('obsolete component failure'));
-    await assert.rejects(obsolete, /obsolete component failure/);
-    assert.deepEqual(events, checkpoint);
-    assert.equal(router.currentRoute.value.path, '/newer');
-});
-
-test('returning to the current route supersedes a pending chunk and restores its presentation', async () => {
-    let status = 'checking';
-    let rejectChunk;
-    let started;
-    const entered = new Promise(resolve => { started = resolve; });
-    const chunk = new Promise((_resolve, reject) => { rejectChunk = reject; });
-    const router = createApplicationRouter([
-        { path: '/first', component: {} },
-        { path: '/delayed', component: () => { started(); return chunk; } },
-    ], {
-        suspend: () => { status = 'checking'; },
-        load: () => { status = 'ready'; },
-        unavailable: () => { status = 'unavailable'; },
-    }, createMemoryHistory());
-    await router.push('/first');
-    const obsolete = router.push('/delayed');
-    await entered;
-    await router.push('/first');
-    rejectChunk(Error('superseded chunk'));
-    await assert.rejects(obsolete, /superseded chunk/);
-    assert.equal(router.currentRoute.value.path, '/first');
-    assert.equal(status, 'ready');
+test('native history traversal conceals retained source before preparing a held target',async()=>{
+    let hold=false;const entered=deferred(),release=deferred();
+    const {router,state}=fixture(routes(),async route=>{if(hold && route.path==='/first'){entered.resolve();await release.promise;}return ()=>{};});
+    await router.push('/first');await router.push('/second');hold=true;
+    const done=deferred();router.afterEach(to=>{if(to.path==='/first')done.resolve()});
+    router.back();await entered.promise;
+    assert.equal(state.concealed,true);assert.equal(state.view,'/second');assert.equal(router.currentRoute.value.path,'/second');
+    release.resolve();await done.promise;assert.equal(state.view,'/first');
 });

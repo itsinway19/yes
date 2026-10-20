@@ -1,3 +1,4 @@
+import { withPresentationPorts } from './Support/presentation-ports.mjs';
 import './source-scope-spa.test.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,7 +16,7 @@ const emptyComponent = moduleUrl('export default { render: () => null };');
 const ports = {
     vue: import.meta.resolve('vue'),
     '@/Components/ProviderBrand.vue': emptyComponent,
-    '../Pages/Workspaces/SourceCapabilityStatus.vue': emptyComponent,
+    '../Components/Sources/SourceCapabilityStatus.vue': emptyComponent,
     './DeclareSourceScope.vue': emptyComponent,
     './commands': moduleUrl(`const runtime = globalThis.__registrySpa;
         export const submit = command => { runtime.calls.push(command); return runtime.send(command); };
@@ -29,7 +30,7 @@ const ports = {
 const { descriptor } = parse(await readFile(new URL('../resources/js/sources/SourceRegistryPanel.vue', import.meta.url), 'utf8'));
 let compiled = ts.transpileModule(compileScript(descriptor, { id: 'registry-spa', inlineTemplate: true }).content,
     { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-for (const [name, target] of Object.entries(ports)) compiled = compiled.replaceAll('from "' + name + '"', 'from ' + JSON.stringify(target)).replaceAll("from '" + name + "'", 'from ' + JSON.stringify(target));
+for (const [name, target] of Object.entries(withPresentationPorts(ports))) compiled = compiled.replaceAll('from "' + name + '"', 'from ' + JSON.stringify(target)).replaceAll("from '" + name + "'", 'from ' + JSON.stringify(target));
 const component = (await import(moduleUrl(compiled))).default;
 function element(tag, text = '') { return { tag, text, children: [], props: {}, parent: null, getRootNode() { return {}; }, addEventListener() {}, removeEventListener() {} }; }
 const renderer = createRenderer({

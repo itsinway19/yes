@@ -27,13 +27,11 @@ class ClientVisibilityTest extends TestCase
         $this->assertSame($before->last_seen_at, $after->last_seen_at);
     }
 
-    public function test_missing_or_foreign_path_receipt_does_not_authorize_a_probe(): void
+    public function test_foreign_document_receipt_cannot_authorize_a_current_witness(): void
     {
         $this->actingAs(User::factory()->create());
-        $receipt = $this->receipt();
-        $this->get('/confirm-password', ['X-Builderad-Visibility' => '1'])->assertStatus(409);
-        $this->get('/security/devices', ['X-Builderad-Visibility' => '1',
-            'X-Builderad-Visibility-Context' => $receipt['context']])->assertStatus(409);
+        $this->getJson('/security/devices', ['X-Builderad-Witness' => '1',
+            'X-Builderad-Document' => 'foreign-document'])->assertStatus(409);
     }
 
     public function test_matching_receipt_does_not_bypass_an_expired_session(): void
@@ -44,20 +42,20 @@ class ClientVisibilityTest extends TestCase
         $db = DB::connection('pgsql_migrations');
         $db->table('security_sessions')->where('user_id', $user->id)->update(['idle_expires_at' => now()->subMinute()]);
         $deadline = $db->table('security_sessions')->where('user_id', $user->id)->value('idle_expires_at');
-        $this->get('/confirm-password', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1',
-            'X-Builderad-Visibility-Context' => $receipt['context']])->assertStatus(409)
+        $this->get('/confirm-password', ['Accept' => 'application/json', 'X-Builderad-Witness' => '1'])->assertStatus(409)
             ->assertJsonPath('identityConflict', true);
         $this->assertSame($deadline, $db->table('security_sessions')->where('user_id', $user->id)->value('idle_expires_at'));
     }
 
-    public function test_login_context_changes_reject_old_receipt(): void
+    public function test_login_context_changes_and_foreign_document_cannot_authorize_witness(): void
     {
         $this->actingAs(User::factory()->create());
         $receipt = $this->receipt();
         $this->post('/logout');
         $this->actingAs(User::factory()->create());
-        $this->get('/confirm-password', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1',
-            'X-Builderad-Visibility-Context' => $receipt['context']])->assertStatus(409);
+        $current = $this->receipt();
+        $this->assertNotSame($receipt['context'], $current['context']);
+        $this->getJson('/confirm-password', ['X-Builderad-Witness' => '1', 'X-Builderad-Document' => 'foreign-document'])->assertStatus(409);
     }
 
     public function test_commercial_spa_preserves_existing_visibility_probe_authority_and_idle_deadlines(): void
@@ -77,11 +75,11 @@ class ClientVisibilityTest extends TestCase
         $this->get('/internal/commercial')->assertOk()->assertViewIs('spa')->assertDontSee('data-page=', false);
         $receipt = $this->getJson('/internal/commercial')->assertOk()->json('visibility');
         $before = $db->table('security_sessions')->where('user_id', $staff->id)->first();
-        $this->get('/internal/commercial', ['X-Inertia' => 'true', 'X-Builderad-Visibility' => '1', 'X-Builderad-Visibility-Context' => $receipt['context']])
-            ->assertOk()->assertExactJson($receipt)->assertHeader('Cache-Control', 'no-store, private');
+        $this->getJson('/internal/commercial', ['X-Builderad-Witness' => '1'])
+            ->assertOk()->assertExactJson(['visibility' => $receipt])->assertHeader('Cache-Control', 'no-store, private');
         $after = $db->table('security_sessions')->where('id', $before->id)->first();
         $this->assertSame($before->idle_expires_at, $after->idle_expires_at);
         $this->assertSame($before->last_seen_at, $after->last_seen_at);
-        $this->get('/internal/commercial', ['X-Builderad-Visibility' => '1', 'X-Builderad-Visibility-Context' => 'foreign'])->assertStatus(409);
+        $this->getJson('/internal/commercial', ['X-Builderad-Witness' => '1', 'X-Builderad-Document' => 'foreign-document'])->assertStatus(409);
     }
 }

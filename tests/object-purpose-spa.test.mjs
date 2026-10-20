@@ -1,3 +1,4 @@
+import { withPresentationPorts } from './Support/presentation-ports.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -13,7 +14,7 @@ const { TransportError } = await import(transport);
 const api = moduleUrl(`export const writePurpose=(workspace,body)=>new Promise((resolve,reject)=>globalThis.__purposeCommandTest.calls.push({workspace,body,resolve,reject}));`);
 const reader = moduleUrl('export const read=async()=>({});');
 let source = ts.transpileModule(await readFile(new URL('../resources/js/object-purpose/commands.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-for (const [from, to] of Object.entries({ vue: import.meta.resolve('vue'), '../spa/transport': transport, './api': api, './state': reader })) source = source.replaceAll(`from '${from}'`, `from ${JSON.stringify(to)}`).replaceAll(`from "${from}"`, `from ${JSON.stringify(to)}`);
+for (const [from, to] of Object.entries(withPresentationPorts({ vue: import.meta.resolve('vue'), '../spa/transport': transport, './api': api, './state': reader }))) source = source.replaceAll(`from '${from}'`, `from ${JSON.stringify(to)}`).replaceAll(`from "${from}"`, `from ${JSON.stringify(to)}`);
 const commands = await import(moduleUrl(source));
 const command = () => ({ command_id: '11111111-1111-4111-8111-111111111111', purpose_id: null, expected_version: 0, operation: 'declare', declaration: { meaning: 'Synthetic fixture only' }, confirmations: { meaning: true } });
 const reply = { purpose_id: '22222222-2222-4222-8222-222222222222', revision_id: '33333333-3333-4333-8333-333333333333', version: 1 };

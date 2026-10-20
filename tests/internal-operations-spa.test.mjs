@@ -1,3 +1,4 @@
+import { withPresentationPorts } from './Support/presentation-ports.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -8,7 +9,7 @@ import { createApplicationClient } from '../resources/js/api/application.ts';
 const moduleUrl = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
 async function compile(file, ports) {
     let source = ts.transpileModule(await readFile(new URL('../resources/js/internal-operations/' + file, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-    for (const [name, target] of Object.entries({ vue: import.meta.resolve('vue'), 'openapi-fetch': import.meta.resolve('openapi-fetch'), ...ports })) source = source.replaceAll(`from '${name}'`, 'from ' + JSON.stringify(target));
+    for (const [name, target] of Object.entries(withPresentationPorts({ vue: import.meta.resolve('vue'), 'openapi-fetch': import.meta.resolve('openapi-fetch'), ...ports }))) source = source.replaceAll(`from '${name}'`, 'from ' + JSON.stringify(target));
     return import(moduleUrl(source));
 }
 test('actual staff helpers retain existing authority command methods and deliver each only once', async () => {
@@ -140,4 +141,16 @@ test('service readback neither settles unknown secret delivery nor accepts an ob
         view.runtime.reader = async (_url, options) => ({ data: { ...(options.headers['X-Builderad-Witness'] ? {} : { data: { services: [] } }), visibility: { ...serviceVisibility, context: options.headers['X-Builderad-Witness'] ? 'revoked' : 'old' } } });
         await view.state.readServices(false, true); assert.equal(view.runtime.closed, true); assert.equal(view.state.services.value, undefined);
     } finally { view.dispose(); }
+});
+
+test('a rejected destination witness cannot close or replace the admitted staff source', async () => {
+    const view = await stateFixture(async (_url, options) => options.headers['X-Builderad-Witness']
+        ? {data:{visibility:{...visibility,context:'changed'}}} : resource);
+    try {
+        view.runtime.status.value='ready';view.state.administration.value={people:['admitted source']};
+        let publication;
+        await assert.rejects(view.state.readAdministration(false,false,{signal:new AbortController().signal,publish:commit=>publication=commit}), /Destination witness changed/);
+        assert.equal(view.runtime.closed,false);assert.equal(view.runtime.status.value,'ready');
+        assert.equal(publication,undefined);assert.deepEqual(view.state.administration.value,{people:['admitted source']});
+    }finally{view.dispose()}
 });

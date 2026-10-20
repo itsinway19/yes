@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref } from 'vue';
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import PurposeView from './PurposeView.vue';
 import { current, read } from './state';
 import { owned, stamp } from '../spa/transport';
@@ -13,7 +13,7 @@ const editor = ref<{ hasUnsaved: () => boolean; pending: () => boolean }>();
 const generation = ref(0);
 const canLeave = () => !editor.value?.pending() && (!editor.value?.hasUnsaved() || confirm(locale.value === 'ar' ? 'لديك تصريح غير محفوظ أو أمر غير محسوم. هل تريد مغادرة الصفحة؟' : 'A declaration is unsaved or unresolved. Leave this page?'));
 confirmDeparture.value = canLeave;
-onBeforeRouteLeave(canLeave);
+onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 async function saved(reply: PurposeAcknowledgement) {
     const captured = stamp(); await nextTick(); if (!owned(captured)) return;
     const target = `/workspaces/${encodeURIComponent(String(route.params.workspace))}/object-purposes/${encodeURIComponent(reply.purpose_id)}`;

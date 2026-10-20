@@ -10,19 +10,34 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
+$proofTimingStart = hrtime(true);
+$proofTimingPath = $argv[5].'-'.$argv[4].'-timing.jsonl';
+$proofCheckpoint = static function (string $phase) use ($proofTimingStart, $proofTimingPath): void {
+    if (getenv('GOALS_SPA_PROOF') === 'enabled') {
+        file_put_contents($proofTimingPath, json_encode(['phase' => $phase, 'pid' => getmypid(),
+            'unix' => microtime(true), 'ms' => (hrtime(true) - $proofTimingStart) / 1e6], JSON_THROW_ON_ERROR).PHP_EOL, FILE_APPEND | LOCK_EX);
+    }
+};
+$proofCheckpoint('php_entry');
 require dirname(__DIR__).'/vendor/autoload.php';
+$proofCheckpoint('autoload_end');
 $app = require dirname(__DIR__).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
+$proofCheckpoint('bootstrap_end');
 app(DisposableTestDatabaseGuard::class)->assertSafe();
+$proofCheckpoint('isolation_verified');
 $user = User::findOrFail((int) $argv[1]);
 $session = $app['session']->driver();
 $session->start();
+$proofCheckpoint('session_started');
 $request = Request::create('/internal/commercial/markets', 'POST');
 $request->setLaravelSession($session);
 $request->setUserResolver(fn () => $user);
 app(SessionAuthority::class)->issue($request, $user, 'internal_passkey');
+$proofCheckpoint('authority_issued');
 echo 'PID='.DB::scalar('SELECT pg_backend_pid()').PHP_EOL;
 flush();
+$proofCheckpoint('pid_emitted');
 $start = $argv[5].'-'.$argv[4].'-start';
 $startDeadline = microtime(true) + 15;
 while (! is_file($start) && microtime(true) < $startDeadline) {
@@ -32,10 +47,11 @@ if (! is_file($start)) {
     throw new RuntimeException('Start barrier not observed.');
 }
 try {
-    DB::connection('pgsql_authority')->transaction(function () use ($request, $argv): void {
-        DB::transaction(function () use ($request, $argv): void {
+    DB::connection('pgsql_authority')->transaction(function () use ($request, $argv, $proofCheckpoint): void {
+        DB::transaction(function () use ($request, $argv, $proofCheckpoint): void {
             app(MarketRegistry::class)->configure($request, ['command_id' => $argv[3], 'market_id' => $argv[2], 'label' => 'Concurrent approved market', 'reason_code' => 'concurrent_market']);
             if ($argv[4] === 'hold') {
+                $proofCheckpoint('insert_ready');
                 echo 'INSERT_READY'.PHP_EOL;
                 flush();
                 $deadline = microtime(true) + 10;

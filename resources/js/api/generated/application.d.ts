@@ -17,23 +17,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/spa/api/workspaces/{workspace}/goals": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Opt-in SPA contextual read: reuses canonical Goals and BusinessContext projections. Witness returns only visibility. Passive/witness checks never extend canonical idle authority. */
-        get: operations["readGoalsContext"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/workspaces/{workspace}/goals/context": {
         parameters: {
             query?: never;
@@ -3860,79 +3843,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Preferences"];
-                };
-            };
-            /** @description No current authenticated session. A stale document may instead be rejected with identityConflict 409 before auth. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Unverified principal, absent Workspace scope or withdrawn grant. No write effect. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description CAS mismatch: preserve draft and explicitly review current version. identityConflict=true instead closes the document; never adopt it as a CAS conflict. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description CSRF rejection, including a transport session that no longer contains the CSRF token. No write effect. */
-            419: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Invalid exact JSON value/version shape, size or domain selection; errors.value contains validation messages. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationError"];
-                };
-            };
-        };
-    };
-    readGoalsContext: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Goals-Passive"?: "1";
-                "X-Goals-Witness"?: "1";
-            };
-            path: {
-                workspace: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Authorized canonical projection. Never shared-cache private data. */
-            200: {
-                headers: {
-                    /** @description Server document evidence, verified by the web transport. Not independent authority. */
-                    "X-Builderad-Identity"?: string;
-                    "Cache-Control"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GoalsContext"] | components["schemas"]["GoalsWitness"];
                 };
             };
             /** @description No current authenticated session. A stale document may instead be rejected with identityConflict 409 before auth. */

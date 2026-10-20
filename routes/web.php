@@ -1,9 +1,5 @@
 <?php
 
-if (config('spa.goals_enabled')) {
-    require __DIR__.'/goals-spa.php';
-}
-
 use App\Http\Controllers\AdvertiserGoalPreferencesController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\IdentityContextController;

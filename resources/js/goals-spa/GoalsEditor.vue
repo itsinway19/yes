@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onBeforeUnmount } from 'vue';
-import { RouterLink as Link, useRouter, onBeforeRouteLeave } from 'vue-router';
+import { RouterLink as Link, useRouter, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import { ChartNoAxesColumnIncreasing, Users, Lightbulb, Settings, Store, ArrowLeft } from '@lucide/vue';
 import { current, read, confirmDeparture } from './state';
 import { remember, restore, type Preferences } from './drafts';
-import { bootstrap, stamp, owned, TransportError } from './transport';
+import { bootstrap, stamp, owned, TransportError } from '../spa/transport';
 import { saveGoals } from './api';
 import { goalsPath } from './paths';
 import { useGoalsCopy } from '../localization/goalsCopy';
@@ -46,7 +46,8 @@ async function review(){reviewing.value=true;try{const value=await read(workspac
 function adopt(){if(reviewed.value){baseline.value=JSON.parse(JSON.stringify(reviewed.value));reviewed.value=null;conflict.value=false;error.value='';}}
 const canLeave=()=>!busy.value&&!reviewing.value&&(!dirty.value||confirm(t('unsaved')));
 confirmDeparture.value=canLeave;
-onBeforeRouteLeave(async()=>{if(!canLeave())return false;await persist;});
+const leaveAfterPersistence = async () => { if (!canLeave()) return false; await persist; };
+onBeforeRouteLeave(leaveAfterPersistence); onBeforeRouteUpdate(leaveAfterPersistence);
 const beforeUnload=(event:BeforeUnloadEvent)=>{if(dirty.value){event.preventDefault();event.returnValue='';}};
 window.addEventListener('beforeunload',beforeUnload);
 onBeforeUnmount(()=>{alive=false;if(confirmDeparture.value===canLeave)confirmDeparture.value=()=>true;window.removeEventListener('beforeunload',beforeUnload);});
@@ -57,7 +58,7 @@ onBeforeUnmount(()=>{alive=false;if(confirmDeparture.value===canLeave)confirmDep
    <section class="goals-screen" :dir="locale === 'ar' ? 'rtl' : 'ltr'" :aria-busy="busy || reviewing">
     <p class="biz-eyebrow">{{ t('eyebrow') }}</p>
     <h1>{{ t('title') }}</h1><p class="goals-intro">{{ t('intro') }}</p>
-    <div class="goals-business"><Store :size="25" aria-hidden="true" /><div><strong>{{ workspace.name }}</strong><p v-if="business.type">{{ localized(business.type) }}</p></div><Link v-if="business.canManage" :to="bootstrap.application ? `/workspaces/${workspace.public_id}/business` : goalsPath(workspace.public_id, true)">{{ t('edit') }}</Link></div>
+    <div class="goals-business"><Store :size="25" aria-hidden="true" /><div><strong>{{ workspace.name }}</strong><p v-if="business.type">{{ localized(business.type) }}</p></div><Link v-if="business.canManage" :to="`/workspaces/${workspace.public_id}/business`">{{ t('edit') }}</Link></div>
     <p v-if="!business.canManage" class="goals-note">{{ t('readonly') }}</p>
     <form data-goals="form" @submit.prevent="save">
      <fieldset class="goals-grid" :disabled="business.canManage && !mutable"><legend class="sr-only">{{ t('selectLabel') }}</legend>
@@ -72,7 +73,7 @@ onBeforeUnmount(()=>{alive=false;if(confirmDeparture.value===canLeave)confirmDep
      <fieldset v-if="priorityGoal" class="goals-outcomes" :aria-label="`${t('results')}: ${localized(priorityGoal)}`" :disabled="!mutable"><legend>{{ t('results') }}</legend><div class="goals-outcome-list"><label v-for="result in priorityGoal.results" :key="result.id" :class="{ 'is-selected': draft.results[priorityGoal.id]?.includes(result.id) }"><input v-if="business.canManage" type="checkbox" :data-goals="`result-${result.id}`" :checked="draft.results[priorityGoal.id]?.includes(result.id) ?? false" @change="outcome(priorityGoal.id, result.id)" /><span v-else aria-hidden="true">{{ draft.results[priorityGoal.id]?.includes(result.id) ? '✓' : '' }}</span>{{ localized(result) }}</label></div></fieldset>
      <div v-if="conflict" class="goals-feedback" role="alert"><p>{{ t('conflict') }}</p><button type="button" data-goals="review" class="biz-link" :disabled="!mutable" @click="review">{{ t('review') }}</button><template v-if="reviewed"><h3>{{ t('savedVersion') }}</h3><p v-if="!reviewed.value.goals.length">{{ t('empty') }}</p><ul><li v-for="goal in catalog.filter(g => reviewed?.value.goals.includes(g.id))" :key="goal.id">{{ localized(goal) }}<strong v-if="reviewed.value.priority === goal.id"> — {{ t('priority') }}</strong><ul><li v-for="result in goal.results.filter(r => reviewed?.value.results[goal.id]?.includes(r.id))" :key="result.id">{{ localized(result) }}</li></ul></li></ul><button type="button" data-goals="adopt" class="biz-link" :disabled="!mutable" @click="adopt">{{ t('adopt') }}</button></template></div>
      <p v-if="error" class="goals-error" role="alert">{{ error }}</p><p v-if="busy || reviewing" role="status">{{ t('saving') }}</p>
-     <footer class="goals-footer"><button v-if="business.canManage" type="submit" data-goals="continue" class="goals-continue" :disabled="!mutable || !canContinue(draft) || conflict">{{ busy ? t('saving') : t('continue') }}<ArrowLeft :size="18" aria-hidden="true" /></button><Link :to="bootstrap.application ? `/workspaces/${workspace.public_id}/business` : goalsPath(workspace.public_id, true)" class="goals-previous">{{ t('previous') }}<ArrowLeft :size="16" aria-hidden="true" /></Link></footer>
+     <footer class="goals-footer"><button v-if="business.canManage" type="submit" data-goals="continue" class="goals-continue" :disabled="!mutable || !canContinue(draft) || conflict">{{ busy ? t('saving') : t('continue') }}<ArrowLeft :size="18" aria-hidden="true" /></button><Link :to="`/workspaces/${workspace.public_id}/business`" class="goals-previous">{{ t('previous') }}<ArrowLeft :size="16" aria-hidden="true" /></Link></footer>
     </form>
    </section>
   </main>

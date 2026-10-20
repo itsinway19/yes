@@ -40,10 +40,10 @@ export async function runGoalsContractCases({ browser, check, login, meta, fixtu
             inspect(await client.GET('/workspaces/{workspace}/goals', { params: { path: { workspace } }, headers: headers() }), 'Error', 401);
             await login(page, 'spa'); identity = await meta(page);
             const baseline = inspect(await client.GET('/workspaces/{workspace}/goals', { params: { path: { workspace } }, headers: headers() }), 'Preferences', 200);
-            const contextual = await client.GET('/spa/api/workspaces/{workspace}/goals', { params: { path: { workspace } }, headers: headers() });
+            const contextual = await client.GET('/workspaces/{workspace}/goals/context', { params: { path: { workspace } }, headers: headers() });
             const data = inspect(contextual, 'GoalsContext', 200);
             assert.deepEqual(data.preferences, baseline);
-            const witness = await client.GET('/spa/api/workspaces/{workspace}/goals', { params: { path: { workspace } }, headers: { ...headers(), 'X-Goals-Witness': '1' } });
+            const witness = await client.GET('/workspaces/{workspace}/goals/context', { params: { path: { workspace } }, headers: { ...headers(), 'X-Goals-Witness': '1' } });
             inspect(witness, 'GoalsWitness', 200);
             inspect(await client.GET('/workspaces/{workspace}/goals', { params: { path: { workspace: foreign } }, headers: headers() }), 'Error', 403);
             const invalid = { value: {}, version: 0 };

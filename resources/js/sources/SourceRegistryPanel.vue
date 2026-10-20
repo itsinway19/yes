@@ -5,7 +5,7 @@ import { submit, remember, restore } from './commands';
 import { read } from './state';
 import { stamp, owned, TransportError } from '../spa/transport';
 import type { SourceCommand, SourceAuthorityCommand } from './client';
-import SourceCapabilityStatus from '../Pages/Workspaces/SourceCapabilityStatus.vue';
+import SourceCapabilityStatus from '../Components/Sources/SourceCapabilityStatus.vue';
 import DeclareSourceScope from './DeclareSourceScope.vue';
 
 type Scope = { resource: string; operation: string; purpose: string };

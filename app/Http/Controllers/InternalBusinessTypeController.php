@@ -17,8 +17,11 @@ use Illuminate\Validation\ValidationException;
 
 final class InternalBusinessTypeController
 {
-    public function index(): SpaPage
+    public function index(Request $request): SpaPage
     {
+        if (! SpaPage::needsData($request)) {
+            return new SpaPage([]);
+        }
         $db = DB::connection('pgsql_authority');
         $guidance = $db->table('business_source_guidance')->get()->groupBy('business_type_id');
         $priors = $db->table('business_promotion_priors')->get()->groupBy('business_type_id');

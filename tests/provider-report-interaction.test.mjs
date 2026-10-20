@@ -1,3 +1,4 @@
+import { withPresentationPorts } from './Support/presentation-ports.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -29,7 +30,7 @@ const ports = {
 const { descriptor } = parse(await readFile(new URL('../resources/js/sources/ProviderReportRequest.vue', import.meta.url), 'utf8'));
 let output = ts.transpileModule(compileScript(descriptor, { id: 'bb2-report', inlineTemplate: true }).content,
     { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
-for (const [original, replacement] of Object.entries({ vue: import.meta.resolve('vue'), ...ports })) {
+for (const [original, replacement] of Object.entries(withPresentationPorts({ vue: import.meta.resolve('vue'), ...ports }))) {
     output = output.replaceAll(`from "${original}"`, `from ${JSON.stringify(replacement)}`).replaceAll(`from '${original}'`, `from ${JSON.stringify(replacement)}`);
 }
 const component = (await import('data:text/javascript;base64,' + Buffer.from(output).toString('base64'))).default;

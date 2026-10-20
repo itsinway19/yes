@@ -1,3 +1,4 @@
+import { withPresentationPorts } from './Support/presentation-ports.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -29,7 +30,7 @@ async function fixture(send, { retain = false, principal = 7, context = 'a'.repe
     };
     let compiled = ts.transpileModule(await readFile(new URL('../resources/js/sources/commands.ts', import.meta.url), 'utf8'),
         { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-    for (const [name, target] of Object.entries(ports)) compiled = compiled.replaceAll("from '" + name + "'", 'from ' + JSON.stringify(target));
+    for (const [name, target] of Object.entries(withPresentationPorts(ports))) compiled = compiled.replaceAll("from '" + name + "'", 'from ' + JSON.stringify(target));
     const commands = await import(moduleUrl(compiled));
     return { commands, runtime, close: () => { runtime.status.value = 'closed'; runtime.closures.forEach(callback => callback()); } };
 }

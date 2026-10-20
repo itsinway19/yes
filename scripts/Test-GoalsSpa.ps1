@@ -87,7 +87,7 @@ try {
  $env:SESSION_DRIVER='redis';$env:SESSION_CONNECTION='default';$env:SESSION_LIFETIME='2';$env:SESSION_SECURE_COOKIE='false'
  $env:REDIS_PORT='6397';$env:REDIS_HOST='127.0.0.1';$env:REDIS_DB='0';$env:REDIS_CACHE_DB='1';$env:REDIS_PREFIX='goals-spa-'+$proofToken+':'
  $env:CACHE_STORE='array';$env:QUEUE_CONNECTION='sync';$env:MAIL_MAILER='array';$env:BCRYPT_ROUNDS='4'
- $env:APP_URL='http://localhost:8138';$env:APP_LOCALE='ar';$env:GOALS_SPA_RUN=$proofRun;$env:GOALS_SPA_PROOF='enabled';$env:GOALS_SPA_ENABLED='true'
+ $env:APP_URL='http://localhost:8138';$env:APP_LOCALE='ar';$env:GOALS_SPA_RUN=$proofRun;$env:GOALS_SPA_PROOF='enabled'
  $env:LARAVEL_STORAGE_PATH=Join-Path $proofRun 'laravel'
  foreach($proofDir in @('framework/sessions','framework/views','framework/cache/data','logs','app/private')){New-Item -ItemType Directory -Force -Path (Join-Path $env:LARAVEL_STORAGE_PATH $proofDir)|Out-Null}
  Invoke-ProofPhp @('artisan','security:assert-disposable-test-db')
@@ -123,7 +123,13 @@ try {
  if($Phase -notin @('Focused','Affected','Foundation')) {
   if(-not $ReuseRun -or $CreateBrowserFixture){
    Invoke-ProofPhp @('artisan','migrate','--database=pgsql_migrations','--force')
-   Invoke-ProofPhp @('tests/Support/GoalsSpaFixture.php','setup')
+   $proofFixtureOutput=Invoke-ProofPhp @('tests/Support/GoalsSpaFixture.php','setup')
+   $proofFixtureOutput | Set-Content (Join-Path $proofRun 'fixture-setup.log')
+   # Laravel's standalone exception renderer can print a failure with exit code zero.
+   # Require a successful structured setup receipt before contacting the browser.
+   $proofFixtureReceipt=($proofFixtureOutput -join "`n") | ConvertFrom-Json -ErrorAction Stop
+   if($proofFixtureReceipt.database.db -ne 'builderad_test_disposable' -or $proofFixtureReceipt.database.role -ne 'builderad_owner' -or $proofFixtureReceipt.database.port -ne 5433){throw 'Invalid isolated fixture setup receipt'}
+   Write-Output ($proofFixtureOutput -join "`n")
   }
   $proofSourceBefore=Get-ProofSource
   [IO.File]::WriteAllText((Join-Path $proofRun 'source-manifest.json'),$proofSourceBefore)

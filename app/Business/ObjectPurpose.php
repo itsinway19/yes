@@ -19,12 +19,16 @@ final class ObjectPurpose
         ]), true, flags: JSON_THROW_ON_ERROR);
     }
 
-    public function projection(Request $request, Workspace $workspace, ?string $purposeId = null,
-        ?DateTimeImmutable $effectiveAt = null, ?DateTimeImmutable $knownAt = null, ?array $object = null): array
+    /** The same domain admission as projection, without reconstructing business history. */
+    public function assertReadable(Request $request, Workspace $workspace, ?string $purposeId = null, ?DateTimeImmutable $knownAt = null): void
+    {
+        $this->readableHeads($request, $workspace, $purposeId, $knownAt);
+    }
+
+    private function readableHeads(Request $request, Workspace $workspace, ?string $purposeId, ?DateTimeImmutable $knownAt): array
     {
         $this->authorize($request, $workspace);
         $now = new DateTimeImmutable(DB::scalar('SELECT clock_timestamp()'));
-        $effectiveAt ??= $now;
         $knownAt ??= $now;
         if ($knownAt > $now) {
             throw ValidationException::withMessages(['known_at' => 'Knowledge time cannot be in the future.']);
@@ -34,6 +38,16 @@ final class ObjectPurpose
         if ($purposeId !== null && $heads->isEmpty()) {
             abort(404);
         }
+
+        return [$heads, $now];
+    }
+
+    public function projection(Request $request, Workspace $workspace, ?string $purposeId = null,
+        ?DateTimeImmutable $effectiveAt = null, ?DateTimeImmutable $knownAt = null, ?array $object = null): array
+    {
+        [$heads, $now] = $this->readableHeads($request, $workspace, $purposeId, $knownAt);
+        $effectiveAt ??= $now;
+        $knownAt ??= $now;
         $contextVersion = (int) DB::table('workspaces')->where('id', $workspace->id)->value('business_context_version');
         // Existing DTM events are immutable and prohibit no-op transitions.
         $dtmTransitionVersion = (int) DB::table('business_target_market_events')->where('workspace_id', $workspace->id)

@@ -5,6 +5,7 @@ namespace Tests\Feature\Security;
 use App\Models\User;
 use App\Security\GrantAuthority;
 use App\Security\LifecycleAuthority;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -164,5 +165,87 @@ class CustomerAdministrationTest extends TestCase
         $db->table('workspaces')->where('id', $workspace->id)->update(['business_type_id' => $db->table('business_types')->where('key', 'real_estate')->value('id')]);
 
         return [$owner, $workspace];
+    }
+
+    public function test_shell_and_witness_use_the_same_founder_authority_without_directory_projection(): void
+    {
+        $this->actingAsInternal($this->staff('founder'));
+        $queries = [];
+        DB::listen(function ($event) use (&$queries): void {
+            $queries[] = $event->sql;
+        });
+        $this->get('/internal/administration/customers')->assertOk()->assertViewIs('spa');
+        $this->getJson('/internal/administration/customers', ['X-Builderad-Witness' => '1'])
+            ->assertOk()->assertJsonMissingPath('data')->assertJsonPath('visibility.protected', true);
+        $this->assertTrue(collect($queries)->contains(fn ($sql) => str_contains($sql, 'builderad_customer_directory_witness()')));
+        $this->assertFalse(collect($queries)->contains(fn ($sql) => str_contains($sql, 'builderad_customer_directory(')));
+        $this->actingAsInternal($this->staff())->getJson('/internal/administration/customers', ['X-Builderad-Witness' => '1'])->assertForbidden();
+    }
+
+    public function test_directory_witness_upgrade_is_repeatable_and_does_not_grant_private_authority(): void
+    {
+        $owner = DB::connection('pgsql_migrations');
+        $before = $owner->table('users')->count();
+        $owner->statement('DROP FUNCTION builderad_customer_directory_witness()');
+        $definition = file_get_contents(database_path('sql/customer_directory_witness.sql'));
+        $owner->unprepared($definition);
+        $owner->unprepared($definition);
+        $this->assertSame($before, $owner->table('users')->count());
+        foreach (['builderad_app' => true, 'builderad_authority' => false] as $role => $allowed) {
+            $this->assertSame($allowed, $owner->scalar("SELECT has_function_privilege(?, 'builderad_customer_directory_witness()', 'EXECUTE')", [$role]));
+            $this->assertFalse($owner->scalar("SELECT has_function_privilege(?, 'builderad_customer_administrator(text)', 'EXECUTE')", [$role]));
+        }
+    }
+
+    public function test_witness_function_has_exact_owner_search_path_and_effective_privileges(): void
+    {
+        $owner = DB::connection('pgsql_migrations');
+        $function = $owner->selectOne("SELECT r.rolname AS owner, p.prosecdef, p.proconfig::text AS settings, pg_get_functiondef(p.oid) AS definition FROM pg_proc p JOIN pg_roles r ON r.oid=p.proowner WHERE p.oid='public.builderad_customer_directory_witness()'::regprocedure");
+        $this->assertSame('builderad_owner', $function->owner);
+        $this->assertTrue($function->prosecdef);
+        $this->assertStringContainsString('search_path=public, pg_temp', $function->settings);
+        $this->assertStringContainsString('PERFORM builderad_customer_administrator()', $function->definition);
+        $this->assertFalse($owner->scalar("SELECT EXISTS(SELECT 1 FROM pg_proc p, LATERAL aclexplode(p.proacl) a WHERE p.oid='public.builderad_customer_directory_witness()'::regprocedure AND a.grantee=0 AND a.privilege_type='EXECUTE')"));
+        foreach (['builderad_app', 'builderad_authority'] as $role) {
+            $this->assertFalse($owner->scalar("SELECT has_schema_privilege(?, 'public', 'CREATE')", [$role]));
+            $this->assertFalse($owner->scalar("SELECT has_function_privilege(?, 'public.builderad_customer_administrator(text)', 'EXECUTE')", [$role]));
+        }
+        $this->assertTrue($owner->scalar("SELECT has_function_privilege('builderad_app', 'public.builderad_customer_directory_witness()', 'EXECUTE')"));
+        $this->assertFalse($owner->scalar("SELECT has_function_privilege('builderad_authority', 'public.builderad_customer_directory_witness()', 'EXECUTE')"));
+    }
+
+    public function test_witness_and_resource_both_deny_invalid_current_founder_authority(): void
+    {
+        $owner = DB::connection('pgsql_migrations');
+        foreach (['idle-expired', 'revoked', 'inactive-founder', 'employee', 'advertiser'] as $scenario) {
+            $principal = $scenario === 'advertiser' ? User::factory()->create() : $this->staff($scenario === 'employee' ? 'employee' : 'founder');
+            if ($scenario === 'advertiser') {
+                $this->actingAs($principal)->withCredentials();
+            } else {
+                $this->actingAsInternal($principal)->withCredentials();
+            }
+            if ($scenario === 'idle-expired') {
+                $owner->table('security_sessions')->where('user_id', $principal->id)->update(['idle_expires_at' => now()->subMinute()]);
+            } elseif ($scenario === 'revoked') {
+                $owner->table('security_sessions')->where('user_id', $principal->id)->update(['revoked_at' => now()]);
+            } elseif ($scenario === 'inactive-founder') {
+                $owner->table('internal_personnel')->where('user_id', $principal->id)->update(['status' => 'revoked']);
+            }
+            foreach ([['X-Builderad-Witness' => '1'], []] as $headers) {
+                $response = $this->getJson('/internal/administration/customers', $headers);
+                $this->assertContains($response->getStatusCode(), [403, 409], $scenario.' must deny both representations: '.$response->getContent());
+                $response->assertJsonMissingPath('data.rows');
+            }
+        }
+    }
+
+    public function test_witness_execute_permission_alone_never_supplies_principal_authority(): void
+    {
+        try {
+            DB::transaction(fn () => DB::selectOne('SELECT public.builderad_customer_directory_witness()'));
+            $this->fail('An unsigned runtime connection must not obtain a witness decision.');
+        } catch (QueryException $error) {
+            $this->assertSame('42501', $error->getCode());
+        }
     }
 }

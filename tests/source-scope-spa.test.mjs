@@ -1,3 +1,4 @@
+import { withPresentationPorts } from './Support/presentation-ports.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -34,7 +35,7 @@ const ports = {
 const { descriptor } = parse(await readFile(new URL('../resources/js/sources/DeclareSourceScope.vue', import.meta.url), 'utf8'));
 let compiled = ts.transpileModule(compileScript(descriptor, { id: 'spa-source-scope', inlineTemplate: true }).content,
     { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
-for (const [name, target] of Object.entries({ vue: import.meta.resolve('vue'), ...ports })) {
+for (const [name, target] of Object.entries(withPresentationPorts({ vue: import.meta.resolve('vue'), ...ports }))) {
     compiled = compiled.replaceAll('from "' + name + '"', 'from ' + JSON.stringify(target)).replaceAll("from '" + name + "'", 'from ' + JSON.stringify(target));
 }
 const declaration = { component: (await import(moduleUrl(compiled))).default };

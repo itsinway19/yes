@@ -27,6 +27,10 @@ final class InternalAdministrationController extends Controller
 {
     public function index(Request $request, GrantAuthority $grants): SpaPage
     {
+        if (! SpaPage::needsData($request)) {
+            return new SpaPage([]);
+        }
+
         $canManageServices = $grants->has($request->user(), (int) $request->session()->get('a001_generation', 0), 'service.manage');
         $people = DB::table('internal_personnel as personnel')
             ->join('users', 'users.id', '=', 'personnel.user_id')

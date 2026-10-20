@@ -1,4 +1,4 @@
-import { onClose } from './transport';
+import { onClose } from '../spa/transport';
 import type { GoalValue } from '../Components/Business/goalSelection';
 export type { Preferences } from '../api/goals';
 import type { Preferences } from '../api/goals';

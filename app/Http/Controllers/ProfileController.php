@@ -28,6 +28,10 @@ class ProfileController extends Controller
             $request->session()->keep(['errors', '_old_input', 'status']);
         }
 
+        if (! SpaPage::needsData($request)) {
+            return new SpaPage([]);
+        }
+
         return new SpaPage([
             'user' => $request->user()->only(['name', 'email', 'email_verified_at']),
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,

@@ -42,6 +42,11 @@ final class ObjectPurposeController extends Controller
 
         return $this->guard(function () use ($request, $workspace, $id, $context, $service, $business, $effective, $known, $application) {
             return $context->run($request->user(), $workspace, function (Workspace $active) use ($request, $id, $service, $business, $effective, $known, $application) {
+                if (! SpaPage::needsData($request)) {
+                    $service->assertReadable($request, $active, $id, $known);
+
+                    return $application ? (new SpaPage([]))->resource($request) : new SpaPage([]);
+                }
                 $projection = $service->projection($request, $active, $id, $effective, $known);
                 if ($request->expectsJson() && ! $application) {
                     return response()->json($projection)->header('Cache-Control', 'no-store');

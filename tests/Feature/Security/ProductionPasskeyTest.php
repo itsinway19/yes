@@ -77,6 +77,24 @@ class ProductionPasskeyTest extends PasskeyAssertionTest
         $this->assertSame(1, DB::table('security_audit_events')->where('event', 'passkey_login_verified')->count());
     }
 
+    #[DataProvider('boundaries')]
+    public function test_malformed_signature_is_rejected_without_authentication_publication(bool $internal): void
+    {
+        [$user, $key, $id] = $this->createCredential(staff: $internal);
+        $guest = $this->protocolGuest($internal);
+        $prefix = $internal ? '/internal' : '';
+        $headers = $this->protocolHeaders($guest);
+        $options = $this->get($prefix.'/auth/passkey/options', $headers)->assertOk()->json('options');
+        $assertion = $this->assertion($options, $key, $id, $user, AuthenticatorData::FLAG_UP | AuthenticatorData::FLAG_UV);
+        $assertion['response']['signature'] = 'invalid';
+        $this->post($prefix.'/auth/passkey', ['credential' => $assertion], $headers)->assertUnprocessable()
+            ->assertJsonValidationErrors('credential');
+        $this->assertSame(0, DB::table('security_sessions')->count());
+        $this->assertSame(0, DB::table('security_audit_events')->where('event', 'passkey_login_verified')->count());
+        $this->assertNull(DB::table('passkeys')->value('last_used_at'));
+        $this->assertSame(0, DB::table('browser_identity_transitions')->value('epoch'));
+    }
+
     public function test_p2b_real_signed_passkey_without_uv_still_fails_without_publication(): void
     {
         [$user, $key, $id] = $this->createCredential();

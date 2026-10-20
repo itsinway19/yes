@@ -38,6 +38,9 @@ final class BusinessContextController
             return redirect()->route('workspaces.index');
         }
         abort_unless(app(GrantAuthority::class)->has($request->user(), (int) $request->session()->get('a001_generation', 0), 'workspace.create'), 403);
+        if (! SpaPage::needsData($request)) {
+            return new SpaPage([]);
+        }
         $key = $request->session()->get('business.creation_key');
         if (! $key || $request->session()->get('business.creation_completed') === $key) {
             $key = (string) Str::uuid();
@@ -71,11 +74,12 @@ final class BusinessContextController
 
     public function edit(Request $request, string $workspace, WorkspaceContext $context, BusinessContext $business): SpaPage
     {
-        // Catalog presentation data is independent of the protected Workspace
-        // snapshot; keep its bounded query outside the Workspace read transaction.
-        $timezoneOptions = $business->currentIntentTimezones();
 
-        return $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $business, $timezoneOptions): SpaPage {
+        return $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $business): SpaPage {
+            if (! SpaPage::needsData($request)) {
+                return new SpaPage([]);
+            }
+            $timezoneOptions = $business->currentIntentTimezones();
             $existingGrant = DB::table('security_action_grants')->where('subject_user_id', $request->user()->id)
                 ->where('subject_generation', $request->session()->get('a001_generation'))
                 ->where('workspace_id', $w->id)->where('action', 'business.context.manage')->exists();

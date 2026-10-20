@@ -7,7 +7,7 @@ Builderad is a Laravel 13 modular monolith. The security foundation uses Laravel
 - PHP 8.5.x and Laravel 13
 - PostgreSQL 18.x only
 - Redis for cache, sessions, and queues
-- Inertia, Vue 3, TypeScript, Tailwind CSS 4, Vite 8, and Node 24.x
+- Vue 3, Vue Router, TypeScript, Tailwind CSS 4, Vite 8, and Node 24.x
 
 Load the scoped local toolchain before running commands:
 

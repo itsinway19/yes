@@ -12,6 +12,10 @@ final class StaffOnboardingController
     {
         $personnel = DB::table('internal_personnel')->where('user_id', $request->user()->id)->firstOrFail();
 
+        if (! SpaPage::needsData($request)) {
+            return new SpaPage([]);
+        }
+
         return new SpaPage([
             'verified' => $request->user()->hasVerifiedEmail(),
             'kind' => $personnel->kind,

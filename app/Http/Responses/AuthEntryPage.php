@@ -15,7 +15,7 @@ final class AuthEntryPage implements Responsable
             $request->session()->keep(['errors', '_old_input', 'status']);
         }
 
-        return (new SpaPage([
+        return (new SpaPage(SpaPage::needsData($request) ? [
             'kind' => $this->kind,
             'canResetPassword' => false,
             'passwordPolicy' => null,
@@ -24,6 +24,6 @@ final class AuthEntryPage implements Responsable
             'errors' => $request->session()->get('errors')?->getBag('default')->messages() ?? [],
             'old' => ['name' => is_string($request->old('name')) ? $request->old('name') : null,
                 'email' => is_string($request->old('email')) ? $request->old('email') : null],
-        ]))->toResponse($request)->header('Referrer-Policy', 'no-referrer');
+        ] : []))->toResponse($request)->header('Referrer-Policy', 'no-referrer');
     }
 }

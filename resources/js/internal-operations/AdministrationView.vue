@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
-import { onBeforeRouteLeave } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import ProviderBrand from '@/Components/ProviderBrand.vue';
 import OperationsShell from './OperationsShell.vue';
@@ -22,7 +22,7 @@ const reviewed = ref(false);
 const locked = computed(() => !!busy.value || outcome.value === 'unknown' || refreshFailed.value);
 const cancellation = new AbortController(); let active = true;
 const canLeave = () => !['pending', 'unknown'].includes(outcome.value) || confirm(copy('يوجد أمر غير محسوم. المغادرة لا تعيد تنفيذه. هل تريد المتابعة؟', 'An operation is unresolved. Leaving never replays it. Continue?'));
-confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave);
+confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 const closures = onClose(clearError);
 const beforeUnload = (event: BeforeUnloadEvent) => { if (['pending', 'unknown'].includes(outcome.value)) { event.preventDefault(); event.returnValue = ''; } };
 window.addEventListener('beforeunload', beforeUnload);

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
-import { RouterLink, onBeforeRouteLeave } from 'vue-router';
+import { RouterLink, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import { bootstrap, close, logout, onClose, owned, stamp, TransportError } from '../spa/transport';
 import { confirmDeparture } from '../spa/presentation';
 import { locale } from '../spa/locale';
@@ -124,7 +124,7 @@ function renewLogin() {
     renewing.value = true; void logout();
 }
 const canLeave = () => !(busy.value || lifecycle.value === 'uncertain') || confirm(c('يوجد أمر غير محسوم محفوظ. المغادرة لا تعيد تنفيذه. متابعة؟', 'An unresolved command is retained. Leaving never replays it. Continue?'));
-confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave);
+confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 function beforeUnload(event: BeforeUnloadEvent) { if ((busy.value || lifecycle.value === 'uncertain') && !renewing.value) { event.preventDefault(); event.returnValue = ''; } }
 if (typeof window !== 'undefined') window.addEventListener('beforeunload', beforeUnload);
 const clearPrivate = () => { for (const key of Object.keys(fields)) fields[key] = ''; beneficiaryNames.value = {}; workspace.value = null; result.value = null; receiptResult.value = null; contextResult.value = null; deliveryResult.value = null; original = null; };

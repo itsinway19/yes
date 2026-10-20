@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, shallowRef } from 'vue';
-import { onBeforeRouteLeave } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import type { components } from '../api/generated/application';
 import OperationsShell from './OperationsShell.vue';
 import { services as resource, serviceOutcome as outcome, readServices } from './serviceState';
@@ -18,7 +18,7 @@ const locked = computed(() => !!busy.value || outcome.value === 'unknown' || rea
 const cancellation = new AbortController(); let active = true;
 function clearSecret() { newCredential.value = null; }
 const canLeave = () => !['pending', 'unknown'].includes(outcome.value) || confirm('يوجد أمر غير محسوم. المغادرة لا تعيد تنفيذه. هل تريد المتابعة؟');
-confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave);
+confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 function beforeUnload(event: BeforeUnloadEvent) { clearSecret(); if (['pending', 'unknown'].includes(outcome.value)) { event.preventDefault(); event.returnValue = ''; } }
 function visibility() { if (document.visibilityState !== 'visible') clearSecret(); }
 window.addEventListener('beforeunload', beforeUnload); window.addEventListener('pagehide', clearSecret); document.addEventListener('visibilitychange', visibility);

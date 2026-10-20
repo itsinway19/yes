@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 use Tests\Support\ApplicationContractAssertions;
 use Tests\TestCase;
@@ -391,9 +392,15 @@ class CommercialMarketPreparationTest extends TestCase
             }
             $this->assertStringContainsString($marker, $process->getOutput(), $process->getErrorOutput());
         };
+        $launch = [];
         try {
+            $launch['firstBefore'] = microtime(true);
             $first->start();
+            $launch['firstAfter'] = microtime(true);
+            $launch['firstLauncherPid'] = $first->getPid();
             $second->start();
+            $launch['secondAfter'] = microtime(true);
+            $launch['secondLauncherPid'] = $second->getPid();
             $waitForOutput($first, 'PID=');
             $waitForOutput($second, 'PID=');
             file_put_contents($release.'-hold-start', 'start');
@@ -422,7 +429,21 @@ class CommercialMarketPreparationTest extends TestCase
             $this->assertSame(1, $db->table('commercial_markets')->where('id', $target)->count());
             $this->assertSame(1, $db->table('commercial_command_results')->where('target_id', $target)->count());
             $this->assertSame(1, $db->table('security_commercial_market_approvals')->count());
+        } catch (ProcessTimedOutException $error) {
+            $this->fail($error->getMessage().' First: '.$first->getOutput().' / '.$first->getErrorOutput().' Second: '.$second->getOutput().' / '.$second->getErrorOutput());
         } finally {
+            $evidence = ['launch' => $launch, 'observedAt' => microtime(true)];
+            foreach (['hold' => $first, 'race' => $second] as $mode => $process) {
+                $trace = $release.'-'.$mode.'-timing.jsonl';
+                $evidence[$mode] = ['output' => $process->getOutput(), 'error' => $process->getErrorOutput(),
+                    'running' => $process->isRunning(), 'trace' => is_file($trace) ? file_get_contents($trace) : null];
+            }
+            $evidencePath = storage_path('framework/testing/commercial-worker-'.Str::uuid().'.json');
+            if (! is_dir(dirname($evidencePath))) {
+                mkdir(dirname($evidencePath), 0777, true);
+            }
+            file_put_contents($evidencePath, json_encode($evidence, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+            fwrite(STDERR, 'COMMERCIAL_WORKER_EVIDENCE='.$evidencePath.PHP_EOL);
             file_put_contents($release, 'release');
             foreach ([$first, $second] as $process) {
                 if ($process->isRunning()) {
@@ -434,5 +455,22 @@ class CommercialMarketPreparationTest extends TestCase
                 }
             }
         }
+    }
+
+    public function test_shell_and_witness_preserve_founder_authority_without_commercial_projection_queries(): void
+    {
+        $this->actingAsInternal($this->staff('founder'))->withCredentials();
+        $queries = [];
+        DB::listen(function ($event) use (&$queries): void {
+            $queries[] = $event->sql;
+        });
+        $path = '/internal/administration/commercial-markets';
+        $this->get($path)->assertOk()->assertViewIs('spa');
+        $this->getJson($path, ['X-Builderad-Witness' => '1'])->assertOk()->assertJsonMissingPath('data');
+        foreach (['commercial_markets', 'commercial_market_configuration_versions', 'commercial_catalog_references', 'builderad_sa01_founder_workspaces'] as $projection) {
+            $this->assertFalse(collect($queries)->contains(fn ($sql) => str_contains($sql, $projection)), $projection);
+        }
+        $this->assertFalse(collect($queries)->contains(fn ($sql) => str_contains($sql, 'security_commercial_market_approvals')));
+        $this->assertFalse(collect($queries)->contains(fn ($sql) => str_contains($sql, 'builderad_commercial_preparation_consumed')));
     }
 }

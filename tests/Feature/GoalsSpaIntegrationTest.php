@@ -13,24 +13,19 @@ final class GoalsSpaIntegrationTest extends TestCase
 {
     public function test_enabled_shell_and_reads_use_the_real_web_routes_and_existing_writer(): void
     {
-        // Register the opt-in production route file even if the suite booted disabled.
-        if (! Route::has('workspaces.goals.spa.shell')) {
-            Route::middleware('web')->group(base_path('routes/goals-spa.php'));
-            Route::getRoutes()->refreshNameLookups();
-        }
         $user = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
         $this->actingAs($user)->post('/workspaces', ['name' => 'Integrated Goals', 'slug' => 'integrated-goals'])->assertRedirect();
         $workspace = DB::connection('pgsql_migrations')->table('workspaces')->where('slug', 'integrated-goals')->first();
         $canonical = '/workspaces/'.$workspace->public_id.'/goals';
         $this->withHeader('X-Builderad-Transition', '');
-        $this->get('/spa/workspaces/'.$workspace->public_id.'/goals')->assertOk()
-            ->assertSee('goals-bootstrap', false)->assertDontSee('data-page=', false);
+        $this->get('/workspaces/'.$workspace->public_id.'/goals')->assertOk()
+            ->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
         $this->assertSame($this->getJson($canonical)->assertOk()->json(),
-            $this->getJson('/spa/api/workspaces/'.$workspace->public_id.'/goals')->assertOk()->json('preferences'));
+            $this->getJson('/workspaces/'.$workspace->public_id.'/goals/context')->assertOk()->json('preferences'));
         $this->postJson($canonical, ['value' => AdvertiserGoalPreferencesTest::value(), 'version' => 0])->assertOk();
         $this->postJson($canonical, ['value' => AdvertiserGoalPreferencesTest::value(), 'version' => 0])->assertStatus(409);
-        foreach (['workspaces.goals.spa.shell', 'workspaces.goals.spa.read', 'workspaces.goals.update'] as $name) {
+        foreach (['workspaces.goals.edit', 'workspaces.goals.context', 'workspaces.goals.update'] as $name) {
             $route = Route::getRoutes()->getByName($name);
             $this->assertContains('web', $route->gatherMiddleware());
             $this->assertContains('auth', $route->gatherMiddleware());

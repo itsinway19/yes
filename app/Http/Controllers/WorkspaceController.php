@@ -23,6 +23,10 @@ final class WorkspaceController extends Controller
 {
     public function index(Request $request, WorkspaceAuthority $authority, GrantAuthority $grants): SpaPage
     {
+        if (! SpaPage::needsData($request)) {
+            return new SpaPage([]);
+        }
+
         return new SpaPage([
             'workspaces' => $authority->visibleTo(
                 $request->user(),
@@ -54,6 +58,9 @@ final class WorkspaceController extends Controller
             $request->user(),
             $workspace,
             function (Workspace $activeWorkspace) use ($request, $grants): SpaPage {
+                if (! SpaPage::needsData($request)) {
+                    return new SpaPage([]);
+                }
                 $isOwner = DB::table('workspace_ownerships')
                     ->where('workspace_id', $activeWorkspace->id)
                     ->where('responsible_owner_user_id', $request->user()->id)->exists();

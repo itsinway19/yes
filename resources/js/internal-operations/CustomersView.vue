@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import OperationsShell from './OperationsShell.vue';
 import { customers, changeCustomerStatus, readCustomers, type CustomerCommand } from './customerState';
@@ -136,7 +136,7 @@ function signInAgain() {
 }
 const canLeave = () => !locked.value || reauthenticating.value;
 confirmDeparture.value = canLeave;
-onBeforeRouteLeave(canLeave);
+onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 function beforeUnload(event: BeforeUnloadEvent) { if (locked.value && !reauthenticating.value) { event.preventDefault(); event.returnValue = ''; } }
 window.addEventListener('beforeunload', beforeUnload);
 const clearPrivate = () => { confirmation.value = null; frozen.value = null; reason.value = ''; search.value = ''; error.value = ''; success.value = ''; };

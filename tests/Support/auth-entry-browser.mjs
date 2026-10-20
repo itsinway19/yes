@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-export async function runAuthEntryCases({ browser, check, meta, get, post, command, fixture, result, run }) {
+export async function runAuthEntryCases({ browser, check, meta, get, post, command, fixture, result, run, until, held }) {
     const onlyInternal = process.env.AUTH_ENTRY_ONLY === 'internal';
     const completion = process.env.AUTH_ENTRY_ONLY === 'completion';
     const passkeyExpiry = process.env.AUTH_ENTRY_ONLY === 'passkey-expiry';
+    const cleanupPasskeys = process.env.AUTH_ENTRY_ONLY === 'cleanup-passkeys';
     const runCheck = check;
-    check = (name, mode, action) => (onlyInternal && !name.startsWith('C internal')) || (completion && !name.startsWith('C ') && !name.startsWith('B pending staff')) || (passkeyExpiry && !name.startsWith('A actual virtual') && !name.startsWith('A cancelled and expired')) ? Promise.resolve() : runCheck(name, mode, action);
+    check = (name, mode, action) => (cleanupPasskeys && !['A actual virtual', 'A cancelled and expired', 'A known passkey', 'A committed passkey'].some(prefix => name.startsWith(prefix))) || (onlyInternal && !name.startsWith('C internal')) || (completion && !name.startsWith('C ') && !name.startsWith('B pending staff')) || (passkeyExpiry && !name.startsWith('A actual virtual') && !name.startsWith('A cancelled and expired')) ? Promise.resolve() : runCheck(name, mode, action);
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } }), page = await context.newPage();
     page.setDefaultTimeout(20000); page.on('dialog', dialog => dialog.accept());
     context.on('page', current => current.on('pageerror', error => result.errors.push({ mode: 'auth', message: error.message, stack: error.stack, url: current.url(), case: result.cases.at(-1)?.name })));
@@ -84,20 +85,142 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             assert.equal((await get(page, '/profile')).body.data.user.email, 'goals-b@example.test');
             await logout(); return { prior: fixture.a.user, current: fixture.b.user, epochAdvanced: true, serverDestination: true };
         });
+        await check('A native SPA retains source route and mounted draft while a destination is pending or cancelled', 'auth', async () => {
+            await login('a', '/profile');
+            const originalUrl = page.url();
+            await page.locator('#account-name').fill('Unsaved retained profile');
+            await page.evaluate(() => {
+                dispatchEvent(new PageTransitionEvent('pagehide'));
+                if (getComputedStyle(document.querySelector('[data-spa-private]')).display !== 'none') throw Error('Private content was not concealed synchronously');
+                dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+            });
+            await privateReady();
+            assert.equal(await page.locator('#account-name').inputValue(), 'Unsaved retained profile');
+            let heldOnce = false;
+            await page.route('**/security/devices', async route => {
+                if (route.request().isNavigationRequest() || !route.request().headers()['x-builderad-witness'] || heldOnce) return route.continue();
+                heldOnce = true;
+                await route.continue({ headers: { ...route.request().headers(), 'X-Proof-Hold': 'native-candidate' } });
+            });
+            const mark = result.wire.length;
+            await page.locator('header a[href="/security/devices"]').click();
+            await until(() => held.has('native-candidate'));
+            assert.equal(page.url(), originalUrl);
+            assert.equal(await page.locator('#account-name').inputValue(), 'Unsaved retained profile');
+            assert.equal(await page.locator('[data-spa-view]').getAttribute('inert'), '');
+            await page.locator('header a[href="/profile"]').click();
+            held.get('native-candidate').deliver(); held.delete('native-candidate');
+            await page.waitForFunction(() => !document.querySelector('[data-spa="navigation"]'));
+            assert.equal(page.url(), originalUrl);
+            assert.equal(await page.locator('#account-name').inputValue(), 'Unsaved retained profile');
+            await page.unroute('**/security/devices');
+            const requests = result.wire.slice(mark).filter(row => row.path === '/security/devices' && row.method === 'GET');
+            assert.equal(requests.length, 2);
+            await page.locator('header a[href="/security/devices"]').click();
+            await page.waitForURL('**/security/devices'); await privateReady();
+            assert.equal(await page.locator('[data-account-kind="devices"]').count(), 1);
+            await logout();
+            return { sourceUrlRetained: true, mountedDraftRetained: true, sourceInert: true, cancelledTargetCannotPublish: true,
+                resourceAndWitnessRequests: requests.map(row => ({ status: row.status, ms: row.finished - row.start, bytes: row.bytes })), beforeAfterSpeedup: 'NOT_MEASURED' };
+        });
+        await check('A production Workspace navigation and actual Back/Forward preserve scoped human drafts without writes', 'auth', async () => {
+            const first = fixture.a.workspaces[0].public_id, second = fixture.a.workspaces[1].public_id;
+            const goalsPath = id => `/workspaces/${id}/goals`;
+            const goalsReady = id => page.waitForFunction(id => document.getElementById('application-spa')?.dataset.state === 'ready' && document.querySelector(`[data-goals-workspace="${id}"]`), id);
+            await login('a', goalsPath(first)); await goalsReady(first);
+            const mark = result.wire.length;
+            const goal = page.locator('[data-goals^="select-"]').first(), selector = await goal.getAttribute('data-goals');
+            await goal.check();
+            await page.locator(`header a[href="/workspaces/${first}/business"]`).click();
+            await page.waitForURL(`**/workspaces/${first}/business`); await privateReady();
+            await page.goBack(); await goalsReady(first);
+            assert.equal(await page.locator(`[data-goals="${selector}"]`).isChecked(), true);
+            await page.goForward(); await page.waitForURL(`**/workspaces/${first}/business`); await privateReady();
+            await page.locator('header a[href="/workspaces"]').click(); await page.waitForURL('**/workspaces'); await privateReady();
+            await page.locator(`a.workspace-row[href="/workspaces/${second}"]`).click();
+            await page.waitForURL(`**/workspaces/${second}`); await privateReady();
+            await page.locator(`header a[href="${goalsPath(second)}"]`).click(); await goalsReady(second);
+            assert.equal(await page.locator(`[data-goals="${selector}"]`).isChecked(), false);
+            await page.locator('header a[href="/workspaces"]').click(); await page.waitForURL('**/workspaces'); await privateReady();
+            await page.locator(`a.workspace-row[href="/workspaces/${first}"]`).click(); await privateReady();
+            await page.locator(`header a[href="${goalsPath(first)}"]`).click(); await goalsReady(first);
+            assert.equal(await page.locator(`[data-goals="${selector}"]`).isChecked(), true);
+            assert.equal((await get(page, goalsPath(first) + '/context')).body.preferences.version, 0);
+            assert.equal(result.wire.slice(mark).filter(row => row.method === 'POST' && row.path.startsWith('/workspaces/')).length, 0);
+            await logout();
+            return { productionAssets: true, realBackForward: true, crossWorkspace: true, humanDraftRetained: true, draftIsolation: true, navigationWrites: 0 };
+        });
+        await check('A same-record Workspace updates honor actual editor guards and passive history conceals old data', 'auth', async () => {
+            const first=fixture.a.workspaces[0].public_id,second=fixture.a.workspaces[1].public_id;
+            const target=id=>`/workspaces/${id}/goals`;
+            const goalsReady=id=>page.waitForFunction(id=>document.getElementById('application-spa')?.dataset.state==='ready'&&document.querySelector(`[data-goals-workspace="${id}"]`),id);
+            await login('a',target(first));await goalsReady(first);
+            const choice=page.locator('[data-goals^="select-"]').first(),selector=await choice.getAttribute('data-goals');await choice.check();
+            page.removeAllListeners('dialog');page.on('dialog',dialog=>dialog.dismiss());
+            await page.evaluate(path=>document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(path),target(first)+'?review=1');
+            assert.equal(new URL(page.url()).search,'','Unsaved guard rejects same-record query updates too');
+            await page.evaluate(path=>document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(path),target(second));
+            assert.equal(new URL(page.url()).pathname,target(first));assert.equal(await choice.isChecked(),true);
+            page.removeAllListeners('dialog');page.on('dialog',dialog=>dialog.accept());
+            await page.evaluate(path=>document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(path),target(second));await goalsReady(second);
+            assert.equal(await page.locator(`[data-goals="${selector}"]`).isChecked(),false);
+            let once=true;await page.route(`**${target(first)}/context`,async route=>{
+                if(once){once=false;await route.continue({headers:{...route.request().headers(),'X-Proof-Hold':'passive-history-source'}});}else await route.continue();
+            });
+            await page.evaluate(()=>history.back());await until(()=>held.has('passive-history-source'));
+            assert.equal(new URL(page.url()).pathname,target(first));
+            assert.equal(await page.locator('[data-spa-private]:visible').count(),0);
+            assert.equal(await page.locator(`[data-goals-workspace="${second}"]`).count(),1,'Source editor remains mounted while hidden');
+            held.get('passive-history-source').deliver();held.delete('passive-history-source');await goalsReady(first);
+            assert.equal(await page.locator(`[data-goals="${selector}"]`).isChecked(),true);
+            await page.unroute(`**${target(first)}/context`);await logout();
+            return {sameRecordDeniedUpdate:true,acceptedUpdate:true,scopedDraft:true,actualHistory:true,hiddenBeforeTargetAdmission:true,sourceLifetimeRetained:true};
+        });
         await check('A actual virtual resident UV passkey enrollment and native passkey login retain server verification and consumed-document denial', 'auth', async () => {
             const cdp = await context.newCDPSession(page); await cdp.send('WebAuthn.enable');
             authenticatorClient = cdp;
             authenticatorId = (await cdp.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } })).authenticatorId;
             await login('a', '/security/devices');
+            assert.equal(await page.locator('[data-passkey-id]').count(), 0, 'Enrollment case requires a fresh account fixture');
             await page.locator('#account-key-name').fill('Authentication real key'); await page.locator('[data-account-passkey] button[type=submit]').click();
             await page.locator('[data-passkey-id]').waitFor(); assert.equal(command('account-inspect').keys.length, 1);
             await logout(); await page.goto('http://localhost:8138/login'); await ready('login'); const captured = await meta(page);
-            await page.locator('[data-auth-passkey]').click(); await privateReady();
+            let releaseDocument, documentStarted = false;
+            const handoff = []; result.handoffObservations = handoff;
+            const observeHandoff = message => { if (message.text().startsWith('NATIVE_HANDOFF ')) handoff.push(JSON.parse(message.text().slice(15))); };
+            page.on('console', observeHandoff);
+            await page.evaluate(() => {
+                new MutationObserver(() => {
+                    const root = document.getElementById('application-spa'), status = document.querySelector('[data-spa="status"]');
+                    if (root?.dataset.state === 'closed') {
+                        console.log('NATIVE_HANDOFF ' + JSON.stringify({state:root.dataset.state,text:status?.textContent ?? '',authViews:document.querySelectorAll('[data-auth-entry]').length}));
+                    }
+                }).observe(document.getElementById('application-spa'), {attributes:true,childList:true,subtree:true});
+            });
+            const documentGate = new Promise(resolve => { releaseDocument = resolve; });
+            await page.route('**/*', async route => {
+                if (route.request().isNavigationRequest() && route.request().frame() === page.mainFrame()) {
+                    documentStarted = true; await documentGate;
+                }
+                await route.continue();
+            });
+            try {
+                await page.locator('[data-auth-passkey]').click({noWaitAfter:true});
+                await until(() => documentStarted && handoff.some(row => row.authViews === 0 && row.text), 'old document must render neutral handoff before destination delivery');
+                assert.equal(handoff.at(-1).authViews, 0);
+                assert.match(handoff.at(-1).text, /Opening a new document|الانتقال إلى مستند جديد/);
+                assert.doesNotMatch(handoff.at(-1).text, /could not be verified|تعذر التحقق/);
+            } finally { releaseDocument(); page.off('console', observeHandoff); }
+            await privateReady(); await page.unroute('**/*');
             assert.equal((await meta(page)).binding.principal, fixture.a.user);
             const old = await page.evaluate(async identity => {
                 const response = await fetch('/auth/passkey', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': identity.csrf, 'X-Builderad-Document': identity.receipt, 'X-Builderad-Transition': identity.transition }, body: JSON.stringify({ credential: {} }) }); return response.status;
             }, captured);
             assert.ok([409, 419].includes(old)); assert.ok(command('account-inspect').audit.includes('passkey_login_verified'));
+            const freshOptions = await get(page, '/identity/passkey/options'); assert.equal(freshOptions.status, 200);
+            const unusedAssertion = await page.evaluate(async options => (await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options) })).toJSON(), freshOptions.body.options);
+            assert.equal((await post(page, '/identity/passkey', { credential: unusedAssertion }, { 'X-Builderad-Transition': 'invalid-transition' })).status, 409);
+            assert.equal((await get(page, '/profile')).body.data.user.email, 'goals-a@example.test');
             await logout(); return { virtualAuthenticator: true, realUvAssertion: true, nativeSignIn: true, consumedInput: old, audit: true };
         });
         await check('A cancelled and expired real WebAuthn assertions never authenticate or replay automatically', 'auth', async () => {
@@ -118,6 +241,40 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             assert.equal((await post(page, '/auth/passkey', { credential: invalid })).status, 422);
             await page.goto('http://localhost:8138/login'); await ready('login');
             return { cancelledSubmitCount: 0, realWaitMs: 61000, expired: 422, invalidSignature: 422, automaticReplay: false };
+        });
+        await check('A known passkey rejection shows server rejection and requires a fresh document without replay', 'auth', async () => {
+            await page.goto('http://localhost:8138/login'); await ready('login');
+            let deliveries = 0;
+            await page.route('**/auth/passkey', async route => {
+                deliveries++;
+                const body = route.request().postDataJSON(); body.credential.response.signature = 'invalid';
+                await route.continue({ postData: JSON.stringify(body) });
+            });
+            await page.locator('[data-auth-passkey]').click();
+            await page.locator('[data-auth-recover]').waitFor();
+            assert.equal(await page.locator('[data-auth-passkey]').isDisabled(), true);
+            assert.equal((await meta(page)).binding.principal, 0);
+            assert.equal(result.wire.filter(row => row.path === '/auth/passkey').at(-1).status, 422);
+            assert.doesNotMatch(await page.locator('[data-auth-entry]').innerText(), /نتيجة طلب مفتاح المرور غير مؤكدة|Passkey sign-in is uncertain/);
+            assert.equal(deliveries, 1); await page.unroute('**/auth/passkey');
+            await page.locator('[data-auth-recover]').click(); await ready('login');
+            return { rejected: 422, deliveries, freshDocumentRequired: true, automaticReplay: false };
+        });
+        await check('A committed passkey assertion with lost ACK stays unknown and is never replayed', 'auth', async () => {
+            let deliveries = 0;
+            await page.route('**/auth/passkey', async route => {
+                deliveries++; const response = await route.fetch({ maxRedirects: 0 });
+                assert.equal(response.status(), 200); await route.abort('failed');
+            });
+            await page.locator('[data-auth-passkey]').click();
+            await page.locator('[data-auth-recover]').waitFor();
+            assert.equal(await page.locator('[data-auth-passkey]').isDisabled(), true);
+            assert.match(await page.locator('[data-auth-entry]').innerText(), /نتيجة طلب مفتاح المرور غير مؤكدة|Passkey sign-in is uncertain/);
+            assert.equal(deliveries, 1); await page.unroute('**/auth/passkey');
+            await page.locator('[data-auth-recover]').click(); await privateReady();
+            assert.equal((await meta(page)).binding.principal, fixture.a.user); assert.equal(deliveries, 1);
+            await logout(); await page.goto('http://localhost:8138/login'); await ready('login');
+            return { committed: true, acknowledgement: 'unknown', deliveries, automaticReplay: false };
         });
         await check('A committed password login with lost acknowledgement is unknown, disabled and delivered exactly once', 'auth', async () => {
             const before = command('account-inspect').sessions.length; let deliveries = 0;
@@ -279,12 +436,13 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
                 await route.fulfill({ response }).catch(error => { assert.match(error.message, /cancel|abort|closed|handled/i); });
             });
             try {
-                await page.evaluate(() => { void __goalsSpa.router.push('/forgot-password'); }); await captured;
-                await page.evaluate(() => { void __goalsSpa.router.push('/register'); }); await ready('register');
+                await page.evaluate(() => { void document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push('/forgot-password'); }); await captured;
+                await page.evaluate(() => { void document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push('/register'); }); await ready('register');
                 release(); await page.unrouteAll({ behavior: 'wait' });
                 assert.equal(await page.locator('[data-auth-kind="forgot-password"]').count(), 0);
                 assert.equal(await page.locator('#password').inputValue(), '');
-                await page.goBack(); await ready('forgot-password'); await page.goForward(); await ready('register');
+                // The cancelled candidate was never admitted and must not enter history.
+                await page.goBack(); await ready('login'); await page.goForward(); await ready('register');
                 assert.equal((await meta(page)).binding.principal, 0);
                 return { realLateLaravelRead: true, cancelledCandidateNotPublished: true, localBackForward: true, nativeBFCache: 'NOT_PROVEN' };
             } finally { release(); }

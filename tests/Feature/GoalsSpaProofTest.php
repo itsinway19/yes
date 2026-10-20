@@ -25,7 +25,7 @@ final class GoalsSpaProofTest extends TestCase
     {
         $id = $this->workspace->public_id;
         $original = '/workspaces/'.$id.'/goals';
-        $api = '/spa/api/workspaces/'.$id.'/goals';
+        $api = '/workspaces/'.$id.'/goals/context';
         $projection = $this->getJson($api)->assertOk()->json();
         $this->assertSame($this->getJson($original)->assertOk()->json(), $projection['preferences']);
         $this->assertCount(4, $projection['catalog']);
@@ -33,7 +33,7 @@ final class GoalsSpaProofTest extends TestCase
         $this->getJson($api)->assertOk()->assertJsonPath('preferences.version', 1);
         $this->postJson($original, ['value' => AdvertiserGoalPreferencesTest::value(), 'version' => 0])->assertStatus(409);
         $this->assertSame(1, DB::connection('pgsql_migrations')->table('advertiser_goal_preference_events')->count());
-        $this->get('/spa/workspaces/'.$id.'/goals')->assertOk()->assertSee('goals-bootstrap', false)->assertDontSee('data-page=', false);
+        $this->get('/workspaces/'.$id.'/goals')->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
     }
 
     public function test_foreign_workspace_cannot_be_read_or_streamed(): void
@@ -41,8 +41,8 @@ final class GoalsSpaProofTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
         $id = $this->workspace->public_id;
-        $this->getJson('/spa/api/workspaces/'.$id.'/goals')->assertForbidden();
-        $this->getJson('/spa/api/workspaces/'.$id.'/goals/events')->assertForbidden();
+        $this->getJson('/workspaces/'.$id.'/goals/context')->assertForbidden();
+        $this->getJson('/workspaces/'.$id.'/goals/events')->assertForbidden();
         $this->postJson('/workspaces/'.$id.'/goals', ['value' => AdvertiserGoalPreferencesTest::value(), 'version' => 0])->assertForbidden();
     }
 
@@ -50,7 +50,7 @@ final class GoalsSpaProofTest extends TestCase
     {
         $db = DB::connection('pgsql_migrations');
         $before = $db->table('security_sessions')->first();
-        $url = '/spa/api/workspaces/'.$this->workspace->public_id.'/goals';
+        $url = '/workspaces/'.$this->workspace->public_id.'/goals/context';
         $this->getJson($url, ['X-Goals-Passive' => '1'])->assertOk();
         $this->getJson($url, ['X-Goals-Witness' => '1'])->assertOk()->assertJsonMissingPath('preferences');
         $after = $db->table('security_sessions')->where('id', $before->id)->first();
@@ -62,11 +62,28 @@ final class GoalsSpaProofTest extends TestCase
     public function test_event_is_authorized_by_workspace_context_and_contains_the_current_version(): void
     {
         $id = $this->workspace->public_id;
-        $response = $this->getJson('/spa/api/workspaces/'.$id.'/goals/events')->assertOk();
+        $response = $this->getJson('/workspaces/'.$id.'/goals/events')->assertOk();
         $this->assertStringStartsWith('text/event-stream', $response->headers->get('Content-Type'));
         $event = json_decode(substr(trim($response->streamedContent()), 6), true, flags: JSON_THROW_ON_ERROR);
         $this->assertSame($id, $event['workspace']);
         $this->assertSame(0, $event['version']);
         $this->assertSame(auth()->id(), $event['binding']['principal']);
+    }
+
+    public function test_native_shell_and_witness_authorize_without_building_business_projection(): void
+    {
+        $queries = [];
+        DB::listen(function ($event) use (&$queries): void {
+            $queries[] = $event->sql;
+        });
+        $path = '/workspaces/'.$this->workspace->public_id.'/business';
+        $this->get($path)->assertOk()->assertViewIs('spa')->assertSee('application-bootstrap', false);
+        $this->getJson($path, ['X-Builderad-Witness' => '1'])->assertOk()
+            ->assertJsonStructure(['visibility' => ['protected', 'path', 'context']])
+            ->assertJsonMissingPath('data');
+        foreach (['business_target_markets', 'country_references', 'pg_timezone_names', 'current_intent', 'business_types'] as $projection) {
+            $this->assertFalse(collect($queries)->contains(fn ($sql) => str_contains($sql, $projection)), $projection);
+        }
+        $this->actingAs(User::factory()->create())->getJson($path, ['X-Builderad-Witness' => '1'])->assertForbidden();
     }
 }

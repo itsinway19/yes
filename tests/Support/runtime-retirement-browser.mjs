@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import { runAuthEntryCases as runExistingAuthentication } from './auth-entry-browser.mjs';
 
 export async function runAuthEntryCases(harness) {
+    if (process.env.FOCUSED_SPA_ACCEPTANCE === 'enabled') {
+        const { runFocusedAcceptance } = await import('./focused-spa-acceptance.mjs');
+        return runFocusedAcceptance(harness);
+    }
     if (process.env.RETIREMENT_RESTORATION_ONLY === 'enabled') {
         const { runRestorationControls } = await import('./runtime-retirement-restoration.mjs');
         return runRestorationControls(harness);

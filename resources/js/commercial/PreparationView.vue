@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { status } from '../spa/presentation';
 import { computed, onBeforeUnmount, reactive, ref, shallowRef, watch } from 'vue';
-import { onBeforeRouteLeave } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import OperationsShell from '../internal-operations/OperationsShell.vue';
 import { preparationData, readPreparation, writePreparation, type PreparationCommand } from './preparationState';
-import { bootstrap, close, logout, onClose, owned, stamp, status, TransportError } from '../spa/transport';
+import { bootstrap, close, logout, onClose, owned, stamp, TransportError } from '../spa/transport';
 import { locale } from '../spa/locale';
 import { confirmDeparture } from '../spa/presentation';
 import { parsePreparationAttempt } from './preparationAttempt';
@@ -75,8 +76,11 @@ try {
         if (!current) { if (!retain(candidate)) restorationFailed.value = true; else sessionStorage.removeItem(legacyKey); }
     }
 } catch { restorationFailed.value = true; error.value = copy('تعذر قراءة الطلب المحفوظ. احتُفظ به ولم يُستبدل أو يُرسل.', 'The retained request could not be read. It was preserved, not replaced or sent.'); }
-const canLeave = () => renewing.value || !pending.value || confirm(copy('يوجد طلب غير محسوم محفوظ. المغادرة لا تعيد إرساله. متابعة؟', 'An unresolved request is retained. Leaving does not replay it. Continue?'));
-confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave);
+const canLeave = () => renewing.value || (pending.value
+    ? confirm(copy('يوجد طلب غير محسوم محفوظ. المغادرة لا تعيد إرساله. متابعة؟', 'An unresolved request is retained. Leaving does not replay it. Continue?'))
+    : ![form.label, form.reason, form.country_code, form.denomination_code, form.administrator, operator.operator, delegation.operator].some(Boolean)
+        || confirm(copy('لديك حقول غير محفوظة. هل تريد التخلص منها عند مغادرة الصفحة؟', 'Discard unsaved fields when leaving this page?')));
+confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 function beforeUnload(event: BeforeUnloadEvent) { if (pending.value && !renewing.value) { event.preventDefault(); event.returnValue = ''; } }
 window.addEventListener('beforeunload', beforeUnload);
 const clearPrivate = () => { operatorReview.value = undefined; operatorHistory.value = []; identity.value = { intentId: null, intentBinding: null }; Object.assign(form, { country_code: '', denomination_code: '', administrator: '', label: '', reason: '', expires_at: '' }); Object.assign(operator, { approval: '', operator: '', reason: '' }); Object.assign(delegation, { market_id: '', operator: '', reason: '', expires_at: '' }); pending.value = undefined; result.value = undefined; error.value = ''; };

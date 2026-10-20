@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Commercial\MarketRegistry;
 use App\Http\Responses\SpaPage;
 use App\Models\User;
-use App\Security\ClientVisibility;
 use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -27,6 +26,9 @@ final class CommercialMarketPreparationController
             ->where('status', 'active')->whereNull('revoked_at')->whereRaw('(expires_at IS NULL OR expires_at > clock_timestamp())')
             ->pluck('commercial_target_id')->all();
         abort_unless($canPrepare || count($administration), 403);
+        if (! SpaPage::needsData($request)) {
+            return new SpaPage([]);
+        }
         if ($canPrepare && ! $request->session()->has('commercial_market_preparation_intent')) {
             $request->session()->put('commercial_market_preparation_intent', (string) Str::uuid7());
         }
@@ -59,10 +61,6 @@ final class CommercialMarketPreparationController
             'directRecorded' => $canPrepare && $db->scalar('SELECT builderad_commercial_preparation_consumed(?::uuid)', [$request->session()->get('commercial_market_direct_target')]),
             'recordedMarkets' => $canPrepare ? $markets->inspect($request)['markets'] : [],
         ];
-
-        if ($request->header('X-Builderad-Visibility') === '1') {
-            return response()->json(app(ClientVisibility::class)->describe($request))->header('Cache-Control', 'no-store');
-        }
 
         return new SpaPage($data);
     }
