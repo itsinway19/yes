@@ -34,11 +34,11 @@ The specification records admitted error shapes; exception/debug fields may acco
 - Client factory: `resources/js/api/goals.ts`, using official `openapi-fetch`; it knows nothing about browser sessions.
 - Web binding: `resources/js/goals-spa/api.ts` injects the existing admitted fetch from `transport.ts`.
 - Runtime proof: `tests/Support/goals-api-contract.mjs` uses actual Laravel HTTP through the same generated-path client, validates responses with Ajv 2020-12, and checks denied public documentation URLs. This complements type checking; generation alone cannot prove authorization.
-- Foundation CI checks drift, full tests, and both builds. No CI success is implied until it actually runs on this candidate.
+- Foundation CI checks drift, full tests, and the unified production build. No CI success is implied until it actually runs on this candidate.
 
 Scramble is not installed: this narrow, manually decoded JSON boundary benefits from an explicit schema plus real response conformance checks, without a second inference pipeline or documentation route. OpenAPI TypeScript and openapi-fetch are MIT; Ajv is MIT and development-only. Existing locked dependency versions are retained; see provenance for the version comparison.
 
-Nothing registers specification/documentation routes; no schema is placed in `public/` or imported as a runtime schema by SPA. Production build omits proof globals. `build:goals-spa:proof` is exclusively the browser test instrumentation build. Build existing app first, then SPA, because the existing app build clears `public/build`.
+Nothing registers specification/documentation routes; no schema is placed in `public/` or imported as a runtime schema by SPA. Production build omits proof globals. `build:goals-spa:proof` is exclusively the browser test instrumentation build. Native SPA cleanup unified the production build: run `npm run build` once; `build:goals-spa` is an alias. See [current verification policy](../../BUILDERAD_TEST_EXECUTION_RATIONALIZATION.md).
 
 ## Next-device boundary (not implemented)
 

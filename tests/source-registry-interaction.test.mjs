@@ -1,5 +1,4 @@
 import { withPresentationPorts } from './Support/presentation-ports.mjs';
-import './source-scope-spa.test.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
