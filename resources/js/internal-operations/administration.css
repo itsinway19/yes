@@ -93,7 +93,7 @@
 .ba-admin-layout[data-admin-shell] .services-page .admin-section h2 { font-size: 18px; font-weight: 600; }
 .ba-admin-layout[data-admin-shell] .services-page .admin-section > p { max-inline-size: 78ch; margin-block: 8px 18px; color: var(--admin-muted); font-size: 13px; }
 .ba-admin-layout[data-admin-shell] .service-create-form { grid-template-columns: minmax(0, 1fr) auto; max-inline-size: 680px; align-items: end; }
-.ba-admin-layout[data-admin-shell] .service-grant-form { grid-template-columns: 1fr 1fr; max-inline-size: 820px; }
+.ba-admin-layout[data-admin-shell] .service-grant-form { grid-template-columns: repeat(2, minmax(0, 1fr)); max-inline-size: 820px; align-items: end; }
 .ba-admin-layout[data-admin-shell] .service-grant-form > button { margin-block-start: 0; justify-self: start; }
 .ba-admin-layout[data-admin-shell] .service-list { margin-block-start: 24px; border-block-start: 1px solid var(--admin-line); }
 .ba-admin-layout[data-admin-shell] .service-list > li { display: flex; justify-content: space-between; gap: 16px; padding-block: 18px; border-block-end: 1px solid var(--admin-line); }
@@ -102,9 +102,13 @@
 .ba-admin-layout[data-admin-shell] .service-list .admin-actions { align-items: start; flex-shrink: 0; }
 .ba-admin-layout[data-admin-shell] .service-credential { padding: 24px; margin-block-end: 24px; border: 1px solid #e1c477; border-radius: 8px; background: #fff9eb; }
 .ba-admin-layout[data-admin-shell] .service-credential code { display: block; margin-block: 16px; padding: 12px; background: #fff; border: 1px solid #e4d7b3; border-radius: 6px; overflow-wrap: anywhere; }
+.ba-admin-layout[data-admin-shell] :is(.service-list, .catalog-records) > li > button { flex-shrink: 0; align-self: start; }
+.ba-admin-layout[data-admin-shell] :is(.admin-code, code[dir=ltr], .service-list p[dir=ltr]) { unicode-bidi: isolate; }
 .ba-admin-layout[data-admin-shell] .account-page { padding: 0; margin: auto; }
 .ba-admin-layout[data-admin-shell] .account-page h1 { margin-block: 0 24px; }
 .ba-admin-layout[data-admin-shell] .account-page section { border-color: var(--admin-line); border-radius: 8px; background: #fff; }
+.ba-admin-layout[data-admin-shell] .account-page :is(form, label, li > span) { min-inline-size: 0; }
+.ba-admin-layout[data-admin-shell] .account-page :is(input, button) { max-inline-size: 100%; }
 .ba-admin-skip { position: fixed; inset-block-start: 8px; inset-inline-start: 8px; z-index: 50; padding: 10px 16px; background: var(--admin-ink); color: #fff; transform: translateY(-180%); }
 .ba-admin-skip:focus { transform: translateY(0); }
 .ba-admin-drawer { position: fixed; inset-block: 0; inset-inline-start: 0; inset-inline-end: auto; margin: 0; inline-size: min(320px, calc(100vw - 48px)); block-size: 100dvh; max-block-size: 100dvh; max-inline-size: none; padding: 20px 16px; border: 0; border-inline-end: 1px solid var(--admin-line); background: #fff; color: var(--admin-ink); box-shadow: 12px 0 48px #16252d30; overflow-y: auto; }
@@ -136,11 +140,13 @@
 @media (max-width: 639px) {
     .ba-admin-layout[data-admin-shell] .customer-row { grid-template-columns: minmax(0, 1fr); }
     .ba-admin-topbar { padding: 12px 16px; align-items: start; gap: 12px; }
-    .ba-admin-topbar .ba-admin-header-controls { gap: 8px 12px; }
+    .ba-admin-topbar .ba-admin-header-controls { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
+    .ba-admin-topbar .ba-admin-header-controls > strong { grid-column: 1 / 3; }
     .ba-admin-topbar strong { font-size: 20px; }
-    .ba-admin-topbar [data-admin-context] { flex: 1; font-size: 12px; padding-inline-start: 12px; }
-    .ba-admin-topbar a { font-size: 12px; }
-    .ba-admin-topbar button { font-size: 12px; min-block-size: 36px; }
+    .ba-admin-topbar [data-admin-context] { grid-column: 3 / -1; margin-inline-end: 0; border: 0; font-size: 11px; padding-inline-start: 0; text-align: end; }
+    .ba-admin-topbar a { display: inline-flex; align-items: center; min-block-size: 44px; font-size: 12px; }
+    .ba-admin-topbar .ba-admin-identity-switch { min-inline-size: 0; }
+    .ba-admin-topbar button { font-size: 12px; min-block-size: 44px; padding-inline: 8px; }
     .ba-admin-content { padding: 24px 16px; }
     .ba-admin-page-heading { margin-block-end: 24px; }
     .ba-admin-page-heading h1 { font-size: 25px; }

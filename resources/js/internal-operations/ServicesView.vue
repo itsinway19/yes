@@ -19,7 +19,7 @@ const busy = ref(''), error = ref(''), readbackFailed = ref(false), reviewed = r
 const locked = computed(() => !!busy.value || outcome.value === 'unknown' || readbackFailed.value);
 const cancellation = new AbortController(); let active = true;
 function clearSecret() { newCredential.value = null; }
-const canLeave = () => !['pending', 'unknown'].includes(outcome.value) || confirm('يوجد أمر غير محسوم. المغادرة لا تعيد تنفيذه. هل تريد المتابعة؟');
+const canLeave = () => !['pending', 'unknown'].includes(outcome.value) || confirm(copy('يوجد أمر غير محسوم. المغادرة لا تعيد تنفيذه. هل تريد المتابعة؟', 'An operation is unresolved. Leaving never replays it. Continue?'));
 confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 function beforeUnload(event: BeforeUnloadEvent) { clearSecret(); if (['pending', 'unknown'].includes(outcome.value)) { event.preventDefault(); event.returnValue = ''; } }
 function visibility() { if (document.visibilityState !== 'visible') clearSecret(); }
@@ -45,7 +45,7 @@ async function perform(key: string, operation: () => Promise<Credential | compon
     } catch (failure) {
         if (!active || !owned(captured)) return;
         if (failure instanceof TransportError && [403, 404, 409, 422, 429].includes(failure.status)) {
-            outcome.value = 'rejected'; error.value = failure.body.message ?? 'رفض الخادم الأمر.';
+            outcome.value = 'rejected'; error.value = failure.body.message ?? copy('رفض الخادم الأمر.', 'The server rejected the command.');
             const errors = Object.fromEntries(Object.entries(failure.body.errors ?? {}).map(([field, messages]) => [field, messages[0]])); create.errors = errors; grant.errors = errors;
             if (failure.status === 403) close();
         } else outcome.value = 'unknown';
