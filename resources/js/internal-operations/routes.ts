@@ -3,7 +3,9 @@ import { clear, readAdministration } from './adminState';
 import { clearCustomers, readCustomers, type CustomerQuery } from './customerState';
 import { clearBusinessTypes, readBusinessTypes } from './businessState';
 import { clearServices, readServices } from './serviceState';
+import { clearAppearance, readAppearance } from '../appearance/state';
 export const internalOperationsRoutes: RouteRecordRaw[] = [
+    { path: '/internal/administration/appearance', component: () => import('../appearance/AppearanceView.vue'), meta: { presentation: { clear: clearAppearance, load: (_route, passive, admission) => readAppearance(passive, false, admission) } } },
     { path: '/internal/services', component: () => import('./ServicesView.vue'), meta: { presentation: { clear: clearServices, load: (_route, passive, admission) => readServices(passive, false, admission) } } },
     { path: '/internal/business-types', component: () => import('./BusinessTypesView.vue'), meta: { presentation: { clear: clearBusinessTypes, load: (_route, passive, admission) => readBusinessTypes(passive, false, admission) } } },
     { path: '/internal/administration', component: () => import('./AdministrationView.vue'), meta: { presentation: { clear, load: (_route, passive, admission) => readAdministration(passive, false, admission) } } },

@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\PasskeySessionController;
 use App\Http\Controllers\BusinessContextController;
 use App\Http\Controllers\CommercialController;
 use App\Http\Controllers\CommercialMarketPreparationController;
+use App\Http\Controllers\GlobalAppearanceController;
 use App\Http\Controllers\GoalsSpaController;
 use App\Http\Controllers\GoogleConnectionController;
 use App\Http\Controllers\GoogleReportController;
@@ -227,6 +228,9 @@ Route::middleware('guest:internal')->group(function () {
 });
 
 Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->group(function () {
+    Route::get('/internal/administration/appearance', [GlobalAppearanceController::class, 'index'])->name('internal.appearance');
+    Route::post('/internal/administration/appearance', [GlobalAppearanceController::class, 'publish'])
+        ->middleware(EnsureFreshAuthentication::class)->name('internal.appearance.publish');
     Route::get('/internal/business-types', [InternalBusinessTypeController::class, 'index'])
         ->middleware(RequireActionGrant::class.':business.manage')->name('internal.business-types.index');
     Route::middleware([RequireActionGrant::class.':business.manage', EnsureFreshAuthentication::class])->group(function () {
