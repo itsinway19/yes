@@ -15,7 +15,7 @@ Foundation retains the official Ubuntu/PostgreSQL18/Redis7 bootstrap, disposable
 1. `composer validate --strict`, `composer audit`, `npm audit --audit-level=high`.
 2. `php artisan test --compact`, then `npm test`.
 3. `npm run api:check`, `php vendor/bin/pint --test`.
-4. `npm run build`, then `npm run build:goals-spa` (in this order).
+4. One `npm run build`, then `node scripts/runtime-retirement.mjs --assets`. The native SPA is now the default build; `build:goals-spa` is its alias. `npm test` includes the SPA subset. See [current verification policy](../../../BUILDERAD_TEST_EXECUTION_RATIONALIZATION.md).
 
 The workflow was reviewed and its YAML/commands checked locally; no GitHub run for these commits has been requested or observed. Do not convert a prepared workflow into a PASS. Do not change assertions, lock ordering, authority semantics or critical timeouts to obtain green CI.
 

@@ -94,6 +94,8 @@ Select tests according to the impact of the change, not the number or extension 
 
 Use official repository test entry points and required environment guards.
 
+`npm test` is the complete JavaScript selection; `npm run test:spa-foundation` and the other `test:*` commands are focused subsets. Run one production `npm run build` per comprehensive gate (`build:goals-spa` is an alias); proof-mode builds remain distinct. See [validated command mapping and evidence](docs/BUILDERAD_TEST_EXECUTION_RATIONALIZATION.md#canonical-verification-commands) for guarded PHP integration and browser entry points.
+
 Do not run the entire Foundation suite automatically after every edit.
 
 #### 6. Reuse valid evidence and avoid redundant testing
@@ -119,6 +121,8 @@ Development verification and final acceptance are separate stages.
 - Focused passing tests do not replace mandatory final gates.
 - A failed, blocked, or unexecuted required gate is not PASS.
 - Do not claim deployment readiness or full acceptance solely from focused test results.
+
+The complete hosted gate is `.github/workflows/foundation.yml`; the isolated Windows entry point is `pwsh -NoProfile -File scripts/Test-GoalsSpa.ps1 -Phase Foundation`. Browser lifecycle checks use a separate phase and are not implied by either Foundation result.
 
 If CI requires a Push or Pull Request, respect the task's Git authorization boundaries. Do not publish or merge without permission.
 

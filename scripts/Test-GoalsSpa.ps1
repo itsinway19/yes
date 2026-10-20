@@ -99,19 +99,24 @@ try {
   $proofEvents='storage/framework/testing/'+(Split-Path -Leaf $proofRun)+'/events.log'
   & pwsh -NoProfile -File scripts/builderad.ps1 test --compact --display-warnings "--log-junit=$proofJunit" "--log-events-text=$proofEvents" 2>&1 | Tee-Object -FilePath (Join-Path $proofRun 'tests.log')
   if($LASTEXITCODE -ne 0){throw 'Full Foundation PHP suite failed; evidence retained'}
-  foreach($proofGate in @(@('composer','validate','--strict'),@('composer','audit'),@('npm','audit','--audit-level=high'),@('npm','test','--','--test-concurrency=1'),@('npm','run','api:check'),@('php','vendor/bin/pint','--test'),@('npm','run','build'),@('npm','run','build:goals-spa'))){
+  foreach($proofGate in @(@('npm','run','inertia:check'),@('composer','validate','--strict'),@('composer','audit'),@('npm','audit','--audit-level=high'),@('npm','test'),@('npm','run','api:check'),@('php','vendor/bin/pint','--test'),@('npm','run','build'))){
    $proofAction=$proofGate[0];$proofArguments=$proofGate[1..($proofGate.Count-1)]
    $proofGateLogName=('gate-'+($proofGate -join '-')+'.log') -replace '[\\/:*?"<>|]', '-'
    $proofGateLog=Join-Path $proofRun $proofGateLogName
    if($proofAction -eq 'npm' -and $proofArguments[0] -eq 'test'){
-    # -File cannot forward the literal npm `--` through PowerShell binding.
-    # These are the same approved Node/npm paths validated by builderad.ps1.
-    & 'C:\tools\node24\node.exe' 'C:\tools\node24\node_modules\npm\bin\npm-cli.js' @proofArguments 2>&1|Tee-Object -FilePath $proofGateLog
+    # Node runner flags must precede the test files; npm appends arguments after them.
+    # Keep package.json as the single selection owner, using the validated Node path.
+    $proofTestCommand=(Get-Content -LiteralPath (Join-Path $proofRoot 'package.json') -Raw|ConvertFrom-Json).scripts.test
+    if($proofTestCommand -notmatch '^node --test (tests/\S+\.test\.mjs ?)+$'){throw 'Unsupported canonical JavaScript test command'}
+    $proofTestArguments=@($proofTestCommand -split ' '|Select-Object -Skip 1)
+    & 'C:\tools\node24\node.exe' --test-concurrency=1 @proofTestArguments 2>&1|Tee-Object -FilePath $proofGateLog
    }else{
     & pwsh -NoProfile -File scripts/builderad.ps1 $proofAction @proofArguments 2>&1|Tee-Object -FilePath $proofGateLog
    }
    if($LASTEXITCODE -ne 0){throw "Foundation gate failed: $($proofGate -join ' ')"}
   }
+  & 'C:\tools\node24\node.exe' scripts/runtime-retirement.mjs --assets 2>&1|Tee-Object -FilePath (Join-Path $proofRun 'gate-runtime-assets.log')
+  if($LASTEXITCODE -ne 0){throw 'Foundation production asset guard failed'}
  }
  if($Phase -in @('Focused','Affected','Acceptance')) {
   $proofFilter=if($Phase -in @('Acceptance','Affected')){'GoalsSpaProofTest|AdvertiserGoalPreferencesTest|ProductionIdentityTest|IdentityRenewalTest|IdentityDocumentTest|SessionAuthorityTest|DatabaseAuthorityBoundaryTest|CoreDependencyBoundaryTest|ArchitectureSourceOptionalityTest'}else{'GoalsSpaProofTest'}
