@@ -121,22 +121,22 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
         <fieldset class="min-w-0 border-0 p-0" :disabled="commandsFor(workspaceId, 'tiktok').length > 0">
         <h2 id="tiktok-connection-heading" class="text-xl font-semibold text-slate-900 flex items-center gap-3"><ProviderBrand provider="tiktok" :size="40" />ربط TikTok Ads</h2>
         <p class="mt-2 text-sm leading-7 text-slate-600">ابدأ التفويض عبر منصة TikTok الرسمية، ثم اختر حساب المعلن لهذه المساحة.</p>
-        <button v-if="canManage && snapshot?.availability === 'CONNECT_AVAILABLE'" type="button" :disabled="busy" data-source-connect="tiktok" @click="connect()" class="mt-4 rounded-lg bg-indigo-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">ربط حساب TikTok</button>
+        <button v-if="canManage && snapshot?.availability === 'CONNECT_AVAILABLE'" type="button" :disabled="busy" data-source-connect="tiktok" @click="connect()" class="mt-4 rounded-lg ba-brand-button px-5 py-3 text-sm font-semibold disabled:opacity-50">ربط حساب TikTok</button>
         <p v-if="snapshot?.availability === 'CONFIGURATION_REQUIRED'" class="mt-4 text-sm text-slate-600">إعداد التطبيق وعنوان التفويض والعودة وإشعار الخصوصية غير مكتمل.</p>
         <p v-else-if="snapshot?.availability === 'OWNER_REQUIRED' || (snapshot && !canManage)" class="mt-4 text-sm text-slate-600">بدء الربط واختيار الحساب متاحان للمسؤول الحالي عن المساحة.</p>
         <p v-else-if="snapshot?.availability === 'FRESH_AUTHENTICATION_REQUIRED'" class="mt-4 text-sm text-slate-600">أكّد تسجيل دخولك ثم حدّث الصفحة لإتاحة الربط.</p>
-        <p v-if="snapshot?.notice" class="mt-4 text-sm leading-7 text-slate-600"><a :href="snapshot.notice.privacy_url" target="_blank" rel="noopener noreferrer" class="text-indigo-700 underline">اطّلع على سياسة الخصوصية قبل الربط</a>. يرسل هذا المسار قراءات الحساب والتقارير فقط؛ نجاح التفويض لا يثبت موافقة المنصة أو جاهزية التحليل.</p>
+        <p v-if="snapshot?.notice" class="mt-4 text-sm leading-7 text-slate-600"><a :href="snapshot.notice.privacy_url" target="_blank" rel="noopener noreferrer" class="text-[var(--ba-primary-ink)] underline">اطّلع على سياسة الخصوصية قبل الربط</a>. يرسل هذا المسار قراءات الحساب والتقارير فقط؛ نجاح التفويض لا يثبت موافقة المنصة أو جاهزية التحليل.</p>
         <p v-if="error" role="alert" class="mt-4 text-sm text-red-700">{{ error }}</p>
         <p v-if="result" role="status" class="mt-4 text-sm leading-7 text-slate-700">{{ result }}</p>
         <div v-if="current" class="mt-5 border-t border-slate-100 pt-4">
             <h3 class="font-semibold text-slate-900">اختر حساب المعلن</h3>
-            <button v-if="error" type="button" :disabled="busy" @click="loadAccounts(current)" class="mt-3 text-sm text-indigo-700 underline">إعادة تحميل الحسابات</button>
+            <button v-if="error" type="button" :disabled="busy" @click="loadAccounts(current)" class="mt-3 text-sm text-[var(--ba-primary-ink)] underline">إعادة تحميل الحسابات</button>
             <p v-if="!busy && !error && !accounts.length" class="mt-3 text-sm text-slate-600">لا توجد حسابات متاحة في هذه الصفحة.</p>
-            <ul class="mt-3 divide-y divide-slate-100"><li v-for="account in accounts" :key="account.selection_handle" class="flex flex-wrap items-center justify-between gap-4 py-4"><div><p class="font-medium">{{ account.label }}</p><p dir="ltr" class="text-xs text-slate-500">{{ account.account_id }}</p></div><button type="button" :disabled="busy || !canManage" data-source-select @click="select(account)" class="rounded-lg border border-indigo-200 px-4 py-2 text-sm font-semibold text-indigo-700 disabled:opacity-50">اختيار الحساب</button></li></ul>
-            <button v-if="next" type="button" :disabled="busy" @click="loadAccounts(next)" class="mt-3 text-sm text-indigo-700 underline">الحسابات التالية</button>
+            <ul class="mt-3 divide-y divide-slate-100"><li v-for="account in accounts" :key="account.selection_handle" class="flex flex-wrap items-center justify-between gap-4 py-4"><div><p class="font-medium">{{ account.label }}</p><p dir="ltr" class="text-xs text-slate-500">{{ account.account_id }}</p></div><button type="button" :disabled="busy || !canManage" data-source-select @click="select(account)" class="rounded-lg border border-[var(--ba-primary-ink)] px-4 py-2 text-sm font-semibold text-[var(--ba-primary-ink)] disabled:opacity-50">اختيار الحساب</button></li></ul>
+            <button v-if="next" type="button" :disabled="busy" @click="loadAccounts(next)" class="mt-3 text-sm text-[var(--ba-primary-ink)] underline">الحسابات التالية</button>
         </div>
         <div v-if="snapshot?.connections.length" class="mt-5 border-t border-slate-100 pt-4">
-            <h3 class="font-semibold text-slate-900">الحسابات المسجلة</h3><button type="button" :disabled="busy" @click="refresh()" class="mt-3 text-sm text-indigo-700 underline">تحديث حالة الربط</button>
+            <h3 class="font-semibold text-slate-900">الحسابات المسجلة</h3><button type="button" :disabled="busy" @click="refresh()" class="mt-3 text-sm text-[var(--ba-primary-ink)] underline">تحديث حالة الربط</button>
             <ul class="mt-3 divide-y divide-slate-100">
                 <li v-for="connection in snapshot.connections" :key="connection.source_id" class="py-4">
                     <p class="font-medium">{{ connection.label }}</p><p dir="ltr" class="text-xs text-slate-500">{{ connection.declared_account_id }}</p>

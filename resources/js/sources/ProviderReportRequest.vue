@@ -165,17 +165,17 @@ onBeforeUnmount(() => {
                 <p class="mt-1 text-xs text-slate-600">نتابع معالجة التقرير ضمن مهلة الطلب. عدم اكتماله خلال المهلة لا يعني توفر بيانات مكتملة.</p>
             </div>
             <template v-if="provider === 'x'">
-                <div class="w-full"><button type="button" :disabled="busy || !!command" @click="loadCampaigns()" class="text-sm text-indigo-700 underline">اختيار الحملات من حساب X</button>
+                <div class="w-full"><button type="button" :disabled="busy || !!command" @click="loadCampaigns()" class="text-sm text-[var(--ba-primary-ink)] underline">اختيار الحملات من حساب X</button>
                     <ul v-if="campaigns.length" class="mt-2 max-h-48 overflow-auto"><li v-for="campaign in campaigns" :key="campaign.id" class="py-1"><label class="text-sm"><input type="checkbox" :disabled="busy || !!command" :checked="campaignIds.split(/[\s,]+/).includes(campaign.id)" @change="toggleCampaign(campaign.id, ($event.target as HTMLInputElement).checked)" class="me-2" />{{ campaign.label }} <span dir="ltr" class="text-xs text-slate-500">{{ campaign.id }}</span></label></li></ul>
-                    <button v-if="campaignContinuation" type="button" :disabled="busy || !!command" @click="loadCampaigns(campaignContinuation)" class="mt-2 text-sm text-indigo-700 underline">الحملات التالية</button>
+                    <button v-if="campaignContinuation" type="button" :disabled="busy || !!command" @click="loadCampaigns(campaignContinuation)" class="mt-2 text-sm text-[var(--ba-primary-ink)] underline">الحملات التالية</button>
                 </div>
                 <div><label :for="`x-campaigns-${sourceId}`" class="block text-sm text-slate-700">معرّفات الحملات (حتى 20، مفصولة بفاصلة)</label><input :id="`x-campaigns-${sourceId}`" v-model="campaignIds" required :disabled="busy || !!command" dir="ltr" class="mt-1 rounded-lg border-slate-300 text-sm" /></div>
                 <div><label :for="`x-placement-${sourceId}`" class="block text-sm text-slate-700">موضع الإعلان</label><select :id="`x-placement-${sourceId}`" v-model="placement" :disabled="busy || !!command" class="mt-1 rounded-lg border-slate-300 text-sm"><option value="ALL_ON_TWITTER">إعلانات X</option><option value="SPOTLIGHT">Spotlight</option><option value="TREND">Trend</option></select></div>
                 <div><label :for="`x-mode-${sourceId}`" class="block text-sm text-slate-700">نوع السحب</label><select :id="`x-mode-${sourceId}`" v-model="mode" :disabled="busy || !!command" class="mt-1 rounded-lg border-slate-300 text-sm"><option value="ASYNC">تقرير تاريخي في الخلفية (حتى 90 يومًا)</option><option value="SYNC">فترة قصيرة (حتى 7 أيام)</option></select></div>
                 <p class="w-full text-xs text-slate-600">تُحسب الحدود حسب المنطقة الزمنية للحساب. تبقى مواضع الإعلان منفصلة.</p>
             </template>
-            <button type="submit" :disabled="busy || waiting" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{{ command ? 'إعادة تأكيد الطلب' : 'طلب سحب البيانات' }}</button>
-            <button type="button" :disabled="busy || !start || !end" @click="refresh" class="text-sm font-medium text-indigo-700 underline disabled:opacity-50">تحديث حالة الفترة</button>
+            <button type="submit" :disabled="busy || waiting" class="rounded-lg ba-brand-button px-4 py-2 text-sm font-semibold disabled:opacity-50">{{ command ? 'إعادة تأكيد الطلب' : 'طلب سحب البيانات' }}</button>
+            <button type="button" :disabled="busy || !start || !end" @click="refresh" class="text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">تحديث حالة الفترة</button>
         </form>
         <p v-if="status" class="mt-3 text-xs text-slate-600">تعتمد الفترة على المنطقة الزمنية للحساب: <span dir="ltr">{{ status.timezone }}</span></p>
         <p v-if="status?.last_run" class="mt-2 text-sm text-slate-700">آخر نتيجة سحب لهذه الفترة: {{ coverageLabel(status.last_run.coverage) }}. اكتمال السحب لا يثبت جاهزية التحليل.</p>
@@ -184,7 +184,7 @@ onBeforeUnmount(() => {
                 <div class="mt-2 flex flex-wrap gap-3"><label v-for="metric in googleMetricOptions" :key="metric.id" class="text-sm text-slate-700"><input v-model="googleMetrics" type="checkbox" :value="metric.id" :disabled="metric.required" class="me-1 rounded border-slate-300" />{{ metric.label }}</label></div>
                 <p class="mt-2 text-xs text-slate-600">تبقى المقاييس المطلوبة في كل تنزيل وفق متطلبات Google. يمكنك اختيار إضافة قيمة التحويلات.</p>
             </fieldset>
-            <a v-if="googleDownloadUrl" :href="googleDownloadUrl" class="inline-block rounded-lg border border-indigo-600 px-4 py-2 text-sm font-semibold text-indigo-700">تنزيل تقرير حملات Google بالمقاييس المختارة (CSV)</a>
+            <a v-if="googleDownloadUrl" :href="googleDownloadUrl" class="inline-block rounded-lg border border-[var(--ba-primary-ink)] px-4 py-2 text-sm font-semibold text-[var(--ba-primary-ink)]">تنزيل تقرير حملات Google بالمقاييس المختارة (CSV)</a>
             <p v-else role="status" class="text-sm text-slate-700">اختر مقياسًا واحدًا على الأقل لتنزيل التقرير.</p>
             <p class="mt-2 text-xs leading-5 text-slate-600">نسخة محفوظة من هذا السحب؛ يبقى الإنفاق وحالة الحملة والفترة ومصدر البيانات في كل تنزيل. اختيار المقاييس لا يطلب سحبًا جديدًا. تبقى القيم غير المتاحة مجهولة، والتحويلات منسوبة للمنصة. قد تقرّب برامج الجداول الأرقام الطويلة عند فتح الملف؛ استورد أعمدتها كنص للحفاظ على دقتها.</p>
         </div>

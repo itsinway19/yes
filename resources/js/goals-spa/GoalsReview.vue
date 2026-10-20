@@ -29,4 +29,4 @@ function resultLabel(goalId: string, resultId: string) {
         <div class="saved-navigation"><RouterLink :to="goalsPath(current.workspace.public_id)">{{ copy('العودة إلى الأهداف', 'Back to goals') }}</RouterLink><a :href="`/workspaces/${current.workspace.public_id}`">{{ t('continue') }}</a></div>
     </main>
 </template>
-<style scoped>.saved-goal{margin:24px 0}.saved-goal h3{font-weight:650;font-size:18px}.saved-goal ul{list-style:disc;padding-inline-start:24px;line-height:1.9}.saved-navigation{display:flex;gap:24px;flex-wrap:wrap;margin-top:32px;color:#14635b;text-decoration:underline}</style>
+<style scoped>.saved-goal{margin:24px 0}.saved-goal h3{font-weight:650;font-size:18px}.saved-goal ul{list-style:disc;padding-inline-start:24px;line-height:1.9}.saved-navigation{display:flex;gap:24px;flex-wrap:wrap;margin-top:32px;color:var(--ba-primary-ink);text-decoration:underline}</style>

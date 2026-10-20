@@ -2,6 +2,7 @@
 
 namespace App\Http\Responses;
 
+use App\Appearance\GlobalAppearance;
 use App\Security\ClientVisibility;
 use App\Security\IdentityDocument;
 use Illuminate\Contracts\Support\Responsable;
@@ -28,6 +29,7 @@ final class SpaPage implements Responsable
         $locale = app()->getLocale();
 
         return response()->view('spa', [
+            'appearanceTokens' => GlobalAppearance::tokens(app(GlobalAppearance::class)->current()),
             'identity' => $identity, 'locale' => $locale,
             'bootstrap' => ['identity' => $identity, 'locale' => $locale, 'application' => true,
                 'documentState' => $identity['binding']['principal'] > 0 ? 'authenticated' : 'guest',

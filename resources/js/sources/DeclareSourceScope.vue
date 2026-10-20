@@ -184,8 +184,8 @@ function retryOriginal() {
         <div v-if="pending" class="mt-3 text-sm">
             <p>الطلب الأصلي غير محسوم:</p>
             <p dir="ltr" class="break-all">{{ pendingCommand?.resource }} / {{ pendingCommand?.operation }} / {{ pendingCommand?.purpose }} — v{{ pendingCommand?.expected_version }}</p>
-            <button type="button" :disabled="busy" class="mt-2 text-indigo-700 underline disabled:opacity-50" @click="retryOriginal">{{ busy ? 'جارٍ حسم الطلب الأصلي…' : 'إعادة إرسال الطلب الأصلي' }}</button>
-            <button type="button" :disabled="busy" class="ms-3 text-indigo-700 underline disabled:opacity-50" @click="refresh">تحديث الحالة من الخادم</button>
+            <button type="button" :disabled="busy" class="mt-2 text-[var(--ba-primary-ink)] underline disabled:opacity-50" @click="retryOriginal">{{ busy ? 'جارٍ حسم الطلب الأصلي…' : 'إعادة إرسال الطلب الأصلي' }}</button>
+            <button type="button" :disabled="busy" class="ms-3 text-[var(--ba-primary-ink)] underline disabled:opacity-50" @click="refresh">تحديث الحالة من الخادم</button>
         </div>
         <label v-else class="mt-3 block">النطاق المصرح به
             <select v-model="selected" required :disabled="busy || needsRefresh" class="mt-1 w-full rounded border-slate-300" :aria-invalid="Object.keys(errors).length > 0">
@@ -195,8 +195,8 @@ function retryOriginal() {
         </label>
         <p v-for="(error, field) in errors" :key="field" role="alert" class="mt-1 text-sm text-red-700">{{ error }}</p>
         <p class="mt-2 text-xs">إصدار المصدر الحالي: {{ version }}</p>
-        <button v-if="!pending" type="submit" :disabled="busy || needsRefresh || selected === '' || !storageReady" class="mt-3 rounded bg-indigo-700 px-4 py-2 text-white disabled:opacity-50">{{ busy ? 'جارٍ إعلان النطاق…' : 'تأكيد إعلان النطاق' }}</button>
+        <button v-if="!pending" type="submit" :disabled="busy || needsRefresh || selected === '' || !storageReady" class="mt-3 rounded ba-brand-button px-4 py-2 disabled:opacity-50">{{ busy ? 'جارٍ إعلان النطاق…' : 'تأكيد إعلان النطاق' }}</button>
         <p v-if="message" role="status" aria-live="polite" class="mt-2 text-sm">{{ message }}</p>
-        <button v-if="needsRefresh && !pending" type="button" :disabled="busy" class="mt-2 text-sm text-indigo-700 underline" @click="refresh">تحديث الحالة من الخادم</button>
+        <button v-if="needsRefresh && !pending" type="button" :disabled="busy" class="mt-2 text-sm text-[var(--ba-primary-ink)] underline" @click="refresh">تحديث الحالة من الخادم</button>
     </form>
 </template>

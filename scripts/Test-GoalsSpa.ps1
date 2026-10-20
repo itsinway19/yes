@@ -1,4 +1,4 @@
-param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation','workspaces','context','purpose','sources','account','auth')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='', [switch]$CreateBrowserFixture)
+param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation','workspaces','context','purpose','sources','account','auth','appearance','admin-ui')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='', [switch]$CreateBrowserFixture)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $proofRoot=Split-Path -Parent $PSScriptRoot
@@ -147,7 +147,8 @@ try {
   $proofProcesses|Select-Object Id,ProcessName|ConvertTo-Json|Set-Content (Join-Path $proofRun 'processes.json')
   if($Phase -eq 'Closure'){$env:GOALS_SPA_CLOSURE='enabled'}
   $env:GOALS_SPA_ONLY=$BrowserSelection
-  & 'C:\tools\node24\node.exe' tests/Support/goals-spa-browser.mjs 2>&1|Tee-Object -FilePath (Join-Path $proofRun 'browser.log')
+  $proofBrowser = if($BrowserSelection -eq 'admin-ui'){'tests/Support/admin-ui-browser.mjs'}elseif($BrowserSelection -eq 'appearance'){'tests/Support/appearance-browser.mjs'}else{'tests/Support/goals-spa-browser.mjs'}
+  & 'C:\tools\node24\node.exe' $proofBrowser 2>&1|Tee-Object -FilePath (Join-Path $proofRun 'browser.log')
   if($LASTEXITCODE -eq 2){Write-Output 'GOALS_SPA_ACCEPTANCE=BLOCKED; see findings/unverified in browser-results.json';throw 'Required condition remains blocked; no security contract changed'}
   if($LASTEXITCODE -ne 0){throw 'Browser proof failed; no acceptance claimed'}
  }

@@ -189,7 +189,7 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
                 <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-600">اربط عبر صفحة Google الرسمية، ثم اختر الحساب الذي تريد استخدام بياناته في هذه المساحة.</p>
             </div>
             <button v-if="snapshot?.availability === 'CONNECT_AVAILABLE' && canManage" type="button" :disabled="busy" data-source-connect="google" @click="connect()"
-                class="rounded-lg bg-indigo-700 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50">
+                class="rounded-lg ba-brand-button px-5 py-3 text-sm font-semibold  disabled:opacity-50">
                 {{ busy ? 'جارٍ إكمال الخطوة…' : 'ربط حساب Google Ads' }}
             </button>
         </div>
@@ -197,15 +197,15 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
         <p v-else-if="snapshot?.availability === 'OWNER_REQUIRED' || (snapshot && !canManage)" class="mt-4 text-sm text-slate-600">بدء الربط واختيار الحساب متاحان للمسؤول الحالي عن مساحة العمل.</p>
         <p v-else-if="snapshot?.availability === 'FRESH_AUTHENTICATION_REQUIRED'" class="mt-4 text-sm text-slate-600">أكّد تسجيل دخولك ثم حدّث الصفحة لإتاحة الربط.</p>
         <div v-if="snapshot?.notice" class="mt-4 text-sm leading-7 text-slate-600">
-            <a :href="snapshot.notice.privacy_url" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-700 underline">اطّلع على سياسة الخصوصية قبل الربط</a>
+            <a :href="snapshot.notice.privacy_url" target="_blank" rel="noopener noreferrer" class="font-medium text-[var(--ba-primary-ink)] underline">اطّلع على سياسة الخصوصية قبل الربط</a>
             <p>يطلب Google تفويض Ads الذي يشمل قدرات أوسع من القراءة. يستخدم Builderad هنا طلبات قراءة التقارير فقط. نجاح التفويض لا يثبت موافقة المنصة أو جاهزية بياناتك للتحليل.</p>
         </div>
         <p v-if="error" role="alert" class="mt-4 text-sm leading-7 text-red-700">{{ error }}</p>
-        <button v-if="offlineGrantMissing && snapshot?.connect_intent && canManage" type="button" :disabled="busy" data-source-connect="recover" @click="connect(true)" class="mt-3 text-sm font-medium text-indigo-700 underline disabled:opacity-50">إعادة طلب تفويض الربط المستمر</button>
+        <button v-if="offlineGrantMissing && snapshot?.connect_intent && canManage" type="button" :disabled="busy" data-source-connect="recover" @click="connect(true)" class="mt-3 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">إعادة طلب تفويض الربط المستمر</button>
         <p v-if="result" role="status" class="mt-4 rounded-lg bg-slate-50 p-4 text-sm leading-7 text-slate-700">{{ result }}</p>
         <div v-if="snapshot?.connections.length" class="mt-6 border-t border-slate-100 pt-5">
             <h3 class="font-semibold text-slate-900">الحسابات المسجلة في هذه المساحة</h3>
-            <button type="button" :disabled="busy" @click="refresh()" class="mt-3 text-sm font-medium text-indigo-700 underline disabled:opacity-50">تحديث حالة الربط</button>
+            <button type="button" :disabled="busy" @click="refresh()" class="mt-3 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">تحديث حالة الربط</button>
             <ul class="mt-3 divide-y divide-slate-100">
                 <li v-for="connection in snapshot.connections" :key="connection.source_id" class="py-4">
                     <p class="font-medium text-slate-900">{{ connection.label }}</p>
@@ -213,7 +213,7 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
                     <p class="mt-2 text-sm text-slate-600">{{ connectionLabel(connection.access.connection) }}</p>
                     <ProviderReportRequest provider="google" :workspace-id="workspaceId" :source-id="connection.source_id" :version="connection.access.version"
                         :allowed="canManage && connection.access.reporting?.can_report === true" />
-                    <button v-if="canManage && snapshot.availability === 'CONNECT_AVAILABLE' && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED'" type="button" :disabled="busy" data-source-renew @click="renew(connection)" class="mt-3 me-4 text-sm font-medium text-indigo-700 underline disabled:opacity-50">تجديد الربط والتحقق من الحساب</button>
+                    <button v-if="canManage && snapshot.availability === 'CONNECT_AVAILABLE' && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED'" type="button" :disabled="busy" data-source-renew @click="renew(connection)" class="mt-3 me-4 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">تجديد الربط والتحقق من الحساب</button>
                     <button v-if="canManage && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED' && disconnectTarget !== connection.source_id" type="button" :disabled="busy" data-source-disconnect @click="disconnectTarget = connection.source_id" class="mt-3 text-sm font-medium text-red-700 underline disabled:opacity-50">فصل الحساب محليًا</button>
                     <div v-if="disconnectTarget === connection.source_id" class="mt-3 rounded-lg bg-slate-50 p-4 text-sm leading-7 text-slate-700">
                         <p>سيُفصل هذا المصدر وتُزال بيانات تفويضه المحلية. يبقى تفويض Google والربط بحسابات أخرى كما هما.</p>
@@ -225,20 +225,20 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
         </div>
         <div v-if="currentPage" class="mt-6 border-t border-slate-100 pt-5">
             <h3 class="font-semibold text-slate-900">اختر الحساب لهذه المساحة</h3>
-            <button v-if="history.length" type="button" :disabled="busy" @click="back()" class="mt-3 me-4 text-sm font-medium text-indigo-700 underline disabled:opacity-50">الرجوع إلى الحسابات السابقة</button>
-            <button v-if="error" type="button" :disabled="busy" @click="loadAccounts(currentPage, pageKind)" class="mt-3 text-sm font-medium text-indigo-700 underline disabled:opacity-50">إعادة تحميل الحسابات</button>
+            <button v-if="history.length" type="button" :disabled="busy" @click="back()" class="mt-3 me-4 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">الرجوع إلى الحسابات السابقة</button>
+            <button v-if="error" type="button" :disabled="busy" @click="loadAccounts(currentPage, pageKind)" class="mt-3 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">إعادة تحميل الحسابات</button>
             <p v-if="!busy && !accounts.length && !error" class="mt-3 text-sm text-slate-600">لا توجد حسابات متاحة في هذه الصفحة.</p>
             <ul class="mt-3 divide-y divide-slate-100">
                 <li v-for="account in accounts" :key="account.selection_handle ?? account.hierarchy_handle ?? account.account_id" class="flex flex-wrap items-center justify-between gap-4 py-4">
                     <div><p class="font-medium text-slate-900">{{ account.label }}</p><p dir="ltr" class="mt-1 text-xs text-slate-500">{{ account.account_id }}</p><p v-if="account.existing_source_label" class="mt-1 text-sm text-slate-600">مصدر موجود: {{ account.existing_source_label }}</p></div>
                     <div class="flex flex-wrap gap-3">
-                        <button v-if="account.hierarchy_handle" type="button" :disabled="busy || !canManage" data-source-hierarchy @click="loadAccounts(account.hierarchy_handle, 'hierarchy', true)" class="rounded-lg border border-indigo-200 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50">{{ account.manager === true ? 'عرض الحسابات التابعة' : 'عرض الحسابات التابعة إن كان مديرًا' }}</button>
-                        <button v-if="account.selection_handle" type="button" :disabled="busy || !canManage" data-source-select @click="select(account)" class="rounded-lg border border-indigo-200 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50">اختيار الحساب</button>
+                        <button v-if="account.hierarchy_handle" type="button" :disabled="busy || !canManage" data-source-hierarchy @click="loadAccounts(account.hierarchy_handle, 'hierarchy', true)" class="rounded-lg border border-[var(--ba-primary-ink)] px-4 py-2 text-sm font-semibold text-[var(--ba-primary-ink)] hover:bg-slate-50 disabled:opacity-50">{{ account.manager === true ? 'عرض الحسابات التابعة' : 'عرض الحسابات التابعة إن كان مديرًا' }}</button>
+                        <button v-if="account.selection_handle" type="button" :disabled="busy || !canManage" data-source-select @click="select(account)" class="rounded-lg border border-[var(--ba-primary-ink)] px-4 py-2 text-sm font-semibold text-[var(--ba-primary-ink)] hover:bg-slate-50 disabled:opacity-50">اختيار الحساب</button>
                         <p v-if="account.manager === true && !account.hierarchy_handle" class="text-sm text-slate-600">تعذّر متابعة هذا المسار. ابدأ من حساب مدير أقرب إلى حساب المعلن.</p>
                     </div>
                 </li>
             </ul>
-            <button v-if="next" type="button" :disabled="busy" @click="loadAccounts(next, pageKind, true)" class="mt-3 text-sm font-medium text-indigo-700 underline disabled:opacity-50">الحسابات التالية</button>
+            <button v-if="next" type="button" :disabled="busy" @click="loadAccounts(next, pageKind, true)" class="mt-3 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">الحسابات التالية</button>
         </div>
     </fieldset>
     </section>

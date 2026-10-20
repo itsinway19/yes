@@ -1,0 +1,168 @@
+/* Administration presentation only. Published appearance remains the token owner. */
+.ba-admin-layout[data-admin-shell] {
+    --admin-line: #dde4e9;
+    --admin-muted: #586573;
+    --admin-ink: #202d37;
+    --admin-accent: var(--ba-secondary-ink);
+    --admin-disclosure: #f7f9fa;
+    --admin-group: #f4f7f8;
+    --admin-danger: #a13c38;
+    --admin-warning: #856022;
+    --admin-gutter: 0px;
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas: 'header header' 'sidebar content';
+    min-block-size: 100dvh;
+    background: #f5f7f8;
+    color: var(--admin-ink);
+    font-size: 14px;
+    line-height: 1.7;
+}
+.ba-admin-layout[data-admin-shell] *, .ba-admin-layout[data-admin-shell] *::before, .ba-admin-layout[data-admin-shell] *::after { box-sizing: border-box; }
+.ba-admin-layout[data-admin-shell] :is(button, a, input, select, textarea, summary):focus-visible { outline: 2px solid var(--ba-primary-ink); outline-offset: 3px; }
+.ba-admin-layout[data-admin-shell] button:disabled { cursor: not-allowed; opacity: .55; }
+.ba-admin-topbar { grid-area: header; min-block-size: 72px; display: flex; align-items: center; gap: 16px; padding: 12px 28px; border-block-end: 1px solid var(--admin-line); background: #fff; }
+.ba-admin-topbar .ba-admin-header-controls { display: flex; align-items: center; flex: 1; gap: 16px; min-inline-size: 0; flex-wrap: wrap; }
+.ba-admin-topbar strong { color: var(--ba-primary-ink); font-size: 22px; letter-spacing: -.6px; }
+.ba-admin-topbar [data-admin-context] { border-inline-start: 1px solid var(--admin-line); padding-inline-start: 18px; margin-inline-end: auto; color: var(--admin-muted); font-size: 13px; }
+.ba-admin-topbar a { color: var(--admin-muted); font-size: 13px; text-decoration: none; }
+.ba-admin-topbar a:hover { color: var(--ba-primary-ink); text-decoration: underline; text-underline-offset: 4px; }
+.ba-admin-topbar button { min-block-size: 36px; padding: 6px 12px; border: 1px solid var(--admin-line); border-radius: 6px; color: var(--admin-ink); background: #fff; font-size: 13px; }
+.ba-admin-topbar button:hover:not(:disabled) { background: var(--admin-group); }
+.ba-admin-topbar [data-spa=logout] { color: var(--admin-danger); }
+.ba-admin-topbar .ba-admin-menu-toggle { display: none; padding: 8px; }
+.ba-admin-sidebar { grid-area: sidebar; position: sticky; inset-block-start: 0; align-self: start; block-size: calc(100dvh - 72px); overflow-y: auto; display: flex; flex-direction: column; min-inline-size: 0; padding: 24px 16px; background: #fff; border-inline-end: 1px solid var(--admin-line); }
+.ba-admin-sidebar-title { display: flex; align-items: center; gap: 10px; padding-inline: 12px; padding-block-end: 24px; color: var(--admin-muted); font-size: 12px; font-weight: 600; }
+.ba-admin-nav-group { margin-block-end: 24px; }
+.ba-admin-nav-group h2 { padding-inline: 12px; margin-block: 0 8px; color: var(--admin-muted); font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+.ba-admin-navigation a { display: flex; align-items: center; gap: 11px; min-block-size: 44px; padding: 10px 12px; margin-block: 3px; border-radius: 6px; border-inline-start: 3px solid transparent; color: #465460; font-size: 13px; text-decoration: none; }
+.ba-admin-navigation a svg { flex-shrink: 0; }
+.ba-admin-navigation a:hover { background: var(--admin-group); color: var(--admin-ink); }
+.ba-admin-navigation a[aria-current=page] { color: var(--ba-primary-ink); border-inline-start-color: var(--ba-primary-ink); background: #eff4f2; font-weight: 650; }
+.ba-admin-sidebar-note { margin-block-start: auto; padding: 20px 12px 0; border-block-start: 1px solid var(--admin-line); color: var(--admin-muted); font-size: 12px; line-height: 1.9; }
+.ba-admin-content { grid-area: content; min-inline-size: 0; padding: 32px; }
+.ba-admin-content:focus { outline: none; }
+.ba-admin-page { max-inline-size: 1240px; margin-inline: auto; overflow-wrap: anywhere; }
+.ba-admin-page-heading { margin-block-end: 28px; }
+.ba-admin-page-heading h1 { margin-block: 4px 8px; font-size: clamp(25px, 2.2vw, 31px); line-height: 1.5; font-weight: 650; letter-spacing: -.4px; }
+.ba-admin-page-heading > p:not(.admin-eyebrow) { max-inline-size: 78ch; color: var(--admin-muted); font-size: 14px; line-height: 1.9; }
+.ba-admin-page-heading .ba-admin-heading-action { margin-block-start: 16px; }
+.ba-admin-layout[data-admin-shell] .admin-administration { max-inline-size: none; padding: 0; }
+.ba-admin-layout[data-admin-shell] fieldset { min-inline-size: 0; }
+.ba-admin-layout[data-admin-shell] .admin-section { margin-block-end: 24px; border: 1px solid var(--admin-line); border-radius: 8px; padding: 0 24px 24px; background: #fff; }
+.ba-admin-layout[data-admin-shell] .admin-section-heading { padding-block: 22px 18px; }
+.ba-admin-layout[data-admin-shell] .admin-section-heading h2 { font-size: 18px; line-height: 1.6; }
+.ba-admin-layout[data-admin-shell] .admin-description { font-size: 13px; }
+.ba-admin-layout[data-admin-shell] .admin-disclosure { border-radius: 6px; }
+.ba-admin-layout[data-admin-shell] .admin-disclosure summary { min-block-size: 48px; }
+.ba-admin-layout[data-admin-shell] .admin-field :is(input, select), .ba-admin-layout[data-admin-shell] .catalog-form :is(input:not([type=checkbox]), select, textarea) { border-color: #c8d2da; border-radius: 6px; min-block-size: 42px; }
+.ba-admin-layout[data-admin-shell] .admin-field label { font-weight: 550; }
+.ba-admin-layout[data-admin-shell] .admin-form { gap: 16px; }
+.ba-admin-layout[data-admin-shell] .admin-action { border-radius: 6px; min-block-size: 38px; padding: 7px 12px; text-decoration: none; }
+.ba-admin-layout[data-admin-shell] .admin-entity-head { font-size: 12px; border-radius: 5px 5px 0 0; }
+.ba-admin-layout[data-admin-shell] .admin-entity-row { padding-block: 20px; }
+.ba-admin-layout[data-admin-shell] .admin-entity-row:hover { background: #fafbfc; }
+.ba-admin-layout[data-admin-shell] .admin-status { padding: 3px 8px; border-radius: 4px; background: #f2f5f6; font-size: 12px; }
+.ba-admin-layout[data-admin-shell] :is(.admin-status-active, .admin-status-current) { color: #155f53; background: #edf5ef; }
+.ba-admin-layout[data-admin-shell] :is(.admin-status-disabled, .admin-status-suspended, .admin-status-revoked) { color: #943b35; background: #fbefed; }
+.ba-admin-layout[data-admin-shell] .admin-status-pending { background: #fff6e3; }
+.ba-admin-layout[data-admin-shell] .admin-empty { padding: 24px 16px; border: 1px dashed var(--admin-line); border-radius: 6px; background: #fafbfc; }
+.ba-admin-layout[data-admin-shell] .operation-outcome { padding: 16px 20px; margin-block-end: 24px; border: 1px solid #c9d7d0; border-inline-start: 3px solid #155f53; border-radius: 6px; background: #f0f6f2; }
+.ba-admin-layout[data-admin-shell] .operation-outcome button { margin-block-start: 8px; text-decoration: underline; text-underline-offset: 3px; }
+.ba-admin-layout[data-admin-shell] [role=alert] { color: var(--admin-danger); }
+.ba-admin-layout[data-admin-shell] .customer-filters { padding: 20px; border: 1px solid var(--admin-line); border-radius: 8px; background: #fff; margin-block: 20px 24px; }
+.ba-admin-layout[data-admin-shell] .customer-tabs { gap: 28px; margin-block-end: 24px; }
+.ba-admin-layout[data-admin-shell] .customer-list { margin-block: 0; }
+.ba-admin-layout[data-admin-shell] :is(.customer-row, .customer-column-headings) { grid-template-columns: minmax(0, 1.3fr) minmax(0, .9fr) minmax(180px, auto); }
+.ba-admin-layout[data-admin-shell] .customer-row { padding-block: 22px; }
+.ba-admin-layout[data-admin-shell] .customer-row:last-child { border-block-end: 0; }
+.ba-admin-layout[data-admin-shell] .customer-inline-details { border-radius: 4px; }
+.ba-admin-layout[data-admin-shell] .business-catalog { max-inline-size: none; padding: 0; color: var(--admin-ink); }
+.ba-admin-layout[data-admin-shell] .business-catalog .catalog-create { padding: 0 24px; border: 1px solid var(--admin-line); border-radius: 8px; background: #fff; }
+.ba-admin-layout[data-admin-shell] .business-catalog .catalog-type { margin-block-start: 24px; padding: 24px; border: 1px solid var(--admin-line); border-radius: 8px; background: #fff; }
+.ba-admin-layout[data-admin-shell] .catalog-form { max-inline-size: 680px; }
+.ba-admin-layout[data-admin-shell] .appearance-settings { max-inline-size: 920px; padding: 0; }
+.ba-admin-layout[data-admin-shell] .appearance-fields { padding: 24px; margin-block: 24px; border: 1px solid var(--admin-line); border-radius: 8px; background: #fff; }
+.ba-admin-layout[data-admin-shell] .appearance-fields legend { padding-inline: 8px; font-size: 16px; }
+.ba-admin-layout[data-admin-shell] .appearance-preview { border-radius: 8px; padding: 28px; }
+.ba-admin-layout[data-admin-shell] .appearance-note:first-child { border-inline-start: 3px solid var(--ba-secondary-ink); padding: 12px 16px; background: #edf1f4; border-radius: 4px; }
+.ba-admin-layout[data-admin-shell] .services-page { min-inline-size: 0; }
+.ba-admin-layout[data-admin-shell] .services-page > fieldset { display: grid; gap: 24px; }
+.ba-admin-layout[data-admin-shell] .services-page .admin-section { margin: 0; padding: 24px; }
+.ba-admin-layout[data-admin-shell] .services-page .admin-section h2 { font-size: 18px; font-weight: 600; }
+.ba-admin-layout[data-admin-shell] .services-page .admin-section > p { max-inline-size: 78ch; margin-block: 8px 18px; color: var(--admin-muted); font-size: 13px; }
+.ba-admin-layout[data-admin-shell] .service-create-form { grid-template-columns: minmax(0, 1fr) auto; max-inline-size: 680px; align-items: end; }
+.ba-admin-layout[data-admin-shell] .service-grant-form { grid-template-columns: repeat(2, minmax(0, 1fr)); max-inline-size: 820px; align-items: end; }
+.ba-admin-layout[data-admin-shell] .service-grant-form > button { margin-block-start: 0; justify-self: start; }
+.ba-admin-layout[data-admin-shell] .service-list { margin-block-start: 24px; border-block-start: 1px solid var(--admin-line); }
+.ba-admin-layout[data-admin-shell] .service-list > li { display: flex; justify-content: space-between; gap: 16px; padding-block: 18px; border-block-end: 1px solid var(--admin-line); }
+.ba-admin-layout[data-admin-shell] .service-list > li > div { min-inline-size: 0; }
+.ba-admin-layout[data-admin-shell] .service-list p[dir=ltr] { overflow-wrap: anywhere; font-size: 12px; color: var(--admin-muted); margin-block-start: 4px; }
+.ba-admin-layout[data-admin-shell] .service-list .admin-actions { align-items: start; flex-shrink: 0; }
+.ba-admin-layout[data-admin-shell] .service-credential { padding: 24px; margin-block-end: 24px; border: 1px solid #e1c477; border-radius: 8px; background: #fff9eb; }
+.ba-admin-layout[data-admin-shell] .service-credential code { display: block; margin-block: 16px; padding: 12px; background: #fff; border: 1px solid #e4d7b3; border-radius: 6px; overflow-wrap: anywhere; }
+.ba-admin-layout[data-admin-shell] :is(.service-list, .catalog-records) > li > button { flex-shrink: 0; align-self: start; }
+.ba-admin-layout[data-admin-shell] :is(.admin-code, code[dir=ltr], .service-list p[dir=ltr]) { unicode-bidi: isolate; }
+.ba-admin-layout[data-admin-shell] .account-page { padding: 0; margin: auto; }
+.ba-admin-layout[data-admin-shell] .account-page h1 { margin-block: 0 24px; }
+.ba-admin-layout[data-admin-shell] .account-page section { border-color: var(--admin-line); border-radius: 8px; background: #fff; }
+.ba-admin-layout[data-admin-shell] .account-page :is(form, label, li > span) { min-inline-size: 0; }
+.ba-admin-layout[data-admin-shell] .account-page :is(input, button) { max-inline-size: 100%; }
+.ba-admin-skip { position: fixed; inset-block-start: 8px; inset-inline-start: 8px; z-index: 50; padding: 10px 16px; background: var(--admin-ink); color: #fff; transform: translateY(-180%); }
+.ba-admin-skip:focus { transform: translateY(0); }
+.ba-admin-drawer { position: fixed; inset-block: 0; inset-inline-start: 0; inset-inline-end: auto; margin: 0; inline-size: min(320px, calc(100vw - 48px)); block-size: 100dvh; max-block-size: 100dvh; max-inline-size: none; padding: 20px 16px; border: 0; border-inline-end: 1px solid var(--admin-line); background: #fff; color: var(--admin-ink); box-shadow: 12px 0 48px #16252d30; overflow-y: auto; }
+.ba-admin-drawer::backdrop { background: #17283166; }
+.ba-admin-drawer-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-block-end: 24px; padding-inline: 8px; }
+.ba-admin-drawer-heading strong { font-size: 14px; }
+.ba-admin-drawer-heading button { display: grid; place-items: center; min-inline-size: 40px; min-block-size: 40px; border: 1px solid var(--admin-line); border-radius: 6px; }
+@media (max-width: 1279px) {
+    .ba-admin-layout[data-admin-shell] { grid-template-columns: 224px minmax(0, 1fr); }
+    .ba-admin-content { padding: 28px 24px; }
+    .ba-admin-topbar { padding-inline: 24px; }
+    .ba-admin-layout[data-admin-shell] .admin-invite-form { grid-template-columns: 1fr 1fr; }
+    .ba-admin-layout[data-admin-shell] .admin-invite-form > button { margin-block-start: 0; justify-self: start; }
+}
+@media (max-width: 1023px) {
+    .ba-admin-layout[data-admin-shell] { display: block; }
+    .ba-admin-sidebar { display: none; }
+    .ba-admin-topbar .ba-admin-menu-toggle { display: inline-flex; flex-shrink: 0; }
+    .ba-admin-topbar { gap: 12px; padding: 12px 20px; }
+    .ba-admin-topbar .ba-admin-header-controls { gap: 12px; }
+    .ba-admin-topbar [data-admin-context] { margin-inline-end: auto; }
+    .ba-admin-topbar a[href='/internal/administration'] { display: none; }
+    .ba-admin-content { padding: 28px 24px; }
+    .ba-admin-layout[data-admin-shell] .admin-grant-form { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 850px) {
+    .ba-admin-layout[data-admin-shell] .customer-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+@media (max-width: 639px) {
+    .ba-admin-layout[data-admin-shell] .customer-row { grid-template-columns: minmax(0, 1fr); }
+    .ba-admin-topbar { padding: 12px 16px; align-items: start; gap: 12px; }
+    .ba-admin-topbar .ba-admin-header-controls { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
+    .ba-admin-topbar .ba-admin-header-controls > strong { grid-column: 1 / 3; }
+    .ba-admin-topbar strong { font-size: 20px; }
+    .ba-admin-topbar [data-admin-context] { grid-column: 3 / -1; margin-inline-end: 0; border: 0; font-size: 11px; padding-inline-start: 0; text-align: end; }
+    .ba-admin-topbar a { display: inline-flex; align-items: center; min-block-size: 44px; font-size: 12px; }
+    .ba-admin-topbar .ba-admin-identity-switch { min-inline-size: 0; }
+    .ba-admin-topbar button { font-size: 12px; min-block-size: 44px; padding-inline: 8px; }
+    .ba-admin-content { padding: 24px 16px; }
+    .ba-admin-page-heading { margin-block-end: 24px; }
+    .ba-admin-page-heading h1 { font-size: 25px; }
+    .ba-admin-layout[data-admin-shell] .admin-section { padding: 0 16px 16px; }
+    .ba-admin-layout[data-admin-shell] .admin-section-heading { padding-block: 18px 14px; }
+    .ba-admin-layout[data-admin-shell] .admin-invite-form, .ba-admin-layout[data-admin-shell] .admin-grant-form, .ba-admin-layout[data-admin-shell] .service-create-form, .ba-admin-layout[data-admin-shell] .service-grant-form { grid-template-columns: minmax(0, 1fr); }
+    .ba-admin-layout[data-admin-shell] .customer-filters { padding: 16px; }
+    .ba-admin-layout[data-admin-shell] .business-catalog :is(.catalog-create, .catalog-type) { padding-inline: 16px; }
+    .ba-admin-layout[data-admin-shell] .appearance-fields { padding: 16px; }
+    .ba-admin-layout[data-admin-shell] .appearance-preview { padding: 18px; }
+    .ba-admin-layout[data-admin-shell] .service-list > li { flex-direction: column; }
+    .ba-admin-layout[data-admin-shell] .services-page .admin-section { padding: 18px 16px; }
+    .ba-admin-layout[data-admin-shell] .account-page section { padding: 18px 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ba-admin-layout[data-admin-shell] *, .ba-admin-layout[data-admin-shell] *::before, .ba-admin-layout[data-admin-shell] *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}
+
+html:has([data-admin-drawer][open]) { overflow: hidden; }

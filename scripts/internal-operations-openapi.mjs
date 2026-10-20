@@ -18,6 +18,10 @@ export function internalOperationsContracts({ ref, text, uuid, object, list, nul
     const credentialWrite = (operationId, schema, parameters = []) => ({ ...write(operationId, schema, parameters), responses: { ...write('', '').responses, 200: response(ref('InternalServiceCredential')) } });
     return {
         paths: {
+            '/internal/administration/appearance': {
+                get: { operationId: 'readGlobalAppearance', security, parameters: headers, responses: { 200: response(resource('GlobalAppearanceResource')), ...errors } },
+                post: { operationId: 'publishGlobalAppearance', security, requestBody: { required: true, ...json(ref('GlobalAppearanceCommand')) }, responses: { 200: response(ref('AppearancePublication')), ...errors } },
+            },
             '/internal/services': { get: { operationId: 'readInternalServices', security, parameters: headers, responses: { 200: response(resource('InternalServicesResource')), ...errors } }, post: credentialWrite('createInternalService', 'InternalServiceCreate') },
             '/internal/services/{service}/rotate': { post: credentialWrite('rotateInternalService', null, [serviceIdentifier]) },
             '/internal/services/{service}/revoke': { post: write('revokeInternalService', null, [serviceIdentifier]) },
@@ -36,6 +40,11 @@ export function internalOperationsContracts({ ref, text, uuid, object, list, nul
             '/internal/grants/{grant}': { delete: { ...write('revokeInternalStaffGrant', null, [identifier('grant')]), responses: { ...write('', '').responses, 404: response(ref('Error')) } } },
         },
         schemas: {
+            GlobalAppearanceColors: object({ primary: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' }, secondary: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' } }),
+            GlobalAppearanceData: object({ revision: integer, primary: text, secondary: text, defaults: ref('GlobalAppearanceColors') }),
+            GlobalAppearanceResource: envelope('GlobalAppearanceData'),
+            GlobalAppearanceCommand: object({ revision: { type: 'integer', minimum: 0, maximum: 2147483646 }, primary: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' }, secondary: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' } }),
+            AppearancePublication: object({ saved: { const: true }, appearance: ref('GlobalAppearanceData') }),
             InternalServiceCreate: object({ name: bounded(2, 120) }),
             InternalServiceCredential: object({ public_id: uuid, credential: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$' } }),
             InternalServiceGrantCommand: object({ service: uuid, workspace: uuid, reason: bounded(10, 128) }),

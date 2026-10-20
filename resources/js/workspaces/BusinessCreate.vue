@@ -85,5 +85,5 @@ async function save(retry = false) {
 </template>
 
 <style scoped>
-.workspace-create{max-width:540px;margin:30px 0}.workspace-create fieldset{display:grid;gap:22px;min-width:0;border:0;padding:0}.workspace-create label{display:grid;gap:8px;font-size:15px;font-weight:600}.workspace-create :is(input,select){width:100%;min-width:0;border:1px solid #9caeaa;border-radius:5px;padding:12px;background:white}.workspace-create .workspace-action{justify-self:start}.workspace-create [role=alert]{color:#a12c27}.workspace-review{display:inline-block;margin-top:24px;color:#14635b;text-decoration:underline}
+.workspace-create{max-width:540px;margin:30px 0}.workspace-create fieldset{display:grid;gap:22px;min-width:0;border:0;padding:0}.workspace-create label{display:grid;gap:8px;font-size:15px;font-weight:600}.workspace-create :is(input,select){width:100%;min-width:0;border:1px solid #9caeaa;border-radius:5px;padding:12px;background:white}.workspace-create .workspace-action{justify-self:start}.workspace-create [role=alert]{color:#a12c27}.workspace-review{display:inline-block;margin-top:24px;color:var(--ba-primary-ink);text-decoration:underline}
 </style>
