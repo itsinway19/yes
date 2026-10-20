@@ -1,3 +1,4 @@
+import { withPresentationPorts } from './Support/presentation-ports.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -36,7 +37,7 @@ test('guest availability never schedules authenticated renewal or rebind', async
     try {
         const source = compile(await readFile('resources/js/spa/transport.ts', 'utf8')).replace("from 'vue'", 'from ' + JSON.stringify(import.meta.resolve('vue'))).replace("from '../sessionLease'", 'from ' + JSON.stringify(new URL('../resources/js/sessionLease.ts', import.meta.url).href));
         const transport = await import(dataUrl(source));
-        transport.status.value = 'ready'; transport.resumeLease();
+        transport.startLease();
         assert.equal(timers.length, 1, 'Only the conservative expiry timer is allowed for guests');
         assert.ok(timers[0].delay > 0); transport.close();
     } finally { Object.assign(globalThis, previous); }
@@ -59,7 +60,7 @@ test('existing login transition replies require the captured epoch and nonce, th
             globalThis.fetch = async () => { deliveries++; return Response.json({ redirect: '/security/devices', transition: { lineage: 'lineage', boundary: 'advertiser', epoch: 1, nonce, kind: 'login', status: 'active' } }); };
             if (nonce === 'foreign') await assert.rejects(transport.protectedResponse('/login', { method: 'POST' }, 'login'), /Unowned authentication/);
             else await transport.protectedResponse('/login', { method: 'POST' }, 'login');
-            assert.equal(deliveries, 1); assert.equal(transport.status.value, 'closed'); assert.equal(transport.bootstrap.identity.binding.principal, 0);
+            assert.equal(deliveries, 1); assert.equal(transport.documentStatus.value, 'closed'); assert.equal(transport.bootstrap.identity.binding.principal, 0);
         }
         assert.deepEqual(events, [['close'], ['close'], ['navigate', 'https://builderad.test/security/devices']]);
     } finally { Object.assign(globalThis, previous); }
@@ -83,17 +84,17 @@ test('internal transport keeps internal renewal/logout and rejects cross-boundar
             globalThis.fetch = async () => { deliveries++; return Response.json({ redirect, transition: { lineage: binding.lineage, boundary: 'internal', epoch: 4, nonce, kind: 'login', status: 'active' } }); };
             if (accepted) await transport.protectedResponse('/internal/identity/passkey', { method: 'POST' }, 'login');
             else await assert.rejects(transport.protectedResponse('/internal/identity/passkey', { method: 'POST' }, 'login'), /Unowned authentication/);
-            assert.equal(deliveries, 1); assert.equal(transport.status.value, 'closed'); assert.equal(transport.bootstrap.identity.binding.principal, 42);
+            assert.equal(deliveries, 1); assert.equal(transport.documentStatus.value, 'closed'); assert.equal(transport.bootstrap.identity.binding.principal, 42);
         }
         assert.deepEqual(events, ['https://builderad.test/internal/security/devices']);
         const renewal = await client(); timers.length = 0; const calls = [];
         globalThis.fetch = async url => { calls.push(url); return Response.json({ identity }, { headers: { 'X-Builderad-Identity': JSON.stringify(identity) } }); };
-        renewal.status.value = 'ready'; renewal.resumeLease(); assert.equal(timers.length, 2);
+        renewal.startLease(); assert.equal(timers.length, 2);
         assert.ok(timers[1].delay > 0 && timers[1].delay < timers[0].delay); await timers[1].callback(); renewal.close();
         assert.deepEqual(calls, ['/internal/identity/renew']);
         const terminal = await client();
         globalThis.fetch = async url => { calls.push(url); return Response.json({ redirect: '/internal/login', transition: { lineage: binding.lineage, boundary: 'internal', epoch: 4, nonce: 'internal-nonce', kind: 'logout', status: 'closed' } }); };
-        await terminal.logout(); assert.equal(terminal.status.value, 'closed'); assert.equal(calls.at(-1), '/internal/logout'); assert.equal(events.at(-1), '/internal/login');
+        await terminal.logout(); assert.equal(terminal.documentStatus.value, 'closed'); assert.equal(calls.at(-1), '/internal/logout'); assert.equal(events.at(-1), '/internal/login');
     } finally { Object.assign(globalThis, previous); }
 });
 
@@ -109,10 +110,10 @@ for (const [feature, path, stateKey] of [['auth-entry', '/internal/identity/swit
             '../spa/transport': dataUrl(`const runtime=globalThis.${key}; export const bootstrap=runtime.bootstrap,status=runtime.status; export const stamp=()=>1,owned=()=>runtime.active,resumeLease=()=>runtime.resumed++,onClose=callback=>runtime.close=callback;`) };
         try {
             let source = compile(await readFile(`resources/js/${feature}/state.ts`, 'utf8'));
-            for (const [name, target] of Object.entries(ports)) source = source.replaceAll(`from '${name}'`, 'from ' + JSON.stringify(target));
+            for (const [name, target] of Object.entries(withPresentationPorts(ports))) source = source.replaceAll(`from '${name}'`, 'from ' + JSON.stringify(target));
             const state = await import(dataUrl(source)); await state.load({ path }, true);
             assert.deepEqual(calls.map(call => call.headers), [{ 'X-Builderad-Passive': '1' }, { 'X-Builderad-Witness': '1' }]);
-            assert.equal(globalThis[key].status.value, 'ready'); assert.ok(state[stateKey].value); assert.equal(globalThis[key].resumed, 1);
+            assert.equal(globalThis[key].status.value, 'ready'); assert.ok(state[stateKey].value); assert.equal(globalThis[key].resumed, 0);
             globalThis[key].close(); assert.equal(state[stateKey].value, undefined);
         } finally { delete globalThis[key]; }
     });

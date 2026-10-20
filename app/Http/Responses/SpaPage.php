@@ -12,6 +12,12 @@ final class SpaPage implements Responsable
 {
     public function __construct(private array $data) {}
 
+    /** Call only after the route's actual authorization boundary. */
+    public static function needsData(Request $request): bool
+    {
+        return $request->expectsJson() && $request->header('X-Builderad-Witness') !== '1';
+    }
+
     public function toResponse($request): Response
     {
         if ($request->expectsJson()) {

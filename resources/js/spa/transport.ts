@@ -1,13 +1,15 @@
-import { ref } from 'vue';
+import { readonly, ref } from 'vue';
 import type { IdentityMetadata } from './identity';
 import { remainingSessionLease } from '../sessionLease';
 
-export const bootstrap = JSON.parse((document.getElementById('application-bootstrap') ?? document.getElementById('goals-bootstrap'))!.textContent!) as { identity: IdentityMetadata; locale: 'ar' | 'en'; application?: boolean; staffEnrollment?: boolean };
+export const bootstrap = JSON.parse(document.getElementById('application-bootstrap')!.textContent!) as { identity: IdentityMetadata; locale: 'ar' | 'en'; application?: boolean; staffEnrollment?: boolean };
 export const internalBoundary = bootstrap.identity.binding.boundary === 'internal';
 let identity = bootstrap.identity;
 let leaseExpiresAt = Date.now() + identity.leaseMilliseconds;
 export const scope = JSON.stringify(Object.fromEntries(Object.entries(identity.binding).filter(([key]) => key !== 'generation')));
-export const status = ref<'checking' | 'ready' | 'unavailable' | 'closed'>('checking');
+const documentState = ref<'active' | 'retiring' | 'unavailable' | 'closed'>('active');
+export const documentStatus = readonly(documentState);
+export const departure = ref<{ destination?: string; reason: 'handoff' | 'rejected' }>({ reason: 'rejected' });
 let revision = 0;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let expiry: ReturnType<typeof setTimeout> | undefined;
@@ -15,13 +17,19 @@ const pending = new Set<AbortController>();
 const closures = new Set<() => void>();
 export const onClose = (fn: () => void) => closures.add(fn);
 export const stamp = () => revision;
-export const owned = (value: number) => value === revision && status.value !== 'closed';
-export function suspend() {
-    revision++; if (status.value !== 'closed') status.value = 'checking'; clearTimeout(timer); clearTimeout(expiry);
+export const owned = (value: number) => value === revision && ['active', 'retiring'].includes(documentStatus.value);
+function invalidateRequests() {
+    revision++; clearTimeout(timer); clearTimeout(expiry);
     pending.forEach(controller => controller.abort()); pending.clear();
 }
-export function close() {
-    suspend(); status.value = 'closed'; closures.forEach(fn => fn());
+export function close(reason: 'handoff' | 'rejected' = 'rejected', destination?: string) {
+    if (documentState.value === 'closed') return;
+    departure.value = { reason, destination };
+    invalidateRequests(); documentState.value = 'closed'; closures.forEach(fn => fn());
+}
+function unavailable() {
+    if (documentStatus.value !== 'active') return;
+    invalidateRequests(); documentState.value = 'unavailable';
 }
 const equal = (value: IdentityMetadata) => JSON.stringify(value.binding) === JSON.stringify(identity.binding);
 export class TransportError extends Error {
@@ -35,7 +43,7 @@ export async function request<T>(url: string, options: RequestInit = {}, termina
 }
 /** Fetch boundary shared by the generated Goals client and existing identity endpoints. */
 export async function protectedResponse(url: string, options: RequestInit = {}, terminal: boolean | 'login' = false): Promise<Response> {
-    if (status.value === 'closed') throw new Error('Document is closed');
+    if (documentStatus.value !== 'active') throw new Error('Document is closed or unavailable');
     if (new URL(url, location.origin).origin !== location.origin) throw new Error('Application origin required');
     options.signal?.throwIfAborted();
     const captured = stamp(), input = identity, controller = new AbortController(); pending.add(controller);
@@ -61,7 +69,7 @@ export async function protectedResponse(url: string, options: RequestInit = {}, 
                 || !target || target.origin !== location.origin || target.pathname.startsWith('/internal/') !== internalBoundary) {
                 close(); throw new Error('Unowned authentication reply');
             }
-            close();
+            close('handoff', target.href);
             if (typeof BroadcastChannel !== 'undefined') {
                 const hints = new BroadcastChannel('builderad-visibility'); hints.postMessage({ boundary: result.boundary, epoch: result.epoch }); hints.close();
             }
@@ -87,32 +95,38 @@ export async function protectedResponse(url: string, options: RequestInit = {}, 
         return response;
     } finally { clearTimeout(timeout); options.signal?.removeEventListener('abort', cancel); pending.delete(controller); }
 }
-export function resumeLease() {
-    clearTimeout(timer); clearTimeout(expiry);
-    if (status.value !== 'ready') return;
+/** One document-owned scheduler. Feature loaders never arm or reset it. */
+export function startLease() {
+    if (timer !== undefined || expiry !== undefined || documentStatus.value !== 'active') return;
+    scheduleLease();
+}
+function scheduleLease() {
+    clearTimeout(timer); clearTimeout(expiry); timer = expiry = undefined;
+    if (documentStatus.value !== 'active') return;
     const captured = stamp();
     const remaining = leaseExpiresAt - Date.now();
-    if (remaining <= 0) { suspend(); status.value = 'unavailable'; return; }
-    // Conservative transport lease. It never extends canonical idle/absolute authority.
-    expiry = setTimeout(() => { if (owned(captured)) { suspend(); status.value = 'unavailable'; } }, remaining);
+    if (remaining <= 0) { unavailable(); return; }
+    expiry = setTimeout(() => { if (owned(captured)) unavailable(); }, remaining);
     if (identity.binding.principal === 0) return;
     timer = setTimeout(async () => {
         const startedAt = Date.now();
         try {
             const result = await request<{ identity: IdentityMetadata }>(internalBoundary ? '/internal/identity/renew' : '/identity/renew', { method: 'POST' });
-            if (!owned(captured) || status.value !== 'ready' || !equal(result.identity)) return;
-            identity = result.identity; leaseExpiresAt = Date.now() + remainingSessionLease(identity.leaseMilliseconds, startedAt); resumeLease();
-        } catch { if (owned(captured) && status.value !== 'closed') { suspend(); status.value = 'unavailable'; } }
+            if (!owned(captured) || documentStatus.value !== 'active' || !equal(result.identity)) return;
+            identity = result.identity;
+            leaseExpiresAt = Date.now() + remainingSessionLease(identity.leaseMilliseconds, startedAt);
+            scheduleLease();
+        } catch { if (owned(captured)) unavailable(); }
     }, Math.max(1, remaining * 0.7));
 }
 export function documentEvidence() {
-    if (status.value === 'closed') throw new Error('Document is closed');
+    if (documentStatus.value !== 'active') throw new Error('Document is closed or unavailable');
     return { receipt: identity.receipt, transition: identity.transition, csrf: identity.csrf };
 }
 export async function logout(endpoint = internalBoundary ? '/internal/logout' : '/logout') {
     // Close the UI before the actual existing server-owned terminal transition.
     const work = request<{ redirect: string }>(endpoint, { method: 'POST' }, true);
-    status.value = 'checking';
-    try { const result = await work; close(); location.replace(result.redirect); }
+    documentState.value = 'retiring'; clearTimeout(timer); clearTimeout(expiry);
+    try { const result = await work; close('handoff', result.redirect); location.replace(result.redirect); }
     catch { close(); }
 }

@@ -1,5 +1,6 @@
+import { status } from '../spa/presentation';
 import { shallowReactive } from 'vue';
-import { bootstrap, onClose, status, TransportError } from '../spa/transport';
+import { bootstrap, onClose, TransportError } from '../spa/transport';
 import { sources, providers } from './api';
 import type { SourceCommand, SourceAuthorityCommand } from './client';
 import type { Provider, VersionCommand } from './providers';

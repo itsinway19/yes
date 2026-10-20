@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref } from 'vue';
-import { onBeforeRouteLeave } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import OperationsShell from './OperationsShell.vue';
 import BusinessTypeEditor, { type BusinessType } from './BusinessTypeEditor.vue';
 import { businessTypes, businessBusy as busy, businessOutcome as outcome, readBusinessTypes, writeBusiness, type BusinessCommand } from './businessState';
@@ -20,7 +20,7 @@ function settleConfirmed(value: NonNullable<typeof businessTypes.value>) {
     if (current) { const settle = confirmedSettlement.settle; confirmedSettlement = undefined; settle(current); }
 }
 const canLeave = () => !['pending', 'unknown'].includes(outcome.value) || confirm(copy('يوجد أمر غير محسوم. المغادرة لا تعيد تنفيذه. هل تريد المتابعة؟', 'An operation is unresolved. Leaving never replays it. Continue?'));
-confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave);
+confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 function beforeUnload(event: BeforeUnloadEvent) { if (['pending', 'unknown'].includes(outcome.value)) { event.preventDefault(); event.returnValue = ''; } }
 window.addEventListener('beforeunload', beforeUnload);
 const clearPrivate = () => { form.key = ''; form.name_ar = ''; form.name_en = ''; error.value = ''; confirmedSettlement = undefined; };

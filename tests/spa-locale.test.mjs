@@ -1,3 +1,4 @@
+import { withPresentationPorts } from './Support/presentation-ports.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -16,7 +17,7 @@ async function load(internalBoundary = false) {
         '../localization/documentLocale': new URL('../resources/js/localization/documentLocale.ts', import.meta.url).href,
     };
     let source = ts.transpileModule(await readFile(new URL('../resources/js/spa/locale.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
-    for (const [name, target] of Object.entries(ports)) source = source.replaceAll(`from '${name}'`, `from ${JSON.stringify(target)}`);
+    for (const [name, target] of Object.entries(withPresentationPorts(ports))) source = source.replaceAll(`from '${name}'`, `from ${JSON.stringify(target)}`);
     return { runtime, client: await import(url(source + `\nvoid ${++sequence};`)) };
 }
 

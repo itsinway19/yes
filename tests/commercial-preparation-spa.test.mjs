@@ -1,3 +1,4 @@
+import { withPresentationPorts } from './Support/presentation-ports.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -13,7 +14,7 @@ async function fixture(reader) {
     globalThis[key] = runtime;
     const transport = moduleUrl(`const runtime=globalThis.${key}; export const status=runtime.status,stamp=()=>runtime.revision,owned=value=>value===runtime.revision&&!runtime.closed,resumeLease=()=>{},onClose=callback=>runtime.callbacks.push(callback),close=()=>{runtime.closed=true;runtime.status.value='closed';runtime.callbacks.forEach(callback=>callback())}; export class TransportError extends Error{constructor(status){super();this.status=status}}`);
     let source = ts.transpileModule(await readFile(new URL('../resources/js/commercial/preparationState.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-    for (const [name, target] of Object.entries({ vue: import.meta.resolve('vue'), '../spa/api': moduleUrl(`export const api={GET:(...args)=>globalThis.${key}.reader(...args),POST:(...args)=>globalThis.${key}.reader(...args)};`), '../spa/transport': transport })) source = source.replaceAll(`from '${name}'`, 'from ' + JSON.stringify(target));
+    for (const [name, target] of Object.entries(withPresentationPorts({ vue: import.meta.resolve('vue'), '../spa/api': moduleUrl(`export const api={GET:(...args)=>globalThis.${key}.reader(...args),POST:(...args)=>globalThis.${key}.reader(...args)};`), '../spa/transport': transport }))) source = source.replaceAll(`from '${name}'`, 'from ' + JSON.stringify(target));
     return { state: await import(moduleUrl(source)), runtime, transport: await import(transport), dispose: () => delete globalThis[key] };
 }
 const visibility = { protected: true, path: '/internal/administration/commercial-markets', context: 'authoritative-current' };
@@ -110,7 +111,7 @@ async function mountPreparation({ saved = originalOperator, storage, data = proj
     const key = 'preparationView' + crypto.randomUUID().replaceAll('-', ''); globalThis[key] = runtime;
     const vue = import.meta.resolve('vue');
     const transportUrl = moduleUrl(`const runtime=globalThis.${key};export const status=runtime.status,bootstrap={identity:{binding:{principal:${principal},boundary:${JSON.stringify(boundary)}}}},stamp=()=>runtime.revision,owned=value=>value===runtime.revision&&!runtime.closed,logout=async()=>{runtime.logouts++},onClose=callback=>{runtime.callbacks.add(callback);return runtime.callbacks},close=()=>{runtime.closed=true;runtime.status.value='closed';runtime.revision++;runtime.callbacks.forEach(callback=>callback())};export class TransportError extends Error{constructor(status){super('HTTP '+status);this.status=status}}`);
-    const ports = { vue, 'vue-router': moduleUrl('export const onBeforeRouteLeave=()=>{};'),
+    const ports = { vue, 'vue-router': moduleUrl('export const onBeforeRouteUpdate=()=>{}; export const onBeforeRouteLeave=()=>{};'),
         '../internal-operations/OperationsShell.vue': moduleUrl(`import {h} from ${JSON.stringify(vue)};export default{setup(props,{slots}){return()=>h('main',{},[slots.header?.(),slots.default?.()])}}`),
         './preparationState': moduleUrl(`const runtime=globalThis.${key};export const preparationData=runtime.data,readPreparation=(...args)=>runtime.reader(...args),writePreparation=command=>{runtime.writes.push(structuredClone(command));return runtime.writer(command)};`),
         '../spa/transport': transportUrl, '../spa/locale': moduleUrl(`import {ref} from ${JSON.stringify(vue)};export const locale=ref('en');`),
@@ -121,7 +122,7 @@ async function mountPreparation({ saved = originalOperator, storage, data = proj
         : await readFile(new URL('../resources/js/commercial/PreparationView.vue', import.meta.url), 'utf8');
     const { descriptor } = parse(componentSource);
     let source = ts.transpileModule(compileScript(descriptor, { id: 'operator-followup', inlineTemplate: true }).content, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-    for (const [name, target] of Object.entries(ports)) source = source.replaceAll(`from '${name}'`, 'from ' + JSON.stringify(target)).replaceAll(`from "${name}"`, 'from ' + JSON.stringify(target));
+    for (const [name, target] of Object.entries(withPresentationPorts(ports))) source = source.replaceAll(`from '${name}'`, 'from ' + JSON.stringify(target)).replaceAll(`from "${name}"`, 'from ' + JSON.stringify(target));
     const component = (await import(moduleUrl(source))).default, root = hostElement('root'), app = host.createApp({ render: () => h(component) });
     app.mount(root); await settle();
     return { root, runtime, values, transport: await import(transportUrl),

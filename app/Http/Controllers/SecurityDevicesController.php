@@ -13,12 +13,12 @@ final class SecurityDevicesController extends Controller
 {
     public function index(Request $request, SessionAuthority $sessions): SpaPage
     {
-        return new SpaPage($this->projection($request, $sessions));
+        return new SpaPage(SpaPage::needsData($request) ? $this->projection($request, $sessions) : []);
     }
 
     public function application(Request $request, SessionAuthority $sessions): SpaPage
     {
-        return new SpaPage($this->projection($request, $sessions));
+        return new SpaPage(SpaPage::needsData($request) ? $this->projection($request, $sessions) : []);
     }
 
     private function projection(Request $request, SessionAuthority $sessions): array

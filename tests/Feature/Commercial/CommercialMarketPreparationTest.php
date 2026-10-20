@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 use Tests\Support\ApplicationContractAssertions;
 use Tests\TestCase;
@@ -422,6 +423,8 @@ class CommercialMarketPreparationTest extends TestCase
             $this->assertSame(1, $db->table('commercial_markets')->where('id', $target)->count());
             $this->assertSame(1, $db->table('commercial_command_results')->where('target_id', $target)->count());
             $this->assertSame(1, $db->table('security_commercial_market_approvals')->count());
+        } catch (ProcessTimedOutException $error) {
+            $this->fail($error->getMessage().' First: '.$first->getOutput().' / '.$first->getErrorOutput().' Second: '.$second->getOutput().' / '.$second->getErrorOutput());
         } finally {
             file_put_contents($release, 'release');
             foreach ([$first, $second] as $process) {
@@ -434,5 +437,22 @@ class CommercialMarketPreparationTest extends TestCase
                 }
             }
         }
+    }
+
+    public function test_shell_and_witness_preserve_founder_authority_without_commercial_projection_queries(): void
+    {
+        $this->actingAsInternal($this->staff('founder'))->withCredentials();
+        $queries = [];
+        DB::listen(function ($event) use (&$queries): void {
+            $queries[] = $event->sql;
+        });
+        $path = '/internal/administration/commercial-markets';
+        $this->get($path)->assertOk()->assertViewIs('spa');
+        $this->getJson($path, ['X-Builderad-Witness' => '1'])->assertOk()->assertJsonMissingPath('data');
+        foreach (['commercial_markets', 'commercial_market_configuration_versions', 'commercial_catalog_references', 'builderad_sa01_founder_workspaces'] as $projection) {
+            $this->assertFalse(collect($queries)->contains(fn ($sql) => str_contains($sql, $projection)), $projection);
+        }
+        $this->assertFalse(collect($queries)->contains(fn ($sql) => str_contains($sql, 'security_commercial_market_approvals')));
+        $this->assertFalse(collect($queries)->contains(fn ($sql) => str_contains($sql, 'builderad_commercial_preparation_consumed')));
     }
 }

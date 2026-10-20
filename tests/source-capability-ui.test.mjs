@@ -6,7 +6,7 @@ import ts from 'typescript';
 import { createSSRApp } from 'vue';
 import { renderToString } from '@vue/server-renderer';
 
-const filename = new URL('../resources/js/Pages/Workspaces/SourceCapabilityStatus.vue', import.meta.url);
+const filename = new URL('../resources/js/Components/Sources/SourceCapabilityStatus.vue', import.meta.url);
 const { descriptor } = parse(await readFile(filename, 'utf8'));
 const script = compileScript(descriptor, { id: 'bb1-status-proof', genDefaultAs: '__component' });
 const template = compileTemplate({ source: descriptor.template.content, filename: filename.pathname,

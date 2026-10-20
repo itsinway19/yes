@@ -14,5 +14,5 @@ export function submitDocument(action: string, body: Record<string, unknown>, me
         }
     };
     for (const [name, value] of Object.entries({ ...body, _method: method, _token: evidence.csrf, _identity_receipt: evidence.receipt, _identity_transition: evidence.transition })) append(name, value);
-    document.body.append(form); close(); HTMLFormElement.prototype.submit.call(form);
+    document.body.append(form); close('handoff'); HTMLFormElement.prototype.submit.call(form);
 }

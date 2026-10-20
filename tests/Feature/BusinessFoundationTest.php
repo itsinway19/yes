@@ -80,8 +80,11 @@ class BusinessFoundationTest extends TestCase
         $user = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
         $this->actingAs($user)->get('/dashboard')->assertRedirect(route('business.start'));
-        $this->get('/business/start')->assertOk();
-        $key = session('business.creation_key');
+        $this->get('/business/start')->assertOk()->assertViewIs('spa');
+        $this->assertNull(session('business.creation_key'));
+        $key = $this->getJson('/business/start')->assertOk()->json('data.creationKey');
+        $this->assertTrue(Str::isUuid($key));
+        $this->assertSame($key, session('business.creation_key'));
         $input = ['name' => 'My business', 'business_type_id' => $this->type(), 'creation_key' => $key];
         $this->post('/business/start', [...$input, 'business_type_id' => 999999])->assertSessionHasErrors('business_type_id');
         $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());

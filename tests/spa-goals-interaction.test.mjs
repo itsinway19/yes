@@ -1,3 +1,4 @@
+import { withPresentationPorts } from './Support/presentation-ports.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -5,19 +6,19 @@ import { parse, compileScript } from '@vue/compiler-sfc';
 import ts from 'typescript';
 import { createRenderer, nextTick, shallowReactive, shallowRef, ref, h } from 'vue';
 
-const state = globalThis.__spaGoalsTest = { current: shallowRef(), locale: ref('ar'), posts: [], visits: [], guards: [], closed: false, revision: 0, confirmations: false, closures: [], reviews: [] };
+const state = globalThis.__spaGoalsTest = { current: shallowRef(), locale: ref('ar'), posts: [], visits: [], guards: [], updateGuards: [], closed: false, revision: 0, confirmations: false, closures: [], reviews: [] };
 globalThis.window = { listeners: {}, addEventListener(name, handler) { this.listeners[name] = handler; }, removeEventListener(name) { delete this.listeners[name]; } };
 globalThis.confirm = () => state.confirmations;
 const moduleUrl = code => 'data:text/javascript;base64,' + Buffer.from(code).toString('base64');
 const transpile = code => ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-function rewrite(code, replacements) { for (const [from, to] of Object.entries(replacements)) code = code.replaceAll(`from '${from}'`, `from ${JSON.stringify(to)}`).replaceAll(`from "${from}"`, `from ${JSON.stringify(to)}`); return code; }
+function rewrite(code, replacements) { for (const [from, to] of Object.entries(withPresentationPorts(replacements))) code = code.replaceAll(`from '${from}'`, `from ${JSON.stringify(to)}`).replaceAll(`from "${from}"`, `from ${JSON.stringify(to)}`); return code; }
 const transport = moduleUrl(`export const bootstrap={application:true};export const stamp=()=>globalThis.__spaGoalsTest.revision,owned=value=>!globalThis.__spaGoalsTest.closed&&value===globalThis.__spaGoalsTest.revision,onClose=handler=>globalThis.__spaGoalsTest.closures.push(handler);export class TransportError extends Error{constructor(status,body={}){super();this.status=status;this.body=body;}}`);
 const { TransportError } = await import(transport);
-const drafts = moduleUrl(rewrite(transpile(await readFile(new URL('../resources/js/goals-spa/drafts.ts', import.meta.url), 'utf8')), { './transport': transport }));
+const drafts = moduleUrl(rewrite(transpile(await readFile(new URL('../resources/js/goals-spa/drafts.ts', import.meta.url), 'utf8')), { '../spa/transport': transport }));
 const presentation = moduleUrl(`import {ref} from ${JSON.stringify(import.meta.resolve('vue'))};export const confirmDeparture=ref(()=>true);`);
 const { confirmDeparture } = await import(presentation);
 const reader = moduleUrl(`export {confirmDeparture} from ${JSON.stringify(presentation)};export const current=globalThis.__spaGoalsTest.current;export async function read(){const next=globalThis.__spaGoalsTest.reviews.shift();if(next)current.value=next;return next;}`);
-const router = moduleUrl(`import {h} from ${JSON.stringify(import.meta.resolve('vue'))};export const RouterLink={props:['to'],setup:(props,{slots})=>()=>h('a',{href:props.to},slots.default?.())};export const useRouter=()=>({push:url=>{globalThis.__spaGoalsTest.visits.push(url);return Promise.resolve();}});export const onBeforeRouteLeave=guard=>globalThis.__spaGoalsTest.guards.push(guard);`);
+const router = moduleUrl(`import {h} from ${JSON.stringify(import.meta.resolve('vue'))};export const RouterLink={props:['to'],setup:(props,{slots})=>()=>h('a',{href:props.to},slots.default?.())};export const useRouter=()=>({push:url=>{globalThis.__spaGoalsTest.visits.push(url);return Promise.resolve();}});export const onBeforeRouteUpdate=guard=>globalThis.__spaGoalsTest.updateGuards.push(guard); export const onBeforeRouteLeave=guard=>globalThis.__spaGoalsTest.guards.push(guard);`);
 const api = moduleUrl(`export const saveGoals=(workspace,payload)=>new Promise((resolve,reject)=>globalThis.__spaGoalsTest.posts.push({workspace,payload,resolve,reject}));`);
 const icons = moduleUrl(`export const ChartNoAxesColumnIncreasing={render:()=>null},Users=ChartNoAxesColumnIncreasing,Lightbulb=Users,Settings=Users,Store=Users,ArrowLeft=Users;`);
 const messages = moduleUrl(transpile(await readFile(new URL('../resources/js/localization/messages.ts', import.meta.url), 'utf8')));
@@ -26,7 +27,7 @@ const logic = moduleUrl(transpile(await readFile(new URL('../resources/js/Compon
 const paths = moduleUrl(rewrite(transpile(await readFile(new URL('../resources/js/goals-spa/paths.ts', import.meta.url), 'utf8')), { '../spa/transport': transport }));
 const { descriptor } = parse(await readFile(new URL('../resources/js/goals-spa/GoalsEditor.vue', import.meta.url), 'utf8'));
 const component = (await import(moduleUrl(rewrite(transpile(compileScript(descriptor, { id: 'spa-goals-test', inlineTemplate: true }).content), {
-    vue: import.meta.resolve('vue'), 'vue-router': router, '@lucide/vue': icons, './state': reader, './drafts': drafts, './transport': transport,
+    vue: import.meta.resolve('vue'), 'vue-router': router, '@lucide/vue': icons, './state': reader, './drafts': drafts, '../spa/transport': transport,
     './api': api, './paths': paths, '../localization/goalsCopy': copy, '../spa/locale': moduleUrl('export const locale=globalThis.__spaGoalsTest.locale;'), '../Components/Business/goalSelection': logic,
 })))).default;
 function element(tag, text = '') { return { tag, text, children: [], props: {}, parent: null }; }
@@ -36,7 +37,7 @@ const empty = () => ({ value: { goals: [], priority: null, results: {} }, versio
 const flush = async () => { await nextTick(); await new Promise(resolve => setImmediate(resolve)); await nextTick(); };
 async function mount(overrides = {}, retain = false) {
     if (!retain) state.closures.forEach(handler => handler());
-    Object.assign(state, { posts: [], visits: [], guards: [], closed: false, confirmations: false, reviews: [] }); state.locale.value = 'ar';
+    Object.assign(state, { posts: [], visits: [], guards: [], updateGuards: [], closed: false, confirmations: false, reviews: [] }); state.locale.value = 'ar';
     const props = shallowReactive({ workspace: { public_id: 'business', name: 'Real business' }, business: { type: null, canManage: true }, preferences: empty(), catalog, ...overrides });
     state.current.value = props;
     const root = element('root'), app = renderer.createApp({ render: () => h(component) }); app.mount(root); await flush();
@@ -125,4 +126,17 @@ test('actual SPA editor cannot navigate after its component was unmounted during
 test('actual SPA editor keeps goal cards as the only selection surface', async () => {
     const view = await mount(); await change(view, 'select-sales'); await change(view, 'select-customers'); await change(view, 'select-growth'); assert.equal(nodes(view.root, node => node.props.class === 'goals-summary').length, 0);
     assert.equal(nodes(view.root, node => String(node.props['data-goals'] ?? '').startsWith('remove-')).length, 0); assert.doesNotMatch(text(view.root), /الأهداف المحددة|اختياري؛ يمكنك اختيار عدة نتائج/); assert.match(text(view.root), /النتيجة المطلوبة/); view.stop();
+});
+
+test('actual Goals component uses the same pending/dirty decision and persistence for same-record updates', async () => {
+    const view=await mount();
+    try {
+        assert.equal(state.updateGuards.length,1);assert.equal(state.updateGuards[0],state.guards[0]);
+        await change(view,'select-sales');assert.equal(await state.updateGuards[0](),false);
+        state.confirmations=true;assert.notEqual(await state.updateGuards[0](),false);
+        await change(view,'result-sales_one');await submit(view);
+        assert.equal(await state.updateGuards[0](),false,'pending save blocks parameter/query replacement');
+        assert.equal(state.posts.length,1);
+        state.posts[0].reject(Error('unknown delivery'));await flush();
+    }finally{view.stop()}
 });

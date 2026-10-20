@@ -1,6 +1,7 @@
+import { status } from '../spa/presentation';
 import { nextTick, shallowReactive } from 'vue';
 import type { RouteLocationNormalized } from 'vue-router';
-import { owned, stamp, status, onClose, TransportError } from '../spa/transport';
+import { owned, stamp, onClose, TransportError } from '../spa/transport';
 import { writePurpose, type PurposeCommand, type PurposeAcknowledgement } from './api';
 import { read } from './state';
 

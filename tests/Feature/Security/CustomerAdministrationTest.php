@@ -165,4 +165,34 @@ class CustomerAdministrationTest extends TestCase
 
         return [$owner, $workspace];
     }
+
+    public function test_shell_and_witness_use_the_same_founder_authority_without_directory_projection(): void
+    {
+        $this->actingAsInternal($this->staff('founder'));
+        $queries = [];
+        DB::listen(function ($event) use (&$queries): void {
+            $queries[] = $event->sql;
+        });
+        $this->get('/internal/administration/customers')->assertOk()->assertViewIs('spa');
+        $this->getJson('/internal/administration/customers', ['X-Builderad-Witness' => '1'])
+            ->assertOk()->assertJsonMissingPath('data')->assertJsonPath('visibility.protected', true);
+        $this->assertTrue(collect($queries)->contains(fn ($sql) => str_contains($sql, 'builderad_customer_directory_witness()')));
+        $this->assertFalse(collect($queries)->contains(fn ($sql) => str_contains($sql, 'builderad_customer_directory(')));
+        $this->actingAsInternal($this->staff())->getJson('/internal/administration/customers', ['X-Builderad-Witness' => '1'])->assertForbidden();
+    }
+
+    public function test_directory_witness_upgrade_is_repeatable_and_does_not_grant_private_authority(): void
+    {
+        $owner = DB::connection('pgsql_migrations');
+        $before = $owner->table('users')->count();
+        $owner->statement('DROP FUNCTION builderad_customer_directory_witness()');
+        $definition = file_get_contents(database_path('sql/customer_directory_witness.sql'));
+        $owner->unprepared($definition);
+        $owner->unprepared($definition);
+        $this->assertSame($before, $owner->table('users')->count());
+        foreach (['builderad_app' => true, 'builderad_authority' => false] as $role => $allowed) {
+            $this->assertSame($allowed, $owner->scalar("SELECT has_function_privilege(?, 'builderad_customer_directory_witness()', 'EXECUTE')", [$role]));
+            $this->assertFalse($owner->scalar("SELECT has_function_privilege(?, 'builderad_customer_administrator(text)', 'EXECUTE')", [$role]));
+        }
+    }
 }

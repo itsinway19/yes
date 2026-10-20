@@ -1,3 +1,4 @@
+import { withPresentationPorts } from './Support/presentation-ports.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -8,7 +9,7 @@ import { createApplicationClient } from '../resources/js/api/application.ts';
 const moduleUrl = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
 async function compile(file, ports) {
     let source = ts.transpileModule(await readFile(new URL('../resources/js/account/' + file, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
-    for (const [name, target] of Object.entries({ vue: import.meta.resolve('vue'), ...ports })) source = source.replaceAll("from '" + name + "'", 'from ' + JSON.stringify(target));
+    for (const [name, target] of Object.entries(withPresentationPorts({ vue: import.meta.resolve('vue'), ...ports }))) source = source.replaceAll("from '" + name + "'", 'from ' + JSON.stringify(target));
     return import(moduleUrl(source));
 }
 test('actual account helpers use the generated client, exact existing verbs and one delivery', async () => {
@@ -67,7 +68,7 @@ for (const path of ['/profile', '/security/devices']) test(`account ${path} requ
     const calls = [], visibility = { protected: true, path, context: 'authorized' };
     const view = await stateFixture(async (url, headers, signal) => { calls.push({ url, headers, signal }); return headers['X-Builderad-Witness'] ? { visibility } : { data: {}, locale: 'ar', visibility }; });
     try {
-        await view.state.read(path, true); assert.equal(view.context.status.value, 'ready'); assert.equal(view.context.resumed, 1);
+        await view.state.read(path, true); assert.equal(view.context.status.value, 'ready'); assert.equal(view.context.resumed, 0);
         assert.deepEqual(calls[0].headers, { 'X-Builderad-Passive': '1' }); assert.ok(calls[0].signal instanceof AbortSignal);
         assert.deepEqual(calls[1].headers, { 'X-Builderad-Witness': '1' });
     } finally { view.dispose(); }
@@ -83,6 +84,6 @@ for (const terminal of [false, true]) test(`late account resource cannot cross $
         if (terminal) view.close(); else { view.context.revision++; view.state.clear(); }
         deliver({ data: {}, locale: 'ar', visibility: { protected: true, path: '/profile', context: 'old' } }); await work;
         assert.equal(view.state.profile.value, undefined); assert.equal(view.context.resumed, 0);
-        if (terminal) { assert.equal(view.context.status.value, 'closed'); assert.equal(view.state.outcomes.password, ''); assert.equal(view.context.cleared, 1); }
+        if (terminal) { assert.equal(view.context.status.value, 'closed'); assert.equal(view.state.outcomes.password, ''); assert.equal(view.context.cleared, 0); /* Cache erasure belongs to the single document-level QueryClient. */ }
     } finally { view.dispose(); }
 });

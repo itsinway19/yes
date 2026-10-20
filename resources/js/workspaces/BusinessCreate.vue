@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { status } from '../spa/presentation';
 import { computed, onBeforeUnmount, ref } from 'vue';
-import { RouterLink, onBeforeRouteLeave, useRouter } from 'vue-router';
+import { RouterLink, onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 import { createBusiness, type CreateBusiness } from './api';
 import { current, creationDraft as draft, unresolvedCreation, resetCreationDraft } from './state';
-import { bootstrap, owned, stamp, status, TransportError } from '../spa/transport';
+import { bootstrap, owned, stamp, TransportError } from '../spa/transport';
 import { applicationDestination } from '../spa/destination';
 import { confirmDeparture } from '../spa/presentation';
 import { locale } from '../spa/locale';
@@ -17,7 +18,7 @@ const keyChanged = computed(() => draft.creation_key !== data.value?.creationKey
 let alive = true;
 const canLeave = () => !busy.value && (!dirty.value || confirm(copy('لديك بيانات غير محفوظة. هل تريد المغادرة؟', 'You have unfinished business details. Leave this page?')));
 confirmDeparture.value = canLeave;
-onBeforeRouteLeave(canLeave);
+onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 const beforeUnload = (event: BeforeUnloadEvent) => { if (dirty.value || busy.value) { event.preventDefault(); event.returnValue = ''; } };
 window.addEventListener('beforeunload', beforeUnload);
 onBeforeUnmount(() => {

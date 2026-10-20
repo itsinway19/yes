@@ -8,8 +8,8 @@ export type MarketsUpdate = components['schemas']['ReplaceTargetMarkets'];
 export type IntentCommand = components['schemas']['CurrentIntentCommand'];
 export type AuthorityRequest = components['schemas']['RequestBusinessContextAuthority'];
 
-export async function readContext(workspace: string, headers: Record<string, string>) {
-    const result = await api.GET('/workspaces/{workspace}/business', { params: { path: { workspace } }, headers });
+export async function readContext(workspace: string, headers: Record<string, string>, signal?: AbortSignal) {
+    const result = await api.GET('/workspaces/{workspace}/business', { params: { path: { workspace } }, headers, signal });
     if (!result.data) throw Error('Missing business context');
     return result.data;
 }

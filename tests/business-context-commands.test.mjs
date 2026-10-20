@@ -1,3 +1,4 @@
+import { withPresentationPorts } from './Support/presentation-ports.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -7,7 +8,7 @@ import { nextTick, ref } from 'vue';
 const state = globalThis.__contextCommandTest = { revision: 0, status: ref('ready'), locale: ref('ar'), requests: [], reads: [], closures: [], value: { version: 1 } };
 const moduleUrl = code => 'data:text/javascript;base64,' + Buffer.from(code).toString('base64');
 const transpile = code => ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-function rewrite(code, replacements) { for (const [from, to] of Object.entries(replacements)) code = code.replaceAll(`from '${from}'`, `from ${JSON.stringify(to)}`).replaceAll(`from "${from}"`, `from ${JSON.stringify(to)}`); return code; }
+function rewrite(code, replacements) { for (const [from, to] of Object.entries(withPresentationPorts(replacements))) code = code.replaceAll(`from '${from}'`, `from ${JSON.stringify(to)}`).replaceAll(`from "${from}"`, `from ${JSON.stringify(to)}`); return code; }
 const transport = moduleUrl(`export const status=globalThis.__contextCommandTest.status,stamp=()=>globalThis.__contextCommandTest.revision,owned=value=>value===globalThis.__contextCommandTest.revision&&status.value!=='closed',onClose=handler=>globalThis.__contextCommandTest.closures.push(handler);export class TransportError extends Error{constructor(status,body={}){super();this.status=status;this.body=body;}}`);
 const { TransportError } = await import(transport);
 const api = moduleUrl(`const send=(kind,workspace,body)=>new Promise((resolve,reject)=>globalThis.__contextCommandTest.requests.push({kind,workspace,body,resolve,reject}));export const updateContext=(workspace,body)=>send('context',workspace,body),updateMarkets=(workspace,body)=>send('markets',workspace,body),updateIntent=(workspace,body)=>send('intent',workspace,body),requestAuthority=(workspace,body)=>send('authority',workspace,body);`);

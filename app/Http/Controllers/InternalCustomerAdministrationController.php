@@ -23,6 +23,11 @@ final class InternalCustomerAdministrationController
         ]);
         $context->activate($request->user());
         try {
+            if (! SpaPage::needsData($request)) {
+                DB::selectOne('SELECT builderad_customer_directory_witness()');
+
+                return new SpaPage([]);
+            }
             $result = DB::selectOne('SELECT builderad_customer_directory(?,?,?,?,?::uuid) AS result', [
                 $input['kind'] ?? 'users', $input['search'] ?? '', $input['status'] ?? '', $input['page'] ?? 1, $input['selected'] ?? null,
             ]);

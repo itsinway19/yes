@@ -1,4 +1,5 @@
-import { onClose, status } from '../spa/transport';
+import { status } from '../spa/presentation';
+import { onClose } from '../spa/transport';
 
 const drafts = new Map<string, unknown>();
 export function restore<T>(workspace: string, kind: string): T | undefined {

@@ -1,3 +1,4 @@
+import { withPresentationPorts } from './Support/presentation-ports.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -25,7 +26,7 @@ async function fixture(send) {
             export const resumeLease = () => { runtime.context.resumed++; }; export const onClose = callback => runtime.closures.push(callback);`),
     };
     let compiled = ts.transpileModule(await readFile(new URL('../resources/js/sources/state.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
-    for (const [name, target] of Object.entries({ vue: import.meta.resolve('vue'), ...ports })) compiled = compiled.replaceAll("from '" + name + "'", 'from ' + JSON.stringify(target));
+    for (const [name, target] of Object.entries(withPresentationPorts({ vue: import.meta.resolve('vue'), ...ports }))) compiled = compiled.replaceAll("from '" + name + "'", 'from ' + JSON.stringify(target));
     const state = await import(moduleUrl(compiled));
     return { state, calls, keys, context, close: () => { context.status.value = 'closed'; closures.forEach(callback => callback()); }, dispose: () => { delete globalThis[runtime]; } };
 }
@@ -35,7 +36,7 @@ test('Source presentation requires its exact workspace and matching authoritativ
     try {
         assert.deepEqual(await view.state.read('workspace', true), resource('workspace').data);
         assert.equal(view.context.status.value, 'ready');
-        assert.equal(view.context.resumed, 1);
+        assert.equal(view.context.resumed, 0);
         assert.deepEqual(view.keys, [['identity-scope', 'workspace-sources', 'workspace']]);
         assert.deepEqual(view.calls[0][1], { 'X-Builderad-Passive': '1' });
         assert.equal(view.calls[0][2] instanceof AbortSignal, true);
@@ -64,6 +65,6 @@ for (const terminal of [false, true]) test(`late Source resource cannot cross ${
         assert.equal(view.state.current.value, undefined);
         assert.equal(view.context.resumed, 0);
         assert.equal(view.calls.length, 1);
-        if (terminal) { assert.equal(view.context.status.value, 'closed'); assert.equal(view.context.cleared, 1); }
+        if (terminal) { assert.equal(view.context.status.value, 'closed'); assert.equal(view.context.cleared, 0); /* Cache erasure belongs to the single document-level QueryClient. */ }
     } finally { view.dispose(); }
 });

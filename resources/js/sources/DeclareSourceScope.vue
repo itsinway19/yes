@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { status } from '../spa/presentation';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { sources } from './api';
 import { read } from './state';
-import { bootstrap, status, TransportError } from '../spa/transport';
+import { bootstrap, TransportError } from '../spa/transport';
 
 type Scope = { resource: string; operation: string; purpose: string };
 type Command = { command_id: string; source_id: string; effect: 'declare_scope'; expected_version: number;

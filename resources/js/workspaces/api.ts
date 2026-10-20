@@ -5,14 +5,14 @@ export type CreateBusiness = components['schemas']['CreateBusiness'];
 export type WorkspaceIndexResource = components['schemas']['WorkspaceIndexResource'];
 export type BusinessCreationResource = components['schemas']['BusinessCreationResource'];
 
-export async function readWorkspaces(headers: Record<string, string> = {}) {
-    const result = await api.GET('/workspaces', { headers });
+export async function readWorkspaces(headers: Record<string, string> = {}, signal?: AbortSignal) {
+    const result = await api.GET('/workspaces', { headers, signal });
     if (!result.data) throw Error('Workspace projection is unavailable');
     return result.data;
 }
 
-export async function readCreation(additional: boolean, headers: Record<string, string> = {}) {
-    const result = await api.GET('/business/start', { params: { query: additional ? { new: '1' } : {} }, headers });
+export async function readCreation(additional: boolean, headers: Record<string, string> = {}, signal?: AbortSignal) {
+    const result = await api.GET('/business/start', { params: { query: additional ? { new: '1' } : {} }, headers, signal });
     if (!result.data) throw Error('Business creation projection is unavailable');
     return result.data;
 }

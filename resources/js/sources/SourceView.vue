@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { onBeforeUnmount } from 'vue';
-import { onBeforeRouteLeave } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import Sources from './Sources.vue';
 import { current } from './state';
 import { pending } from './commands';
 import { confirmDeparture } from '../spa/presentation';
 const canLeave = () => !pending.size || confirm('توجد أوامر مصادر غير محسومة. هل تريد المغادرة مع الاحتفاظ بها في هذا المستند؟');
 confirmDeparture.value = canLeave;
-onBeforeRouteLeave(canLeave);
+onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 const beforeUnload = (event: BeforeUnloadEvent) => { if (pending.size) { event.preventDefault(); event.returnValue = ''; } };
 window.addEventListener('beforeunload', beforeUnload);
 onBeforeUnmount(() => { if (confirmDeparture.value === canLeave) confirmDeparture.value = () => true; window.removeEventListener('beforeunload', beforeUnload); });

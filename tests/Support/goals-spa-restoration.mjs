@@ -16,10 +16,10 @@ export async function runRestorationAcceptance({browser,check,login,get,post,tar
     const shell=await shellContext.newPage();
     const response=await shell.goto(origin+target('spa'));
     assert.equal(response.status(),200);assert.match(response.headers()['cache-control'],/no-store/);
-    assert.equal(await shell.locator('#goals-spa').innerHTML(),'');
+    assert.equal(await shell.locator('#application-spa').innerHTML(),'');
     const html=await response.text();
     assert.ok(!html.includes(workspaceName));
-    const bootstrap=JSON.parse(await shell.locator('#goals-bootstrap').textContent());
+    const bootstrap=JSON.parse(await shell.locator('#application-bootstrap').textContent());
     assert.deepEqual(Object.keys(bootstrap).sort(),['identity','locale']);
     assert.equal(await shell.locator('[data-spa-private], [data-goals="form"]').count(),0);
     return {status:response.status(),cacheControl:response.headers()['cache-control'],scope:'Fresh HTML only; identity bootstrap remains present; not cached compositor frames'};
@@ -27,7 +27,7 @@ export async function runRestorationAcceptance({browser,check,login,get,post,tar
   });
   await check('reload keeps private presentation closed until authoritative witness completes','spa',async()=>{
    let intercepted=false;
-   await page.route('**/spa/api/workspaces/*/goals',async route=>{
+   await page.route('**/workspaces/*/goals/context',async route=>{
     const request=route.request();
     if(!intercepted&&request.headers()['x-goals-witness']==='1'){
      intercepted=true;await route.continue({headers:{...request.headers(),'X-Proof-Before':'restoration-witness'}});
@@ -37,9 +37,9 @@ export async function runRestorationAcceptance({browser,check,login,get,post,tar
     await page.reload({waitUntil:'domcontentloaded'});await until(()=>before.has('restoration-witness'));
     assert.equal(await hidden(page),true);
     before.get('restoration-witness')();before.delete('restoration-witness');
-    await page.waitForSelector('#goals-spa[data-state="ready"] [data-goals="form"]');
+    await page.waitForSelector('#application-spa[data-state="ready"] [data-goals="form"]');
     return {scope:'Real reload, real HTTP witness held before server admission; no proof globals'};
-   } finally {await page.unroute('**/spa/api/workspaces/*/goals');}
+   } finally {await page.unroute('**/workspaces/*/goals/context');}
   });
  } finally {await context.close();}
  for(const transition of ['expire','revoke','switch','deny-view']) {
@@ -65,7 +65,7 @@ export async function runRestorationAcceptance({browser,check,login,get,post,tar
  try {
   await login(outsider,'spa');
   await check('production foreign workspace shell and projection both deny access','spa',async()=>{
-   const read=await get(outsider,`/spa/api/workspaces/${foreign}/goals`);assert.equal(read.status,403);
+   const read=await get(outsider,`/workspaces/${foreign}/goals/context`);assert.equal(read.status,403);
    const response=await outsider.goto(origin+target('spa',foreign));assert.equal(response.status(),403);
    assert.equal(await outsider.locator('[data-spa-private]').count(),0);
    return {shell:response.status(),projection:read.status,scope:'Foreign shell and projection with current cookie and valid document receipt'};

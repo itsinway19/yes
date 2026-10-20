@@ -108,12 +108,10 @@ for (const directory of ['app/Http/Middleware', 'resources/views', 'tests', 'scr
 
 const runtime = {};
 if (process.argv.includes('--runtime')) {
-    for (const enabled of [false, true]) {
-        runtime[enabled ? 'goalsEnabled' : 'goalsDisabled'] = JSON.parse(execFileSync(process.env.BUILDERAD_PHP ?? 'php',
-            ['artisan', 'route:list', '--json', '--except-vendor'], {
-                cwd: root, encoding: 'utf8', env: { ...process.env, GOALS_SPA_ENABLED: enabled ? 'true' : 'false' },
-            }));
-    }
+    runtime.application = JSON.parse(execFileSync(process.env.BUILDERAD_PHP ?? 'php',
+        ['artisan', 'route:list', '--json', '--except-vendor'], {
+            cwd: root, encoding: 'utf8', env: process.env,
+        }));
     for (const route of routes) {
         route.runtime = Object.fromEntries(Object.entries(runtime).map(([variant, registered]) => [variant,
             registered.filter(entry => '/' + entry.uri.replace(/^\//, '') === route.uri

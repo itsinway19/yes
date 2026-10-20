@@ -50,11 +50,11 @@ function command(mode,who='a'){
  try{return JSON.parse(child.stdout.trim());}catch{throw Error('Fixture '+mode+' did not return JSON: '+child.stdout+' '+child.stderr);}
 }
 const workspace=fixture.a.workspaces[0].public_id,other=fixture.a.workspaces[1].public_id,foreign=fixture.b.workspaces[0].public_id;
-const target=(mode,id=workspace,review=false)=>`${mode==='spa'?'/spa':''}/workspaces/${id}/goals${review?'/review':''}`;
-const meta=page=>page.evaluate(()=>{const raw=(document.getElementById('application-bootstrap')??document.getElementById('goals-bootstrap'))?.textContent;return raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);});
+const target=(mode,id=workspace,review=false)=>`/workspaces/${id}/goals${review?'/review':''}`;
+const meta=page=>page.evaluate(()=>{const raw=document.getElementById('application-bootstrap')?.textContent;return raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);});
 async function post(page,url,body,extra={}){
  return page.evaluate(async({url,body,extra})=>{
-  const raw=(document.getElementById('application-bootstrap')??document.getElementById('goals-bootstrap'))?.textContent;
+  const raw=document.getElementById('application-bootstrap')?.textContent;
   const identity=raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);
   const response=await fetch(url,{method:'POST',credentials:'same-origin',redirect:'manual',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':identity.csrf,'X-Builderad-Document':identity.receipt,'X-Builderad-Transition':identity.transition,...extra},body:body?JSON.stringify(body):undefined});
   return {status:response.status,body:await response.json()};
@@ -62,7 +62,7 @@ async function post(page,url,body,extra={}){
 }
 async function get(page,url,extra={}){
  return page.evaluate(async({url,extra})=>{
-  const raw=(document.getElementById('application-bootstrap')??document.getElementById('goals-bootstrap'))?.textContent;
+  const raw=document.getElementById('application-bootstrap')?.textContent;
   const identity=raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);
   const response=await fetch(url,{headers:{Accept:'application/json','X-Builderad-Document':identity.receipt,...extra},cache:'no-store'});
   const text=await response.text();let body;try{body=JSON.parse(text);}catch{body=text;}
@@ -167,7 +167,7 @@ try{
   });
   await check('late read and rapid visits cannot publish the wrong Workspace',mode,async()=>{
    let once=true;
-   const latePath=mode==='spa'?`/spa/api/workspaces/${other}/goals`:`/workspaces/${other}/goals/context`;
+   const latePath=mode==='spa'?`/workspaces/${other}/goals/context`:`/workspaces/${other}/goals/context`;
    await page.route('**/*',async route=>{const req=route.request();if(once&&new URL(req.url()).pathname===latePath&&req.headers()['x-builderad-visibility']!=='1'&&req.headers()['x-goals-witness']!=='1'){once=false;await route.continue({headers:{...req.headers(),'X-Proof-Hold':'late-'+mode}});}else await route.continue();});
    await page.evaluate(url=>{void __goalsSpa.router.push(url);},target(mode,other));
    await until(()=>held.has('late-'+mode));await visit(page,mode,target(mode));held.get('late-'+mode).deliver();held.delete('late-'+mode);await page.waitForTimeout(150);await ready(page,mode);
@@ -301,7 +301,7 @@ try{
    });
    if(fault==='render')await check('terminal closure survives synthetic lifecycle notifications without requests',mode,async()=>{
     const mark=wire.length;const state=await page.evaluate(()=>{__goalsSpa.close();dispatchEvent(new PageTransitionEvent('pagehide'));dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));return __goalsSpa.status.value;});
-    assert.equal(state,'closed');await page.waitForTimeout(100);assert.equal(wire.slice(mark).filter(row=>row.path.startsWith('/spa/api/')).length,0);
+    assert.equal(state,'closed');await page.waitForTimeout(100);assert.equal(wire.slice(mark).filter(row=>row.path.includes('/goals/context')).length,0);
     return {classification:'synthetic lifecycle handler probe; not native BFCache evidence'};
    });await context.close();
   }

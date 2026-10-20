@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref } from 'vue';
-import { RouterLink, useRoute, onBeforeRouteLeave } from 'vue-router';
+import { RouterLink, useRoute, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import { startRegistration, type PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/browser';
 import { runPasskeyOperation, cancelPasskeyOperation } from '../security/passkeyCeremony';
 import { locale } from '../spa/locale';
@@ -25,9 +25,12 @@ const clearForm = () => { cleanSecrets(); form.name = ''; form.email = ''; keyNa
 const closures = onClose(clearForm);
 function cancel() { ceremonyCancellation?.abort(); if (operationId) cancelPasskeyOperation(operationId); }
 const unresolved = () => Object.values(outcomes).some(Boolean);
-const canLeave = () => !unresolved() || confirm(copy('يوجد طلب حساب غير محسوم. هل تريد المغادرة دون إعادة إرساله؟', 'An account request is unresolved. Leave without replaying it?'));
+const canLeave = () => unresolved()
+    ? confirm(copy('يوجد طلب حساب غير محسوم. هل تريد المغادرة دون إعادة إرساله؟', 'An account request is unresolved. Leave without replaying it?'))
+    : !profileData.value || (form.name === profileData.value.user.name && form.email === profileData.value.user.email)
+        || confirm(copy('لديك حقول حساب غير محفوظة. هل تريد التخلص منها عند مغادرة الصفحة؟', 'Discard unsaved account fields when leaving this page?'));
 confirmDeparture.value = canLeave;
-onBeforeRouteLeave(canLeave);
+onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 const beforeUnload = (event: BeforeUnloadEvent) => { if (unresolved()) { event.preventDefault(); event.returnValue = ''; } };
 window.addEventListener('beforeunload', beforeUnload);
 onBeforeUnmount(() => {
