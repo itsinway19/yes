@@ -20,7 +20,10 @@ export async function runRestorationAcceptance({browser,check,login,get,post,tar
     const html=await response.text();
     assert.ok(!html.includes(workspaceName));
     const bootstrap=JSON.parse(await shell.locator('#application-bootstrap').textContent());
-    assert.deepEqual(Object.keys(bootstrap).sort(),['identity','locale']);
+    assert.deepEqual(Object.keys(bootstrap).sort(),['application','documentState','identity','locale','staffEnrollment']);
+    assert.equal(bootstrap.application,true);
+    assert.equal(bootstrap.documentState,'authenticated');
+    assert.equal(bootstrap.staffEnrollment,false);
     assert.equal(await shell.locator('[data-spa-private], [data-goals="form"]').count(),0);
     return {status:response.status(),cacheControl:response.headers()['cache-control'],scope:'Fresh HTML only; identity bootstrap remains present; not cached compositor frames'};
    } finally {await shellContext.close();}
