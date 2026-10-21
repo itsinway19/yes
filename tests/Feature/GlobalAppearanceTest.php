@@ -15,6 +15,25 @@ class GlobalAppearanceTest extends TestCase
 
     private const PATH = '/internal/administration/appearance';
 
+    public function test_expired_freshness_has_a_bound_reauthentication_contract_only_while_founder_authority_survives(): void
+    {
+        $this->actingAsInternal($founder = $this->staff('founder'));
+        $db = DB::connection('pgsql_migrations');
+        $db->table('security_sessions')->where('user_id', $founder->id)->update(['authenticated_at' => now()->subMinutes(6)]);
+        $payload = ['revision' => 0, ...GlobalAppearance::DEFAULTS];
+        $reply = $this->postJson(self::PATH, $payload)->assertForbidden()
+            ->assertJsonPath('code', 'fresh_authentication_required')
+            ->assertJsonPath('reauthenticate', '/internal/identity/switch');
+        $binding = json_decode($reply->headers->get('X-Builderad-Identity'), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame($founder->id, $binding['binding']['principal']);
+        $this->getJson(self::PATH)->assertOk();
+        $this->get('/internal/identity/switch')->assertOk();
+        $this->assertDatabaseCount('global_appearance', 0);
+        $db->table('security_action_grants')->where('subject_user_id', $founder->id)->where('action', 'grant.manage')->update(['status' => 'revoked']);
+        $this->postJson(self::PATH, $payload)->assertForbidden()->assertJsonMissingPath('code');
+        $this->assertDatabaseCount('global_appearance', 0);
+    }
+
     public function test_founder_reads_defaults_publishes_atomically_and_restores_defaults_with_revision_control(): void
     {
         $this->actingAsInternal($founder = $this->staff('founder'));

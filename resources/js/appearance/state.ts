@@ -6,7 +6,7 @@ import { close, onClose, owned, stamp, TransportError } from '../spa/transport';
 import { validColor } from './colors';
 export type Appearance = components['schemas']['GlobalAppearanceData'];
 export const appearance = shallowRef<Appearance>();
-export function createDraft(value: Appearance) { return reactive({ revision: value.revision, primary: value.primary, secondary: value.secondary, outcome: '' as '' | 'pending' | 'unknown' | 'rejected' | 'stale' | 'acknowledged', error: '', reviewed: false }); }
+export function createDraft(value: Appearance) { return reactive({ revision: value.revision, primary: value.primary, secondary: value.secondary, outcome: '' as '' | 'pending' | 'unknown' | 'rejected' | 'stale' | 'acknowledged' | 'reauthentication', error: '', reviewed: false }); }
 export type AppearanceDraft = ReturnType<typeof createDraft>;
 let serial = 0, cancellation: AbortController | undefined;
 export function clearAppearance() { serial++; cancellation?.abort(); appearance.value = undefined; }
@@ -31,7 +31,7 @@ export async function readAppearance(passive = false, readback = false, admissio
     }
 }
 export async function publishAppearance(draft: AppearanceDraft, signal?: AbortSignal) {
-    if (signal?.aborted || ['pending', 'unknown', 'stale', 'acknowledged'].includes(draft.outcome) || draft.revision < 0 || !validColor(draft.primary) || !validColor(draft.secondary)) return;
+    if (signal?.aborted || ['pending', 'unknown', 'stale', 'acknowledged', 'reauthentication'].includes(draft.outcome) || draft.revision < 0 || !validColor(draft.primary) || !validColor(draft.secondary)) return;
     const captured = stamp();
     const body = { revision: draft.revision, primary: draft.primary.toLowerCase(), secondary: draft.secondary.toLowerCase() };
     draft.outcome = 'pending'; draft.error = ''; draft.reviewed = false;
@@ -43,6 +43,11 @@ export async function publishAppearance(draft: AppearanceDraft, signal?: AbortSi
         location.reload();
     } catch (failure) {
         if (signal?.aborted || !owned(captured)) return;
+        if (failure instanceof TransportError && failure.status === 403 && failure.body.code === 'fresh_authentication_required'
+            && failure.body.reauthenticate === '/internal/identity/switch') {
+            draft.outcome = 'reauthentication';
+            return;
+        }
         if (failure instanceof TransportError && [403, 409, 422, 429].includes(failure.status)) {
             draft.outcome = failure.status === 409 ? 'stale' : 'rejected'; draft.error = failure.body.message ?? '';
             if (failure.status === 403) close();

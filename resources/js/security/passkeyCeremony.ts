@@ -1,25 +1,26 @@
 import { Passkeys } from '@laravel/passkeys';
 
 type CeremonyKind = 'login' | 'internal-login' | 'device-registration' | 'staff-registration';
-type Ceremony = { id: string; kind: CeremonyKind; startedAt: number; cancelling: boolean };
+type Ceremony = { id: string; kind: CeremonyKind; startedAt: number; cancelling: boolean; cancellationReason?: 'user' | 'document' };
 
 let active: Ceremony | null = null;
 
 function trace(ceremony: Ceremony, phase: string, errorName?: string): void {
     if (!['localhost', '127.0.0.1'].includes(window.location.hostname)) return;
-    console.info('builderad_webauthn', {
+    console.info('builderad_webauthn ' + JSON.stringify({
         operation: ceremony.id,
         kind: ceremony.kind,
         phase,
         elapsedMs: Math.round(performance.now() - ceremony.startedAt),
         ...(errorName ? { errorName } : {}),
-    });
+    }));
 }
 
-export function cancelPasskeyOperation(id: string): void {
+export function cancelPasskeyOperation(id: string, reason: 'user' | 'document' = 'user'): void {
     if (active?.id !== id || active.cancelling) return;
     active.cancelling = true;
-    trace(active, 'cancel_requested');
+    active.cancellationReason = reason;
+    trace(active, reason === 'document' ? 'document_disposed' : 'cancel_requested');
     Passkeys.cancel();
     // Keep the guard until the browser promise actually settles. Aborting a
     // JavaScript promise does not prove that Windows released its WebAuthn RPC.
@@ -28,7 +29,7 @@ export function cancelPasskeyOperation(id: string): void {
 export function runPasskeyOperation<T>(
     kind: CeremonyKind,
     routes: { options: string; submit: string },
-    action: (routes: { options: string; submit: string }) => Promise<T>,
+    action: (routes: { options: string; submit: string }, mark: (phase: string) => void) => Promise<T>,
 ): { id: string; promise: Promise<T> } {
     if (active) {
         trace(active, 'second_operation_blocked');
@@ -53,7 +54,7 @@ export function runPasskeyOperation<T>(
             const perform = async () => {
                 if (ceremony.cancelling) throw new Error('أُلغيت محاولة مفتاح المرور.');
                 trace(ceremony, 'browser_operation_started');
-                return action({ options: withProbe(routes.options), submit: withProbe(routes.submit) });
+                return action({ options: withProbe(routes.options), submit: withProbe(routes.submit) }, phase => trace(ceremony, phase));
             };
             // Web Locks coordinate tabs of the same browser and origin. The
             // in-memory guard above also covers browsers without Web Locks.
@@ -69,7 +70,7 @@ export function runPasskeyOperation<T>(
             trace(ceremony, 'completed');
             return result;
         } catch (error) {
-            trace(ceremony, ceremony.cancelling ? 'cancelled' : 'failed', error instanceof Error ? error.name : 'unknown');
+            trace(ceremony, ceremony.cancelling ? (ceremony.cancellationReason === 'document' ? 'disposed' : 'cancelled') : 'failed', error instanceof Error ? error.name : 'unknown');
             throw error;
         } finally {
             if (active === ceremony) active = null;

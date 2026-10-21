@@ -11563,6 +11563,18 @@
             "documentReceipt": []
           }
         ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "webauthn_probe",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            "description": "Non-secret local diagnostic correlation only; never authentication evidence."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Authorized existing Laravel owner response.",
@@ -11646,6 +11658,18 @@
             "documentReceipt": []
           }
         ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "webauthn_probe",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            "description": "Non-secret local diagnostic correlation only; never authentication evidence."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Authorized existing Laravel owner response.",
@@ -11727,6 +11751,18 @@
           {
             "sessionCookie": [],
             "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "webauthn_probe",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            "description": "Non-secret local diagnostic correlation only; never authentication evidence."
           }
         ],
         "description": "Existing JSON identity transition contract. The shared transport verifies its acknowledgement and departs to a new native document; the browser never adopts the returned identity.",
@@ -11834,6 +11870,18 @@
           {
             "sessionCookie": [],
             "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "webauthn_probe",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            "description": "Non-secret local diagnostic correlation only; never authentication evidence."
           }
         ],
         "description": "Existing JSON identity transition contract. The shared transport verifies its acknowledgement and departs to a new native document; the browser never adopts the returned identity.",
@@ -12189,6 +12237,18 @@
             "documentReceipt": []
           }
         ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "webauthn_probe",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            "description": "Non-secret local diagnostic correlation only; never authentication evidence."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Authorized existing Laravel owner response.",
@@ -12272,6 +12332,18 @@
             "documentReceipt": []
           }
         ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "webauthn_probe",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            "description": "Non-secret local diagnostic correlation only; never authentication evidence."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Authorized existing Laravel owner response.",
@@ -12353,6 +12425,18 @@
           {
             "sessionCookie": [],
             "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "webauthn_probe",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            "description": "Non-secret local diagnostic correlation only; never authentication evidence."
           }
         ],
         "description": "Existing JSON identity transition contract. The shared transport verifies its acknowledgement and departs to a new native document; the browser never adopts the returned identity.",
@@ -12457,6 +12541,18 @@
           {
             "sessionCookie": [],
             "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "webauthn_probe",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            "description": "Non-secret local diagnostic correlation only; never authentication evidence."
           }
         ],
         "description": "Existing JSON identity transition contract. The shared transport verifies its acknowledgement and departs to a new native document; the browser never adopts the returned identity.",
@@ -17276,6 +17372,19 @@
           },
           "identityConflict": {
             "type": "boolean"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "fresh_authentication_required"
+            ]
+          },
+          "reauthenticate": {
+            "type": "string",
+            "enum": [
+              "/internal/identity/switch",
+              "/confirm-password"
+            ]
           }
         },
         "required": [],

@@ -50,7 +50,7 @@ export const spec = {
             Preferences: preferences,
             SaveGoals: object({ value: ref('WriteGoalValue'), version: { type: 'integer', minimum: 0 } }),
             WriteGoalValue: { ...object({ goals: { ...list(text), minItems: 1, maxItems: 4, uniqueItems: true }, priority: text, results: { type: 'object', additionalProperties: { ...list(text), uniqueItems: true } } }), description: 'Canonical SQL additionally requires exact catalog IDs, selected priority, results only for selected goals and results from the matching catalog. It normalizes ordering and empty results. Initial read may be empty/null; that state is not a valid write.' },
-            Error: object({ message: text, identityConflict: { type: 'boolean' } }, [], true),
+            Error: object({ message: text, identityConflict: { type: 'boolean' }, code: { type: 'string', enum: ['fresh_authentication_required'] }, reauthenticate: { type: 'string', enum: ['/internal/identity/switch', '/confirm-password'] } }, [], true),
             ValidationError: object({ message: text, errors: { type: 'object', additionalProperties: list(text) } }),
             Visibility: object({ protected: { type: 'boolean' }, path: text, context: text }),
             GoalsWitness: object({ visibility: ref('Visibility') }),

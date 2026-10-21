@@ -32,6 +32,12 @@ function Assert-Installed([string] $location) {
     $composerInstalled = Get-Content -LiteralPath $composerInstalledPath -Raw | ConvertFrom-Json
     $composerVersions = @{}
     foreach ($package in $composerInstalled.packages) { $composerVersions[$package.name] = $package.version }
+    $composerLockedNames = @($composerLock.packages.name) + @($composerLock.'packages-dev'.name)
+    foreach ($name in $composerVersions.Keys) {
+        if ($name -notin $composerLockedNames) {
+            throw "Composer installed inventory contains an unlocked package: $name"
+        }
+    }
     foreach ($package in @($composerLock.packages) + @($composerLock.'packages-dev')) {
         if (-not $composerVersions.ContainsKey($package.name) -or $composerVersions[$package.name] -ne $package.version) {
             throw "Composer installed inventory differs from lock: $($package.name)"

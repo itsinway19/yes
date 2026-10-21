@@ -15,7 +15,7 @@ const publish = () => publishAppearance(draft, cancellation.signal);
 const copy = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const fields = computed(() => [{ key: 'primary' as const, label: copy('اللون الأساسي', 'Primary color') }, { key: 'secondary' as const, label: copy('اللون الثانوي', 'Secondary color') }]);
 const valid = computed(() => validColor(draft.primary) && validColor(draft.secondary));
-const locked = computed(() => ['pending', 'unknown', 'stale', 'acknowledged'].includes(draft.outcome));
+const locked = computed(() => ['pending', 'unknown', 'stale', 'acknowledged', 'reauthentication'].includes(draft.outcome));
 const dirty = computed(() => !!appearance.value && (draft.primary.toLowerCase() !== appearance.value.primary || draft.secondary.toLowerCase() !== appearance.value.secondary));
 const preview = computed(() => colorTokens(validColor(draft.primary) ? draft.primary : appearance.value!.primary, validColor(draft.secondary) ? draft.secondary : appearance.value!.secondary));
 const reviewing = ref(false), reviewFailed = ref(false);
@@ -40,6 +40,7 @@ onBeforeUnmount(() => { cancellation.abort(); closures.delete(clearDraft); windo
             <p v-if="draft.outcome === 'unknown'" role="alert">{{ copy('نتيجة النشر غير معروفة. قد يكون التغيير حُفظ. النشر متوقف حتى تراجع الحالة الحالية وتستبدل المسودة صراحةً.', 'Publication outcome is unknown. The change may have saved. Publishing is blocked until you review the current state and explicitly replace the draft.') }}</p>
             <p v-if="draft.outcome === 'stale'" role="alert">{{ copy('تغيّرت الألوان منذ فتح المسودة. احتفظنا بمسودتك وإصدارها؛ راجع المنشور قبل استبدالها.', 'Published colors changed since this draft began. Your draft and its revision are preserved; review the publication before replacing it.') }}</p>
             <p v-if="draft.outcome === 'acknowledged'" role="status">{{ copy('تم النشر. جارٍ إعادة تحميل المظهر…', 'Published. Reloading appearance…') }}</p>
+            <p v-if="draft.outcome === 'reauthentication'" role="alert" data-appearance-reauthentication>{{ copy('لم يُنشر التغيير. تتطلب العملية مصادقة حديثة. تبقى المسودة في هذه الصفحة إلى أن تغادرها؛ لن يُعاد النشر تلقائيًا.', 'The change was not published. Fresh authentication is required. The draft stays in this page until you leave; publication will not replay automatically.') }} <a href="/internal/identity/switch" data-appearance-reauthenticate>{{ copy('إعادة المصادقة بمفتاح المرور', 'Reauthenticate with a passkey') }}</a></p>
             <p v-if="draft.error" role="alert">{{ draft.error }}</p>
             <p v-if="reviewFailed" role="alert">{{ copy('تعذرت قراءة الحالة. لا يزال النشر متوقفًا.', 'Could not read the current state. Publishing remains blocked.') }}</p>
             <template v-if="['unknown', 'stale'].includes(draft.outcome)">

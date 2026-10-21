@@ -49,6 +49,25 @@ test('a rejected ceremony releases its guard', async () => {
     assert.equal(await runPasskeyOperation('login', routes, async () => 'recovered').promise, 'recovered');
 });
 
+test('document disposal retains cancellation safety but is not reported as user cancellation', async t => {
+    const phases = [];
+    t.mock.method(Passkeys, 'cancel', () => {});
+    t.mock.method(console, 'info', message => phases.push(JSON.parse(message.slice('builderad_webauthn '.length)).phase));
+    window.location.hostname = 'localhost';
+    try {
+        const pending = deferred();
+        const operation = runPasskeyOperation('login', routes, () => pending.promise);
+        await Promise.resolve();
+        cancelPasskeyOperation(operation.id, 'document');
+        assert.throws(() => runPasskeyOperation('login', routes, async () => {}), /جارية/);
+        pending.reject(new DOMException('Document disposed', 'AbortError'));
+        await assert.rejects(operation.promise, /Document disposed/);
+        assert.ok(phases.includes('document_disposed'));
+        assert.ok(phases.includes('disposed'));
+        assert.ok(!phases.includes('cancelled'));
+    } finally { window.location.hostname = 'test.invalid'; }
+});
+
 test('a Web Lock held by another tab prevents a browser operation', async () => {
     globalThis.navigator.locks.request = async (_name, _options, callback) => callback(null);
     let called = false;
