@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, reactive, ref } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { startAuthentication, type PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
-import { runPasskeyOperation, cancelPasskeyOperation } from '../security/passkeyCeremony';
+import { runPasskeyOperation, cancelPasskeyOperation, passkeyBrowserFailure } from '../security/passkeyCeremony';
 import { locale } from '../spa/locale';
 import { bootstrap, onClose, close, TransportError, internalBoundary } from '../spa/transport';
 import { api } from '../spa/api';
@@ -79,8 +79,11 @@ async function passkey() {
                 errors.value = error.body.errors ?? {};
                 failure.value = error.body.message ?? copy('رفض الخادم طلب مفتاح المرور.', 'The server rejected passkey sign-in.');
             } else if (!submitted) {
-                failure.value = ceremonyCancellation?.signal.aborted || (error instanceof Error && error.name === 'NotAllowedError')
+                const reason = passkeyBrowserFailure(error, ceremonyCancellation?.signal.aborted === true);
+                failure.value = reason === 'cancelled'
                     ? copy('أُلغيت محاولة مفتاح المرور في المتصفح؛ لم يُرسل طلب الدخول.', 'The browser ceremony was cancelled; sign-in was not submitted.')
+                    : reason === 'not-allowed'
+                    ? copy('لم يكتمل التحقق بمفتاح المرور. حاول مجددًا.', 'Passkey verification did not complete. Try again.')
                     : copy('تعذر إكمال المفتاح في المتصفح؛ لم يُرسل طلب الدخول.', 'The browser ceremony could not complete; sign-in was not submitted.');
             } else {
                 recoveryRequired.value = true;
@@ -98,7 +101,7 @@ async function passkey() {
             <h1>{{ title }}</h1>
             <p v-if="configuration.status" role="status">{{ configuration.status }}</p>
             <p v-if="failure" role="alert">{{ failure }}</p>
-            <a v-if="recoveryRequired" data-auth-recover :href="internalBoundary ? '/internal/login' : '/login'" @click="close('handoff')">{{ copy('فتح مستند دخول جديد دون إعادة الطلب', 'Open a new sign-in document without replay') }}</a>
+            <a v-if="recoveryRequired" data-auth-recover :href="internalBoundary ? '/internal/login' : '/login'" @click="close('handoff')">{{ copy('العودة إلى تسجيل الدخول', 'Back to sign in') }}</a>
             <p v-if="errors.credential" role="alert">{{ errors.credential[0] }}</p>
             <section v-if="configuration.kind === 'verify-email'"><p>{{ copy('أرسلنا رابط التحقق. افتحه في هذا المتصفح لإكمال التحقق بواسطة Laravel.', 'Open the verification link in this browser to complete server verification.') }}</p><button data-auth-resend :disabled="busy" @click="busy = true; submitDocument('/email/verification-notification', {})">{{ copy('إعادة إرسال رابط التحقق', 'Resend verification link') }}</button></section>
             <form v-else-if="!internalBoundary" @submit.prevent="submit" :aria-busy="busy">

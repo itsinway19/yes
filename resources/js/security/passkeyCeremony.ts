@@ -5,6 +5,13 @@ type Ceremony = { id: string; kind: CeremonyKind; startedAt: number; cancelling:
 
 let active: Ceremony | null = null;
 
+export function passkeyBrowserFailure(error: unknown, cancellationRequested: boolean): 'cancelled' | 'not-allowed' | 'unavailable' {
+    // NotAllowedError deliberately conflates user dismissal, timeout and other
+    // platform refusals. Only our own cancellation signal proves cancellation.
+    if (cancellationRequested) return 'cancelled';
+    return error instanceof Error && error.name === 'NotAllowedError' ? 'not-allowed' : 'unavailable';
+}
+
 function trace(ceremony: Ceremony, phase: string, errorName?: string): void {
     if (!['localhost', '127.0.0.1'].includes(window.location.hostname)) return;
     console.info('builderad_webauthn ' + JSON.stringify({

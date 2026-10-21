@@ -224,3 +224,46 @@
 | L — SPA lifecycle | NOT A DEFECT — CONTRACTUALLY JUSTIFIED | المصدر والملكية لم يتغيرا؛ الأدلة المحتفظ بها تحمي admission/closure/UNKNOWN؛ native BFCache غير مثبت |
 
 حكم هذا التكليف: **`BLOCKED — REQUIRED EVIDENCE INCOMPLETE`**. لا عيب تطبيق جديد مثبت ولا إصلاح تخميني. يلزم متصفح تفاعلي متاح، وهوية مأذونة ذات credential Windows Hello موجود، وإكمال المالك للتحقق، ثم دليل المراحل حتى المستند الجديد؛ كما يلزم إكمال BA مستقلة. لا ادعاء موافقة مستقلة، ولا Push/PR/Merge/Deploy. Android خارج هذا القرار.
+
+## 11. بلاغ رفض المتصفح فور الضغط — متابعة محدودة
+
+أبلغ المالك بعد القسم10 أن صفحة `/login` داخل Codex تعرض «أُلغيت محاولة مفتاح المرور» **دون ظهور أي نافذة Windows**. هذه محاولة مستخدم غير مكتملة وليست نجاح Windows Hello؛ لم تُسجل نافذة أو أسرار. لا يُعامل وصف القسم10 «صفر محاولات» كعدد تراكمي بعد هذا البلاغ.
+
+أُعيدت محاولة معاينة التبويب بالأداة؛ فشلت قبل الوصول إليه بـ`failed to write kernel assets: The system cannot find the path specified`. لا يثبت هذا خطأً في صفحة المنتج ولا سبب رفض WebAuthn. قراءة المراحل الآمنة فقط من سجل Laravel أظهرت محاولات أخيرة ذات `login_options_requested` و`login_options_sent` دون مرحلة assertion لها. هذا يحصر الدليل المرصود قبل إرسال assertion؛ ليس رفض توقيع من قاعدة البيانات ولا دليلًا على سبب رفض المنصة. لا تُنسب محاولة أقدم ناجحة في السجل إلى Windows Hello الحالي دون ربط مستقل.
+
+العيب المثبت في المصدر: شرط `ceremonyCancellation.signal.aborted || error.name === 'NotAllowedError'` كان يعرض الإلغاء بصيغة جازمة. مكتبة SimpleWebAuthn نفسها تحتفظ باسم `NotAllowedError` وتوضح تعدد معانيه؛ لا يثبت هذا الخطأ إلغاء المستخدم، وقد يجمع رفض المنصة أو انتهاء الوقت أو الإغلاق. أُصلح التصنيف: الإلغاء المثبت بإشارة التطبيق فقط يعرض رسالة الإلغاء؛ `NotAllowedError` بلا هذه الإشارة يعرض عدم اكتمال التحقق مع السبب غير المحدد. الأخطاء الأخرى تبقى تعذرًا، وUNKNOWN بعد بدء POST يبقى كما كان، بلا replay. لا تغيير للمراسم أو المهل أو السلطة أو مفاتيح الحساب.
+
+القبول المحدود للتصحيح: خطأ DOM المباشر وخطأ المكتبة المغلف لا يُنسبان إلى إلغاء المستخدم؛ الإلغاء الصريح يظل إلغاءً؛ `AbortError` الخارجي لا يصبح إلغاء مستخدم مثبتًا؛ فحوص المستند والحدود والإقرار والإلغاء القائمة لا تتراجع. نجح **12 اختبارًا** عبر `node --test tests/passkey-ceremony.test.mjs tests/auth-entry-spa.test.mjs`، وصفر فشل/تخطي. لا يثبت ذلك فتح نافذة Windows على جهاز المالك.
+
+سبب **عدم ظهور النافذة** يبقى `BLOCKED — REQUIRED EVIDENCE UNAVAILABLE`، وتصحيح الرسالة `RESOLVED — VERIFIED` ضمن نطاقه. طُلبت مقارنة واحدة للرابط نفسه في Chrome/Edge العادي لتفريق حد المتصفح المضمن عن فشل عام؛ لا تُفترض النتيجة قبل جواب المالك. لا حذف credential أو تعديل بيانات؛ لا Foundation شامل جديد، ولا قبول WH أو BA أو موافقة مستقلة.
+
+## 12. التسليم المحلي النهائي — قرار النطاق الحالي
+
+هذا القسم يحل محل شروط الحجب السابقة **لقبول التسليم المحلي المحدود فقط**. قرر المالك استبعاد Android وWindows Hello الحقيقي من هذه الدفعة؛ ليس هذا إثباتًا لنجاحهما أو حل سبب عدم ظهور نافذة المتصفح. فشل harness التاريخي يبقى محفوظًا ولا يُنسب إلى التطبيق دون دليل. لا تحقيقات أو اختبارات شاملة جديدة.
+
+بدأ الإنهاء عند `55096db5ff18fd8af006a9c8559275afc9ec6b4c`، وأبوه `bf37a7b4f6b7b5c80b48a0b01122275bd2adc03b`؛ التصحيحات السابقة في `f2774adc672bacd3eef7d65422fad6236dcd1102` فوق الأساس `cb7f79380eb8e8cf8d2ea7fd6c719de54b30f882`. الالتزام النهائي الجديد يحفظ ستة ملفات فقط دون تعديل التاريخ؛ SHA الكامل ونظافة Git مسجلان في رد التسليم وإيصال `owner-preview/final-local-closure.json`.
+
+| الملف | الغرض |
+|---|---|
+| `resources/js/security/passkeyCeremony.ts` | تصنيف NotAllowedError منفصلًا عن إلغاء التطبيق المثبت؛ لا تغيير تنفيذ المراسم أو مهلها |
+| `resources/js/auth-entry/AuthEntryView.vue` | استعمال التصنيف وتبسيط الرسالة ورابط الرجوع؛ لا تغيير الوجهة أو شرط الإغلاق أو UNKNOWN أو إرسال الطلب |
+| `tests/passkey-ceremony.test.mjs` | تغطية DOM والخطأ المغلف والإلغاء الصريح وAbortError الخارجي والخطأ العام |
+| `lang/ar/login.php` و`lang/en/login.php` | تبسيط نص رفض تحقق المستخدم فقط؛ لا تغيير قرار التحقق |
+| هذا التقرير | حفظ التحقيق السابق وإضافة قرار النطاق والتسليم الحالي |
+
+كل الفروق مراجعة؛ لا أسرار أو generated assets أو تعديلات غير مرتبطة، ولا تعديل authority أو session semantics أو Transport أو بيانات/credentials. البناء وvendor والأدلة التشغيلية غير مُدرجة في الالتزام.
+
+دليل التصحيح النهائي: **12 PASS، صفر فشل/تخطي** في `node --test tests/passkey-ceremony.test.mjs tests/auth-entry-spa.test.mjs`؛ التنفيذ المحتفظ به في المحادثة يغطي نفس دالة التصنيف والاختبار الحاليين. التغييرات اللاحقة نصوص فقط؛ لا يُدعى أنه اختبار متصفح فعلي لعرضها. بعد النصوص النهائية نجح `vue-tsc && vite build`، Vite8.3.3، 2117 modules، 17.34s (جلسة التنفيذ81404). طابقت المعاينة HTML وملفي entry/login محليًا: `main-tBmxr7jf.js` SHA256 `64394d4da72e7ee40680cdff889f44fba3b1aec72bb50831ac57ea23a1139ac0`، و`AuthEntryView-Bn88QOBu.js` SHA256 `ea143e052e7d4dbc107ce46275c093fcd13de7a542434ffe44eacbc92325d08e`؛ manifest `96226b21231d5d9d612db479549b593614a6e2f7976f56b730b7a932b84b885e`. نجح فحص صياغة ملفي PHP و`git diff --check`.
+
+نتيجة330 JavaScript السابقة تخص المصدر السابق قبل إضافة التصنيف والاختبار الجديد؛ تبقى دليلًا للفروع غير المتغيرة فقط، وتُستكمل بالـ12 المركزة، ولا تُعاد تسميتها تشغيلًا شاملًا للمرشح الجديد. أدلة84 Laravel/868 assertions والمظهر السابقة قابلة لإعادة الاستخدام ضمن حدودها: طابقت SHA256 ملفات متحكم المظهر وfresh-auth وstate/view وTransport وحارس الاعتمادات مع manifest التشغيل المحتفظ به. حفظ المسودة يقتصر على المستند المصرح الحالي؛ لا وعد باستعادتها عبر مستند هوية جديد. أدلة static/security guards السابقة تخص حالتها المختبرة؛ بناء النصوص الحالي دليل منفصل.
+
+| النطاق | حكم التسليم |
+|---|---|
+| Appearance | RESOLVED — VERIFIED؛ رفض حداثة واضح، مسودة ضمن المستند المصرح، رابط حقيقي، terminal concealment، بلا replay |
+| Passkey | RESOLVED — VERIFIED WITHIN TESTED SCOPE؛ correlation والتصنيف واستبعاد الاستجابة القديمة وUNKNOWN؛ الاختبارات الاصطناعية ليست تحقق جهاز حقيقي |
+| SPA navigation/loading | NO VERIFIED REMOVABLE DEFECT IN TESTED SCOPE؛ الشاهد والقبول والحجب محفوظة، بلا قبول أداء عام |
+| Preview environment | RESOLVED — VERIFIED؛ سلامة lock/vendor/discovery مثبتة سابقًا، وبناء النصوص الحالي مطابق للبايتات المقدمة |
+| Foundation | التشغيل الكامل التاريخي FAILED؛ إعادة حالتي PHP PASSED/114 assertions؛330 JS السابقة PASSED؛84 Laravel المركزة PASSED؛ guards والبناء السابق PASSED، والبناء الحالي PASSED؛ لا Foundation PASS جديد |
+| Browser harness | OBSERVED INTERMITTENT HARNESS FAILURE — NOT ATTRIBUTED TO APPLICATION؛ أدلة502/ETIMEDOUT والمقارنات المباشرة/الوكيل محفوظة؛ بوابة المتصفح الفاشلة ليست PASS |
+
+الحكم بعد إنشاء الالتزام المحدد والتأكد من نظافة Git: **`READY FOR INDEPENDENT REVIEW — BOUNDED LOCAL CLOSURE`**. هذه جاهزية لمراجعة واحدة وليست موافقة مستقلة أو قبول CI مستضاف أو جاهزية نشر. CI للمرشح الجديد غير منفذ؛ أي Push/PR/Merge/Deploy يحتاج تفويضًا خارج هذا التسليم. لا اختبار جديد للأجهزة المستبعدة ولا تعديل لبيانات المصادقة.

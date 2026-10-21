@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Passkeys } from '@laravel/passkeys';
-import { cancelPasskeyOperation, runPasskeyOperation } from '../resources/js/security/passkeyCeremony.ts';
+import { cancelPasskeyOperation, runPasskeyOperation, passkeyBrowserFailure } from '../resources/js/security/passkeyCeremony.ts';
 
 const previousWindow = globalThis.window;
 const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
@@ -12,6 +12,16 @@ Object.defineProperty(globalThis, 'navigator', {
 });
 
 const routes = { options: '/options', submit: '/submit' };
+test('browser NotAllowedError does not prove user cancellation, including the library wrapper', () => {
+    const refusal = new DOMException('Platform refused', 'NotAllowedError');
+    assert.equal(passkeyBrowserFailure(refusal, false), 'not-allowed');
+    const wrapped = new Error('Platform refused', { cause: refusal });
+    wrapped.name = 'NotAllowedError';
+    assert.equal(passkeyBrowserFailure(wrapped, false), 'not-allowed');
+    assert.equal(passkeyBrowserFailure(refusal, true), 'cancelled');
+    assert.equal(passkeyBrowserFailure(new DOMException('Aborted externally', 'AbortError'), false), 'unavailable');
+    assert.equal(passkeyBrowserFailure(new Error('Unsupported browser'), false), 'unavailable');
+});
 const deferred = () => {
     let resolve;
     let reject;
