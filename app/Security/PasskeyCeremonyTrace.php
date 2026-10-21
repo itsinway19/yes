@@ -18,6 +18,9 @@ final class PasskeyCeremonyTrace
             return;
         }
 
-        Log::info('builderad_webauthn', ['operation' => $id, 'phase' => $phase]);
+        $started = $request->attributes->get('builderad.passkey_trace_started', hrtime(true));
+        $request->attributes->set('builderad.passkey_trace_started', $started);
+        Log::info('builderad_webauthn', ['operation' => $id, 'phase' => $phase,
+            'elapsed_ms' => round((hrtime(true) - $started) / 1e6, 3)]);
     }
 }

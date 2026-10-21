@@ -230,7 +230,7 @@ Route::middleware('guest:internal')->group(function () {
 Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->group(function () {
     Route::get('/internal/administration/appearance', [GlobalAppearanceController::class, 'index'])->name('internal.appearance');
     Route::post('/internal/administration/appearance', [GlobalAppearanceController::class, 'publish'])
-        ->middleware(EnsureFreshAuthentication::class)->name('internal.appearance.publish');
+        ->name('internal.appearance.publish'); // Controller admits Founder authority before the same fresh-auth guard.
     Route::get('/internal/business-types', [InternalBusinessTypeController::class, 'index'])
         ->middleware(RequireActionGrant::class.':business.manage')->name('internal.business-types.index');
     Route::middleware([RequireActionGrant::class.':business.manage', EnsureFreshAuthentication::class])->group(function () {

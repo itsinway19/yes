@@ -2101,6 +2101,10 @@ export interface components {
         Error: {
             message?: string;
             identityConflict?: boolean;
+            /** @enum {string} */
+            code?: "fresh_authentication_required";
+            /** @enum {string} */
+            reauthenticate?: "/internal/identity/switch" | "/confirm-password";
         } & {
             [key: string]: unknown;
         };
@@ -12211,7 +12215,10 @@ export interface operations {
     };
     advertiserLoginOptions: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Non-secret local diagnostic correlation only; never authentication evidence. */
+                webauthn_probe?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -12285,7 +12292,10 @@ export interface operations {
     };
     advertiserSwitchOptions: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Non-secret local diagnostic correlation only; never authentication evidence. */
+                webauthn_probe?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -12359,7 +12369,10 @@ export interface operations {
     };
     authenticateAdvertiserPasskey: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Non-secret local diagnostic correlation only; never authentication evidence. */
+                webauthn_probe?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -12453,7 +12466,10 @@ export interface operations {
     };
     switchAdvertiserPasskey: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Non-secret local diagnostic correlation only; never authentication evidence. */
+                webauthn_probe?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -12733,7 +12749,10 @@ export interface operations {
     };
     internalLoginOptions: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Non-secret local diagnostic correlation only; never authentication evidence. */
+                webauthn_probe?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -12807,7 +12826,10 @@ export interface operations {
     };
     internalSwitchOptions: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Non-secret local diagnostic correlation only; never authentication evidence. */
+                webauthn_probe?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -12881,7 +12903,10 @@ export interface operations {
     };
     authenticateInternalPasskey: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Non-secret local diagnostic correlation only; never authentication evidence. */
+                webauthn_probe?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -12968,7 +12993,10 @@ export interface operations {
     };
     switchInternalPasskey: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Non-secret local diagnostic correlation only; never authentication evidence. */
+                webauthn_probe?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;

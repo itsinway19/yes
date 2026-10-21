@@ -20,10 +20,27 @@ if (config('session.driver') !== 'redis' || (int) config('database.redis.default
     throw new RuntimeException('Dedicated isolated Redis required.');
 }
 $db = DB::connection('pgsql_migrations');
+$mode = $argv[1] ?? 'setup';
+if ($mode !== 'setup') {
+    $actors = json_decode(file_get_contents(getenv('GOALS_SPA_RUN').'/appearance-actors.json'), true, flags: JSON_THROW_ON_ERROR);
+    $founder = $actors['founder'];
+    match ($mode) {
+        'expire-fresh' => $db->table('security_sessions')->where('user_id', $founder)->update(['authenticated_at' => now()->subMinutes(6)]),
+        'restore-fresh' => $db->table('security_sessions')->where('user_id', $founder)->update(['authenticated_at' => now()]),
+        'revoke-grant' => $db->table('security_action_grants')->where('subject_user_id', $founder)->where('action', 'grant.manage')->update(['status' => 'revoked']),
+        'restore-grant' => $db->table('security_action_grants')->where('subject_user_id', $founder)->where('action', 'grant.manage')->update(['status' => 'active']),
+        'revoke-session' => $db->table('security_sessions')->where('user_id', $founder)->update(['revoked_at' => now()]),
+        default => throw new RuntimeException('Unknown isolated appearance action'),
+    };
+    echo json_encode(['action' => $mode, 'database' => $db->selectOne('SELECT current_database() AS db,inet_server_port() AS port')]), PHP_EOL;
+    exit;
+}
 $db->table('global_appearance')->delete();
 $output = [];
+$actors = [];
 foreach (['founder', 'advertiser'] as $kind) {
     $user = User::factory()->create(['name' => 'Synthetic appearance '.$kind]);
+    $actors[$kind] = $user->id;
     if ($kind === 'founder') {
         $db->table('principal_lifecycles')->where('user_id', $user->id)->update(['principal_class' => 'staff']);
         $db->table('internal_personnel')->insert(['user_id' => $user->id, 'kind' => 'founder', 'status' => 'active',
@@ -68,4 +85,5 @@ foreach (['founder', 'advertiser'] as $kind) {
     }
 }
 file_put_contents(getenv('GOALS_SPA_RUN').'/appearance-fixture.json', json_encode($output, JSON_THROW_ON_ERROR));
+file_put_contents(getenv('GOALS_SPA_RUN').'/appearance-actors.json', json_encode($actors, JSON_THROW_ON_ERROR));
 echo json_encode(['fixture' => 'synthetic appearance sessions', 'database' => $db->selectOne('SELECT current_database() AS db,current_user AS role,inet_server_port() AS port')]), PHP_EOL;

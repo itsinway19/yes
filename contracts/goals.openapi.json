@@ -470,6 +470,19 @@
           },
           "identityConflict": {
             "type": "boolean"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "fresh_authentication_required"
+            ]
+          },
+          "reauthenticate": {
+            "type": "string",
+            "enum": [
+              "/internal/identity/switch",
+              "/confirm-password"
+            ]
           }
         },
         "required": [],

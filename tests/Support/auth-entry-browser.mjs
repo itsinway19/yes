@@ -221,15 +221,43 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             const unusedAssertion = await page.evaluate(async options => (await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options) })).toJSON(), freshOptions.body.options);
             assert.equal((await post(page, '/identity/passkey', { credential: unusedAssertion }, { 'X-Builderad-Transition': 'invalid-transition' })).status, 409);
             assert.equal((await get(page, '/profile')).body.data.user.email, 'goals-a@example.test');
-            await logout(); return { virtualAuthenticator: true, realUvAssertion: true, nativeSignIn: true, consumedInput: old, audit: true };
+            await logout();
+            const samples = [];
+            for (let sample = 0; sample < 3; sample++) {
+                await page.goto('http://localhost:8138/login'); await ready('login');
+                const phases = [], requests = [];
+                const observe = message => {
+                    if (!message.text().startsWith('builderad_webauthn ')) return;
+                    const value = JSON.parse(message.text().slice('builderad_webauthn '.length));
+                    phases.push({ operation: value.operation, phase: value.phase, elapsedMs: value.elapsedMs, requestElapsedMs: value.requestElapsedMs, errorName: value.errorName });
+                };
+                const network = response => { const parsed = new URL(response.url()); if (['/auth/passkey/options', '/auth/passkey'].includes(parsed.pathname)) requests.push({ request: response.request(), path: parsed.pathname, operation: parsed.searchParams.get('webauthn_probe'), status: response.status() }); };
+                page.on('console', observe); page.on('response', network);
+                const started = performance.now();
+                await page.locator('[data-auth-passkey]').click(); await privateReady();
+                const usableMs = performance.now() - started;
+                page.off('console', observe); page.off('response', network);
+                assert.equal(requests.filter(row => row.path === '/auth/passkey').length, 1);
+                assert.equal(requests.length, 2);
+                assert.ok(requests.every(row => /^[0-9a-f]{16}$/.test(row.operation)));
+                assert.equal(requests[0].operation, requests[1].operation);
+                assert.ok(phases.some(row => row.phase === 'credential_request_completed'));
+                assert.ok(phases.some(row => row.phase === 'authentication_acknowledgement_admitted'));
+                const server = (await readFile(path.join(run, 'laravel/logs/laravel.log'), 'utf8')).split('\n').filter(line => line.includes('builderad_webauthn') && line.includes(requests[0].operation)).map(line => JSON.parse(line.match(/\{.*\}/)[0]));
+                assert.ok(server.some(row => row.phase === 'login_assertion_accepted'));
+                samples.push({ sample, usableMs, phases, server, requests: requests.map(({ request, ...row }) => ({ ...row, httpMs: request.timing().responseEnd })) });
+                await logout();
+            }
+            result.passkeyReliability = { samples, environment: 'Headless Chromium virtual CTAP2 resident UV authenticator; physical phone NOT OBSERVED', clockRule: 'Client phase elapsed, HTTP request duration and server phase elapsed have independent monotonic origins; no cross-clock subtraction' };
+            return { virtualAuthenticator: true, realUvAssertion: true, nativeSignIn: true, consumedInput: old, audit: true, measuredSamples: samples.length };
         });
         await check('A cancelled and expired real WebAuthn assertions never authenticate or replay automatically', 'auth', async () => {
             await page.goto('http://localhost:8138/login'); await ready('login');
             await authenticatorClient.send('WebAuthn.setAutomaticPresenceSimulation', { authenticatorId, enabled: false });
-            const before = result.wire.filter(row => row.path === '/auth/passkey' && row.method === 'POST').length;
+            const before = result.wire.filter(row => new URL(row.path, 'http://localhost').pathname === '/auth/passkey' && row.method === 'POST').length;
             await page.locator('[data-auth-passkey]').click(); await page.locator('[data-auth-cancel]').waitFor(); await page.locator('[data-auth-cancel]').click();
             await page.waitForFunction(() => !document.querySelector('[data-auth-cancel]'));
-            assert.equal(result.wire.filter(row => row.path === '/auth/passkey' && row.method === 'POST').length, before);
+            assert.equal(result.wire.filter(row => new URL(row.path, 'http://localhost').pathname === '/auth/passkey' && row.method === 'POST').length, before);
             await authenticatorClient.send('WebAuthn.setAutomaticPresenceSimulation', { authenticatorId, enabled: true });
             const options = await get(page, '/auth/passkey/options'); assert.equal(options.status, 200);
             const credential = await page.evaluate(async options => (await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options) })).toJSON(), options.body.options);
@@ -245,7 +273,7 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
         await check('A known passkey rejection shows server rejection and requires a fresh document without replay', 'auth', async () => {
             await page.goto('http://localhost:8138/login'); await ready('login');
             let deliveries = 0;
-            await page.route('**/auth/passkey', async route => {
+            await page.route(/\/auth\/passkey(?:\?.*)?$/, async route => {
                 deliveries++;
                 const body = route.request().postDataJSON(); body.credential.response.signature = 'invalid';
                 await route.continue({ postData: JSON.stringify(body) });
@@ -254,15 +282,15 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             await page.locator('[data-auth-recover]').waitFor();
             assert.equal(await page.locator('[data-auth-passkey]').isDisabled(), true);
             assert.equal((await meta(page)).binding.principal, 0);
-            assert.equal(result.wire.filter(row => row.path === '/auth/passkey').at(-1).status, 422);
+            assert.equal(result.wire.filter(row => new URL(row.path, 'http://localhost').pathname === '/auth/passkey').at(-1).status, 422);
             assert.doesNotMatch(await page.locator('[data-auth-entry]').innerText(), /نتيجة طلب مفتاح المرور غير مؤكدة|Passkey sign-in is uncertain/);
-            assert.equal(deliveries, 1); await page.unroute('**/auth/passkey');
+            assert.equal(deliveries, 1); await page.unroute(/\/auth\/passkey(?:\?.*)?$/);
             await page.locator('[data-auth-recover]').click(); await ready('login');
             return { rejected: 422, deliveries, freshDocumentRequired: true, automaticReplay: false };
         });
         await check('A committed passkey assertion with lost ACK stays unknown and is never replayed', 'auth', async () => {
             let deliveries = 0;
-            await page.route('**/auth/passkey', async route => {
+            await page.route(/\/auth\/passkey(?:\?.*)?$/, async route => {
                 deliveries++; const response = await route.fetch({ maxRedirects: 0 });
                 assert.equal(response.status(), 200); await route.abort('failed');
             });
@@ -270,7 +298,7 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             await page.locator('[data-auth-recover]').waitFor();
             assert.equal(await page.locator('[data-auth-passkey]').isDisabled(), true);
             assert.match(await page.locator('[data-auth-entry]').innerText(), /نتيجة طلب مفتاح المرور غير مؤكدة|Passkey sign-in is uncertain/);
-            assert.equal(deliveries, 1); await page.unroute('**/auth/passkey');
+            assert.equal(deliveries, 1); await page.unroute(/\/auth\/passkey(?:\?.*)?$/);
             await page.locator('[data-auth-recover]').click(); await privateReady();
             assert.equal((await meta(page)).binding.principal, fixture.a.user); assert.equal(deliveries, 1);
             await logout(); await page.goto('http://localhost:8138/login'); await ready('login');

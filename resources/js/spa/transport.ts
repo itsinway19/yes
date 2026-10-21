@@ -33,7 +33,7 @@ function unavailable() {
 }
 const equal = (value: IdentityMetadata) => JSON.stringify(value.binding) === JSON.stringify(identity.binding);
 export class TransportError extends Error {
-    constructor(public status: number, public body: { message?: string; errors?: Record<string, string[]>; identityConflict?: boolean }) { super(body.message ?? 'تعذّر إكمال الطلب'); }
+    constructor(public status: number, public body: { message?: string; errors?: Record<string, string[]>; identityConflict?: boolean; code?: string; reauthenticate?: string }) { super(body.message ?? 'تعذّر إكمال الطلب'); }
 }
 /** Consume the existing server document protocol; no client authentication or authority. */
 export async function request<T>(url: string, options: RequestInit = {}, terminal = false): Promise<T> {
@@ -46,7 +46,7 @@ export async function protectedResponse(url: string, options: RequestInit = {}, 
     if (documentStatus.value !== 'active') throw new Error('Document is closed or unavailable');
     if (new URL(url, location.origin).origin !== location.origin) throw new Error('Application origin required');
     options.signal?.throwIfAborted();
-    const captured = stamp(), input = identity, controller = new AbortController(); pending.add(controller);
+    const captured = stamp(), input = identity, controller = new AbortController(), requestStartedAt = performance.now(); pending.add(controller);
     const cancel = () => controller.abort(options.signal?.reason);
     options.signal?.addEventListener('abort', cancel, { once: true });
     const timeout = setTimeout(() => controller.abort(), 10000);
@@ -59,6 +59,17 @@ export async function protectedResponse(url: string, options: RequestInit = {}, 
             ? JSON.parse((await observed.text()).trim().slice('data: '.length)) : await observed.json();
         if (!owned(captured)) throw new Error('Obsolete response');
         if ([401, 419].includes(response.status) || (response.status === 409 && body.identityConflict)) close();
+        if (response.status === 403 && body.code === 'fresh_authentication_required') {
+            const raw = response.headers.get('X-Builderad-Identity');
+            let evidence: IdentityMetadata | undefined;
+            try { evidence = raw ? JSON.parse(raw) as IdentityMetadata : undefined; }
+            catch { close(); throw new Error('Unowned reauthentication rejection'); }
+            const recovery = internalBoundary ? '/internal/identity/switch' : '/confirm-password';
+            if (!evidence || !equal(evidence) || input.binding.principal === 0 || body.reauthenticate !== recovery) {
+                close(); throw new Error('Unowned reauthentication rejection');
+            }
+            identity = { ...evidence, leaseMilliseconds: identity.leaseMilliseconds };
+        }
         if (!response.ok) throw new TransportError(response.status, body);
         if (terminal === 'login') {
             const nonce = JSON.parse(atob(input.transition.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))).binding.nonce;
@@ -68,6 +79,12 @@ export async function protectedResponse(url: string, options: RequestInit = {}, 
                 || result.epoch !== input.binding.epoch + 1 || result.nonce !== nonce || result.kind !== 'login' || result.status !== 'active'
                 || !target || target.origin !== location.origin || target.pathname.startsWith('/internal/') !== internalBoundary) {
                 close(); throw new Error('Unowned authentication reply');
+            }
+            const operation = new URL(url, location.origin).searchParams.get('webauthn_probe');
+            if (['localhost', '127.0.0.1'].includes(location.hostname) && operation && /^[0-9a-f]{16}$/.test(operation)) {
+                // Admission precedes native departure. The feature's awaited API
+                // promise may be destroyed with the old document before resuming.
+                console.info('builderad_webauthn ' + JSON.stringify({ operation, phase: 'authentication_acknowledgement_admitted', requestElapsedMs: Math.round(performance.now() - requestStartedAt) }));
             }
             close('handoff', target.href);
             if (typeof BroadcastChannel !== 'undefined') {

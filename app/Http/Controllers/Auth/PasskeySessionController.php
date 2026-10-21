@@ -52,7 +52,9 @@ final class PasskeySessionController extends Controller
                     throw ValidationException::withMessages(['credential' => __('login.passkey_expired')]);
                 }
                 $verificationOptions = $request->verificationOptions();
+                PasskeyCeremonyTrace::record($request, 'login_verification_started');
                 $passkey = $verify($request->credential(), $verificationOptions);
+                PasskeyCeremonyTrace::record($request, 'login_verification_completed');
                 $user = $passkey->user;
                 $lifecycle = DB::connection('pgsql_authority')->table('principal_lifecycles')
                     ->where('user_id', $user->id)->sharedLock()->first();

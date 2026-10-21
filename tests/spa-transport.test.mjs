@@ -27,6 +27,25 @@ const response = (status, body, evidence = identity) => Response.json(body, {
     status, headers: { 'X-Builderad-Identity': JSON.stringify(evidence) },
 });
 
+test('recoverable freshness rejection requires matching server document evidence and the existing recovery boundary', async () => {
+    for (const [evidence, target, accepted] of [[identity, '/confirm-password', true], [null, '/confirm-password', false], [{ ...identity, binding: { ...identity.binding, principal: 2 } }, '/confirm-password', false], [identity, '/internal/identity/switch', false]]) {
+        const client = await transport();
+        globalThis.fetch = async () => Response.json({ message: 'Fresh authentication is required.', code: 'fresh_authentication_required', reauthenticate: target }, { status: 403, headers: evidence ? { 'X-Builderad-Identity': JSON.stringify(evidence) } : {} });
+        await assert.rejects(client.protectedResponse('/write', { method: 'POST' }), error => accepted ? error instanceof client.TransportError && error.body.code === 'fresh_authentication_required' : /Unowned/.test(error.message));
+        assert.equal(client.documentStatus.value, accepted ? 'active' : 'closed');
+        client.close();
+    }
+});
+
+test('malformed reauthentication evidence closes instead of preserving an unproven draft', async () => {
+    for (const raw of ['{', 'null', '[]']) {
+        const client = await transport();
+        globalThis.fetch = async () => Response.json({ code: 'fresh_authentication_required', reauthenticate: '/confirm-password' }, { status: 403, headers: { 'X-Builderad-Identity': raw } });
+        await assert.rejects(client.protectedResponse('/write', { method: 'POST' }), /Unowned/);
+        assert.equal(client.documentStatus.value, 'closed');
+    }
+});
+
 test('late responses cannot publish after presentation ownership is suspended', async () => {
     const client = await transport();
     let deliver;

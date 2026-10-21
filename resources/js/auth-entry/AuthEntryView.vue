@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, reactive, ref } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { startAuthentication, type PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
-import { runPasskeyOperation, cancelPasskeyOperation } from '../security/passkeyCeremony';
+import { runPasskeyOperation, cancelPasskeyOperation, passkeyBrowserFailure } from '../security/passkeyCeremony';
 import { locale } from '../spa/locale';
 import { bootstrap, onClose, close, TransportError, internalBoundary } from '../spa/transport';
 import { api } from '../spa/api';
@@ -21,8 +21,8 @@ const errors = ref<Record<string, string[]>>(configuration.value && !Array.isArr
 const recoveryRequired = ref(false);
 const wipe = () => { form.name = ''; form.email = ''; form.password = ''; form.password_confirmation = ''; form.remember = false; failure.value = ''; };
 const closures = onClose(wipe);
-function cancel() { ceremonyCancellation?.abort(); if (operationId.value) cancelPasskeyOperation(operationId.value); }
-onBeforeUnmount(() => { active = false; cancel(); wipe(); closures.delete(wipe); });
+function cancel(reason: 'user' | 'document' = 'user') { ceremonyCancellation?.abort(); if (operationId.value) cancelPasskeyOperation(operationId.value, reason); }
+onBeforeUnmount(() => { active = false; cancel('document'); wipe(); closures.delete(wipe); });
 async function submit() {
     if (busy.value || recoveryRequired.value || !configuration.value) return;
     busy.value = true;
@@ -51,15 +51,22 @@ async function passkey() {
     const submitPath = internalBoundary ? (switching ? '/internal/identity/passkey' : '/internal/auth/passkey') : (switching ? '/identity/passkey' : '/auth/passkey');
     let submitted = false;
     try {
-        const operation = runPasskeyOperation('login', { options: optionsPath, submit: submitPath }, async () => {
-            const result = await api.GET(optionsPath, { signal: ceremonyCancellation!.signal });
+        const operation = runPasskeyOperation('login', { options: optionsPath, submit: submitPath }, async (routes, mark) => {
+            const probe = new URL(routes.options).searchParams.get('webauthn_probe')!;
+            const params = { query: { webauthn_probe: probe } };
+            mark('challenge_request_started');
+            const result = await api.GET(optionsPath, { params, signal: ceremonyCancellation!.signal });
+            mark('challenge_response_received');
             ceremonyCancellation!.signal.throwIfAborted();
             if (!active || !result.data) throw Error('Ceremony unavailable');
+            mark('credential_request_started');
             const credential = await startAuthentication({ optionsJSON: result.data.options as unknown as PublicKeyCredentialRequestOptionsJSON });
+            mark('credential_request_completed');
             ceremonyCancellation!.signal.throwIfAborted();
             if (active) {
                 submitted = true;
-                const result = await api.POST(submitPath, { body: { credential: { ...credential, response: { ...credential.response } } } });
+                mark('assertion_request_started');
+                const result = await api.POST(submitPath, { params, body: { credential: { ...credential, response: { ...credential.response } } } });
                 if (!result.data) throw Error('Missing passkey acknowledgement');
             }
         });
@@ -72,8 +79,11 @@ async function passkey() {
                 errors.value = error.body.errors ?? {};
                 failure.value = error.body.message ?? copy('رفض الخادم طلب مفتاح المرور.', 'The server rejected passkey sign-in.');
             } else if (!submitted) {
-                failure.value = ceremonyCancellation?.signal.aborted || (error instanceof Error && error.name === 'NotAllowedError')
+                const reason = passkeyBrowserFailure(error, ceremonyCancellation?.signal.aborted === true);
+                failure.value = reason === 'cancelled'
                     ? copy('أُلغيت محاولة مفتاح المرور في المتصفح؛ لم يُرسل طلب الدخول.', 'The browser ceremony was cancelled; sign-in was not submitted.')
+                    : reason === 'not-allowed'
+                    ? copy('لم يكتمل التحقق بمفتاح المرور. حاول مجددًا.', 'Passkey verification did not complete. Try again.')
                     : copy('تعذر إكمال المفتاح في المتصفح؛ لم يُرسل طلب الدخول.', 'The browser ceremony could not complete; sign-in was not submitted.');
             } else {
                 recoveryRequired.value = true;
@@ -91,7 +101,7 @@ async function passkey() {
             <h1>{{ title }}</h1>
             <p v-if="configuration.status" role="status">{{ configuration.status }}</p>
             <p v-if="failure" role="alert">{{ failure }}</p>
-            <a v-if="recoveryRequired" data-auth-recover :href="internalBoundary ? '/internal/login' : '/login'" @click="close('handoff')">{{ copy('فتح مستند دخول جديد دون إعادة الطلب', 'Open a new sign-in document without replay') }}</a>
+            <a v-if="recoveryRequired" data-auth-recover :href="internalBoundary ? '/internal/login' : '/login'" @click="close('handoff')">{{ copy('العودة إلى تسجيل الدخول', 'Back to sign in') }}</a>
             <p v-if="errors.credential" role="alert">{{ errors.credential[0] }}</p>
             <section v-if="configuration.kind === 'verify-email'"><p>{{ copy('أرسلنا رابط التحقق. افتحه في هذا المتصفح لإكمال التحقق بواسطة Laravel.', 'Open the verification link in this browser to complete server verification.') }}</p><button data-auth-resend :disabled="busy" @click="busy = true; submitDocument('/email/verification-notification', {})">{{ copy('إعادة إرسال رابط التحقق', 'Resend verification link') }}</button></section>
             <form v-else-if="!internalBoundary" @submit.prevent="submit" :aria-busy="busy">
@@ -102,7 +112,7 @@ async function passkey() {
                 <label v-if="configuration.kind === 'login'" class="remember"><input v-model="form.remember" type="checkbox" :disabled="busy" />{{ copy('تذكرني', 'Remember me') }}</label>
                 <button type="submit" :disabled="busy || recoveryRequired">{{ submitLabel }}</button>
             </form>
-            <template v-if="configuration.kind === 'login'"><button type="button" data-auth-passkey :disabled="busy || recoveryRequired" @click="passkey">{{ copy('الدخول بمفتاح مرور', 'Sign in with passkey') }}</button><button v-if="operationId" data-auth-cancel @click="cancel">{{ copy('إلغاء عملية المتصفح', 'Cancel browser ceremony') }}</button><a v-if="configuration.canResetPassword" href="/forgot-password">{{ copy('نسيت كلمة المرور', 'Forgot password') }}</a></template>
+            <template v-if="configuration.kind === 'login'"><button type="button" data-auth-passkey :disabled="busy || recoveryRequired" @click="passkey">{{ copy('الدخول بمفتاح مرور', 'Sign in with passkey') }}</button><button v-if="operationId" data-auth-cancel @click="cancel()">{{ copy('إلغاء عملية المتصفح', 'Cancel browser ceremony') }}</button><a v-if="configuration.canResetPassword" href="/forgot-password">{{ copy('نسيت كلمة المرور', 'Forgot password') }}</a></template>
             <nav><RouterLink v-if="!internalBoundary && bootstrap.identity.binding.principal === 0" :to="configuration.kind === 'register' ? '/login' : '/register'">{{ configuration.kind === 'register' ? copy('تسجيل الدخول', 'Sign in') : copy('حساب جديد', 'Create account') }}</RouterLink> · <a :href="internalBoundary ? '/internal/security/devices' : '/'">{{ copy('الرئيسية', 'Home') }}</a></nav>
             <p>{{ copy('تغييرات الهوية تتم داخل مستند جديد يختاره Laravel. لا تُعد إرسال طلب مجهول النتيجة تلقائيًا.', 'Identity changes use a new server-selected document. Uncertain requests are never replayed automatically.') }}</p>
         </template>

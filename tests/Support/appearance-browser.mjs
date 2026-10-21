@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { appearanceReliability } from './appearance-reliability-browser.mjs';
 
 if (process.env.GOALS_SPA_PROOF !== 'enabled' || process.env.DB_DATABASE !== 'builderad_test_disposable' || process.env.REDIS_PORT !== '6397') throw Error('Dedicated disposable proof environment required');
 const require = createRequire('C:/Users/stoma/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json');
@@ -14,12 +15,13 @@ const fixture = spawnSync('C:/tools/php85/php.exe', ['tests/Support/AppearanceBr
 assert.equal(fixture.status, 0, fixture.stderr);
 assert.equal(JSON.parse(fixture.stdout).database.db, 'builderad_test_disposable');
 const cookies = JSON.parse(await readFile(path.join(run, 'appearance-fixture.json'), 'utf8'));
+const proxyFailures = [], unexpectedResponses = [];
 // Same-origin proxy matches the repository browser runner; no runtime route overrides.
 const proxy = http.createServer((req, res) => {
     const upstream = http.request({ hostname: 'localhost', port: 8136, path: req.url, method: req.method, headers: req.headers }, source => {
         res.writeHead(source.statusCode, source.headers); source.pipe(res);
     });
-    upstream.on('error', error => { res.writeHead(502); res.end(error.message); });
+    upstream.on('error', error => { proxyFailures.push({ path: new URL(req.url, 'http://localhost').pathname, method: req.method, code: error.code, clientGone: res.destroyed }); if (!res.destroyed) { res.writeHead(502); res.end(error.message); } });
     req.pipe(upstream);
 });
 await new Promise(resolve => proxy.listen(8138, 'localhost', resolve));
@@ -31,19 +33,22 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = async (name, action) => { await action(); results.push({ name, status: 'PASS' }); console.log('PASS '+name); };
 async function session(kind) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } }); contexts.push(context);
+    context.setDefaultTimeout(30000);
     await context.addCookies(cookies[kind]);
     const page = await context.newPage();
-    page.on('pageerror', error => errors.push(error.message));
+    page.on('pageerror', error => { errors.push(error.message); console.error('BROWSER_ERROR '+error.message); });
+    page.on('console', message => { if (message.type() === 'error') console.error('BROWSER_CONSOLE '+message.text()); });
     page.on('dialog', dialog => dialog.accept());
     page.on('request', request => requests.push({ page: kind, method: request.method(), path: new URL(request.url()).pathname }));
     page.on('response', response => {
+        if (response.status() >= 500) unexpectedResponses.push({ path: new URL(response.url()).pathname, method: response.request().method(), status: response.status() });
         if (new URL(response.url()).pathname.includes('/build/') && response.status() === 200) {
             assets.set(new URL(response.url()).pathname, response.body().then(hash).catch(error => ({ error: error.message })));
         }
     });
     return page;
 }
-const ready = page => page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready');
+const ready = page => page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready', undefined, { timeout: 30000 });
 const editor = async page => { await page.goto(url+appearancePath); await ready(page); await page.locator('[data-appearance-settings]').waitFor(); };
 const rootColor = page => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ba-brand-primary').trim());
 async function publish(page, expected) {
@@ -53,6 +58,7 @@ async function publish(page, expected) {
     await ready(page); await page.locator('[data-appearance-settings]').waitFor();
 }
 try {
+    if (process.env.APPEARANCE_RELIABILITY_ONLY !== '1') {
     const page = await session('founder'), stale = await session('founder'), advertiser = await session('advertiser');
     await check('Default first document and RTL editor', async () => {
         await editor(page); await editor(stale);
@@ -130,15 +136,22 @@ try {
         await advertiser.reload(); await ready(advertiser); assert.equal(await rootColor(advertiser), '#008866');
         await publish(page, '#155f53'); await advertiser.reload(); await ready(advertiser); assert.equal(await rootColor(advertiser), '#155f53');
     });
+    }
+    await appearanceReliability({ session, ready, check, run, url, appearancePath });
     for (const [asset, pendingHash] of assets) {
         const actualHash = await pendingHash;
         assert.equal(typeof actualHash, 'string', `${asset}: ${JSON.stringify(actualHash)}`);
-        assert.equal(actualHash, hash(await readFile(path.join(process.cwd(), 'public', asset))));
+        assert.equal(actualHash, hash(await readFile(path.join(process.cwd(), 'public', asset))), asset);
     }
     assert.equal(errors.length, 0, errors.join('\n'));
-    await writeFile(path.join(run, 'appearance-browser-results.json'), JSON.stringify({ results, errors, assets: [...assets.keys()], headlessChromium: true, syntheticSessions: true, productionBuild: true }, null, 2));
+    assert.equal(unexpectedResponses.length, 0, JSON.stringify({ unexpectedResponses, proxyFailures }));
+    await writeFile(path.join(run, 'appearance-browser-results.json'), JSON.stringify({ results, errors, unexpectedResponses, proxyFailures, assets: [...assets.keys()], headlessChromium: true, syntheticSessions: true, productionBuild: true }, null, 2));
 } catch (error) {
-    await writeFile(path.join(run, 'appearance-browser-results.json'), JSON.stringify({ results, errors, failure: error.stack }, null, 2));
+    for (const [index, context] of contexts.entries()) for (const page of context.pages()) {
+        console.error('FAILED_PAGE '+JSON.stringify({ index, url: page.url(), state: await page.locator('#application-spa').getAttribute('data-state').catch(() => null), text: await page.locator('body').innerText().catch(() => '') }));
+        await page.screenshot({ path: path.join(run, `appearance-failure-${index}.png`), fullPage: true }).catch(() => {});
+    }
+    await writeFile(path.join(run, 'appearance-browser-results.json'), JSON.stringify({ results, errors, unexpectedResponses, proxyFailures, failure: error.stack }, null, 2));
     throw error;
 } finally {
     await Promise.all(contexts.map(context => context.close())); await browser.close(); await new Promise(resolve => proxy.close(resolve));

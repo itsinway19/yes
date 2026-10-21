@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Passkeys } from '@laravel/passkeys';
-import { cancelPasskeyOperation, runPasskeyOperation } from '../resources/js/security/passkeyCeremony.ts';
+import { cancelPasskeyOperation, runPasskeyOperation, passkeyBrowserFailure } from '../resources/js/security/passkeyCeremony.ts';
 
 const previousWindow = globalThis.window;
 const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
@@ -12,6 +12,16 @@ Object.defineProperty(globalThis, 'navigator', {
 });
 
 const routes = { options: '/options', submit: '/submit' };
+test('browser NotAllowedError does not prove user cancellation, including the library wrapper', () => {
+    const refusal = new DOMException('Platform refused', 'NotAllowedError');
+    assert.equal(passkeyBrowserFailure(refusal, false), 'not-allowed');
+    const wrapped = new Error('Platform refused', { cause: refusal });
+    wrapped.name = 'NotAllowedError';
+    assert.equal(passkeyBrowserFailure(wrapped, false), 'not-allowed');
+    assert.equal(passkeyBrowserFailure(refusal, true), 'cancelled');
+    assert.equal(passkeyBrowserFailure(new DOMException('Aborted externally', 'AbortError'), false), 'unavailable');
+    assert.equal(passkeyBrowserFailure(new Error('Unsupported browser'), false), 'unavailable');
+});
 const deferred = () => {
     let resolve;
     let reject;
@@ -47,6 +57,25 @@ test('a rejected ceremony releases its guard', async () => {
         throw new Error('browser rejected');
     }).promise, /browser rejected/);
     assert.equal(await runPasskeyOperation('login', routes, async () => 'recovered').promise, 'recovered');
+});
+
+test('document disposal retains cancellation safety but is not reported as user cancellation', async t => {
+    const phases = [];
+    t.mock.method(Passkeys, 'cancel', () => {});
+    t.mock.method(console, 'info', message => phases.push(JSON.parse(message.slice('builderad_webauthn '.length)).phase));
+    window.location.hostname = 'localhost';
+    try {
+        const pending = deferred();
+        const operation = runPasskeyOperation('login', routes, () => pending.promise);
+        await Promise.resolve();
+        cancelPasskeyOperation(operation.id, 'document');
+        assert.throws(() => runPasskeyOperation('login', routes, async () => {}), /جارية/);
+        pending.reject(new DOMException('Document disposed', 'AbortError'));
+        await assert.rejects(operation.promise, /Document disposed/);
+        assert.ok(phases.includes('document_disposed'));
+        assert.ok(phases.includes('disposed'));
+        assert.ok(!phases.includes('cancelled'));
+    } finally { window.location.hostname = 'test.invalid'; }
 });
 
 test('a Web Lock held by another tab prevents a browser operation', async () => {

@@ -1,7 +1,9 @@
 export function authEntryContracts({ ref, text, object, list, nullable, response, json, errors, security, headers, envelope, resource }) {
     const failures = { ...errors, 429: response(ref('Error')) };
+    const probe = [{ in: 'query', name: 'webauthn_probe', required: false, schema: { type: 'string', pattern: '^[0-9a-f]{16}$' }, description: 'Non-secret local diagnostic correlation only; never authentication evidence.' }];
+    const options = operationId => ({ operationId, security, parameters: probe, responses: { 200: response(ref('AccountPasskeyOptions')), ...errors } });
     const read = operationId => ({ operationId, security, parameters: headers, responses: { 200: response({ oneOf: [ref('AuthEntryResource'), ref('AuthEntryWitness')] }), 302: { description: 'Existing Laravel access/intended destination redirect.' }, ...failures } });
-    const authenticate = (operationId, schema) => ({ operationId, security, description: 'Existing JSON identity transition contract. The shared transport verifies its acknowledgement and departs to a new native document; the browser never adopts the returned identity.', requestBody: { required: true, ...json(ref(schema)) }, responses: { 200: response(ref('AuthTransitionResponse')), 302: { description: 'Existing Laravel access middleware redirect, not an authentication success acknowledgement.' }, ...failures } });
+    const authenticate = (operationId, schema) => ({ operationId, security, ...(schema === 'AuthPasskeyCommand' ? { parameters: probe } : {}), description: 'Existing JSON identity transition contract. The shared transport verifies its acknowledgement and departs to a new native document; the browser never adopts the returned identity.', requestBody: { required: true, ...json(ref(schema)) }, responses: { 200: response(ref('AuthTransitionResponse')), 302: { description: 'Existing Laravel access middleware redirect, not an authentication success acknowledgement.' }, ...failures } });
     return {
         paths: {
             '/login': { get: read('readLoginEntry'), post: authenticate('authenticateAdvertiser', 'AuthPasswordCommand') },
@@ -11,14 +13,14 @@ export function authEntryContracts({ ref, text, object, list, nullable, response
             '/reset-password/{token}': { get: { ...read('readResetEntry'), parameters: [...headers, { in: 'path', name: 'token', required: true, schema: text }] } },
             '/verify-email': { get: read('readVerificationEntry') },
             '/confirm-password': { get: read('readConfirmationEntry') },
-            '/auth/passkey/options': { get: { operationId: 'advertiserLoginOptions', security, responses: { 200: response(ref('AccountPasskeyOptions')), ...errors } } },
-            '/identity/passkey/options': { get: { operationId: 'advertiserSwitchOptions', security, responses: { 200: response(ref('AccountPasskeyOptions')), ...errors } } },
+            '/auth/passkey/options': { get: options('advertiserLoginOptions') },
+            '/identity/passkey/options': { get: options('advertiserSwitchOptions') },
             '/auth/passkey': { post: authenticate('authenticateAdvertiserPasskey', 'AuthPasskeyCommand') },
             '/identity/passkey': { post: authenticate('switchAdvertiserPasskey', 'AuthPasskeyCommand') },
             '/internal/login': { get: read('readInternalLoginEntry') },
             '/internal/identity/switch': { get: read('readInternalSwitchEntry') },
-            '/internal/auth/passkey/options': { get: { operationId: 'internalLoginOptions', security, responses: { 200: response(ref('AccountPasskeyOptions')), ...errors } } },
-            '/internal/identity/passkey/options': { get: { operationId: 'internalSwitchOptions', security, responses: { 200: response(ref('AccountPasskeyOptions')), ...errors } } },
+            '/internal/auth/passkey/options': { get: options('internalLoginOptions') },
+            '/internal/identity/passkey/options': { get: options('internalSwitchOptions') },
             '/internal/auth/passkey': { post: { ...authenticate('authenticateInternalPasskey', 'AuthPasskeyCommand'), responses: { 200: response(ref('InternalAuthTransitionResponse')), ...failures } } },
             '/internal/identity/passkey': { post: { ...authenticate('switchInternalPasskey', 'AuthPasskeyCommand'), responses: { 200: response(ref('InternalAuthTransitionResponse')), ...failures } } },
             '/internal/locale': { post: { operationId: 'setInternalLocale', security, requestBody: { required: true, ...json(object({ locale: { enum: ['ar', 'en'] } })) }, responses: { 200: response(object({ locale: { enum: ['ar', 'en'] } })), ...errors } } },

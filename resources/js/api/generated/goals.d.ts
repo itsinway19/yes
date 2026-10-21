@@ -64,6 +64,10 @@ export interface components {
         Error: {
             message?: string;
             identityConflict?: boolean;
+            /** @enum {string} */
+            code?: "fresh_authentication_required";
+            /** @enum {string} */
+            reauthenticate?: "/internal/identity/switch" | "/confirm-password";
         } & {
             [key: string]: unknown;
         };

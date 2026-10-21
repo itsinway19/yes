@@ -45,6 +45,15 @@ test('lost ACK blocks repeat and read alone cannot unlock publication; explicit 
     await m.readAppearance(false, true); await m.publishAppearance(draft); assert.equal(runtime.writes.length, 1);
     m.adoptPublished(draft, m.appearance.value); draft.primary = '#abcdef'; await m.publishAppearance(draft); assert.equal(runtime.writes.length, 2);
 });
+
+test('admitted fresh-auth rejection preserves the draft and blocks another publication until a new document', async () => {
+    const { module: m, runtime, draft, TransportError } = await state();
+    await m.readAppearance(); draft.primary = '#abcdef';
+    runtime.post = async () => { throw new TransportError(403, { code: 'fresh_authentication_required', reauthenticate: '/internal/identity/switch' }); };
+    await m.publishAppearance(draft);
+    assert.equal(draft.outcome, 'reauthentication'); assert.equal(draft.primary, '#abcdef'); assert.equal(draft.revision, 1);
+    await m.publishAppearance(draft); assert.equal(runtime.writes.length, 1);
+});
 test('stale 409 preserves draft fields and revision; acknowledged publish reloads document', async () => {
     const { module: m, runtime, draft, TransportError } = await state(); await m.readAppearance(); draft.primary = '#abcdef';
     runtime.post = async () => { throw new TransportError(409); }; await m.publishAppearance(draft); assert.equal(draft.outcome, 'stale'); assert.equal(draft.revision, 1); assert.equal(draft.primary, '#abcdef');

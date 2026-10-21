@@ -17,7 +17,13 @@ final class EnsureFreshAuthentication
     {
         if (! $this->sessions->hasFreshAuthentication($request, $request->user())) {
             if ($request->expectsJson()) {
-                abort(403, 'Fresh authentication is required.');
+                // Return through document admission so the rejection carries the
+                // current server binding. A bare 403 cannot prove recoverability.
+                return response()->json([
+                    'message' => 'Fresh authentication is required.',
+                    'code' => 'fresh_authentication_required',
+                    'reauthenticate' => $request->is('internal/*') ? '/internal/identity/switch' : '/confirm-password',
+                ], 403)->header('Cache-Control', 'no-store');
             }
 
             $staff = DB::table('principal_lifecycles')

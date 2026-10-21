@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Appearance\GlobalAppearance;
+use App\Http\Middleware\EnsureFreshAuthentication;
 use App\Http\Responses\SpaPage;
 use App\Security\GrantAuthority;
 use Illuminate\Http\Request;
@@ -19,9 +20,17 @@ final class GlobalAppearanceController
         return new SpaPage(SpaPage::needsData($request) ? $appearance->current() : []);
     }
 
-    public function publish(Request $request)
+    public function publish(Request $request, EnsureFreshAuthentication $fresh)
     {
+        // Establish the action's current authority before offering recoverable
+        // reauthentication. Staleness must never mask a revoked Founder/grant.
         $this->requireFounder($request);
+
+        return $fresh->handle($request, fn () => $this->publishFresh($request));
+    }
+
+    private function publishFresh(Request $request)
+    {
         if (array_diff(array_keys($request->all()), ['primary', 'secondary', 'revision']) !== []) {
             throw ValidationException::withMessages(['appearance' => 'Only primary, secondary and revision are supported.']);
         }
