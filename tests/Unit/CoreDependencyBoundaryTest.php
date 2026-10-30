@@ -52,7 +52,7 @@ class CoreDependencyBoundaryTest extends TestCase
             'app/Sources/EffectiveCapability.php' => ['App\\Providers\\Ads\\ProviderEvidenceValidity'],
         ];
         $violations = [];
-        foreach (['app/Business', 'app/Foundation', 'app/Sources', 'app/Commercial'] as $directory) {
+        foreach (['app/Business', 'app/Foundation', 'app/Sources', 'app/Commercial', 'app/MarketKnowledge'] as $directory) {
             $this->assertDirectoryExists($root.'/'.$directory);
             foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/'.$directory)) as $file) {
                 if (! $file->isFile() || $file->getExtension() !== 'php') {

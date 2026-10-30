@@ -35,6 +35,10 @@ try {
         app(PrincipalContext::class)->activate($user);
         echo 'XID='.DB::scalar('SELECT pg_current_xact_id()::text').PHP_EOL;
         flush();
+        if ($f['operation'] === 'market-write') {
+            return DB::scalar('SELECT builderad_v2_market_evidence_write(?,?::uuid,?::uuid,?::uuid,?,?::jsonb,?::jsonb)',
+                [$f['session'], $f['command'], $f['evidence'], $f['scope'], $f['expected'], json_encode($f['payload']), json_encode($f['selection'])]);
+        }
         if ($f['operation'] === 'boundary') {
             return DB::scalar('SELECT builderad_v2_boundary_surface(?,?::uuid,?)', [$f['session'], $f['boundary'], $f['read_grant']]);
         }

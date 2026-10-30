@@ -2548,6 +2548,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/market-evidence/{evidence}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response. */
+        post: operations["writeQualifiedMarketEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/data-rights/commands": {
         parameters: {
             query?: never;
@@ -5754,6 +5771,72 @@ export interface components {
                 };
             };
         };
+        MarketEvidencePayload: {
+            record_key: string;
+            /** @constant */
+            evidence_type: "market.offer:1";
+            fields: {
+                subject: {
+                    key: string | null;
+                    label: string;
+                    /** @enum {unknown} */
+                    identity_state: "unresolved" | "source_asserted";
+                };
+                geography: {
+                    ref: string | null;
+                    /** @enum {unknown} */
+                    level: "unknown" | "country" | "region" | "city" | "district";
+                };
+                currency: string;
+                price: number | null;
+                inclusions: string[];
+            };
+            /** @enum {unknown} */
+            coverage: "COMPLETE" | "PARTIAL" | "FAILED" | "UNKNOWN" | "PENDING";
+            provenance: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            observed_at: string;
+            /** Format: date-time */
+            effective_at: string;
+            valid_until: string | null;
+            reason: string;
+        } | {
+            record_key: string;
+            /** @constant */
+            evidence_type: "market.interest_signal:1";
+            fields: {
+                subject: {
+                    key: string | null;
+                    label: string;
+                    /** @enum {unknown} */
+                    identity_state: "unresolved" | "source_asserted";
+                };
+                geography: {
+                    ref: string | null;
+                    /** @enum {unknown} */
+                    level: "unknown" | "country" | "region" | "city" | "district";
+                };
+                metric: {
+                    name: string;
+                    unit: string;
+                    definition_version: string;
+                };
+                value: number | null;
+            };
+            /** @enum {unknown} */
+            coverage: "COMPLETE" | "PARTIAL" | "FAILED" | "UNKNOWN" | "PENDING";
+            provenance: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            observed_at: string;
+            /** Format: date-time */
+            effective_at: string;
+            valid_until: string | null;
+            reason: string;
+        };
         BusinessMaterialReference: {
             /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
             namespace: string;
@@ -5786,6 +5869,25 @@ export interface components {
                     };
                     /** Format: uuid */
                     data_use_scope_id: string;
+                    validity?: {
+                        /** @enum {unknown} */
+                        status: "current" | "historical" | "review_required" | "unknown";
+                        currentness_revision: number;
+                        /** Format: date-time */
+                        checked_at: string;
+                    };
+                    evidence?: {
+                        /** Format: uuid */
+                        source_ref: string;
+                        /** @enum {unknown} */
+                        schema: "market.offer:1" | "market.interest_signal:1";
+                        revision: number;
+                        /** Format: date-time */
+                        observed_at: string;
+                        /** Format: date-time */
+                        effective_at: string;
+                        valid_until: string | null;
+                    };
                 }[];
                 dependency_digest: string;
                 versions: {
@@ -21734,6 +21836,25 @@ export interface operations {
                                 };
                                 /** Format: uuid */
                                 data_use_scope_id: string;
+                                validity?: {
+                                    /** @enum {unknown} */
+                                    status: "current" | "historical" | "review_required" | "unknown";
+                                    currentness_revision: number;
+                                    /** Format: date-time */
+                                    checked_at: string;
+                                };
+                                evidence?: {
+                                    /** Format: uuid */
+                                    source_ref: string;
+                                    /** @enum {unknown} */
+                                    schema: "market.offer:1" | "market.interest_signal:1";
+                                    revision: number;
+                                    /** Format: date-time */
+                                    observed_at: string;
+                                    /** Format: date-time */
+                                    effective_at: string;
+                                    valid_until: string | null;
+                                };
                             }[];
                             dependency_digest: string;
                             versions: {
@@ -22659,6 +22780,106 @@ export interface operations {
                             status: "active" | "archived";
                             versions: {
                                 branch: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Current scoped authority denied; no authority inferred from Workspace membership. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Typed command, shape or semantic validation rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["ValidationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    writeQualifiedMarketEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evidence: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                    /** Format: uuid */
+                    data_use_scope_id: string;
+                    expected_revision: number;
+                    payload: components["schemas"]["MarketEvidencePayload"];
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            material_ref: {
+                                /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                                namespace: string;
+                                key: string;
+                                version: string;
+                            };
+                            versions: {
+                                evidence: number;
                             };
                         };
                     };

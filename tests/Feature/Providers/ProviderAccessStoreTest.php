@@ -2480,8 +2480,18 @@ class ProviderAccessStoreTest extends TestCase
         $selected = $this->postJson($base.'/select', ['selection' => $handle])->assertOk()->assertJsonPath('receipt.version', 1);
         $this->assertSame($selected->json('receipt'), $this->postJson($base.'/select', ['selection' => $handle])->assertOk()->json('receipt'));
         $http->assertSentCount(4);
-        $current = $this->getJson($base)->assertOk()->assertJsonPath('connections.0.access.connection', 'CONNECTED')
-            ->assertJsonPath('connections.0.access.axes.privacy_purpose', 'UNKNOWN')->assertJsonPath('connections.0.access.effective.state', 'UNKNOWN');
+        $current = $this->getJson($base)->assertOk();
+        // The index includes the existing disconnected fixture too; SQL does
+        // not promise row order. Assert the selected source's exact identity.
+        $connections = collect($current->json('connections'))->keyBy('source_id');
+        $this->assertCount(2, $connections);
+        $connected = $connections->get($selected->json('source_id'));
+        $this->assertNotNull($connected);
+        $this->assertSame('1234567890123456789', $connected['declared_account_id']);
+        $this->assertSame('CONNECTED', $connected['access']['connection']);
+        $this->assertSame('UNKNOWN', $connected['access']['axes']['privacy_purpose']);
+        $this->assertSame('UNKNOWN', $connected['access']['effective']['state']);
+        $this->assertSame('NOT_CONNECTED', $connections->get($this->scopes['tiktok']->sourceId)['access']['connection']);
         foreach ([$index, $callback, $page, $selected, $current] as $response) {
             foreach (['synthetic-tiktok-token', 'synthetic-tiktok-secret', 'synthetic-private-code'] as $secret) {
                 $this->assertStringNotContainsString($secret, $response->getContent());
