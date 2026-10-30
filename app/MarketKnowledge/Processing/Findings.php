@@ -40,17 +40,34 @@ final class Findings
             $values = (array) $finding['values'];
             $before = $task->materials[0]['fields']['value'];
             $after = $task->materials[1]['fields']['value'];
-            if (! is_numeric($before) || ! is_numeric($after) || $before <= 0
-                || ! isset($values['delta']) || ! is_finite((float) $values['delta'])
+            foreach ([$before, $after] as $value) {
+                if ((! is_int($value) && ! is_float($value)) || ! is_finite((float) $value) || $value < 0 || $value > 1000000000000) {
+                    throw new DomainException('Independent arithmetic validation failed.');
+                }
+            }
+            if ($before <= 0 || ! isset($values['delta']) || (! is_int($values['delta']) && ! is_float($values['delta']))
+                || ! is_finite((float) $values['delta'])
                 || abs($values['delta'] - ($after - $before)) > 0.00001) {
                 throw new DomainException('Independent arithmetic validation failed.');
             }
             $ratio = $task->materials[0]['fields']['comparison_basis']['ratio_scale'];
-            if ($ratio && (! isset($values['percent_change']) || ! is_finite((float) $values['percent_change'])
-                || abs(($values['percent_change'] / 100 + 1) * $before - $after) > max(0.00001, abs($after) * 0.0000001))) {
-                throw new DomainException('Independent ratio validation failed.');
+            if (! is_bool($ratio) || $ratio !== $task->materials[1]['fields']['comparison_basis']['ratio_scale']) {
+                throw new DomainException('Ratio requires a qualified ratio scale.');
             }
-            if (! $ratio && $values['percent_change'] !== null) {
+            if ($ratio) {
+                // Validate the declared rounded percentage directly, using original
+                // values rather than reconstructing a value from a rounded ratio.
+                $expected = round(((float) $after - $before) / $before * 100, 8);
+                // At most one relative machine epsilon, capped at 1% of a
+                // declared decimal unit so a 0.00000001 alteration cannot pass.
+                $tolerance = min(0.0000000001, PHP_FLOAT_EPSILON * max(1.0, abs($expected)));
+                if (! is_finite($expected) || ! isset($values['percent_change'])
+                    || (! is_int($values['percent_change']) && ! is_float($values['percent_change']))
+                    || ! is_finite((float) $values['percent_change'])
+                    || abs($values['percent_change'] - $expected) > $tolerance) {
+                    throw new DomainException('Independent ratio validation failed.');
+                }
+            } elseif (! array_key_exists('percent_change', $values) || $values['percent_change'] !== null) {
                 throw new DomainException('Ratio requires a qualified ratio scale.');
             }
         } elseif ((array) $finding['values'] !== []) {

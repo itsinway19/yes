@@ -160,3 +160,16 @@ Retained correction log SHA-256:
 - `storage/framework/testing/d2-review-fixed-focused.log`: `81d27927e91b7ab66f02f5cafa745f70d48305215dbc5140275281737866f7c7`
 - `storage/framework/testing/d2-trusted-boundaries.log`: `ab407d4987c552cc6dcd0586c130f67d73f18d0757af20fa844afeb0f3b32e78`
 - `storage/framework/testing/d2-review-final-affected.log`: `74e98e32f5e0af701a45e64ec5f5ec3ae055280b38da609907bb23a29dd0ecd8`
+
+
+## Final bounded arithmetic correction (2026-10-31)
+
+Review baseline: `f817ba38f38da984fd58a34fc6b4b51884007534`; hosted Foundation `41142899748` passed on that predecessor. The single new arithmetic finding was reproduced before editing production: before `9876543`, after `1`, delta `-9876542`, percentage `-99.99998987`; the new unit regression failed with `Independent ratio validation failed` (1 test, 3 assertions, 1 error).
+
+`Findings.php` now independently computes the percentage from the original values and rounds to eight decimals before comparison. Representation tolerance is `min(1e-10, PHP_FLOAT_EPSILON * max(1, abs(expected)))`: at most one relative machine epsilon, capped at one hundredth of the declared `1e-8` decimal unit. The existing delta tolerance is unchanged. Native finite numeric input/output types, the existing `0..1e12` method range, positive baseline and matching boolean ratio scales are independently required; no new calculation semantics are introduced.
+
+Focused cases cover recurring rounded ratios, upper range boundary, tiny normal/subnormal baselines, zero-baseline abstention, one-decimal-unit percentage alterations, invalid/non-finite inputs and outputs, and non-ratio output without a percentage. The real qualified HTTP regression prepares corrected evidence, executes and validates the method, persists a stamped trusted completion, disconnects the runtime connection, then replays the same and a fresh completion command with identical results, one actual method call and one durable execution.
+
+Official isolated focused gate: **88 tests / 512 assertions PASS (63.72s)**, selecting `MarketProcessingMethodsTest|MarketProcessingTest|MarketProcessingCompletionSecurityTest|CoreDependencyBoundaryTest`. Source unchanged **True** during verification; task-owned services stopped, exit 0. Scoped Pint passed. Only `Findings.php` and the two requested test files changed executable content; this record and the candidate inventory are updated for accurate evidence delivery. SQL, migrations, trusted-completion authority, method semantics, D1/G4 contracts and D3 are unchanged.
+
+Fresh hosted Foundation on the arithmetic correction is required and pending at this source snapshot. Exact commit/run/checkout/parents/tree and final result will be recorded in PR #51. No merge or deployment is authorized.

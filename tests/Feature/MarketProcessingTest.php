@@ -6,6 +6,7 @@ use App\MarketKnowledge\Processing\MarketMethod;
 use App\MarketKnowledge\Processing\MarketMethodSelector;
 use App\MarketKnowledge\Processing\MarketProcessingTask;
 use App\MarketKnowledge\Processing\OfferEquivalence;
+use App\MarketKnowledge\Processing\QualifiedInterestChange;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -110,6 +111,68 @@ final class MarketProcessingTest extends TestCase
         $response = $this->completeProcessing($c, $body['command_id'])->assertOk()->assertJsonPath('data.state', 'validated')
             ->assertJsonPath('data.finding.status', 'comparable')->assertJsonPath('data.finding.values.delta', 10)->assertJsonPath('data.finding.values.percent_change', 25);
         $this->assertStringNotContainsString('DO_NOT_DISCLOSE_SOURCE_TOKEN', $response->getContent());
+    }
+
+    public function test_rounded_large_drop_completes_trusted_http_processing_and_replays_durably_without_execution(): void
+    {
+        $f = $this->processingOriginals('signal');
+        foreach ([9876543, 1] as $index => $value) {
+            $record = $f['records'][$index];
+            $payload = $record['payload'];
+            $payload['fields']['value'] = $value;
+            $right = $this->marketRight($f['writer'], $record['source'], $record['evidence'], 'correct', array_keys($payload['fields']));
+            $f['records'][$index]['ref'] = $this->writeEvidence($record['evidence'], $right, $payload, 1)->assertOk()->json('data.material_ref');
+            $f['records'][$index]['payload'] = $payload;
+        }
+        $c = $this->processingConsumer($f);
+        $body = $this->processingBody($f, $c, 'compare_interest');
+        $this->prepareProcessing($c, $body)->assertOk()->assertJsonPath('data.state', 'prepared');
+        $counter = (object) ['executions' => 0];
+        $method = new class($counter) implements MarketMethod
+        {
+            public function __construct(private object $counter) {}
+
+            public function question(): string
+            {
+                return 'compare_interest';
+            }
+
+            public function reference(): string
+            {
+                return 'qualified_interest_change:1';
+            }
+
+            public function available(): bool
+            {
+                return true;
+            }
+
+            public function execute(MarketProcessingTask $task): array
+            {
+                $this->counter->executions++;
+
+                return (new QualifiedInterestChange)->execute($task);
+            }
+        };
+        $this->app->instance(MarketMethodSelector::class, new MarketMethodSelector([$method]));
+        $complete = ['command_id' => (string) Str::uuid(), 'effect' => 'complete', 'authority_selection' => $c['selection'], 'context_selection' => null];
+        $response = $this->completeProcessing($c, $body['command_id'], $complete)->assertOk()
+            ->assertJsonPath('data.state', 'validated')->assertJsonPath('data.finding.status', 'comparable')
+            ->assertJsonPath('data.finding.values.delta', -9876542)->assertJsonPath('data.finding.values.percent_change', -99.99998987)
+            ->assertJsonPath('data.usage.executions', 1);
+        $this->assertSame(1, $counter->executions);
+        $this->assertApplicationContract('MarketProcessingRunResult', (array) json_decode($response->getContent(), flags: JSON_THROW_ON_ERROR));
+        $row = DB::connection('pgsql_migrations')->table('market_processing_runs')->where('run_id', $body['command_id'])->sole();
+        $this->assertSame('validated', $row->state);
+        $this->assertNotNull($row->completion_attestation_digest);
+        $this->assertSame(-99.99998987, json_decode($row->finding, true, flags: JSON_THROW_ON_ERROR)['values']['percent_change']);
+
+        // Force a new runtime connection: replay must come from the committed run.
+        DB::disconnect();
+        $this->assertSame($response->json(), $this->completeProcessing($c, $body['command_id'], $complete)->assertOk()->json());
+        $this->assertSame($response->json(), $this->completeProcessing($c, $body['command_id'])->assertOk()->json());
+        $this->assertSame(1, $counter->executions);
+        $this->assertSame(1, (int) DB::connection('pgsql_migrations')->table('market_processing_runs')->where('run_id', $body['command_id'])->value('execution_count'));
     }
 
     public function test_distinct_qualified_sources_with_identical_subject_and_measurement_labels_are_not_comparable(): void

@@ -1,6 +1,6 @@
 {
   "baseline": "129846fd9da37b6095a95241da7fb5839322f2d0",
-  "working_tree": "PR51 bounded correction of 1bff76a4; current sha256 uses Git LF content; original/pre-review hashes retain historical provenance",
+  "working_tree": "PR51 bounded arithmetic correction of f817ba38; current sha256 uses Git LF content; earlier hashes retain historical provenance",
   "files": [
     {
       "path": "app/Http/Controllers/MarketProcessingController.php",
@@ -17,8 +17,9 @@
     {
       "path": "app/MarketKnowledge/Processing/Findings.php",
       "kind": "added",
-      "sha256": "e90a8018b222694503ba8e5d3ad39e1db2dc72e135564b3a361485a985b1fd2f",
-      "original_worktree_sha256": "e90a8018b222694503ba8e5d3ad39e1db2dc72e135564b3a361485a985b1fd2f"
+      "sha256": "cb0ad1a9d35c17d77fff548c892077dfa672993a4e68e9ff87f0bd0341323480",
+      "original_worktree_sha256": "e90a8018b222694503ba8e5d3ad39e1db2dc72e135564b3a361485a985b1fd2f",
+      "pre_arithmetic_published_sha256": "e90a8018b222694503ba8e5d3ad39e1db2dc72e135564b3a361485a985b1fd2f"
     },
     {
       "path": "app/MarketKnowledge/Processing/MarketMethod.php",
@@ -130,9 +131,10 @@
     {
       "path": "docs/execution/market-processing/PROGRESS.md",
       "kind": "added",
-      "sha256": "a82ec04e47b0b891229f691f3f937e62f70725fda3f92561293fab263f084f61",
+      "sha256": "8d02bac2a351223f2d0aa2cbe127119f9c9966456dfdf20bb3c52d8c8eb86764",
       "original_worktree_sha256": "fa1029f3c87521671eb24daf60db4d83d73631d7c0e69c38834e300077373655",
-      "pre_review_published_sha256": "e47dfe8c20f376a02b853c04fec1ac2febf8f03ea7dc80cc8117ef4256cd04c9"
+      "pre_review_published_sha256": "e47dfe8c20f376a02b853c04fec1ac2febf8f03ea7dc80cc8117ef4256cd04c9",
+      "pre_arithmetic_published_sha256": "a82ec04e47b0b891229f691f3f937e62f70725fda3f92561293fab263f084f61"
     },
     {
       "path": "resources/js/api/generated/application.d.ts",
@@ -180,9 +182,10 @@
     {
       "path": "tests/Feature/MarketProcessingTest.php",
       "kind": "added",
-      "sha256": "1e47618afef468547646bf702f4de357d9ea3889191bf83af0346002f6d91c7c",
+      "sha256": "fba16204e00a2305d45466d4e5547f15ac8cfe415607e455e0b3c2c12f322323",
       "original_worktree_sha256": "9a0bc933eea1fcc3f92209b64d4db83a14a6d4bfb17c855950a3429fe44a4384",
-      "pre_review_published_sha256": "9a0bc933eea1fcc3f92209b64d4db83a14a6d4bfb17c855950a3429fe44a4384"
+      "pre_review_published_sha256": "9a0bc933eea1fcc3f92209b64d4db83a14a6d4bfb17c855950a3429fe44a4384",
+      "pre_arithmetic_published_sha256": "1e47618afef468547646bf702f4de357d9ea3889191bf83af0346002f6d91c7c"
     },
     {
       "path": "tests/Feature/MarketProcessingTrustedUpgradeTest.php",
@@ -218,12 +221,14 @@
     {
       "path": "tests/Unit/MarketProcessingMethodsTest.php",
       "kind": "added",
-      "sha256": "8cc3e1dd5b27e91b05a5d5933879638b204388e98f09ab1ff89edee590369e00",
+      "sha256": "98e7e5c1f4c898f6e59f0759f405148123298261e834415a7d0ea1a0dd898e76",
       "original_worktree_sha256": "2351afa4d368e7970dcdc69f3184bb2fee1feed46664f6a3b879707e6b6e2743",
-      "pre_review_published_sha256": "2351afa4d368e7970dcdc69f3184bb2fee1feed46664f6a3b879707e6b6e2743"
+      "pre_review_published_sha256": "2351afa4d368e7970dcdc69f3184bb2fee1feed46664f6a3b879707e6b6e2743",
+      "pre_arithmetic_published_sha256": "8cc3e1dd5b27e91b05a5d5933879638b204388e98f09ab1ff89edee590369e00"
     }
   ],
   "hash_basis": "sha256 of published Git blob bytes (LF); original_worktree_sha256 preserves the inspected original 30-file inventory",
   "original_inventory_sha256": "6e97b0078af27b7fe25bc857fd7742e786bcceb94c4c29eb153dd06fecf75ec6",
-  "review_baseline": "1bff76a4ad7c5a0c6c76358d877ffb08aac014cc"
+  "review_baseline": "1bff76a4ad7c5a0c6c76358d877ffb08aac014cc",
+  "arithmetic_review_baseline": "f817ba38f38da984fd58a34fc6b4b51884007534"
 }

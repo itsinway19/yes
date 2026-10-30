@@ -10,6 +10,7 @@ use App\MarketKnowledge\Processing\MarketProcessingTask;
 use App\MarketKnowledge\Processing\OfferEquivalence;
 use App\MarketKnowledge\Processing\QualifiedInterestChange;
 use DomainException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Tests\Support\MarketProcessingExamples as E;
 
@@ -65,6 +66,140 @@ final class MarketProcessingMethodsTest extends TestCase
         $forged['values']->delta = 99;
         $this->expectException(DomainException::class);
         Findings::validate($task, $method, $forged);
+    }
+
+    public function test_reported_large_drop_validates_the_eight_decimal_percentage(): void
+    {
+        $method = new QualifiedInterestChange;
+        $before = E::signal();
+        $after = E::signal(true);
+        $before['value'] = 9876543;
+        $after['value'] = 1;
+        $task = new MarketProcessingTask($method->question(), [E::material($before, 'market.interest_signal:2'), E::material($after, 'market.interest_signal:2', 2)]);
+        $finding = $method->execute($task);
+
+        $this->assertSame('comparable', $finding['status']);
+        $this->assertSame(-9876542.0, $finding['values']->delta);
+        $this->assertSame(-99.99998987, $finding['values']->percent_change);
+        Findings::validate($task, $method, $finding);
+    }
+
+    public static function roundedInterestCases(): array
+    {
+        return [
+            'recurring increase' => [3, 4, 1.0, 33.33333333],
+            'recurring decrease' => [3, 2, -1.0, -33.33333333],
+            'round last decimal upward' => [6, 7, 1.0, 16.66666667],
+            'upper baseline to zero' => [1000000000000, 0, -1000000000000.0, -100.0],
+            'upper baseline unchanged' => [1000000000000, 1000000000000, 0.0, 0.0],
+            'upper baseline tiny remainder' => [1000000000000, 1, -999999999999.0, -100.0],
+            'small baseline to upper boundary' => [0.000000000001, 1000000000000, 1000000000000.0, 1.0e26],
+            'small baseline doubles' => [0.000000000001, 0.000000000002, 0.0, 100.0],
+            'near zero recurring ratio uses unrounded delta' => [0.000000000003, 0.000000000004, 0.0, 33.33333333],
+            'minimum normal baseline' => [PHP_FLOAT_MIN, PHP_FLOAT_MIN * 2, 0.0, 100.0],
+            'minimum subnormal baseline' => [5.0e-324, 1.0e-323, 0.0, 100.0],
+            'minimum subnormal drops to zero' => [5.0e-324, 0, 0.0, -100.0],
+        ];
+    }
+
+    #[DataProvider('roundedInterestCases')]
+    public function test_legitimate_rounded_percentages_at_numeric_boundaries(int|float $before, int|float $after, float $delta, float $percent): void
+    {
+        $method = new QualifiedInterestChange;
+        $task = $this->interestTask($before, $after);
+        $finding = $method->execute($task);
+        $this->assertSame('comparable', $finding['status']);
+        $this->assertSame($delta, $finding['values']->delta);
+        $this->assertSame($percent, $finding['values']->percent_change);
+        Findings::validate($task, $method, $finding);
+    }
+
+    public static function alteredPercentageCases(): array
+    {
+        return [
+            'positive last decimal' => [3, 4, 33.33333334],
+            'negative last decimal' => [3, 2, -33.33333334],
+            'reported example last decimal' => [9876543, 1, -99.99998986],
+            'zero last decimal' => [1, 1, 0.00000001],
+            'small baseline last decimal' => [0.000000000001, 0.000000000002, 100.00000001],
+        ];
+    }
+
+    #[DataProvider('alteredPercentageCases')]
+    public function test_one_declared_decimal_unit_of_percentage_tampering_is_rejected(int|float $before, int|float $after, float $percent): void
+    {
+        $method = new QualifiedInterestChange;
+        $task = $this->interestTask($before, $after);
+        $finding = $method->execute($task);
+        $finding['values']->percent_change = $percent;
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Independent ratio validation failed.');
+        Findings::validate($task, $method, $finding);
+    }
+
+    public static function invalidArithmeticCases(): array
+    {
+        return [
+            'infinite baseline' => ['before', INF], 'nan baseline' => ['before', NAN],
+            'infinite after' => ['after', INF], 'nan after' => ['after', NAN],
+            'negative baseline' => ['before', -1], 'zero baseline' => ['before', 0],
+            'negative after' => ['after', -1], 'above baseline range' => ['before', 1000000000001],
+            'above after range' => ['after', 1000000000001], 'numeric string baseline' => ['before', '40'],
+            'unknown after' => ['after', null], 'boolean baseline' => ['before', true],
+            'wrong delta' => ['delta', 11], 'infinite delta' => ['delta', INF], 'nan delta' => ['delta', NAN],
+            'numeric string delta' => ['delta', '10'], 'infinite percentage' => ['percent_change', INF],
+            'nan percentage' => ['percent_change', NAN], 'numeric string percentage' => ['percent_change', '25'],
+            'boolean percentage' => ['percent_change', true], 'unknown percentage' => ['percent_change', null],
+            'numeric ratio scale' => ['ratio_scale', 1], 'string ratio scale' => ['ratio_scale', 'true'],
+            'unknown ratio scale' => ['ratio_scale', null], 'mismatched ratio scales' => ['other_ratio_scale', false],
+            'percentage without ratio scale' => ['ratio_scale', false],
+            'overflowing percentage' => ['before', 5.0e-324],
+        ];
+    }
+
+    #[DataProvider('invalidArithmeticCases')]
+    public function test_invalid_arithmetic_cannot_validate_a_comparable_finding(string $field, mixed $value): void
+    {
+        $method = new QualifiedInterestChange;
+        $task = $this->interestTask(40, 50);
+        $finding = $method->execute($task);
+        $materials = $task->materials;
+        if ($field === 'before' || $field === 'after') {
+            $materials[$field === 'before' ? 0 : 1]['fields']['value'] = $value;
+        } elseif ($field === 'ratio_scale') {
+            $materials[0]['fields']['comparison_basis']['ratio_scale'] = $value;
+            $materials[1]['fields']['comparison_basis']['ratio_scale'] = $value;
+        } elseif ($field === 'other_ratio_scale') {
+            $materials[1]['fields']['comparison_basis']['ratio_scale'] = $value;
+        } else {
+            $finding['values']->{$field} = $value;
+        }
+        $task = new MarketProcessingTask($method->question(), $materials);
+        $this->expectException(DomainException::class);
+        Findings::validate($task, $method, $finding);
+    }
+
+    public function test_zero_baseline_still_abstains_without_a_percentage(): void
+    {
+        $method = new QualifiedInterestChange;
+        foreach ([0, 5.0e-324, 1000000000000] as $after) {
+            $task = $this->interestTask(0, $after);
+            $finding = $method->execute($task);
+            $this->assertSame('not_comparable', $finding['status']);
+            $this->assertSame(['ZERO_BASELINE'], $finding['reason_codes']);
+            $this->assertEquals((object) [], $finding['values']);
+            Findings::validate($task, $method, $finding);
+        }
+    }
+
+    private function interestTask(int|float $before, int|float $after): MarketProcessingTask
+    {
+        $a = E::signal();
+        $b = E::signal(true);
+        $a['value'] = $before;
+        $b['value'] = $after;
+
+        return new MarketProcessingTask('compare_interest', [E::material($a, 'market.interest_signal:2'), E::material($b, 'market.interest_signal:2', 2)]);
     }
 
     public function test_changes_to_metric_geography_sampling_normalization_and_period_reject_comparison(): void
