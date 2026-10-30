@@ -19,6 +19,7 @@ use App\Http\Controllers\InternalBusinessTypeController;
 use App\Http\Controllers\InternalCustomerAdministrationController;
 use App\Http\Controllers\InternalServiceController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\MarketProcessingController;
 use App\Http\Controllers\MetaConnectionController;
 use App\Http\Controllers\MetaReportController;
 use App\Http\Controllers\ObjectPurposeController;
@@ -54,6 +55,8 @@ Route::post('/internal/locale', LocaleController::class)->name('internal.locale.
 Route::get('/dashboard', [BusinessContextController::class, 'entry'])
     ->middleware(['auth', EnsureCurrentPrincipal::class])->name('dashboard');
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
+    Route::post('/api/businesses/{business}/market-analysis/prepare', [MarketProcessingController::class, 'prepare'])->whereUuid('business')->name('business-foundation.market-processing.prepare');
+    Route::post('/api/businesses/{business}/market-analysis/{run}/complete', [MarketProcessingController::class, 'complete'])->whereUuid('business')->whereUuid('run')->name('business-foundation.market-processing.complete');
     Route::get('/workspaces/{workspace}/goals', [AdvertiserGoalPreferencesController::class, 'edit'])
         ->whereUuid('workspace')->name('workspaces.goals.edit');
     Route::get('/workspaces/{workspace}/goals/review', [AdvertiserGoalPreferencesController::class, 'edit'])

@@ -24640,6 +24640,915 @@
         }
       }
     },
+    "/api/businesses/{business}/market-analysis/prepare": {
+      "post": {
+        "operationId": "prepareQualifiedMarketProcessing",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  },
+                  "question": {
+                    "enum": [
+                      "compare_offers",
+                      "compare_interest",
+                      "assess_business_feasibility"
+                    ]
+                  },
+                  "material_refs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "namespace": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                          "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                        },
+                        "key": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 4096
+                        },
+                        "version": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        }
+                      },
+                      "required": [
+                        "namespace",
+                        "key",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 2
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "context_selection": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "authority_selection",
+                  "question",
+                  "material_refs",
+                  "purpose",
+                  "context_selection"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "run_ref": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "question": {
+                          "enum": [
+                            "compare_offers",
+                            "compare_interest",
+                            "assess_business_feasibility"
+                          ]
+                        },
+                        "method_ref": {
+                          "enum": [
+                            "offer_equivalence:1",
+                            "qualified_interest_change:1",
+                            "business_feasibility:1"
+                          ]
+                        },
+                        "purpose": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "enum": [
+                            "prepared",
+                            "validated",
+                            "abstained",
+                            "failed",
+                            "cancelled",
+                            "unavailable"
+                          ]
+                        },
+                        "finding": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "method_ref": {
+                                  "enum": [
+                                    "offer_equivalence:1",
+                                    "qualified_interest_change:1",
+                                    "business_feasibility:1"
+                                  ]
+                                },
+                                "status": {
+                                  "enum": [
+                                    "equivalent",
+                                    "different",
+                                    "unresolved",
+                                    "comparable",
+                                    "not_comparable",
+                                    "within_declared_market",
+                                    "outside_declared_market",
+                                    "requires_information"
+                                  ]
+                                },
+                                "reason_codes": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "values": {
+                                  "oneOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {},
+                                      "required": [],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "delta": {
+                                          "type": "number"
+                                        },
+                                        "percent_change": {
+                                          "anyOf": [
+                                            {
+                                              "type": "number"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "delta",
+                                        "percent_change"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  ]
+                                },
+                                "limitations": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "evidence_refs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "namespace": {
+                                        "type": "string",
+                                        "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                                        "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                                      },
+                                      "key": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 4096
+                                      },
+                                      "version": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{64}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "namespace",
+                                      "key",
+                                      "version"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "method_ref",
+                                "status",
+                                "reason_codes",
+                                "values",
+                                "limitations",
+                                "evidence_refs"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "reason_code": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "material_refs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "namespace": {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                                "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                              },
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 4096
+                              },
+                              "version": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{64}$"
+                              }
+                            },
+                            "required": [
+                              "namespace",
+                              "key",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "capture_ref": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "dependency_digest": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "published": {
+                          "const": false
+                        },
+                        "usage": {
+                          "type": "object",
+                          "properties": {
+                            "executions": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "elapsed_microseconds": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 30000000
+                            },
+                            "external_cost": {
+                              "const": "NOT_INCURRED"
+                            },
+                            "unmeasured_cost": {
+                              "const": "UNKNOWN"
+                            },
+                            "billable": {
+                              "const": false
+                            }
+                          },
+                          "required": [
+                            "executions",
+                            "elapsed_microseconds",
+                            "external_cost",
+                            "unmeasured_cost",
+                            "billable"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "processing_contract": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "processing_contract"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "run_ref",
+                        "question",
+                        "method_ref",
+                        "purpose",
+                        "state",
+                        "finding",
+                        "reason_code",
+                        "material_refs",
+                        "capture_ref",
+                        "dependency_digest",
+                        "published",
+                        "usage",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current scoped authority denied; no authority inferred from Workspace membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed command, shape or semantic validation rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/market-analysis/{run}/complete": {
+      "post": {
+        "operationId": "completeQualifiedMarketProcessing",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  },
+                  "effect": {
+                    "enum": [
+                      "complete",
+                      "cancel"
+                    ]
+                  },
+                  "context_selection": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "authority_selection",
+                  "effect",
+                  "context_selection"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "run_ref": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "question": {
+                          "enum": [
+                            "compare_offers",
+                            "compare_interest",
+                            "assess_business_feasibility"
+                          ]
+                        },
+                        "method_ref": {
+                          "enum": [
+                            "offer_equivalence:1",
+                            "qualified_interest_change:1",
+                            "business_feasibility:1"
+                          ]
+                        },
+                        "purpose": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "enum": [
+                            "prepared",
+                            "validated",
+                            "abstained",
+                            "failed",
+                            "cancelled",
+                            "unavailable"
+                          ]
+                        },
+                        "finding": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "method_ref": {
+                                  "enum": [
+                                    "offer_equivalence:1",
+                                    "qualified_interest_change:1",
+                                    "business_feasibility:1"
+                                  ]
+                                },
+                                "status": {
+                                  "enum": [
+                                    "equivalent",
+                                    "different",
+                                    "unresolved",
+                                    "comparable",
+                                    "not_comparable",
+                                    "within_declared_market",
+                                    "outside_declared_market",
+                                    "requires_information"
+                                  ]
+                                },
+                                "reason_codes": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "values": {
+                                  "oneOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {},
+                                      "required": [],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "delta": {
+                                          "type": "number"
+                                        },
+                                        "percent_change": {
+                                          "anyOf": [
+                                            {
+                                              "type": "number"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "delta",
+                                        "percent_change"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  ]
+                                },
+                                "limitations": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "evidence_refs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "namespace": {
+                                        "type": "string",
+                                        "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                                        "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                                      },
+                                      "key": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 4096
+                                      },
+                                      "version": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{64}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "namespace",
+                                      "key",
+                                      "version"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "method_ref",
+                                "status",
+                                "reason_codes",
+                                "values",
+                                "limitations",
+                                "evidence_refs"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "reason_code": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "material_refs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "namespace": {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                                "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                              },
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 4096
+                              },
+                              "version": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{64}$"
+                              }
+                            },
+                            "required": [
+                              "namespace",
+                              "key",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "capture_ref": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "dependency_digest": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "published": {
+                          "const": false
+                        },
+                        "usage": {
+                          "type": "object",
+                          "properties": {
+                            "executions": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "elapsed_microseconds": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 30000000
+                            },
+                            "external_cost": {
+                              "const": "NOT_INCURRED"
+                            },
+                            "unmeasured_cost": {
+                              "const": "UNKNOWN"
+                            },
+                            "billable": {
+                              "const": false
+                            }
+                          },
+                          "required": [
+                            "executions",
+                            "elapsed_microseconds",
+                            "external_cost",
+                            "unmeasured_cost",
+                            "billable"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "processing_contract": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "processing_contract"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "run_ref",
+                        "question",
+                        "method_ref",
+                        "purpose",
+                        "state",
+                        "finding",
+                        "reason_code",
+                        "material_refs",
+                        "capture_ref",
+                        "dependency_digest",
+                        "published",
+                        "usage",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current scoped authority denied; no authority inferred from Workspace membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed command, shape or semantic validation rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/businesses/{business}/materials/publish": {
       "post": {
         "operationId": "publishQualifiedRegisteredMaterial",
@@ -42485,8 +43394,927 @@
               "reason"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "record_key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 180
+              },
+              "evidence_type": {
+                "const": "market.offer:2"
+              },
+              "fields": {
+                "type": "object",
+                "properties": {
+                  "subject": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 180
+                      },
+                      "identity_state": {
+                        "enum": [
+                          "unresolved",
+                          "source_asserted"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "label",
+                      "identity_state"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "geography": {
+                    "type": "object",
+                    "properties": {
+                      "ref": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "level": {
+                        "enum": [
+                          "unknown",
+                          "country",
+                          "region",
+                          "city",
+                          "district"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "ref",
+                      "level"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "price": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "inclusions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "product": {
+                    "type": "object",
+                    "properties": {
+                      "manufacturer": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "model": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "variant": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "unit": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "condition": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "manufacturer",
+                      "model",
+                      "variant",
+                      "unit",
+                      "condition"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "service": {
+                    "type": "object",
+                    "properties": {
+                      "inclusions": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "maxItems": 128,
+                            "uniqueItems": true
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "exclusions": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "maxItems": 128,
+                            "uniqueItems": true
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "warranty_months": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 99999
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "fulfillment_days": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 99999
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "inclusions",
+                      "exclusions",
+                      "warranty_months",
+                      "fulfillment_days"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "subject",
+                  "geography",
+                  "currency",
+                  "price",
+                  "inclusions",
+                  "product",
+                  "service"
+                ],
+                "additionalProperties": false
+              },
+              "coverage": {
+                "enum": [
+                  "COMPLETE",
+                  "PARTIAL",
+                  "FAILED",
+                  "UNKNOWN",
+                  "PENDING"
+                ]
+              },
+              "provenance": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "effective_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "valid_until": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 600
+              }
+            },
+            "required": [
+              "record_key",
+              "evidence_type",
+              "fields",
+              "coverage",
+              "provenance",
+              "observed_at",
+              "effective_at",
+              "valid_until",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "record_key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 180
+              },
+              "evidence_type": {
+                "const": "market.interest_signal:2"
+              },
+              "fields": {
+                "type": "object",
+                "properties": {
+                  "subject": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 180
+                      },
+                      "identity_state": {
+                        "enum": [
+                          "unresolved",
+                          "source_asserted"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "label",
+                      "identity_state"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "geography": {
+                    "type": "object",
+                    "properties": {
+                      "ref": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "level": {
+                        "enum": [
+                          "unknown",
+                          "country",
+                          "region",
+                          "city",
+                          "district"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "ref",
+                      "level"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "metric": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "unit": {
+                        "type": "string"
+                      },
+                      "definition_version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "unit",
+                      "definition_version"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "comparison_basis": {
+                    "type": "object",
+                    "properties": {
+                      "sampling": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "normalization": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "population": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "aggregation": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "ratio_scale": {
+                        "type": "boolean"
+                      },
+                      "period_start": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "period_end": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "sampling",
+                      "normalization",
+                      "population",
+                      "aggregation",
+                      "ratio_scale",
+                      "period_start",
+                      "period_end"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "subject",
+                  "geography",
+                  "metric",
+                  "value",
+                  "comparison_basis"
+                ],
+                "additionalProperties": false
+              },
+              "coverage": {
+                "enum": [
+                  "COMPLETE",
+                  "PARTIAL",
+                  "FAILED",
+                  "UNKNOWN",
+                  "PENDING"
+                ]
+              },
+              "provenance": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "effective_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "valid_until": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 600
+              }
+            },
+            "required": [
+              "record_key",
+              "evidence_type",
+              "fields",
+              "coverage",
+              "provenance",
+              "observed_at",
+              "effective_at",
+              "valid_until",
+              "reason"
+            ],
+            "additionalProperties": false
           }
         ]
+      },
+      "MarketProcessingPrepareCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "authority_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          },
+          "question": {
+            "enum": [
+              "compare_offers",
+              "compare_interest",
+              "assess_business_feasibility"
+            ]
+          },
+          "material_refs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "namespace": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                  "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                },
+                "key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "version": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "namespace",
+                "key",
+                "version"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 2
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "context_selection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BusinessAuthoritySelection"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "command_id",
+          "authority_selection",
+          "question",
+          "material_refs",
+          "purpose",
+          "context_selection"
+        ],
+        "additionalProperties": false
+      },
+      "MarketProcessingCompleteCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "authority_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          },
+          "effect": {
+            "enum": [
+              "complete",
+              "cancel"
+            ]
+          },
+          "context_selection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BusinessAuthoritySelection"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "command_id",
+          "authority_selection",
+          "effect",
+          "context_selection"
+        ],
+        "additionalProperties": false
+      },
+      "MarketProcessingRunResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "business_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "run_ref": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "question": {
+                "enum": [
+                  "compare_offers",
+                  "compare_interest",
+                  "assess_business_feasibility"
+                ]
+              },
+              "method_ref": {
+                "enum": [
+                  "offer_equivalence:1",
+                  "qualified_interest_change:1",
+                  "business_feasibility:1"
+                ]
+              },
+              "purpose": {
+                "type": "string"
+              },
+              "state": {
+                "enum": [
+                  "prepared",
+                  "validated",
+                  "abstained",
+                  "failed",
+                  "cancelled",
+                  "unavailable"
+                ]
+              },
+              "finding": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "method_ref": {
+                        "enum": [
+                          "offer_equivalence:1",
+                          "qualified_interest_change:1",
+                          "business_feasibility:1"
+                        ]
+                      },
+                      "status": {
+                        "enum": [
+                          "equivalent",
+                          "different",
+                          "unresolved",
+                          "comparable",
+                          "not_comparable",
+                          "within_declared_market",
+                          "outside_declared_market",
+                          "requires_information"
+                        ]
+                      },
+                      "reason_codes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "values": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {},
+                            "required": [],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "delta": {
+                                "type": "number"
+                              },
+                              "percent_change": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "delta",
+                              "percent_change"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "limitations": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "evidence_refs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "namespace": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                              "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                            },
+                            "key": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 4096
+                            },
+                            "version": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{64}$"
+                            }
+                          },
+                          "required": [
+                            "namespace",
+                            "key",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "method_ref",
+                      "status",
+                      "reason_codes",
+                      "values",
+                      "limitations",
+                      "evidence_refs"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reason_code": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "material_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "namespace": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                      "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                    },
+                    "key": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "version": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "namespace",
+                    "key",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "capture_ref": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "dependency_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "published": {
+                "const": false
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "executions": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "elapsed_microseconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000000
+                  },
+                  "external_cost": {
+                    "const": "NOT_INCURRED"
+                  },
+                  "unmeasured_cost": {
+                    "const": "UNKNOWN"
+                  },
+                  "billable": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "executions",
+                  "elapsed_microseconds",
+                  "external_cost",
+                  "unmeasured_cost",
+                  "billable"
+                ],
+                "additionalProperties": false
+              },
+              "versions": {
+                "type": "object",
+                "properties": {
+                  "processing_contract": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "processing_contract"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "business_public_id",
+              "run_ref",
+              "question",
+              "method_ref",
+              "purpose",
+              "state",
+              "finding",
+              "reason_code",
+              "material_refs",
+              "capture_ref",
+              "dependency_digest",
+              "published",
+              "usage",
+              "versions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
       },
       "BusinessMaterialReference": {
         "type": "object",

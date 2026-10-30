@@ -2361,6 +2361,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/businesses/{business}/market-analysis/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response. */
+        post: operations["prepareQualifiedMarketProcessing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/market-analysis/{run}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response. */
+        post: operations["completeQualifiedMarketProcessing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/businesses/{business}/materials/publish": {
         parameters: {
             query?: never;
@@ -5836,6 +5870,176 @@ export interface components {
             effective_at: string;
             valid_until: string | null;
             reason: string;
+        } | {
+            record_key: string;
+            /** @constant */
+            evidence_type: "market.offer:2";
+            fields: {
+                subject: {
+                    key: string | null;
+                    label: string;
+                    /** @enum {unknown} */
+                    identity_state: "unresolved" | "source_asserted";
+                };
+                geography: {
+                    ref: string | null;
+                    /** @enum {unknown} */
+                    level: "unknown" | "country" | "region" | "city" | "district";
+                };
+                currency: string;
+                price: number | null;
+                inclusions: string[];
+                product: {
+                    manufacturer: string | null;
+                    model: string | null;
+                    variant: string | null;
+                    unit: string | null;
+                    condition: string | null;
+                };
+                service: {
+                    inclusions: string[] | null;
+                    exclusions: string[] | null;
+                    warranty_months: number | null;
+                    fulfillment_days: number | null;
+                };
+            };
+            /** @enum {unknown} */
+            coverage: "COMPLETE" | "PARTIAL" | "FAILED" | "UNKNOWN" | "PENDING";
+            provenance: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            observed_at: string;
+            /** Format: date-time */
+            effective_at: string;
+            valid_until: string | null;
+            reason: string;
+        } | {
+            record_key: string;
+            /** @constant */
+            evidence_type: "market.interest_signal:2";
+            fields: {
+                subject: {
+                    key: string | null;
+                    label: string;
+                    /** @enum {unknown} */
+                    identity_state: "unresolved" | "source_asserted";
+                };
+                geography: {
+                    ref: string | null;
+                    /** @enum {unknown} */
+                    level: "unknown" | "country" | "region" | "city" | "district";
+                };
+                metric: {
+                    name: string;
+                    unit: string;
+                    definition_version: string;
+                };
+                value: number | null;
+                comparison_basis: {
+                    sampling: string | null;
+                    normalization: string | null;
+                    population: string | null;
+                    aggregation: string | null;
+                    ratio_scale: boolean;
+                    /** Format: date-time */
+                    period_start: string;
+                    /** Format: date-time */
+                    period_end: string;
+                };
+            };
+            /** @enum {unknown} */
+            coverage: "COMPLETE" | "PARTIAL" | "FAILED" | "UNKNOWN" | "PENDING";
+            provenance: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            observed_at: string;
+            /** Format: date-time */
+            effective_at: string;
+            valid_until: string | null;
+            reason: string;
+        };
+        MarketProcessingPrepareCommand: {
+            /** Format: uuid */
+            command_id: string;
+            authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+            /** @enum {unknown} */
+            question: "compare_offers" | "compare_interest" | "assess_business_feasibility";
+            material_refs: {
+                /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                namespace: string;
+                key: string;
+                version: string;
+            }[];
+            purpose: string;
+            context_selection: components["schemas"]["BusinessAuthoritySelection"] | null;
+        };
+        MarketProcessingCompleteCommand: {
+            /** Format: uuid */
+            command_id: string;
+            authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+            /** @enum {unknown} */
+            effect: "complete" | "cancel";
+            context_selection: components["schemas"]["BusinessAuthoritySelection"] | null;
+        };
+        MarketProcessingRunResult: {
+            data: {
+                /** Format: uuid */
+                business_public_id: string;
+                /** Format: uuid */
+                run_ref: string;
+                /** @enum {unknown} */
+                question: "compare_offers" | "compare_interest" | "assess_business_feasibility";
+                /** @enum {unknown} */
+                method_ref: "offer_equivalence:1" | "qualified_interest_change:1" | "business_feasibility:1";
+                purpose: string;
+                /** @enum {unknown} */
+                state: "prepared" | "validated" | "abstained" | "failed" | "cancelled" | "unavailable";
+                finding: {
+                    /** @enum {unknown} */
+                    method_ref: "offer_equivalence:1" | "qualified_interest_change:1" | "business_feasibility:1";
+                    /** @enum {unknown} */
+                    status: "equivalent" | "different" | "unresolved" | "comparable" | "not_comparable" | "within_declared_market" | "outside_declared_market" | "requires_information";
+                    reason_codes: string[];
+                    values: Record<string, never> | {
+                        delta: number;
+                        percent_change: number | null;
+                    };
+                    limitations: string[];
+                    evidence_refs: {
+                        /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                        namespace: string;
+                        key: string;
+                        version: string;
+                    }[];
+                } | null;
+                reason_code: string | null;
+                material_refs: {
+                    /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                    namespace: string;
+                    key: string;
+                    version: string;
+                }[];
+                /** Format: uuid */
+                capture_ref: string;
+                dependency_digest: string;
+                /** @constant */
+                published: false;
+                usage: {
+                    executions: number;
+                    elapsed_microseconds: number;
+                    /** @constant */
+                    external_cost: "NOT_INCURRED";
+                    /** @constant */
+                    unmeasured_cost: "UNKNOWN";
+                    /** @constant */
+                    billable: false;
+                };
+                versions: {
+                    processing_contract: number;
+                };
+            };
         };
         BusinessMaterialReference: {
             /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
@@ -21591,6 +21795,302 @@ export interface operations {
                                 context: number;
                                 intent: number;
                                 preferences: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Current scoped authority denied; no authority inferred from Workspace membership. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Typed command, shape or semantic validation rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["ValidationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    prepareQualifiedMarketProcessing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                    /** @enum {unknown} */
+                    question: "compare_offers" | "compare_interest" | "assess_business_feasibility";
+                    material_refs: {
+                        /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                        namespace: string;
+                        key: string;
+                        version: string;
+                    }[];
+                    purpose: string;
+                    context_selection: components["schemas"]["BusinessAuthoritySelection"] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            /** Format: uuid */
+                            run_ref: string;
+                            /** @enum {unknown} */
+                            question: "compare_offers" | "compare_interest" | "assess_business_feasibility";
+                            /** @enum {unknown} */
+                            method_ref: "offer_equivalence:1" | "qualified_interest_change:1" | "business_feasibility:1";
+                            purpose: string;
+                            /** @enum {unknown} */
+                            state: "prepared" | "validated" | "abstained" | "failed" | "cancelled" | "unavailable";
+                            finding: {
+                                /** @enum {unknown} */
+                                method_ref: "offer_equivalence:1" | "qualified_interest_change:1" | "business_feasibility:1";
+                                /** @enum {unknown} */
+                                status: "equivalent" | "different" | "unresolved" | "comparable" | "not_comparable" | "within_declared_market" | "outside_declared_market" | "requires_information";
+                                reason_codes: string[];
+                                values: Record<string, never> | {
+                                    delta: number;
+                                    percent_change: number | null;
+                                };
+                                limitations: string[];
+                                evidence_refs: {
+                                    /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                                    namespace: string;
+                                    key: string;
+                                    version: string;
+                                }[];
+                            } | null;
+                            reason_code: string | null;
+                            material_refs: {
+                                /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                                namespace: string;
+                                key: string;
+                                version: string;
+                            }[];
+                            /** Format: uuid */
+                            capture_ref: string;
+                            dependency_digest: string;
+                            /** @constant */
+                            published: false;
+                            usage: {
+                                executions: number;
+                                elapsed_microseconds: number;
+                                /** @constant */
+                                external_cost: "NOT_INCURRED";
+                                /** @constant */
+                                unmeasured_cost: "UNKNOWN";
+                                /** @constant */
+                                billable: false;
+                            };
+                            versions: {
+                                processing_contract: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Current scoped authority denied; no authority inferred from Workspace membership. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Typed command, shape or semantic validation rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["ValidationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    completeQualifiedMarketProcessing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+                run: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                    /** @enum {unknown} */
+                    effect: "complete" | "cancel";
+                    context_selection: components["schemas"]["BusinessAuthoritySelection"] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            /** Format: uuid */
+                            run_ref: string;
+                            /** @enum {unknown} */
+                            question: "compare_offers" | "compare_interest" | "assess_business_feasibility";
+                            /** @enum {unknown} */
+                            method_ref: "offer_equivalence:1" | "qualified_interest_change:1" | "business_feasibility:1";
+                            purpose: string;
+                            /** @enum {unknown} */
+                            state: "prepared" | "validated" | "abstained" | "failed" | "cancelled" | "unavailable";
+                            finding: {
+                                /** @enum {unknown} */
+                                method_ref: "offer_equivalence:1" | "qualified_interest_change:1" | "business_feasibility:1";
+                                /** @enum {unknown} */
+                                status: "equivalent" | "different" | "unresolved" | "comparable" | "not_comparable" | "within_declared_market" | "outside_declared_market" | "requires_information";
+                                reason_codes: string[];
+                                values: Record<string, never> | {
+                                    delta: number;
+                                    percent_change: number | null;
+                                };
+                                limitations: string[];
+                                evidence_refs: {
+                                    /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                                    namespace: string;
+                                    key: string;
+                                    version: string;
+                                }[];
+                            } | null;
+                            reason_code: string | null;
+                            material_refs: {
+                                /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                                namespace: string;
+                                key: string;
+                                version: string;
+                            }[];
+                            /** Format: uuid */
+                            capture_ref: string;
+                            dependency_digest: string;
+                            /** @constant */
+                            published: false;
+                            usage: {
+                                executions: number;
+                                elapsed_microseconds: number;
+                                /** @constant */
+                                external_cost: "NOT_INCURRED";
+                                /** @constant */
+                                unmeasured_cost: "UNKNOWN";
+                                /** @constant */
+                                billable: false;
+                            };
+                            versions: {
+                                processing_contract: number;
                             };
                         };
                     };

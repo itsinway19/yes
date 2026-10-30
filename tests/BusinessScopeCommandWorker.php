@@ -35,6 +35,14 @@ try {
         app(PrincipalContext::class)->activate($user);
         echo 'XID='.DB::scalar('SELECT pg_current_xact_id()::text').PHP_EOL;
         flush();
+        if ($f['operation'] === 'market-processing-complete') {
+            if ($f['outcome']['finding'] !== null) {
+                $f['outcome']['finding']['values'] = (object) $f['outcome']['finding']['values'];
+            }
+
+            return DB::scalar('SELECT builderad_v2_market_processing_complete(?,?::uuid,?::uuid,?::uuid,?,?::jsonb,?,?::jsonb,NULL)',
+                [$f['session'], $f['business'], $f['command'], $f['processing_run'], 'complete', json_encode($f['outcome']), 1, json_encode($f['selection'])]);
+        }
         if ($f['operation'] === 'market-write') {
             return DB::scalar('SELECT builderad_v2_market_evidence_write(?,?::uuid,?::uuid,?::uuid,?,?::jsonb,?::jsonb)',
                 [$f['session'], $f['command'], $f['evidence'], $f['scope'], $f['expected'], json_encode($f['payload']), json_encode($f['selection'])]);
@@ -75,6 +83,11 @@ try {
                 [$f['session'], $f['business'], json_encode($f['purpose_command']), $f['expected'], json_encode($f['selection'])]);
         }
         if ($f['operation'] === 'material') {
+            if (! empty($f['material_refs_from_release'])) {
+                $late = json_decode($f['release_value'], true, flags: JSON_THROW_ON_ERROR);
+                $f['refs'] = $late['material_refs'];
+            }
+
             return DB::scalar('SELECT builderad_v2_scoped_material_read(?,?::uuid,?::uuid,?::jsonb,?,?,?::uuid,?::jsonb)',
                 [$f['session'], $f['business'], $f['command'], json_encode($f['refs']), $f['material_operation'], $f['purpose'], $f['recipient'], json_encode($f['selection'])]);
         }

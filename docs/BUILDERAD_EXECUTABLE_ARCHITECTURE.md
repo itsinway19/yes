@@ -108,3 +108,9 @@ Both guards are automatically discovered by the existing PHPUnit Unit/Feature su
 - **ENFORCEMENT_ARTIFACTS:** `SourceRegistryTest::test_recovery_projection_does_not_authorize_effect_or_leak_across_workspaces`; `ServiceAuthorityTest`; `ProviderEvidenceValidityTest::test_classification_never_substitutes_for_authority_and_fetch_is_distinct_from_readiness`; existing provider queued-authority tests.
 - **CHANGE_AUTHORITY:** Accepted Owner execution/authority contract for an actual capability; future enforcement follows that capability, not this record.
 - **STATUS:** PARTIAL.
+
+## D2 candidate — bounded processing coverage
+
+D2 extends the existing MarketKnowledge guard surface; the recursive Core dependency guard already covers its methods. `MarketProcessingMethodsTest` uses independent golden expected outcomes for offer equivalence, comparable interest and declared-country feasibility. `MarketProcessingTest`, `MarketProcessingConcurrencyTest` and `MarketProcessingUpgradeTest` exercise the candidate HTTP/capture/complete boundary, independent Business rights, metadata confidentiality, immutable v1 meaning, v2 typed extensions, current-session/rights requalification, real contention, failure/retry and populated D1 upgrade. Verification results and limits belong to `docs/execution/market-processing/PROGRESS.md`; test existence is not PASS.
+
+This adds bounded INV-001/002/003/004/005/007 protection, not global enforcement or commercial readiness. Feasibility does not invent operational capacity/cost, source assertions do not establish market demand, and a D2 handoff is not a published D3 material or execution authority. No provider transport, background identity, subscription policy, advertiser UI or D3 publication is introduced. Existing invariant statuses retain their stated scope.

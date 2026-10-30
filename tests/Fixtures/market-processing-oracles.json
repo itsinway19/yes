@@ -1,0 +1,92 @@
+{
+  "offer": [
+    {
+      "case": "same_identity_and_terms",
+      "change": {},
+      "status": "equivalent",
+      "reason": "QUALIFIED_IDENTITY_AND_TERMS_MATCH"
+    },
+    {
+      "case": "same_label_different_model",
+      "change": {
+        "product.model": "different-model"
+      },
+      "status": "different",
+      "reason": "PRODUCT_MODEL_DIFFERS"
+    },
+    {
+      "case": "different_installation",
+      "change": {
+        "service.inclusions": [
+          "delivery"
+        ]
+      },
+      "status": "different",
+      "reason": "SERVICE_INCLUSIONS_DIFFER"
+    },
+    {
+      "case": "unknown_model",
+      "change": {
+        "product.model": null
+      },
+      "status": "unresolved",
+      "reason": "PRODUCT_IDENTITY_INCOMPLETE"
+    }
+  ],
+  "interest": [
+    {
+      "case": "increase",
+      "before": 40,
+      "after": 50,
+      "status": "comparable",
+      "delta": 10.0,
+      "percent": 25.0
+    },
+    {
+      "case": "observed_zero_after",
+      "before": 40,
+      "after": 0,
+      "status": "comparable",
+      "delta": -40.0,
+      "percent": -100.0
+    },
+    {
+      "case": "zero_baseline",
+      "before": 0,
+      "after": 50,
+      "status": "not_comparable",
+      "reason": "ZERO_BASELINE"
+    },
+    {
+      "case": "unknown_after",
+      "before": 40,
+      "after": null,
+      "status": "not_comparable",
+      "reason": "VALUE_UNKNOWN"
+    }
+  ],
+  "business": [
+    {
+      "case": "declared_country_matches",
+      "countries": [
+        "SA"
+      ],
+      "country": "SA",
+      "status": "within_declared_market"
+    },
+    {
+      "case": "country_not_declared",
+      "countries": [
+        "JO"
+      ],
+      "country": "SA",
+      "status": "outside_declared_market"
+    },
+    {
+      "case": "markets_unknown",
+      "countries": [],
+      "country": "SA",
+      "status": "requires_information"
+    }
+  ]
+}
