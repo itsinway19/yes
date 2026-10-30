@@ -65,5 +65,14 @@ final class DisposableTestDatabaseGuard
                 throw new RuntimeException("Actual test database identity or disposable marker mismatch: {$name}.");
             }
         }
+        $executor = DB::connection('pgsql_migrations')->selectOne(<<<'SQL'
+            SELECT rolcanlogin OR rolsuper OR rolbypassrls OR rolinherit OR rolcreaterole OR rolcreatedb AS unsafe,
+                pg_has_role('builderad_app', oid, 'MEMBER') OR pg_has_role('builderad_authority', oid, 'MEMBER') AS runtime_member,
+                pg_has_role('builderad_owner', oid, 'SET') AS deployer_can_set
+            FROM pg_roles WHERE rolname = 'builderad_scope_executor'
+            SQL);
+        if (! $executor || (bool) $executor->unsafe || (bool) $executor->runtime_member || ! (bool) $executor->deployer_can_set) {
+            throw new RuntimeException('Non-login Business executor or runtime/deployment membership boundary is unsafe.');
+        }
     }
 }

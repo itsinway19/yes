@@ -19,6 +19,7 @@ class DeclaredTargetMarketsDatabaseTest extends TestCase
 
         return DB::transaction(function () use ($actor, $session, $workspace, $arrayExpression, $version): int {
             app(PrincipalContext::class)->activate(User::findOrFail($actor));
+            DB::selectOne('SELECT builderad_v2_legacy_enter(?::uuid)', [$workspace->public_id]);
             DB::selectOne('SELECT builderad_business_context_begin(?,?)', [$workspace->id, $session]);
 
             // Expressions are fixed test probes, never production/user interpolation.
@@ -120,13 +121,30 @@ class DeclaredTargetMarketsDatabaseTest extends TestCase
     {
         $workspace = $this->business();
         $owner = DB::connection('pgsql_migrations');
-        $row = ['workspace_id' => $workspace->id, 'country_code' => 'SA'];
-        $owner->table('business_target_markets')->insert($row);
+        $this->assertSame(1, $this->write($workspace, "ARRAY['SA']", 0));
         $this->assertSame(1, $owner->table('business_target_markets')->count());
-        $this->denied(fn () => $owner->table('business_target_markets')->insert($row), '23505');
-        $this->denied(fn () => $owner->table('business_target_markets')->insert([...$row, 'country_code' => 'XX']), '23503');
-        $this->denied(fn () => $owner->table('country_references')->where('code', 'SA')->delete(), '23001');
-        $this->assertTrue($owner->table('country_references')->where('code', 'SA')->exists());
+        // Fixed, test-only owner probe on the caller's admitted backend: guards remain enabled,
+        // so these operations reach the actual FK/unique constraints instead of failing admission first.
+        $owner->unprepared(<<<'SQL'
+            CREATE FUNCTION public.builderad_test_dtm_constraint_probe(w bigint,c text) RETURNS void
+            LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
+            BEGIN INSERT INTO public.business_target_markets(workspace_id,country_code) VALUES(w,c); END $$;
+            REVOKE ALL ON FUNCTION public.builderad_test_dtm_constraint_probe(bigint,text) FROM PUBLIC;
+            GRANT EXECUTE ON FUNCTION public.builderad_test_dtm_constraint_probe(bigint,text) TO builderad_app;
+            SQL);
+        try {
+            $insert = fn (string $code) => DB::transaction(function () use ($workspace, $code): void {
+                app(PrincipalContext::class)->activate(auth()->user());
+                DB::selectOne('SELECT builderad_v2_legacy_enter(?::uuid)', [$workspace->public_id]);
+                DB::statement('SELECT builderad_test_dtm_constraint_probe(?,?)', [$workspace->id, $code]);
+            });
+            $this->denied(fn () => $insert('SA'), '23505');
+            $this->denied(fn () => $insert('XX'), '23503');
+            $this->denied(fn () => $owner->table('country_references')->where('code', 'SA')->delete(), '23001');
+            $this->assertTrue($owner->table('country_references')->where('code', 'SA')->exists());
+        } finally {
+            $owner->statement('DROP FUNCTION public.builderad_test_dtm_constraint_probe(bigint,text)');
+        }
     }
 
     public function test_runtime_cannot_write_reference_or_relations(): void
@@ -161,8 +179,7 @@ class DeclaredTargetMarketsDatabaseTest extends TestCase
     {
         $workspace = $this->business();
         $owner = DB::connection('pgsql_migrations');
-        $actor = $owner->table('workspace_ownerships')->where('workspace_id', $workspace->id)->value('responsible_owner_user_id');
-        $owner->statement("INSERT INTO business_target_market_events(workspace_id,actor_user_id,version,before_codes,after_codes) VALUES(?,?,1,'{}','{SA}')", [$workspace->id, $actor]);
+        $this->assertSame(1, $this->write($workspace, "ARRAY['SA']", 0));
         $this->denied(fn () => $owner->table('business_target_market_events')->update(['version' => 2]), '23514');
         $this->denied(fn () => $owner->table('business_target_market_events')->delete(), '23514');
         $this->assertSame(1, $owner->table('business_target_market_events')->count());

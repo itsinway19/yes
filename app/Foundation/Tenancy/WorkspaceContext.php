@@ -34,7 +34,16 @@ final class WorkspaceContext
         return $this->execute($principal, $workspacePublicId, $callback, $request, true);
     }
 
-    private function execute(User $principal, string $workspacePublicId, Closure $callback, Request $request, bool $businessMutation): mixed
+    public function runNativeSourceMutation(User $principal, string $workspacePublicId, string $source, Closure $callback, Request $request): mixed
+    {
+        if (! Str::isUuid($source)) {
+            throw new AuthorizationException('An exact native source is required.');
+        }
+
+        return $this->execute($principal, $workspacePublicId, $callback, $request, false, $source);
+    }
+
+    private function execute(User $principal, string $workspacePublicId, Closure $callback, Request $request, bool $businessMutation, ?string $nativeSource = null): mixed
     {
         $connection = DB::connection();
 
@@ -47,13 +56,24 @@ final class WorkspaceContext
             throw new AuthorizationException('An active workspace membership is required.');
         }
 
-        return $connection->transaction(function () use ($connection, $principal, $workspacePublicId, $callback, $request, $businessMutation) {
+        return $connection->transaction(function () use ($connection, $principal, $workspacePublicId, $callback, $request, $businessMutation, $nativeSource) {
+            $this->principals->activate($principal);
+            try {
+                if ($nativeSource !== null) {
+                    $connection->selectOne('SELECT builderad_v2_native_source_enter(?::uuid,?::uuid)', [$workspacePublicId, $nativeSource]);
+                }
+                $connection->selectOne('SELECT builderad_v2_legacy_enter(?::uuid)', [$workspacePublicId]);
+            } catch (QueryException $error) {
+                if ($error->getCode() !== '42501') {
+                    throw $error;
+                }
+                throw new AuthorizationException('Explicit scope upgrade required or collaboration unavailable.', previous: $error);
+            }
             $generation = (int) $request->session()->get('a001_generation', 0);
             if (! $this->lifecycles->isCurrent($principal, $generation)) {
                 throw new AuthorizationException('A current principal is required.');
             }
             $this->sessions->assertCurrent($request, $principal, $generation);
-            $this->principals->activate($principal);
 
             $workspace = Workspace::query()
                 ->where('public_id', $workspacePublicId)

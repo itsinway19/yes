@@ -15,11 +15,15 @@ use Illuminate\Support\Str;
 use Illuminate\Testing\Fluent\AssertableJson as Assert;
 use RuntimeException;
 use Symfony\Component\Process\Process;
+use Tests\Support\ApplicationContractAssertions;
+use Tests\Support\BusinessAuthorityFixture;
 use Tests\Support\RowLockReadiness;
 use Tests\TestCase;
 
 class SourceRegistryTest extends TestCase
 {
+    use ApplicationContractAssertions;
+
     private User $actor;
 
     private int $workspaceId;
@@ -787,6 +791,776 @@ class SourceRegistryTest extends TestCase
             foreach ($processes as $p) {
                 if ($p->isRunning()) {
                     $p->stop();
+                }
+            }
+        }
+    }
+
+    public function test_adopted_source_denies_old_native_fact_and_authority_writers_at_database_without_affecting_native_only_sources(): void
+    {
+        $this->command($this->input)->assertOk();
+        $this->command($this->transition('rename', 1, ['label' => 'Native before adoption']))->assertOk();
+        $source = $this->input['source_id'];
+        $grant = $this->owner()->table('security_action_grants')->where('source_target_id', $source)->where('action', 'source.read')->first();
+        BusinessAuthorityFixture::insert('resource_right_fences', ['fence_id' => (string) Str::uuid7(), 'kind' => 'source',
+            'source_id' => $source, 'boundary_id' => null, 'rights_epoch' => 0, 'adoption_state' => 'v2_adopted'], $this->actor->id);
+        $this->owner()->beginTransaction();
+        try {
+            $this->owner()->selectOne('SELECT id FROM security_action_grants WHERE id=? FOR UPDATE', [$grant->id]);
+            // Rejection must precede the authority child/target-row lock; its production timeout is unchanged.
+            $this->postJson('/workspaces/'.$this->workspace.'/source-grants', [...$this->grantInput('source.read'), 'decision' => 'revoke'])->assertForbidden();
+        } finally {
+            $this->owner()->rollBack();
+        }
+        $beforeReceipts = $this->owner()->table('source_command_receipts')->count();
+        $this->command($this->transition('rename', 2, ['label' => 'Stale native writer']))->assertForbidden();
+        foreach (['pgsql_migrations', 'pgsql_authority'] as $name) {
+            $this->denied(fn () => DB::connection($name)->table('security_action_grants')->where('id', $grant->id)
+                ->update(['status' => 'revoked', 'revoked_at' => now(), 'version' => 2, 'updated_at' => now()]), '42501');
+        }
+        $this->denied(fn () => $this->owner()->table('source_registry')->where('id', $source)->update(['label' => 'Direct mutation', 'version' => 3]), '42501');
+        $this->denied(fn () => $this->owner()->table('source_capabilities')->where('source_id', $source)->delete(), '42501');
+        $this->denied(fn () => $this->grantFixture('source.audit.recover', ['action' => 'source.read', 'subject_generation' => 2]), '42501');
+        $this->assertSame(1, $this->owner()->table('security_action_grants')->where('id', $grant->id)->update(['runtime_lock_marker' => true]));
+        $this->assertSame(1, $this->owner()->table('source_registry')->where('id', $source)->update(['scope_lock_marker' => true]));
+        $this->assertSame('active', $this->owner()->table('security_action_grants')->where('id', $grant->id)->value('status'));
+        $this->assertSame('Native before adoption', $this->owner()->table('source_registry')->where('id', $source)->value('label'));
+        $this->assertSame(2, $this->owner()->table('source_registry')->where('id', $source)->value('version'));
+        $this->assertSame($beforeReceipts, $this->owner()->table('source_command_receipts')->count());
+        $this->assertSame(1, $this->owner()->table('source_capabilities')->where('source_id', $source)->count());
+        $this->input = [...$this->input, 'source_id' => (string) Str::uuid7(), 'command_id' => (string) Str::uuid(), 'external_id' => 'independent-native-source'];
+        $this->grantFixture('source.register');
+        $this->grantFixture('source.read');
+        $this->command($this->input)->assertOk();
+        $this->assertSame(2, $this->owner()->table('source_registry')->count());
+    }
+
+    public function test_source_owner_adopts_without_issuing_business_rights_and_reconciles_the_exact_command(): void
+    {
+        $native = $this->command($this->input)->assertOk()->json();
+        $this->getJson('/workspaces/'.$this->workspace)->assertOk()->assertJsonPath('data.sources.items.0.can_manage', true);
+        $body = $this->adoptionBody();
+        $before = $this->owner()->table('security_action_grants')->count();
+        $result = $this->postJson('/api/data-rights/commands', $body)->assertOk()
+            ->assertJsonPath('data.source_id', $this->input['source_id'])
+            ->assertJsonPath('data.adoption_state', 'v2_adopted')->assertJsonPath('data.versions.source', 1)
+            ->assertJsonPath('data.versions.rights_epoch', 1);
+        $this->assertApplicationContract('BusinessResourceRightResult', $result->json());
+        $this->postJson('/api/data-rights/commands', $body)->assertOk()->assertExactJson($result->json());
+        $this->getJson('/workspaces/'.$this->workspace)->assertOk()->assertJsonPath('data.sources.items.0.can_manage', false)
+            ->assertJsonPath('data.sources.items.0.scope_choices', []);
+        $this->assertSame($before, $this->owner()->table('security_action_grants')->count());
+        $this->assertSame(0, $this->owner()->table('businesses')->count());
+        $this->assertSame(1, $this->owner()->table('business_command_receipts')->where('command_id', $body['command_id'])->count());
+        $this->assertSame($native, json_decode($this->owner()->table('source_command_receipts')->where('command_id', $this->input['command_id'])->value('result'), true));
+        $this->command($this->transition('rename', 1, ['label' => 'Stale native writer']))->assertForbidden();
+        $this->postJson('/workspaces/'.$this->workspace.'/source-grants', $this->grantInput('source.read'))->assertForbidden();
+        $body['command_id'] = (string) Str::uuid();
+        $this->postJson('/api/data-rights/commands', $body)->assertConflict();
+        $this->assertSame('UNVERIFIED', $this->owner()->table('source_registry')->value('status'));
+        $this->assertSame(1, $this->owner()->table('source_versions')->count());
+    }
+
+    public function test_source_adoption_rejects_wrong_capability_stale_owner_and_unqualified_payload_without_effects(): void
+    {
+        $this->command($this->input)->assertOk();
+        $body = $this->adoptionBody();
+        $read = $this->owner()->table('security_action_grants')->where('source_target_id', $this->input['source_id'])->where('action', 'source.read')->value('id');
+        $wrong = $body;
+        $wrong['authority_selection']['requirements'][0]['leaf_grant_id'] = $read;
+        $this->postJson('/api/data-rights/commands', $wrong)->assertForbidden();
+        $wrong = $body;
+        $wrong['expected_revision'] = 2;
+        $this->postJson('/api/data-rights/commands', $wrong)->assertConflict();
+        $wrong = $body;
+        $wrong['payload'] = (object) ['business_public_id' => (string) Str::uuid7()];
+        $this->postJson('/api/data-rights/commands', $wrong)->assertUnprocessable();
+        $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['authenticated_at' => now()->subHour()]);
+        $this->postJson('/api/data-rights/commands', $body)->assertForbidden();
+        $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['authenticated_at' => now()]);
+        $this->owner()->table('workspace_ownerships')->where('workspace_id', $this->workspaceId)->update(['responsible_owner_user_id' => User::factory()->create()->id, 'version' => 2]);
+        $this->postJson('/api/data-rights/commands', $body)->assertForbidden();
+        $this->assertSame(0, $this->owner()->table('resource_right_fences')->count());
+        $this->assertSame(0, $this->owner()->table('business_command_receipts')->count());
+    }
+
+    public function test_native_source_authority_cannot_write_without_its_admission_or_use_it_after_adoption(): void
+    {
+        $this->command($this->input)->assertOk();
+        $source = $this->input['source_id'];
+        $grant = $this->owner()->table('security_action_grants')->where('source_target_id', $source)->where('action', 'source.read')->first();
+        $authority = DB::connection('pgsql_authority');
+        $this->denied(fn () => $authority->table('security_action_grants')->where('id', $grant->id)
+            ->update(['status' => 'revoked', 'revoked_at' => now(), 'version' => 2, 'updated_at' => now()]), '42501');
+        $unrelated = (string) Str::uuid7();
+        $this->denied(fn () => $authority->transaction(function () use ($authority, $unrelated, $grant): void {
+            $authority->scalar('SELECT builderad_v2_native_source_authority_enter(?::uuid)', [$unrelated]);
+            $authority->table('security_action_grants')->where('id', $grant->id)->update(['source_target_id' => $unrelated, 'version' => 2, 'updated_at' => now()]);
+        }), '42501');
+        $this->denied(fn () => DB::scalar('SELECT builderad_v2_native_source_authority_enter(?::uuid)', [$source]), '42501');
+        $this->postJson('/api/data-rights/commands', $this->adoptionBody())->assertOk();
+        $this->denied(fn () => $authority->transaction(fn () => $authority->scalar('SELECT builderad_v2_native_source_authority_enter(?::uuid)', [$source])), '42501');
+        $this->assertSame('active', $this->owner()->table('security_action_grants')->where('id', $grant->id)->value('status'));
+    }
+
+    public function test_protected_source_administration_surface_preserves_its_exact_native_scope(): void
+    {
+        $this->command($this->input)->assertOk();
+        $body = $this->adoptionBody();
+        $access = $body['authority_selection']['requirements'][0]['leaf_grant_id'];
+        $list = $this->getJson('/api/source-rights')->assertOk()->assertJsonCount(1, 'data.sources');
+        $this->assertApplicationContract('NativeSourceChoicesResult', $list->json());
+        $url = '/api/source-rights/'.$this->input['source_id'].'?access='.$access;
+        $surface = $this->getJson($url)->assertOk()->assertJsonPath('data.source.adopted', false)
+            ->assertJsonPath('data.source.label', $this->input['label'])->assertJsonPath('data.can_command', true);
+        $this->assertApplicationContract('NativeSourceSurfaceResult', $surface->json());
+        $this->assertArrayNotHasKey('declared_external_id', $surface->json('data.source'));
+        $this->getJson('/source-rights/'.$this->input['source_id'].'?access='.$access)->assertOk()->assertJsonPath('visibility.protected', true);
+        $this->getJson('/api/source-rights/'.Str::uuid7().'?access='.$access)->assertForbidden();
+        $read = $this->owner()->table('security_action_grants')->where('source_target_id', $this->input['source_id'])->where('action', 'source.read')->value('id');
+        $this->getJson('/api/source-rights/'.$this->input['source_id'].'?access='.$read)->assertForbidden();
+        $this->postJson('/api/data-rights/commands', $body)->assertOk();
+        $this->getJson($url)->assertOk()->assertJsonPath('data.source.adopted', true);
+        $this->assertSame(0, $this->owner()->table('businesses')->count());
+        $this->assertSame(0, $this->owner()->table('data_use_scopes')->count());
+        $this->owner()->table('workspace_ownerships')->where('workspace_id', $this->workspaceId)->update(['responsible_owner_user_id' => User::factory()->create()->id, 'version' => 2]);
+        $this->getJson($url)->assertForbidden();
+        $this->getJson('/api/source-rights')->assertOk()->assertJsonCount(0, 'data.sources');
+    }
+
+    public function test_protected_source_rename_reuses_native_history_and_retains_exact_idempotence(): void
+    {
+        $this->command($this->input)->assertOk();
+        $adopt = $this->adoptionBody();
+        $this->postJson('/api/data-rights/commands', $adopt)->assertOk();
+        $rename = [...$adopt, 'command_id' => (string) Str::uuid(), 'effect' => 'rename', 'payload' => ['label' => 'Qualified new source name', 'reason' => 'explicit_source_label']];
+        $first = $this->postJson('/api/data-rights/commands', $rename)->assertOk()->assertJsonPath('data.versions.source', 2)->json();
+        $this->assertApplicationContract('BusinessResourceRightResult', $first);
+        $this->postJson('/api/data-rights/commands', $rename)->assertOk()->assertExactJson($first);
+        $this->postJson('/api/data-rights/commands', [...$rename, 'payload' => ['label' => 'Changed uncertain command', 'reason' => 'explicit_source_label']])->assertConflict();
+        $this->postJson('/api/data-rights/commands', [...$rename, 'command_id' => (string) Str::uuid()])->assertConflict();
+        $this->postJson('/api/data-rights/commands', [...$rename, 'command_id' => (string) Str::uuid(), 'expected_revision' => 2, 'payload' => ['label' => ' ', 'reason' => 'explicit_source_label']])->assertUnprocessable();
+        $this->command($this->transition('rename', 2, ['label' => 'Legacy bypass']))->assertForbidden();
+        $this->assertSame('Qualified new source name', $this->owner()->table('source_registry')->value('label'));
+        $this->assertSame(2, $this->owner()->table('source_versions')->count());
+        $this->assertSame(2, $this->owner()->table('source_audit_obligations')->count());
+        $this->assertSame(2, $this->owner()->table('source_command_receipts')->count());
+        $this->assertSame('rename', $this->owner()->table('source_command_receipts')->orderByDesc('decided_at')->value('effect'));
+        $this->assertSame(2, $this->owner()->table('resource_right_fences')->value('rights_epoch'));
+    }
+
+    public function test_protected_source_rename_rolls_back_when_freshness_expires_during_final_receipt_wait(): void
+    {
+        $this->assertSourceFinalFreshness('rename');
+    }
+
+    public function test_source_surface_rechecks_responsible_owner_after_actual_rights_fence_wait(): void
+    {
+        $this->assertSourceReaderPostWait('source-surface');
+    }
+
+    public function test_source_choices_rechecks_responsible_owner_after_actual_rights_fence_wait(): void
+    {
+        $this->assertSourceReaderPostWait('source-choices');
+    }
+
+    private function assertSourceReaderPostWait(string $operation): void
+    {
+        $this->command($this->input)->assertOk();
+        $body = $this->adoptionBody();
+        $this->postJson('/api/data-rights/commands', $body)->assertOk();
+        $access = $body['authority_selection']['requirements'][0]['leaf_grant_id'];
+        $run = $operation.'-withdrawal-'.Str::uuid();
+        $path = storage_path('framework/testing/'.$run.'.json');
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0755, true);
+        }
+        $release = $path.'.release';
+        file_put_contents($path, json_encode(['actor' => $this->actor->id, 'run' => $run, 'operation' => $operation, 'source' => $this->input['source_id'],
+            'read_grant' => $access, 'session' => SessionAuthority::sessionKey($this->request()), 'release' => $release], JSON_THROW_ON_ERROR));
+        $worker = new Process([PHP_BINARY, base_path('tests/BusinessScopeCommandWorker.php'), $path], base_path());
+        $worker->setTimeout(45);
+        $db = $this->owner();
+        $other = User::factory()->create();
+        $evidence = ['run' => $run];
+        $wait = function (callable $probe) use ($worker) {
+            $deadline = microtime(true) + 15;
+            do {
+                if ($result = $probe()) {
+                    return $result;
+                }
+                if (! $worker->isRunning()) {
+                    throw new RuntimeException($worker->getOutput().$worker->getErrorOutput());
+                }
+                usleep(10000);
+            } while (microtime(true) < $deadline);
+            throw new RuntimeException('Required actual source read contention not witnessed.');
+        };
+        try {
+            $worker->start();
+            $wait(fn () => str_contains($worker->getOutput(), 'READY_PID='));
+            $db->beginTransaction();
+            $blocker = (int) $db->scalar('SELECT pg_backend_pid()');
+            $db->select("SELECT fence_id FROM resource_right_fences WHERE kind='source' AND source_id=?::uuid FOR UPDATE", [$this->input['source_id']]);
+            file_put_contents($release, 'go');
+            $evidence['wait'] = $wait(fn () => DB::selectOne('SELECT pid,backend_xid::text xid,wait_event_type,wait_event,pg_blocking_pids(pid)::text blockers FROM pg_stat_activity WHERE application_name=? AND ?=ANY(pg_blocking_pids(pid))', [$run, $blocker]));
+            // The reader is at K1. Its actor's K4 identity must still be unlocked.
+            // NOWAIT turns a backward lock into a decisive failure, never a deadlock.
+            $db->transaction(fn () => $db->select('SELECT user_id FROM principal_lifecycles WHERE user_id=? FOR UPDATE NOWAIT', [$this->actor->id]));
+            $evidence['identity_lock_available_while_reader_waited'] = true;
+            $db->table('workspace_ownerships')->where('workspace_id', $this->workspaceId)->update(['responsible_owner_user_id' => $other->id, 'version' => 2]);
+            $db->commit();
+            $worker->wait();
+            $this->assertSame($operation === 'source-surface' ? 2 : 0, $worker->getExitCode(), $worker->getOutput().$worker->getErrorOutput());
+            if ($operation === 'source-surface') {
+                $this->assertStringContainsString('DENIED_STATE=42501', $worker->getOutput());
+                $this->assertStringNotContainsString('COMMITTED=', $worker->getOutput());
+            } else {
+                $this->assertStringContainsString('COMMITTED=', $worker->getOutput());
+                $this->assertStringContainsString('"sources": []', $worker->getOutput());
+            }
+            $this->assertStringNotContainsString('Declared account', $worker->getOutput());
+        } finally {
+            if ($db->transactionLevel() > 0) {
+                $db->rollBack();
+            }
+            if ($worker->isRunning()) {
+                $worker->stop();
+            }
+            $evidence['worker'] = ['stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput(), 'exit' => $worker->getExitCode()];
+            file_put_contents(storage_path('framework/testing/'.$run.'-evidence.json'), json_encode($evidence, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+            foreach ([$path, $release] as $file) {
+                if (is_file($file)) {
+                    unlink($file);
+                }
+            }
+        }
+    }
+
+    public function test_source_issue_receipt_cannot_be_reinterpreted_under_another_native_capability(): void
+    {
+        $this->command($this->input)->assertOk();
+        $this->grantFixture('source.manage', ['source_operation' => 'discovery.read']);
+        $this->command($this->transition('declare_scope', 1, ['operation' => 'discovery.read']))->assertOk();
+        $body = [...$this->adoptionBody(), 'expected_revision' => 2];
+        $this->postJson('/api/data-rights/commands', $body)->assertOk();
+        $read = $this->owner()->table('security_action_grants')->where('source_target_id', $this->input['source_id'])->where('action', 'source.read')->value('id');
+        $this->postJson('/api/data-rights/commands', [...$body, 'command_id' => (string) Str::uuid(), 'effect' => 'revoke', 'expected_revision' => 1, 'payload' => ['grant_id' => (string) $read]])->assertOk();
+        $issue = [...$body, 'command_id' => (string) Str::uuid(), 'effect' => 'qualify_issue', 'expected_revision' => 0,
+            'payload' => ['action' => 'source.read', 'reason' => 'explicit_source_right', 'expires_at' => null]];
+        $first = $this->postJson('/api/data-rights/commands', $issue)->assertOk()->json();
+        $other = $this->owner()->table('security_action_grants')->where('source_target_id', $this->input['source_id'])->where('action', 'source.manage')->where('source_operation', 'discovery.read')->value('id');
+        $changed = $issue;
+        $changed['authority_selection']['requirements'][0]['leaf_grant_id'] = $other;
+        $this->postJson('/api/data-rights/commands', $changed)->assertConflict();
+        $this->postJson('/api/data-rights/commands', $issue)->assertOk()->assertExactJson($first);
+        $this->assertSame(0, $this->owner()->table('security_action_grants')->where('source_target_id', $this->input['source_id'])->where('source_operation', 'discovery.read')->where('action', 'source.read')->count());
+        $changed['command_id'] = (string) Str::uuid();
+        $second = $this->postJson('/api/data-rights/commands', $changed)->assertOk()->json('data.grant_id');
+        $this->assertNotSame($first['data']['grant_id'], $second);
+        $this->assertSame('discovery.read', $this->owner()->table('security_action_grants')->where('id', $second)->value('source_operation'));
+    }
+
+    public function test_adopted_source_declares_only_its_independently_qualified_new_capability_through_the_native_writer(): void
+    {
+        $this->command($this->input)->assertOk();
+        $this->grantFixture('source.manage', ['source_operation' => 'discovery.read']);
+        $adopt = $this->adoptionBody();
+        $this->postJson('/api/data-rights/commands', $adopt)->assertOk();
+        $access = $this->owner()->table('security_action_grants')->where('source_target_id', $this->input['source_id'])->where('action', 'source.manage')->where('source_operation', 'discovery.read')->value('id');
+        $url = '/api/source-rights/'.$this->input['source_id'].'?access='.$access;
+        $this->getJson('/api/source-rights')->assertOk()->assertJsonCount(2, 'data.sources');
+        $this->getJson($url)->assertOk()->assertJsonPath('data.source.scope_declared', false);
+        $declare = [...$adopt, 'command_id' => (string) Str::uuid(), 'effect' => 'declare_scope', 'payload' => ['reason' => 'explicit_native_scope']];
+        $declare['authority_selection']['requirements'][0]['leaf_grant_id'] = $access;
+        $first = $this->postJson('/api/data-rights/commands', $declare)->assertOk()->assertJsonPath('data.versions.source', 2)->json();
+        $this->assertApplicationContract('BusinessResourceRightResult', $first);
+        $this->postJson('/api/data-rights/commands', $declare)->assertOk()->assertExactJson($first);
+        $this->getJson($url)->assertOk()->assertJsonPath('data.source.scope_declared', true)->assertJsonPath('data.source.operation', 'discovery.read');
+        $this->postJson('/api/data-rights/commands', [...$declare, 'command_id' => (string) Str::uuid(), 'expected_revision' => 2, 'payload' => ['reason' => 'explicit_native_scope', 'operation' => 'unauthorized.scope']])->assertUnprocessable();
+        $this->command($this->transition('declare_scope', 2, ['operation' => 'discovery.read']))->assertForbidden();
+        $this->assertSame(2, $this->owner()->table('source_capabilities')->count());
+        $this->assertSame(2, $this->owner()->table('source_versions')->count());
+        $this->assertSame(2, $this->owner()->table('source_audit_obligations')->count());
+        $this->assertSame(0, $this->owner()->table('businesses')->count());
+        $this->assertSame(0, $this->owner()->table('data_use_scopes')->count());
+    }
+
+    private function adoptionBody(): array
+    {
+        $grant = $this->owner()->table('security_action_grants')->where('source_target_id', $this->input['source_id'])->where('action', 'source.manage')->value('id');
+
+        return ['command_id' => (string) Str::uuid(), 'target_kind' => 'source', 'target_ref' => $this->input['source_id'], 'effect' => 'adopt',
+            'payload' => (object) [], 'expected_revision' => 1, 'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+                'requirements' => [['requirement_kind' => 'native_source', 'leaf_grant_id' => $grant]]]];
+    }
+
+    public function test_adopted_source_native_owner_issues_revokes_and_reissues_an_exact_right_atomically(): void
+    {
+        $this->command($this->input)->assertOk();
+        $adopt = $this->adoptionBody();
+        $this->postJson('/api/data-rights/commands', $adopt)->assertOk();
+        $read = $this->owner()->table('security_action_grants')->where('source_target_id', $this->input['source_id'])->where('action', 'source.read')->sole();
+        $revoke = [...$adopt, 'command_id' => (string) Str::uuid(), 'effect' => 'revoke', 'payload' => ['grant_id' => (string) $read->id]];
+        $this->postJson('/api/data-rights/commands', $revoke)->assertOk();
+        $issue = [...$adopt, 'command_id' => (string) Str::uuid(), 'effect' => 'qualify_issue', 'expected_revision' => 0,
+            'payload' => ['action' => 'source.read', 'reason' => 'explicit_native_owner', 'expires_at' => now()->addHour()->toIso8601String()]];
+        $issued = $this->postJson('/api/data-rights/commands', $issue)->assertOk()->assertJsonPath('data.status', 'active');
+        $this->assertApplicationContract('BusinessResourceRightResult', $issued->json());
+        $this->postJson('/api/data-rights/commands', $issue)->assertOk()->assertExactJson($issued->json());
+        $id = $issued->json('data.grant_id');
+        $this->assertNotSame($read->id, $id);
+        $grant = $this->owner()->table('security_action_grants')->where('id', $id)->sole();
+        $this->assertSame($this->actor->id, $grant->subject_user_id);
+        $this->assertSame($this->actor->id, $grant->granted_by);
+        $this->assertNull($grant->business_id);
+        $this->assertNull($grant->qualification_id);
+        $this->assertNull($grant->parent_grant_id);
+        $this->assertSame($this->input['resource'], $grant->source_resource);
+        $this->assertSame(3, $this->owner()->table('resource_right_fences')->value('rights_epoch'));
+        $duplicate = [...$issue, 'command_id' => (string) Str::uuid()];
+        $this->postJson('/api/data-rights/commands', $duplicate)->assertConflict();
+        $duplicate['payload']['business_public_id'] = (string) Str::uuid7();
+        $this->postJson('/api/data-rights/commands', $duplicate)->assertUnprocessable();
+        $revoke['command_id'] = (string) Str::uuid();
+        $revoke['payload']['grant_id'] = (string) $id;
+        $this->postJson('/api/data-rights/commands', $revoke)->assertOk();
+        $issue['command_id'] = (string) Str::uuid();
+        $this->postJson('/api/data-rights/commands', $issue)->assertOk();
+        $this->assertSame('revoked', $this->owner()->table('security_action_grants')->where('id', $id)->value('status'));
+        $this->assertSame(1, $this->owner()->table('security_action_grants')->where('source_target_id', $this->input['source_id'])->where('action', 'source.read')->where('status', 'active')->count());
+        $this->assertSame(5, $this->owner()->table('resource_right_fences')->value('rights_epoch'));
+    }
+
+    public function test_adoption_drains_a_real_native_writer_before_accepting_its_committed_source_version(): void
+    {
+        $this->assertAdoptionWait(false);
+    }
+
+    public function test_adoption_rechecks_withdrawn_manager_after_its_native_admission_wait(): void
+    {
+        $this->assertAdoptionWait(true);
+    }
+
+    public function test_late_native_provider_admission_denies_instead_of_waiting_backwards_behind_adoption(): void
+    {
+        $this->assertAdoptionWait(false, true);
+    }
+
+    public function test_adoption_rejects_a_selected_grant_retargeted_to_another_source_during_the_wait(): void
+    {
+        $this->assertAdoptionWait(true, identityChange: 'source');
+    }
+
+    public function test_adoption_rejects_a_selected_manager_downgraded_to_read_during_the_wait(): void
+    {
+        $this->assertAdoptionWait(true, identityChange: 'action');
+    }
+
+    public function test_source_adoption_rolls_back_if_owner_freshness_expires_at_the_final_receipt_wait(): void
+    {
+        $this->assertSourceFinalFreshness('adopt');
+    }
+
+    public function test_source_issuance_rolls_back_new_grant_and_epoch_if_freshness_expires_at_the_final_receipt_wait(): void
+    {
+        $this->assertSourceFinalFreshness('qualify_issue');
+    }
+
+    public function test_protected_source_retirement_preserves_native_history_and_records_one_audit_obligation(): void
+    {
+        $this->command($this->input)->assertOk();
+        $adopt = $this->adoptionBody();
+        $this->postJson('/api/data-rights/commands', $adopt)->assertOk();
+        $retire = [...$adopt, 'command_id' => (string) Str::uuid(), 'effect' => 'retire', 'payload' => ['reason' => 'explicit_native_retirement']];
+        $result = $this->postJson('/api/data-rights/commands', $retire)->assertOk()
+            ->assertJsonPath('data.versions.source', 2)->assertJsonPath('data.status', 'REVOKED')->assertJsonPath('data.native_receipt.local_audit', 'DURABLE');
+        $this->assertApplicationContract('BusinessResourceRightResult', $result->json());
+        $this->postJson('/api/data-rights/commands', $retire)->assertOk()->assertExactJson($result->json());
+        $db = $this->owner();
+        foreach (['source_command_receipts', 'source_versions', 'source_audit_obligations', 'source_audit_delivery'] as $table) {
+            $this->assertSame(2, $db->table($table)->count());
+        }
+        $this->assertSame(1, $db->table('source_registry')->count());
+        $this->assertSame(1, $db->table('source_capabilities')->count());
+        $this->assertSame(2, $db->table('resource_right_fences')->value('rights_epoch'));
+        $this->assertSame(4, $db->table('security_action_grants')->where('scope_kind', 'source')->where('status', 'active')->count()); // Metadata retirement does not silently revoke independent licences.
+        $this->assertSame(1, $db->table('source_versions')->where('version', 1)->count());
+        $retire['command_id'] = (string) Str::uuid();
+        $retire['expected_revision'] = 2;
+        $this->postJson('/api/data-rights/commands', $retire)->assertUnprocessable();
+        $this->assertSame(2, $db->table('source_versions')->count());
+        $this->command($this->transition('rename', 2, ['label' => 'Cannot revive native source']))->assertForbidden();
+        $this->denied(fn () => $db->table('source_audit_obligations')->insert(['id' => (string) Str::uuid7(), 'workspace_id' => $this->workspaceId,
+            'source_id' => $this->input['source_id'], 'command_id' => $this->input['command_id'], 'envelope' => '{}', 'fingerprint' => str_repeat('0', 64)]), '42501');
+    }
+
+    public function test_source_retirement_rolls_back_facts_history_and_audit_if_freshness_expires_at_the_final_receipt_wait(): void
+    {
+        $this->assertSourceFinalFreshness('retire');
+    }
+
+    public function test_retired_source_can_coordinate_existing_rights_and_authorize_cleanup_without_reviving_registration(): void
+    {
+        $this->command($this->input)->assertOk();
+        $this->command($this->transition('revoke', 1))->assertOk();
+        $body = [...$this->adoptionBody(), 'expected_revision' => 2];
+        $this->postJson('/api/data-rights/commands', $body)->assertOk()->assertJsonPath('data.versions.source', 2);
+        $issue = [...$body, 'command_id' => (string) Str::uuid(), 'effect' => 'qualify_issue', 'expected_revision' => 0,
+            'payload' => ['action' => 'provider.revoke', 'reason' => 'explicit_local_custody_cleanup', 'expires_at' => null]];
+        $this->postJson('/api/data-rights/commands', $issue)->assertOk()->assertJsonPath('data.status', 'active');
+        $this->assertSame('REVOKED', $this->owner()->table('source_registry')->value('status'));
+        $this->assertSame(2, $this->owner()->table('source_registry')->value('version'));
+        $this->assertSame(2, $this->owner()->table('source_versions')->count());
+        $this->assertSame(0, $this->owner()->table('businesses')->count());
+        $this->assertSame(0, $this->owner()->table('security_source_audit_custody')->count());
+    }
+
+    private function assertSourceFinalFreshness(string $effect): void
+    {
+        $this->command($this->input)->assertOk();
+        $body = $this->adoptionBody();
+        $db = $this->owner();
+        if ($effect !== 'adopt') {
+            $this->postJson('/api/data-rights/commands', $body)->assertOk();
+        }
+        if ($effect === 'retire') {
+            $body = [...$body, 'command_id' => (string) Str::uuid(), 'effect' => 'retire', 'payload' => ['reason' => 'native_freshness_test']];
+        } elseif ($effect === 'rename') {
+            $body = [...$body, 'command_id' => (string) Str::uuid(), 'effect' => 'rename', 'payload' => ['label' => 'Must roll back after wait', 'reason' => 'native_freshness_test']];
+        } elseif ($effect === 'qualify_issue') {
+            $read = $db->table('security_action_grants')->where('source_target_id', $this->input['source_id'])->where('action', 'source.read')->value('id');
+            $this->postJson('/api/data-rights/commands', [...$body, 'command_id' => (string) Str::uuid(), 'effect' => 'revoke', 'payload' => ['grant_id' => (string) $read]])->assertOk();
+            $body = [...$body, 'command_id' => (string) Str::uuid(), 'effect' => $effect, 'expected_revision' => 0,
+                'payload' => ['action' => 'source.read', 'reason' => 'native_freshness_test', 'expires_at' => null]];
+        }
+        $run = 'source-final-'.$effect.'-'.Str::uuid();
+        $file = storage_path('framework/testing/'.$run.'.json');
+        $release = $file.'.release';
+        file_put_contents($file, json_encode(['actor' => $this->actor->id, 'run' => $run, 'session' => SessionAuthority::sessionKey($this->request()),
+            'command' => $body['command_id'], 'release' => $release, 'operation' => 'resource', 'kind' => 'source', 'target' => $body['target_ref'],
+            'effect' => $effect, 'payload' => (object) $body['payload'], 'expected' => $body['expected_revision'], 'selection' => $body['authority_selection']], JSON_THROW_ON_ERROR));
+        $worker = new Process([PHP_BINARY, base_path('tests/BusinessScopeCommandWorker.php'), $file], base_path());
+        $worker->setTimeout(45);
+        $snapshot = fn () => array_map(fn ($table) => $db->scalar("SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]'::jsonb)::text FROM {$table} r"),
+            ['security_action_grants', 'resource_right_fences', 'source_registry', 'source_capabilities', 'source_command_receipts', 'source_versions', 'source_audit_obligations', 'source_audit_delivery']);
+        $before = $snapshot();
+        $wait = function (callable $probe) use ($worker): mixed {
+            $deadline = microtime(true) + 15;
+            do {
+                if ($value = $probe()) {
+                    return $value;
+                }
+                if (! $worker->isRunning()) {
+                    $this->fail('Source final-wait worker exited: '.$worker->getOutput().$worker->getErrorOutput());
+                }
+                usleep(10000);
+            } while (microtime(true) < $deadline);
+            $this->fail('Actual source final receipt wait was not observed.');
+        };
+        $evidence = ['run' => $run, 'effect' => $effect];
+        try {
+            $worker->start();
+            $wait(fn () => str_contains($worker->getOutput(), 'READY_PID='));
+            $db->table('security_sessions')->where('user_id', $this->actor->id)
+                ->update(['authenticated_at' => DB::raw("clock_timestamp()-interval '15 minutes'+interval '2 seconds'")]);
+            $until = $db->scalar("SELECT (authenticated_at+interval '15 minutes')::text FROM security_sessions WHERE user_id=? ORDER BY authenticated_at DESC LIMIT 1", [$this->actor->id]);
+            $db->beginTransaction();
+            $db->statement('LOCK TABLE business_command_receipts IN SHARE MODE');
+            file_put_contents($release, 'release');
+            $evidence['waiter'] = $wait(function () use ($run) {
+                return DB::selectOne("SELECT a.pid,a.backend_xid::text AS xid,a.wait_event_type,a.wait_event,pg_blocking_pids(a.pid)::text AS blockers,l.mode,l.relation::regclass::text AS relation
+                    FROM pg_stat_activity a JOIN pg_locks l ON l.pid=a.pid WHERE a.application_name=? AND a.wait_event_type='Lock' AND l.relation='business_command_receipts'::regclass AND NOT l.granted", [$run]);
+            });
+            $this->assertSame('RowExclusiveLock', $evidence['waiter']->mode);
+            $wait(fn () => (bool) DB::scalar('SELECT clock_timestamp()>?::timestamptz', [$until]));
+            $db->rollBack();
+            $worker->wait();
+            $this->assertSame(2, $worker->getExitCode(), $worker->getOutput().$worker->getErrorOutput());
+            $this->assertStringContainsString('DENIED_STATE=42501', $worker->getOutput());
+            $this->assertStringContainsString('Current native source ownership, session and exact grant required', $worker->getOutput());
+            $this->assertSame($before, $snapshot());
+            $this->assertSame(0, $db->table('business_command_receipts')->where('command_id', $body['command_id'])->count());
+        } finally {
+            if ($db->transactionLevel() > 0) {
+                $db->rollBack();
+            }
+            if ($worker->isRunning()) {
+                $worker->stop();
+            }
+            $evidence['worker'] = ['exit' => $worker->getExitCode(), 'stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput()];
+            file_put_contents(storage_path('framework/testing/'.$run.'-evidence.json'), json_encode($evidence, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+            foreach ([$file, $release] as $owned) {
+                if (is_file($owned)) {
+                    unlink($owned);
+                }
+            }
+        }
+    }
+
+    private function assertAdoptionWait(bool $withdraw, bool $lateNativeAdmission = false, ?string $identityChange = null): void
+    {
+        $this->command($this->input)->assertOk();
+        $body = $this->adoptionBody();
+        if ($identityChange === 'action') {
+            // The disposable deployment role models an independent pre-adoption administrative change.
+            $this->owner()->table('security_action_grants')->where('source_target_id', $this->input['source_id'])->where('action', 'source.read')->delete();
+        }
+        $request = $this->request();
+        $run = 'source-adoption-'.Str::uuid();
+        $dir = storage_path('framework/testing');
+        $file = $dir.'/'.$run.'.json';
+        $release = $dir.'/'.$run.'.release';
+        file_put_contents($file, json_encode(['actor' => $this->actor->id, 'run' => $run, 'session' => SessionAuthority::sessionKey($request),
+            'command' => $body['command_id'], 'release' => $release, 'operation' => 'resource', 'kind' => 'source', 'target' => $body['target_ref'],
+            'effect' => 'adopt', 'payload' => [], 'expected' => $withdraw || $lateNativeAdmission ? 1 : 2, 'selection' => $body['authority_selection']], JSON_THROW_ON_ERROR));
+        $worker = new Process([PHP_BINARY, base_path('tests/BusinessScopeCommandWorker.php'), $file], base_path());
+        $worker->setTimeout(45);
+        $observer = DB::build(config('database.connections.pgsql'));
+        $evidence = ['run' => $run, 'withdrawn_while_waiting' => $withdraw, 'late_native_admission' => $lateNativeAdmission, 'identity_change' => $identityChange];
+        $wait = function (callable $probe) use ($worker): mixed {
+            $deadline = microtime(true) + 25;
+            do {
+                if ($value = $probe()) {
+                    return $value;
+                }
+                if (! $worker->isRunning()) {
+                    $this->fail('Source adoption worker exited: '.$worker->getOutput().$worker->getErrorOutput());
+                }
+                usleep(10000);
+            } while (microtime(true) < $deadline);
+            $this->fail('Actual source adoption admission wait was not observed.');
+        };
+        try {
+            $observer->getPdo();
+            $worker->start();
+            $wait(fn () => str_contains($worker->getOutput(), 'READY_PID='));
+            DB::beginTransaction();
+            app(PrincipalContext::class)->activate($this->actor);
+            if (! $lateNativeAdmission) {
+                DB::selectOne('SELECT builderad_v2_native_source_enter(?::uuid,?::uuid)', [$this->workspace, $this->input['source_id']]);
+            }
+            $holder = DB::scalar('SELECT pg_backend_pid()');
+            if (! $withdraw) {
+                DB::selectOne('SELECT builderad_v2_legacy_enter(?::uuid)', [$this->workspace]);
+                DB::selectOne('SELECT builderad_select_workspace_context(?)', [$this->workspaceId]);
+                if ($lateNativeAdmission) {
+                    $this->assertNotNull(DB::selectOne('SELECT id FROM security_action_grants WHERE id=? FOR UPDATE', [$body['authority_selection']['requirements'][0]['leaf_grant_id']]));
+                }
+                if (! $lateNativeAdmission) {
+                    DB::scalar('SELECT builderad_source_command(?,?,?::uuid,?::uuid,?,?::jsonb)', [$this->workspaceId, SessionAuthority::sessionKey($request),
+                        (string) Str::uuid(), $this->input['source_id'], 'rename', json_encode(['resource' => $this->input['resource'], 'operation' => $this->input['operation'],
+                            'purpose' => $this->input['purpose'], 'expected_version' => 1, 'reason' => 'native_drain_test', 'label' => 'Committed before adoption'])]);
+                }
+            }
+            file_put_contents($release, 'release');
+            $evidence['waiter'] = $wait(function () use ($observer, $run, $holder, $lateNativeAdmission) {
+                $row = $observer->selectOne('SELECT pid,backend_xid::text AS xid,wait_event_type,wait_event,pg_blocking_pids(pid)::text AS blockers FROM pg_stat_activity WHERE application_name=?', [$run]);
+
+                return $row?->wait_event_type === 'Lock' && ($lateNativeAdmission || $row->wait_event === 'advisory') && str_contains($row->blockers, (string) $holder) ? $row : false;
+            });
+            if ($lateNativeAdmission) {
+                $evidence['adoption_gate'] = $observer->select("SELECT mode,granted FROM pg_locks WHERE pid=? AND locktype='advisory' AND mode='ExclusiveLock' AND granted", [$evidence['waiter']->pid]);
+                $this->assertNotEmpty($evidence['adoption_gate']);
+                $this->denied(fn () => DB::transaction(fn () => DB::scalar('SELECT builderad_v2_legacy_source_grant_guard(?::uuid)', [$this->input['source_id']])), '42501');
+            }
+            if ($withdraw) {
+                $this->owner()->table('security_action_grants')->where('id', $body['authority_selection']['requirements'][0]['leaf_grant_id'])
+                    ->update(match ($identityChange) {
+                        'source' => ['source_target_id' => (string) Str::uuid7(), 'version' => 2, 'updated_at' => now()],
+                        'action' => ['action' => 'source.read', 'version' => 2, 'updated_at' => now()],
+                        default => ['status' => 'revoked', 'revoked_at' => now(), 'version' => 2, 'updated_at' => now()],
+                    });
+            }
+            DB::commit();
+            $worker->wait();
+            $this->assertSame($withdraw ? 2 : 0, $worker->getExitCode(), $worker->getOutput().$worker->getErrorOutput());
+            $this->assertStringContainsString($withdraw ? 'DENIED_STATE=42501' : 'COMMITTED=', $worker->getOutput());
+            $this->assertSame($withdraw ? 0 : 1, $this->owner()->table('resource_right_fences')->count());
+            $this->assertSame($withdraw ? 0 : 1, $this->owner()->table('business_command_receipts')->where('command_id', $body['command_id'])->count());
+            if (! $withdraw && ! $lateNativeAdmission) {
+                $this->assertSame('Committed before adoption', $this->owner()->table('source_registry')->value('label'));
+                $this->assertSame(2, $this->owner()->table('source_versions')->count());
+            }
+        } finally {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+            if ($worker->isRunning()) {
+                $worker->stop();
+            }
+            $evidence['worker'] = ['exit' => $worker->getExitCode(), 'stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput()];
+            file_put_contents($dir.'/'.$run.'-evidence.json', json_encode($evidence, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+            $observer->disconnect();
+            foreach ([$file, $release] as $owned) {
+                if (is_file($owned)) {
+                    unlink($owned);
+                }
+            }
+        }
+    }
+
+    public function test_protected_adopted_source_revoke_uses_its_exact_native_contract_and_preserves_independent_rights(): void
+    {
+        $this->command($this->input)->assertOk();
+        $source = $this->input['source_id'];
+        $grant = $this->owner()->table('security_action_grants')->where('source_target_id', $source)->where('action', 'source.read')->first();
+        $other = $this->owner()->table('security_action_grants')->where('source_target_id', $source)->where('action', 'source.manage')->first();
+        $fence = BusinessAuthorityFixture::insert('resource_right_fences', ['fence_id' => (string) Str::uuid7(), 'kind' => 'source',
+            'source_id' => $source, 'boundary_id' => null, 'rights_epoch' => 0, 'adoption_state' => 'v2_adopted'], $this->actor->id);
+        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+            'requirements' => [['requirement_kind' => 'native_source', 'leaf_grant_id' => $grant->id]]];
+        $body = ['command_id' => (string) Str::uuid(), 'target_kind' => 'source', 'target_ref' => $source, 'effect' => 'revoke',
+            'payload' => ['grant_id' => (string) $other->id], 'expected_revision' => 1, 'authority_selection' => $selection];
+        $this->postJson('/api/data-rights/commands', $body)->assertForbidden();
+        $this->assertSame(0, $this->owner()->table('resource_right_fences')->where('fence_id', $fence->fence_id)->value('rights_epoch'));
+        $bad = $body;
+        $bad['payload']['grant_id'] = (string) $grant->id;
+        $bad['authority_selection']['requirements'][0]['requirement_kind'] = 'business';
+        $this->postJson('/api/data-rights/commands', $bad)->assertForbidden();
+        $bad = $body;
+        $bad['target_ref'] = (string) Str::uuid7();
+        $this->postJson('/api/data-rights/commands', $bad)->assertForbidden();
+        foreach (['not-an-id', '9223372036854775808', []] as $malformed) {
+            $bad = $body;
+            $bad['payload']['grant_id'] = (string) $grant->id;
+            $bad['authority_selection']['requirements'][0]['leaf_grant_id'] = $malformed;
+            $this->postJson('/api/data-rights/commands', $bad)->assertForbidden();
+        }
+        $body['payload']['grant_id'] = (string) $grant->id;
+        $body['expected_revision'] = 2;
+        $this->postJson('/api/data-rights/commands', $body)->assertConflict();
+        $body['expected_revision'] = 1;
+        $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['authenticated_at' => now()->subHour()]);
+        $this->postJson('/api/data-rights/commands', $body)->assertForbidden();
+        $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['authenticated_at' => now()]);
+        $result = $this->postJson('/api/data-rights/commands', $body)->assertOk()->assertJsonPath('data.status', 'revoked')->assertJsonPath('data.versions.grant', 2);
+        $this->assertApplicationContract('BusinessResourceRightResult', $result->json());
+        $this->assertStringContainsString('no-store', $result->headers->get('Cache-Control'));
+        $this->assertSame(1, $this->owner()->table('resource_right_fences')->where('fence_id', $fence->fence_id)->value('rights_epoch'));
+        $this->assertSame('active', $this->owner()->table('security_action_grants')->where('id', $other->id)->value('status'));
+        $this->assertSame('UNVERIFIED', $this->owner()->table('source_registry')->where('id', $source)->value('status'));
+        $receipt = $this->owner()->table('business_command_receipts')->where('command_id', $body['command_id'])->sole();
+        $this->assertNull($receipt->business_id);
+        $this->assertSame('resource.revoke', $receipt->action);
+        $this->assertSame(0, $this->owner()->table('businesses')->count());
+        $this->assertSame(0, $this->owner()->table('authority_qualification_receipts')->count());
+        $this->assertSame(0, $this->owner()->table('security_action_grants')->whereIn('scope_kind', ['business', 'client_data', 'data_use'])->count());
+        $this->postJson('/api/data-rights/commands', $body)->assertForbidden();
+        // Explicit reconciliation uses a different currently authorized path; the server never chooses a fallback.
+        $body['authority_selection']['requirements'][0]['leaf_grant_id'] = $other->id;
+        $this->postJson('/api/data-rights/commands', $body)->assertOk()->assertExactJson($result->json());
+        $this->assertSame(1, $this->owner()->table('business_command_receipts')->where('command_id', $body['command_id'])->count());
+        $body['expected_revision'] = 2;
+        $this->postJson('/api/data-rights/commands', $body)->assertConflict();
+        $body['expected_revision'] = 1;
+        $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['authenticated_at' => now()->subHour()]);
+        $this->postJson('/api/data-rights/commands', $body)->assertForbidden();
+        $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['authenticated_at' => now()]);
+        $body['command_id'] = (string) Str::uuid();
+        $this->postJson('/api/data-rights/commands', $body)->assertConflict();
+        $this->assertSame('active', $this->owner()->table('security_action_grants')->where('id', $other->id)->value('status'));
+        $this->assertSame(1, $this->owner()->table('resource_right_fences')->where('fence_id', $fence->fence_id)->value('rights_epoch'));
+    }
+
+    public function test_source_right_revoke_does_not_take_a_business_or_cohort_lock(): void
+    {
+        $this->command($this->input)->assertOk();
+        $source = $this->input['source_id'];
+        $grant = $this->owner()->table('security_action_grants')->where('source_target_id', $source)->where('action', 'source.read')->first();
+        BusinessAuthorityFixture::insert('resource_right_fences', ['fence_id' => (string) Str::uuid7(), 'kind' => 'source',
+            'source_id' => $source, 'boundary_id' => null, 'rights_epoch' => 0, 'adoption_state' => 'v2_adopted'], $this->actor->id);
+        $a = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Unrelated Business'])->assertCreated()->json('data');
+        $b = $this->owner()->table('businesses')->where('public_id', $a['business_public_id'])->value('id');
+        $this->owner()->beginTransaction();
+        try {
+            $this->owner()->selectOne('SELECT business_id FROM business_authority_fences WHERE business_id=? FOR UPDATE', [$b]);
+            $this->owner()->selectOne('SELECT c.cohort_id FROM migration_cohort_control c JOIN migration_cohort_members m ON m.cohort_id=c.cohort_id WHERE m.business_id=? FOR UPDATE OF c', [$b]);
+            $this->postJson('/api/data-rights/commands', ['command_id' => (string) Str::uuid(), 'target_kind' => 'source', 'target_ref' => $source, 'effect' => 'revoke',
+                'payload' => ['grant_id' => (string) $grant->id], 'expected_revision' => 1,
+                'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+                    'requirements' => [['requirement_kind' => 'native_source', 'leaf_grant_id' => $grant->id]]]])->assertOk()->assertJsonPath('data.status', 'revoked');
+        } finally {
+            $this->owner()->rollBack();
+        }
+        $this->assertSame(0, $this->owner()->table('business_authority_fences')->where('business_id', $b)->value('auth_epoch'));
+        $this->assertSame(0, $this->owner()->table('business_context_transitions')->count());
+        $this->assertSame(7, $this->owner()->table('security_action_grants')->where('scope_kind', 'business')->where('status', 'active')->count());
+        $this->assertSame('revoked', $this->owner()->table('security_action_grants')->where('id', $grant->id)->value('status'));
+    }
+
+    public function test_source_revoke_commits_before_a_queued_old_authority_attempt_which_then_denies_without_a_second_effect(): void
+    {
+        $this->command($this->input)->assertOk();
+        $source = $this->input['source_id'];
+        $grant = $this->owner()->table('security_action_grants')->where('source_target_id', $source)->where('action', 'source.read')->first();
+        $fence = BusinessAuthorityFixture::insert('resource_right_fences', ['fence_id' => (string) Str::uuid7(), 'kind' => 'source',
+            'source_id' => $source, 'boundary_id' => null, 'rights_epoch' => 0, 'adoption_state' => 'v2_adopted'], $this->actor->id);
+        $r = $this->request();
+        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+            'requirements' => [['requirement_kind' => 'native_source', 'leaf_grant_id' => $grant->id]]];
+        $run = 'adopted-source-revoke-'.Str::uuid();
+        $dir = storage_path('framework/testing');
+        if (! is_dir($dir)) {
+            mkdir($dir, 0777, true);
+        }
+        $release = $dir.'/'.$run.'.release';
+        $file = $dir.'/'.$run.'.json';
+        file_put_contents($file, json_encode(['actor' => $this->actor->id, 'run' => $run, 'session' => SessionAuthority::sessionKey($r),
+            'command' => (string) Str::uuid(), 'release' => $release, 'operation' => 'resource', 'kind' => 'source', 'target' => $source, 'effect' => 'revoke',
+            'payload' => ['grant_id' => (string) $grant->id], 'expected' => 1, 'selection' => $selection], JSON_THROW_ON_ERROR));
+        $worker = new Process([PHP_BINARY, base_path('tests/BusinessScopeCommandWorker.php'), $file], base_path());
+        $worker->setTimeout(45);
+        $observer = DB::build(config('database.connections.pgsql'));
+        $evidence = ['run' => $run];
+        $wait = function (callable $probe) use ($worker) {
+            $deadline = microtime(true) + 25;
+            do {
+                if ($value = $probe()) {
+                    return $value;
+                }
+                if (! $worker->isRunning()) {
+                    $this->fail('Participant stopped before required source wait: '.$worker->getOutput().$worker->getErrorOutput());
+                }
+                usleep(10000);
+            } while (microtime(true) < $deadline);
+            $this->fail('Actual adopted-source authority wait was not observed.');
+        };
+        try {
+            $observer->getPdo();
+            $worker->start();
+            $wait(fn () => str_contains($worker->getOutput(), 'READY_PID='));
+            DB::beginTransaction();
+            app(PrincipalContext::class)->activate($this->actor);
+            $holder = DB::scalar('SELECT pg_backend_pid()');
+            DB::scalar("SELECT builderad_v2_resource_right_command(?,?::uuid,'source',?::uuid,'revoke',?::jsonb,1,?::jsonb)",
+                [SessionAuthority::sessionKey($r), (string) Str::uuid(), $source, json_encode(['grant_id' => (string) $grant->id]), json_encode($selection)]);
+            file_put_contents($release, 'release');
+            $evidence['waiter'] = $wait(function () use ($observer, $run, $holder) {
+                $row = $observer->selectOne('SELECT pid,backend_xid::text AS xid,wait_event_type,wait_event,pg_blocking_pids(pid)::text AS blockers FROM pg_stat_activity WHERE application_name=?', [$run]);
+
+                return $row?->wait_event_type === 'Lock' && str_contains($row->blockers, (string) $holder) ? $row : false;
+            });
+            DB::commit();
+            $worker->wait();
+            $this->assertSame(2, $worker->getExitCode(), $worker->getOutput().$worker->getErrorOutput());
+            $this->assertStringContainsString('DENIED_STATE=42501', $worker->getOutput());
+            $this->assertSame(1, $this->owner()->table('resource_right_fences')->where('fence_id', $fence->fence_id)->value('rights_epoch'));
+            $this->assertSame(2, $this->owner()->table('security_action_grants')->where('id', $grant->id)->value('version'));
+            $this->assertSame(1, $this->owner()->table('business_command_receipts')->where('action', 'resource.revoke')->count());
+        } finally {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+            if ($worker->isRunning()) {
+                $worker->stop();
+            }
+            $evidence['worker'] = ['exit' => $worker->getExitCode(), 'stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput()];
+            file_put_contents($dir.'/'.$run.'-evidence.json', json_encode($evidence, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+            $observer->disconnect();
+            foreach ([$release, $file] as $ownedFile) {
+                if (is_file($ownedFile)) {
+                    unlink($ownedFile);
                 }
             }
         }

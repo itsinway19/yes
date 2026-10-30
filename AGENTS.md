@@ -148,3 +148,9 @@ Report concisely:
 Stop testing when the requested behavior is verified and all applicable acceptance requirements are satisfied.
 
 **Operating rule:** Investigate regressions from the last relevant passing baseline, use the smallest sufficient verification during development, preserve database and security contracts, and establish final acceptance through the required gates—without unnecessary restrictions on legitimate engineering work.
+
+### Current Business foundation implementation acceptance
+
+For the Owner-authorized E01–E05 work, read the continuing acceptance conditions in [the execution authorization record](docs/execution/business-foundation/OWNER_AUTHORIZATION.md#شرط-القبول-المستمر-قدرة-يجدها-المستخدم-ويفهمها-ويستفيد-منها).
+
+A user-facing capability is not complete from Backend/API tests alone. Record its user job, visible surface/audience/context, resource authority and applicable subscription, Arabic/RTL states and the required browser evidence in the existing execution progress record. Keep `BACKEND_VERIFIED`, `UI_INTEGRATED` and `BROWSER_VERIFIED` distinct. The first reference flow is independent Business creation/list/open/edit/switch/revocation; the old Workspace UI is not proof of that flow. Do not invent pages for internal primitives or build future mobile authentication, AI infrastructure or a comprehensive admin redesign under this condition.

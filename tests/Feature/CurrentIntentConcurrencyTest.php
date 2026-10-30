@@ -14,6 +14,8 @@ use Tests\TestCase;
 
 class CurrentIntentConcurrencyTest extends TestCase
 {
+    private array $workerStarts = [];
+
     private function value(): array
     {
         return ['direction' => 'increase_value', 'scope' => 'business_wide', 'description' => null,
@@ -36,7 +38,7 @@ class CurrentIntentConcurrencyTest extends TestCase
             'type' => $db->table('business_types')->where('key', 'real_estate')->value('id'), 'name' => 'Concurrent name', 'codes' => ['SA', 'KW']]];
     }
 
-    private function waitUntil(callable $probe): mixed
+    private function waitUntil(callable $probe, ?callable $timeoutDetails = null): mixed
     {
         $deadline = microtime(true) + 25;
         do {
@@ -45,17 +47,23 @@ class CurrentIntentConcurrencyTest extends TestCase
             }
             usleep(10000);
         } while (microtime(true) < $deadline);
-        $this->fail('Required database/process barrier was not witnessed.');
+        $this->fail('Required database/process barrier was not witnessed.'.($timeoutDetails ? ' '.json_encode($timeoutDetails(), JSON_THROW_ON_ERROR) : ''));
     }
 
     private function start(array $fixture, array &$workers, array &$paths): Process
     {
         $path = storage_path('framework/testing/'.$fixture['run'].'-'.Str::uuid().'.json');
+        // The guarded runner gives every invocation a fresh Laravel storage.
+        // A focused invocation must not depend on an earlier test creating this.
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0755, true);
+        }
         file_put_contents($path, json_encode($fixture, JSON_THROW_ON_ERROR));
         $paths[] = $path;
         $worker = new Process([PHP_BINARY, base_path('tests/CurrentIntentCommandWorker.php'), $path], base_path());
         $worker->setTimeout(45);
         $worker->start();
+        $this->workerStarts[spl_object_id($worker)] = ['pid' => $worker->getPid(), 'started_at' => microtime(true), 'command' => $worker->getCommandLine()];
         $workers[] = $worker;
 
         return $worker;
@@ -75,11 +83,16 @@ class CurrentIntentConcurrencyTest extends TestCase
                 return json_decode(file_get_contents($gate['ready']), flags: JSON_THROW_ON_ERROR);
             }
             if (! $worker->isRunning()) {
-                $this->fail('Worker exited before '.$signal.': '.$worker->getOutput().$worker->getErrorOutput());
+                $this->fail('Worker exited before '.$signal.': '.json_encode([
+                    'startup' => $this->workerStarts[spl_object_id($worker)] ?? null,
+                    'exit' => $worker->getExitCode(), 'exit_text' => $worker->getExitCodeText(),
+                    'stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput(),
+                    'ready_file_exists' => is_file($gate['ready']),
+                ], JSON_THROW_ON_ERROR));
             }
 
             return false;
-        });
+        }, fn () => ['phase' => $signal, 'pid' => $worker->getPid(), 'running' => $worker->isRunning(), 'exit' => $worker->getExitCode(), 'stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput(), 'ready_file_exists' => is_file($gate['ready'])]);
     }
 
     public function test_equal_and_different_full_bundle_races(): void
@@ -325,6 +338,7 @@ class CurrentIntentConcurrencyTest extends TestCase
                 }
                 $connection->disconnect();
             }
+            $evidence['worker_processes_before_cleanup'] = array_map(fn ($worker) => ['pid' => $worker->getPid(), 'running' => $worker->isRunning()], $workers);
             foreach ($workers as $worker) {
                 if ($worker->isRunning()) {
                     $worker->stop();
@@ -333,6 +347,11 @@ class CurrentIntentConcurrencyTest extends TestCase
             // Preserve the exact failure phase even if the barrier assertion
             // failed before normal output collection; never disguise 55P03.
             $evidence['final_worker_outputs'] = array_map(fn ($worker) => $worker->getOutput().$worker->getErrorOutput(), $workers);
+            $evidence['worker_exit_details'] = array_map(fn ($worker) => [
+                'startup' => $this->workerStarts[spl_object_id($worker)] ?? null,
+                'exit' => $worker->getExitCode(), 'exit_text' => $worker->getExitCodeText(),
+                'stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput(),
+            ], $workers);
             $evidence['worker_timings'] = array_map(fn ($path) => json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR),
                 glob(storage_path('framework/testing/'.$run.'-participant-*.log.timing.json')));
             foreach ($paths as $path) {

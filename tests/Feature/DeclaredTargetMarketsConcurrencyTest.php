@@ -280,6 +280,9 @@ class DeclaredTargetMarketsConcurrencyTest extends TestCase
         $evidencePath = storage_path('framework/testing/'.$run.'.json');
         $fixturePath = storage_path('framework/testing/'.$run.'-fixture.json');
         $secondFixturePath = storage_path('framework/testing/'.$run.'-second-fixture.json');
+        if (! is_dir(dirname($fixturePath))) {
+            mkdir(dirname($fixturePath), 0755, true);
+        }
         $entryBarrier = $first === null ? 'builderad.test.entry.'.$run : null;
         file_put_contents($fixturePath, json_encode([
             'run' => $run, 'actor' => $actor->id, 'workspace' => $workspace->id,
@@ -299,11 +302,44 @@ class DeclaredTargetMarketsConcurrencyTest extends TestCase
             $secondFixture['codes'] = ['SA', 'KW'];
         }
         file_put_contents($secondFixturePath, json_encode($secondFixture, JSON_THROW_ON_ERROR));
+        $startupGates = [];
+        foreach ([0 => $fixturePath, 1 => $secondFixturePath] as $index => $path) {
+            $startupGates[$index] = ['ready' => storage_path('framework/testing/'.$run.'-entry-'.$index.'-ready.json'),
+                'release' => storage_path('framework/testing/'.$run.'-entry-'.$index.'-release')];
+            $participant = json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+            $participant['entry_external_gate'] = $startupGates[$index];
+            file_put_contents($path, json_encode($participant, JSON_THROW_ON_ERROR));
+        }
         $holder = DB::build([...config('database.connections.pgsql_migrations'), 'name' => $run.'-holder']);
         $entryHolder = DB::build([...config('database.connections.pgsql_migrations'), 'name' => $run.'-entry-holder']);
         $workers = [];
         $evidence = ['baseline' => '8ebd9a1f1ffd7b23307d277304203c706e67d95d', 'run' => $run];
         try {
+            // Boot both independent participants before holding the finite
+            // product lock. The prior fixture spent the first waiter's 3s SQL
+            // budget on the second participant's PHP/DB bootstrap.
+            foreach ([0 => $fixturePath, 1 => $secondFixturePath] as $index => $path) {
+                $worker = new Process([PHP_BINARY, base_path('tests/TargetMarketsCommandWorker.php'), $path], base_path());
+                $worker->setTimeout(45);
+                $worker->start();
+                $workers[$index] = $worker;
+            }
+            foreach ($workers as $index => $worker) {
+                $deadline = microtime(true) + 25;
+                do {
+                    clearstatcache(true, $startupGates[$index]['ready']);
+                    if (is_file($startupGates[$index]['ready']) && str_contains($worker->getOutput(), 'ENTRY_READY')) {
+                        break;
+                    }
+                    if (! $worker->isRunning()) {
+                        $this->fail('DTM worker exited before prepared entry: '.$worker->getOutput().$worker->getErrorOutput());
+                    }
+                    $this->assertLessThan($deadline, microtime(true), 'Prepared DTM entry was not observed.');
+                    usleep(10000);
+                } while (true);
+                $evidence['pre_ready'][$index] = json_decode(file_get_contents($startupGates[$index]['ready']), true, flags: JSON_THROW_ON_ERROR);
+                $this->assertNull($evidence['pre_ready'][$index]['xid']);
+            }
             if ($entryBarrier !== null) {
                 $entryHolder->beginTransaction();
                 $evidence['entry_blocker_pid'] = (int) $entryHolder->scalar('SELECT pg_backend_pid()');
@@ -322,14 +358,11 @@ class DeclaredTargetMarketsConcurrencyTest extends TestCase
             }
             $startOrder = $first === null ? [0, 1] : [$first, 1 - $first];
             foreach ($startOrder as $position => $i) {
-                $worker = new Process([PHP_BINARY, base_path('tests/TargetMarketsCommandWorker.php'), $i === 0 ? $fixturePath : $secondFixturePath], base_path());
-                $worker->setTimeout(45);
-                $worker->start();
-                $workers[$i] = $worker;
+                file_put_contents($startupGates[$i]['release'], 'RELEASE');
                 if ($first !== null && $position === 0) {
                     $deadline = microtime(true) + 30;
                     do {
-                        $firstWait = DB::select('SELECT pid,wait_event_type,pg_blocking_pids(pid)::text AS blockers FROM pg_stat_activity WHERE application_name=?', [$run]);
+                        $firstWait = DB::select('SELECT pid,wait_event_type,pg_blocking_pids(pid)::text AS blockers FROM pg_stat_activity WHERE application_name=? AND pid=?', [$run, $evidence['pre_ready'][$i]['pid']]);
                         if (count($firstWait) === 1 && $firstWait[0]->wait_event_type === 'Lock') {
                             break;
                         }
@@ -364,8 +397,22 @@ class DeclaredTargetMarketsConcurrencyTest extends TestCase
             }
             $deadline = microtime(true) + 30;
             do {
-                $activity = DB::select('SELECT pid,backend_xid::text AS transaction_id,wait_event_type,wait_event,pg_blocking_pids(pid)::text AS blockers FROM pg_stat_activity WHERE application_name=? ORDER BY pid', [$run]);
-                $selected = count(array_filter($workers, fn ($worker) => str_contains($worker->getOutput(), 'ENTERED_XACT=')));
+                // Capture real XIDs, waits and locks together. Extra Windows
+                // stdout/file/catalog probes must not consume the finite SQL
+                // wait after both actual database participants are observed.
+                $sample = DB::selectOne(<<<'SQL'
+                    WITH participants AS MATERIALIZED (
+                      SELECT pid,backend_xid::text AS transaction_id,wait_event_type,wait_event,pg_blocking_pids(pid)::text AS blockers
+                      FROM pg_stat_activity WHERE application_name=?
+                    ), observed_locks AS MATERIALIZED (
+                      SELECT pid,locktype,mode,granted,relation::regclass::text AS relation,transactionid::text AS transaction_id,page,tuple
+                      FROM pg_locks WHERE pid IN(SELECT pid FROM participants) OR pid=?
+                    ) SELECT clock_timestamp()::text captured_at,
+                        (SELECT json_agg(p ORDER BY pid) FROM participants p) AS participants,
+                        (SELECT json_agg(l ORDER BY pid,locktype,mode) FROM observed_locks l) AS locks
+                    SQL, [$run, $evidence['blocker_pid']]);
+                $activity = json_decode($sample->participants ?? '[]', flags: JSON_THROW_ON_ERROR);
+                $selected = count(array_filter($activity, fn ($row) => $row->transaction_id !== null));
                 $waiting = count(array_filter($activity, fn ($row) => $row->wait_event_type === 'Lock'));
                 if ($selected === 2 && $waiting === 2) {
                     break;
@@ -379,7 +426,8 @@ class DeclaredTargetMarketsConcurrencyTest extends TestCase
             $evidence['both_entered'] = $selected;
             $evidence['both_lock_waiting'] = $waiting;
             $evidence['activity_before_release'] = $activity;
-            $evidence['locks_before_release'] = DB::select('SELECT l.pid,l.locktype,l.mode,l.granted,l.relation::regclass::text AS relation,l.transactionid::text AS transaction_id,l.page,l.tuple FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.application_name=? OR l.pid=? ORDER BY l.pid,l.locktype,l.mode', [$run, $evidence['blocker_pid']]);
+            $evidence['locks_before_release'] = json_decode($sample->locks ?? '[]', flags: JSON_THROW_ON_ERROR);
+            $evidence['captured_before_release_at'] = $sample->captured_at;
             $this->assertSame(2, $selected, json_encode($evidence, JSON_THROW_ON_ERROR));
             $this->assertSame(2, $waiting, json_encode($evidence, JSON_THROW_ON_ERROR));
             if ($authorityChange === 'generation') {
@@ -476,6 +524,13 @@ class DeclaredTargetMarketsConcurrencyTest extends TestCase
                 }
             }
             file_put_contents($evidencePath, json_encode($evidence, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+            foreach ($startupGates as $gate) {
+                foreach ($gate as $path) {
+                    if (is_file($path)) {
+                        unlink($path);
+                    }
+                }
+            }
             if (is_file($fixturePath)) {
                 unlink($fixturePath);
             }

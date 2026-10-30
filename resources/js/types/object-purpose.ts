@@ -7,5 +7,5 @@ export type PurposeSnapshot = {
     intent: { version: number; value: PurposeIntent; statement: string } | null;
     end_condition: string | null; limitations: string | null; conflicts: string[];
 };
-export type PurposeRevision = { purpose_id: string; revision_id: string; version: number; operation: string; effective_from: string; effective_until: string | null; accepted_at: string; actor_user_id: number; actor_generation: number; ownership_version: number; snapshot: PurposeSnapshot; reason: string | null; supersedes_revision_id: string | null; affected_revision_ids: string[] };
+export type PurposeRevision = { purpose_id: string; revision_id: string; version: number; operation: string; effective_from: string; effective_until: string | null; accepted_at: string; actor_user_id?: number; actor_generation?: number; ownership_version?: number; snapshot: PurposeSnapshot; reason: string | null; supersedes_revision_id: string | null; affected_revision_ids: string[] };
 export type PurposeItem = { purpose_id: string; head_version: number; state: string; applicable: PurposeRevision | null; history: PurposeRevision[]; relationship_revalidation_required: boolean; continuity: string; dtm_standing: string };

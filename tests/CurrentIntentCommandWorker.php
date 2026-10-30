@@ -144,6 +144,7 @@ try {
         $mark('transaction_start');
         $revision = DB::transaction(function () use ($fixture, $user, $emit, $mark, $measure, &$timing) {
             app(PrincipalContext::class)->activate($user);
+            DB::selectOne('SELECT builderad_v2_legacy_enter((SELECT public_id FROM workspaces WHERE id=?))', [$fixture['workspace']]);
             if (isset($fixture['entry_barrier'])) {
                 $emit('READY_XACT='.DB::scalar('SELECT pg_current_xact_id()::text'));
                 DB::selectOne('SELECT pg_advisory_xact_lock_shared(hashtextextended(?,0))', [$fixture['entry_barrier']]);

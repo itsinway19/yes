@@ -17,6 +17,7 @@ DB::selectOne("SELECT set_config('application_name',?,false)", [$fixture['run']]
 try {
     $result = DB::transaction(function () use ($fixture) {
         app(PrincipalContext::class)->activate(User::findOrFail($fixture['actor']));
+        DB::selectOne('SELECT builderad_v2_legacy_enter((SELECT public_id FROM workspaces WHERE id=?))', [$fixture['scope']['workspace_id']]);
         DB::selectOne('SELECT builderad_select_workspace_context(?)', [$fixture['scope']['workspace_id']]);
         $s = $fixture['scope'];
 

@@ -43,6 +43,7 @@ class DatabaseAuthorityBoundaryTest extends TestCase
         $viewer = User::findOrFail($viewerId);
         $runtime->transaction(function () use ($runtime, $viewer, $workspaceId): void {
             app(PrincipalContext::class)->activate($viewer);
+            $runtime->selectOne('SELECT builderad_v2_legacy_enter((SELECT public_id FROM workspaces WHERE id=?))', [$workspaceId]);
             $runtime->selectOne('SELECT builderad_select_workspace_context(?)', [$workspaceId]);
             $this->assertSame(1, $runtime->table('workspaces')->count());
         });
@@ -52,6 +53,7 @@ class DatabaseAuthorityBoundaryTest extends TestCase
         $runtime->beginTransaction();
         try {
             app(PrincipalContext::class)->activate($viewer);
+            $runtime->selectOne('SELECT builderad_v2_legacy_enter((SELECT public_id FROM workspaces WHERE id=?))', [$workspaceId]);
             $runtime->selectOne('SELECT builderad_select_workspace_context(?)', [$workspaceId]);
             $this->fail('Workspace access survived loss of responsible Owner eligibility.');
         } catch (QueryException $exception) {

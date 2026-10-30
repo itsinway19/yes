@@ -17,6 +17,8 @@ DB::selectOne("SELECT set_config('application_name',?,false)", [$fixture['run']]
 try {
     $result = DB::transaction(function () use ($fixture) {
         app(PrincipalContext::class)->activate(User::findOrFail($fixture['actor']));
+        DB::selectOne('SELECT builderad_v2_native_source_enter((SELECT public_id FROM workspaces WHERE id=?),?::uuid)', [$fixture['workspace'], $fixture['input']['source_id']]);
+        DB::selectOne('SELECT builderad_v2_legacy_enter((SELECT public_id FROM workspaces WHERE id=?))', [$fixture['workspace']]);
         DB::selectOne('SELECT builderad_select_workspace_context(?)', [$fixture['workspace']]);
         $input = $fixture['input'];
         $payload = array_diff_key($input, array_flip(['source_id', 'command_id', 'effect']));

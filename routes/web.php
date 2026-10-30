@@ -6,6 +6,8 @@ use App\Http\Controllers\Auth\IdentityContextController;
 use App\Http\Controllers\Auth\InternalAuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasskeySessionController;
 use App\Http\Controllers\BusinessContextController;
+use App\Http\Controllers\BusinessFoundationController;
+use App\Http\Controllers\BusinessSurfaceController;
 use App\Http\Controllers\CommercialController;
 use App\Http\Controllers\CommercialMarketPreparationController;
 use App\Http\Controllers\GlobalAppearanceController;
@@ -348,4 +350,45 @@ Route::middleware('auth:internal')->group(function () {
     Route::get('/internal/identity/switch', [InternalAuthenticatedSessionController::class, 'create']);
     Route::get('/internal/identity/passkey/options', [PasskeySessionController::class, 'options']);
     Route::post('/internal/identity/passkey', [PasskeySessionController::class, 'store']);
+});
+
+Route::middleware(['auth', EnsureCurrentPrincipal::class])->prefix('api/businesses')->group(function () {
+    Route::get('/', [BusinessFoundationController::class, 'choices'])->name('business-foundation.choices');
+    Route::get('/catalog', [BusinessFoundationController::class, 'catalog'])->name('business-foundation.catalog');
+    Route::get('/{business}/surface', [BusinessFoundationController::class, 'surface'])->whereUuid('business')->name('business-foundation.surface');
+    Route::get('/{business}/purposes', [BusinessFoundationController::class, 'purposes'])->whereUuid('business')->name('business-foundation.purposes');
+    Route::post('/{business}/purposes', [BusinessFoundationController::class, 'writePurpose'])->whereUuid('business')->name('business-foundation.write-purpose');
+    Route::get('/{business}/history', [BusinessFoundationController::class, 'history'])->whereUuid('business')->name('business-foundation.history');
+    Route::get('/{business}/legacy-history', [BusinessFoundationController::class, 'legacyHistory'])->whereUuid('business')->name('business-foundation.legacy-history');
+    Route::post('/', [BusinessFoundationController::class, 'store'])->name('business-foundation.store');
+    Route::post('/{business}/read', [BusinessFoundationController::class, 'show'])->whereUuid('business')->name('business-foundation.show');
+    Route::put('/{business}/context', [BusinessFoundationController::class, 'context'])->whereUuid('business')->name('business-foundation.context');
+    Route::put('/{business}/markets', [BusinessFoundationController::class, 'markets'])->whereUuid('business')->name('business-foundation.markets');
+    Route::put('/{business}/preferences', [BusinessFoundationController::class, 'preferences'])->whereUuid('business')->name('business-foundation.preferences');
+    Route::put('/{business}/intent', [BusinessFoundationController::class, 'intent'])->whereUuid('business')->name('business-foundation.intent');
+    Route::post('/{business}/data-use-bindings', [BusinessFoundationController::class, 'bindDataUse'])->whereUuid('business')->name('business-foundation.data-use-binding');
+    Route::post('/{business}/materials/publish', [BusinessFoundationController::class, 'publish'])->whereUuid('business')->name('business-foundation.publish');
+    Route::post('/{business}/materials/read', [BusinessFoundationController::class, 'material'])->whereUuid('business')->name('business-foundation.material');
+    Route::post('/{business}/lifecycle', [BusinessFoundationController::class, 'lifecycle'])->whereUuid('business')->name('business-foundation.lifecycle');
+    Route::post('/{business}/grants', [BusinessFoundationController::class, 'grant'])->whereUuid('business')->name('business-foundation.grant');
+    Route::post('/{business}/workspace-links', [BusinessFoundationController::class, 'link'])->whereUuid('business')->name('business-foundation.link');
+});
+Route::post('/api/data-rights/commands', [BusinessFoundationController::class, 'resourceRight'])
+    ->middleware(['auth', EnsureCurrentPrincipal::class])->name('business-foundation.resource-right');
+Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
+    Route::get('/api/data-rights/boundaries', [BusinessFoundationController::class, 'boundaries'])->name('business-foundation.boundaries');
+    Route::get('/api/data-rights/use-scopes', [BusinessFoundationController::class, 'dataUseChoices'])->name('business-foundation.data-use-choices');
+    Route::get('/api/source-rights', [BusinessFoundationController::class, 'sources'])->name('business-foundation.sources');
+    Route::get('/api/source-rights/{source}', [BusinessFoundationController::class, 'source'])->whereUuid('source')->name('business-foundation.source');
+    Route::get('/source-rights', [BusinessSurfaceController::class, 'sources'])->name('business-foundation.sources-page');
+    Route::get('/source-rights/{source}', [BusinessSurfaceController::class, 'source'])->whereUuid('source')->name('business-foundation.source-page');
+    Route::get('/api/data-rights/boundaries/{boundary}', [BusinessFoundationController::class, 'boundary'])->whereUuid('boundary')->name('business-foundation.boundary');
+    Route::get('/data-rights', [BusinessSurfaceController::class, 'boundaries'])->name('business-foundation.boundaries-page');
+    Route::get('/data-rights/{boundary}', [BusinessSurfaceController::class, 'boundary'])->whereUuid('boundary')->name('business-foundation.boundary-page');
+});
+
+Route::middleware(['auth', EnsureCurrentPrincipal::class])->prefix('businesses')->group(function () {
+    Route::get('/', [BusinessSurfaceController::class, 'index'])->name('business-foundation.index-page');
+    Route::get('/new', [BusinessSurfaceController::class, 'create'])->name('business-foundation.create-page');
+    Route::get('/{business}', [BusinessSurfaceController::class, 'show'])->whereUuid('business')->name('business-foundation.detail-page');
 });

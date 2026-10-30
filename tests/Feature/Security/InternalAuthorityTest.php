@@ -198,7 +198,7 @@ class InternalAuthorityTest extends TestCase
             'user_id' => $employee->id, 'principal_class' => 'staff',
             'status' => 'pending', 'generation' => 0,
         ]);
-        $this->assertSame(0, DB::table('security_action_grants')
+        $this->assertSame(0, DB::connection('pgsql_migrations')->table('security_action_grants')
             ->where('subject_user_id', $employee->id)->count());
         $this->post('/internal/staff/'.$employee->public_id.'/resend-invitation')
             ->assertRedirect();
@@ -222,14 +222,14 @@ class InternalAuthorityTest extends TestCase
         ]);
         $this->post('/internal/staff/'.$employee->public_id.'/resend-invitation')
             ->assertForbidden();
-        $this->assertSame(0, DB::table('security_action_grants')
+        $this->assertSame(0, DB::connection('pgsql_migrations')->table('security_action_grants')
             ->where('subject_user_id', $employee->id)->count());
         $this->post('/internal/grants', [
             'staff' => $employee->public_id,
             'action' => 'staff.view',
             'reason' => 'Ordinary administration view',
         ])->assertRedirect();
-        $grantId = DB::table('security_action_grants')
+        $grantId = DB::connection('pgsql_migrations')->table('security_action_grants')
             ->where('subject_user_id', $employee->id)->where('action', 'staff.view')->value('id');
         $this->assertNotNull($grantId);
         $this->actingAsInternal($employee)->get('/internal/administration')->assertOk();
@@ -278,7 +278,7 @@ class InternalAuthorityTest extends TestCase
             'user_id' => $founder->id, 'kind' => 'founder', 'status' => 'active',
         ]);
         $this->assertSame(count(GrantAuthority::STAFF_ACTIONS),
-            DB::table('security_action_grants')->where('subject_user_id', $founder->id)
+            DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $founder->id)
                 ->where('source', 'founder_bootstrap')->count());
         $this->assertSame(1, DB::table('security_sessions')->where('user_id', $founder->id)
             ->whereNotNull('revoked_at')->count());
@@ -324,7 +324,7 @@ class InternalAuthorityTest extends TestCase
             'staff' => $target->public_id, 'action' => 'service.manage',
             'reason' => 'Scoped service security administration',
         ])->assertRedirect();
-        $sensitiveGrant = DB::table('security_action_grants')
+        $sensitiveGrant = DB::connection('pgsql_migrations')->table('security_action_grants')
             ->where('subject_user_id', $target->id)->where('action', 'service.manage')->value('id');
 
         $this->actingAsInternal($admin)->post('/internal/grants', [

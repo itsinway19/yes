@@ -52,11 +52,23 @@ final class ObjectPurpose
         // Existing DTM events are immutable and prohibit no-op transitions.
         $dtmTransitionVersion = (int) DB::table('business_target_market_events')->where('workspace_id', $workspace->id)
             ->where('version', '<=', $contextVersion)->max('version');
-        $items = [];
         foreach ($heads as $head) {
-            $history = DB::table('object_purpose_revisions')->where('workspace_id', $workspace->id)->where('purpose_id', $head->id)
+            $head->history = DB::table('object_purpose_revisions')->where('workspace_id', $workspace->id)->where('purpose_id', $head->id)
                 ->where('accepted_at', '<=', $knownAt->format('Y-m-d H:i:s.uP'))->orderBy('version')->get()
                 ->map(fn ($row) => $this->revisionArray($row))->all();
+        }
+        $result = $this->projectHistory($heads->all(), $contextVersion, $dtmTransitionVersion, $effectiveAt, $knownAt, $object);
+        $this->authorize($request, $workspace);
+
+        return $result;
+    }
+
+    /** Pure native temporal owner; both admitted namespaces supply qualified rows. */
+    public function projectHistory(array $heads, int $contextVersion, int $dtmTransitionVersion, DateTimeImmutable $effectiveAt, DateTimeImmutable $knownAt, ?array $object = null): array
+    {
+        $items = [];
+        foreach ($heads as $head) {
+            $history = array_values(array_filter($head->history, fn ($revision) => new DateTimeImmutable($revision['accepted_at']) <= $knownAt));
             $segments = [];
             $transitions = [];
             foreach ($history as $revision) {
@@ -106,8 +118,6 @@ final class ObjectPurpose
                 'scheduled_revision_ids' => array_column(array_values(array_filter($transitions,
                     fn ($revision) => new DateTimeImmutable($revision['effective_from']) > $effectiveAt)), 'revision_id')];
         }
-        // Recheck after all queries; authority denial must never masquerade as no purpose.
-        $this->authorize($request, $workspace);
         $applicable = array_values(array_filter($items, fn ($item) => $item['applicable'] !== null));
         $hasDeclaredConflict = count(array_filter($applicable, fn ($item) => $item['applicable']['snapshot']['conflicts'] !== [])) > 0;
 
@@ -135,6 +145,7 @@ final class ObjectPurpose
     private function revisionArray(object $row): array
     {
         $result = (array) $row;
+        unset($result['business_id'], $result['business_authority_epoch']);
         foreach (['snapshot', 'confirmations', 'affected_revision_ids'] as $field) {
             $result[$field] = json_decode($result[$field], true, flags: JSON_THROW_ON_ERROR);
         }

@@ -21,6 +21,24 @@ class CommercialScopeTest extends TestCase
 {
     use ApplicationContractAssertions;
 
+    public function test_native_workspace_commercial_context_never_becomes_business_coverage_or_data_authority(): void
+    {
+        [$beneficiary, $workspace] = $this->workspace();
+        $this->actingAsInternal($this->operator);
+        $market = $this->market('Synthetic commercial boundary', 'JOD');
+        $input = $this->registration($market, $workspace);
+        $this->postJson('/internal/commercial/registrations', $input)->assertOk();
+        $workspaceId = $this->owner()->table('workspaces')->where('public_id', $workspace)->value('id');
+        $this->grant($beneficiary, 'ReadCommercialContextAdvertiser', $input['scope_id'], $workspaceId);
+        $this->actingAs($beneficiary)->getJson('/workspaces/'.$workspace)->assertOk()->assertJsonPath('data.commercial.context.scope_id', $input['scope_id']);
+        $business = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Independent commercial beneficiary'])->assertCreated()->json('data');
+        $url = '/api/businesses/'.$business['business_public_id'].'/surface?access='.$business['grant_refs']['business.context.read'];
+        $this->getJson($url)->assertOk()->assertJsonPath('data.commercial.context', null)->assertJsonPath('data.commercial.coverage_state', 'UNKNOWN');
+        $stranger = User::factory()->create();
+        $this->grant($stranger, 'ReadCommercialContextAdvertiser', $input['scope_id'], $workspaceId);
+        $this->actingAs($stranger)->getJson($url)->assertForbidden();
+    }
+
     public function test_spa_commercial_projection_and_receipt_provenance_match_real_sql_commands(): void
     {
         $market = $this->market('Synthetic SPA market', 'USD');

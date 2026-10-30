@@ -51,12 +51,12 @@ class OwnerGrantReassessmentTest extends TestCase
         $this->post('/workspaces/'.$workspace->public_id.'/reassess-owner-grant')
             ->assertRedirect(route('workspaces.show', $workspace->public_id));
         $this->get('/workspaces/'.$workspace->public_id)->assertOk();
-        $this->assertSame(2, DB::table('security_action_grants')
+        $this->assertSame(2, DB::connection('pgsql_migrations')->table('security_action_grants')
             ->where('workspace_id', $workspace->id)
             ->where('subject_generation', 2)
             ->where('source', 'system_owner_reassessment')->count());
         $this->post('/workspaces/'.$workspace->public_id.'/reassess-owner-grant')->assertRedirect();
-        $this->assertSame(2, DB::table('security_action_grants')
+        $this->assertSame(2, DB::connection('pgsql_migrations')->table('security_action_grants')
             ->where('workspace_id', $workspace->id)
             ->where('subject_generation', 2)->count());
         $this->assertSame(2, DB::table('security_audit_events')
@@ -76,8 +76,8 @@ class OwnerGrantReassessmentTest extends TestCase
         $this->assertDatabaseHas('security_action_grants', [
             'workspace_id' => $workspace->id, 'subject_generation' => 2,
             'action' => 'workspace.view', 'status' => 'active',
-        ]);
-        $this->assertSame(0, DB::table('security_action_grants')
+        ], 'pgsql_migrations');
+        $this->assertSame(0, DB::connection('pgsql_migrations')->table('security_action_grants')
             ->where('workspace_id', $workspace->id)
             ->where('subject_generation', 2)->where('action', 'service.scope')->count());
 
@@ -88,7 +88,7 @@ class OwnerGrantReassessmentTest extends TestCase
         $this->actingAs($otherOwner);
         $this->reverifyNewEmail($otherOwner, 'other-new@example.test');
         $this->post('/workspaces/'.$otherWorkspace->public_id.'/reassess-owner-grant')->assertForbidden();
-        $this->assertSame(0, DB::table('security_action_grants')
+        $this->assertSame(0, DB::connection('pgsql_migrations')->table('security_action_grants')
             ->where('workspace_id', $otherWorkspace->id)
             ->where('subject_generation', 2)->count());
 
@@ -136,7 +136,7 @@ class OwnerGrantReassessmentTest extends TestCase
         $this->getJson('/workspaces')->assertOk()->assertJsonCount(0, 'data.reassessableWorkspaces');
         $this->post('/workspaces/'.$workspace->public_id.'/reassess-owner-grant')
             ->assertForbidden();
-        $this->assertSame(0, DB::table('security_action_grants')
+        $this->assertSame(0, DB::connection('pgsql_migrations')->table('security_action_grants')
             ->where('workspace_id', $workspace->id)
             ->where('subject_generation', 3)->count());
     }
@@ -152,9 +152,8 @@ class OwnerGrantReassessmentTest extends TestCase
         $workspace = DB::connection('pgsql_migrations')->table('workspaces')
             ->where('slug', $slug)->first();
         // The existing Business prerequisite applies after authority reassessment too.
-        DB::connection('pgsql_migrations')->table('workspaces')->where('id', $workspace->id)
-            ->update(['business_type_id' => DB::connection('pgsql_migrations')->table('business_types')
-                ->where('key', 'real_estate')->value('id')]);
+        $this->post('/workspaces/'.$workspace->public_id.'/business', ['business_type_id' => DB::connection('pgsql_migrations')->table('business_types')->where('key', 'real_estate')->value('id'), 'version' => 0])->assertRedirect();
+        $workspace = DB::connection('pgsql_migrations')->table('workspaces')->where('id', $workspace->id)->first();
 
         return [$owner, $workspace];
     }

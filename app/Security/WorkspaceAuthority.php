@@ -61,6 +61,7 @@ final class WorkspaceAuthority
             [$request->user()->id, SessionAuthority::sessionKey($request), $name, $slug],
         );
 
+        DB::selectOne('SELECT builderad_v2_legacy_enter(?::uuid)', [$result->public_id]);
         $workspace = Workspace::query()->where('public_id', $result->public_id)->firstOrFail();
 
         return ['id' => $workspace->id, 'public_id' => $workspace->public_id];

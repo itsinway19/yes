@@ -22,6 +22,7 @@ flush();
 try {
     $result = DB::transaction(function () use ($f) {
         app(PrincipalContext::class)->activate(User::findOrFail($f['actor']));
+        DB::scalar('SELECT builderad_v2_legacy_enter((SELECT public_id FROM workspaces WHERE id=?))', [$f['workspace']]);
         DB::scalar('SELECT builderad_select_workspace_context(?)', [$f['workspace']]);
 
         echo 'WRITE_ATTEMPT='.microtime(true).PHP_EOL;

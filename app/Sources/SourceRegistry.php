@@ -55,6 +55,9 @@ final class SourceRegistry
             $has = fn (string $action): bool => (bool) DB::scalar('SELECT builderad_source_has(?, ?::uuid, ?, ?, ?, ?)', [
                 $action, $c->id, $workspace->id, $c->resource, $c->operation, $c->purpose,
             ]);
+            $nativeWritable = (bool) DB::scalar('SELECT builderad_v2_native_source_writable(?,?::uuid,?,?,?)', [
+                $workspace->id, $c->id, $c->resource, $c->operation, $c->purpose,
+            ]);
             // BB1 has no independently authorized provider verifier; all provider axes remain unknown.
             $axes = array_fill_keys(EffectiveCapability::AXES, 'UNKNOWN');
             $effective = app(EffectiveCapability::class)->derive($c->status, $has('source.read'), [], new DateTimeImmutable);
@@ -80,7 +83,7 @@ final class SourceRegistry
                 });
             // Choices are current exact A-003 grants, never a browser/provider capability catalog.
             // RLS may hide a previously declared tuple; the canonical writer still rejects duplicates.
-            $scopeChoices = $manageGrants->filter(fn ($g) => $isOwner && $fresh && $c->status !== 'REVOKED'
+            $scopeChoices = $manageGrants->filter(fn ($g) => $nativeWritable && $isOwner && $fresh && $c->status !== 'REVOKED'
                 && $g->source_target_id === $c->id
                 && ! $capabilities->contains(fn ($existing) => $existing->id === $c->id
                     && $existing->resource === $g->source_resource && $existing->operation === $g->source_operation
@@ -90,7 +93,7 @@ final class SourceRegistry
                 ]))->map(fn ($g) => ['resource' => $g->source_resource, 'operation' => $g->source_operation,
                     'purpose' => $g->source_purpose])->values();
             $items[] = [...(array) $c, 'identity_verification' => 'UNVERIFIED', 'axes' => $axes,
-                'capability' => $effective, 'can_manage' => $isOwner && $fresh && $has('source.manage') && $c->status !== 'REVOKED',
+                'capability' => $effective, 'can_manage' => $nativeWritable && $isOwner && $fresh && $has('source.manage') && $c->status !== 'REVOKED',
                 'scope_choices' => $scopeChoices, 'audit_delivery' => $deliveries,
                 'next_repair' => $c->status === 'REVOKED' ? 'source_revoked' : 'provider_verification_needed'];
         }

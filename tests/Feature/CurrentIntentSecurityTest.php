@@ -170,10 +170,9 @@ class CurrentIntentSecurityTest extends TestCase
             app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($actor, 1);
             $this->actingAs($actor)->post('/workspaces', ['name' => 'Scoped intent '.$slug, 'slug' => 'intent-'.$slug])->assertRedirect();
             $workspace = $owner->table('workspaces')->where('slug', 'intent-'.$slug)->first();
-            $value = json_encode(['direction' => 'preserve_value', 'scope' => 'business_wide', 'description' => null,
-                'outcome' => ['meaning' => 'Bookings', 'clarification' => null, 'count_unit' => null], 'quantity' => null, 'horizon' => null], JSON_THROW_ON_ERROR);
-            $owner->table('business_current_intent_events')->insert(['workspace_id' => $workspace->id, 'actor_user_id' => $actor->id,
-                'before_version' => 0, 'after_version' => 1, 'before_value' => null, 'after_value' => $value]);
+            $command = $this->command();
+            $command['value']['direction'] = 'preserve_value';
+            $this->postJson('/workspaces/'.$workspace->public_id.'/business/current-intent', $command)->assertOk();
             $fixtures[] = [$actor, $workspace];
         }
         [$actor, $workspace] = $fixtures[0];
