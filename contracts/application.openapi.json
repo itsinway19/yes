@@ -25123,6 +25123,80 @@
                               "data_use_scope_id": {
                                 "type": "string",
                                 "format": "uuid"
+                              },
+                              "validity": {
+                                "type": "object",
+                                "properties": {
+                                  "status": {
+                                    "enum": [
+                                      "current",
+                                      "historical",
+                                      "review_required",
+                                      "unknown"
+                                    ]
+                                  },
+                                  "currentness_revision": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                  },
+                                  "checked_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "currentness_revision",
+                                  "checked_at"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "evidence": {
+                                "type": "object",
+                                "properties": {
+                                  "source_ref": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "schema": {
+                                    "enum": [
+                                      "market.offer:1",
+                                      "market.interest_signal:1"
+                                    ]
+                                  },
+                                  "revision": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                  },
+                                  "observed_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "effective_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "valid_until": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "source_ref",
+                                  "schema",
+                                  "revision",
+                                  "observed_at",
+                                  "effective_at",
+                                  "valid_until"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -27223,6 +27297,217 @@
                           "additionalProperties": false
                         }
                       ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current scoped authority denied; no authority inferred from Workspace membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed command, shape or semantic validation rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/market-evidence/{evidence}": {
+      "post": {
+        "operationId": "writeQualifiedMarketEvidence",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "evidence",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  },
+                  "data_use_scope_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "expected_revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/MarketEvidencePayload"
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "authority_selection",
+                  "data_use_scope_id",
+                  "expected_revision",
+                  "payload"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "material_ref": {
+                          "type": "object",
+                          "properties": {
+                            "namespace": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                              "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                            },
+                            "key": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 4096
+                            },
+                            "version": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{64}$"
+                            }
+                          },
+                          "required": [
+                            "namespace",
+                            "key",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "evidence": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "evidence"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "material_ref",
+                        "versions"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -41877,6 +42162,332 @@
         ],
         "additionalProperties": false
       },
+      "MarketEvidencePayload": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "record_key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 180
+              },
+              "evidence_type": {
+                "const": "market.offer:1"
+              },
+              "fields": {
+                "type": "object",
+                "properties": {
+                  "subject": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 180
+                      },
+                      "identity_state": {
+                        "enum": [
+                          "unresolved",
+                          "source_asserted"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "label",
+                      "identity_state"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "geography": {
+                    "type": "object",
+                    "properties": {
+                      "ref": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "level": {
+                        "enum": [
+                          "unknown",
+                          "country",
+                          "region",
+                          "city",
+                          "district"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "ref",
+                      "level"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "price": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "inclusions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "subject",
+                  "geography",
+                  "currency",
+                  "price",
+                  "inclusions"
+                ],
+                "additionalProperties": false
+              },
+              "coverage": {
+                "enum": [
+                  "COMPLETE",
+                  "PARTIAL",
+                  "FAILED",
+                  "UNKNOWN",
+                  "PENDING"
+                ]
+              },
+              "provenance": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "effective_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "valid_until": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 600
+              }
+            },
+            "required": [
+              "record_key",
+              "evidence_type",
+              "fields",
+              "coverage",
+              "provenance",
+              "observed_at",
+              "effective_at",
+              "valid_until",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "record_key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 180
+              },
+              "evidence_type": {
+                "const": "market.interest_signal:1"
+              },
+              "fields": {
+                "type": "object",
+                "properties": {
+                  "subject": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 180
+                      },
+                      "identity_state": {
+                        "enum": [
+                          "unresolved",
+                          "source_asserted"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "label",
+                      "identity_state"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "geography": {
+                    "type": "object",
+                    "properties": {
+                      "ref": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "level": {
+                        "enum": [
+                          "unknown",
+                          "country",
+                          "region",
+                          "city",
+                          "district"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "ref",
+                      "level"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "metric": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "unit": {
+                        "type": "string"
+                      },
+                      "definition_version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "unit",
+                      "definition_version"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "subject",
+                  "geography",
+                  "metric",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              "coverage": {
+                "enum": [
+                  "COMPLETE",
+                  "PARTIAL",
+                  "FAILED",
+                  "UNKNOWN",
+                  "PENDING"
+                ]
+              },
+              "provenance": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "effective_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "valid_until": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 600
+              }
+            },
+            "required": [
+              "record_key",
+              "evidence_type",
+              "fields",
+              "coverage",
+              "provenance",
+              "observed_at",
+              "effective_at",
+              "valid_until",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
       "BusinessMaterialReference": {
         "type": "object",
         "properties": {
@@ -41979,6 +42590,80 @@
                     "data_use_scope_id": {
                       "type": "string",
                       "format": "uuid"
+                    },
+                    "validity": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "enum": [
+                            "current",
+                            "historical",
+                            "review_required",
+                            "unknown"
+                          ]
+                        },
+                        "currentness_revision": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "checked_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "currentness_revision",
+                        "checked_at"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "evidence": {
+                      "type": "object",
+                      "properties": {
+                        "source_ref": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "schema": {
+                          "enum": [
+                            "market.offer:1",
+                            "market.interest_signal:1"
+                          ]
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "observed_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "effective_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "valid_until": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "source_ref",
+                        "schema",
+                        "revision",
+                        "observed_at",
+                        "effective_at",
+                        "valid_until"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [

@@ -10,7 +10,7 @@ Accepted-basis references below resolve to the existing [Project Control Model](
 
 ## Declared machine boundary and integration
 
-`tests/Unit/CoreDependencyBoundaryTest.php` scans PHP names in `app/Business`, `app/Foundation`, `app/Sources` and `app/Commercial`. It rejects direct `App\Providers\Ads` dependencies, including aliases, grouped imports, fully qualified names and case variants. Exactly three existing file/class exceptions remain:
+`tests/Unit/CoreDependencyBoundaryTest.php` scans PHP names in `app/Business`, `app/Foundation`, `app/Sources`, `app/Commercial` and `app/MarketKnowledge`. It rejects direct `App\Providers\Ads` dependencies, including aliases, grouped imports, fully qualified names and case variants. Exactly three existing file/class exceptions remain:
 
 - `Business/BusinessContext.php` → `App\Providers\Ads\Provider`, for existing source-guidance presentation.
 - `Business/PromotionProduct.php` → `App\Providers\Ads\Provider`, for the existing approved promotion catalog.
@@ -28,7 +28,7 @@ Both guards are automatically discovered by the existing PHPUnit Unit/Feature su
 - **NORMATIVE_STATEMENT:** Core meaning does not derive from a specific provider implementation. A source-neutral boundary must not universally assume OAuth, ad accounts or campaigns. SOURCE != ADVERTISING_PROVIDER.
 - **DOES_NOT_MEAN:** No provider evidence can ever be required, every existing Ads class must move, or a universal Source taxonomy should exist.
 - **ENFORCEMENT_CLASS:** STATIC_DEPENDENCY / BEHAVIORAL / CI_GATE.
-- **CURRENT_ENFORCEMENT_COVERAGE:** Existing Source Registry uses bounded family/namespace/external-id and resource/operation/purpose identity. New direct-name guard protects the four declared directories with the three exact existing exceptions; negative fixtures prove forbidden names fail.
+- **CURRENT_ENFORCEMENT_COVERAGE:** Existing Source Registry uses bounded family/namespace/external-id and resource/operation/purpose identity. The direct-name guard protects the five declared directories with the three exact existing exceptions; negative fixtures prove forbidden names fail. D1 market originals retain platform custody without a Workspace and are written/read with explicit grants and no provider transport (`MarketEvidenceOriginTest`). This does not prove D2/D3 execution or commercial accuracy.
 - **KNOWN_UNENFORCED_SURFACE:** Indirect/dynamic/SQL/browser dependencies and future Source kinds; current BB1 capability axes remain advertising-oriented. No global provider independence claim.
 - **ENFORCEMENT_ARTIFACTS:** `CoreDependencyBoundaryTest`, `tests/Support/CoreDependencyBoundary.php`, existing `SourceRegistryTest`, `database/sql/source_registry.sql`.
 - **CHANGE_AUTHORITY:** Accepted Owner governance/semantic change; then update the bounded guard and its declared exceptions with evidence, not an unreviewed wildcard.

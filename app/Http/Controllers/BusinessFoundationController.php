@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Foundation\Business\BusinessScope;
+use App\MarketKnowledge\MarketEvidence;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -273,6 +274,15 @@ final class BusinessFoundationController
 
         return $this->respond(fn () => $scope->bindDataUse($request, $business, $raw->command_id, $raw->data_use_scope_id,
             $raw->effect, $raw->expected_relation, $this->selection($raw)));
+    }
+
+    public function marketEvidence(Request $request, string $evidence, MarketEvidence $owner): JsonResponse
+    {
+        $raw = $this->commandBody($request, ['data_use_scope_id', 'expected_revision', 'payload'], 280000);
+        abort_unless(is_string($raw->data_use_scope_id) && Str::isUuid($raw->data_use_scope_id) && is_object($raw->payload), 422);
+
+        return $this->respond(fn () => $owner->write($request, $evidence, $raw->command_id, $raw->data_use_scope_id,
+            $raw->expected_revision, $raw->payload, $this->selection($raw)));
     }
 
     public function material(Request $request, string $business, BusinessScope $scope): JsonResponse

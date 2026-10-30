@@ -97,9 +97,22 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
     const page = schema => ({ oneOf: [object({ data: schema, locale: { enum: ['ar', 'en'] }, visibility: ref('Visibility') }), ref('GoalsWitness')] });
     const materialRef = object({ namespace: { type: 'string', pattern: '^[a-z][a-z0-9_.]{0,79}$', description: 'Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer.' }, key: { type: 'string', minLength: 1, maxLength: 4096 }, version: { type: 'string', pattern: '^[0-9a-f]{64}$' } });
     const materialOperation = { enum: ['retained_read', 'display', 'reuse', 'process', 'combine', 'export'] };
+    const marketSubject = object({ key: nullable(text), label: { type: 'string', minLength: 1, maxLength: 180 }, identity_state: { enum: ['unresolved', 'source_asserted'] } });
+    const marketGeography = object({ ref: nullable(text), level: { enum: ['unknown', 'country', 'region', 'city', 'district'] } });
+    const evidencePayload = (kind, fields) => object({ record_key: { type: 'string', minLength: 1, maxLength: 180 }, evidence_type: { const: kind }, fields,
+        coverage: { enum: ['COMPLETE', 'PARTIAL', 'FAILED', 'UNKNOWN', 'PENDING'] }, provenance: { type: 'object', additionalProperties: true },
+        observed_at: { type: 'string', format: 'date-time' }, effective_at: { type: 'string', format: 'date-time' }, valid_until: nullable({ type: 'string', format: 'date-time' }),
+        reason: { type: 'string', minLength: 1, maxLength: 600 } });
+    const marketEvidencePayload = { oneOf: [
+        evidencePayload('market.offer:1', object({ subject: marketSubject, geography: marketGeography, currency: { type: 'string', pattern: '^[A-Z]{3}$' }, price: nullable({ type: 'number', minimum: 0 }), inclusions: list(text) })),
+        evidencePayload('market.interest_signal:1', object({ subject: marketSubject, geography: marketGeography, metric: object({ name: text, unit: text, definition_version: text }), value: nullable({ type: 'number' }) })),
+    ] };
     const materialResult = fact({ operation: materialOperation, purpose: text, recipient_ref: uuid,
         materials: list(object({ ref: materialRef, fields: { type: 'object', additionalProperties: true }, coverage: { enum: ['COMPLETE', 'PARTIAL', 'FAILED', 'UNKNOWN', 'PENDING'] },
-            provenance: { type: 'object', additionalProperties: true }, data_use_scope_id: uuid })),
+            provenance: { type: 'object', additionalProperties: true }, data_use_scope_id: uuid,
+            validity: object({ status: { enum: ['current', 'historical', 'review_required', 'unknown'] }, currentness_revision: id, checked_at: { type: 'string', format: 'date-time' } }),
+            evidence: object({ source_ref: uuid, schema: { enum: ['market.offer:1', 'market.interest_signal:1'] }, revision: id,
+                observed_at: { type: 'string', format: 'date-time' }, effective_at: { type: 'string', format: 'date-time' }, valid_until: nullable({ type: 'string', format: 'date-time' }) }) }, ['ref', 'fields', 'coverage', 'provenance', 'data_use_scope_id'])),
         dependency_digest: { type: 'string', pattern: '^[0-9a-f]{64}$' }, versions: versions(['business_authority']) });
     const base = '/api/businesses/{business}';
     const boundaryParam = { in: 'path', name: 'boundary', required: true, schema: uuid };
@@ -128,6 +141,7 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
             BusinessPurposes: businessPurposes, BusinessPurposesResult: data(businessPurposes), BusinessPurposeCommand: purposeCommand, BusinessPurposeAcknowledgement: purposeAck,
             BusinessChoicesResult: data(choices), BusinessSurfaceResult: data(surface), BusinessCatalogResult: data(catalog),
             BusinessMaterialPublishResult: data(fact({ artifact_ref: materialRef, manifest_id: uuid, closure_digest: { type: 'string', pattern: '^[0-9a-f]{64}$' }, versions: versions(['manifest']) })),
+            MarketEvidencePayload: marketEvidencePayload,
             BusinessMaterialReference: materialRef, BusinessMaterialReadResult: data(materialResult),
             BusinessAuthoritySelection: authority,
             BusinessFoundationError: object({ error: { enum: ['business_authority_denied', 'business_conflict', 'business_relation_revision_rejected', 'invalid_business_command'] } }),
@@ -167,6 +181,11 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
             [`${base}/grants`]: { post: endpoint('writeIndependentBusinessGrant', body({ effect: { enum: ['issue', 'revoke'] }, grantee_public_id: uuid, action: text, parent_grant_id: nullable(id), grant_id: nullable(id), expected_grant: version,
                 expires_at: nullable({ type: 'string', format: 'date-time' }), delegable: { type: 'boolean' }, realm_workspace_public_id: nullable(uuid) }), grantResult) },
             [`${base}/lifecycle`]: { post: endpoint('writeIndependentBusinessLifecycle', body({ effect: { enum: ['suspend', 'archive', 'restore', 'branch_create', 'branch_archive'] }, target_ref: nullable(uuid), payload: object({ label: text }, []), expected_revision: version }), lifecycleResult) },
+            '/api/market-evidence/{evidence}': { post: {
+                ...endpoint('writeQualifiedMarketEvidence', body({ data_use_scope_id: uuid, expected_revision: version, payload: ref('MarketEvidencePayload') }),
+                    object({ material_ref: materialRef, versions: versions(['evidence']) }), 200, false),
+                parameters: [{ in: 'path', name: 'evidence', required: true, schema: uuid }],
+            } },
             '/api/data-rights/commands': { post: endpoint('writeQualifiedDataResourceRight', body({ target_kind: { enum: ['client_boundary', 'boundary_subject', 'data_use', 'source'] }, target_ref: uuid,
                 effect: { enum: ['attach_subject', 'detach_subject', 'revoke', 'adopt', 'qualify_issue', 'retire', 'rename', 'declare_scope'] }, payload: { oneOf: [object({ business_public_id: uuid, branch_id: nullable(id) }), object({}), object({ grant_id: { type: 'string', pattern: '^[1-9][0-9]{0,17}$' } }), object({ action: { enum: ['source.register', 'source.read', 'source.manage', 'source.audit.recover', 'provider.connect', 'provider.read', 'provider.revoke'] }, expires_at: nullable({ type: 'string', format: 'date-time' }), reason: { type: 'string', pattern: '^[a-z][a-z0-9_]{2,79}$' } }), object({ reason: { type: 'string', pattern: '^[a-z][a-z0-9_]{2,79}$' } }), object({ label: { type: 'string', minLength: 1, maxLength: 120 }, reason: { type: 'string', pattern: '^[a-z][a-z0-9_]{2,79}$' } })] }, expected_revision: version }), { oneOf: [boundaryResult, revokeResult, sourceGrantResult, sourceAdoptionResult, sourceRetirementResult] }, 200, false) },
         },

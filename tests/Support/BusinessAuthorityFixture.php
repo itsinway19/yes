@@ -17,6 +17,13 @@ final class BusinessAuthorityFixture
             throw new \LogicException('Unregistered synthetic fixture relation.');
         }
         $owner = DB::connection('pgsql_migrations');
+        // jsonb_populate_record fills omitted columns with NULL, bypassing table
+        // defaults. Keep the old client fixture explicit on the D1 schema while
+        // still allowing the populated pre-D1 upgrade test to run unchanged.
+        if ($table === 'data_use_scopes' && ! array_key_exists('rights_domain', $values)
+            && $owner->scalar("SELECT EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid='data_use_scopes'::regclass AND attname='rights_domain' AND NOT attisdropped)")) {
+            $values['rights_domain'] = 'client';
+        }
 
         return $owner->transaction(function () use ($owner, $table, $values, $actor): object {
             $owner->statement('SET LOCAL ROLE builderad_scope_executor');

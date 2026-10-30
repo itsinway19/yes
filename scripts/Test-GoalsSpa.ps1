@@ -102,7 +102,7 @@ try {
  $env:CACHE_STORE='array';$env:QUEUE_CONNECTION='sync';$env:MAIL_MAILER='array';$env:BCRYPT_ROUNDS='4'
  $env:APP_URL='http://localhost:8138';$env:APP_LOCALE='ar';$env:GOALS_SPA_RUN=$proofRun;$env:GOALS_SPA_PROOF='enabled'
  $env:LARAVEL_STORAGE_PATH=Join-Path $proofRun 'laravel'
- foreach($proofDir in @('framework/sessions','framework/views','framework/cache/data','logs','app/private')){New-Item -ItemType Directory -Force -Path (Join-Path $env:LARAVEL_STORAGE_PATH $proofDir)|Out-Null}
+ foreach($proofDir in @('framework/sessions','framework/views','framework/cache/data','framework/testing','logs','app/private')){New-Item -ItemType Directory -Force -Path (Join-Path $env:LARAVEL_STORAGE_PATH $proofDir)|Out-Null}
  Invoke-ProofPhp @('artisan','security:assert-disposable-test-db')
  Invoke-ProofPhp @('artisan','package:discover','--no-ansi') | Out-File (Join-Path $proofRun 'package-discovery.log')
  $proofSourceBefore=Get-ProofSource

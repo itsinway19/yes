@@ -375,6 +375,8 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->prefix('api/business
 });
 Route::post('/api/data-rights/commands', [BusinessFoundationController::class, 'resourceRight'])
     ->middleware(['auth', EnsureCurrentPrincipal::class])->name('business-foundation.resource-right');
+Route::post('/api/market-evidence/{evidence}', [BusinessFoundationController::class, 'marketEvidence'])
+    ->whereUuid('evidence')->middleware(['auth', EnsureCurrentPrincipal::class])->name('market-evidence.write');
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
     Route::get('/api/data-rights/boundaries', [BusinessFoundationController::class, 'boundaries'])->name('business-foundation.boundaries');
     Route::get('/api/data-rights/use-scopes', [BusinessFoundationController::class, 'dataUseChoices'])->name('business-foundation.data-use-choices');

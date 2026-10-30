@@ -16,7 +16,7 @@ final class BusinessSyntheticUpgradeTest extends TestCase
         try {
             $reset->clear();
             $paths = array_map(fn ($path) => 'database/migrations/'.basename($path), array_filter(glob(database_path('migrations/*.php')),
-                fn ($path) => basename($path) !== '0001_01_01_000420_create_business_scope_foundation.php'));
+                fn ($path) => strcmp(basename($path), '0001_01_01_000420_create_business_scope_foundation.php') < 0));
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $paths, '--force' => true]));
             $actor = User::factory()->create();
             $db = DB::connection('pgsql_migrations');
