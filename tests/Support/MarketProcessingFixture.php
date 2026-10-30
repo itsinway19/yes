@@ -23,13 +23,14 @@ trait MarketProcessingFixture
         return $source;
     }
 
-    private function processingOriginals(string $type = 'offer'): array
+    private function processingOriginals(string $type = 'offer', bool $distinctSources = false): array
     {
         $writer = User::factory()->create();
         $this->actingAs($writer);
         $source = $this->processingSource();
         $records = [];
         foreach ([false, true] as $after) {
+            $recordSource = $distinctSources && $after ? $this->processingSource() : $source;
             $evidence = (string) Str::uuid7();
             $fields = $type === 'offer' ? MarketProcessingExamples::offer() : MarketProcessingExamples::signal($after);
             $payload = $this->offer();
@@ -38,9 +39,9 @@ trait MarketProcessingFixture
             $payload['fields'] = $fields;
             $payload['coverage'] = 'COMPLETE';
             $payload['provenance'] = ['private' => 'DO_NOT_DISCLOSE_SOURCE_TOKEN'];
-            $right = $this->marketRight($writer, $source, $evidence, 'ingest', array_keys($fields));
+            $right = $this->marketRight($writer, $recordSource, $evidence, 'ingest', array_keys($fields));
             $ref = $this->writeEvidence($evidence, $right, $payload)->assertOk()->json('data.material_ref');
-            $records[] = compact('evidence', 'payload', 'ref');
+            $records[] = ['source' => $recordSource, ...compact('evidence', 'payload', 'ref')];
         }
 
         return compact('writer', 'source', 'records');
@@ -56,7 +57,7 @@ trait MarketProcessingFixture
         $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $data->id]]];
         $rights = [];
         foreach ($originals['records'] as $record) {
-            $right = $this->marketRight($user, $originals['source'], $record['evidence'], 'process', $fields ?? array_keys($record['payload']['fields']));
+            $right = $this->marketRight($user, $record['source'] ?? $originals['source'], $record['evidence'], 'process', $fields ?? array_keys($record['payload']['fields']));
             $this->postJson('/api/businesses/'.$business['business_public_id'].'/data-use-bindings', [
                 'command_id' => (string) Str::uuid(), 'data_use_scope_id' => $right['scope_id'], 'effect' => 'add', 'expected_relation' => 0,
                 'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [

@@ -91,6 +91,61 @@ final class MarketProcessingMethodsTest extends TestCase
         Findings::validate($task, $method, $finding);
     }
 
+    public function test_interest_source_asserted_identity_never_becomes_global_from_equal_keys(): void
+    {
+        $method = new QualifiedInterestChange;
+        $before = E::material(E::signal(), 'market.interest_signal:2');
+        $after = E::material(E::signal(true), 'market.interest_signal:2', 2);
+        $before['evidence']['source_ref'] = '01900000-0000-7000-8000-000000000001';
+        $after['evidence']['source_ref'] = '01900000-0000-7000-8000-000000000002';
+        $finding = $method->execute(new MarketProcessingTask($method->question(), [$before, $after]));
+        $this->assertSame('not_comparable', $finding['status']);
+        $this->assertSame(['SOURCE_COMPARABILITY_UNQUALIFIED'], $finding['reason_codes']);
+        $this->assertEquals((object) [], $finding['values']);
+        $after['evidence']['source_ref'] = $before['evidence']['source_ref'];
+        $finding = $method->execute(new MarketProcessingTask($method->question(), [$before, $after]));
+        $this->assertSame('comparable', $finding['status']);
+        $this->assertSame(25.0, $finding['values']->percent_change);
+        foreach ([null, '', [], 7] as $unknownSource) {
+            $before['evidence']['source_ref'] = $after['evidence']['source_ref'] = $unknownSource;
+            $finding = $method->execute(new MarketProcessingTask($method->question(), [$before, $after]));
+            $this->assertSame('not_comparable', $finding['status']);
+        }
+    }
+
+    public function test_availability_exception_does_not_disable_an_independent_local_alternative(): void
+    {
+        foreach ([new \RuntimeException('PRIVATE_TOOL_FAILURE'), new \TypeError('PRIVATE_ADAPTER_ERROR')] as $error) {
+            $optional = new class($error) implements MarketMethod
+            {
+                public function __construct(private \Throwable $error) {}
+
+                public function question(): string
+                {
+                    return 'compare_offers';
+                }
+
+                public function reference(): string
+                {
+                    return 'offer_equivalence:1';
+                }
+
+                public function available(): bool
+                {
+                    throw $this->error;
+                }
+
+                public function execute(MarketProcessingTask $task): array
+                {
+                    throw new \LogicException('Unavailable executor ran');
+                }
+            };
+            $selector = new MarketMethodSelector([$optional, new OfferEquivalence]);
+            $this->assertInstanceOf(OfferEquivalence::class, $selector->select('compare_offers'));
+            $this->assertNull((new MarketMethodSelector([$optional]))->select('compare_offers'));
+        }
+    }
+
     public function test_feasibility_is_limited_by_qualified_business_context_and_never_invents_cost_or_capacity(): void
     {
         $method = new BusinessFeasibility;

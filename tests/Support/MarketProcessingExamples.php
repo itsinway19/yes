@@ -26,6 +26,6 @@ final class MarketProcessingExamples
     public static function material(array $fields, string $schema, int $key = 1): array
     {
         return ['ref' => ['namespace' => 'market.evidence', 'key' => 'synthetic-'.$key, 'version' => str_repeat((string) $key, 64)],
-            'fields' => $fields, 'coverage' => 'COMPLETE', 'evidence' => ['schema' => $schema]];
+            'fields' => $fields, 'coverage' => 'COMPLETE', 'evidence' => ['schema' => $schema, 'source_ref' => '01900000-0000-7000-8000-000000000001']];
     }
 }

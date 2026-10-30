@@ -32,7 +32,12 @@ final class MarketProcessingConcurrencyTest extends TestCase
         $this->contendedCompletion(true, true);
     }
 
-    private function contendedCompletion(bool $receiptWait, bool $replay = false): void
+    public function test_completion_attestation_expiry_during_observed_receipt_wait_rolls_back_consumption_and_result(): void
+    {
+        $this->contendedCompletion(true, false, true);
+    }
+
+    private function contendedCompletion(bool $receiptWait, bool $replay = false, bool $attestationExpiry = false): void
     {
         $f = $this->processingOriginals();
         $c = $this->processingConsumer($f);
@@ -50,7 +55,7 @@ final class MarketProcessingConcurrencyTest extends TestCase
             $this->completeProcessing($c, $body['command_id'], ['command_id' => $command, 'effect' => 'complete', 'authority_selection' => $c['selection'], 'context_selection' => null])->assertOk()->assertJsonPath('data.state', 'validated');
         }
         file_put_contents($path, json_encode(['run' => $tag, 'operation' => 'market-processing-complete', 'actor' => $c['user']->id,
-            'session' => SessionAuthority::sessionKey($request), 'business' => $c['business']['business_public_id'], 'processing_run' => $body['command_id'],
+            'session' => SessionAuthority::sessionKey($request), 'session_id' => $request->session()->getId(), 'generation' => (int) $request->session()->get('a001_generation'), 'attested_replay' => $replay, 'attestation_expires_soon' => $attestationExpiry, 'business' => $c['business']['business_public_id'], 'processing_run' => $body['command_id'],
             'command' => $command, 'outcome' => ['state' => 'validated', 'finding' => $finding, 'reason_code' => null],
             'selection' => $c['selection'], 'release' => $release], JSON_THROW_ON_ERROR));
         $worker = new Process([PHP_BINARY, base_path('tests/BusinessScopeCommandWorker.php'), $path], base_path());
@@ -60,7 +65,7 @@ final class MarketProcessingConcurrencyTest extends TestCase
         try {
             $worker->start();
             $this->waitFor(fn () => str_contains($worker->getOutput(), 'READY_PID='), $worker);
-            if ($receiptWait) {
+            if ($receiptWait && ! $attestationExpiry) {
                 $evidence['expiry'] = Fixture::expireQualificationSoon($c['rights'][0]['qualification_id'], $c['user']->id);
             }
             $owner->beginTransaction();
@@ -82,6 +87,10 @@ final class MarketProcessingConcurrencyTest extends TestCase
 
                 return false;
             }, $worker);
+            if ($attestationExpiry) {
+                $this->assertSame(1, preg_match('/COMPLETION_ATTESTATION_EXPIRES=([^\r\n]+)/', $worker->getOutput(), $expiryMatch));
+                $evidence['expiry'] = $expiryMatch[1];
+            }
             $this->assertNotEmpty($evidence['wait']['xid']);
             $this->assertNotSame($blocker, $evidence['wait']['pid']);
             if ($replay) {
@@ -105,6 +114,10 @@ final class MarketProcessingConcurrencyTest extends TestCase
             }
             $this->assertSame($replay ? 1 : 0, (int) $owner->table('market_processing_runs')->value('execution_count'));
             $this->assertSame($replay ? 1 : 0, $owner->table('business_command_receipts')->where('command_id', $command)->count());
+            if ($attestationExpiry) {
+                $this->assertSame(0, $owner->table('market_processing_completion_tickets')->whereNotNull('consumed_at')->count());
+                $this->assertNull($owner->table('market_processing_runs')->value('completion_attestation_digest'));
+            }
         } finally {
             if ($owner->transactionLevel() > 0) {
                 $owner->rollBack();

@@ -112,6 +112,63 @@ final class MarketProcessingTest extends TestCase
         $this->assertStringNotContainsString('DO_NOT_DISCLOSE_SOURCE_TOKEN', $response->getContent());
     }
 
+    public function test_distinct_qualified_sources_with_identical_subject_and_measurement_labels_are_not_comparable(): void
+    {
+        $f = $this->processingOriginals('signal', distinctSources: true);
+        $this->assertNotSame($f['records'][0]['source'], $f['records'][1]['source']);
+        $c = $this->processingConsumer($f);
+        $body = $this->processingBody($f, $c, 'compare_interest');
+        $this->prepareProcessing($c, $body)->assertOk();
+        $complete = ['command_id' => (string) Str::uuid(), 'effect' => 'complete', 'authority_selection' => $c['selection'], 'context_selection' => null];
+        $response = $this->completeProcessing($c, $body['command_id'], $complete)->assertOk()
+            ->assertJsonPath('data.state', 'abstained')->assertJsonPath('data.finding.status', 'not_comparable')
+            ->assertJsonPath('data.finding.reason_codes.0', 'SOURCE_COMPARABILITY_UNQUALIFIED');
+        $this->assertArrayNotHasKey('percent_change', $response->json('data.finding.values'));
+        $this->assertStringNotContainsString('DO_NOT_DISCLOSE_SOURCE_TOKEN', $response->getContent());
+        $this->assertSame($response->json(), $this->completeProcessing($c, $body['command_id'], $complete)->assertOk()->json());
+    }
+
+    public function test_availability_exception_uses_local_fallback_or_records_unavailability_without_leaking_details(): void
+    {
+        $f = $this->processingOriginals();
+        $c = $this->processingConsumer($f);
+        $optional = new class implements MarketMethod
+        {
+            public function question(): string
+            {
+                return 'compare_offers';
+            }
+
+            public function reference(): string
+            {
+                return 'offer_equivalence:1';
+            }
+
+            public function available(): bool
+            {
+                throw new \RuntimeException('PRIVATE_OPTIONAL_TOOL_FAILURE');
+            }
+
+            public function execute(MarketProcessingTask $task): array
+            {
+                throw new \LogicException('Unavailable executor ran');
+            }
+        };
+        foreach ([true, false] as $hasFallback) {
+            $body = $this->processingBody($f, $c);
+            $this->prepareProcessing($c, $body)->assertOk();
+            $this->app->instance(MarketMethodSelector::class, new MarketMethodSelector($hasFallback ? [$optional, new OfferEquivalence] : [$optional]));
+            $response = $this->completeProcessing($c, $body['command_id'])->assertOk()
+                ->assertJsonPath('data.state', $hasFallback ? 'validated' : 'unavailable');
+            $this->assertStringNotContainsString('PRIVATE_OPTIONAL_TOOL_FAILURE', $response->getContent());
+            if ($hasFallback) {
+                $response->assertJsonPath('data.finding.status', 'equivalent');
+            } else {
+                $response->assertJsonPath('data.finding', null)->assertJsonPath('data.reason_code', 'METHOD_UNAVAILABLE')->assertJsonPath('data.usage.executions', 0);
+            }
+        }
+    }
+
     public function test_right_withdrawal_during_computation_denies_result_and_leaves_capture_uncompleted(): void
     {
         $f = $this->processingOriginals();

@@ -2,10 +2,12 @@
 
 // Disposable integration participant; never an application command.
 use App\Foundation\Tenancy\PrincipalContext;
+use App\MarketKnowledge\Processing\TrustedCompletion;
 use App\Models\User;
 use App\Security\DisposableTestDatabaseGuard;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 require dirname(__DIR__).'/vendor/autoload.php';
@@ -39,9 +41,31 @@ try {
             if ($f['outcome']['finding'] !== null) {
                 $f['outcome']['finding']['values'] = (object) $f['outcome']['finding']['values'];
             }
+            $store = app('session')->driver();
+            $store->setId($f['session_id']);
+            $store->put('a001_generation', $f['generation']);
+            $request = Request::create('/');
+            $request->setLaravelSession($store);
+            $request->setUserResolver(fn () => $user);
+            $ticket = empty($f['attested_replay']) ? app(TrustedCompletion::class)->issue(
+                $request, $f['business'], ['run_ref' => $f['processing_run'], 'method_ref' => $f['outcome']['finding']['method_ref']],
+                $f['command'], 'complete', $f['outcome'], 1, $f['selection'], null,
+            ) : null;
 
-            return DB::scalar('SELECT builderad_v2_market_processing_complete(?,?::uuid,?::uuid,?::uuid,?,?::jsonb,?,?::jsonb,NULL)',
-                [$f['session'], $f['business'], $f['command'], $f['processing_run'], 'complete', json_encode($f['outcome']), 1, json_encode($f['selection'])]);
+            if (! empty($f['attestation_expires_soon'])) {
+                // Guarded disposable fixture: exercise expiry at the final receipt
+                // without lengthening any product timeout or the actual issuer lifetime.
+                $row = json_decode(DB::connection('pgsql_migrations')->scalar('SELECT to_jsonb(t)::text FROM market_processing_completion_tickets t WHERE token_hash=?', [hash('sha256', $ticket)]), true, flags: JSON_THROW_ON_ERROR);
+                $ticket = bin2hex(random_bytes(32));
+                $row['token_hash'] = hash('sha256', $ticket);
+                $row['expires_at'] = DB::connection('pgsql_authority')->scalar("SELECT (clock_timestamp()+interval '2 seconds')::text");
+                DB::connection('pgsql_authority')->table('market_processing_completion_tickets')->insert($row);
+                echo 'COMPLETION_ATTESTATION_EXPIRES='.$row['expires_at'].PHP_EOL;
+                flush();
+            }
+
+            return DB::scalar('SELECT builderad_v2_market_processing_complete(?,?::uuid,?::uuid,?::uuid,?,?::jsonb,?,?::jsonb,NULL,?)',
+                [$f['session'], $f['business'], $f['command'], $f['processing_run'], 'complete', json_encode($f['outcome']), 1, json_encode($f['selection']), $ticket]);
         }
         if ($f['operation'] === 'market-write') {
             return DB::scalar('SELECT builderad_v2_market_evidence_write(?,?::uuid,?::uuid,?::uuid,?,?::jsonb,?::jsonb)',

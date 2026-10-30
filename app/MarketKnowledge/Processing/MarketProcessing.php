@@ -67,10 +67,18 @@ final class MarketProcessing
             $outcome = ['state' => $input['run']['state'], 'finding' => $input['run']['finding'], 'reason_code' => $input['run']['reason_code']];
         }
 
-        return $this->transaction($request, fn () => $this->sql('SELECT builderad_v2_market_processing_complete(?,?::uuid,?::uuid,?::uuid,?,?::jsonb,?,?::jsonb,?::jsonb)', [
-            SessionAuthority::sessionKey($request), $business, $body['command_id'], $run, $body['effect'], $this->json($outcome), $elapsed,
-            $this->json($selection), $this->json($context),
-        ]));
+        return $this->transaction($request, function () use ($request, $business, $body, $run, $outcome, $elapsed, $selection, $context, $input): array {
+            // Separate issuer credentials attest the trusted PHP result. A plain
+            // runtime SQL call cannot mint this evidence or substitute its payload.
+            $ticket = $input['run']['state'] === 'prepared'
+                ? app(TrustedCompletion::class)->issue($request, $business, $input['run'], $body['command_id'], $body['effect'], $outcome, $elapsed, $selection, $context)
+                : null;
+
+            return $this->sql('SELECT builderad_v2_market_processing_complete(?,?::uuid,?::uuid,?::uuid,?,?::jsonb,?,?::jsonb,?::jsonb,?)', [
+                SessionAuthority::sessionKey($request), $business, $body['command_id'], $run, $body['effect'], $this->json($outcome), $elapsed,
+                $this->json($selection), $this->json($context), $ticket,
+            ]);
+        });
     }
 
     private function transaction(Request $request, callable $command): array

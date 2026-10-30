@@ -90,3 +90,73 @@ Contract review: existing OpenAPI paths are structurally unchanged; the only cha
 Retained local evidence was independently checked against all nine SHA-256 references in d2-verification-summary.json. JUnit identity comparison confirms 1,249 original obligations, one original error, 28 passing replacement tests and 1,249 distinct passing obligations across the composed evidence. **The original local Foundation remains FAIL (1,248 passed / one error); this is composed local evidence, never a retroactive clean Foundation PASS.** Raw original log SHA-256: `8d9e92fd345f086e2ddf5894959e14a4f90c2aa7ca342d826667ef3e719fe757`; focused correction log SHA-256: `8f87d24bcb8abc8ebccc7096e937f623fadfc72c350c549baaf5ba38db578aed`. Original logs/JUnit/source snapshots remain in ignored local storage; GitHub run logs will supply independently accessible full hosted evidence.
 
 The exact published SHA, Draft PR link and actual hosted result are recorded in the PR handoff after CI completes. They cannot self-reference this commit inside its own tree. A hosted PASS does not replace independent source review or authorize merge/deployment; acceptance remains pending independent review.
+
+
+## PR #51 bounded independent-review correction — 31 October 2026
+
+Reviewed/passing baseline: `1bff76a4ad7c5a0c6c76358d877ffb08aac014cc`, branch `codex/market-processing-d2`, clean before the correction. GitHub PR #51 is open Draft/unmerged; baseline hosted Foundation run 41137856357 completed success. This retained baseline does not establish the correction's gate.
+
+Acceptance fixed before production edits:
+
+- R01: identical source-asserted subject keys and metric/basis strings across two independent qualified sources must abstain, without a numeric comparison; same-source 40-to-50 remains a 25% comparison under every existing comparability requirement. Unknown source must abstain too. Test both pure domain input and the actual licensed capture/complete/replay path.
+- P05 availability: RuntimeException or TypeError during an optional candidate's available() must leave an independent local candidate usable. With no candidate, the current HTTP path must durably record unavailable, no result/no execution, without leaking adapter errors. Do not swallow execution/validation errors or permit a semantic-version mismatch.
+- Attachment R02: characterize direct SQL completion separately from browser reachability, using the actual runtime role, genuine signed principal/current session and exact process rights. Do not call the boundary PROVED SAFE merely because the HTTP schema rejects a finding.
+
+Reproduction: before product edits, both new Unit regressions failed as predicted (cross-source yielded comparable; availability propagated PRIVATE_TOOL_FAILURE). The actual HTTP regressions also failed: cross-source completed rather than abstained, and optional availability produced an unhandled failure. Diagnostic logs are retained in `storage/framework/testing/d2-review-red-unit.log` and `d2-review-red-boundaries.log`.
+
+R01 correction reuses server-provided evidence.source_ref, scopes source_asserted identity and measurement meaning to that issuer, and emits SOURCE_COMPARABILITY_UNQUALIFIED for distinct/missing sources. No global identity/link engine, metadata disclosure, schema/migration, API change or D3 is added. Same-source checks and numeric semantics are unchanged. Synthetic input builders now explicitly model the issuer; the HTTP regression uses two actual admitted sources with their own legitimate intake/process grants.
+
+P05 correction isolates Throwable only around each candidate's available() probe and continues the finite code-owned order. No adapter exception content is returned or logged. A working alternative still runs through the original captured version check, domain validation and final SQL authority requalification. No alternative uses the existing unavailable terminal state. Pure method/Core tests passed 20 tests / 92 assertions after correction. Final integration and hosted verification are pending at the time of this source record.
+
+### R02 proof and unresolved authority decision
+
+The disposable direct-invocation probe confirmed this exact limit: two source-qualified offers with different models produce `different` in OfferEquivalence; an HTTP request adding a fabricated finding is 422, but the genuine signed `builderad_app` transaction can call builderad_v2_market_processing_complete with a structurally valid `equivalent`, and SQL records it as validated. It remains unpublished. No owner/executor-role switch or raw protected-table write was used. Activating the signed principal still requires the existing independent authority-role context ticket; this is not proof that possession of runtime DB credentials alone can forge identity or read another Business.
+
+Evidence: the guarded diagnostic source, JUnit/source manifest and summary are retained under `storage/framework/testing/d2-review-reproduction/`. Probe result and source hashes follow below. It is a characterization, not an executable production bypass endpoint or a passing security assertion, and is not installed in the normal test selection.
+
+The accepted execution design §5.2/5.3 puts domain validation in the pure PHP method/trusted writer, outside database locks; SQL currently enforces actor, rights, exact input/context, typed outcome and atomic effects, not independent domain truth. That explains the implementation but does not prove immunity to direct SQL substitution inside an already authorized transaction. R02 is therefore **CONFIRMED TRUST LIMIT / OWNER DECISION PENDING**, not FIXED or PROVED SAFE.
+
+The bounded proposed correction is an exact single-use trusted execution binding issued through the existing authority/context-ticket boundary after server-side domain validation, bound to run, command, result digest and runtime PID/XID. Completion would require that binding in addition to every existing user/right/source check. It would not delegate user authority, make SQL a domain engine, or execute D3. It requires a forward migration and protected-boundary tests. The current AGENTS.md requires an applicable architectural/Owner decision before changing security/authority contracts; that explicit decision was requested. No such binding or privilege change has been silently implemented in this correction.
+
+PR must remain Draft/unmerged. R01/P05 success and new CI must not be represented as closure of R02 or final D2 acceptance.
+
+Diagnostic SHA-256:
+
+- `MarketProcessingSqlTrustProbeTest.php`: `67e9b61f2b2100e53c8d1661be5467a98669d72e8f28321b5be1d13c966fc135`
+- `sql-trust-result.json`: `7651f925ae3c58e364839e15e27fe12ae729ba69f191a8df75ac7d072544d449`
+- `tests.xml`: `32a16b9308740835d7b053f881f41a7a0fb71dda574e2c671574dc2c9f704c20`
+- `source-manifest.json`: `2d09e3bc87323d5fad920f48b06230cca510a604406201f1fded49183c45da89`
+
+
+### Owner decision: APPROVE_D2_TRUSTED_COMPLETION_HARDENING
+
+The Owner explicitly classified R02 as a material trusted-completion defect and approved closing it inside D2. This supersedes OWNER DECISION PENDING above. Conditions: independent authority-only issuance after trusted PHP validation; exact run/command/executor/beneficiary/method/full-result/PID/XID binding, short validity, atomic one-use consumption, current-right replay, no false claim of resistance to compromise of the trusted PHP application or its separate authority credential.
+
+Forward migration 460 adds one narrow completion-attestation table under the existing authority-role boundary, and a protected completion overload. Existing migration 450 and other installed definitions remain untouched. The old SQL signature may replay an eligible terminal result; it cannot create a new terminal effect without an attestation. Authority can insert attestations and clean expired rows, but cannot read live payloads or execute completion. Runtime cannot mint/read/update attestation custody; the non-login executor consumes an exact row permit atomically with the run/receipt. The attestation is checked after resource/authority/run locks and again after the final receipt wait. No additional user grant, service identity, signing service, queue, external plan edit or D3 is introduced.
+
+Actual issuance code is reachable only from the server completion coordinator after the selected method and Findings validator, or an explicit server failure/cancel/unavailable outcome. Its authority connection is the existing pgsql_authority path, independent of builderad_app; the result binding is JSONB canonical and includes the entire outcome, timing, selections and command/effect. Twenty-second attestations are bounded to a maximum thirty-second lifetime in the schema. Existing principal context tickets are neither changed nor made into result attestations. The original SQL reproduction remains retained as a before-state; adversarial after-state tests and populated D2 upgrade must establish closure before FIXED is claimed.
+
+
+### Final local correction verification
+
+**R01 — FIXED locally:** actual independent sources with identical labels now abstain with no delta/percent; positive same-source comparison remains. Unknown issuer also abstains. No cross-source identity authority or D3 functionality was added.
+
+**P05 throwing availability — FIXED locally:** RuntimeException/TypeError probes cannot disable the next valid local executor. HTTP records unavailable with no finding/no execution when no alternative exists; adapter exception details are not released.
+
+**R02 — FIXED locally under APPROVE_D2_TRUSTED_COMPLETION_HARDENING:** both direct SQL signatures reject a forged new result without the independent attestation, while trusted PHP completion succeeds. Tests prove full outcome/command/method/beneficiary/actor/generation/run binding, one-use consumption, genuine signed-principal transfer rejection across XID/PID, expiry, authority/runtime privilege separation and exact qualified terminal replay. Result stamp and retained invocation evidence preserve the trusted completion after the short-lived ticket expires. Historical unstamped terminal results remain stored but cannot be released as trusted; pending runs can execute under the new contract. Fresh installation and populated D2 upgrade preserve evidence, rights, receipts and history, deny pre-existing catalog drift and close all temporary installation privileges.
+
+Official isolated final affected gate: **100 tests / 1,209 assertions PASS, 301.61s**, selecting D2/D1, material use/publication, data-use binding, database authority and Core/source-optional guards. Source unchanged **True**. Final completion-attestation expiry proof `processing-1cb065cd-b89e-44e7-b9c3-e09fc65feae1-evidence.json` observed independent worker PID 6056 / XID 53730 blocked by PID 14924, the ungranted receipt lock and the exact short expiry. Worker denied 42501 and left no consumed ticket, result stamp, terminal run or completion receipt. Product timeouts and default issuer lifetime were not altered; the two-second expired attestation is a guarded disposable authority fixture.
+
+Earlier narrow stages are retained separately: method/Core tests 20/92; first hardened boundary selection 12/229; genuine trusted completion smoke 2/48. A test-only helper initially collided with Laravel TestCase::call; renamed the helper, with no product change. These failed/partial attempts are retained and not relabelled as PASS.
+
+Repository-wide Pint and generated API/type drift check passed after production changes. No existing API schema/path, migration 430/440/450, source policy, Business grant, lock ordering or security timeout changed. Runtime no longer has authority to invent a new completed finding merely by calling SQL in a qualified session. This assumes the trusted PHP code and its independent authority credential remain intact; it does not claim protection from their compromise. Ticket consumption and terminal effect use the existing invocation/permit/receipt system, not a second rights model.
+
+GitHub Foundation on the new correction is mandatory and pending at this source snapshot; exact correction SHA/run/checkout/parents/tree and final conclusion belong to PR #51's handoff. Baseline run 41137856357 is not correction evidence. Keep Draft/unmerged and D3 unstarted. External planning documents were not edited.
+
+Retained correction log SHA-256:
+
+- `storage/framework/testing/d2-review-red-unit.log`: `99e14220b066d948c21f05733ba5325071fe183ddd5ef45a41e6c4fc26089f82`
+- `storage/framework/testing/d2-review-red-boundaries.log`: `c3d49ece3cf6559438d8bf53e508c71b151598ce4e35922b0532977376a2a7be`
+- `storage/framework/testing/d2-review-fixed-focused.log`: `81d27927e91b7ab66f02f5cafa745f70d48305215dbc5140275281737866f7c7`
+- `storage/framework/testing/d2-trusted-boundaries.log`: `ab407d4987c552cc6dcd0586c130f67d73f18d0757af20fa844afeb0f3b32e78`
+- `storage/framework/testing/d2-review-final-affected.log`: `74e98e32f5e0af701a45e64ec5f5ec3ae055280b38da609907bb23a29dd0ecd8`

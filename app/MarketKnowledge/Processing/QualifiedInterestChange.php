@@ -31,6 +31,12 @@ final class QualifiedInterestChange implements MarketMethod
         if (($a['evidence']['schema'] ?? null) !== 'market.interest_signal:2' || ($b['evidence']['schema'] ?? null) !== 'market.interest_signal:2') {
             return $no('QUALIFIED_COMPARISON_BASIS_REQUIRED');
         }
+        // source_asserted keys and measurement labels are scoped to their issuer.
+        // No qualified cross-source identity/measurement link exists in D2.
+        $source = $a['evidence']['source_ref'] ?? null;
+        if (! is_string($source) || $source === '' || $source !== ($b['evidence']['source_ref'] ?? null)) {
+            return $no('SOURCE_COMPARABILITY_UNQUALIFIED');
+        }
         $a = $a['fields'];
         $b = $b['fields'];
         foreach (['subject', 'geography', 'metric', 'comparison_basis', 'value'] as $key) {

@@ -3,6 +3,7 @@
 namespace App\MarketKnowledge\Processing;
 
 use LogicException;
+use Throwable;
 
 /** Code-owned ordered alternatives; no caller-supplied class, tool or prompt. */
 final class MarketMethodSelector
@@ -22,8 +23,14 @@ final class MarketMethodSelector
     public function select(string $question): ?MarketMethod
     {
         foreach ($this->methods[$question] ?? [] as $method) {
-            if ($method->available()) {
-                return $method;
+            try {
+                if ($method->available()) {
+                    return $method;
+                }
+            } catch (Throwable) {
+                // A failed optional availability probe is unavailable only for this
+                // candidate. Never disclose adapter errors or skip a valid alternative.
+                continue;
             }
         }
 
