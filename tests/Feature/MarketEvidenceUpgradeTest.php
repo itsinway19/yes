@@ -21,7 +21,7 @@ final class MarketEvidenceUpgradeTest extends TestCase
         $reset->clear();
         try {
             $paths = array_values(array_filter(glob(database_path('migrations/*.php')),
-                fn ($path) => ! str_ends_with($path, '000430_create_market_evidence_origin.php')));
+                fn ($path) => strcmp(basename($path), '0001_01_01_000430_create_market_evidence_origin.php') < 0));
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $paths, '--realpath' => true, '--force' => true]));
             $f = $this->original();
             $route = '/api/businesses/'.$f['a']['business_public_id'].'/materials/read';
