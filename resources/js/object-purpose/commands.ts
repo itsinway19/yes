@@ -5,7 +5,8 @@ import { owned, stamp, onClose, TransportError } from '../spa/transport';
 import { writePurpose, type PurposeCommand, type PurposeAcknowledgement } from './api';
 import { read } from './state';
 
-type Pending = { body: PurposeCommand; busy: boolean; uncertain: boolean };
+export type PurposeWriter = (body: PurposeCommand) => Promise<PurposeAcknowledgement>;
+type Pending = { body: PurposeCommand; busy: boolean; uncertain: boolean; writer?: PurposeWriter };
 type Options = { onSuccess?: (reply: PurposeAcknowledgement) => void; onError?: (errors: Record<string, string>) => void; onHttpException?: (response: { status: number }) => unknown; onNetworkError?: () => unknown; onFinish?: () => void };
 const pending = shallowReactive(new Map<string, Pending>());
 const drafts = new Map<string, unknown>();
@@ -22,12 +23,12 @@ export async function refreshPurpose(route: RouteLocationNormalized, options: { 
     const captured = stamp(); const latest = await read(route, true); await nextTick();
     if (owned(captured) && latest) options.onSuccess?.();
 }
-async function execute(workspace: string, body: PurposeCommand, options: Options, uncertain: boolean) {
+async function execute(workspace: string, body: PurposeCommand, options: Options, uncertain: boolean, writer?: PurposeWriter) {
     const captured = stamp(), commandKey = key(workspace, body.purpose_id);
     const original = JSON.parse(JSON.stringify(body)) as PurposeCommand;
-    pending.set(commandKey, { body: original, busy: true, uncertain });
+    pending.set(commandKey, { body: original, busy: true, uncertain, writer });
     try {
-        const reply = await writePurpose(workspace, JSON.parse(JSON.stringify(original)) as PurposeCommand);
+        const reply = await (writer ?? (command => writePurpose(workspace, command)))(JSON.parse(JSON.stringify(original)) as PurposeCommand);
         if (pending.get(commandKey)?.body.command_id === original.command_id) pending.delete(commandKey);
         if (!owned(captured)) return;
         forget(workspace, body.purpose_id); options.onSuccess?.(reply);
@@ -35,7 +36,7 @@ async function execute(workspace: string, body: PurposeCommand, options: Options
         const definite = failure instanceof TransportError && [403, 409, 422].includes(failure.status);
         if (status.value !== 'closed' && pending.get(commandKey)?.body.command_id === original.command_id) {
             if (definite && !uncertain) pending.delete(commandKey);
-            else pending.set(commandKey, { body: original, busy: false, uncertain: true });
+            else pending.set(commandKey, { body: original, busy: false, uncertain: true, writer });
         }
         if (!owned(captured)) return;
         if (failure instanceof TransportError) {
@@ -49,13 +50,13 @@ async function execute(workspace: string, body: PurposeCommand, options: Options
         options.onFinish?.();
     }
 }
-export function submitPurpose(workspace: string, body: PurposeCommand, options: Options) {
+export function submitPurpose(workspace: string, body: PurposeCommand, options: Options, writer?: PurposeWriter) {
     if (status.value === 'closed' || pending.has(key(workspace, body.purpose_id))) return;
-    return execute(workspace, body, options, false);
+    return execute(workspace, body, options, false, writer);
 }
 export function retryPurpose(workspace: string, purpose: string | null, options: Options) {
     const value = unresolved(workspace, purpose);
     if (!value || value.busy || status.value === 'closed') return;
-    return execute(workspace, value.body, options, value.uncertain);
+    return execute(workspace, value.body, options, value.uncertain, value.writer);
 }
 onClose(() => { drafts.clear(); pending.clear(); });

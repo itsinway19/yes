@@ -119,6 +119,7 @@ final class XReadJob implements ShouldBeEncrypted, ShouldQueue
         $request->setLaravelSession($session);
         DB::transaction(function () use ($request, $actor, $principals, $http, $execution, $journal, $custody, $requests, $settings): void {
             $principals->activate($actor);
+            DB::selectOne('SELECT builderad_v2_legacy_enter(?::uuid)', [$this->workspacePublicId]);
             DB::selectOne('SELECT builderad_select_workspace_context(?)', [$this->report->scope->workspaceId]);
             if ((int) DB::table('principal_lifecycles')->where('user_id', $this->actorId)->value('generation') !== $this->actorGeneration
                 || DB::table('workspaces')->where('id', $this->report->scope->workspaceId)->value('public_id') !== $this->workspacePublicId) {

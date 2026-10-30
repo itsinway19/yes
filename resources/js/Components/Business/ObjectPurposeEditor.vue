@@ -4,16 +4,17 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useBusinessCopy } from '@/localization/businessCopy';
 import { locale } from '@/spa/locale';
 import { forget, remember, restore, unresolved, submitPurpose, retryPurpose, refreshPurpose } from '@/object-purpose/commands';
+import type { PurposeWriter } from '@/object-purpose/commands';
 import type { PurposeAcknowledgement, PurposeCommand } from '@/object-purpose/api';
 import type { PurposeItem, PurposeObject, PurposeSnapshot, PurposeIntent } from '@/types/object-purpose';
-const props = defineProps<{ workspaceId: string; purpose: PurposeItem | null; contextVersion: number; dtmTransitionVersion: number; currentIntent: { value: PurposeIntent | null; version: number } | null }>();
+const props = defineProps<{ workspaceId: string; businessMode?: boolean; commandWriter?: PurposeWriter; refreshResource?: () => Promise<void>; purpose: PurposeItem | null; contextVersion: number; dtmTransitionVersion: number; currentIntent: { value: PurposeIntent | null; version: number } | null }>();
 const { t } = useBusinessCopy(locale);
 const emit = defineEmits<{ saved: [reply: PurposeAcknowledgement] }>();
 const route = useRoute();
 const workspaceKey = props.workspaceId, purposeKey = props.purpose?.purpose_id ?? null;
 const pending = computed(() => unresolved(workspaceKey, purposeKey));
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
-const object = (): PurposeObject => ({ provider: 'meta', account_namespace: 'meta_ads_account', account_id: '', object_kind: 'campaign', object_id: '', incarnation: null });
+const object = (): PurposeObject => ({ provider: props.businessMode ? '' : 'meta', account_namespace: props.businessMode ? '' : 'meta_ads_account', account_id: '', object_kind: props.businessMode ? '' : 'campaign', object_id: '', incarnation: null });
 const last = () => props.purpose?.history.at(-1);
 const baseline = ref(clone(props.purpose));
 let saved = last()?.snapshot;
@@ -60,7 +61,7 @@ const required = computed<Flag[]>(() => ['meaning', 'scope', 'authority', 'ident
 const flagLabels = computed<Record<Flag,string>>(() => ({ meaning: t('purposeConfirmMeaning'), scope: t('purposeConfirmScope'), authority: t('purposeConfirmAuthority'), identity: t('purposeConfirmIdentity'), standing: t('purposeConfirmStanding'), dtm: t('purposeConfirmDtm'), intent: t('purposeConfirmIntent'), historical: t('purposeConfirmHistorical'), transition: t('purposeConfirmTransition') }));
 const nullable = (v: string) => v.trim() === '' ? null : v;
 const codes = (v: string) => v.split(',').map(code => code.trim()).filter(Boolean);
-function review() { void refreshPurpose(route, { onSuccess: () => { reviewed.value = true; changed.value = true; } }); }
+async function review() { if (props.refreshResource) { await props.refreshResource(); reviewed.value = true; changed.value = true; } else void refreshPurpose(route, { onSuccess: () => { reviewed.value = true; changed.value = true; } }); }
 function adopt() {
     baseline.value = clone(props.purpose);
     changed.value = reviewed.value = false; reset(); commandId = null; errors.value = {};
@@ -90,7 +91,7 @@ function save() {
         correction_reason: draft.operation === 'correct' && baseline.value ? nullable(draft.reason) : null,
         withdrawal_reason: withdrawing.value ? nullable(draft.reason) : null, confirmations: clone(flags) };
     processing.value = true;
-    void submitPurpose(props.workspaceId, clone(command) as PurposeCommand, callbacks());
+    void submitPurpose(props.workspaceId, clone(command) as PurposeCommand, callbacks(), props.commandWriter);
 }
 function callbacks() {
     return { onError: (value: Record<string, string>) => { errors.value = value; reset(); },
@@ -116,9 +117,9 @@ onBeforeUnmount(() => { if (!savedSuccessfully) remember(workspaceKey, purposeKe
         <label>{{ t('purposePhase') }}<input v-model="draft.phase" maxlength="80" /></label>
         <fieldset v-for="(set, setIndex) in [draft.included,draft.excluded]" :key="setIndex"><legend>{{ setIndex === 0 ? t('purposeIncluded') : t('purposeExcluded') }}</legend>
             <div v-for="(row,index) in set" :key="index" class="grid gap-3 border p-3">
-                <label>{{ t('purposeKind') }}<select v-model="row.object_kind" :data-purpose="setIndex === 0 ? `kind-${index}` : `excluded-kind-${index}`"><option value="campaign">{{ t('purposeCampaign') }}</option><option value="ad_set">{{ t('purposeAdSet') }}</option></select></label>
-                <label>{{ t('purposeAccount') }}<input v-model="row.account_id" :data-purpose="setIndex === 0 ? `account-${index}` : `excluded-account-${index}`" maxlength="40" inputmode="numeric" required /></label>
-                <label>{{ t('purposeObject') }}<input v-model="row.object_id" :data-purpose="setIndex === 0 ? `object-${index}` : `excluded-object-${index}`" maxlength="40" inputmode="numeric" required /></label>
+                <template v-if="businessMode"><label>المزوّد / Provider<input v-model="row.provider" data-purpose="provider" maxlength="180" required /></label><label>نطاق الحساب / Account namespace<input v-model="row.account_namespace" data-purpose="namespace" maxlength="180" required /></label><label>نوع العنصر / Object kind<input v-model="row.object_kind" data-purpose="kind" maxlength="180" required /></label></template><label v-else>{{ t('purposeKind') }}<select v-model="row.object_kind" :data-purpose="setIndex === 0 ? `kind-${index}` : `excluded-kind-${index}`"><option value="campaign">{{ t('purposeCampaign') }}</option><option value="ad_set">{{ t('purposeAdSet') }}</option></select></label>
+                <label>{{ t('purposeAccount') }}<input v-model="row.account_id" :data-purpose="setIndex === 0 ? `account-${index}` : `excluded-account-${index}`" :maxlength="businessMode ? 180 : 40" :inputmode="businessMode ? 'text' : 'numeric'" required /></label>
+                <label>{{ t('purposeObject') }}<input v-model="row.object_id" :data-purpose="setIndex === 0 ? `object-${index}` : `excluded-object-${index}`" :maxlength="businessMode ? 180 : 40" :inputmode="businessMode ? 'text' : 'numeric'" required /></label>
                 <label>{{ t('purposeIncarnation') }}<input v-model="row.incarnation" maxlength="180" /></label>
                 <button type="button" :disabled="setIndex === 0 && set.length === 1" class="biz-link" @click="set.splice(index,1)">{{ t('purposeRemove') }}</button>
             </div><button type="button" :data-purpose="setIndex === 0 ? 'add-included' : 'add-excluded'" class="biz-link" :disabled="set.length >= 50" @click="set.push(object())">{{ t('purposeAdd') }}</button>

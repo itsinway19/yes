@@ -25,6 +25,7 @@ while (! is_file($fixture['release'])) {
 try {
     $saved = DB::transaction(function () use ($fixture, $user) {
         app(PrincipalContext::class)->activate($user);
+        DB::selectOne('SELECT builderad_v2_legacy_enter((SELECT public_id FROM workspaces WHERE id=?))', [$fixture['workspace']]);
         DB::selectOne('SELECT builderad_select_workspace_context(?)', [$fixture['workspace']]);
 
         return DB::scalar('SELECT builderad_advertiser_goals_write(?,?,?::jsonb,?)', [

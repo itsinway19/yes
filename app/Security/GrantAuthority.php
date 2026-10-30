@@ -141,50 +141,7 @@ final class GrantAuthority
     /** Existing fresh responsible-Owner evidence issues a narrow grant; mutation itself is grant-based. */
     public function requestBusinessContextGrant(Request $request, int $workspaceId): void
     {
-        $owner = DB::selectOne('SELECT * FROM builderad_source_owner_evidence(?, ?)', [
-            $workspaceId, SessionAuthority::sessionKey($request),
-        ]);
-        if (! $owner || (int) $owner->actor_id !== $request->user()->id ||
-            (int) $owner->generation !== (int) $request->session()->get('a001_generation', 0)) {
-            throw new AuthorizationException('Current responsible Owner evidence required.');
-        }
-        DB::connection('pgsql_authority')->transaction(function () use ($request, $workspaceId, $owner): void {
-            $db = DB::connection('pgsql_authority');
-            $db->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', [
-                'business.context.grant.'.$owner->actor_id.'.'.$owner->generation.'.'.$workspaceId,
-            ]);
-            $existing = $db->table('security_action_grants')->where('subject_user_id', $owner->actor_id)
-                ->where('subject_generation', $owner->generation)->where('workspace_id', $workspaceId)
-                ->where('action', 'business.context.manage')->lockForUpdate()->first();
-            // An explicitly revoked or expired grant must never be silently restored.
-            if ($existing) {
-                if ($existing->status !== 'active' || $existing->revoked_at !== null ||
-                    ($existing->expires_at !== null && ! $db->scalar('SELECT ?::timestamptz > clock_timestamp()', [$existing->expires_at]))) {
-                    throw new AuthorizationException('Business context authority was revoked or expired.');
-                }
-
-                return;
-            }
-            $db->table('security_action_grants')->insert([
-                'subject_user_id' => $owner->actor_id, 'subject_generation' => $owner->generation,
-                'granted_by' => $owner->actor_id, 'source' => 'business_owner_request',
-                'action' => 'business.context.manage', 'scope_kind' => 'workspace', 'workspace_id' => $workspaceId,
-                'reason' => 'explicit_business_context_authority_request', 'status' => 'active', 'version' => 1,
-                'created_at' => now(), 'updated_at' => now(),
-            ]);
-            $db->table('security_audit_events')->insert([
-                'actor_user_id' => $owner->actor_id, 'subject_user_id' => $owner->actor_id,
-                'workspace_id' => $workspaceId, 'event' => 'business_context_granted',
-                'reason' => 'explicit_business_context_authority_request', 'new_status' => 'active',
-                'new_generation' => $owner->generation, 'occurred_at' => now(),
-            ]);
-            $current = DB::selectOne('SELECT * FROM builderad_source_owner_evidence(?, ?)', [
-                $workspaceId, SessionAuthority::sessionKey($request),
-            ]);
-            if (! $current || (int) $current->generation !== (int) $owner->generation) {
-                throw new AuthorizationException('Authority expired before grant issuance.');
-            }
-        });
+        DB::selectOne('SELECT builderad_v2_legacy_context_grant(?,?)', [$workspaceId, SessionAuthority::sessionKey($request)]);
     }
 
     public const SOURCE_ACTIONS = ['source.register', 'source.manage', 'source.read', 'source.audit.recover',
@@ -197,6 +154,7 @@ final class GrantAuthority
             ! in_array($input['action'], self::SOURCE_ACTIONS, true)) {
             throw new AuthorizationException('Guarded exact source grant request required.');
         }
+        DB::selectOne('SELECT builderad_v2_legacy_source_grant_guard(?::uuid)', [$input['source_id']]);
         $evidence = fn () => DB::selectOne('SELECT * FROM builderad_source_owner_evidence(?, ?)', [
             $workspaceId, SessionAuthority::sessionKey($request),
         ]);
@@ -207,6 +165,9 @@ final class GrantAuthority
         }
         DB::connection('pgsql_authority')->transaction(function () use ($request, $workspaceId, $input, $owner, $evidence): void {
             $db = DB::connection('pgsql_authority');
+            // The parent already holds this source admission before its Workspace/identity locks.
+            // The child also holds admission until commit; no adoption can interleave its DML.
+            $db->selectOne('SELECT builderad_v2_native_source_authority_enter(?::uuid)', [$input['source_id']]);
             $key = json_encode([$owner->actor_id, $owner->generation, $workspaceId, $input['source_id'],
                 $input['resource'], $input['operation'], $input['purpose'], $input['action']], JSON_THROW_ON_ERROR);
             $db->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', ['bb1.grant.'.$key]);
@@ -814,8 +775,24 @@ final class GrantAuthority
         ]);
     }
 
+    /** Native platform/Workspace preflight only; Business rights use the protected scope verifier. */
     public function has(User $actor, int $generation, string $action, string $scope = 'platform', ?int $workspaceId = null): bool
     {
+        if (! in_array($scope, ['platform', 'workspace'], true)) {
+            return false;
+        }
+        if (DB::connection('pgsql_authority')->transactionLevel() === 0) {
+            $runtime = DB::connection();
+            if ($runtime->transactionLevel() === 0) {
+                return $runtime->transaction(fn () => $this->has($actor, $generation, $action, $scope, $workspaceId), 1);
+            }
+            $context = $runtime->selectOne('SELECT actor_user_id FROM builderad_signed_context()');
+            if (! $context) {
+                $this->principals->activate($actor);
+            } elseif ((int) $context->actor_user_id !== (int) $actor->id) {
+                return false;
+            }
+        }
         $connection = DB::connection('pgsql_authority')->transactionLevel() > 0
             ? DB::connection('pgsql_authority') : DB::connection();
         $lifecycle = $connection->table('principal_lifecycles')->where('user_id', $actor->id)

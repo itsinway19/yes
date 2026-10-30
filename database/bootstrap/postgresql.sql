@@ -69,3 +69,11 @@ REVOKE CREATE ON SCHEMA public FROM PUBLIC, builderad_app;
 GRANT USAGE ON SCHEMA public TO builderad_app;
 
 \echo 'Builderad PostgreSQL authority model is ready. Set role passwords outside this repository before connecting.'
+
+-- Business scope execution is a non-login capability, never a runtime membership.
+SELECT 'CREATE ROLE builderad_scope_executor NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS'
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='builderad_scope_executor')
+\gexec
+ALTER ROLE builderad_scope_executor NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+GRANT builderad_scope_executor TO builderad_owner WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+GRANT USAGE ON SCHEMA public TO builderad_scope_executor;

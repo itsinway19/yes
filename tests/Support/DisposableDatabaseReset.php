@@ -27,6 +27,23 @@ final class DisposableDatabaseReset
             throw new RuntimeException('Disposable table reset failed.');
         }
         $owner = DB::connection('pgsql_migrations');
+        // Only the guarded disposable target is reachable here. Private admission
+        // state and non-login-owned functions must not survive a fresh install.
+        $owner->statement('DROP SCHEMA IF EXISTS builderad_private CASCADE');
+        $scopeFunctions = $owner->select(<<<'SQL'
+            SELECT format('%I.%I(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)) AS signature
+            FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+            WHERE n.nspname='public' AND p.prokind='f' AND p.proname LIKE 'builderad_v2_%'
+              AND p.proowner=(SELECT oid FROM pg_roles WHERE rolname='builderad_scope_executor')
+            SQL);
+        if ($scopeFunctions !== []) {
+            $owner->statement('SET ROLE builderad_scope_executor');
+            try {
+                $owner->statement('DROP FUNCTION '.implode(', ', array_column($scopeFunctions, 'signature')).' RESTRICT');
+            } finally {
+                $owner->statement('RESET ROLE');
+            }
+        }
         $functions = $owner->select(<<<'SQL'
             SELECT format('%I.%I(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)) AS signature
             FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace

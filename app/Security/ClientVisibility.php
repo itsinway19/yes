@@ -16,6 +16,13 @@ final class ClientVisibility
         }
 
         $generation = (int) $request->session()->get('a001_generation', 0);
+        if ($request->attributes->has('builderad.qualified_visibility')) {
+            return ['protected' => true, 'path' => $path, 'context' => hash_hmac('sha256', json_encode([
+                $path, $request->user()->getAuthIdentifier(), $request->session()->getId(),
+                $generation, $request->attributes->get('builderad.qualified_visibility'),
+            ], JSON_THROW_ON_ERROR), (string) config('app.key'))];
+        }
+
         $grants = DB::table('security_action_grants')
             ->where('subject_user_id', $request->user()->getAuthIdentifier())
             ->where('subject_generation', $generation)->where('status', 'active')

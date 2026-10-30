@@ -43,7 +43,8 @@ class WorkspaceCreationTest extends TestCase
             'scope_kind' => 'workspace',
             'source' => 'system_workspace_creation',
             'status' => 'active',
-        ]);
+        ], 'pgsql_migrations');
+        $this->assertSame(0, DB::table('security_action_grants')->where('workspace_id', $workspace->id)->count(), 'Creation does not expose raw grants without a signed scope.');
         $this->post('/workspaces', ['name' => 'North Region', 'slug' => 'north-region'])
             ->assertRedirect(route('workspaces.index'));
         $this->assertSame(1, $owner->table('workspaces')->count());

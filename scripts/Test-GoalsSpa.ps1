@@ -1,8 +1,21 @@
-param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation','workspaces','context','purpose','sources','account','auth','appearance','admin-ui')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='', [switch]$CreateBrowserFixture)
+param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation','workspaces','context','purpose','sources','account','auth','appearance','admin-ui','businesses')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='', [switch]$CreateBrowserFixture)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $proofRoot=Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $proofRoot
+# Frozen dependency identity is a test precondition: matching lock files alone do not qualify a copied vendor.
+# Fail before starting services; do not repair dependencies or alter lock files inside the proof runner.
+$proofComposerLock=Get-Content -LiteralPath (Join-Path $proofRoot 'composer.lock') -Raw|ConvertFrom-Json -AsHashtable
+$proofComposerInstalledPath=Join-Path $proofRoot 'vendor/composer/installed.json'
+if(-not(Test-Path -LiteralPath $proofComposerInstalledPath -PathType Leaf)){throw 'Run Composer install from the existing lock before starting a proof'}
+$proofComposerInstalled=Get-Content -LiteralPath $proofComposerInstalledPath -Raw|ConvertFrom-Json -AsHashtable
+$proofPackageRows={param($packages) foreach($package in $packages){
+ $source=$package['source'];$dist=$package['dist'];$reference=if($null -ne $source){$source['reference']}elseif($null -ne $dist){$dist['reference']}else{''}
+ '{0}|{1}|{2}' -f $package['name'],$package['version'],$reference
+}}
+$proofExpectedPackages=@(& $proofPackageRows (@($proofComposerLock['packages'])+@($proofComposerLock['packages-dev'])))
+$proofInstalledPackages=@(& $proofPackageRows $proofComposerInstalled['packages'])
+if($proofExpectedPackages.Count -ne $proofInstalledPackages.Count -or @(Compare-Object $proofExpectedPackages $proofInstalledPackages -CaseSensitive).Count){throw 'Installed Composer packages do not match composer.lock; run frozen Composer install before tests'}
 $proofRun=Join-Path $proofRoot ('storage/framework/testing/goals-spa-'+[guid]::NewGuid())
 if($ReuseRun){
  $proofRun=[IO.Path]::GetFullPath($ReuseRun)
@@ -139,6 +152,7 @@ try {
   $proofSourceBefore=Get-ProofSource
   [IO.File]::WriteAllText((Join-Path $proofRun 'source-manifest.json'),$proofSourceBefore)
   $env:GOALS_SPA_ONLY=$BrowserSelection
+  if($BrowserSelection -eq 'businesses' -and $TestFilter){$env:GOALS_SPA_CASE_FILTER=$TestFilter}
   foreach($proofPort in @(8136,8137)){
    $env:APP_ENV='local'
    $proofServer=Start-Process -FilePath 'C:\tools\php85\php.exe' -ArgumentList @('-S',"localhost:$proofPort",'-t','public','tests/Support/goals-spa-server.php') -WorkingDirectory $proofRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $proofRun "server-$proofPort.log") -RedirectStandardError (Join-Path $proofRun "server-$proofPort-error.log")
@@ -147,7 +161,7 @@ try {
   $proofProcesses|Select-Object Id,ProcessName|ConvertTo-Json|Set-Content (Join-Path $proofRun 'processes.json')
   if($Phase -eq 'Closure'){$env:GOALS_SPA_CLOSURE='enabled'}
   $env:GOALS_SPA_ONLY=$BrowserSelection
-  $proofBrowser = if($BrowserSelection -eq 'admin-ui'){'tests/Support/admin-ui-browser.mjs'}elseif($BrowserSelection -eq 'appearance'){'tests/Support/appearance-browser.mjs'}else{'tests/Support/goals-spa-browser.mjs'}
+  $proofBrowser = if($BrowserSelection -eq 'businesses'){'tests/Support/business-surface-browser.mjs'}elseif($BrowserSelection -eq 'admin-ui'){'tests/Support/admin-ui-browser.mjs'}elseif($BrowserSelection -eq 'appearance'){'tests/Support/appearance-browser.mjs'}else{'tests/Support/goals-spa-browser.mjs'}
   & 'C:\tools\node24\node.exe' $proofBrowser 2>&1|Tee-Object -FilePath (Join-Path $proofRun 'browser.log')
   if($LASTEXITCODE -eq 2){Write-Output 'GOALS_SPA_ACCEPTANCE=BLOCKED; see findings/unverified in browser-results.json';throw 'Required condition remains blocked; no security contract changed'}
   if($LASTEXITCODE -ne 0){throw 'Browser proof failed; no acceptance claimed'}
@@ -159,8 +173,10 @@ try {
  if($proofStarted){
   $proofData=[IO.Path]::GetFullPath($proofDataPath)
   if($proofData -ne [IO.File]::ReadAllText((Join-Path $proofRun 'cluster-path.txt'))){throw 'Cluster stop escaped its recorded owned path'}
-  # This is process cleanup observation, not an application/SQL test timeout.
-  & (Join-Path $proofPg 'pg_ctl.exe') -D $proofData -m fast -t 60 -w stop
+  # Process cleanup observation only, after tests. A full isolated migration suite was observed
+  # flushing 71,375 files in a 286.626s checkpoint. Keep graceful shutdown and confirm actual exit;
+  # this does not change SQL lock/statement timeouts, authority expiry, or any behavioral assertion.
+  & (Join-Path $proofPg 'pg_ctl.exe') -D $proofData -m fast -t 360 -w stop
   if($LASTEXITCODE -ne 0){throw 'Owned PostgreSQL stop is unconfirmed; do not report processes stopped'}
  }
  if($proofEnvironmentCreated -and [IO.File]::ReadAllText($proofEnvironmentPath) -eq $proofEnvironmentContents){Remove-Item -LiteralPath $proofEnvironmentPath}

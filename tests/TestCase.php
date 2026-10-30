@@ -161,7 +161,7 @@ abstract class TestCase extends BaseTestCase
 
         DB::connection('pgsql')->disconnect();
         DB::connection('pgsql_migrations')->statement(
-            'TRUNCATE TABLE jobs, failed_jobs, service_audit_events, service_workspace_scopes, service_action_grants, service_identities, workspace_ownerships, security_action_grants, internal_personnel, passkeys, security_sessions, security_audit_events, principal_lifecycles, workspace_memberships, workspaces, password_reset_tokens, users RESTART IDENTITY CASCADE'
+            'TRUNCATE TABLE material_lineage_manifests, builderad_private.invocations, migration_cohort_control, jobs, failed_jobs, service_audit_events, service_workspace_scopes, service_action_grants, service_identities, workspace_ownerships, security_action_grants, internal_personnel, passkeys, security_sessions, security_audit_events, principal_lifecycles, workspace_memberships, workspaces, password_reset_tokens, users RESTART IDENTITY CASCADE'
         );
         DB::purge('pgsql');
         DB::connection('pgsql_migrations')->statement(

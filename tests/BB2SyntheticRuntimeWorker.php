@@ -72,6 +72,7 @@ $states = new $class(Cache::store('redis'), app(ProviderRequestGuard::class));
 try {
     DB::transaction(function () use ($actor, $scope, $request, $states, $fixture): void {
         app(PrincipalContext::class)->activate($actor);
+        DB::selectOne('SELECT builderad_v2_legacy_enter((SELECT public_id FROM workspaces WHERE id=?))', [$scope->workspaceId]);
         DB::selectOne('SELECT builderad_select_workspace_context(?)', [$scope->workspaceId]);
         $states->consume($request, $scope, 0, $fixture['configuration'], $fixture['state']);
         if (($fixture['rollback'] ?? false) === true) {

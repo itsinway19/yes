@@ -29,7 +29,7 @@ final class WorkspaceSourceController extends Controller
             'action' => ['required', Rule::in(GrantAuthority::SOURCE_ACTIONS)],
             'decision' => ['required', Rule::in(['authorize', 'revoke'])], 'expires_at' => ['nullable', 'date']]);
         $input['expires_at'] ??= null;
-        $this->guarded(fn () => $context->run($request->user(), $workspace,
+        $this->guarded(fn () => $context->runNativeSourceMutation($request->user(), $workspace, $input['source_id'],
             fn (Workspace $w) => $grants->requestSourceGrant($request, $w->id, $input), $request));
 
         return $request->expectsJson() ? response()->json(['decision' => $input['decision']])
@@ -49,7 +49,7 @@ final class WorkspaceSourceController extends Controller
         if (array_diff(array_keys($request->except('_token')), array_keys($input))) {
             throw ValidationException::withMessages(['source' => 'Unknown source command fields.']);
         }
-        $result = $this->guarded(fn () => $context->run($request->user(), $workspace,
+        $result = $this->guarded(fn () => $context->runNativeSourceMutation($request->user(), $workspace, $input['source_id'],
             fn (Workspace $w) => $registry->command($request, $w, $input), $request));
 
         return $request->expectsJson() ? response()->json($result)

@@ -79,7 +79,7 @@ class BusinessFoundationTest extends TestCase
     {
         $user = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
-        $this->actingAs($user)->get('/dashboard')->assertRedirect(route('business.start'));
+        $this->actingAs($user)->get('/dashboard')->assertRedirect(route('business-foundation.index-page'));
         $this->get('/business/start')->assertOk()->assertViewIs('spa');
         $this->assertNull(session('business.creation_key'));
         $key = $this->getJson('/business/start')->assertOk()->json('data.creationKey');
@@ -95,7 +95,7 @@ class BusinessFoundationTest extends TestCase
         $this->assertSame(1, $db->table('business_context_events')->count());
         $workspace = $db->table('workspaces')->first();
         $this->assertSame($this->type(), $workspace->business_type_id);
-        $this->get('/dashboard')->assertRedirect(route('workspaces.show', $workspace->public_id));
+        $this->get('/dashboard')->assertRedirect(route('business-foundation.index-page'));
         $this->getJson('/workspaces/'.$workspace->public_id)->assertJson(fn (Assert $page) => $page
             ->where('data.business.type.key', 'real_estate')->has('data.guidance.sources', 5)->etc());
     }
@@ -217,7 +217,7 @@ class BusinessFoundationTest extends TestCase
         $this->actingAs($user);
         $this->getJson('/workspaces/'.$a->public_id)->assertJson(fn (Assert $page) => $page->where('data.guidance.sources.0.provider', 'google')->etc());
         $this->getJson('/workspaces/'.$b->public_id)->assertJson(fn (Assert $page) => $page->where('data.guidance.sources.0.provider', 'meta')->etc());
-        $this->get('/dashboard')->assertRedirect(route('workspaces.index'));
+        $this->get('/dashboard')->assertRedirect(route('business-foundation.index-page'));
     }
 
     public function test_approval_activation_materiality_and_provider_product_integrity(): void

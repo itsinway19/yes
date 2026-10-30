@@ -40,6 +40,25 @@ if (($fixture['operation'] ?? null) === 'revoke_manage') {
 $user = User::findOrFail($fixture['actor']);
 DB::selectOne("SELECT set_config('application_name',?,false)", [$fixture['run']]);
 $emit('PID='.DB::scalar('SELECT pg_backend_pid()'));
+if (isset($fixture['entry_external_gate'])) {
+    // Prepare PHP/application/database startup before the parent begins a real
+    // product lock wait. This gate owns no transaction, row lock or authority.
+    $gate = $fixture['entry_external_gate'];
+    $state = DB::selectOne("SELECT pg_backend_pid() AS pid,pg_current_xact_id_if_assigned()::text AS xid,current_setting('lock_timeout') AS lock_timeout");
+    file_put_contents($gate['ready'], json_encode($state, JSON_THROW_ON_ERROR), LOCK_EX);
+    $emit('ENTRY_READY');
+    $deadline = microtime(true) + 30;
+    do {
+        clearstatcache(true, $gate['release']);
+        if (is_file($gate['release'])) {
+            break;
+        }
+        if (microtime(true) >= $deadline) {
+            throw new RuntimeException('Prepared DTM entry release absent.');
+        }
+        usleep(10000);
+    } while (true);
+}
 if (isset($fixture['expiry_after_ready'])) {
     // Fixture clock starts after PHP/guard startup, within the unchanged 3s lock timeout.
     $owner = DB::connection('pgsql_migrations');
@@ -54,6 +73,7 @@ if (isset($fixture['expiry_after_ready'])) {
 try {
     $revision = DB::transaction(function () use ($fixture, $user, $emit) {
         app(PrincipalContext::class)->activate($user);
+        DB::selectOne('SELECT builderad_v2_legacy_enter((SELECT public_id FROM workspaces WHERE id=?))', [$fixture['workspace']]);
         if (isset($fixture['entry_barrier'])) {
             $emit('READY_XACT='.DB::scalar('SELECT pg_current_xact_id()::text'));
             DB::selectOne('SELECT pg_advisory_xact_lock_shared(hashtextextended(?,0))', [$fixture['entry_barrier']]);

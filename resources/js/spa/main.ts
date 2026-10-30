@@ -9,6 +9,7 @@ import { installBrowserLifecycle } from './browserLifecycle';
 import { createApplicationRouter } from './router';
 import { goalsRoutes } from '../goals-spa/routes';
 import { workspaceRoutes } from '../workspaces/routes';
+import { independentBusinessRoutes } from '../business-foundation/routes';
 import { businessContextRoutes } from '../business-context/routes';
 import { objectPurposeRoutes } from '../object-purpose/routes';
 import { sourceRoutes } from '../sources/routes';
@@ -22,7 +23,7 @@ import AdministrationLayout from '../internal-operations/AdministrationLayout.vu
 const root = document.getElementById('application-spa')!;
 watch(status, value => { root.dataset.state = value; }, { immediate: true, flush: 'sync' });
 const style=document.createElement('style');style.textContent='[data-application-spa]:not([data-state="ready"]) [data-spa-private]{display:none!important} .business-main{max-width:1040px;margin:auto;padding:32px}';document.head.append(style);
-const router = createApplicationRouter([...workspaceRoutes, ...goalsRoutes, ...businessContextRoutes, ...objectPurposeRoutes, ...sourceRoutes, ...accountRoutes, ...authEntryRoutes, ...staffEnrollmentRoutes, ...internalOperationsRoutes, ...commercialRoutes], {
+const router = createApplicationRouter([...independentBusinessRoutes, ...workspaceRoutes, ...goalsRoutes, ...businessContextRoutes, ...objectPurposeRoutes, ...sourceRoutes, ...accountRoutes, ...authEntryRoutes, ...staffEnrollmentRoutes, ...internalOperationsRoutes, ...commercialRoutes], {
     pending: (active, passive) => { if (active && passive) conceal(); navigating.value = active; if (active) navigationError.value = false; },
     prepare, commit: commitRoute, failed,
 });
@@ -37,7 +38,7 @@ const app = createApp(defineComponent({ setup: () => () => {
     const administrationLayout = internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0;
     const header = h(administrationLayout ? 'div' : 'header', administrationLayout ? { class: 'ba-admin-header-controls' } : { style: 'display:flex;gap:20px;padding:18px;flex-wrap:wrap;align-items:center' }, [h('strong', 'BuilderAd'),
         administrationLayout ? h('span', { 'data-admin-context': true }, copy('الإدارة المركزية', 'Central administration')) : null,
-        !internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: '/workspaces' }, () => copy('أنشطتي', 'My businesses')) : null,
+        !internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: '/businesses' }, () => copy('أنشطتي', 'My businesses')) : null,
         typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/business` }, () => copy('سياق النشاط', 'Business context')) : null,
         typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/goals` }, () => copy('الأهداف', 'Goals')) : null,
         typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/object-purposes` }, () => copy('الغرض الإعلاني', 'Object purpose')) : null,

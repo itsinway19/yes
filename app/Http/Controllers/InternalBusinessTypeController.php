@@ -27,7 +27,7 @@ final class InternalBusinessTypeController
         $priors = $db->table('business_promotion_priors')->get()->groupBy('business_type_id');
 
         return new SpaPage([
-            'types' => $db->table('business_types')->orderBy('id')->get()->map(fn ($type) => [
+            'types' => $db->table('business_types')->orderBy('id')->get(['id', 'key', 'name_ar', 'name_en', 'active', 'version'])->map(fn ($type) => [
                 ...(array) $type, 'source_guidance' => $guidance->get($type->id, collect())->values(),
                 'promotion_priors' => $priors->get($type->id, collect())->values(),
             ]),

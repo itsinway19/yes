@@ -42,6 +42,25 @@ final class RegisterCommercialScope
                 DB::raw('builderad_workspace_public_by_id(a.workspace_id) AS workspace_public_id')]));
     }
 
+    /**
+     * Business is the prospective beneficiary, never its collaboration Workspace.
+     * SA-01 records market/catalog provenance; it has no operating subscription,
+     * entitlement, quota, payer or coverage contract. Do not relabel its Workspace
+     * binding as a Business agreement. Unknown blocks conditioned products; local
+     * foundation declarations remain unconditional (S02 D07/D08/D09 and G3-F §8).
+     * Called only after BusinessScope has admitted the exact current read path.
+     */
+    public function businessProjection(string $business): array
+    {
+        return ['beneficiary' => ['kind' => 'business', 'public_id' => $business],
+            'context_state' => 'QUALIFIED_BUSINESS_BINDING_UNAVAILABLE', 'context' => null,
+            'subscription_state' => 'UNKNOWN', 'entitlement_state' => 'UNKNOWN', 'quota_state' => 'UNKNOWN',
+            'payer_state' => 'UNKNOWN', 'coverage_state' => 'UNKNOWN', 'amount_state' => 'UNKNOWN',
+            'conditioned_feature_admission' => 'HOLD', 'usage_reservation' => 'NOT_CREATED',
+            'foundation_declarations' => ['entitlement' => 'NOT_APPLICABLE', 'quota' => 'NOT_APPLICABLE', 'billing' => 'NOT_APPLICABLE'],
+            'limitation' => 'NO_OPERATING_SUBSCRIPTION_OR_METERING_POLICY'];
+    }
+
     /** Call only within the already-selected Foundation Workspace transaction. */
     public function advertiserProjection(int $workspace): array
     {

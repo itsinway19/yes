@@ -21,14 +21,9 @@ use Illuminate\Validation\ValidationException;
 
 final class BusinessContextController
 {
-    public function entry(Request $request, WorkspaceAuthority $authority): RedirectResponse
+    public function entry(): RedirectResponse
     {
-        $businesses = $authority->visibleTo($request->user(), (int) $request->session()->get('a001_generation', 0));
-        if (count($businesses) === 1) {
-            return redirect()->route('workspaces.show', $businesses[0]['public_id']);
-        }
-
-        return redirect()->route($businesses ? 'workspaces.index' : 'business.start');
+        return redirect()->route('business-foundation.index-page');
     }
 
     public function start(Request $request, BusinessContext $business, WorkspaceAuthority $authority): SpaPage|RedirectResponse

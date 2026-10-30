@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Business\BusinessContext;
+use App\Foundation\Tenancy\PrincipalContext;
 use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\User;
 use App\Models\Workspace;
@@ -370,12 +371,34 @@ class CurrentIntentDatabaseTest extends TestCase
         $workspace = $this->business();
         $owner = DB::connection('pgsql_migrations');
         $value = $this->value();
-        $owner->table('workspaces')->where('id', $workspace->id)->update(['current_intent' => json_encode($value, JSON_THROW_ON_ERROR)]);
-        $this->assertSame($value, $this->ordered(json_decode($owner->table('workspaces')->where('id', $workspace->id)->value('current_intent'), true)));
-        $this->denied(fn () => $owner->table('workspaces')->where('id', $workspace->id)->update(['current_intent' => '{}']));
-        $actor = $owner->table('workspace_ownerships')->where('workspace_id', $workspace->id)->value('responsible_owner_user_id');
-        $owner->table('business_current_intent_events')->insert(['workspace_id' => $workspace->id, 'actor_user_id' => $actor,
-            'before_version' => 0, 'after_version' => 1, 'before_value' => null, 'after_value' => json_encode($value, JSON_THROW_ON_ERROR)]);
+        $actor = auth()->id();
+        // This fixed disposable owner probe represents a historical, statically valid alias.
+        // The same backend must first satisfy real legacy admission; no guard is disabled.
+        $owner->unprepared(<<<'SQL'
+            CREATE FUNCTION public.builderad_test_intent_constraint_probe(w bigint,v jsonb,remove_workspace boolean) RETURNS void
+            LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
+            BEGIN
+              IF remove_workspace THEN DELETE FROM public.workspaces WHERE id=w; RETURN; END IF;
+              UPDATE public.workspaces SET current_intent=v,business_context_version=1 WHERE id=w;
+              INSERT INTO public.business_current_intent_events(workspace_id,actor_user_id,before_version,after_version,before_value,after_value)
+              SELECT w,actor_user_id,0,1,NULL,v FROM public.builderad_signed_context();
+            END $$;
+            REVOKE ALL ON FUNCTION public.builderad_test_intent_constraint_probe(bigint,jsonb,boolean) FROM PUBLIC;
+            GRANT EXECUTE ON FUNCTION public.builderad_test_intent_constraint_probe(bigint,jsonb,boolean) TO builderad_app;
+            SQL);
+        $probe = fn (array $stored, bool $remove = false) => DB::transaction(function () use ($workspace, $stored, $remove): void {
+            app(PrincipalContext::class)->activate(auth()->user());
+            DB::selectOne('SELECT builderad_v2_legacy_enter(?::uuid)', [$workspace->public_id]);
+            DB::statement('SELECT builderad_test_intent_constraint_probe(?,?::jsonb,?)', [$workspace->id, json_encode((object) $stored, JSON_THROW_ON_ERROR), $remove]);
+        });
+        try {
+            $probe($value);
+            $this->assertSame($value, $this->ordered(json_decode($owner->table('workspaces')->where('id', $workspace->id)->value('current_intent'), true)));
+            $this->denied(fn () => $probe([]));
+            $this->denied(fn () => $probe([], true), '23001');
+        } finally {
+            $owner->statement('DROP FUNCTION public.builderad_test_intent_constraint_probe(bigint,jsonb,boolean)');
+        }
         foreach (['UPDATE business_current_intent_events SET before_version=1', 'DELETE FROM business_current_intent_events'] as $sql) {
             try {
                 $owner->statement($sql);
@@ -386,7 +409,7 @@ class CurrentIntentDatabaseTest extends TestCase
                 $this->assertStringNotContainsString('SA-01', $error->getMessage());
             }
         }
-        $this->denied(fn () => $owner->table('workspaces')->where('id', $workspace->id)->delete(), '23001');
+
         $this->denied(fn () => $owner->table('users')->where('id', $actor)->delete(), '23001');
         $this->assertSame(1, $owner->table('business_current_intent_events')->count());
     }
