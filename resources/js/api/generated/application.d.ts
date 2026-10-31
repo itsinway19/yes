@@ -1463,6 +1463,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/administration/market-knowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readMarketOperations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/administration/maintenance": {
         parameters: {
             query?: never;
@@ -2632,6 +2648,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/market-knowledge/capture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Bounded foundation interface with current signed authority and source/field/purpose rights. No arbitrary finding or execution ticket is accepted from HTTP. This does not activate a complete commercial user journey. */
+        post: operations["captureQualifiedSharedKnowledge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/market-knowledge/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Bounded foundation interface with current signed authority and source/field/purpose rights. No arbitrary finding or execution ticket is accepted from HTTP. This does not activate a complete commercial user journey. */
+        post: operations["publishTrustedSharedKnowledge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/market-findings/capture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Bounded foundation interface with current signed authority and source/field/purpose rights. No arbitrary finding or execution ticket is accepted from HTTP. This does not activate a complete commercial user journey. */
+        post: operations["captureTrustedPrivateFinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/knowledge/customer-discovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Bounded foundation interface with current signed authority and source/field/purpose rights. No arbitrary finding or execution ticket is accepted from HTTP. This does not activate a complete commercial user journey. */
+        post: operations["inspectKnowledgeForCustomerDiscovery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/knowledge/competition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Bounded foundation interface with current signed authority and source/field/purpose rights. No arbitrary finding or execution ticket is accepted from HTTP. This does not activate a complete commercial user journey. */
+        post: operations["inspectKnowledgeForCompetition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3607,6 +3708,50 @@ export interface components {
                 name: string | null;
                 email: string | null;
             };
+        };
+        MarketOperationsSource: {
+            /** Format: uuid */
+            source_ref: string;
+            custody_revision: number;
+            /** @enum {unknown} */
+            state: "active" | "restricted" | "revoked";
+            /** @enum {unknown} */
+            rights_window: "current" | "not_started" | "expired";
+            valid_until: string | null;
+        };
+        MarketOperationsSharedKnowledge: {
+            method_ref: string;
+            /** @enum {unknown} */
+            publication_state: "prepared" | "published" | "retention_removed";
+            /** @enum {unknown} */
+            validity: "not_published" | "current" | "review_required" | "unknown" | "unavailable";
+            /** @enum {unknown} */
+            processing_outcome: "completed" | "abstained" | "unknown" | "unavailable";
+            /** @enum {unknown} */
+            reason_category: "none" | "comparison_basis_insufficient" | "required_information_missing" | "generic_abstention" | "unknown" | "unavailable";
+            count: number;
+        };
+        MarketOperationsData: {
+            shared_knowledge: components["schemas"]["MarketOperationsSharedKnowledge"][];
+            /** @constant */
+            shared_knowledge_window: 100;
+            sources: components["schemas"]["MarketOperationsSource"][];
+            next_cursor: string | null;
+            methods: {
+                method_ref: string;
+                /** @enum {unknown} */
+                availability: "available" | "unavailable" | "unknown";
+            }[];
+            /** @constant */
+            private_processing: "business_scoped";
+            /** @constant */
+            connection_status: "not_observed";
+        };
+        MarketOperationsResource: {
+            data: components["schemas"]["MarketOperationsData"];
+            /** @enum {unknown} */
+            locale: "ar" | "en";
+            visibility: components["schemas"]["Visibility"];
         };
         PlatformMaintenanceState: {
             revision: number;
@@ -6363,6 +6508,96 @@ export interface components {
                 versions: {
                     branch: number;
                 };
+            };
+        };
+        MarketKnowledgeCaptureCommand: {
+            /** Format: uuid */
+            command_id: string;
+            /** @enum {unknown} */
+            question: "compare_offers" | "compare_interest" | "record_price" | "record_geography";
+            material_refs: components["schemas"]["BusinessMaterialReference"][];
+            purpose: string;
+            authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+        };
+        MarketKnowledgeCaptureResult: {
+            data: {
+                /** Format: uuid */
+                run_ref: string;
+                /** @constant */
+                state: "prepared";
+                method_ref: string;
+                versions: {
+                    /** @constant */
+                    capture: 1;
+                };
+            };
+        };
+        MarketKnowledgePublicationCommand: {
+            /** Format: uuid */
+            command_id: string;
+            /** Format: uuid */
+            run_ref: string;
+            /** Format: uuid */
+            output_scope_id: string;
+            process_selection: components["schemas"]["BusinessAuthoritySelection"];
+            publication_selection: components["schemas"]["BusinessAuthoritySelection"];
+        };
+        MarketKnowledgePublicationResult: {
+            data: {
+                artifact_ref: components["schemas"]["BusinessMaterialReference"];
+                /** Format: uuid */
+                manifest_id: string;
+                /** @constant */
+                state: "published";
+                versions: {
+                    /** @constant */
+                    publication: 1;
+                };
+            };
+        };
+        MarketBusinessFindingCaptureCommand: {
+            /** Format: uuid */
+            command_id: string;
+            /** Format: uuid */
+            processing_run_ref: string;
+            /** Format: uuid */
+            read_command_id: string;
+            /** Format: uuid */
+            output_scope_id: string;
+            authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+            context_selection: components["schemas"]["BusinessAuthoritySelection"] | null;
+            continuation_selection: components["schemas"]["BusinessAuthoritySelection"];
+        };
+        MarketBusinessFindingCaptureResult: {
+            data: {
+                artifact_ref: components["schemas"]["BusinessMaterialReference"];
+                dependencies: {
+                    input: components["schemas"]["BusinessMaterialReference"];
+                    /** Format: uuid */
+                    data_use_scope_id: string;
+                    policy_id: string;
+                    policy_version: number;
+                }[];
+                versions: {
+                    /** @constant */
+                    capture: 1;
+                };
+            };
+        };
+        KnowledgeConsumerCommand: {
+            /** Format: uuid */
+            command_id: string;
+            material_ref: components["schemas"]["BusinessMaterialReference"];
+            purpose: string;
+            authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+        };
+        KnowledgeConsumerResult: {
+            data: {
+                /** @enum {unknown} */
+                assessment: "needs_review" | "investigate_reach" | "needs_interest_evidence" | "terms_comparable" | "needs_comparable_offer" | "needs_comparable_offers";
+                message: string;
+                next_step: string;
+                limits: string;
             };
         };
     };
@@ -15748,6 +15983,85 @@ export interface operations {
             };
         };
     };
+    readMarketOperations: {
+        parameters: {
+            query?: {
+                cursor?: string;
+            };
+            header?: {
+                "X-Builderad-Passive"?: "1";
+                "X-Builderad-Witness"?: "1";
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketOperationsResource"] | components["schemas"]["GoalsWitness"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     readPlatformMaintenance: {
         parameters: {
             query?: never;
@@ -23792,6 +24106,528 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["ValidationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    captureQualifiedSharedKnowledge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    /** @enum {unknown} */
+                    question: "compare_offers" | "compare_interest" | "record_price" | "record_geography";
+                    material_refs: components["schemas"]["BusinessMaterialReference"][];
+                    purpose: string;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            run_ref: string;
+                            /** @constant */
+                            state: "prepared";
+                            method_ref: string;
+                            versions: {
+                                /** @constant */
+                                capture: 1;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    publishTrustedSharedKnowledge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    /** Format: uuid */
+                    run_ref: string;
+                    /** Format: uuid */
+                    output_scope_id: string;
+                    process_selection: components["schemas"]["BusinessAuthoritySelection"];
+                    publication_selection: components["schemas"]["BusinessAuthoritySelection"];
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            artifact_ref: components["schemas"]["BusinessMaterialReference"];
+                            /** Format: uuid */
+                            manifest_id: string;
+                            /** @constant */
+                            state: "published";
+                            versions: {
+                                /** @constant */
+                                publication: 1;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    captureTrustedPrivateFinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    /** Format: uuid */
+                    processing_run_ref: string;
+                    /** Format: uuid */
+                    read_command_id: string;
+                    /** Format: uuid */
+                    output_scope_id: string;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                    context_selection: components["schemas"]["BusinessAuthoritySelection"] | null;
+                    continuation_selection: components["schemas"]["BusinessAuthoritySelection"];
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            artifact_ref: components["schemas"]["BusinessMaterialReference"];
+                            dependencies: {
+                                input: components["schemas"]["BusinessMaterialReference"];
+                                /** Format: uuid */
+                                data_use_scope_id: string;
+                                policy_id: string;
+                                policy_version: number;
+                            }[];
+                            versions: {
+                                /** @constant */
+                                capture: 1;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    inspectKnowledgeForCustomerDiscovery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    material_ref: components["schemas"]["BusinessMaterialReference"];
+                    purpose: string;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {unknown} */
+                            assessment: "needs_review" | "investigate_reach" | "needs_interest_evidence" | "terms_comparable" | "needs_comparable_offer" | "needs_comparable_offers";
+                            message: string;
+                            next_step: string;
+                            limits: string;
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    inspectKnowledgeForCompetition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    material_ref: components["schemas"]["BusinessMaterialReference"];
+                    purpose: string;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {unknown} */
+                            assessment: "needs_review" | "investigate_reach" | "needs_interest_evidence" | "terms_comparable" | "needs_comparable_offer" | "needs_comparable_offers";
+                            message: string;
+                            next_step: string;
+                            limits: string;
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
                 };
             };
             /** @description Original Laravel authorization, CSRF, validation or service failure. */

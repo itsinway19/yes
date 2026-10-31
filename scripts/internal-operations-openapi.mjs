@@ -18,6 +18,7 @@ export function internalOperationsContracts({ ref, text, uuid, object, list, nul
     const credentialWrite = (operationId, schema, parameters = []) => ({ ...write(operationId, schema, parameters), responses: { ...write('', '').responses, 200: response(ref('InternalServiceCredential')) } });
     return {
         paths: {
+            '/internal/administration/market-knowledge': { get: { operationId: 'readMarketOperations', security, parameters: [...headers, {in:'query',name:'cursor',schema:uuid}], responses: {200:response(resource('MarketOperationsResource')),...errors} } },
             '/internal/administration/maintenance': {
                 get: { operationId: 'readPlatformMaintenance', security, parameters: headers, responses: { 200: response(resource('PlatformMaintenanceResource')), ...errors } },
                 post: { operationId: 'changePlatformMaintenance', security, requestBody: { required: true, ...json(ref('PlatformMaintenanceCommand')) }, responses: { 200: response(ref('PlatformMaintenanceAcknowledgement')), ...errors } },
@@ -44,6 +45,10 @@ export function internalOperationsContracts({ ref, text, uuid, object, list, nul
             '/internal/grants/{grant}': { delete: { ...write('revokeInternalStaffGrant', null, [identifier('grant')]), responses: { ...write('', '').responses, 404: response(ref('Error')) } } },
         },
         schemas: {
+            MarketOperationsSource: object({source_ref:uuid,custody_revision:positive,state:{enum:['active','restricted','revoked']},rights_window:{enum:['current','not_started','expired']},valid_until:nullable(text)}),
+            MarketOperationsSharedKnowledge: object({method_ref:text,publication_state:{enum:['prepared','published','retention_removed']},validity:{enum:['not_published','current','review_required','unknown','unavailable']},processing_outcome:{enum:['completed','abstained','unknown','unavailable']},reason_category:{enum:['none','comparison_basis_insufficient','required_information_missing','generic_abstention','unknown','unavailable']},count:positive}),
+            MarketOperationsData: object({shared_knowledge:list(ref('MarketOperationsSharedKnowledge')),shared_knowledge_window:{const:100},sources:list(ref('MarketOperationsSource')),next_cursor:nullable(uuid),methods:list(object({method_ref:text,availability:{enum:['available','unavailable','unknown']}})),private_processing:{const:'business_scoped'},connection_status:{const:'not_observed'}}),
+            MarketOperationsResource: envelope('MarketOperationsData'),
             PlatformMaintenanceState: object({ revision: integer, active: flag, message_ar: bounded(1,500), message_en: bounded(1,500), retry_after: {type:'integer',minimum:30,maximum:3600}, changed_at: nullable(text) }),
             PlatformMaintenanceData: object({ maintenance: ref('PlatformMaintenanceState'), history: list(object({ command_id: uuid, actor_user_id: nullable(positive), previous_revision: integer, resulting_revision: integer, reason: text, occurred_at: text })) }),
             PlatformMaintenanceResource: envelope('PlatformMaintenanceData'),

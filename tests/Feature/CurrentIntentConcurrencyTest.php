@@ -439,6 +439,15 @@ class CurrentIntentConcurrencyTest extends TestCase
                 }
                 $evidence['writer_waits_on_reader'] = $this->waitUntil(fn () => $this->waiting($run, $readerPid));
             } elseif ($schedule === 'writer_first') {
+                // Bootstrap the reader outside any product transaction before the writer
+                // reaches its bounded SQL lock wait. PHP startup is not lock contention.
+                $readerGate = ['ready' => storage_path('framework/testing/'.$run.'-reader-entry-ready'),
+                    'release' => storage_path('framework/testing/'.$run.'-reader-entry-release')];
+                array_push($paths, ...array_values($readerGate));
+                $readerFixture['entry_external_gate'] = $readerGate;
+                $reader = $this->start($readerFixture, $workers, $paths);
+                $evidence['reader_pre_ready'] = $this->externalReady($reader, $readerGate, 'ENTRY_READY');
+                $this->assertNull($evidence['reader_pre_ready']->xid);
                 $table = match ($operation) {
                     'name' => 'business_context_events', 'dtm' => 'business_target_market_events', default => 'business_current_intent_events',
                 };
@@ -449,8 +458,12 @@ class CurrentIntentConcurrencyTest extends TestCase
                 $writer = $this->start($fixture, $workers, $paths);
                 $evidence['writer_at_effect'] = $this->waitUntil(fn () => $this->waiting($run, $pid));
                 $writerPid = (int) $evidence['writer_at_effect'][0]->pid;
-                $reader = $this->start($readerFixture, $workers, $paths);
-                $evidence['reader_waits_on_writer'] = $this->waitUntil(fn () => $this->waiting($run, $writerPid));
+                if (file_put_contents($readerGate['release'], 'RELEASE') === false) {
+                    $this->fail('Cannot release prepared reader entry gate.');
+                }
+                $evidence['reader_waits_on_writer'] = $this->waitUntil(fn () => $this->waiting($run, $writerPid),
+                    fn () => ['writer' => $writer->getOutput(), 'reader' => $reader->getOutput(),
+                        'writer_running' => $writer->isRunning(), 'reader_running' => $reader->isRunning()]);
             } else {
                 $fixture['entry_barrier'] = $readerFixture['entry_barrier'] = $barrier;
                 $reader = $this->start($readerFixture, $workers, $paths);

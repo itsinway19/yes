@@ -26,7 +26,8 @@ final class RegisteredProducerFixture
     public static function uninstall(): void
     {
         app(DisposableTestDatabaseGuard::class)->assertSafe();
-        self::replace(file_get_contents(database_path('sql/business_scope/producer_contracts.sql')));
+        self::replace(file_get_contents(database_path(DB::connection('pgsql_migrations')->scalar("SELECT to_regclass('public.market_knowledge_completion_tickets') IS NOT NULL")
+            ? 'sql/market_knowledge/dispatch.sql' : 'sql/business_scope/producer_contracts.sql')));
         DB::connection('pgsql_migrations')->statement('DROP TABLE IF EXISTS builderad_private.test_registered_producer');
     }
 

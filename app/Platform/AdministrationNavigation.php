@@ -2,6 +2,7 @@
 
 namespace App\Platform;
 
+use App\MarketKnowledge\MarketOperations;
 use App\Security\GrantAuthority;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,8 @@ final class AdministrationNavigation
         $generation = (int) $request->session()->get('a001_generation', 0);
         $paths = ['/internal/security/devices'];
         foreach (['staff.view' => '/internal/administration', 'service.manage' => '/internal/services',
-            'business.manage' => '/internal/business-types', PlatformMaintenance::ACTION => '/internal/administration/maintenance'] as $action => $path) {
+            'business.manage' => '/internal/business-types', MarketOperations::ACTION => '/internal/administration/market-knowledge',
+            PlatformMaintenance::ACTION => '/internal/administration/maintenance'] as $action => $path) {
             if ($grants->has($request->user(), $generation, $action)) {
                 $paths[] = $path;
             }

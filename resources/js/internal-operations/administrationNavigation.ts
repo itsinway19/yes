@@ -12,6 +12,7 @@ export const administrationNavigation = [
         { to: '/internal/administration/commercial-markets', ar: 'تهيئة الأسواق', en: 'Market preparation', icon: 'globe' },
     ] },
     { ar: 'المنصة', en: 'Platform', links: [
+        { to: '/internal/administration/market-knowledge', ar: 'المعرفة السوقية', en: 'Market knowledge', icon: 'globe' },
         { to: '/internal/administration/maintenance', ar: 'حالة المنصة والصيانة', en: 'Status and maintenance', icon: 'shield' },
         { to: '/internal/administration/appearance', ar: 'المظهر العام', en: 'Global appearance', icon: 'palette' },
         { to: '/internal/security/devices', ar: 'الحساب والأمان', en: 'Account and security', icon: 'shield' },

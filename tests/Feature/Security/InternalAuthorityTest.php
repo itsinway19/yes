@@ -3,7 +3,6 @@
 namespace Tests\Feature\Security;
 
 use App\Models\User;
-use App\Security\GrantAuthority;
 use App\Security\LifecycleAuthority;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -277,9 +276,16 @@ class InternalAuthorityTest extends TestCase
         $this->assertDatabaseHas('internal_personnel', [
             'user_id' => $founder->id, 'kind' => 'founder', 'status' => 'active',
         ]);
-        $this->assertSame(count(GrantAuthority::STAFF_ACTIONS),
-            DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $founder->id)
-                ->where('source', 'founder_bootstrap')->count());
+        $bootstrapActions = DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $founder->id)
+            ->where('source', 'founder_bootstrap')->pluck('action')->all();
+        // Preserve the full previously accepted bootstrap set; market observation/effects require explicit qualification.
+        $this->assertEqualsCanonicalizing([
+            'staff.view', 'staff.invite', 'staff.attest', 'staff.activate', 'staff.revoke',
+            'grant.manage', 'service.manage', 'business.manage', 'platform.maintenance.manage',
+        ], $bootstrapActions);
+        foreach (['market.knowledge.observe', 'market.knowledge.capture', 'market.knowledge.publish'] as $explicitAction) {
+            $this->assertNotContains($explicitAction, $bootstrapActions);
+        }
         $this->assertSame(1, DB::table('security_sessions')->where('user_id', $founder->id)
             ->whereNotNull('revoked_at')->count());
         $this->get('/internal/administration')->assertRedirect('/internal/login');

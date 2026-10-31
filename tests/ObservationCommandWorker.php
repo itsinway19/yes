@@ -14,6 +14,28 @@ $app->make(Kernel::class)->bootstrap();
 app(DisposableTestDatabaseGuard::class)->assertSafe();
 $fixture = json_decode($argv[1], true, flags: JSON_THROW_ON_ERROR);
 DB::selectOne("SELECT set_config('application_name',?,false)", [$fixture['run']]);
+if (isset($fixture['entry_external_gate'])) {
+    // Bootstrap outside the product transaction; release only after the reader captures its snapshot.
+    if (DB::transactionLevel() !== 0) {
+        throw new RuntimeException('Observation entry readiness must be outside a transaction.');
+    }
+    $gate = $fixture['entry_external_gate'];
+    $state = DB::selectOne('SELECT pg_backend_pid() AS pid, pg_current_xact_id_if_assigned()::text AS xid');
+    file_put_contents($gate['ready'], json_encode($state, JSON_THROW_ON_ERROR), LOCK_EX);
+    echo 'ENTRY_READY'.PHP_EOL;
+    flush();
+    $deadline = hrtime(true) + 30_000_000_000;
+    do {
+        clearstatcache(true, $gate['release']);
+        if (is_file($gate['release'])) {
+            break;
+        }
+        if (hrtime(true) >= $deadline) {
+            throw new RuntimeException('Observation entry release watchdog expired.');
+        }
+        usleep(10000);
+    } while (true);
+}
 try {
     $result = DB::transaction(function () use ($fixture) {
         app(PrincipalContext::class)->activate(User::findOrFail($fixture['actor']));
