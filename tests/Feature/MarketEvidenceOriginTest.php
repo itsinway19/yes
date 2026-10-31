@@ -334,6 +334,8 @@ final class MarketEvidenceOriginTest extends TestCase
         try {
             $paths = array_values(array_filter(glob(database_path('migrations/*.php')),
                 fn ($path) => strcmp(basename($path), '0001_01_01_000440_qualify_market_evidence_read_metadata.php') < 0));
+            // Current HTTP admission requires its operational singleton even on this historical domain schema.
+            $paths[] = database_path('migrations/0001_01_01_000470_create_platform_maintenance.php');
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $paths, '--realpath' => true, '--force' => true]));
             $payload = $this->offer();
             $secret = 'RETAIN_INTERNAL_TRACE_REDACT_DELIVERY';

@@ -160,19 +160,42 @@ final class PlatformMaintenanceTest extends TestCase
     {
         $user = User::factory()->create();
         $db = DB::connection('pgsql_migrations');
-        $db->statement('ALTER TABLE platform_maintenance RENAME TO platform_maintenance_before_upgrade');
-        $db->statement('ALTER TABLE platform_maintenance_commands RENAME TO platform_maintenance_commands_before_upgrade');
+        $migration = require database_path('migrations/0001_01_01_000470_create_platform_maintenance.php');
+        // Commit deployment transactions before reading through the independent runtime connection.
+        $db->transaction(fn () => DB::usingConnection('pgsql_migrations', fn () => $migration->down()));
         try {
-            $migration = require database_path('migrations/0001_01_01_000470_create_platform_maintenance.php');
-            DB::usingConnection('pgsql_migrations', fn () => $migration->up());
+            $db->transaction(function () use ($db): void {
+                $db->statement('SET LOCAL ROLE builderad_scope_executor');
+                $this->assertTrue($db->scalar('SELECT builderad_private.legacy_catalog_digest()=builderad_private.legacy_installation_digest()'));
+                $db->statement('RESET ROLE');
+            });
+            $db->statement("CREATE FUNCTION public.maintenance_upgrade_drift() RETURNS integer LANGUAGE sql AS 'SELECT 1'");
+            try {
+                $db->transaction(fn () => DB::usingConnection('pgsql_migrations', fn () => $migration->up()));
+                $this->fail('Unqualified catalog drift must not be resealed by maintenance installation.');
+            } catch (QueryException $error) {
+                $this->assertSame('42501', $error->errorInfo[0]);
+                $this->assertStringContainsString('PLATFORM_MAINTENANCE_UPGRADE_BASELINE_QUALIFICATION_REQUIRED', $error->getMessage());
+                $this->assertNull($db->scalar("SELECT to_regclass('public.platform_maintenance')::text"));
+            } finally {
+                $db->statement('DROP FUNCTION public.maintenance_upgrade_drift()');
+            }
+            $db->transaction(fn () => DB::usingConnection('pgsql_migrations', fn () => $migration->up()));
             $this->assertFalse(app(PlatformMaintenance::class)->current()['active']);
             $this->assertSame(0, app(PlatformMaintenance::class)->current()['revision']);
             $this->assertSame($user->email, $db->table('users')->where('id', $user->id)->value('email'));
             $this->assertFalse((bool) $db->scalar("SELECT has_table_privilege('builderad_app','platform_maintenance','UPDATE')"));
             $this->assertFalse((bool) $db->scalar("SELECT has_table_privilege('builderad_app','platform_maintenance_commands','SELECT')"));
             $this->assertFalse((bool) $db->scalar("SELECT has_table_privilege('builderad_authority','platform_maintenance_commands','DELETE')"));
+            $db->transaction(function () use ($db): void {
+                $db->statement('SET LOCAL ROLE builderad_scope_executor');
+                $this->assertTrue($db->scalar('SELECT builderad_private.legacy_catalog_digest()=builderad_private.legacy_installation_digest()'));
+                $db->statement('RESET ROLE');
+            });
         } finally {
-            $db->unprepared('DROP TABLE IF EXISTS platform_maintenance_commands; DROP TABLE IF EXISTS platform_maintenance; ALTER TABLE platform_maintenance_before_upgrade RENAME TO platform_maintenance; ALTER TABLE platform_maintenance_commands_before_upgrade RENAME TO platform_maintenance_commands;');
+            if ($db->scalar("SELECT to_regclass('public.platform_maintenance')::text") === null) {
+                $db->transaction(fn () => DB::usingConnection('pgsql_migrations', fn () => $migration->up()));
+            }
         }
     }
 
@@ -182,10 +205,6 @@ final class PlatformMaintenanceTest extends TestCase
             $this->actingAsInternal($user = $this->operator());
             $owner = DB::connection('pgsql_migrations');
             $owner->table('platform_maintenance')->where('id', 1)->update(['active' => false, 'revision' => 0]);
-            if ($case === 'expiry') {
-                $owner->table('security_action_grants')->where('subject_user_id', $user->id)
-                    ->update(['expires_at' => DB::raw("clock_timestamp()+interval '4 seconds'")]);
-            }
             $directory = storage_path('framework/testing/public-platform');
             if (! is_dir($directory)) {
                 mkdir($directory, 0700, true);
@@ -215,9 +234,12 @@ final class PlatformMaintenanceTest extends TestCase
                 if ($case === 'revision') {
                     $owner->table('platform_maintenance')->where('id', 1)->update(['revision' => 1]);
                 } else {
-                    while (! $owner->scalar('SELECT expires_at <= clock_timestamp() FROM security_action_grants WHERE subject_user_id=?', [$user->id])) {
-                        usleep(10000);
-                    }
+                    // Expire this exact grant only after real lock contention is observed.
+                    // Waiting four seconds exceeded the production role's three-second lock timeout.
+                    // Use a full second because the existing PHP grant predicate serializes second precision.
+                    $owner->table('security_action_grants')->where('subject_user_id', $user->id)
+                        ->where('action', PlatformMaintenance::ACTION)
+                        ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
                 }
                 $owner->commit();
                 $worker->wait();

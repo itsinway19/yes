@@ -7,6 +7,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $this->requireQualifiedCatalog();
         DB::unprepared(<<<'SQL'
 CREATE TABLE platform_maintenance (
  id smallint PRIMARY KEY CHECK (id = 1), revision bigint NOT NULL DEFAULT 0 CHECK (revision >= 0),
@@ -29,10 +30,26 @@ GRANT SELECT ON platform_maintenance TO builderad_app;
 GRANT SELECT, UPDATE ON platform_maintenance TO builderad_authority;
 GRANT SELECT, INSERT ON platform_maintenance_commands TO builderad_authority;
 SQL);
+        DB::unprepared(file_get_contents(database_path('sql/market_evidence/catalog_seal.sql')));
     }
 
     public function down(): void
     {
+        $this->requireQualifiedCatalog();
         DB::unprepared('DROP TABLE platform_maintenance_commands; DROP TABLE platform_maintenance;');
+        DB::unprepared(file_get_contents(database_path('sql/market_evidence/catalog_seal.sql')));
+    }
+
+    private function requireQualifiedCatalog(): void
+    {
+        // Follow the existing additive-install protocol; never bless unrelated schema drift.
+        DB::statement('SET LOCAL ROLE builderad_scope_executor');
+        DB::unprepared(<<<'SQL'
+            DO $$ BEGIN
+                IF builderad_private.legacy_catalog_digest() IS DISTINCT FROM builderad_private.legacy_installation_digest()
+                THEN RAISE EXCEPTION 'PLATFORM_MAINTENANCE_UPGRADE_BASELINE_QUALIFICATION_REQUIRED' USING ERRCODE='42501'; END IF;
+            END $$;
+            SQL);
+        DB::statement('RESET ROLE');
     }
 };
