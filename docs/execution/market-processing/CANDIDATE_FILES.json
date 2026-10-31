@@ -1,0 +1,234 @@
+{
+  "baseline": "129846fd9da37b6095a95241da7fb5839322f2d0",
+  "working_tree": "PR51 bounded arithmetic correction of f817ba38; current sha256 uses Git LF content; earlier hashes retain historical provenance",
+  "files": [
+    {
+      "path": "app/Http/Controllers/MarketProcessingController.php",
+      "kind": "added",
+      "sha256": "d8c816648b406aa4a7a7735f57eb9ae199edc3e1eb3eb3beac7fc37c90f6a158",
+      "original_worktree_sha256": "d8c816648b406aa4a7a7735f57eb9ae199edc3e1eb3eb3beac7fc37c90f6a158"
+    },
+    {
+      "path": "app/MarketKnowledge/Processing/BusinessFeasibility.php",
+      "kind": "added",
+      "sha256": "13260f63d52b909f7f7d95353716e7ebbbefe27d9d5fd472903a097a347d172f",
+      "original_worktree_sha256": "13260f63d52b909f7f7d95353716e7ebbbefe27d9d5fd472903a097a347d172f"
+    },
+    {
+      "path": "app/MarketKnowledge/Processing/Findings.php",
+      "kind": "added",
+      "sha256": "cb0ad1a9d35c17d77fff548c892077dfa672993a4e68e9ff87f0bd0341323480",
+      "original_worktree_sha256": "e90a8018b222694503ba8e5d3ad39e1db2dc72e135564b3a361485a985b1fd2f",
+      "pre_arithmetic_published_sha256": "e90a8018b222694503ba8e5d3ad39e1db2dc72e135564b3a361485a985b1fd2f"
+    },
+    {
+      "path": "app/MarketKnowledge/Processing/MarketMethod.php",
+      "kind": "added",
+      "sha256": "6764ae873dbb91034fd26b2abff23fcdc9b3f7eef9f6b00771373833077c42ea",
+      "original_worktree_sha256": "6764ae873dbb91034fd26b2abff23fcdc9b3f7eef9f6b00771373833077c42ea"
+    },
+    {
+      "path": "app/MarketKnowledge/Processing/MarketMethodSelector.php",
+      "kind": "added",
+      "sha256": "f41a849116de2f36e7d0078c5df8735679447d308bc1020dacce84769ae1b8f3",
+      "original_worktree_sha256": "558c57633c7f48a8eddd33b463712fa4f2a57d53475367a4bfe7678aa3de5808",
+      "pre_review_published_sha256": "558c57633c7f48a8eddd33b463712fa4f2a57d53475367a4bfe7678aa3de5808"
+    },
+    {
+      "path": "app/MarketKnowledge/Processing/MarketProcessing.php",
+      "kind": "added",
+      "sha256": "90c68f0c4d4c87d8fcc1cf977435bb8ead9c06e4ecb042dd82d57056f18af051",
+      "original_worktree_sha256": "f1b54b3f1f65952a9904610690310d395c72b1c84e59ed946f65f9275e32534e",
+      "pre_review_published_sha256": "f1b54b3f1f65952a9904610690310d395c72b1c84e59ed946f65f9275e32534e"
+    },
+    {
+      "path": "app/MarketKnowledge/Processing/MarketProcessingTask.php",
+      "kind": "added",
+      "sha256": "44d727f03d6f729a292f8fc45cff89d93610c16a242564f7b5c4665d40eb2e63",
+      "original_worktree_sha256": "44d727f03d6f729a292f8fc45cff89d93610c16a242564f7b5c4665d40eb2e63"
+    },
+    {
+      "path": "app/MarketKnowledge/Processing/OfferEquivalence.php",
+      "kind": "added",
+      "sha256": "573ce77c8a8b2c06322bff24f8dc896b1b8256c8c07f4f575b72faf21ca1ec83",
+      "original_worktree_sha256": "573ce77c8a8b2c06322bff24f8dc896b1b8256c8c07f4f575b72faf21ca1ec83"
+    },
+    {
+      "path": "app/MarketKnowledge/Processing/QualifiedInterestChange.php",
+      "kind": "added",
+      "sha256": "d7a1bff5e5953fd47e861109f4431f4d49a4a12f5a170535072417582f2a6ecf",
+      "original_worktree_sha256": "ebd0194de07296e042735b94cc5a7a1b63425db924293a1c99298a4a4a0a2df3",
+      "pre_review_published_sha256": "ebd0194de07296e042735b94cc5a7a1b63425db924293a1c99298a4a4a0a2df3"
+    },
+    {
+      "path": "app/MarketKnowledge/Processing/TrustedCompletion.php",
+      "kind": "added",
+      "sha256": "88bfeb87211ae97131ece3e575c3e24401b800127c760f0b8f4f55eb6c9706e6"
+    },
+    {
+      "path": "contracts/application.openapi.json",
+      "kind": "modified",
+      "sha256": "37f83b9b7f5cb89bdede6aafc8ddce67efb9004b4b5396ebff917f81a87d25eb",
+      "original_worktree_sha256": "37f83b9b7f5cb89bdede6aafc8ddce67efb9004b4b5396ebff917f81a87d25eb"
+    },
+    {
+      "path": "database/migrations/0001_01_01_000450_create_market_processing.php",
+      "kind": "added",
+      "sha256": "3ba9875d0d7a9da55d75461615de86bf419380131bf256d4545a162515ac8e36",
+      "original_worktree_sha256": "3ba9875d0d7a9da55d75461615de86bf419380131bf256d4545a162515ac8e36"
+    },
+    {
+      "path": "database/migrations/0001_01_01_000460_harden_market_processing_completion.php",
+      "kind": "added",
+      "sha256": "1d5368ec44ff8fb62e59217a840b5f3afe3d1e697bf6142b5f66482d6f6034c5"
+    },
+    {
+      "path": "database/sql/market_processing/capture.sql",
+      "kind": "added",
+      "sha256": "eb6de3c59eedd9b51cb33d82b0816f9dd101bbc1496fb5bebea87bd514ebddee",
+      "original_worktree_sha256": "ae04b0e76bc2cd2cbf22bae7089c3e173a9a8391d7e5597c72114365594d2cb3"
+    },
+    {
+      "path": "database/sql/market_processing/complete.sql",
+      "kind": "added",
+      "sha256": "83540c23068b3cf4dddbb3828ca769e054c4a8ff57637a1da7eca5e0eac6ebc7",
+      "original_worktree_sha256": "991601e56719434fcae02e570dbb33218b4f0c4927267d39fb7f53d72dbf0875"
+    },
+    {
+      "path": "database/sql/market_processing/completion_ticket_schema.sql",
+      "kind": "added",
+      "sha256": "533c67c94cf587102df6e7dcd47963f0d0837328f14ab66d7030cfe2923703e5"
+    },
+    {
+      "path": "database/sql/market_processing/evidence.sql",
+      "kind": "added",
+      "sha256": "ca51ccd0fcb91bf5952976e97920fef94ac85b2c905111162eee9b185b0a2630",
+      "original_worktree_sha256": "0de6a2dc997b150a546d97b3010b3112230bcce2b1f7a73d7533892a6d16dde4"
+    },
+    {
+      "path": "database/sql/market_processing/permissions.sql",
+      "kind": "added",
+      "sha256": "7c1dc96cce753604a66fe7a2c7539c7bcb12c74ebdac61991624e5e0a4e754f7",
+      "original_worktree_sha256": "a4f2bbc5fdeadfeb31298bf983a0b68e764591d40b58324fa0f83892099d79ff"
+    },
+    {
+      "path": "database/sql/market_processing/schema.sql",
+      "kind": "added",
+      "sha256": "7fef6d7a5d5b03303c5e78db6e470323497b92cacd7016436cb41e49e19a1e9a",
+      "original_worktree_sha256": "2f6f317a1a041a77a40b99bae5f16a45062be9e266f39293cd1c58a18f17a5b4"
+    },
+    {
+      "path": "database/sql/market_processing/trusted_completion.sql",
+      "kind": "added",
+      "sha256": "65e1ffdecffda412624a531c72c6ff8882ce89ca978975ed979c9023e1a55624"
+    },
+    {
+      "path": "docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md",
+      "kind": "modified",
+      "sha256": "72f2346b1cadaf6ee584e9a6dad87d0013608734d24604b657bf1d6e2ee18151",
+      "original_worktree_sha256": "72f2346b1cadaf6ee584e9a6dad87d0013608734d24604b657bf1d6e2ee18151"
+    },
+    {
+      "path": "docs/execution/market-processing/PROGRESS.md",
+      "kind": "added",
+      "sha256": "8d02bac2a351223f2d0aa2cbe127119f9c9966456dfdf20bb3c52d8c8eb86764",
+      "original_worktree_sha256": "fa1029f3c87521671eb24daf60db4d83d73631d7c0e69c38834e300077373655",
+      "pre_review_published_sha256": "e47dfe8c20f376a02b853c04fec1ac2febf8f03ea7dc80cc8117ef4256cd04c9",
+      "pre_arithmetic_published_sha256": "a82ec04e47b0b891229f691f3f937e62f70725fda3f92561293fab263f084f61"
+    },
+    {
+      "path": "resources/js/api/generated/application.d.ts",
+      "kind": "modified",
+      "sha256": "f08e1097cb692a8116e2d111011140e75c701862c727f0a5a89bd1f7776a2672",
+      "original_worktree_sha256": "f08e1097cb692a8116e2d111011140e75c701862c727f0a5a89bd1f7776a2672"
+    },
+    {
+      "path": "routes/web.php",
+      "kind": "modified",
+      "sha256": "90161e5bb8f1faf0ad4c05c8a497a20e992275678475fa8d8e152e8affa84af9",
+      "original_worktree_sha256": "90161e5bb8f1faf0ad4c05c8a497a20e992275678475fa8d8e152e8affa84af9"
+    },
+    {
+      "path": "scripts/business-foundation-openapi.mjs",
+      "kind": "modified",
+      "sha256": "114359c4e65abb2e3c96edab3d7d88948a60dab2051a296464cdbe75239335a5",
+      "original_worktree_sha256": "477234652649dbabd7ef7bf5a53a81af8cf8de12ffdf5eb0aa69a42c0e8b2dfd"
+    },
+    {
+      "path": "tests/BusinessScopeCommandWorker.php",
+      "kind": "modified",
+      "sha256": "8b7e2a3ad5343da6a4df4846cafe3da103cf49b463f0121eee971d95a5565f68",
+      "original_worktree_sha256": "92c88c523067e1f347d2b29de3b922385585551bc2e6d059879aa3776b54ef26",
+      "pre_review_published_sha256": "92c88c523067e1f347d2b29de3b922385585551bc2e6d059879aa3776b54ef26"
+    },
+    {
+      "path": "tests/Feature/MarketEvidenceConcurrencyTest.php",
+      "kind": "modified",
+      "sha256": "8a85319d68245df61d4f6be4fd94b0ab13f42d60117d3e3096b6d1c28676c236",
+      "original_worktree_sha256": "8a85319d68245df61d4f6be4fd94b0ab13f42d60117d3e3096b6d1c28676c236"
+    },
+    {
+      "path": "tests/Feature/MarketProcessingCompletionSecurityTest.php",
+      "kind": "added",
+      "sha256": "68d431f04df59f28c496dbec7f1cf128bca16dcdbb617871b9962a514ac57fbf"
+    },
+    {
+      "path": "tests/Feature/MarketProcessingConcurrencyTest.php",
+      "kind": "added",
+      "sha256": "d248413bd7d86415e70e884f5118bb0a509f1da08b32637a6b804bfc65f15733",
+      "original_worktree_sha256": "cbc6287966e6523da780250b0c2930bcdacc4ca14d8b92e809b04395ddaf5645",
+      "pre_review_published_sha256": "cbc6287966e6523da780250b0c2930bcdacc4ca14d8b92e809b04395ddaf5645"
+    },
+    {
+      "path": "tests/Feature/MarketProcessingTest.php",
+      "kind": "added",
+      "sha256": "fba16204e00a2305d45466d4e5547f15ac8cfe415607e455e0b3c2c12f322323",
+      "original_worktree_sha256": "9a0bc933eea1fcc3f92209b64d4db83a14a6d4bfb17c855950a3429fe44a4384",
+      "pre_review_published_sha256": "9a0bc933eea1fcc3f92209b64d4db83a14a6d4bfb17c855950a3429fe44a4384",
+      "pre_arithmetic_published_sha256": "1e47618afef468547646bf702f4de357d9ea3889191bf83af0346002f6d91c7c"
+    },
+    {
+      "path": "tests/Feature/MarketProcessingTrustedUpgradeTest.php",
+      "kind": "added",
+      "sha256": "07c151a961128a893ce8c7f15dbdb6a1d6173c8178fb3cc99943aead0c297e74"
+    },
+    {
+      "path": "tests/Feature/MarketProcessingUpgradeTest.php",
+      "kind": "added",
+      "sha256": "b8196432856c8093250c14625534592f8ecf1c143574c253d4245ce2c5d434f0",
+      "original_worktree_sha256": "b8196432856c8093250c14625534592f8ecf1c143574c253d4245ce2c5d434f0"
+    },
+    {
+      "path": "tests/Fixtures/market-processing-oracles.json",
+      "kind": "added",
+      "sha256": "b6d0e618d612d4ba592dd8e49854e2ad7add72bff042e6dbbacab85841d6efc7",
+      "original_worktree_sha256": "71a13d61b3694f2cd173067aa5466e800195202248459789c795c500b4ec4340"
+    },
+    {
+      "path": "tests/Support/MarketProcessingExamples.php",
+      "kind": "added",
+      "sha256": "098d9936b0742fbbc13c4f7577dc67e4d49b6c0617a706de91cc611da6047a4c",
+      "original_worktree_sha256": "43818f97b9261fb679d1f6699b5852dc5dc11bef03fdb2ea83e7553319679f8f",
+      "pre_review_published_sha256": "43818f97b9261fb679d1f6699b5852dc5dc11bef03fdb2ea83e7553319679f8f"
+    },
+    {
+      "path": "tests/Support/MarketProcessingFixture.php",
+      "kind": "added",
+      "sha256": "5cedc8fa9681cb1ea9ac51e64792dc088c90586c984ed413b59445ebe7e80091",
+      "original_worktree_sha256": "aa3bfdd6f9ce76383096ac91f202a392cd637cc2d57d883e5eb4b4fbfd0352ea",
+      "pre_review_published_sha256": "aa3bfdd6f9ce76383096ac91f202a392cd637cc2d57d883e5eb4b4fbfd0352ea"
+    },
+    {
+      "path": "tests/Unit/MarketProcessingMethodsTest.php",
+      "kind": "added",
+      "sha256": "98e7e5c1f4c898f6e59f0759f405148123298261e834415a7d0ea1a0dd898e76",
+      "original_worktree_sha256": "2351afa4d368e7970dcdc69f3184bb2fee1feed46664f6a3b879707e6b6e2743",
+      "pre_review_published_sha256": "2351afa4d368e7970dcdc69f3184bb2fee1feed46664f6a3b879707e6b6e2743",
+      "pre_arithmetic_published_sha256": "8cc3e1dd5b27e91b05a5d5933879638b204388e98f09ab1ff89edee590369e00"
+    }
+  ],
+  "hash_basis": "sha256 of published Git blob bytes (LF); original_worktree_sha256 preserves the inspected original 30-file inventory",
+  "original_inventory_sha256": "6e97b0078af27b7fe25bc857fd7742e786bcceb94c4c29eb153dd06fecf75ec6",
+  "review_baseline": "1bff76a4ad7c5a0c6c76358d877ffb08aac014cc",
+  "arithmetic_review_baseline": "f817ba38f38da984fd58a34fc6b4b51884007534"
+}

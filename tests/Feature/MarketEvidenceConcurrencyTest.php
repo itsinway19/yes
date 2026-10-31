@@ -55,10 +55,6 @@ final class MarketEvidenceConcurrencyTest extends TestCase
         $expiry = null;
         $evidenceExpires = in_array($mode, ['evidence_expiry', 'retained_expiry'], true);
         if ($evidenceExpires) {
-            $expiry = now()->addSeconds(3)->toIso8601String();
-            $payload = $this->offer();
-            $payload['valid_until'] = $expiry;
-            $ref = $this->writeEvidence($evidence, $right, $payload)->assertOk()->json('data.material_ref');
             $business = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Synthetic processing expiry'])->assertCreated()->json('data');
             $businessId = DB::connection('pgsql_migrations')->table('businesses')->where('public_id', $business['business_public_id'])->value('id');
             $businessRight = Fixture::root($businessId, $user->id, 'business.data.use');
@@ -71,7 +67,8 @@ final class MarketEvidenceConcurrencyTest extends TestCase
                 'data_use_scope_id' => $process['scope_id'], 'effect' => 'add', 'expected_relation' => 0, 'authority_selection' => $selection])->assertOk();
             $selection['requirements'][0]['leaf_grant_id'] = $businessRight->id;
             $input = [...$input, 'operation' => 'material', 'business' => $business['business_public_id'], 'material_operation' => $process['operation'],
-                'refs' => [$ref], 'purpose' => 'market_research', 'recipient' => $user->public_id, 'selection' => $selection];
+                'refs' => [], 'purpose' => 'market_research', 'recipient' => $user->public_id, 'selection' => $selection,
+                'require_release_content' => true, 'material_refs_from_release' => true];
         }
         file_put_contents($path, json_encode($input, JSON_THROW_ON_ERROR));
         $worker = new Process([PHP_BINARY, base_path('tests/BusinessScopeCommandWorker.php'), $path], base_path());
@@ -81,6 +78,17 @@ final class MarketEvidenceConcurrencyTest extends TestCase
         try {
             $worker->start();
             $this->waitFor(fn () => str_contains($worker->getOutput(), 'READY_PID='), $worker);
+            if ($evidenceExpires) {
+                // Complete Business/right setup and bootstrap the worker before starting
+                // the existing three-second evidence window. Send its exact new ref only
+                // through the guarded test participant's explicit startup release.
+                $expiry = now()->addSeconds(3)->toIso8601String();
+                $payload = $this->offer();
+                $payload['valid_until'] = $expiry;
+                $ref = $this->writeEvidence($evidence, $right, $payload)->assertOk()->json('data.material_ref');
+                $proof['expiry'] = $expiry;
+            }
+
             if ($mode === 'receipt_expiry') {
                 $proof['expiry'] = Fixture::expireQualificationSoon($right['qualification_id'], $user->id);
             }
@@ -92,7 +100,7 @@ final class MarketEvidenceConcurrencyTest extends TestCase
             } else {
                 $db->select("SELECT fence_id FROM resource_right_fences WHERE kind='source' AND source_id=?::uuid FOR UPDATE", [$source]);
             }
-            file_put_contents($release, 'ready');
+            file_put_contents($release, $evidenceExpires ? json_encode(['material_refs' => [$ref]], JSON_THROW_ON_ERROR) : 'ready');
             $proof['wait'] = $this->waitFor(function () use ($run, $blocker) {
                 foreach (DB::select('SELECT pid,backend_xid::text AS xid,wait_event_type,wait_event,pg_blocking_pids(pid)::text AS blockers FROM pg_stat_activity WHERE application_name=?', [$run]) as $row) {
                     if ($row->wait_event_type === 'Lock' && in_array($blocker, json_decode(str_replace(['{', '}'], ['[', ']'], $row->blockers), true), true)) {
