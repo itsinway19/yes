@@ -18,6 +18,10 @@ export function internalOperationsContracts({ ref, text, uuid, object, list, nul
     const credentialWrite = (operationId, schema, parameters = []) => ({ ...write(operationId, schema, parameters), responses: { ...write('', '').responses, 200: response(ref('InternalServiceCredential')) } });
     return {
         paths: {
+            '/internal/administration/maintenance': {
+                get: { operationId: 'readPlatformMaintenance', security, parameters: headers, responses: { 200: response(resource('PlatformMaintenanceResource')), ...errors } },
+                post: { operationId: 'changePlatformMaintenance', security, requestBody: { required: true, ...json(ref('PlatformMaintenanceCommand')) }, responses: { 200: response(ref('PlatformMaintenanceAcknowledgement')), ...errors } },
+            },
             '/internal/administration/appearance': {
                 get: { operationId: 'readGlobalAppearance', security, parameters: headers, responses: { 200: response(resource('GlobalAppearanceResource')), ...errors } },
                 post: { operationId: 'publishGlobalAppearance', security, requestBody: { required: true, ...json(ref('GlobalAppearanceCommand')) }, responses: { 200: response(ref('AppearancePublication')), ...errors } },
@@ -40,6 +44,11 @@ export function internalOperationsContracts({ ref, text, uuid, object, list, nul
             '/internal/grants/{grant}': { delete: { ...write('revokeInternalStaffGrant', null, [identifier('grant')]), responses: { ...write('', '').responses, 404: response(ref('Error')) } } },
         },
         schemas: {
+            PlatformMaintenanceState: object({ revision: integer, active: flag, message_ar: bounded(1,500), message_en: bounded(1,500), retry_after: {type:'integer',minimum:30,maximum:3600}, changed_at: nullable(text) }),
+            PlatformMaintenanceData: object({ maintenance: ref('PlatformMaintenanceState'), history: list(object({ command_id: uuid, actor_user_id: nullable(positive), previous_revision: integer, resulting_revision: integer, reason: text, occurred_at: text })) }),
+            PlatformMaintenanceResource: envelope('PlatformMaintenanceData'),
+            PlatformMaintenanceCommand: object({ command_id: uuid, revision: {type:'integer',minimum:0,maximum:2147483646}, active: flag, message_ar: bounded(1,500), message_en: bounded(1,500), retry_after: {type:'integer',minimum:30,maximum:3600}, reason: bounded(1,500) }),
+            PlatformMaintenanceAcknowledgement: object({ saved: {const:true}, command_id: uuid, maintenance: ref('PlatformMaintenanceState') }),
             GlobalAppearanceColors: object({ primary: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' }, secondary: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' } }),
             GlobalAppearanceData: object({ revision: integer, primary: text, secondary: text, defaults: ref('GlobalAppearanceColors') }),
             GlobalAppearanceResource: envelope('GlobalAppearanceData'),

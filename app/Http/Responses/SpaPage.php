@@ -3,6 +3,7 @@
 namespace App\Http\Responses;
 
 use App\Appearance\GlobalAppearance;
+use App\Platform\AdministrationNavigation;
 use App\Security\ClientVisibility;
 use App\Security\IdentityDocument;
 use Illuminate\Contracts\Support\Responsable;
@@ -33,6 +34,7 @@ final class SpaPage implements Responsable
             'identity' => $identity, 'locale' => $locale,
             'bootstrap' => ['identity' => $identity, 'locale' => $locale, 'application' => true,
                 'documentState' => $identity['binding']['principal'] > 0 ? 'authenticated' : 'guest',
+                'navigation' => app(AdministrationNavigation::class)->paths($request),
                 'staffEnrollment' => $request->is('staff/onboarding')],
         ])->header('Cache-Control', 'no-store')->header('X-Builderad-Document-Location', $request->getRequestUri());
     }

@@ -20,6 +20,8 @@ import { internalOperationsRoutes } from '../internal-operations/routes';
 import { commercialRoutes } from '../commercial/routes';
 import { locale, localeBusy, switchLocale } from './locale';
 import AdministrationLayout from '../internal-operations/AdministrationLayout.vue';
+import BrandLogo from '../Components/BrandLogo.vue';
+import ThemeToggle from '../Components/ThemeToggle.vue';
 const root = document.getElementById('application-spa')!;
 watch(status, value => { root.dataset.state = value; }, { immediate: true, flush: 'sync' });
 const style=document.createElement('style');style.textContent='[data-application-spa]:not([data-state="ready"]) [data-spa-private]{display:none!important} .business-main{max-width:1040px;margin:auto;padding:32px}';document.head.append(style);
@@ -36,7 +38,7 @@ const i18n = createI18n({ legacy: false, locale: locale.value, fallbackLocale: '
 watch(locale, value => { i18n.global.locale.value = value; });
 const app = createApp(defineComponent({ setup: () => () => {
     const administrationLayout = internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0;
-    const header = h(administrationLayout ? 'div' : 'header', administrationLayout ? { class: 'ba-admin-header-controls' } : { style: 'display:flex;gap:20px;padding:18px;flex-wrap:wrap;align-items:center' }, [h('strong', 'BuilderAd'),
+    const header = h(administrationLayout ? 'div' : 'header', administrationLayout ? { class: 'ba-admin-header-controls' } : { style: 'display:flex;gap:20px;padding:18px;flex-wrap:wrap;align-items:center' }, [h(BrandLogo), h(ThemeToggle),
         administrationLayout ? h('span', { 'data-admin-context': true }, copy('الإدارة المركزية', 'Central administration')) : null,
         !internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: '/businesses' }, () => copy('أنشطتي', 'My businesses')) : null,
         typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/business` }, () => copy('سياق النشاط', 'Business context')) : null,
@@ -66,7 +68,7 @@ const app = createApp(defineComponent({ setup: () => () => {
         ]) : null,
 ];
     return h('div', { dir: locale.value === 'ar' ? 'rtl' : 'ltr' }, administrationLayout
-        ? [h(AdministrationLayout, {}, { header: () => header, default: () => content })]
+        ? [h(AdministrationLayout, {allowedPaths:bootstrap.navigation ?? []}, { header: () => header, default: () => content })]
         : [header, ...content]);
 } }));
 app.config.errorHandler = error => { console.error(error); renderFailure.value = true; conceal(); router.cancelCandidate(); status.value = 'unavailable'; };

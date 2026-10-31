@@ -2,7 +2,7 @@ import { readonly, ref } from 'vue';
 import type { IdentityMetadata } from './identity';
 import { remainingSessionLease } from '../sessionLease';
 
-export const bootstrap = JSON.parse(document.getElementById('application-bootstrap')!.textContent!) as { identity: IdentityMetadata; locale: 'ar' | 'en'; application?: boolean; staffEnrollment?: boolean };
+export const bootstrap = JSON.parse(document.getElementById('application-bootstrap')!.textContent!) as { identity: IdentityMetadata; locale: 'ar' | 'en'; application?: boolean; staffEnrollment?: boolean; navigation?: string[] };
 export const internalBoundary = bootstrap.identity.binding.boundary === 'internal';
 let identity = bootstrap.identity;
 let leaseExpiresAt = Date.now() + identity.leaseMilliseconds;

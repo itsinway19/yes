@@ -4,6 +4,7 @@ import { Menu, X, PanelRight } from '@lucide/vue';
 import { locale } from '../spa/locale';
 import AdministrationNavigation from './AdministrationNavigation.vue';
 import './administration.css';
+defineProps<{allowedPaths?: readonly string[]}>();
 const drawer = ref<HTMLDialogElement | null>(null), toggle = ref<HTMLButtonElement | null>(null), open = ref(false);
 const copy = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 let media: MediaQueryList | undefined;
@@ -35,13 +36,13 @@ onBeforeUnmount(() => { media?.removeEventListener('change', breakpoint); drawer
         </header>
         <aside data-admin-sidebar class="ba-admin-sidebar" :aria-label="copy('التنقل الإداري', 'Administration navigation')">
             <div class="ba-admin-sidebar-title"><PanelRight :size="18" aria-hidden="true" /><span>{{ copy('مساحة الإدارة', 'Administration workspace') }}</span></div>
-            <AdministrationNavigation />
+            <AdministrationNavigation :allowed-paths="allowedPaths" />
             <p class="ba-admin-sidebar-note">{{ copy('إدارة الفريق والخدمات وإعدادات المنصة من مكان واحد.', 'Manage your team, services, and platform settings in one place.') }}</p>
         </aside>
         <div id="administration-content" class="ba-admin-content" tabindex="-1"><slot /></div>
         <dialog id="administration-drawer" ref="drawer" data-admin-drawer class="ba-admin-drawer" :dir="locale === 'ar' ? 'rtl' : 'ltr'" aria-modal="true" aria-labelledby="administration-drawer-title" @click="outside" @keydown="containFocus" @close="closed" @cancel="open = false">
             <div class="ba-admin-drawer-heading"><strong id="administration-drawer-title">{{ copy('مساحة الإدارة', 'Administration workspace') }}</strong><button type="button" data-admin-drawer-close :aria-label="copy('إغلاق قائمة الإدارة', 'Close administration menu')" @click="closeMenu"><X :size="21" aria-hidden="true" /></button></div>
-            <AdministrationNavigation @select="closeMenu" />
+            <AdministrationNavigation :allowed-paths="allowedPaths" @select="closeMenu" />
         </dialog>
     </div>
 </template>

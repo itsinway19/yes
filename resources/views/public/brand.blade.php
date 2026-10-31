@@ -1,0 +1,1 @@
+<a class="ba-logo" href="/" lang="en" dir="ltr" aria-label="BuilderAd"><img src="/brand/builderad-mark.svg" width="36" height="36" alt="" aria-hidden="true"><span>Builder<b>Ad</b></span></a>
