@@ -23,15 +23,16 @@ async function component(file, ports = {}) {
     return { url: url(source), value: (await import(url(source))).default };
 }
 const navigation = await component('AdministrationNavigation.vue');
-test('real navigation renders eight existing routes in four groups with one exact active link', async () => {
+test('real navigation renders nine authorized routes in four groups with one exact active link', async () => {
     const routes = (await import(inventory)).administrationNavigation.flatMap(group => group.links).map(link => ({ path: link.to, component: { render: () => null } }));
     const router = createRouter({ history: createMemoryHistory(), routes });
-    const renderNavigation = () => { const app = createSSRApp(navigation.value); app.use(router); return renderToString(app); };
+    const awaitedPaths=routes.map(route=>route.path);
+    const renderNavigation = () => { const app = createSSRApp(navigation.value, {allowedPaths:(awaitedPaths)}); app.use(router); return renderToString(app); };
     for (const path of ['/internal/administration/customers', '/internal/administration/appearance', '/internal/administration', '/internal/services']) {
         await router.push(path); await router.isReady();
         const html = await renderNavigation();
         assert.equal((html.match(/<section /g) ?? []).length, 4);
-        assert.equal((html.match(/<a /g) ?? []).length, 8);
+        assert.equal((html.match(/<a /g) ?? []).length, 9);
         assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1);
         assert.match(html, new RegExp(`href="${path}" aria-current="page"`));
     }
@@ -101,4 +102,11 @@ test('open drawer wraps both Tab boundaries using only currently visible enabled
         last.props.disabled = true; first.focus(); assert.equal(key().prevented, true); assert.equal(focusDocument.activeElement, first, 'Disabled final control is excluded on the current key event');
         first.props.onClick(); await nextTick(); assert.equal(key().prevented, false, 'Closed dialog never intercepts keys');
     } finally { app.unmount(); delete globalThis.matchMedia; delete globalThis.getComputedStyle; focusDocument.activeElement = null; }
+});
+
+test('navigation hides destinations absent from the server projection and does not render empty groups',async()=>{
+ const router=createRouter({history:createMemoryHistory(),routes:[{path:'/internal/security/devices',component:{render:()=>null}}]});
+ await router.push('/internal/security/devices');await router.isReady();
+ const app=createSSRApp(navigation.value,{allowedPaths:['/internal/security/devices']});app.use(router);
+ const html=await renderToString(app);assert.equal((html.match(/<section /g)??[]).length,1);assert.equal((html.match(/<a /g)??[]).length,1);assert.doesNotMatch(html,/href="\/internal\/administration/);
 });

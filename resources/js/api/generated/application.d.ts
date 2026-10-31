@@ -1463,6 +1463,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/administration/maintenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readPlatformMaintenance"];
+        put?: never;
+        post: operations["changePlatformMaintenance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/administration/appearance": {
         parameters: {
             query?: never;
@@ -3591,6 +3607,49 @@ export interface components {
                 name: string | null;
                 email: string | null;
             };
+        };
+        PlatformMaintenanceState: {
+            revision: number;
+            active: boolean;
+            message_ar: string;
+            message_en: string;
+            retry_after: number;
+            changed_at: string | null;
+        };
+        PlatformMaintenanceData: {
+            maintenance: components["schemas"]["PlatformMaintenanceState"];
+            history: {
+                /** Format: uuid */
+                command_id: string;
+                actor_user_id: number | null;
+                previous_revision: number;
+                resulting_revision: number;
+                reason: string;
+                occurred_at: string;
+            }[];
+        };
+        PlatformMaintenanceResource: {
+            data: components["schemas"]["PlatformMaintenanceData"];
+            /** @enum {unknown} */
+            locale: "ar" | "en";
+            visibility: components["schemas"]["Visibility"];
+        };
+        PlatformMaintenanceCommand: {
+            /** Format: uuid */
+            command_id: string;
+            revision: number;
+            active: boolean;
+            message_ar: string;
+            message_en: string;
+            retry_after: number;
+            reason: string;
+        };
+        PlatformMaintenanceAcknowledgement: {
+            /** @constant */
+            saved: true;
+            /** Format: uuid */
+            command_id: string;
+            maintenance: components["schemas"]["PlatformMaintenanceState"];
         };
         GlobalAppearanceColors: {
             primary: string;
@@ -15631,6 +15690,161 @@ export interface operations {
                         /** @enum {unknown} */
                         locale: "ar" | "en";
                     };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readPlatformMaintenance: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Builderad-Passive"?: "1";
+                "X-Builderad-Witness"?: "1";
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformMaintenanceResource"] | components["schemas"]["GoalsWitness"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    changePlatformMaintenance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformMaintenanceCommand"];
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformMaintenanceAcknowledgement"];
                 };
             };
             /** @description Original Laravel authorization, CSRF, validation or service failure. */

@@ -154,3 +154,8 @@ Stop testing when the requested behavior is verified and all applicable acceptan
 For the Owner-authorized E01–E05 work, read the continuing acceptance conditions in [the execution authorization record](docs/execution/business-foundation/OWNER_AUTHORIZATION.md#شرط-القبول-المستمر-قدرة-يجدها-المستخدم-ويفهمها-ويستفيد-منها).
 
 A user-facing capability is not complete from Backend/API tests alone. Record its user job, visible surface/audience/context, resource authority and applicable subscription, Arabic/RTL states and the required browser evidence in the existing execution progress record. Keep `BACKEND_VERIFIED`, `UI_INTEGRATED` and `BROWSER_VERIFIED` distinct. The first reference flow is independent Business creation/list/open/edit/switch/revocation; the old Workspace UI is not proof of that flow. Do not invent pages for internal primitives or build future mobile authentication, AI infrastructure or a comprehensive admin redesign under this condition.
+
+
+### Surface completeness for material capabilities
+
+For every material capability, identify its user job and classify public, advertiser, internal administration, internal-only (with a reason), or deferred UI (with a release prerequisite). Maintain the lightweight record in [surface coverage](docs/execution/public-platform/SURFACES.md), including actual placement, current authority/context and applicable entitlement, understandable evidence limits and unavailable/denied/unknown states, next action, and verification. Do not invent screens for internal primitives or present planned capabilities as operational. Keep `BACKEND_VERIFIED`, `UI_INTEGRATED` and `BROWSER_VERIFIED` separate. Reuse existing appearance, locale, navigation and authority owners; exposed controls do not grant data access.

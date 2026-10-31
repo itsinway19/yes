@@ -1,5 +1,6 @@
 <?php
 
+use App\Appearance\GlobalAppearance;
 use App\Http\Controllers\AdvertiserGoalPreferencesController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\IdentityContextController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\MetaConnectionController;
 use App\Http\Controllers\MetaReportController;
 use App\Http\Controllers\ObjectPurposeController;
 use App\Http\Controllers\PasskeyManagementController;
+use App\Http\Controllers\PlatformMaintenanceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SecurityDevicesController;
 use App\Http\Controllers\SnapchatConnectionController;
@@ -43,10 +45,19 @@ use App\Http\Middleware\EnsureFreshAuthentication;
 use App\Http\Middleware\EnsurePendingStaffEnrollment;
 use App\Http\Middleware\RequireActionGrant;
 use App\Http\Middleware\RestoreBusinessAfterCallback;
+use App\Security\IdentityDocument;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return response()->view('welcome', ['locale' => app()->getLocale()])->header('Cache-Control', 'no-store');
+    return response()->view('welcome', ['locale' => app()->getLocale(),
+        'appearanceTokens' => GlobalAppearance::tokens(app(GlobalAppearance::class)->current()),
+        'maintenance' => request()->attributes->get('platform.maintenance'),
+        'publicIdentity' => app(IdentityDocument::class)->metadata(request())])->header('Cache-Control', 'no-store');
+});
+
+Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->group(function () {
+    Route::get('/internal/administration/maintenance', [PlatformMaintenanceController::class, 'index'])->name('internal.maintenance.index');
+    Route::post('/internal/administration/maintenance', [PlatformMaintenanceController::class, 'update'])->name('internal.maintenance.update');
 });
 
 Route::post('/locale', LocaleController::class)->name('locale.update');

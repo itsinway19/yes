@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AdmitIdentityDocument;
 use App\Http\Middleware\CaptureIdentityInput;
+use App\Http\Middleware\EnforcePlatformMaintenance;
 use App\Http\Middleware\ResolveLocale;
 use App\Http\Middleware\SanitizeProviderCallback;
 use App\Http\Middleware\SelectSessionContext;
@@ -38,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             CaptureIdentityInput::class,
             AdmitIdentityDocument::class,
             ResolveLocale::class,
+            EnforcePlatformMaintenance::class,
             SpaPresentation::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);

@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = withDefaults(
     defineProps<{
         show?: boolean;
         maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
         closeable?: boolean;
+        labelledBy?: string;
+        describedBy?: string;
     }>(),
     {
         show: false,
@@ -17,20 +19,26 @@ const props = withDefaults(
 const emit = defineEmits(['close']);
 const dialog = ref();
 const showSlot = ref(props.show);
+let previousFocus: HTMLElement | null = null;
+let closing: ReturnType<typeof setTimeout> | undefined;
 
 watch(
     () => props.show,
-    () => {
+    async () => {
+        clearTimeout(closing);
         if (props.show) {
+            previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
             document.body.style.overflow = 'hidden';
             showSlot.value = true;
 
-            dialog.value?.showModal();
+            await nextTick();
+            if (props.show) dialog.value?.showModal();
         } else {
             document.body.style.overflow = '';
 
-            setTimeout(() => {
+            closing = setTimeout(() => {
                 dialog.value?.close();
+                previousFocus?.focus();
                 showSlot.value = false;
             }, 200);
         }
@@ -44,18 +52,17 @@ const close = () => {
 };
 
 const closeOnEscape = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    if (e.key === 'Escape' && props.show) {
         e.preventDefault();
-
-        if (props.show) {
-            close();
-        }
+        close();
     }
 };
 
 onMounted(() => document.addEventListener('keydown', closeOnEscape));
 
 onUnmounted(() => {
+    clearTimeout(closing);
+    dialog.value?.close();
     document.removeEventListener('keydown', closeOnEscape);
 
     document.body.style.overflow = '';
@@ -76,6 +83,9 @@ const maxWidthClass = computed(() => {
     <dialog
         class="z-50 m-0 min-h-full min-w-full overflow-y-auto bg-transparent backdrop:bg-transparent"
         ref="dialog"
+        :aria-labelledby="labelledBy"
+        :aria-describedby="describedBy"
+        @cancel.prevent="close"
     >
         <div
             class="fixed inset-0 z-50 overflow-y-auto px-4 py-6 sm:px-0"
@@ -91,7 +101,7 @@ const maxWidthClass = computed(() => {
             >
                 <div
                     v-show="show"
-                    class="fixed inset-0 transform transition-all"
+                    class="ba-modal-backdrop fixed inset-0 z-0 transform transition-all"
                     @click="close"
                 >
                     <div
@@ -110,7 +120,7 @@ const maxWidthClass = computed(() => {
             >
                 <div
                     v-show="show"
-                    class="mb-6 transform overflow-hidden rounded-lg bg-white shadow-xl transition-all sm:mx-auto sm:w-full"
+                    class="ba-modal-panel relative z-10 mb-6 transform overflow-hidden rounded-lg bg-white shadow-xl transition-all sm:mx-auto sm:w-full"
                     :class="maxWidthClass"
                 >
                     <slot v-if="showSlot" />
@@ -119,3 +129,7 @@ const maxWidthClass = computed(() => {
         </div>
     </dialog>
 </template>
+
+<style scoped>
+@media (prefers-reduced-motion: reduce) { .ba-modal-backdrop, .ba-modal-panel { transition-duration: 0ms !important; animation: none !important; } }
+</style>

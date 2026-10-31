@@ -18,7 +18,7 @@ final class GrantAuthority
 
     public const STAFF_ACTIONS = [
         'staff.view', 'staff.invite', 'staff.attest', 'staff.activate', 'staff.revoke',
-        'grant.manage', 'service.manage', 'business.manage',
+        'grant.manage', 'service.manage', 'business.manage', 'platform.maintenance.manage',
     ];
 
     /** Owner-authorized Founder role; current/fresh checks still guard every effect. */
@@ -136,7 +136,7 @@ final class GrantAuthority
         });
     }
 
-    private const SENSITIVE_STAFF_ACTIONS = ['grant.manage', 'service.manage'];
+    private const SENSITIVE_STAFF_ACTIONS = ['grant.manage', 'service.manage', 'platform.maintenance.manage'];
 
     /** Existing fresh responsible-Owner evidence issues a narrow grant; mutation itself is grant-based. */
     public function requestBusinessContextGrant(Request $request, int $workspaceId): void

@@ -58,7 +58,7 @@ final class InternalAdministrationController extends Controller
                 ->where('user_id', $request->user()->id)
                 ->where('kind', 'founder')->where('status', 'active')->exists()
                 ? GrantAuthority::STAFF_ACTIONS
-                : array_values(array_diff(GrantAuthority::STAFF_ACTIONS, ['grant.manage', 'service.manage'])),
+                : array_values(array_diff(GrantAuthority::STAFF_ACTIONS, ['grant.manage', 'service.manage', 'platform.maintenance.manage'])),
             'canAttestFactors' => DB::table('internal_personnel')
                 ->where('user_id', $request->user()->id)
                 ->where('kind', 'founder')->where('status', 'active')->exists(),

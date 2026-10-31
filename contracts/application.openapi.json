@@ -12767,6 +12767,207 @@
         }
       }
     },
+    "/internal/administration/maintenance": {
+      "get": {
+        "operationId": "readPlatformMaintenance",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Builderad-Passive",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Builderad-Witness",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/PlatformMaintenanceResource"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GoalsWitness"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "changePlatformMaintenance",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformMaintenanceCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformMaintenanceAcknowledgement"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/administration/appearance": {
       "get": {
         "operationId": "readGlobalAppearance",
@@ -33148,6 +33349,202 @@
           "status",
           "errors",
           "old"
+        ],
+        "additionalProperties": false
+      },
+      "PlatformMaintenanceState": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "message_ar": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "message_en": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "retry_after": {
+            "type": "integer",
+            "minimum": 30,
+            "maximum": 3600
+          },
+          "changed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "revision",
+          "active",
+          "message_ar",
+          "message_en",
+          "retry_after",
+          "changed_at"
+        ],
+        "additionalProperties": false
+      },
+      "PlatformMaintenanceData": {
+        "type": "object",
+        "properties": {
+          "maintenance": {
+            "$ref": "#/components/schemas/PlatformMaintenanceState"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "command_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "actor_user_id": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "previous_revision": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "resulting_revision": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "occurred_at": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "command_id",
+                "actor_user_id",
+                "previous_revision",
+                "resulting_revision",
+                "reason",
+                "occurred_at"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "maintenance",
+          "history"
+        ],
+        "additionalProperties": false
+      },
+      "PlatformMaintenanceResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PlatformMaintenanceData"
+          },
+          "locale": {
+            "enum": [
+              "ar",
+              "en"
+            ]
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/Visibility"
+          }
+        },
+        "required": [
+          "data",
+          "locale",
+          "visibility"
+        ],
+        "additionalProperties": false
+      },
+      "PlatformMaintenanceCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483646
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "message_ar": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "message_en": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "retry_after": {
+            "type": "integer",
+            "minimum": 30,
+            "maximum": 3600
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "command_id",
+          "revision",
+          "active",
+          "message_ar",
+          "message_en",
+          "retry_after",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "PlatformMaintenanceAcknowledgement": {
+        "type": "object",
+        "properties": {
+          "saved": {
+            "const": true
+          },
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "maintenance": {
+            "$ref": "#/components/schemas/PlatformMaintenanceState"
+          }
+        },
+        "required": [
+          "saved",
+          "command_id",
+          "maintenance"
         ],
         "additionalProperties": false
       },

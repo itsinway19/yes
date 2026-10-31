@@ -25,6 +25,8 @@ final class MarketProcessingTrustedUpgradeTest extends TestCase
         $reset->clear();
         try {
             $paths = array_values(array_filter(glob(database_path('migrations/*.php')), fn ($p) => strcmp(basename($p), '0001_01_01_000460_harden_market_processing_completion.php') < 0));
+            // Current HTTP admission requires its operational singleton even on this historical domain schema.
+            $paths[] = database_path('migrations/0001_01_01_000470_create_platform_maintenance.php');
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $paths, '--realpath' => true, '--force' => true]));
             $f = $this->processingOriginals();
             $c = $this->processingConsumer($f);

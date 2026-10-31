@@ -1,0 +1,1 @@
+<button type="button" class="ba-theme-toggle" data-theme-toggle data-light-label="{{ $locale === 'ar' ? 'الوضع النهاري' : 'Light mode' }}" data-dark-label="{{ $locale === 'ar' ? 'الوضع الليلي' : 'Dark mode' }}" aria-label="{{ $locale === 'ar' ? 'تبديل المظهر' : 'Switch theme' }}"><span data-theme-label>{{ $locale === 'ar' ? 'الوضع الليلي' : 'Dark mode' }}</span></button>
