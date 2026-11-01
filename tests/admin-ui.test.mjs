@@ -23,20 +23,50 @@ async function component(file, ports = {}) {
     return { url: url(source), value: (await import(url(source))).default };
 }
 const navigation = await component('AdministrationNavigation.vue');
-test('real navigation renders nine authorized routes in four groups with one exact active link', async () => {
-    const routes = (await import(inventory)).administrationNavigation.flatMap(group => group.links).map(link => ({ path: link.to, component: { render: () => null } }));
-    const router = createRouter({ history: createMemoryHistory(), routes });
-    const awaitedPaths=routes.map(route=>route.path);
-    const renderNavigation = () => { const app = createSSRApp(navigation.value, {allowedPaths:(awaitedPaths)}); app.use(router); return renderToString(app); };
-    for (const path of ['/internal/administration/customers', '/internal/administration/appearance', '/internal/administration', '/internal/services']) {
+const expectedNavigation = [
+    { en: 'Administration', paths: ['/internal/administration', '/internal/administration/customers'] },
+    { en: 'Catalog and services', paths: ['/internal/business-types', '/internal/services'] },
+    { en: 'Commercial operations', paths: ['/internal/commercial', '/internal/administration/commercial-markets'] },
+    { en: 'Platform', paths: ['/internal/administration/market-knowledge', '/internal/administration/maintenance', '/internal/administration/appearance', '/internal/security/devices'] },
+];
+const expectedPaths = expectedNavigation.flatMap(group => group.paths);
+const renderedPaths = html => [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map(match => match[1]);
+test('real navigation renders the ten exact authorized destinations in their four groups with one active link', async () => {
+    const actualInventory = (await import(inventory)).administrationNavigation;
+    assert.deepEqual(actualInventory.map(group => ({ en: group.en, paths: group.links.map(link => link.to) })), expectedNavigation);
+    const router = createRouter({ history: createMemoryHistory(), routes: expectedPaths.map(path => ({ path, component: { render: () => null } })) });
+    const renderNavigation = () => { const app = createSSRApp(navigation.value, { allowedPaths: expectedPaths }); app.use(router); return renderToString(app); };
+    for (const path of expectedPaths) {
         await router.push(path); await router.isReady();
         const html = await renderNavigation();
-        assert.equal((html.match(/<section /g) ?? []).length, 4);
-        assert.equal((html.match(/<a /g) ?? []).length, 9);
+        const groups = [...html.matchAll(/<section [^>]*>([\s\S]*?)<\/section>/g)].map(match => match[1]);
+        assert.equal(groups.length, expectedNavigation.length);
+        for (const [index, group] of expectedNavigation.entries()) {
+            assert.ok(groups[index].includes(`<h2>${group.en}</h2>`), `Expected group ${group.en}`);
+            assert.deepEqual(renderedPaths(groups[index]), group.paths);
+        }
+        assert.deepEqual(renderedPaths(html), expectedPaths);
         assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1);
-        assert.match(html, new RegExp(`href="${path}" aria-current="page"`));
+        assert.ok(html.includes(`href="${path}" aria-current="page"`));
     }
-    locale.value = 'ar'; const html = await renderNavigation(); assert.match(html, /الفريق والصلاحيات/); assert.match(html, /المظهر العام/); locale.value = 'en';
+    locale.value = 'ar';
+    try { const html = await renderNavigation(); assert.match(html, /الفريق والصلاحيات/); assert.match(html, /المظهر العام/); assert.match(html, /المعرفة السوقية/); }
+    finally { locale.value = 'en'; }
+});
+
+test('market knowledge stays absent when omitted from the server projection while all other destinations remain', async () => {
+    const marketKnowledge = '/internal/administration/market-knowledge';
+    const allowedPaths = expectedPaths.filter(path => path !== marketKnowledge);
+    const router = createRouter({ history: createMemoryHistory(), routes: expectedPaths.map(path => ({ path, component: { render: () => null } })) });
+    await router.push('/internal/security/devices'); await router.isReady();
+    const app = createSSRApp(navigation.value, { allowedPaths }); app.use(router);
+    const html = await renderToString(app);
+    assert.deepEqual(renderedPaths(html), allowedPaths);
+    assert.equal((html.match(/<section /g) ?? []).length, 4);
+    assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1);
+    assert.ok(html.includes('href="/internal/security/devices" aria-current="page"'));
+    assert.ok(!html.includes(`href="${marketKnowledge}"`));
+    assert.doesNotMatch(html, /Market knowledge/);
 });
 
 const focusDocument = { activeElement: null };

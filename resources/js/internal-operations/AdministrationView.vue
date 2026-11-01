@@ -15,7 +15,7 @@ const people = computed(() => props.value.people), staffGrants = computed(() => 
 const grantableActions = computed(() => props.value.grantableActions), canAttestFactors = computed(() => props.value.canAttestFactors);
 const { t, locale } = useI18n({ useScope: 'global' });
 const copy = (arabic: string, english: string) => locale.value === 'ar' ? arabic : english;
-const actionLabelKeys: Record<string, string> = { 'staff.view': 'actionStaffView', 'staff.invite': 'actionStaffInvite', 'staff.attest': 'actionStaffAttest', 'staff.activate': 'actionStaffActivate', 'staff.revoke': 'actionStaffRevoke', 'grant.manage': 'actionGrantManage', 'service.manage': 'actionServiceManage', 'business.manage': 'actionBusinessManage', 'platform.maintenance.manage': 'actionMaintenanceManage' };
+const actionLabelKeys: Record<string, string> = { 'staff.view': 'actionStaffView', 'staff.invite': 'actionStaffInvite', 'staff.attest': 'actionStaffAttest', 'staff.activate': 'actionStaffActivate', 'staff.revoke': 'actionStaffRevoke', 'grant.manage': 'actionGrantManage', 'service.manage': 'actionServiceManage', 'business.manage': 'actionBusinessManage', 'platform.maintenance.manage': 'actionMaintenanceManage', 'market.knowledge.observe': 'actionMarketKnowledgeObserve', 'market.knowledge.capture': 'actionMarketKnowledgeCapture', 'market.knowledge.publish': 'actionMarketKnowledgePublish' };
 function actionLabel(action: string) { return t(`admin.${actionLabelKeys[action] ?? 'actionUnknown'}`); }
 const busy = ref(''), actionError = ref(''), refreshFailed = ref(false);
 const inviteDisclosure = ref<HTMLDetailsElement | null>(null), inviteName = ref<HTMLInputElement | null>(null);

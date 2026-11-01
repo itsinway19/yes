@@ -5,7 +5,9 @@ import { clearBusinessTypes, readBusinessTypes } from './businessState';
 import { clearServices, readServices } from './serviceState';
 import { clearAppearance, readAppearance } from '../appearance/state';
 import { clearPlatform, readPlatform } from '../platform-maintenance/state';
+import { clearOperations, readOperations, type MarketOperationsQuery } from '../market-knowledge/state';
 export const internalOperationsRoutes: RouteRecordRaw[] = [
+    { path: '/internal/administration/market-knowledge', component: () => import('../market-knowledge/OperationsView.vue'), meta: { presentation: { clear: clearOperations, load: (route, passive, admission) => readOperations(typeof route.query.cursor === 'string' ? { cursor: route.query.cursor } as MarketOperationsQuery : {}, passive, false, admission) } } },
  {path:'/internal/administration/maintenance',component:()=>import('../platform-maintenance/MaintenanceView.vue'),meta:{presentation:{clear:clearPlatform,load:(_route,passive,admission)=>readPlatform(passive,false,admission)}}},
     { path: '/internal/administration/appearance', component: () => import('../appearance/AppearanceView.vue'), meta: { presentation: { clear: clearAppearance, load: (_route, passive, admission) => readAppearance(passive, false, admission) } } },
     { path: '/internal/services', component: () => import('./ServicesView.vue'), meta: { presentation: { clear: clearServices, load: (_route, passive, admission) => readServices(passive, false, admission) } } },

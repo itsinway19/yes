@@ -5182,7 +5182,10 @@ class ProviderAccessStoreTest extends TestCase
         $o = $this->journalObservation($scope, '13');
         $request = Request::create('/');
         $request->setLaravelSession($this->app['session']->driver());
+        $gateBase = storage_path('framework/testing/scr-coherence-'.Str::uuid());
+        $gate = ['ready' => $gateBase.'-ready.json', 'release' => $gateBase.'-release'];
         $worker = new Process([PHP_BINARY, base_path('tests/ObservationCommandWorker.php'), json_encode([
+            'entry_external_gate' => $gate,
             'run' => 'scr-coherence-'.Str::uuid(), 'actor' => $this->actor->id, 'scope' => $scope->jsonSerialize(),
             'session' => SessionAuthority::sessionKey($request), 'command' => (string) Str::uuid(), 'generation' => 1,
             'payload' => ['coverage' => 'COMPLETE', 'failure' => null, 'provenance' => $o->provenance,
@@ -5190,23 +5193,30 @@ class ProviderAccessStoreTest extends TestCase
                 'observations' => [['identity' => $o->identity(), 'content_hash' => $o->contentHash(), 'observation' => $o->jsonSerialize()]]],
         ], JSON_THROW_ON_ERROR)], base_path());
         $worker->setTimeout(60);
-        $double = new class($worker) extends SharedRealityInterpretation
+        $double = new class($worker, $gate['release']) extends SharedRealityInterpretation
         {
-            public function __construct(private Process $worker) {}
+            public function __construct(private Process $worker, private string $release) {}
 
             public function view(array $snapshot, DateTimeImmutable $at): array
             {
-                // The independent writer commits after capture and before interpretation/release.
-                $this->worker->run();
+                // The already-ready independent writer commits after capture, before interpretation/release.
+                file_put_contents($this->release, 'release', LOCK_EX);
+                $this->worker->wait();
 
                 return parent::view($snapshot, $at);
             }
         };
         $this->app->instance(SharedRealityInterpretation::class, $double);
         try {
+            $worker->start();
+            $ready = $worker->waitUntil(static fn (string $type, string $output): bool => str_contains($output, 'ENTRY_READY'));
+            $this->assertTrue($ready, $worker->getErrorOutput());
+            $state = json_decode(file_get_contents($gate['ready']), true, flags: JSON_THROW_ON_ERROR);
+            $this->assertNull($state['xid'], 'Writer readiness must precede its product transaction.');
+            $this->assertGreaterThan(0, $state['pid']);
             $view = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
             $this->assertTrue($worker->isSuccessful(), $worker->getErrorOutput());
-            $this->assertStringStartsWith('RESULT=', $worker->getOutput());
+            $this->assertStringStartsWith('ENTRY_READY'.PHP_EOL.'RESULT=', $worker->getOutput());
             $this->assertSame(1, $view['generation']);
             $this->assertSame(1, $view['claims'][0]['generation']);
             $this->assertSame('10', $view['claims'][0]['expenditure']['amount']);

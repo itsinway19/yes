@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\IdentityContextController;
 use App\Http\Controllers\Auth\InternalAuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasskeySessionController;
 use App\Http\Controllers\BusinessContextController;
+use App\Http\Controllers\BusinessFindingController;
 use App\Http\Controllers\BusinessFoundationController;
 use App\Http\Controllers\BusinessSurfaceController;
 use App\Http\Controllers\CommercialController;
@@ -19,7 +20,10 @@ use App\Http\Controllers\InternalAdministrationController;
 use App\Http\Controllers\InternalBusinessTypeController;
 use App\Http\Controllers\InternalCustomerAdministrationController;
 use App\Http\Controllers\InternalServiceController;
+use App\Http\Controllers\KnowledgeConsumerController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\MarketKnowledgeController;
+use App\Http\Controllers\MarketOperationsController;
 use App\Http\Controllers\MarketProcessingController;
 use App\Http\Controllers\MetaConnectionController;
 use App\Http\Controllers\MetaReportController;
@@ -56,6 +60,9 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->group(function () {
+    Route::post('/internal/market-knowledge/publish', [MarketKnowledgeController::class, 'publish'])->name('internal.market-knowledge.publish');
+    Route::post('/internal/market-knowledge/capture', [MarketKnowledgeController::class, 'capture'])->name('internal.market-knowledge.capture');
+    Route::get('/internal/administration/market-knowledge', [MarketOperationsController::class, 'index'])->name('internal.market-knowledge.index');
     Route::get('/internal/administration/maintenance', [PlatformMaintenanceController::class, 'index'])->name('internal.maintenance.index');
     Route::post('/internal/administration/maintenance', [PlatformMaintenanceController::class, 'update'])->name('internal.maintenance.update');
 });
@@ -66,6 +73,9 @@ Route::post('/internal/locale', LocaleController::class)->name('internal.locale.
 Route::get('/dashboard', [BusinessContextController::class, 'entry'])
     ->middleware(['auth', EnsureCurrentPrincipal::class])->name('dashboard');
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
+    Route::post('/api/businesses/{business}/knowledge/customer-discovery', [KnowledgeConsumerController::class, 'customers'])->whereUuid('business')->name('business-foundation.knowledge.customers');
+    Route::post('/api/businesses/{business}/knowledge/competition', [KnowledgeConsumerController::class, 'competition'])->whereUuid('business')->name('business-foundation.knowledge.competition');
+    Route::post('/api/businesses/{business}/market-findings/capture', [BusinessFindingController::class, 'capture'])->whereUuid('business')->name('business-foundation.market-findings.capture');
     Route::post('/api/businesses/{business}/market-analysis/prepare', [MarketProcessingController::class, 'prepare'])->whereUuid('business')->name('business-foundation.market-processing.prepare');
     Route::post('/api/businesses/{business}/market-analysis/{run}/complete', [MarketProcessingController::class, 'complete'])->whereUuid('business')->whereUuid('run')->name('business-foundation.market-processing.complete');
     Route::get('/workspaces/{workspace}/goals', [AdvertiserGoalPreferencesController::class, 'edit'])

@@ -12767,6 +12767,124 @@
         }
       }
     },
+    "/internal/administration/market-knowledge": {
+      "get": {
+        "operationId": "readMarketOperations",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Builderad-Passive",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Builderad-Witness",
+            "schema": {
+              "enum": [
+                "1"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/MarketOperationsResource"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GoalsWitness"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/administration/maintenance": {
       "get": {
         "operationId": "readPlatformMaintenance",
@@ -29182,6 +29300,1171 @@
           }
         }
       }
+    },
+    "/internal/market-knowledge/capture": {
+      "post": {
+        "operationId": "captureQualifiedSharedKnowledge",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [],
+        "description": "Bounded foundation interface with current signed authority and source/field/purpose rights. No arbitrary finding or execution ticket is accepted from HTTP. This does not activate a complete commercial user journey.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "question": {
+                    "enum": [
+                      "compare_offers",
+                      "compare_interest",
+                      "record_price",
+                      "record_geography"
+                    ]
+                  },
+                  "material_refs": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/BusinessMaterialReference"
+                    },
+                    "minItems": 1,
+                    "maxItems": 2
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "question",
+                  "material_refs",
+                  "purpose",
+                  "authority_selection"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "run_ref": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "state": {
+                          "const": "prepared"
+                        },
+                        "method_ref": {
+                          "type": "string"
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "capture": {
+                              "const": 1
+                            }
+                          },
+                          "required": [
+                            "capture"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "run_ref",
+                        "state",
+                        "method_ref",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/market-knowledge/publish": {
+      "post": {
+        "operationId": "publishTrustedSharedKnowledge",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [],
+        "description": "Bounded foundation interface with current signed authority and source/field/purpose rights. No arbitrary finding or execution ticket is accepted from HTTP. This does not activate a complete commercial user journey.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "run_ref": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "output_scope_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "process_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  },
+                  "publication_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "run_ref",
+                  "output_scope_id",
+                  "process_selection",
+                  "publication_selection"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "artifact_ref": {
+                          "$ref": "#/components/schemas/BusinessMaterialReference"
+                        },
+                        "manifest_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "state": {
+                          "const": "published"
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "publication": {
+                              "const": 1
+                            }
+                          },
+                          "required": [
+                            "publication"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "artifact_ref",
+                        "manifest_id",
+                        "state",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/market-findings/capture": {
+      "post": {
+        "operationId": "captureTrustedPrivateFinding",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "Bounded foundation interface with current signed authority and source/field/purpose rights. No arbitrary finding or execution ticket is accepted from HTTP. This does not activate a complete commercial user journey.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "processing_run_ref": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "read_command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "output_scope_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  },
+                  "context_selection": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "continuation_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "processing_run_ref",
+                  "read_command_id",
+                  "output_scope_id",
+                  "authority_selection",
+                  "context_selection",
+                  "continuation_selection"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "artifact_ref": {
+                          "$ref": "#/components/schemas/BusinessMaterialReference"
+                        },
+                        "dependencies": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "input": {
+                                "$ref": "#/components/schemas/BusinessMaterialReference"
+                              },
+                              "data_use_scope_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "policy_id": {
+                                "type": "string"
+                              },
+                              "policy_version": {
+                                "type": "integer",
+                                "minimum": 1
+                              }
+                            },
+                            "required": [
+                              "input",
+                              "data_use_scope_id",
+                              "policy_id",
+                              "policy_version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "minItems": 1,
+                          "maxItems": 64
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "capture": {
+                              "const": 1
+                            }
+                          },
+                          "required": [
+                            "capture"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "artifact_ref",
+                        "dependencies",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/knowledge/customer-discovery": {
+      "post": {
+        "operationId": "inspectKnowledgeForCustomerDiscovery",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "Bounded foundation interface with current signed authority and source/field/purpose rights. No arbitrary finding or execution ticket is accepted from HTTP. This does not activate a complete commercial user journey.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "material_ref": {
+                    "$ref": "#/components/schemas/BusinessMaterialReference"
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "material_ref",
+                  "purpose",
+                  "authority_selection"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "assessment": {
+                          "enum": [
+                            "needs_review",
+                            "investigate_reach",
+                            "needs_interest_evidence",
+                            "terms_comparable",
+                            "needs_comparable_offer",
+                            "needs_comparable_offers"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "next_step": {
+                          "type": "string"
+                        },
+                        "limits": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "assessment",
+                        "message",
+                        "next_step",
+                        "limits"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/knowledge/competition": {
+      "post": {
+        "operationId": "inspectKnowledgeForCompetition",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "Bounded foundation interface with current signed authority and source/field/purpose rights. No arbitrary finding or execution ticket is accepted from HTTP. This does not activate a complete commercial user journey.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "material_ref": {
+                    "$ref": "#/components/schemas/BusinessMaterialReference"
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "material_ref",
+                  "purpose",
+                  "authority_selection"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "assessment": {
+                          "enum": [
+                            "needs_review",
+                            "investigate_reach",
+                            "needs_interest_evidence",
+                            "terms_comparable",
+                            "needs_comparable_offer",
+                            "needs_comparable_offers"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "next_step": {
+                          "type": "string"
+                        },
+                        "limits": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "assessment",
+                        "message",
+                        "next_step",
+                        "limits"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -33349,6 +34632,199 @@
           "status",
           "errors",
           "old"
+        ],
+        "additionalProperties": false
+      },
+      "MarketOperationsSource": {
+        "type": "object",
+        "properties": {
+          "source_ref": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "custody_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "state": {
+            "enum": [
+              "active",
+              "restricted",
+              "revoked"
+            ]
+          },
+          "rights_window": {
+            "enum": [
+              "current",
+              "not_started",
+              "expired"
+            ]
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "source_ref",
+          "custody_revision",
+          "state",
+          "rights_window",
+          "valid_until"
+        ],
+        "additionalProperties": false
+      },
+      "MarketOperationsSharedKnowledge": {
+        "type": "object",
+        "properties": {
+          "method_ref": {
+            "type": "string"
+          },
+          "publication_state": {
+            "enum": [
+              "prepared",
+              "published",
+              "retention_removed"
+            ]
+          },
+          "validity": {
+            "enum": [
+              "not_published",
+              "current",
+              "review_required",
+              "unknown",
+              "unavailable"
+            ]
+          },
+          "processing_outcome": {
+            "enum": [
+              "completed",
+              "abstained",
+              "unknown",
+              "unavailable"
+            ]
+          },
+          "reason_category": {
+            "enum": [
+              "none",
+              "comparison_basis_insufficient",
+              "required_information_missing",
+              "generic_abstention",
+              "unknown",
+              "unavailable"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "method_ref",
+          "publication_state",
+          "validity",
+          "processing_outcome",
+          "reason_category",
+          "count"
+        ],
+        "additionalProperties": false
+      },
+      "MarketOperationsData": {
+        "type": "object",
+        "properties": {
+          "shared_knowledge": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MarketOperationsSharedKnowledge"
+            }
+          },
+          "shared_knowledge_window": {
+            "const": 100
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MarketOperationsSource"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "methods": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "method_ref": {
+                  "type": "string"
+                },
+                "availability": {
+                  "enum": [
+                    "available",
+                    "unavailable",
+                    "unknown"
+                  ]
+                }
+              },
+              "required": [
+                "method_ref",
+                "availability"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "private_processing": {
+            "const": "business_scoped"
+          },
+          "connection_status": {
+            "const": "not_observed"
+          }
+        },
+        "required": [
+          "shared_knowledge",
+          "shared_knowledge_window",
+          "sources",
+          "next_cursor",
+          "methods",
+          "private_processing",
+          "connection_status"
+        ],
+        "additionalProperties": false
+      },
+      "MarketOperationsResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MarketOperationsData"
+          },
+          "locale": {
+            "enum": [
+              "ar",
+              "en"
+            ]
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/Visibility"
+          }
+        },
+        "required": [
+          "data",
+          "locale",
+          "visibility"
         ],
         "additionalProperties": false
       },
@@ -45844,6 +47320,344 @@
                 "additionalProperties": false
               }
             ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "MarketKnowledgeCaptureCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "question": {
+            "enum": [
+              "compare_offers",
+              "compare_interest",
+              "record_price",
+              "record_geography"
+            ]
+          },
+          "material_refs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BusinessMaterialReference"
+            },
+            "minItems": 1,
+            "maxItems": 2
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "authority_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          }
+        },
+        "required": [
+          "command_id",
+          "question",
+          "material_refs",
+          "purpose",
+          "authority_selection"
+        ],
+        "additionalProperties": false
+      },
+      "MarketKnowledgeCaptureResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "run_ref": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": {
+                "const": "prepared"
+              },
+              "method_ref": {
+                "type": "string"
+              },
+              "versions": {
+                "type": "object",
+                "properties": {
+                  "capture": {
+                    "const": 1
+                  }
+                },
+                "required": [
+                  "capture"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "run_ref",
+              "state",
+              "method_ref",
+              "versions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "MarketKnowledgePublicationCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "run_ref": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "output_scope_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "process_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          },
+          "publication_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          }
+        },
+        "required": [
+          "command_id",
+          "run_ref",
+          "output_scope_id",
+          "process_selection",
+          "publication_selection"
+        ],
+        "additionalProperties": false
+      },
+      "MarketKnowledgePublicationResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "artifact_ref": {
+                "$ref": "#/components/schemas/BusinessMaterialReference"
+              },
+              "manifest_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": {
+                "const": "published"
+              },
+              "versions": {
+                "type": "object",
+                "properties": {
+                  "publication": {
+                    "const": 1
+                  }
+                },
+                "required": [
+                  "publication"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "artifact_ref",
+              "manifest_id",
+              "state",
+              "versions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "MarketBusinessFindingCaptureCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "processing_run_ref": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "read_command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "output_scope_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "authority_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          },
+          "context_selection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BusinessAuthoritySelection"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "continuation_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          }
+        },
+        "required": [
+          "command_id",
+          "processing_run_ref",
+          "read_command_id",
+          "output_scope_id",
+          "authority_selection",
+          "context_selection",
+          "continuation_selection"
+        ],
+        "additionalProperties": false
+      },
+      "MarketBusinessFindingCaptureResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "artifact_ref": {
+                "$ref": "#/components/schemas/BusinessMaterialReference"
+              },
+              "dependencies": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "input": {
+                      "$ref": "#/components/schemas/BusinessMaterialReference"
+                    },
+                    "data_use_scope_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "policy_id": {
+                      "type": "string"
+                    },
+                    "policy_version": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "required": [
+                    "input",
+                    "data_use_scope_id",
+                    "policy_id",
+                    "policy_version"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 64
+              },
+              "versions": {
+                "type": "object",
+                "properties": {
+                  "capture": {
+                    "const": 1
+                  }
+                },
+                "required": [
+                  "capture"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "artifact_ref",
+              "dependencies",
+              "versions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "KnowledgeConsumerCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "material_ref": {
+            "$ref": "#/components/schemas/BusinessMaterialReference"
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "authority_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          }
+        },
+        "required": [
+          "command_id",
+          "material_ref",
+          "purpose",
+          "authority_selection"
+        ],
+        "additionalProperties": false
+      },
+      "KnowledgeConsumerResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "assessment": {
+                "enum": [
+                  "needs_review",
+                  "investigate_reach",
+                  "needs_interest_evidence",
+                  "terms_comparable",
+                  "needs_comparable_offer",
+                  "needs_comparable_offers"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "next_step": {
+                "type": "string"
+              },
+              "limits": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "assessment",
+              "message",
+              "next_step",
+              "limits"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
