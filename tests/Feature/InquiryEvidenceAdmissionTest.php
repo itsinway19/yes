@@ -31,7 +31,7 @@ class InquiryEvidenceAdmissionTest extends TestCase
                 ksort($value);
             }
 
-return $value;
+            return $value;
         };
         $a = $this->value();
         $a['acceptance']['criterion_definition'] = 'Inquiry explicitly requests an available service';

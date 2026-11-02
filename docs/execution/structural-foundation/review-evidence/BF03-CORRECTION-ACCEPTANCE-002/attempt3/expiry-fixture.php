@@ -27,4 +27,4 @@ if ($mode === 'schedule') {
     BusinessAuthorityFixture::expireQualificationSoon($row->qualification_id, (int) $row->actor_user_id);
 }
 $state = $db->selectOne('SELECT qualification_id,valid_until::text,clock_timestamp()::text AS observed_at,clock_timestamp()>=valid_until AS expired FROM authority_qualification_receipts WHERE qualification_id=?::uuid', [$row->qualification_id]);
-echo json_encode($state,JSON_THROW_ON_ERROR);
+echo json_encode($state, JSON_THROW_ON_ERROR);
