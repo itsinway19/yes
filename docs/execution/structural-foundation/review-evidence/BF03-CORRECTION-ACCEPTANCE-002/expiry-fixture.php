@@ -1,0 +1,30 @@
+<?php
+
+use App\Security\DisposableTestDatabaseGuard;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\DB;
+use Tests\Support\BusinessAuthorityFixture;
+
+$root = getcwd();
+if (getenv('GOALS_SPA_PROOF') !== 'enabled' || getenv('DB_DATABASE') !== 'builderad_test_disposable') {
+    throw new RuntimeException('Guarded proof only');
+}
+require $root.'/vendor/autoload.php';
+$app = require $root.'/bootstrap/app.php';
+$app->make(Kernel::class)->bootstrap();
+app(DisposableTestDatabaseGuard::class)->assertSafe();
+$business = $argv[1];
+$mode = $argv[2];
+if (! preg_match('/^[0-9a-f-]{36}$/', $business)) {
+    throw new RuntimeException('Exact synthetic Business required');
+}
+$db = DB::connection('pgsql_migrations');
+$row = $db->table('inquiry_evidence_enrollments as e')->join('businesses as b', 'b.id', '=', 'e.business_id')->join('users as u', 'u.id', '=', 'e.actor_user_id')->where('b.public_id', $business)->where('u.email', 'goals-a@example.test')->select('e.qualification_id', 'e.actor_user_id')->first();
+if (! $row) {
+    throw new RuntimeException('Synthetic actor enrollment missing');
+}
+if ($mode === 'schedule') {
+    BusinessAuthorityFixture::expireQualificationSoon($row->qualification_id, (int) $row->actor_user_id);
+}
+$state = $db->selectOne('SELECT qualification_id,valid_until::text,clock_timestamp()::text AS observed_at,clock_timestamp()>=valid_until AS expired FROM authority_qualification_receipts WHERE qualification_id=?::uuid', [$row->qualification_id]);
+echo json_encode($state,JSON_THROW_ON_ERROR);

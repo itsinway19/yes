@@ -1,0 +1,208 @@
+{
+  "review": "BF03-CORRECTION-ACCEPTANCE-002",
+  "syntheticOnly": true,
+  "run": "C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\storage\\framework\\testing\\goals-spa-af7ea2c4-2f49-420f-9994-ec8e960e5ecb",
+  "cases": [
+    {
+      "name": "SEM-001 actual two-rule current/history, exact replay and closed new admission",
+      "evidence": {
+        "history": [
+          [
+            1,
+            10,
+            "ACTOR_A_ONLY_RULE within service area and budget at least SAR 500"
+          ],
+          [
+            2,
+            11,
+            "قاعدة الفاعل الأول ضمن نطاق الخدمة والميزانية ألف ريال"
+          ]
+        ],
+        "exactReplay": 200,
+        "changedPayload": 409,
+        "missingDefinitionNewAdmission": 422,
+        "sourceAssertion": "SOURCE_ASSERTED"
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "still-authorized reentry preserves own unsent draft after fresh qualification",
+      "evidence": {
+        "ownDraftRestored": true,
+        "protectedDOMWhileHidden": 0
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "changed actor actual UI logout/login with late current/history replies and private drafts",
+      "evidence": {
+        "sameBrowserContext": true,
+        "identityBefore": {
+          "lineage": "6e7ce048-3e6f-44ca-a6f1-d3fa265dddac",
+          "epoch": 1,
+          "boundary": "advertiser",
+          "credential": "8b62b69e9343617abd7d930d0ddebf5ae737460c17ef6ca92e210dd0ffe6dbef",
+          "principal": 1,
+          "lifecycle": 1,
+          "context": "1fd40744f2ad0c538fa7d1ab1d1015e346a8d82ae0672742e7028830c846abd3",
+          "generation": "6ac1460d18e0a29e8714af00b16057394015438a542419d70bbec5c057b2bb5d"
+        },
+        "identityB": {
+          "lineage": "6e7ce048-3e6f-44ca-a6f1-d3fa265dddac",
+          "epoch": 3,
+          "boundary": "advertiser",
+          "credential": "5a67e241807d8a86899abc7c4df55f23f5690ab7c76705c322d2a6ac12147958",
+          "principal": 2,
+          "lifecycle": 1,
+          "context": "12a41f4400fe7ccdf6f86f852ed5d8dbf5b2656102e05d41cbae4f6cc95cc789",
+          "generation": "c4cda0f2510db1b51d4f8f128db7b0ec268930f0b8ce73c12b09262c0c7add1d"
+        },
+        "identityAAfter": {
+          "lineage": "6e7ce048-3e6f-44ca-a6f1-d3fa265dddac",
+          "epoch": 5,
+          "boundary": "advertiser",
+          "credential": "0b04dae6f8b1e35d98d22972bc75444861b239ff371562b44412b389d95d53f2",
+          "principal": 1,
+          "lifecycle": 1,
+          "context": "52ab177963c46a30e4a45b763acd62a320ed5f811538bb6fbff72ff8134831e8",
+          "generation": "5d79c5282cd8fc0f4fc4496afc55fdbe43c55cc1f0097334fc4680ba52f6f491"
+        },
+        "logoutTransition": {
+          "lineage": "6e7ce048-3e6f-44ca-a6f1-d3fa265dddac",
+          "boundary": "advertiser",
+          "epoch": 2,
+          "nonce": "dea757a3551768ef7705803e3a2b19445cf1cb3a687d4c8a42a9d00550900905",
+          "kind": "logout",
+          "status": "closed"
+        },
+        "actorBRead": 403,
+        "actorBHistory": 403,
+        "actorBDirectDocument": 403,
+        "actorADraftAbsentForB": true,
+        "actorADraftNotRevivedAfterReauthentication": true,
+        "lateReplies": [
+          {
+            "tag": "A-history",
+            "serverStatus": 403,
+            "capturedAt": "2026-11-02T06:43:40.356Z",
+            "delivery": "fulfilled",
+            "releasedAt": "2026-11-02T06:43:40.362Z"
+          },
+          {
+            "tag": "A-current",
+            "serverStatus": 200,
+            "capturedAt": "2026-11-02T06:44:13.008Z",
+            "delivery": "fulfilled",
+            "releasedAt": "2026-11-02T06:44:13.012Z"
+          }
+        ],
+        "sameBusinessContextForB": false,
+        "differentBusinessAndDirectForbiddenRoute": true,
+        "freshActorARead": 200
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "UX-001 original hidden-panel revoked read, zero protected DOM before requalification",
+      "evidence": {
+        "currentRead": 403,
+        "beforeAndAfterQualificationProtectedDOM": 0
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "UX-001 actual database-clock expiry while hidden",
+      "evidence": {
+        "scheduled": {
+          "qualification_id": "01a19b00-699e-7b13-8164-4e3685b15b9a",
+          "valid_until": "2026-11-02 06:44:31.655918+00",
+          "observed_at": "2026-11-02 06:44:29.724086+00",
+          "expired": false
+        },
+        "expired": {
+          "qualification_id": "01a19b00-699e-7b13-8164-4e3685b15b9a",
+          "valid_until": "2026-11-02 06:44:31.655918+00",
+          "observed_at": "2026-11-02 06:44:31.695526+00",
+          "expired": true
+        },
+        "beforeRead": 200,
+        "afterRead": 403,
+        "protectedDOM": 0
+      },
+      "result": "PASS"
+    }
+  ],
+  "pageErrors": [],
+  "stages": [
+    {
+      "name": "actual-server-identity-a",
+      "identity": {
+        "lineage": "6e7ce048-3e6f-44ca-a6f1-d3fa265dddac",
+        "epoch": 1,
+        "boundary": "advertiser",
+        "credential": "8b62b69e9343617abd7d930d0ddebf5ae737460c17ef6ca92e210dd0ffe6dbef",
+        "principal": 1,
+        "lifecycle": 1,
+        "context": "1fd40744f2ad0c538fa7d1ab1d1015e346a8d82ae0672742e7028830c846abd3",
+        "generation": "6d7a7c4d43a74b61517e6fd0e153cd6e4e80ef4278b128b8ae823704e43c5d86"
+      },
+      "redirect": "/dashboard",
+      "url": "http://localhost:8136/businesses"
+    },
+    {
+      "name": "SEM-001 actual two-rule current/history, exact replay and closed new admission",
+      "at": "2026-11-02T06:43:00.695Z"
+    },
+    {
+      "name": "still-authorized reentry preserves own unsent draft after fresh qualification",
+      "at": "2026-11-02T06:43:16.748Z"
+    },
+    {
+      "name": "changed actor actual UI logout/login with late current/history replies and private drafts",
+      "at": "2026-11-02T06:43:18.828Z"
+    },
+    {
+      "name": "actual-server-identity-b",
+      "identity": {
+        "lineage": "6e7ce048-3e6f-44ca-a6f1-d3fa265dddac",
+        "epoch": 3,
+        "boundary": "advertiser",
+        "credential": "5a67e241807d8a86899abc7c4df55f23f5690ab7c76705c322d2a6ac12147958",
+        "principal": 2,
+        "lifecycle": 1,
+        "context": "12a41f4400fe7ccdf6f86f852ed5d8dbf5b2656102e05d41cbae4f6cc95cc789",
+        "generation": "c4cda0f2510db1b51d4f8f128db7b0ec268930f0b8ce73c12b09262c0c7add1d"
+      },
+      "redirect": "/dashboard",
+      "url": "http://localhost:8136/businesses"
+    },
+    {
+      "name": "actual-server-identity-a",
+      "identity": {
+        "lineage": "6e7ce048-3e6f-44ca-a6f1-d3fa265dddac",
+        "epoch": 5,
+        "boundary": "advertiser",
+        "credential": "0b04dae6f8b1e35d98d22972bc75444861b239ff371562b44412b389d95d53f2",
+        "principal": 1,
+        "lifecycle": 1,
+        "context": "52ab177963c46a30e4a45b763acd62a320ed5f811538bb6fbff72ff8134831e8",
+        "generation": "5d79c5282cd8fc0f4fc4496afc55fdbe43c55cc1f0097334fc4680ba52f6f491"
+      },
+      "redirect": "/dashboard",
+      "url": "http://localhost:8136/businesses"
+    },
+    {
+      "name": "UX-001 original hidden-panel revoked read, zero protected DOM before requalification",
+      "at": "2026-11-02T06:44:13.114Z"
+    },
+    {
+      "name": "UX-001 actual database-clock expiry while hidden",
+      "at": "2026-11-02T06:44:15.456Z"
+    }
+  ],
+  "requests": [],
+  "actorA": 1,
+  "actorB": 2,
+  "completed": true,
+  "result": "PASS"
+}

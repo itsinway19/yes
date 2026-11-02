@@ -1,0 +1,28 @@
+{
+  "repo": "42Huss/builderad",
+  "baseline": "c747f6d8a8f2011fa5dcc368da2aa4e8449e0565",
+  "run_id": 41287174337,
+  "job_id": 124790723247,
+  "url": "https://github.com/42Huss/builderad/actions/runs/41287174337",
+  "status": "completed",
+  "conclusion": "success",
+  "event": "push",
+  "branch": "main",
+  "workflow": ".github/workflows/foundation.yml",
+  "jobSteps": "All steps including Verify Foundation success; inspected via GitHub connector.",
+  "source": "GitHub actions/runs?head_sha and fetch_workflow_run_jobs + decoded fetch_workflow_job_logs",
+  "limitations": "Baseline only; local uncommitted BF03/UX bytes are not covered. CI PHP memory limit not stated in inspected job log.",
+  "log_extracts": [
+    "2026-11-01T08:02:46.4870745Z ##[group]Operating System",
+    "2026-11-01T08:02:46.4871994Z Ubuntu",
+    "2026-11-01T08:02:46.4877409Z Image: ubuntu-24.04",
+    "2026-11-01T08:02:46.4881154Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261025.353/images/ubuntu/Ubuntu2404-Readme.md",
+    "2026-11-01T08:02:46.4884106Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261025.353",
+    "2026-11-01T08:03:14.8159465Z ✓ PHP Installed PHP 8.5.12",
+    "2026-11-01T08:03:15.4224065Z   node-version: 24",
+    "2026-11-01T08:18:46.8349657Z   Tests:    1365 passed (20017 assertions)",
+    "2026-11-01T08:19:20.1745669Z ℹ tests 356",
+    "2026-11-01T08:19:20.1747329Z ℹ pass 356",
+    "2026-11-01T08:19:20.1748827Z ℹ fail 0"
+  ]
+}

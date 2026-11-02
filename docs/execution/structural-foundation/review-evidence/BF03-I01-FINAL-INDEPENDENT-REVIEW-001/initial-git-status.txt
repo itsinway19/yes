@@ -1,0 +1,58 @@
+ M AGENTS.md
+ M DESIGN.md
+ M UX-CONTRACT.md
+ M contracts/application.openapi.json
+ M docs/BUILDERAD_CURRENT_CRITICAL_PATH_DERIVATION.md
+ M docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md
+ M docs/BUILDERAD_MASTER_EXECUTION_MAP.md
+ M docs/execution/public-platform/SURFACES.md
+ M package.json
+ M resources/js/api/generated/application.d.ts
+ M resources/js/business-foundation/BusinessEditor.vue
+ M resources/js/business-foundation/BusinessSurface.vue
+ M routes/web.php
+ M scripts/application-openapi.mjs
+ M tests/Support/business-surface-browser.mjs
+?? app/Commercial/InquiryEvidence.php
+?? app/Http/Controllers/InquiryEvidenceController.php
+?? database/migrations/0001_01_01_000540_create_inquiry_evidence.php
+?? database/sql/inquiry_evidence/authority.sql
+?? database/sql/inquiry_evidence/declarations.sql
+?? database/sql/inquiry_evidence/permissions.sql
+?? database/sql/inquiry_evidence/schema.sql
+?? database/sql/inquiry_evidence/table_permissions.sql
+?? database/sql/inquiry_evidence/validation.sql
+?? docs/execution/structural-foundation/B01_PRECEDENCE.md
+?? docs/execution/structural-foundation/B02_EVIDENCE_ROUTE.md
+?? docs/execution/structural-foundation/B02_RESEARCH_REUSE.csv
+?? docs/execution/structural-foundation/B02_SPECIALIST_QUALIFICATION.md
+?? docs/execution/structural-foundation/BF03_FINAL_INDEPENDENT_REVIEW_ASSIGNMENT.md
+?? docs/execution/structural-foundation/BF03_IMPLEMENTATION.json
+?? docs/execution/structural-foundation/BUSINESS_WORKSPACE_UX.md
+?? docs/execution/structural-foundation/CAPABILITY_COVERAGE.csv
+?? docs/execution/structural-foundation/CASE_A_CONTRACT.md
+?? docs/execution/structural-foundation/EVIDENCE.json
+?? docs/execution/structural-foundation/EXPERTISE_INTEGRATION.md
+?? docs/execution/structural-foundation/G8_FIRST_PACKAGE.md
+?? docs/execution/structural-foundation/IMPLEMENTATION_PROGRESS.md
+?? docs/execution/structural-foundation/NEXT_IMPLEMENTATION_PACKAGE.md
+?? docs/execution/structural-foundation/OWNER_MANDATE.md
+?? docs/execution/structural-foundation/PROGRAM.md
+?? docs/execution/structural-foundation/RESEARCH_ALIGNMENT.csv
+?? docs/execution/structural-foundation/RESEARCH_ALIGNMENT.md
+?? docs/execution/structural-foundation/RESEARCH_INVENTORY.csv
+?? resources/js/business-foundation/BusinessWorkspace.vue
+?? resources/js/business-foundation/workspace.css
+?? resources/js/business-foundation/workspacePresentation.ts
+?? resources/js/inquiry-evidence/DeclarationDetails.vue
+?? resources/js/inquiry-evidence/InquiryEvidencePanel.vue
+?? resources/js/inquiry-evidence/api.ts
+?? resources/js/inquiry-evidence/editor.ts
+?? resources/js/inquiry-evidence/presentationDrafts.ts
+?? scripts/inquiry-evidence-openapi.mjs
+?? tests/Feature/InquiryEvidenceAdmissionTest.php
+?? tests/Feature/InquiryEvidenceConcurrencyTest.php
+?? tests/Feature/InquiryEvidenceUpgradeTest.php
+?? tests/Support/InquiryEvidenceFixture.php
+?? tests/Support/InquiryEvidenceWorker.php
+?? tests/inquiry-evidence.test.mjs

@@ -1,0 +1,76 @@
+{
+  "head": "c747f6d8a8f2011fa5dcc368da2aa4e8449e0565",
+  "detached": true,
+  "initialFiles": 1179,
+  "initialManifestSHA256": "AA0ED714EFDE7107AF92A30C05A0B50DDF522B4D5FE1BF64550723E8465952D3",
+  "reportHashMatch": true,
+  "deltaHashMatch": true,
+  "finalTestManifestHashMatch": true,
+  "correctedFiles": [
+    {
+      "path": "database/sql/inquiry_evidence/validation.sql",
+      "match": true
+    },
+    {
+      "path": "database/sql/inquiry_evidence/declarations.sql",
+      "match": true
+    },
+    {
+      "path": "scripts/inquiry-evidence-openapi.mjs",
+      "match": true
+    },
+    {
+      "path": "resources/js/inquiry-evidence/api.ts",
+      "match": true
+    },
+    {
+      "path": "resources/js/inquiry-evidence/InquiryEvidencePanel.vue",
+      "match": true
+    },
+    {
+      "path": "resources/js/inquiry-evidence/DeclarationDetails.vue",
+      "match": true
+    },
+    {
+      "path": "resources/js/inquiry-evidence/presentationDrafts.ts",
+      "match": true
+    },
+    {
+      "path": "resources/js/business-foundation/BusinessWorkspace.vue",
+      "match": true
+    },
+    {
+      "path": "tests/Support/InquiryEvidenceFixture.php",
+      "match": true
+    },
+    {
+      "path": "tests/Feature/InquiryEvidenceAdmissionTest.php",
+      "match": true
+    },
+    {
+      "path": "tests/Feature/InquiryEvidenceUpgradeTest.php",
+      "match": true
+    },
+    {
+      "path": "tests/Support/business-surface-browser.mjs",
+      "match": true
+    },
+    {
+      "path": "contracts/application.openapi.json",
+      "match": true
+    },
+    {
+      "path": "resources/js/api/generated/application.d.ts",
+      "match": true
+    },
+    {
+      "path": "UX-CONTRACT.md",
+      "match": true
+    },
+    {
+      "path": "docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md",
+      "match": true
+    }
+  ],
+  "differencesFromFinalTest": []
+}

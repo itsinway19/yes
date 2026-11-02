@@ -1,0 +1,70 @@
+{
+  "focusedRuns": [
+    {
+      "directory": "focused-first",
+      "total": "23",
+      "errors": "0",
+      "failures": "1",
+      "assertions": "148"
+    },
+    {
+      "directory": "focused-final",
+      "total": "15",
+      "errors": "0",
+      "failures": "0",
+      "assertions": "77"
+    }
+  ],
+  "distinctFocusedPassed": 37,
+  "distinctFocusedAssertions": 223.0,
+  "browserRuns": [
+    {
+      "directory": "browser-first",
+      "result": "FAIL",
+      "passed": 5,
+      "failed": 1,
+      "failures": [
+        {
+          "name": "workspace task navigation preserves unsent inquiry fields through list and Business remount",
+          "error": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-inquiry-panel]').locator('[data-inquiry-editor]') to be visible\u001b[22m\n\n    at C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\tests\\Support\\business-surface-browser.mjs:199:97\n    at async check (C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\tests\\Support\\business-surface-browser.mjs:24:26)\n    at async file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/tests/Support/business-surface-browser.mjs:187:5"
+        }
+      ]
+    },
+    {
+      "directory": "browser-bf03-final",
+      "result": "FAIL",
+      "passed": 12,
+      "failed": 1,
+      "failures": [
+        {
+          "name": "A to B to A keeps each human draft and its originating version separate",
+          "error": "locator.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-business-list] li').filter({ has: getByRole('heading', { name: 'نشاط مستقل للمتصفح', exact: true }) }).getByRole('link', { name: 'فتح النشاط', exact: true })\u001b[22m\n\n    at open (C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\tests\\Support\\business-surface-browser.mjs:60:222)\n    at C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\tests\\Support\\business-surface-browser.mjs:323:30\n    at async check (C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\tests\\Support\\business-surface-browser.mjs:24:26)\n    at async file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/tests/Support/business-surface-browser.mjs:320:5"
+        }
+      ]
+    },
+    {
+      "directory": "browser-legacy-first",
+      "result": "FAIL",
+      "passed": 16,
+      "failed": 1,
+      "failures": [
+        {
+          "name": "a qualified issuer can discover a specific delegation, issue it and the recipient opens the actual customer business",
+          "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n0 !== 1\n\n    at file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/tests/Support/business-surface-browser.mjs:656:16\n    at async check (file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/tests/Support/business-surface-browser.mjs:24:26)\n    at async file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/tests/Support/business-surface-browser.mjs:626:5"
+        }
+      ]
+    },
+    {
+      "directory": "browser-legacy-final",
+      "result": "PASS",
+      "passed": 15,
+      "failed": 0,
+      "failures": []
+    }
+  ],
+  "distinctBrowserPassed": 41,
+  "priorIndependentCompleted": true,
+  "priorIndependentProbes": 6,
+  "priorIndependentErrors": [],
+  "priorIndependentFailure": null
+}

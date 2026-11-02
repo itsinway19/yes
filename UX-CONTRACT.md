@@ -17,3 +17,17 @@ No new table selection, combobox or date input is introduced. Numeric input acce
 Maintenance has one initial scope: new advertiser requests are denied at server admission while active; public entry, protected internal recovery and the finite identity/security allowlist remain available. Already-admitted HTTP work and already-queued, independently authorized jobs may drain. This is not database quiescence, scheduler control, or a deployment lock. Infrastructure maintenance remains a separate offline operation.
 
 Every future material capability must update the surface record in docs/execution/public-platform/SURFACES.md (or its accepted successor): user job, audience/context/authority, placement or deliberate internal/deferred status, readable evidence limits, state transitions, next action, and actual verification. A schema or green backend suite alone does not complete a user-facing capability.
+
+
+## Business workspace variant — 2026-11-01
+
+Existing BusinessSurface admission owns the route; BusinessWorkspace owns local task navigation only. Navigation must not imply a grant or trigger duplicate fact ownership. Visited panels retain mounted drafts; exact document/Business/authority-scoped return context stores section/scroll only. Unsent Inquiry form drafts may survive remount in document memory after current qualification, preserving the original edit baseline; denial/success/cancel/identity closure clear the applicable draft. No localStorage evidence cache.
+
+Inquiry collection/detail/create/correction use existing typed API/SQL authority. Explicit current record selection, back/focus, append-only history, separate read permission, no hidden closed form payload, no automatic replay or replacement of an uncertain command. Definitive initial validation rejection preserves editable input; generic conflict/transport loss remains uncertain. Locale changes translate retained critical status without clearing it. Source assertions never become verified leads/sales/profit through presentation. Exact user-job/browser evidence and limits: docs/execution/structural-foundation/BUSINESS_WORKSPACE_UX.md. Existing brand theme controls and native semantic field/select/date ownership remain in use; no new date parser or pagination meaning.
+
+
+## BF03 bounded correction — retained display and criterion snapshots
+
+Returning to a retained Inquiry panel requires fresh display qualification. Inactive panels clear protected collection/history/read-derived editor state synchronously; current identity/Business/basis/activation tickets govern delayed replies. Unsent drafts are presentation only and restore after their independently required current rights. Read failure or denial conceals prior data; a known missing record/correct right closes the affected editor with localized feedback, while independent reading remains available. Pending command identities remain immutable.
+
+Operator-defined acceptance now carries a bounded abstract plain-text definition in each immutable source-asserted revision, separately from its criterion version. New custom acceptance requires the definition; historical missing meaning remains explicitly unknown. Render through escaped interpolation. Contact-pattern/code/reference rejection and source no-personal-data obligations are bounded safeguards, not universal PII detection or independent verification. No external definition resolver or criteria registry.

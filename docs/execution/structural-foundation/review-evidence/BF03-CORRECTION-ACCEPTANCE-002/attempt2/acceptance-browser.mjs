@@ -1,0 +1,102 @@
+import {createRequire} from 'node:module';
+import {spawnSync} from 'node:child_process';
+import {readFile,writeFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+const out=path.dirname(fileURLToPath(import.meta.url)),run=process.env.GOALS_SPA_RUN;
+assert.equal(process.env.GOALS_SPA_PROOF,'enabled');assert.ok(run?.includes('goals-spa-'));
+assert.ok((await readFile(path.join(run,'proof-token.txt'),'utf8')).trim());
+const fixture=JSON.parse(await readFile(path.join(run,'fixture.json'),'utf8'));
+const require=createRequire('C:/Users/stoma/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json');
+const {chromium}=require('playwright');
+const result={review:'BF03-CORRECTION-ACCEPTANCE-002',syntheticOnly:true,run,cases:[],pageErrors:[],stages:[],requests:[]};
+const save=async()=>writeFile(path.join(out,'live-results.json'),JSON.stringify(result,null,2));
+const stage=async name=>{result.stages.push({name,at:new Date().toISOString()});console.log('STAGE '+name);await save();};
+const check=async(name,fn)=>{await stage(name);const row={name};result.cases.push(row);try{row.evidence=await fn();row.result='PASS';}catch(e){row.result='FAIL';row.error=e.stack;throw e;}finally{await save();}};
+let browser,page;const gates=[];
+try{
+ browser=await chromium.launch({headless:true,executablePath:'C:/Users/stoma/AppData/Local/ms-playwright/chromium-1208/chrome-win64/chrome.exe'});
+ const context=await browser.newContext({viewport:{width:1366,height:900},locale:'ar-JO'});
+ page=await context.newPage();page.setDefaultTimeout(20000);
+ page.on('pageerror',e=>result.pageErrors.push(e.message));page.on('dialog',d=>d.accept());
+ const origin='http://localhost:8136';
+ const principal=()=>page.evaluate(()=>JSON.parse(document.getElementById('application-bootstrap').textContent).identity.binding);
+ const ready=()=>page.waitForFunction(()=>document.querySelector('[data-application-spa]')?.dataset.state==='ready');
+ const send=(url,method='GET',body)=>page.evaluate(async({url,method,body})=>{const i=JSON.parse(document.getElementById('application-bootstrap').textContent).identity;const r=await fetch(url,{method,credentials:'same-origin',cache:'no-store',redirect:'manual',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':i.csrf,'X-Builderad-Document':i.receipt,'X-Builderad-Transition':i.transition},body:body?JSON.stringify(body):undefined});const text=await r.text();let data;try{data=JSON.parse(text);}catch{data={unparsed:text.slice(0,500)}}return{status:r.status,body:data};},{url,method,body});
+ const login=async who=>{
+  await page.goto(origin+'/login');await page.locator('#email').waitFor();
+  const anonymous=await principal();assert.equal(anonymous.principal,0);
+  await page.locator('#email').fill(`goals-${who}@example.test`);await page.locator('#password').fill('DisposableGoalsProof42!');
+  let body;const capture=async route=>{if(route.request().method()!=='POST'){await route.continue();return;}const r=await route.fetch();assert.equal(r.status(),200);body=await r.json();await route.fulfill({response:r});};
+  await page.route(origin+'/login',capture);
+  const response=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname==='/login');
+  await page.locator('[data-auth-entry] form button[type=submit]').click();const r=await response;assert.equal(r.status(),200);
+  await page.waitForFunction(id=>{const n=document.getElementById('application-bootstrap');return !!n&&JSON.parse(n.textContent).identity.binding.principal===id;},fixture[who].user);
+  await page.unroute(origin+'/login',capture);const identity=await principal();result.stages.push({name:`actual-server-identity-${who}`,identity,redirect:body.redirect,url:page.url()});await save();
+  return identity;
+ };
+ const logout=async()=>{let body;const capture=async route=>{const r=await route.fetch();assert.equal(r.status(),200);body=await r.json();await route.fulfill({response:r});};await page.route(origin+'/logout',capture);const response=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname==='/logout');await page.getByRole('button',{name:'تسجيل الخروج',exact:true}).click();const r=await response;assert.equal(r.status(),200);await page.waitForURL(u=>u.pathname==='/');await page.unroute(origin+'/logout',capture);return body;};
+ const select=g=>({realm_kind:'direct',realm_workspace_public_id:null,requirements:[{requirement_kind:'business',leaf_grant_id:String(g)}]});
+ const create=async name=>{const r=await send('/api/businesses','POST',{command_id:crypto.randomUUID(),name,business_type_id:null});assert.equal(r.status,201);const b={business:r.body.data.business_public_id,basis:String(r.body.data.grant_refs['business.context.read'])};b.base=`/api/businesses/${b.business}/inquiry-evidence`;b.url=`/businesses/${b.business}?access=${b.basis}`;let q=await send(`${b.base}/eligibility?access=${b.basis}`);assert.equal(q.status,200);const en=await send(`${b.base}/enrollment`,'POST',{command_id:crypto.randomUUID(),authority_selection:select(b.basis),basis_revision:q.body.data.basis_revision,confirm:true});assert.equal(en.status,200);q=await send(`${b.base}/eligibility?access=${b.basis}`);b.grants=q.body.data.grants;return b;};
+ const section=async name=>{await page.locator(`[data-workspace-section="${name}"]`).click();await page.locator(`[data-workspace-panel="${name}"]`).waitFor({state:'visible'});};
+ const settled=()=>page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');
+ const open=async b=>{await page.goto(origin+b.url);await ready();await section('inquiries');await settled();};
+ const absent=async()=>{const count=await page.locator('[data-inquiry-list],[data-inquiry-detail],[data-inquiry-history],[data-inquiry-editor]').count();assert.equal(count,0);return count;};
+ const marker='ACTOR_A_ONLY_RULE within service area and budget at least SAR 500';
+ const rule2='قاعدة الفاعل الأول ضمن نطاق الخدمة والميزانية ألف ريال';
+ const value={cohort:{channel_kind:'form',definition_version:1,country_code:'SA',population:'recorded_inquiries',counting_policy:'distinct_inquiries'},observation:{period_start:'2020-01-01T00:00:00Z',period_end:'2020-01-02T00:00:00Z',as_of:'2020-01-03T00:00:00Z',timezone:'Asia/Riyadh'},cost:null,inquiries:{count:91357,coverage:'complete'},acceptance:{count:10,pending_count:0,criterion_code:'operator_defined',criterion_version:1,criterion_definition:marker,cutoff:'2020-01-03T00:00:00Z',maturity:'mature',coverage:'complete'}};
+ const identityA=await login('a');await page.goto(origin+'/businesses');await ready();
+ const a=await create('نشاط الفاعل الأول للمراجعة');result.actorA=fixture.a.user;result.actorB=fixture.b.user;assert.notEqual(fixture.a.user,fixture.b.user);
+ let declaration;
+ await check('SEM-001 actual two-rule current/history, exact replay and closed new admission',async()=>{
+  const command={command_id:crypto.randomUUID(),authority_selection:select(a.grants['business.inquiry_evidence.record']),value};const r=await send(a.base,'POST',command);assert.equal(r.status,200);declaration=r.body.data.declaration_id;
+  const second=structuredClone(value);second.acceptance.criterion_definition=rule2;second.acceptance.criterion_version=2;second.acceptance.count=11;
+  assert.equal((await send(`${a.base}/${declaration}/revisions`,'POST',{command_id:crypto.randomUUID(),authority_selection:select(a.grants['business.inquiry_evidence.correct']),expected_revision:1,effect:'correct',value:second})).status,200);
+  const replay=await send(a.base,'POST',command);assert.equal(replay.status,200);assert.equal(replay.body.data.revision,1);
+  const missing=structuredClone(value);delete missing.acceptance.criterion_definition;assert.equal((await send(a.base,'POST',{...command,command_id:crypto.randomUUID(),value:missing})).status,422);
+  const changed=await send(a.base,'POST',{...command,value:second});assert.equal(changed.status,409);
+  const h=await send(`${a.base}/${declaration}/history?access=${a.grants['business.inquiry_evidence.read']}`);assert.equal(h.status,200);assert.deepEqual(h.body.data.items.map(i=>[i.revision,i.value.acceptance.count,i.value.acceptance.criterion_definition]),[[1,10,marker],[2,11,rule2]]);
+  await open(a);await page.locator('[data-inquiry-open]').first().click();assert.ok((await page.locator('[data-inquiry-detail]').innerText()).includes(rule2));
+  await page.getByRole('button',{name:'قراءة التاريخ',exact:true}).click();await page.locator('[data-inquiry-history]').waitFor();await page.locator('[data-inquiry-history] article details summary').first().click();assert.ok((await page.locator('[data-inquiry-history]').innerText()).includes(marker));
+  await page.screenshot({path:path.join(out,'criterion-history-ar.png'),fullPage:true});
+  return{history:[[1,10,marker],[2,11,rule2]],exactReplay:200,changedPayload:409,missingDefinitionNewAdmission:422,sourceAssertion:h.body.data.assurance};
+ });
+ await check('still-authorized reentry preserves own unsent draft after fresh qualification',async()=>{
+  await page.getByRole('button',{name:'فتح التصحيح',exact:true}).click();await page.locator('[data-inquiry-count]').fill('731413');
+  await section('overview');await absent();await section('inquiries');await settled();assert.equal(await page.locator('[data-inquiry-count]').inputValue(),'731413');
+  await page.getByRole('button',{name:'إلغاء التعديل',exact:true}).click();return{ownDraftRestored:true,protectedDOMWhileHidden:0};
+ });
+ await check('changed actor actual UI logout/login with late current/history replies and private drafts',async()=>{
+  if(await page.locator('[data-inquiry-open]').count())await page.locator('[data-inquiry-open]').first().click();
+  const hold=async(pattern,tag)=>{let entered,release;const seen=new Promise(r=>entered=r),gate=new Promise(r=>release=r);const observation={tag};
+   const handler=async route=>{const response=await route.fetch();observation.serverStatus=response.status();observation.capturedAt=new Date().toISOString();entered();await gate;try{await route.fulfill({response});observation.delivery='fulfilled';}catch(e){observation.delivery='obsolete-request-aborted';observation.deliveryError=e.message;}finally{observation.releasedAt=new Date().toISOString();}};
+   await page.route(pattern,handler);const item={pattern,handler,seen,release,observation};gates.push(item);return item;};
+  const history=await hold(`**${a.base}/${declaration}/history?*`,'A-history');await page.getByRole('button',{name:'قراءة التاريخ',exact:true}).click();await history.seen;assert.equal(history.observation.serverStatus,200);
+  await section('overview');await absent();await section('inquiries');await settled();
+  await page.locator('[data-inquiry-open]').first().click();await page.getByRole('button',{name:'فتح التصحيح',exact:true}).click();await page.locator('[data-inquiry-count]').fill('731413');await section('overview');await absent();
+  const current=await hold(`**${a.base}?*`,'A-current');await section('inquiries');await current.seen;await absent();
+  const beforeIdentity=await principal();const terminal=await logout();const identityB=await login('b');assert.notEqual(beforeIdentity.principal,identityB.principal);assert.notEqual(beforeIdentity.credential,identityB.credential);
+  for(const g of [history,current])g.release();await page.waitForTimeout(200);await page.goto(origin+'/businesses');await ready();
+  const deniedCurrent=await send(`${a.base}?access=${a.grants['business.inquiry_evidence.read']}`);const deniedHistory=await send(`${a.base}/${declaration}/history?access=${a.grants['business.inquiry_evidence.read']}`);assert.equal(deniedCurrent.status,403);assert.equal(deniedHistory.status,403);
+  const noA=async()=>{const snapshot=await page.evaluate(()=>({text:document.body.textContent,values:[...document.querySelectorAll('input,textarea')].map(e=>e.value),pending:document.querySelectorAll('[data-inquiry-unknown]').length}));for(const token of [marker,rule2,'731413','91357']){assert.ok(!snapshot.text.includes(token),`A text crossed actor boundary: ${token}`);assert.ok(!snapshot.values.some(v=>v.includes(token)),`A draft crossed boundary: ${token}`);}assert.equal(snapshot.pending,0);};
+  await noA();await page.screenshot({path:path.join(out,'actor-b-no-a-state.png'),fullPage:true});
+  await page.goto(origin+a.url);await page.waitForFunction(()=>['ready','unavailable'].includes(document.querySelector('[data-application-spa]')?.dataset.state));assert.equal((await principal()).principal,fixture.b.user);await noA();await absent();
+  await page.goto(origin+'/businesses');await ready();const b=await create('نشاط الفاعل الثاني للمراجعة');await open(b);await noA();assert.equal(await page.locator('[data-inquiry-editor]').count(),0);
+  await logout();const backA=await login('a');assert.equal(backA.principal,identityA.principal);assert.notEqual(backA.credential,identityA.credential);await page.goto(origin+'/businesses');await ready();
+  const fresh=await send(`${a.base}?access=${a.grants['business.inquiry_evidence.read']}`);assert.equal(fresh.status,200);await open(a);assert.equal(await page.locator('[data-inquiry-editor]').count(),0);await page.locator('[data-inquiry-open]').first().click();assert.equal(await page.locator('[data-inquiry-detail-count]').innerText(),'91357');
+  for(const g of [history,current])await page.unroute(g.pattern,g.handler);
+  return{sameBrowserContext:true,identityBefore:beforeIdentity,identityB,identityAAfter:backA,logoutTransition:terminal.transition,actorBRead:deniedCurrent.status,actorBHistory:deniedHistory.status,actorADraftAbsentForB:true,actorADraftNotRevivedAfterReauthentication:true,lateReplies:[history.observation,current.observation],sameBusinessContextForB:false,differentBusinessAndDirectForbiddenRoute:true,freshActorARead:200};
+ });
+ await check('UX-001 original hidden-panel revoked read, zero protected DOM before requalification',async()=>{
+  await section('overview');await absent();const revoke=await send(`${a.base}/rights`,'POST',{command_id:crypto.randomUUID(),action:'business.inquiry_evidence.read',authority_selection:select(a.grants['business.inquiry_evidence.read'])});assert.equal(revoke.status,200);assert.equal((await send(`${a.base}?access=${a.grants['business.inquiry_evidence.read']}`)).status,403);
+  await section('inquiries');await absent();await settled();await absent();await page.screenshot({path:path.join(out,'revoked-return-concealed.png'),fullPage:true});return{currentRead:403,beforeAndAfterQualificationProtectedDOM:0};
+ });
+ await check('UX-001 actual database-clock expiry while hidden',async()=>{
+  const b=await create('مراجعة مستقلة لانتهاء الصلاحية');const v=structuredClone(value);v.acceptance=null;assert.equal((await send(b.base,'POST',{command_id:crypto.randomUUID(),authority_selection:select(b.grants['business.inquiry_evidence.record']),value:v})).status,200);await open(b);await page.locator('[data-inquiry-open]').click();await section('overview');await absent();
+  const db=mode=>{const p=spawnSync('C:/tools/php85/php.exe',[path.join(out,'expiry-fixture.php'),b.business,mode],{encoding:'utf8',env:{...process.env,APP_ENV:'testing'}});assert.equal(p.status,0,p.stderr||p.stdout);return JSON.parse(p.stdout);};
+  const scheduled=db('schedule');assert.equal(scheduled.expired,false);assert.equal((await send(`${b.base}?access=${b.grants['business.inquiry_evidence.read']}`)).status,200);let expired;for(let n=0;n<12;n++){expired=db('observe');if(expired.expired)break;await page.waitForTimeout(300);}assert.equal(expired.expired,true);assert.equal((await send(`${b.base}?access=${b.grants['business.inquiry_evidence.read']}`)).status,403);await section('inquiries');await settled();await absent();return{scheduled,expired,beforeRead:200,afterRead:403,protectedDOM:0};
+ });
+ assert.deepEqual(result.pageErrors,[]);result.completed=true;result.result='PASS';
+}catch(error){result.failure=error.stack;result.result='FAIL';process.exitCode=1;if(page)await page.screenshot({path:path.join(out,'probe-failure.png'),fullPage:true}).catch(()=>{});}
+finally{for(const g of gates)g.release();if(browser)await browser.close();await save();console.log(JSON.stringify(result,null,2));}

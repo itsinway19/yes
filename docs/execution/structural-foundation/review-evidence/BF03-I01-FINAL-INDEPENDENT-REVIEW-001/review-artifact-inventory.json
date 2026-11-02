@@ -1,0 +1,297 @@
+[
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/api-check.log",
+    "bytes": 177,
+    "sha256": "2c71ba663c22b2ad2262d2700f1450730424444fea56ac773f1557722b0c8132"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/baseline-ci-evidence.json",
+    "bytes": 1512,
+    "sha256": "0825d357323dee3b776fe55299e513175cdf7518b053c102bdf08bd995df53d5"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/changed-file-inventory.json",
+    "bytes": 14799,
+    "sha256": "54c76dffbdbfa870bca554000a6a96e64d796d6bf71dc81d18c71d0ea72dffe0"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/contract-preservation-probe-attempt1.txt",
+    "bytes": 388,
+    "sha256": "4db139738638e2439eb2b9225be38048022496ff4ead57889af730aceee37d3d"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/contract-preservation-probe.json",
+    "bytes": 769,
+    "sha256": "b99a4ea74c6bdb37d277d23802ecb1b3a9a5c68e14fbad0ac44ef71e5712e1b1"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/contract-preservation-probe.mjs",
+    "bytes": 1196,
+    "sha256": "75cc749e32c3b3d6f8f37eca1dbff0c1ebf2b66574fa358c9f140236a9a5ae2c"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/correction-right-revoked-refresh.png",
+    "bytes": 99838,
+    "sha256": "e8e033abe9dde4e8f787cde61bd4ba77527eadbb390bfc1553ad7a987a918615"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/final-source-equivalence.json",
+    "bytes": 195,
+    "sha256": "74722808aeeb9cdd6d833c455541d71e9fb59e2690a9be49e8e8e715ab3b8e3e"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/focused-js.log",
+    "bytes": 802,
+    "sha256": "6b69f10ba377d7d5d5bec27e9d56470fb566dda3c51075710f190c44b6dc74e9"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/historical-artifact-hash-audit.json",
+    "bytes": 9775,
+    "sha256": "2adb6d74aded7c423c55c3744168093988cca78a0db604e607465ad6bd7b38a0"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/historical-final-manifest-differences.json",
+    "bytes": 1856,
+    "sha256": "d27a394b811a0a56af68d27953f2f08955b8fb0d6195579c55f67a1bcb3cecb9"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/independent-overview-ar-desktop.png",
+    "bytes": 55838,
+    "sha256": "a2d70092038e179be5664b8c72d7bc57a603cfd07433d2efd91bbae671ca07d2"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/initial-git-status.txt",
+    "bytes": 2992,
+    "sha256": "a57f681d3d10748f3b34d0fefd36c05e9a3d1ed3a129aeb78915b89cb7d6e65b"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/initial-source-manifest.json",
+    "bytes": 132628,
+    "sha256": "bd9cd49726d06856bb82a79cb9dd29b0a2823b57ac72ad8e20839028b2680230"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-browser-results.json",
+    "bytes": 79557,
+    "sha256": "308e1f434f71881461f54005e29a18a9fe6f7ce96e7d98f4a615bad17e0d0a87"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-browser.log",
+    "bytes": 1472,
+    "sha256": "2a0e2be1b72cd898dcd04465888cb5ad04c32207e2735d45edc2932a592360c9"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-postgres.log",
+    "bytes": 5403,
+    "sha256": "1caca251153405723660ce0d4d2aff81df34dde0f00c15f07b5c063229716f1a"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-processes.json",
+    "bytes": 179,
+    "sha256": "3cf5c4bfe7a42c148b80e556463d15756a34f595665729a877cf8802f2b7df19"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-server-8136-error.log",
+    "bytes": 71797,
+    "sha256": "3f6af8784869d423ccdb1937c35d99fcb33ff6c738bfce1766ee5da337319c9a"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-server-8136.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-server-8137-error.log",
+    "bytes": 89,
+    "sha256": "224c614bb3893b53fd43ea2b85d1630f91809594986227182ad6ed3d54b30640"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-server-8137.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-source-manifest.json",
+    "bytes": 134664,
+    "sha256": "44896d8647d6122da70df98a789661e6bc1853386ff293c01372a58c85fd2484"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-source-unchanged.txt",
+    "bytes": 5,
+    "sha256": "60a33e6cf5151f2d52eddae9685cfa270426aa89d8dbc7dfb854606f1d1a40fe"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/pre-ux-to-final-delta.json",
+    "bytes": 1282,
+    "sha256": "5dd578a98778a5f9f118269e32d3a00edb1caf77e99af34ec257e3429fae34b7"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/retained-panel-after-read-revocation.png",
+    "bytes": 94440,
+    "sha256": "ee96a25bc3cc2c0a7d4383ea17bfa26e2e2678f64a3bc25d3224648306c13e62"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/security-review.md",
+    "bytes": 12155,
+    "sha256": "e8b4579d19bf8629b2c8c82f425c84361f713d7fd686a48abd152acc0766ce30"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/semantics-contract-probe.json",
+    "bytes": 2787,
+    "sha256": "694f130e2d749dc055be5a754364c1f7db2e4941468d16c9d2b34eaa981ea475"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/semantics-contract-probe.mjs",
+    "bytes": 1887,
+    "sha256": "a88f2fe8f49505ba815fbae2de4464045477661463f9a74103fb5f05471c54ef"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/semantics-review.md",
+    "bytes": 11075,
+    "sha256": "c16890cb564a1bdb4e21e4d156894299dc6acfd1c9fcce7626fcb3801ddbe112"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/ux-file-cleanup.json",
+    "bytes": 257,
+    "sha256": "2f6ba1e1368a13d401ee0416cc882a18bfd27538332cda1951339da75942196f"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/ux-process-cleanup.json",
+    "bytes": 157,
+    "sha256": "b3f938becb74e622498550542971779356e5cc98940912d9fbb49c00f7008223"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/ux-review.md",
+    "bytes": 17119,
+    "sha256": "c212d17b13d4df6561333f0f664f85b0a832046eac6bdf77d2e657382fa3fe4f"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/ux-supplemental-attempt1.mjs",
+    "bytes": 8054,
+    "sha256": "e0ebba1a1ae481bdc2ae812057211c1ecb0fe5361a7d94c8885af3dc4323d903"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/ux-supplemental-results-attempt2.json",
+    "bytes": 8598,
+    "sha256": "30bde23686cf65d63b745d3c0189e4a71df4cc0e9213c11a206d41f3b9eae29d"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/ux-supplemental-results.json",
+    "bytes": 491,
+    "sha256": "740dd8d3dd4e2bfe22c9704a0f12b2a20551e8b3fc1032e5770cf0fc5638e605"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/ux-supplemental.mjs",
+    "bytes": 8063,
+    "sha256": "835d517dfdc123880a4b6e102e210e5769542819d2994b8c982be33157584086"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/business-failure.png",
+    "bytes": 54530,
+    "sha256": "5d4f8ddaa03428794602a04279e00638efc31374903c56888c4d734f5f40346c"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/inquiry-desktop.png",
+    "bytes": 106699,
+    "sha256": "e8d04adb1c492bf28696423dee35266a6a3b75a8f43a917c711482becd9b1c1e"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/inquiry-mobile.png",
+    "bytes": 105715,
+    "sha256": "15955dbcd7db83d779f25627567ff4d1ac2182a6d8b8a0f594d909b01a6bbae4"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-ar-dark-1366-collection.png",
+    "bytes": 82333,
+    "sha256": "9451a3aae9f946827ff20d428d95379741c3898f0035fe3d3b788624bf0e85a9"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-ar-dark-1366-detail.png",
+    "bytes": 116496,
+    "sha256": "25c1f938e42b29084a7491657e6e359aba120d0620cb11f004bcb02df4f183ff"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-ar-dark-390-collection.png",
+    "bytes": 72915,
+    "sha256": "5396fbb01403d0e9fe5b75e103ddf59ede80e2d89590c12056e93fcf5e15cb91"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-ar-dark-390-detail.png",
+    "bytes": 114390,
+    "sha256": "9a63bb7d19298fdcad49126a364cb3e05b91a48030834c8b2fa3f35e01431def"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-ar-light-1280-form.png",
+    "bytes": 115538,
+    "sha256": "e44cb6d0a2874dc3fba391835a656b4537f4527b122ac8e10907921b1ecb689d"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-ar-light-1366-collection.png",
+    "bytes": 80058,
+    "sha256": "1b8cad2a89741fe2c9de48af9bde32dfa8588c89be7e5b47e90a9edd00ce8457"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-ar-light-1366-detail.png",
+    "bytes": 113219,
+    "sha256": "dca125612607b1db896845fd2e39521634fcf99d25f3ed66774c85bf780183a6"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-ar-light-390-collection.png",
+    "bytes": 70667,
+    "sha256": "a4dc7d3a2cb80f0217a2c9f0a3fb0759ae35b5e2c806275a229058596b80fbb6"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-ar-light-390-detail.png",
+    "bytes": 109937,
+    "sha256": "c59611af79aa04a9f21b8917c31dd426c8e2e63d06e76523ca83ecaff09f699c"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-ar-light-390-form.png",
+    "bytes": 117347,
+    "sha256": "7a9e7855a7e265dd2da9132f7c5073d686caeb08f9dd1a5be108071de41555ac"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-ar-light-390-timezone.png",
+    "bytes": 29507,
+    "sha256": "c739cec104f44aee59b0600c81371c3d3393b7cbffbe3f6f20ffc401087f8509"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-en-dark-1366-collection.png",
+    "bytes": 92735,
+    "sha256": "cd48f5ea6be4159e7059ad1c504c54fdca16a26cf15de9f70470e17726ee47d7"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-en-dark-1366-detail.png",
+    "bytes": 138711,
+    "sha256": "92511cd61194b2c6ea7d9eecfc7d0a9b0e0b581981ddd8bb287f860e7bab2378"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-en-dark-390-collection.png",
+    "bytes": 80509,
+    "sha256": "a91ee38d634bbcdb460c9ddfb0fcb18ed92f47f5d8d8180666b3286a6eaa9c34"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-en-dark-390-detail.png",
+    "bytes": 132944,
+    "sha256": "aa474ead72e055790726992858b16012c43313a105df9d59c479a8a91ceb7269"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-en-light-1366-collection.png",
+    "bytes": 88682,
+    "sha256": "d5bcdf452b8164a11dc063ad6eac2259c71baa4b0989b0ab1190750e76b7dc46"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-en-light-1366-detail.png",
+    "bytes": 132154,
+    "sha256": "eacddab8254beae433ababcda6dd6254d5282083c94ccc0da7cbdb6052828673"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-en-light-390-collection.png",
+    "bytes": 76597,
+    "sha256": "b4457abf1eca817d6983fcf20a068bbbbd371ea228461b02d51bae2e40d7253c"
+  },
+  {
+    "path": "docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/official-browser-screenshots/workspace-en-light-390-detail.png",
+    "bytes": 126075,
+    "sha256": "cbdb01e4497856f5319da3c6ef351efdf301283b561c12fb12174944e776ada6"
+  }
+]

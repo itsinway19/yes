@@ -1,0 +1,949 @@
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\database\\sql\\inquiry_evidence\\validation.sql" b/database/sql/inquiry_evidence/validation.sql
+index 8257394..268e2da 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\database\\sql\\inquiry_evidence\\validation.sql"
++++ b/database/sql/inquiry_evidence/validation.sql
+@@ -42,13 +42,25 @@ BEGIN
+   THEN RAISE EXCEPTION 'Typed inquiry count required' USING ERRCODE='22023'; END IF;
+  END IF;
+  IF a<>'null'::jsonb THEN
+-  IF NOT coalesce(builderad_private.inquiry_keys(a,ARRAY['count','pending_count','criterion_code','criterion_version','cutoff','maturity','coverage']),false)
++  IF NOT coalesce(builderad_private.inquiry_keys(a,ARRAY['count','pending_count','criterion_code','criterion_version','criterion_definition','cutoff','maturity','coverage']),false)
+   OR NOT coalesce(builderad_private.inquiry_count(a->'count'),false) OR NOT coalesce(builderad_private.inquiry_count(a->'pending_count'),false)
+   OR coalesce(a->>'criterion_code','') NOT IN('operator_defined','within_service_area','response_ready')
+   OR jsonb_typeof(a->'criterion_version') IS DISTINCT FROM 'number' OR coalesce(a->>'criterion_version','')!~'^[1-9][0-9]{0,8}$'
+   OR coalesce(a->>'maturity','') NOT IN('mature','pending','unknown') OR coalesce(a->>'coverage','') NOT IN('complete','partial','unknown')
+   OR jsonb_typeof(a->'cutoff') IS DISTINCT FROM 'string' OR(a->>'cutoff')!~'(Z|[+-][0-9]{2}:[0-9]{2})$'
+   THEN RAISE EXCEPTION 'Typed declared acceptance required' USING ERRCODE='22023'; END IF;
++  -- Abstract rule only: no contact identifiers, markup, executable expressions or external references.
++  -- This is source-asserted text, not an automatic guarantee of semantic truth or PII detection.
++  IF a->>'criterion_code'='operator_defined' THEN
++   IF jsonb_typeof(a->'criterion_definition') IS DISTINCT FROM 'string'
++    OR char_length(a->>'criterion_definition') NOT BETWEEN 8 AND 500
++    OR btrim(a->>'criterion_definition')<>a->>'criterion_definition'
++    OR (a->>'criterion_definition') ~ '[[:cntrl:]<>@{}\[\]\\]'
++    OR (a->>'criterion_definition') ~* '(https?[:/]|www[.]|javascript:|data:|=>|[[:digit:]][[:digit:] .()+-]{5,}[[:digit:]])'
++   THEN RAISE EXCEPTION 'Bounded abstract criterion definition required; no personal data, code or external references' USING ERRCODE='22023'; END IF;
++  ELSIF a->'criterion_definition' IS DISTINCT FROM 'null'::jsonb THEN
++   RAISE EXCEPTION 'Fixed criterion cannot be redefined' USING ERRCODE='22023';
++  END IF;
+   IF(a->>'cutoff')::timestamptz>(o->>'as_of')::timestamptz OR(a->>'cutoff')::timestamptz<(o->>'period_start')::timestamptz
+   OR(a->>'maturity'='mature' AND coalesce((a->>'pending_count')::numeric,0)>0)
+   OR(a->>'coverage'='complete' AND a->'count'='null'::jsonb)
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\database\\sql\\inquiry_evidence\\declarations.sql" b/database/sql/inquiry_evidence/declarations.sql
+index 84ffbd3..08f3d33 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\database\\sql\\inquiry_evidence\\declarations.sql"
++++ b/database/sql/inquiry_evidence/declarations.sql
+@@ -9,12 +9,12 @@ BEGIN
+  b:=builderad_private.lock_business(p_business,true);actor:=builderad_private.principal(p_session,false);
+  action_name:=CASE WHEN p_effect='record' THEN 'business.inquiry_evidence.record' ELSE 'business.inquiry_evidence.correct' END;
+  proof:=builderad_private.inquiry_fresh(builderad_private.inquiry_require(b,actor,action_name,p_selection,p_session),actor,p_session);
+- IF p_effect<>'withdraw' THEN p_value:=builderad_private.inquiry_value(p_value); END IF;
+  payload:=builderad_private.digest('command-payload:1',jsonb_build_object('business',p_business,'declaration',p_declaration,'expected',p_expected,'effect',p_effect,'value',p_value),'{"business":"U","declaration":"U","expected":"I"}');
+  result:=builderad_private.command_replay(b,actor,p_command,'inquiry.'||p_effect,payload);
+  IF result IS NOT NULL THEN
+   PERFORM builderad_private.inquiry_fresh(builderad_private.inquiry_require(b,actor,action_name,p_selection,p_session),actor,p_session);RETURN result;
+  END IF;
++ IF p_effect<>'withdraw' THEN p_value:=builderad_private.inquiry_value(p_value); END IF;
+  IF p_effect<>'record' THEN
+   SELECT * INTO head FROM public.inquiry_evidence_heads WHERE declaration_id=p_declaration AND business_id=b AND issuer_user_id=actor;
+   IF head.declaration_id IS NULL THEN RAISE EXCEPTION 'Inquiry declaration unavailable' USING ERRCODE='42501'; END IF;
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\scripts\\inquiry-evidence-openapi.mjs" b/scripts/inquiry-evidence-openapi.mjs
+index 6e6fac1..08d2602 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\scripts\\inquiry-evidence-openapi.mjs"
++++ b/scripts/inquiry-evidence-openapi.mjs
+@@ -9,13 +9,15 @@ export function inquiryEvidenceContracts({ref,text,uuid,object,list,nullable,jso
+   observation:object({period_start:text,period_end:text,as_of:text,timezone:text}),
+   cost:nullable(object({amount:{type:'string',pattern:'^(0|[1-9][0-9]{0,11})([.][0-9]{1,8})?$'},currency:{type:'string',pattern:'^[A-Z]{3}$'},precision:{type:'integer',minimum:0,maximum:8},cost_basis:{enum:['advertising_spend','declared_cohort_cost']},allocation_basis:{enum:['whole_cohort','declared_attribution']}})),
+   inquiries:nullable(object({count:nullable(integer),coverage:{enum:['complete','partial','unknown']}})),
+-  acceptance:nullable(object({count:nullable(integer),pending_count:nullable(integer),criterion_code:{enum:['operator_defined','within_service_area','response_ready']},criterion_version:positive,cutoff:text,maturity:{enum:['mature','pending','unknown']},coverage:{enum:['complete','partial','unknown']}})),
++  acceptance:nullable(object({count:nullable(integer),pending_count:nullable(integer),criterion_code:{enum:['operator_defined','within_service_area','response_ready']},criterion_version:positive,criterion_definition:nullable({type:'string',minLength:8,maxLength:500}),cutoff:text,maturity:{enum:['mature','pending','unknown']},coverage:{enum:['complete','partial','unknown']}})),
+  });
++ const historicalValue=structuredClone(value);
++ historicalValue.properties.acceptance.anyOf.find(s=>s.type==='object').required=historicalValue.properties.acceptance.anyOf.find(s=>s.type==='object').required.filter(k=>k!=='criterion_definition');
+  const action={enum:['business.inquiry_evidence.record','business.inquiry_evidence.correct','business.inquiry_evidence.read']};
+  const grants=object(Object.fromEntries(action.enum.map(a=>[a,grant])),[]);
+  const versions=object({},[],true);
+  const receipt=object({command_id:uuid,declaration_id:uuid,revision:positive,state:{enum:['source_asserted','withdrawn']},assurance:{const:'SOURCE_ASSERTED'},independently_verified:{const:false},versions});
+- const item=object({declaration_id:uuid,revision:positive,state:{enum:['source_asserted','withdrawn']},reason:{enum:['initial','correction','withdrawal']},value:nullable(ref('InquiryDeclarationValue')),recorded_at:text,original_issuer:uuid,correcting_actor:uuid});
++ const item=object({declaration_id:uuid,revision:positive,state:{enum:['source_asserted','withdrawn']},reason:{enum:['initial','correction','withdrawal']},value:nullable(ref('InquiryHistoricalDeclarationValue')),recorded_at:text,original_issuer:uuid,correcting_actor:uuid});
+  const read=object({business:uuid,mode:{const:'own_private_statement'},assurance:{const:'SOURCE_ASSERTED'},independently_verified:{const:false},items:{...list(item),maxItems:25},more:{type:'boolean'},next_declaration:nullable(uuid),next_revision:nullable(positive),collection_limit:{const:25}});
+  const eligibility=object({business:uuid,basis_qualification:uuid,basis_revision:positive,policy:{const:'inquiry_evidence_custody_v1'},policy_version:{const:1},mode:{const:'own_private_statement'},grants});
+  const base='/api/businesses/{business}/inquiry-evidence';
+@@ -25,7 +27,7 @@ export function inquiryEvidenceContracts({ref,text,uuid,object,list,nullable,jso
+  const responses=x=>({200:response(result(x)),...errors,...Object.fromEntries([403,409,422].map(n=>[n,response({anyOf:[object({error:text}),ref('Error'),ref('ValidationError')]})]))});
+  const post=(operationId,extra,output,decl=false)=>({operationId,security,parameters:[bp,...(decl?[dp]:[])],requestBody:{required:true,...json(object({command_id:uuid,authority_selection:ref('InquiryAuthoritySelection'),...extra}))},responses:responses(output)});
+  const get=(operationId,output,extra=[],decl=false)=>({operationId,security,parameters:[bp,...(decl?[dp]:[]),access,...extra],responses:responses(output)});
+- return {schemas:{InquiryAuthoritySelection:selection,InquiryDeclarationValue:value,InquiryEvidenceEligibility:eligibility,InquiryEvidenceRead:read,InquiryEvidenceReceipt:receipt},paths:{
++ return {schemas:{InquiryAuthoritySelection:selection,InquiryDeclarationValue:value,InquiryHistoricalDeclarationValue:historicalValue,InquiryEvidenceEligibility:eligibility,InquiryEvidenceRead:read,InquiryEvidenceReceipt:receipt},paths:{
+   [base+'/eligibility']:{get:get('readInquiryEvidenceEligibility',eligibility)},
+   [base+'/enrollment']:{post:post('enrollInquiryEvidence',{basis_revision:positive,confirm:{const:true}},object({command_id:uuid,policy:{const:'inquiry_evidence_custody_v1'},qualification:uuid,grants,versions}))},
+   [base+'/rights']:{post:post('revokeInquiryEvidenceRight',{action},object({command_id:uuid,revoked_action:action,versions}))},
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\resources\\js\\inquiry-evidence\\api.ts" b/resources/js/inquiry-evidence/api.ts
+index ae3086e..4c3f0b3 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\resources\\js\\inquiry-evidence\\api.ts"
++++ b/resources/js/inquiry-evidence/api.ts
+@@ -1,7 +1,8 @@
+ import { api } from '../spa/api';
+ import { TransportError } from '../spa/transport';
+ import type { components, operations } from '../api/generated/application';
+-export type DeclarationValue = components['schemas']['InquiryDeclarationValue'];
++export type DeclarationValue = components['schemas']['InquiryHistoricalDeclarationValue'];
++export type DeclarationWriteValue = components['schemas']['InquiryDeclarationValue'];
+ export type Eligibility = components['schemas']['InquiryEvidenceEligibility'];
+ export type EvidenceRead = components['schemas']['InquiryEvidenceRead'];
+ export type Receipt = components['schemas']['InquiryEvidenceReceipt'];
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\resources\\js\\inquiry-evidence\\InquiryEvidencePanel.vue" b/resources/js/inquiry-evidence/InquiryEvidencePanel.vue
+index 2c88e1d..e526dd8 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\resources\\js\\inquiry-evidence\\InquiryEvidencePanel.vue"
++++ b/resources/js/inquiry-evidence/InquiryEvidencePanel.vue
+@@ -2,11 +2,11 @@
+ import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
+ import { locale } from '../spa/locale';
+ import { owned, stamp, onClose } from '../spa/transport';
+-import { eligibility, read, history, send, selection, confirmedRejection, type Eligibility, type EvidenceRead, type DeclarationValue, type Pending, type Action } from './api';
++import { eligibility, read, history, send, selection, confirmedRejection, type Eligibility, type EvidenceRead, type DeclarationValue, type DeclarationWriteValue, type Pending, type Action } from './api';
+ import DeclarationDetails from './DeclarationDetails.vue';
+ import { inquiryFormDrafts, type InquiryFormFields } from './presentationDrafts';
+ import { beginCorrection, countValue, freezeCommand, staleEdit, pendingCommands, type EditSnapshot } from './editor';
+-const props=withDefaults(defineProps<{business:string;basisAccess:string;embedded?:boolean}>(),{embedded:false});
++const props=withDefaults(defineProps<{business:string;basisAccess:string;embedded?:boolean;active?:boolean}>(),{embedded:false,active:true});
+ const t=(ar:string,en:string)=>locale.value==='ar'?ar:en;
+ const access=ref<Eligibility>();const collection=ref<EvidenceRead>();const past=ref<EvidenceRead>();
+ type BilingualNotice={ar:string;en:string};
+@@ -25,7 +25,7 @@ async function openRecord(item:EvidenceRead['items'][number]){collectionPosition
+ async function backToCollection(){const previous=selectedId.value;selectedId.value=undefined;past.value=undefined;await nextTick();const button=panelRoot.value?.querySelector<HTMLElement>(`[data-inquiry-record="${previous}"] [data-inquiry-open]`);button?.focus({preventScroll:true});window.scrollTo({top:collectionPosition,behavior:'instant'});}
+ function cancelEditor(){if(locked.value)return;forgetUnsentDraft();editorOpen.value=false;resetFields();}
+ 
+-const fields=reactive<InquiryFormFields>({channel:'form',country:'',cohortVersion:'1',start:'',end:'',asOf:'',timezone:'Asia/Riyadh',cost:'',currency:'SAR',precision:'2',costBasis:'declared_cohort_cost',allocationBasis:'whole_cohort',inquiries:'',inquiryCoverage:'unknown',acceptanceEnabled:false,accepted:'',pendingCount:'',criterion:'operator_defined',criterionVersion:'1',cutoff:'',maturity:'unknown',acceptanceCoverage:'unknown'});
++const fields=reactive<InquiryFormFields>({channel:'form',country:'',cohortVersion:'1',start:'',end:'',asOf:'',timezone:'Asia/Riyadh',cost:'',currency:'SAR',precision:'2',costBasis:'declared_cohort_cost',allocationBasis:'whole_cohort',inquiries:'',inquiryCoverage:'unknown',acceptanceEnabled:false,accepted:'',pendingCount:'',criterion:'operator_defined',criterionVersion:'1',criterionDefinition:'',cutoff:'',maturity:'unknown',acceptanceCoverage:'unknown'});
+ const grant=(action:Action)=>access.value?.grants[action];
+ const pendingKey=()=>`${stamp()}:${props.business}:${props.basisAccess}`;
+ const mountedStamp=stamp();
+@@ -55,39 +55,59 @@ onClose(()=>pendingCommands.clear());
+ function concealReadDerived(dropRetained=true){if(dropRetained&&inquiryFormDrafts.get(activeDraftKey)?.edit)forgetUnsentDraft();selectedId.value=undefined;if(edit.value){resetFields();editorOpen.value=false;}past.value=undefined;}
+ const stale=computed(()=>staleEdit(edit.value,collection.value?.items??[]));
+ const locked=computed(()=>busy.value || !!pending.value);
+-function resetFields(){Object.assign(fields,{channel:'form',country:'',cohortVersion:'1',start:'',end:'',asOf:'',timezone:'Asia/Riyadh',cost:'',currency:'SAR',precision:'2',costBasis:'declared_cohort_cost',allocationBasis:'whole_cohort',inquiries:'',inquiryCoverage:'unknown',acceptanceEnabled:false,accepted:'',pendingCount:'',criterion:'operator_defined',criterionVersion:'1',cutoff:'',maturity:'unknown',acceptanceCoverage:'unknown'});edit.value=undefined;}
++const canSubmit=computed(()=>props.active && !!access.value && !!grant(edit.value?'business.inquiry_evidence.correct':'business.inquiry_evidence.record') && (!edit.value || !!grant('business.inquiry_evidence.read')));
++function resetFields(){Object.assign(fields,{channel:'form',country:'',cohortVersion:'1',start:'',end:'',asOf:'',timezone:'Asia/Riyadh',cost:'',currency:'SAR',precision:'2',costBasis:'declared_cohort_cost',allocationBasis:'whole_cohort',inquiries:'',inquiryCoverage:'unknown',acceptanceEnabled:false,accepted:'',pendingCount:'',criterion:'operator_defined',criterionVersion:'1',criterionDefinition:'',cutoff:'',maturity:'unknown',acceptanceCoverage:'unknown'});edit.value=undefined;}
++function suspendDisplay(){
++ retainUnsentDraft();attempt++;busy.value=false;collection.value=undefined;past.value=undefined;
++ selectedId.value=undefined;access.value=undefined;message.value=undefined;confirmed.value=false;
++ resetFields();editorOpen.value=false;
++}
+ async function refresh(cursor?:string){
+- if(busy.value)return;busy.value=true;const ticket=++attempt,captured=stamp();
+- try {const current=await eligibility(props.business,props.basisAccess);if(disposed||ticket!==attempt||!owned(captured))return;access.value=current;unavailable.value=false;
++ if(busy.value||!props.active)return;
++ const previousSelection=selectedId.value;
++ const needed=editorOpen.value?(edit.value?'business.inquiry_evidence.correct':'business.inquiry_evidence.record'):undefined;
++ retainUnsentDraft();collection.value=undefined;past.value=undefined;selectedId.value=undefined;
++ resetFields();editorOpen.value=false;message.value=undefined;access.value=undefined;
++ busy.value=true;const ticket=++attempt,captured=stamp(),business=props.business,basis=props.basisAccess;
++ const currentContext=()=>!disposed&&props.active&&ticket===attempt&&owned(captured)&&business===props.business&&basis===props.basisAccess;
++ try {const current=await eligibility(business,basis);if(!currentContext())return;access.value=current;unavailable.value=false;
+   const right=current.grants['business.inquiry_evidence.read'];
+-  if(right){const data=await read(props.business,right,cursor);if(disposed||ticket!==attempt||!owned(captured))return;collection.value=data;restoreUnsentDraft();}
++  if(right){const data=await read(business,right,cursor);if(!currentContext())return;collection.value=data;if(data.items.some(item=>item.declaration_id===previousSelection))selectedId.value=previousSelection;restoreUnsentDraft();}
+   else {collection.value=undefined;concealReadDerived();restoreUnsentDraft();}
+- }catch(error){if(!disposed&&ticket===attempt&&owned(captured)){const denied=confirmedRejection(error)==='denied';if(denied)forgetUnsentDraft();else retainUnsentDraft();unavailable.value=true;collection.value=undefined;concealReadDerived(denied);access.value=undefined;message.value=notice('تعذر التحقق من صلاحية السجل. لم تُعرض بيانات محفوظة قديمة.','Could not qualify the record; old data is not displayed.');}}
++  if(needed&&!grant(needed))message.value=notice('لم تعد صلاحية هذه العملية متاحة. لم نحفظ المسودة؛ يمكنك القراءة إذا بقي حقها متاحًا.','Permission for this operation is no longer available. The draft was not saved; reading remains available under its independent right.');
++  return true;
++ }catch(error){if(currentContext()){const denied=confirmedRejection(error)==='denied';if(denied)forgetUnsentDraft();unavailable.value=true;collection.value=undefined;concealReadDerived(denied);access.value=undefined;message.value=notice('تعذر التحقق من صلاحية السجل. لم تُعرض بيانات محفوظة قديمة.','Could not qualify the record; old data is not displayed.');return false;}}
+  finally{if(!disposed&&ticket===attempt)busy.value=false;}
+ }
+ async function execute(command?:Pending){
+  if(busy.value||(!command&&!pending.value))return;
+  if(command){if(pending.value)return;pending.value=freezeCommand(command);pendingCommands.set(pendingKey(),pending.value);}busy.value=true;
+- const captured=stamp(),commandKey=pendingKey(),reconciling=!command;let saved=false;
+- try{await send(props.business,pending.value!);if(disposed||!owned(captured))return;saved=true;confirmed.value=false;forgetUnsentDraft();pendingCommands.delete(commandKey);pending.value=undefined;editorOpen.value=false;edit.value=undefined;past.value=undefined;message.value=notice('تم الحفظ. جارٍ التحقق من الحالة الحالية.','Saved; checking the current state.');}
+- catch(error){if(!disposed&&owned(captured)){const rejected=confirmedRejection(error);if(rejected && !reconciling){pendingCommands.delete(commandKey);pending.value=undefined;if(rejected==='denied'){forgetUnsentDraft();collection.value=undefined;access.value=undefined;concealReadDerived();}message.value=rejected==='invalid'?notice('لم تُحفظ البيانات. صحّح النموذج ثم احفظه من جديد.','The data was not saved. Correct the form, then save again.'):rejected==='stale'?notice('رُفض التصحيح لأن الإصدار تغير. ألغِ التعديل وافتح النسخة الحالية.','Correction rejected because the revision changed. Cancel and reopen the current version.'):notice('لم تعد الصلاحية متاحة. أعد التحقق قبل أي طلب جديد.','Authority unavailable. Recheck before another request.');}else {if(rejected==='denied'){forgetUnsentDraft();collection.value=undefined;access.value=undefined;concealReadDerived();}message.value=notice('لم نتمكن من تأكيد النتيجة. احتفظنا بالأمر نفسه؛ تحقق من الصلاحية ثم أعد طلب نتيجته. لا تنشئ تصريحًا بديلًا.','Outcome is unconfirmed. The exact command is retained; qualify access and request its result again. Do not create a replacement.');}}}
+- finally{if(!disposed)busy.value=false;}
+- if(saved){await refresh();if(!disposed)message.value=unavailable.value?notice('تم الحفظ، لكن تعذر تحديث الحالة. أعد التحقق؛ لا تسجّل البيانات نفسها من جديد.','Saved, but the current state could not be refreshed. Check again; do not record the same data again.'):notice('تم الحفظ وتحديث الحالة. تبقى البيانات تصريحات غير متحقق منها.','Saved and the current state refreshed. Data remains unverified assertions.');}
++ const captured=stamp(),commandKey=pendingKey(),operation=++attempt,reconciling=!command;let saved=false;
++ try{await send(props.business,pending.value!);if(disposed||!owned(captured)||pendingKey()!==commandKey)return;saved=true;confirmed.value=false;forgetUnsentDraft();pendingCommands.delete(commandKey);pending.value=undefined;editorOpen.value=false;edit.value=undefined;past.value=undefined;message.value=notice('تم الحفظ. جارٍ التحقق من الحالة الحالية.','Saved; checking the current state.');}
++ catch(error){if(!disposed&&owned(captured)&&pendingKey()===commandKey){const rejected=confirmedRejection(error);if(rejected && !reconciling){pendingCommands.delete(commandKey);pending.value=undefined;if(rejected==='denied'){forgetUnsentDraft();collection.value=undefined;access.value=undefined;concealReadDerived();}message.value=rejected==='invalid'?notice('لم تُحفظ البيانات. صحّح النموذج ثم احفظه من جديد.','The data was not saved. Correct the form, then save again.'):rejected==='stale'?notice('رُفض التصحيح لأن الإصدار تغير. ألغِ التعديل وافتح النسخة الحالية.','Correction rejected because the revision changed. Cancel and reopen the current version.'):notice('لم تعد الصلاحية متاحة. أعد التحقق قبل أي طلب جديد.','Authority unavailable. Recheck before another request.');}else {if(rejected==='denied'){forgetUnsentDraft();collection.value=undefined;access.value=undefined;concealReadDerived();}message.value=notice('لم نتمكن من تأكيد النتيجة. احتفظنا بالأمر نفسه؛ تحقق من الصلاحية ثم أعد طلب نتيجته. لا تنشئ تصريحًا بديلًا.','Outcome is unconfirmed. The exact command is retained; qualify access and request its result again. Do not create a replacement.');}}}
++ finally{if(!disposed&&operation===attempt)busy.value=false;}
++ if(saved&&props.active&&pendingKey()===commandKey){const refreshTicket=attempt+1;const refreshed=await refresh();if(refreshed!==undefined&&!disposed&&props.active&&owned(captured)&&pendingKey()===commandKey&&refreshTicket===attempt)message.value=unavailable.value?notice('تم الحفظ، لكن تعذر تحديث الحالة. أعد التحقق؛ لا تسجّل البيانات نفسها من جديد.','Saved, but the current state could not be refreshed. Check again; do not record the same data again.'):notice('تم الحفظ وتحديث الحالة. تبقى البيانات تصريحات غير متحقق منها.','Saved and the current state refreshed. Data remains unverified assertions.');}
+ }
+ function enroll(){if(!access.value||!confirmed.value)return;void execute({kind:'enroll',body:{command_id:crypto.randomUUID(),authority_selection:selection(props.basisAccess),basis_revision:access.value.basis_revision,confirm:true}});}
+ function startNew(){if(locked.value)return;forgetUnsentDraft();selectedId.value=undefined;resetFields();editorOpen.value=true;past.value=undefined;message.value=undefined;}
+-function startEdit(item:EvidenceRead['items'][number]){if(locked.value||!item.value)return;edit.value=beginCorrection(item);const v=item.value;Object.assign(fields,{channel:v.cohort.channel_kind,country:v.cohort.country_code??'',cohortVersion:String(v.cohort.definition_version),start:v.observation.period_start,end:v.observation.period_end,asOf:v.observation.as_of,timezone:v.observation.timezone,cost:v.cost?.amount??'',currency:v.cost?.currency??'SAR',precision:String(v.cost?.precision??2),costBasis:v.cost?.cost_basis??'declared_cohort_cost',allocationBasis:v.cost?.allocation_basis??'whole_cohort',inquiries:v.inquiries?.count==null?'':String(v.inquiries.count),inquiryCoverage:v.inquiries?.coverage??'unknown',acceptanceEnabled:!!v.acceptance,accepted:v.acceptance?.count==null?'':String(v.acceptance.count),pendingCount:v.acceptance?.pending_count==null?'':String(v.acceptance.pending_count),criterion:v.acceptance?.criterion_code??'operator_defined',criterionVersion:String(v.acceptance?.criterion_version??1),cutoff:v.acceptance?.cutoff??'',maturity:v.acceptance?.maturity??'unknown',acceptanceCoverage:v.acceptance?.coverage??'unknown'});editorOpen.value=true;}
++function startEdit(item:EvidenceRead['items'][number]){if(locked.value||!item.value)return;edit.value=beginCorrection(item);const v=item.value;Object.assign(fields,{channel:v.cohort.channel_kind,country:v.cohort.country_code??'',cohortVersion:String(v.cohort.definition_version),start:v.observation.period_start,end:v.observation.period_end,asOf:v.observation.as_of,timezone:v.observation.timezone,cost:v.cost?.amount??'',currency:v.cost?.currency??'SAR',precision:String(v.cost?.precision??2),costBasis:v.cost?.cost_basis??'declared_cohort_cost',allocationBasis:v.cost?.allocation_basis??'whole_cohort',inquiries:v.inquiries?.count==null?'':String(v.inquiries.count),inquiryCoverage:v.inquiries?.coverage??'unknown',acceptanceEnabled:!!v.acceptance,accepted:v.acceptance?.count==null?'':String(v.acceptance.count),pendingCount:v.acceptance?.pending_count==null?'':String(v.acceptance.pending_count),criterion:v.acceptance?.criterion_code??'operator_defined',criterionVersion:String(v.acceptance?.criterion_version??1),criterionDefinition:v.acceptance?.criterion_definition??'',cutoff:v.acceptance?.cutoff??'',maturity:v.acceptance?.maturity??'unknown',acceptanceCoverage:v.acceptance?.coverage??'unknown'});editorOpen.value=true;}
+ function positive(value:string){if(!/^[1-9][0-9]{0,8}$/.test(value))throw Error('Version');return Number(value);}
+-function submit(){try{
+- const value:DeclarationValue={cohort:{channel_kind:fields.channel as DeclarationValue['cohort']['channel_kind'],definition_version:positive(fields.cohortVersion),country_code:fields.country.trim()||null,population:'recorded_inquiries',counting_policy:'distinct_inquiries'},observation:{period_start:fields.start,period_end:fields.end,as_of:fields.asOf,timezone:fields.timezone},cost:fields.cost===''?null:{amount:fields.cost,currency:fields.currency,precision:Number(fields.precision),cost_basis:fields.costBasis as 'advertising_spend'|'declared_cohort_cost',allocation_basis:fields.allocationBasis as 'whole_cohort'|'declared_attribution'},inquiries:fields.inquiries===''&&fields.inquiryCoverage==='unknown'?null:{count:countValue(fields.inquiries),coverage:fields.inquiryCoverage as 'complete'|'partial'|'unknown'},acceptance:fields.acceptanceEnabled?{count:countValue(fields.accepted),pending_count:countValue(fields.pendingCount),criterion_code:fields.criterion as 'operator_defined'|'within_service_area'|'response_ready',criterion_version:positive(fields.criterionVersion),cutoff:fields.cutoff,maturity:fields.maturity as 'mature'|'pending'|'unknown',coverage:fields.acceptanceCoverage as 'complete'|'partial'|'unknown'}:null};
++function submit(){if(!canSubmit.value||locked.value){message.value=notice('لا تتوافر صلاحية الحفظ الحالية. أعد التحقق من الصلاحيات.','Current save permission is unavailable. Recheck permissions.');return;}try{
++ const value:DeclarationWriteValue={cohort:{channel_kind:fields.channel as DeclarationValue['cohort']['channel_kind'],definition_version:positive(fields.cohortVersion),country_code:fields.country.trim()||null,population:'recorded_inquiries',counting_policy:'distinct_inquiries'},observation:{period_start:fields.start,period_end:fields.end,as_of:fields.asOf,timezone:fields.timezone},cost:fields.cost===''?null:{amount:fields.cost,currency:fields.currency,precision:Number(fields.precision),cost_basis:fields.costBasis as 'advertising_spend'|'declared_cohort_cost',allocation_basis:fields.allocationBasis as 'whole_cohort'|'declared_attribution'},inquiries:fields.inquiries===''&&fields.inquiryCoverage==='unknown'?null:{count:countValue(fields.inquiries),coverage:fields.inquiryCoverage as 'complete'|'partial'|'unknown'},acceptance:fields.acceptanceEnabled?{count:countValue(fields.accepted),pending_count:countValue(fields.pendingCount),criterion_code:fields.criterion as 'operator_defined'|'within_service_area'|'response_ready',criterion_version:positive(fields.criterionVersion),criterion_definition:fields.criterion==='operator_defined'?fields.criterionDefinition:null,cutoff:fields.cutoff,maturity:fields.maturity as 'mature'|'pending'|'unknown',coverage:fields.acceptanceCoverage as 'complete'|'partial'|'unknown'}:null};
+  if(stale.value){message.value=notice('تغير الإصدار. ألغِ التعديل وافتح النسخة الحالية؛ لم نعتمدها بدل نسختك.','Revision changed. Cancel and open the current version; your baseline was not replaced.');return;}
+  if(edit.value){const right=grant('business.inquiry_evidence.correct');if(!right)return;void execute({kind:'revise',declaration:edit.value.declaration,body:{command_id:crypto.randomUUID(),authority_selection:selection(right),expected_revision:edit.value.revision,effect:'correct',value}});}
+  else{const right=grant('business.inquiry_evidence.record');if(!right)return;void execute({kind:'record',body:{command_id:crypto.randomUUID(),authority_selection:selection(right),value}});}
+  }catch{message.value=notice('راجع الأعداد والإصدارات. اترك القيمة المجهولة فارغة؛ الصفر يعني صفرًا مُصرّحًا به.','Check counts and versions. Leave unknown values blank; zero means declared zero.');}}
+-async function showHistory(item:EvidenceRead['items'][number],after=0){const right=grant('business.inquiry_evidence.read');if(!right||busy.value)return;busy.value=true;const captured=stamp();try{const data=await history(props.business,item.declaration_id,right,after);if(!disposed&&owned(captured))past.value=data;}catch(error){if(!disposed){past.value=undefined;if(confirmedRejection(error)==='denied'){collection.value=undefined;access.value=undefined;concealReadDerived();}message.value=notice('تعذر تأهيل قراءة التاريخ.','History access could not be qualified.');}}finally{if(!disposed)busy.value=false;}}
++async function showHistory(item:EvidenceRead['items'][number],after=0){const right=grant('business.inquiry_evidence.read');if(!right||busy.value||!props.active)return;busy.value=true;past.value=undefined;const captured=stamp(),ticket=++attempt,business=props.business;
++ const currentContext=()=>!disposed&&props.active&&ticket===attempt&&owned(captured)&&business===props.business;
++ try{const data=await history(business,item.declaration_id,right,after);if(currentContext())past.value=data;}catch(error){if(currentContext()){past.value=undefined;if(confirmedRejection(error)==='denied'){collection.value=undefined;access.value=undefined;concealReadDerived();}message.value=notice('تعذر تأهيل قراءة التاريخ.','History access could not be qualified.');}}finally{if(!disposed&&ticket===attempt)busy.value=false;}}
+ function withdraw(item:EvidenceRead['items'][number]){const right=grant('business.inquiry_evidence.correct');if(!right||locked.value)return;void execute({kind:'revise',declaration:item.declaration_id,body:{command_id:crypto.randomUUID(),authority_selection:selection(right),expected_revision:item.revision,effect:'withdraw',value:null}});}
+ function revoke(action:Action){const right=grant(action);if(!right||locked.value)return;void execute({kind:'revoke',body:{command_id:crypto.randomUUID(),authority_selection:selection(right),action}});}
+-watch(()=>[props.business,props.basisAccess],()=>{retainUnsentDraft();activeDraftKey=pendingKey();attempt++;access.value=undefined;collection.value=undefined;past.value=undefined;pending.value=pendingCommands.get(pendingKey());selectedId.value=undefined;resetFields();editorOpen.value=false;busy.value=false;void refresh();},{immediate:true});
++watch(()=>[props.business,props.basisAccess,props.active],()=>{
++ suspendDisplay();activeDraftKey=pendingKey();pending.value=pendingCommands.get(pendingKey());
++ if(props.active)void refresh();
++},{immediate:true,flush:'sync'});
++onClose(()=>{attempt++;access.value=undefined;collection.value=undefined;past.value=undefined;selectedId.value=undefined;resetFields();editorOpen.value=false;message.value=undefined;});
+ onBeforeUnmount(()=>{retainUnsentDraft();disposed=true;attempt++;collection.value=undefined;past.value=undefined;access.value=undefined;});
+ </script>
+ <template>
+@@ -147,6 +167,7 @@ onBeforeUnmount(()=>{retainUnsentDraft();disposed=true;attempt++;collection.valu
+      <label>{{t('عدد المقبولين','Accepted inquiries')}}<input v-model="fields.accepted" inputmode="numeric" data-inquiry-accepted></label>
+      <label>{{t('عدد ما زال ينتظر التأهيل','Pending qualification count')}}<input v-model="fields.pendingCount" inputmode="numeric"></label>
+      <label>{{t('نوع معيار القبول','Acceptance criterion')}}<select v-model="fields.criterion"><option value="operator_defined">{{t('معيار حدده النشاط','Business-defined criterion')}}</option><option value="within_service_area">{{t('ضمن نطاق الخدمة','Within service area')}}</option><option value="response_ready">{{t('جاهز للاستجابة','Ready for response')}}</option></select></label>
++     <label v-if="fields.criterion==='operator_defined'">{{t('تعريف معيار القبول','Criterion definition')}}<textarea v-model="fields.criterionDefinition" required minlength="8" maxlength="500" data-inquiry-criterion-definition></textarea><span>{{t('قاعدة عامة فقط، دون أسماء أشخاص أو بيانات اتصال أو شيفرة أو روابط. يبقى التعريف تصريحًا منك.','Abstract rule only: no personal names, contact details, code or links. The definition remains your assertion.')}}</span></label>
+      <label>{{t('موعد قطع ملاحظة القبول','Acceptance cutoff')}}<input v-model="fields.cutoff" dir="ltr" placeholder="2026-10-03T00:00:00+03:00" data-inquiry-cutoff></label>
+      <label>{{t('نضج النتائج','Maturity')}}<select v-model="fields.maturity"><option value="unknown">{{t('غير معلوم','Unknown')}}</option><option value="pending">{{t('لم يكتمل','Pending')}}</option><option value="mature">{{t('مكتمل بحسب التصريح','Mature as declared')}}</option></select></label>
+      <label>{{t('تغطية القبول','Acceptance coverage')}}<select v-model="fields.acceptanceCoverage"><option value="unknown">{{t('غير معلومة','Unknown')}}</option><option value="partial">{{t('جزئية','Partial')}}</option><option value="complete">{{t('مكتملة بحسب التصريح','Complete as declared')}}</option></select></label>
+@@ -162,7 +183,7 @@ onBeforeUnmount(()=>{retainUnsentDraft();disposed=true;attempt++;collection.valu
+     </div>
+    </details>
+    <p v-if="stale" role="alert">{{t('الإصدار الذي بدأت منه تغير. لن نكتب فوق التصحيح الأحدث.','Your baseline changed; the newer correction will not be overwritten.')}}</p>
+-   <button type="submit" :disabled="stale">{{edit?t('حفظ التصحيح','Save correction'):t('حفظ التصريح','Save declaration')}}</button>
++   <button type="submit" :disabled="stale || !canSubmit">{{edit?t('حفظ التصحيح','Save correction'):t('حفظ التصريح','Save declaration')}}</button>
+    <button type="button" @click="cancelEditor">{{t('إلغاء التعديل','Cancel edit')}}</button>
+   </fieldset>
+  </form>
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\resources\\js\\inquiry-evidence\\DeclarationDetails.vue" b/resources/js/inquiry-evidence/DeclarationDetails.vue
+index 48eb990..ca2aba4 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\resources\\js\\inquiry-evidence\\DeclarationDetails.vue"
++++ b/resources/js/inquiry-evidence/DeclarationDetails.vue
+@@ -33,6 +33,7 @@ const channel=(v:string)=>({form:t('نموذج','Form'),call:t('مكالمات',
+   <dt>{{t('تغطية عدد المقبولين','Accepted-inquiry count coverage')}}</dt><dd>{{coverage(value.acceptance?.coverage)}}</dd>
+   <dt>{{t('ما زال ينتظر التأهيل','Pending qualification')}}</dt><dd>{{value.acceptance?.pending_count??t('غير معلوم','Unknown')}}</dd>
+   <dt>{{t('معيار القبول','Acceptance criterion')}}</dt><dd>{{!value.acceptance?t('غير محدد','Not specified'):value.acceptance.criterion_code==='within_service_area'?t('ضمن نطاق الخدمة','Within service area'):value.acceptance.criterion_code==='response_ready'?t('جاهز للاستجابة','Ready for response'):t('معيار خاص حدده النشاط','Business-defined criterion')}}</dd>
++  <dt>{{t('تعريف معيار القبول','Criterion definition')}}</dt><dd data-inquiry-criterion-definition>{{value.acceptance?.criterion_definition??t('التعريف التاريخي غير معلوم؛ لم نختلق تعريفًا له.','Historical definition unknown; no definition has been invented.')}}</dd>
+   <dt>{{t('إصدار معيار القبول','Criterion version')}}</dt><dd>{{value.acceptance?.criterion_version??t('غير معلوم','Unknown')}}</dd>
+   <dt>{{t('موعد قطع ملاحظة القبول','Acceptance cutoff')}}</dt><dd><bdi>{{value.acceptance?.cutoff??t('غير معلوم','Unknown')}}</bdi></dd>
+   <dt>{{t('نضج القبول','Acceptance maturity')}}</dt><dd>{{value.acceptance?.maturity==='mature'?t('مكتمل بحسب التصريح','Mature as declared'):value.acceptance?.maturity==='pending'?t('لم يكتمل','Pending'):t('غير معلوم','Unknown')}}</dd>
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\resources\\js\\inquiry-evidence\\presentationDrafts.ts" b/resources/js/inquiry-evidence/presentationDrafts.ts
+index b8ad8d7..24971f3 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\resources\\js\\inquiry-evidence\\presentationDrafts.ts"
++++ b/resources/js/inquiry-evidence/presentationDrafts.ts
+@@ -4,7 +4,7 @@ export type InquiryFormFields = {
+     channel: string; country: string; cohortVersion: string; start: string; end: string; asOf: string; timezone: string;
+     cost: string; currency: string; precision: string; costBasis: string; allocationBasis: string;
+     inquiries: string; inquiryCoverage: string; acceptanceEnabled: boolean; accepted: string; pendingCount: string;
+-    criterion: string; criterionVersion: string; cutoff: string; maturity: string; acceptanceCoverage: string;
++    criterion: string; criterionVersion: string; criterionDefinition: string; cutoff: string; maturity: string; acceptanceCoverage: string;
+ };
+ export type InquiryFormDraft = { fields: InquiryFormFields; edit?: EditSnapshot; basis: string; basisRevision: number };
+ // Unsent form work only, confined to this document and exact actor-generation/Business/basis access.
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\resources\\js\\business-foundation\\BusinessWorkspace.vue" b/resources/js/business-foundation/BusinessWorkspace.vue
+index 3c76a02..0c381ac 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\resources\\js\\business-foundation\\BusinessWorkspace.vue"
++++ b/resources/js/business-foundation/BusinessWorkspace.vue
+@@ -65,7 +65,7 @@ async function navigate(section: WorkspaceSection) {
+                 <p class="workspace-context-note">{{ t('لا تحتاج إلى حساب إعلاني متصل أو CRM أو هدف معلن لاستعمال الأقسام المتاحة لك. كل إجراء يخضع لصلاحياته.', 'No connected ad account, CRM or declared goal is required to use your available sections. Each operation has its own permissions.') }}</p>
+             </section>
+             <section v-if="visited.has('inquiries')" v-show="active === 'inquiries'" data-workspace-panel="inquiries">
+-                <InquiryEvidencePanel embedded :business="surface.business.business_public_id" :basis-access="String(surface.authority_selection.requirements[0].leaf_grant_id)" />
++                <InquiryEvidencePanel embedded :active="active === 'inquiries'" :business="surface.business.business_public_id" :basis-access="String(surface.authority_selection.requirements[0].leaf_grant_id)" />
+             </section>
+             <section v-if="visited.has('direction')" v-show="active === 'direction'" data-workspace-panel="direction">
+                 <BusinessFacts :surface="surface" :refreshing="refreshing" @refresh="emit('refresh')" />
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\tests\\Support\\InquiryEvidenceFixture.php" b/tests/Support/InquiryEvidenceFixture.php
+index 73ede3b..2edc941 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\tests\\Support\\InquiryEvidenceFixture.php"
++++ b/tests/Support/InquiryEvidenceFixture.php
+@@ -47,7 +47,7 @@ protected function value(): array
+             'observation' => ['period_start' => '2020-01-01T00:00:00Z', 'period_end' => '2020-01-02T00:00:00Z', 'as_of' => '2020-01-03T00:00:00Z', 'timezone' => 'Asia/Riyadh'],
+             'cost' => ['amount' => '1000.00', 'currency' => 'SAR', 'precision' => 2, 'cost_basis' => 'declared_cohort_cost', 'allocation_basis' => 'whole_cohort'],
+             'inquiries' => ['count' => 100, 'coverage' => 'complete'],
+-            'acceptance' => ['count' => 10, 'pending_count' => 0, 'criterion_code' => 'operator_defined', 'criterion_version' => 1, 'cutoff' => '2020-01-03T00:00:00Z', 'maturity' => 'mature', 'coverage' => 'complete']];
++            'acceptance' => ['count' => 10, 'pending_count' => 0, 'criterion_code' => 'operator_defined', 'criterion_version' => 1, 'criterion_definition' => 'Inquiry explicitly requests an available service', 'cutoff' => '2020-01-03T00:00:00Z', 'maturity' => 'mature', 'coverage' => 'complete']];
+     }
+ 
+     protected function denied(callable $operation, string $state = '42501'): void
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\tests\\Feature\\InquiryEvidenceAdmissionTest.php" b/tests/Feature/InquiryEvidenceAdmissionTest.php
+index bf74227..15a1551 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\tests\\Feature\\InquiryEvidenceAdmissionTest.php"
++++ b/tests/Feature/InquiryEvidenceAdmissionTest.php
+@@ -15,6 +15,53 @@ class InquiryEvidenceAdmissionTest extends TestCase
+ {
+     use InquiryEvidenceFixture;
+ 
++    public function test_criterion_definitions_survive_exact_replay_correction_history_and_withdrawal(): void
++    {
++        $f = $this->fixture();
++        $record = $this->selection($f['enrolled']['grants']['business.inquiry_evidence.record']);
++        $correct = $this->selection($f['enrolled']['grants']['business.inquiry_evidence.correct']);
++        $read = $this->selection($f['enrolled']['grants']['business.inquiry_evidence.read']);
++        $canonical = function ($value) use (&$canonical) { if (!is_array($value)) return $value; foreach ($value as &$child) $child = $canonical($child); unset($child); if (!array_is_list($value)) ksort($value); return $value; };
++        $a = $this->value();
++        $a['acceptance']['criterion_definition'] = 'Inquiry explicitly requests an available service';
++        $command = (string) Str::uuid();
++        $first = $f['evidence']->write($f['request'], $f['business'], $command, null, 0, 'record', $a, $record);
++        $this->assertSame($first, $f['evidence']->write($f['request'], $f['business'], $command, null, 0, 'record', $a, $record));
++        $b = $a;
++        $b['acceptance']['criterion_definition'] = 'الاستفسار يؤكد الاستعداد لطلب خدمة ضمن نطاق النشاط';
++        $b['acceptance']['criterion_version'] = 2;
++        $f['evidence']->write($f['request'], $f['business'], (string) Str::uuid(), $first['declaration_id'], 1, 'correct', $b, $correct);
++        $current = $f['evidence']->read($f['request'], $f['business'], $read)['items'][0];
++        $this->assertSame($canonical($b), $canonical($current['value']));
++        $history = $f['evidence']->read($f['request'], $f['business'], $read, $first['declaration_id']);
++        $this->assertSame($canonical([$a, $b]), $canonical(array_column($history['items'], 'value')));
++        $this->denied(fn () => $f['evidence']->write($f['request'], $f['business'], (string) Str::uuid(), $first['declaration_id'], 1, 'correct', $a, $correct), 'I4090');
++        $this->denied(fn () => $f['evidence']->write($f['request'], $f['business'], $command, null, 0, 'record', $b, $record), '40001');
++        $f['evidence']->write($f['request'], $f['business'], (string) Str::uuid(), $first['declaration_id'], 2, 'withdraw', null, $correct);
++        $this->assertNull($f['evidence']->read($f['request'], $f['business'], $read)['items'][0]['value']);
++        $this->assertSame($canonical([$a, $b, null]), $canonical(array_column($f['evidence']->read($f['request'], $f['business'], $read, $first['declaration_id'])['items'], 'value')));
++    }
++
++    public function test_criterion_definition_rejects_missing_unbounded_contact_code_reference_and_extra_fields(): void
++    {
++        $f = $this->fixture();
++        $record = $this->selection($f['enrolled']['grants']['business.inquiry_evidence.record']);
++        foreach ([null, '', 'short', str_repeat('a', 501), 'Call +966 555 123 456', 'Email client@example.test', '<script>alert(1)</script>', 'https://example.test/rule', 'javascript:alert(1)', 'Rule { execute }', "Line\ncontrol"] as $definition) {
++            $value = $this->value();
++            $value['acceptance']['criterion_definition'] = $definition;
++            $this->denied(fn () => $f['evidence']->write($f['request'], $f['business'], (string) Str::uuid(), null, 0, 'record', $value, $record), '22023');
++        }
++        $value = $this->value(); unset($value['acceptance']['criterion_definition']);
++        $this->denied(fn () => $f['evidence']->write($f['request'], $f['business'], (string) Str::uuid(), null, 0, 'record', $value, $record), '22023');
++        $value = $this->value(); $value['acceptance']['definition_url'] = 'https://example.test';
++        $this->denied(fn () => $f['evidence']->write($f['request'], $f['business'], (string) Str::uuid(), null, 0, 'record', $value, $record), '22023');
++        $value = $this->value(); $value['acceptance']['criterion_code'] = 'within_service_area';
++        $this->denied(fn () => $f['evidence']->write($f['request'], $f['business'], (string) Str::uuid(), null, 0, 'record', $value, $record), '22023');
++        $value['acceptance']['criterion_definition'] = null;
++        $receipt = $f['evidence']->write($f['request'], $f['business'], (string) Str::uuid(), null, 0, 'record', $value, $record);
++        $this->assertSame('SOURCE_ASSERTED', $receipt['assurance']);
++    }
++
+     public function test_explicit_enrollment_creates_only_three_private_non_delegable_actions(): void
+     {
+         $f = $this->fixture();
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\tests\\Feature\\InquiryEvidenceUpgradeTest.php" b/tests/Feature/InquiryEvidenceUpgradeTest.php
+index 8afab7c..86cdec6 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\tests\\Feature\\InquiryEvidenceUpgradeTest.php"
++++ b/tests/Feature/InquiryEvidenceUpgradeTest.php
+@@ -15,6 +15,44 @@ final class InquiryEvidenceUpgradeTest extends TestCase
+ {
+     use InquiryEvidenceFixture;
+ 
++    public function test_legacy_unknown_definition_readback_and_exact_command_replay_survive_admission_correction(): void
++    {
++        // Isolated test only: install the previous validator, admit through the real writer,
++        // then replace the validator as migration540 does. Never rewrite historical rows.
++        $sql = file_get_contents(database_path('sql/inquiry_evidence/validation.sql'));
++        $legacy = str_replace("'criterion_version','criterion_definition','cutoff'", "'criterion_version','cutoff'", $sql);
++        $start = strpos($legacy, '  -- Abstract rule only:');
++        $end = strpos($legacy, "  IF(a->>'cutoff')", $start);
++        $legacy = substr($legacy, 0, $start).substr($legacy, $end);
++        $install = function (string $body): void {
++            $owner = DB::connection('pgsql_migrations');
++            $owner->transaction(function () use ($owner, $body) {
++                $owner->statement('GRANT CREATE ON SCHEMA public,builderad_private TO builderad_scope_executor');
++                $owner->statement('SET LOCAL ROLE builderad_scope_executor');
++                $owner->unprepared(str_replace('CREATE FUNCTION ', 'CREATE OR REPLACE FUNCTION ', $body));
++                $owner->statement('RESET ROLE');
++                $owner->statement('REVOKE CREATE ON SCHEMA public,builderad_private FROM builderad_scope_executor');
++                $owner->unprepared(file_get_contents(database_path('sql/market_evidence/catalog_seal.sql')));
++            });
++        };
++        $install($legacy);
++        try {
++            $f = $this->fixture();
++            $record = $this->selection($f['enrolled']['grants']['business.inquiry_evidence.record']);
++            $read = $this->selection($f['enrolled']['grants']['business.inquiry_evidence.read']);
++            $value = $this->value(); unset($value['acceptance']['criterion_definition']);
++            $command = (string) Str::uuid();
++            $first = $f['evidence']->write($f['request'], $f['business'], $command, null, 0, 'record', $value, $record);
++        } finally {
++            $install($sql);
++        }
++        $this->assertSame($first, $f['evidence']->write($f['request'], $f['business'], $command, null, 0, 'record', $value, $record));
++        $this->assertArrayNotHasKey('criterion_definition', $f['evidence']->read($f['request'], $f['business'], $read)['items'][0]['value']['acceptance']);
++        $this->assertArrayNotHasKey('criterion_definition', $f['evidence']->read($f['request'], $f['business'], $read, $first['declaration_id'])['items'][0]['value']['acceptance']);
++        $this->denied(fn () => $f['evidence']->write($f['request'], $f['business'], (string) Str::uuid(), null, 0, 'record', $value, $record), '22023');
++        $this->assertSame(1, DB::connection('pgsql_migrations')->table('inquiry_evidence_revisions')->count());
++    }
++
+     public function test_populated_530_upgrades_without_automatic_authority_and_empty_schema_can_roll_back(): void
+     {
+         $reset = app(DisposableDatabaseReset::class);
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\tests\\Support\\business-surface-browser.mjs" b/tests/Support/business-surface-browser.mjs
+index b86af32..d931188 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\tests\\Support\\business-surface-browser.mjs"
++++ b/tests/Support/business-surface-browser.mjs
+@@ -57,10 +57,10 @@ try {
+         await page.waitForFunction(selector => document.querySelector('[data-application-spa]')?.dataset.state === 'ready' && !!document.querySelector(selector), selector);
+     };
+     const index = async () => { await page.getByRole('link', { name: 'أنشطتي', exact: true }).first().click(); await page.waitForURL(origin+'/businesses'); await ready(); };
+-    const open = async name => { await page.locator('[data-business-list] li').filter({ has: page.getByRole('heading', { name, exact: true }) }).getByRole('link', { name: 'فتح النشاط', exact: true }).click(); await ready('[data-business-public]'); };
++    const open = async (name,section='settings') => { await page.locator('[data-business-list] li').filter({ has: page.getByRole('heading', { name, exact: true }) }).getByRole('link', { name: 'فتح النشاط', exact: true }).click(); await ready('[data-business-public]'); await page.locator(`[data-workspace-section="${section}"]`).click(); };
+     // Full-run scenarios deliberately rename this Business. Its display label is
+     // not its identity; later scenarios must open that same immutable resource.
+-    const openCreated = async () => { await page.locator(`[data-business-list] a[href^="/businesses/${result.createdBusiness}?"]`).click(); await ready('[data-business-public]'); assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'),result.createdBusiness); };
++    const openCreated = async (section) => { await page.locator(`[data-business-list] a[href^="/businesses/${result.createdBusiness}?"]`).click(); await ready('[data-business-public]'); assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'),result.createdBusiness); if(section)await page.locator(`[data-workspace-section="${section}"]`).click(); };
+     const sendFrom = async (tab, url, method = 'GET', body) => tab.evaluate(async ({ url, method, body }) => {
+         const identity = JSON.parse(document.getElementById('application-bootstrap').textContent).identity;
+         const response = await fetch(url, { method, credentials: 'same-origin', redirect: 'manual', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': identity.csrf, 'X-Builderad-Document': identity.receipt, 'X-Builderad-Transition': identity.transition }, body: body ? JSON.stringify(body) : undefined });
+@@ -101,6 +101,7 @@ try {
+         await panel.locator('[data-inquiry-count]').fill('100');
+         await panel.locator('[data-inquiry-acceptance-toggle]').check();
+         await panel.locator('[data-inquiry-accepted]').fill('10');
++        await panel.locator('textarea[data-inquiry-criterion-definition]').fill('الاستفسار يطلب خدمة متاحة ضمن نطاق النشاط');
+         await panel.locator('[data-inquiry-cutoff]').fill('2020-01-03T00:00:00Z');
+     };
+     await check('BF03 explicit creator opt-in, invalid inputs editable, assertion readback and historical meaning',async()=>{
+@@ -288,6 +289,33 @@ try {
+         assert.equal((await inquirySend('GET',`?access=${rights['business.inquiry_evidence.read']}`)).body.data.items.length,beforeCount+1);
+         return {priorUncertaintySurvives403:true,reEnrollmentDoesNotSilentlyReplace:true,duplicateEffects:0};
+     });
++    await check('BF03 retained reentry qualifies before protected DOM and record-only revocation retains reading',async()=>{
++        const created=await send('/api/businesses','POST',{command_id:crypto.randomUUID(),name:'نشاط اختبار إعادة تأهيل العرض',business_type_id:null});assert.equal(created.status,201);
++        const b=created.body.data,business=b.business_public_id,basis=b.grant_refs['business.context.read'];
++        const base=`/api/businesses/${business}/inquiry-evidence`;
++        const e=await send(`${base}/eligibility?access=${basis}`);assert.equal(e.status,200);
++        const enrolled=await send(`${base}/enrollment`,'POST',{command_id:crypto.randomUUID(),authority_selection:inquirySelection(basis),basis_revision:e.body.data.basis_revision,confirm:true});assert.equal(enrolled.status,200);
++        const grants=enrolled.body.data.grants;
++        const value={cohort:{channel_kind:'form',definition_version:1,country_code:null,population:'recorded_inquiries',counting_policy:'distinct_inquiries'},observation:{period_start:'2020-01-01T00:00:00Z',period_end:'2020-01-02T00:00:00Z',as_of:'2020-01-03T00:00:00Z',timezone:'Asia/Riyadh'},cost:null,inquiries:{count:37,coverage:'complete'},acceptance:null};
++        assert.equal((await send(base,'POST',{command_id:crypto.randomUUID(),authority_selection:inquirySelection(grants['business.inquiry_evidence.record']),value})).status,200);
++        await index();await open('نشاط اختبار إعادة تأهيل العرض','inquiries');const panel=inquiryPanel();await panel.locator('[data-inquiry-open]').waitFor();await openInquiryDetail();
++        await workspaceSection('overview');assert.equal(await panel.locator('[data-inquiry-detail],[data-inquiry-history],.inquiry-record').count(),0);
++        let reached,releaseRead;const waiting=new Promise(resolve=>{reached=resolve;});const held=new Promise(resolve=>{releaseRead=resolve;});
++        await page.route(`**${base}?*`,async route=>{const response=await route.fetch();assert.equal(response.status(),200);reached();await held;await route.fulfill({response});});
++        await workspaceSection('inquiries');await waiting;assert.equal(await panel.locator('[data-inquiry-detail],[data-inquiry-history],.inquiry-record,[data-inquiry-count]').count(),0);
++        assert.equal(await panel.locator('[data-inquiry-message]').count(),0);releaseRead();await panel.locator('[data-inquiry-open]').waitFor();await page.unroute(`**${base}?*`);
++        await inquiryRecord().click();await panel.locator('[data-inquiry-count]').fill('73');
++        assert.equal((await send(`${base}/rights`,'POST',{command_id:crypto.randomUUID(),action:'business.inquiry_evidence.record',authority_selection:inquirySelection(grants['business.inquiry_evidence.record'])})).status,200);
++        await panel.getByRole('button',{name:'التحقق من الحالة الحالية',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');
++        assert.equal(await panel.locator('form').count(),0);assert.ok((await panel.locator('[data-inquiry-message]').innerText()).includes('لم تعد صلاحية'));
++        assert.equal((await send(`${base}?access=${grants['business.inquiry_evidence.read']}`)).status,200);
++        await openInquiryDetail();assert.equal(await panel.getByRole('button',{name:'فتح التصحيح',exact:true}).isEnabled(),true);
++        assert.equal((await send(`${base}/rights`,'POST',{command_id:crypto.randomUUID(),action:'business.inquiry_evidence.read',authority_selection:inquirySelection(grants['business.inquiry_evidence.read'])})).status,200);
++        assert.equal((await send(`${base}?access=${grants['business.inquiry_evidence.read']}`)).status,403);
++        await workspaceSection('overview');await workspaceSection('inquiries');await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');
++        assert.equal(await panel.locator('[data-inquiry-detail],[data-inquiry-history],.inquiry-record,[data-inquiry-count]').count(),0);
++        return {authorizedReentryDelayed:true,noProtectedDOMBeforeQualification:true,recordOnlyRevocation:true,readStill200:true,directRevokedRead403:true,noRetainedDisclosure:true};
++    });
+     let aUrl;
+     await check('A to B to A keeps each human draft and its originating version separate', async () => {
+         await index(); await open('نشاط العميل المفوض'); aUrl = page.url();
+@@ -377,7 +405,7 @@ try {
+     };
+     const factForm = kind => page.locator(`[data-business-fact-form="${kind}"]`);
+     await check('independent markets, explicit whole-business intent and advertiser preferences are discoverable and persist through the shared API', async () => {
+-        await ready('[data-business-facts]');
++        await workspaceSection('direction'); await ready('[data-business-facts]');
+         await factForm('markets').locator('#bf-market-codes').selectOption(['SA', 'JO']);
+         await factForm('markets').getByRole('button', { name: 'حفظ التصريح', exact: true }).click();
+         await factForm('markets').locator('[data-fact-saved]').waitFor();
+@@ -420,13 +448,13 @@ try {
+     let third;
+     await check('fact drafts and missing declarations stay separate when switching between independent businesses', async () => {
+         third = (await send('/api/businesses', 'POST', { command_id: crypto.randomUUID(), name: 'النشاط الثالث لاختبار الفصل', business_type_id: null })).body.data;
+-        await index(); await open('النشاط الثالث لاختبار الفصل');
++        await index(); await open('النشاط الثالث لاختبار الفصل'); await workspaceSection('direction');
+         assert.deepEqual((await surface()).business.declared_markets, []);
+         assert.equal((await surface()).business.current_intent, null);
+         await factForm('markets').locator('#bf-market-codes').selectOption(['AE']);
+-        await index(); await open('التعديل بعد مراجعة النسخة الأحدث');
++        await index(); await open('التعديل بعد مراجعة النسخة الأحدث'); await workspaceSection('direction');
+         assert.deepEqual(await factForm('markets').locator('#bf-market-codes').evaluate(el => Array.from(el.selectedOptions).map(o => o.value)), ['JO','SA']);
+-        await index(); await open('النشاط الثالث لاختبار الفصل');
++        await index(); await open('النشاط الثالث لاختبار الفصل'); await workspaceSection('direction');
+         assert.deepEqual(await factForm('markets').locator('#bf-market-codes').evaluate(el => Array.from(el.selectedOptions).map(o => o.value)), ['AE']);
+         return { independentDrafts: true, absentIntentIsNull: true };
+     });
+@@ -440,9 +468,9 @@ try {
+             await route.fulfill({ response });
+         });
+         await factForm('markets').getByRole('button', { name: 'حفظ التصريح', exact: true }).click(); await reached;
+-        await index(); await open('التعديل بعد مراجعة النسخة الأحدث'); release();
++        await index(); await open('التعديل بعد مراجعة النسخة الأحدث'); await workspaceSection('direction'); release();
+         assert.deepEqual((await surface()).business.declared_markets, ['JO','SA']);
+-        await index(); await open('النشاط الثالث لاختبار الفصل');
++        await index(); await open('النشاط الثالث لاختبار الفصل'); await workspaceSection('direction');
+         await factForm('markets').locator('[data-fact-unknown]').waitFor();
+         await factForm('markets').getByRole('button', { name: 'تحقق بالطلب الأصلي', exact: true }).click();
+         await factForm('markets').locator('[data-fact-saved]').waitFor();
+@@ -459,7 +487,7 @@ try {
+             expected_grant: 1, expires_at: null, delegable: false, realm_workspace_public_id: null, authority_selection: { ...current.authority_selection,
+                 requirements: [{ requirement_kind: 'business', leaf_grant_id: third.grant_refs['business.markets.declare'] }] } });
+         assert.equal(self.status, 200);
+-        await index(); await open('النشاط الثالث لاختبار الفصل');
++        await index(); await open('النشاط الثالث لاختبار الفصل'); await workspaceSection('direction');
+         assert.equal(await factForm('markets').count(), 0);
+         assert.equal((await surface()).fact_write_options.intent.length, 1);
+         await page.getByRole('button', { name: 'النية التجارية الحالية', exact: true }).click();
+@@ -474,7 +502,7 @@ try {
+     };
+     let workspace, firstLink;
+     await check('team collaboration is discoverable, draft authority cannot become agency authority and ending preserves history', async () => {
+-        await settled(); const current = await linkState();
++        await workspaceSection('access'); await settled(); const current = await linkState();
+         assert.equal(current.collaboration.options.length, 1);
+         assert.equal(current.collaboration.options[0].allows_agency, false);
+         assert.equal(current.collaboration.workspaces.length, 2);
+@@ -528,9 +556,9 @@ try {
+             await route.fulfill({ response });
+         });
+         await collaboration.getByRole('button', { name: 'إنهاء العلاقة', exact: true }).click(); await reached;
+-        await index(); await open('التعديل بعد مراجعة النسخة الأحدث'); release();
++        await index(); await open('التعديل بعد مراجعة النسخة الأحدث','access'); release();
+         assert.deepEqual((await surface()).collaboration.relationships, []);
+-        await index(); await open('النشاط الثالث لاختبار الفصل');
++        await index(); await open('النشاط الثالث لاختبار الفصل','access');
+         await collaboration.locator('[data-collaboration-unknown]').waitFor();
+         await collaboration.getByRole('button', { name: 'تحقق بالطلب الأصلي', exact: true }).click();
+         await collaboration.locator('[data-collaboration-confirmed]').waitFor(); await settled();
+@@ -542,7 +570,7 @@ try {
+     await check('qualified agency relationship is managed through the same resource without granting access to workspace members', async () => {
+         fixture('agency-setup');
+         const agency = JSON.parse(await readFile(path.join(run, 'business-agency-fixture.json'), 'utf8'));
+-        await index(); await open('نشاط إدارة الوكالة'); await settled();
++        await index(); await open('نشاط إدارة الوكالة','access'); await settled();
+         const current = await linkState(agency.business, agency.read.leaf);
+         assert.equal(current.collaboration.options[0].allows_agency, true);
+         await collaboration.locator('#bf-link-workspace').selectOption(workspace.public_id);
+@@ -569,7 +597,7 @@ try {
+     });
+     await check('withdrawing independent workspace authority removes its metadata and rejects forged management without withdrawing business reading', async () => {
+         fixture('withdraw-workspace');
+-        await index(); await open('النشاط الثالث لاختبار الفصل'); await settled();
++        await index(); await open('النشاط الثالث لاختبار الفصل','access'); await settled();
+         const current = await linkState();
+         assert.equal(current.collaboration.workspaces.some(w => w.public_id === workspace.public_id), false);
+         assert.deepEqual(current.collaboration.relationships, []);
+@@ -588,7 +616,7 @@ try {
+         await index();
+         const activity = delegationFixture[key];
+         await page.locator(`[data-business-list] a[href="/businesses/${activity.business}?access=${activity.read}"]`).click();
+-        await ready('[data-business-delegation]'); await settled();
++        await ready('[data-business-public]'); await workspaceSection('access'); await ready('[data-business-delegation]'); await settled();
+     };
+     const delegationState = async key => {
+         const activity = delegationFixture[key];
+@@ -625,6 +653,7 @@ try {
+         await recipientPage.locator(`[data-business-list] a[href="/businesses/${delegationFixture.a.business}?access=${firstGrant}"]`).click();
+         await recipientPage.locator('[data-business-name]').waitFor();
+         assert.equal(await recipientPage.locator('[data-business-name]').textContent(), 'عميل التفويض الأول');
++        await recipientPage.locator('[data-workspace-section="access"]').click();
+         assert.equal(await recipientPage.locator('[data-delegation-readonly]').count(), 1);
+         assert.equal((await sendFrom(recipientPage, `/api/businesses/${delegationFixture.a.business}/surface?access=${firstGrant}`)).status, 200);
+         return { issued: firstGrant, recipientRealRead: 200, recipientDelegationOptions: 0, recipientAccountWithoutBusiness: true, identifierDiscoveredInUI: true,
+@@ -909,7 +938,7 @@ try {
+         const b = dataFixture[key].business; const response = await send(`/api/businesses/${b.business_public_id}/surface?access=${b.grant_refs['business.context.read']}`);
+         assert.equal(response.status, 200); return response.body.data;
+     };
+-    const openData = async key => { await index(); await open(dataFixture[key].name); await dataPanel.waitFor(); await page.waitForFunction(() => !document.querySelector('[data-business-rechecking]') && (!!document.querySelector('[data-data-use-reconcile]') || !document.querySelector('#bf-data-scope')?.matches(':disabled'))); };
++    const openData = async key => { await index(); await open(dataFixture[key].name,'access'); await dataPanel.waitFor(); await page.waitForFunction(() => !document.querySelector('[data-business-rechecking]') && (!!document.querySelector('[data-data-use-reconcile]') || !document.querySelector('#bf-data-scope')?.matches(':disabled'))); };
+     const selectData = async key => { await dataPanel.locator('#bf-data-scope').selectOption(String(dataFixture[key].data.grant_id)); await dataPanel.locator('[data-data-use-details]').waitFor(); };
+     const bindData = async key => {
+         await selectData(key); await dataPanel.getByRole('button', { name: 'طلب ربط النطاق بالنشاط', exact: true }).click();
+@@ -1130,13 +1159,13 @@ try {
+         await page.evaluate(() => window.__legacyDelay.restore()); release = undefined;
+         assert.equal(await legacyPanel.locator('[data-legacy-purpose]').count(), 0);
+         assert.equal(await legacyPanel.locator('[data-legacy-empty]').count(), 1);
+-        await index(); await openCreated(); await legacyPanel.locator('summary').click(); await legacyPanel.locator('[data-legacy-empty]').waitFor();
++        await index(); await openCreated('settings'); await legacyPanel.locator('summary').click(); await legacyPanel.locator('[data-legacy-empty]').waitFor();
+         return { qualificationWithdrawn: true, oldCompletedResponseDiscarded: true, unrelatedBusinessEmptyQualifiedSubset: true, nativeHistoryRetainedByBackendProof: true };
+     });
+     await check('native Business Purpose declaration, current applicability and correction use one owner', async () => {
+         fixture('purpose-setup');
+         const f = JSON.parse(await readFile(path.join(run, 'business-purpose-fixture.json'), 'utf8'));
+-        await page.goto(`${origin}/businesses/${f.business}?access=${f.read.leaf}`); await ready('[data-business-public]');
++        await page.goto(`${origin}/businesses/${f.business}?access=${f.read.leaf}`); await ready('[data-business-public]'); await workspaceSection('settings');
+         const panel = page.locator('[data-business-purposes]');
+         await panel.locator('summary').first().click(); await panel.locator('[data-purpose-empty]').waitFor();
+         await panel.locator('[data-purpose-create]').click();
+@@ -1174,7 +1203,7 @@ try {
+     await check('native Business Purpose write revocation retains independent read and stale response cannot cross Business', async () => {
+         const f = JSON.parse(await readFile(path.join(run,'business-purpose-fixture.json'),'utf8'));
+         fixture('purpose-revoke-write');
+-        await page.goto(`${origin}/businesses/${f.business}?access=${f.read.leaf}`); await ready('[data-business-public]');
++        await page.goto(`${origin}/businesses/${f.business}?access=${f.read.leaf}`); await ready('[data-business-public]'); await workspaceSection('settings');
+         const panel=page.locator('[data-business-purposes]'); await panel.locator('summary').first().click(); await panel.locator('[data-purpose-item]').waitFor();
+         assert.equal(await panel.locator('[data-purpose-create], [data-purpose-edit]').count(),0);
+         await page.evaluate(target=>{
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\contracts\\application.openapi.json" b/contracts/application.openapi.json
+index b9cf7f8..acb454e 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\contracts\\application.openapi.json"
++++ b/contracts/application.openapi.json
+@@ -31233,7 +31233,7 @@
+                               "value": {
+                                 "anyOf": [
+                                   {
+-                                    "$ref": "#/components/schemas/InquiryDeclarationValue"
++                                    "$ref": "#/components/schemas/InquiryHistoricalDeclarationValue"
+                                   },
+                                   {
+                                     "type": "null"
+@@ -32023,7 +32023,7 @@
+                               "value": {
+                                 "anyOf": [
+                                   {
+-                                    "$ref": "#/components/schemas/InquiryDeclarationValue"
++                                    "$ref": "#/components/schemas/InquiryHistoricalDeclarationValue"
+                                   },
+                                   {
+                                     "type": "null"
+@@ -49664,6 +49664,266 @@
+                     "type": "integer",
+                     "minimum": 1
+                   },
++                  "criterion_definition": {
++                    "anyOf": [
++                      {
++                        "type": "string",
++                        "minLength": 8,
++                        "maxLength": 500
++                      },
++                      {
++                        "type": "null"
++                      }
++                    ]
++                  },
++                  "cutoff": {
++                    "type": "string"
++                  },
++                  "maturity": {
++                    "enum": [
++                      "mature",
++                      "pending",
++                      "unknown"
++                    ]
++                  },
++                  "coverage": {
++                    "enum": [
++                      "complete",
++                      "partial",
++                      "unknown"
++                    ]
++                  }
++                },
++                "required": [
++                  "count",
++                  "pending_count",
++                  "criterion_code",
++                  "criterion_version",
++                  "criterion_definition",
++                  "cutoff",
++                  "maturity",
++                  "coverage"
++                ],
++                "additionalProperties": false
++              },
++              {
++                "type": "null"
++              }
++            ]
++          }
++        },
++        "required": [
++          "cohort",
++          "observation",
++          "cost",
++          "inquiries",
++          "acceptance"
++        ],
++        "additionalProperties": false
++      },
++      "InquiryHistoricalDeclarationValue": {
++        "type": "object",
++        "properties": {
++          "cohort": {
++            "type": "object",
++            "properties": {
++              "channel_kind": {
++                "enum": [
++                  "form",
++                  "call",
++                  "message",
++                  "crm",
++                  "other"
++                ]
++              },
++              "definition_version": {
++                "type": "integer",
++                "minimum": 1
++              },
++              "country_code": {
++                "anyOf": [
++                  {
++                    "type": "string",
++                    "pattern": "^[A-Z]{2}$"
++                  },
++                  {
++                    "type": "null"
++                  }
++                ]
++              },
++              "population": {
++                "const": "recorded_inquiries"
++              },
++              "counting_policy": {
++                "const": "distinct_inquiries"
++              }
++            },
++            "required": [
++              "channel_kind",
++              "definition_version",
++              "country_code",
++              "population",
++              "counting_policy"
++            ],
++            "additionalProperties": false
++          },
++          "observation": {
++            "type": "object",
++            "properties": {
++              "period_start": {
++                "type": "string"
++              },
++              "period_end": {
++                "type": "string"
++              },
++              "as_of": {
++                "type": "string"
++              },
++              "timezone": {
++                "type": "string"
++              }
++            },
++            "required": [
++              "period_start",
++              "period_end",
++              "as_of",
++              "timezone"
++            ],
++            "additionalProperties": false
++          },
++          "cost": {
++            "anyOf": [
++              {
++                "type": "object",
++                "properties": {
++                  "amount": {
++                    "type": "string",
++                    "pattern": "^(0|[1-9][0-9]{0,11})([.][0-9]{1,8})?$"
++                  },
++                  "currency": {
++                    "type": "string",
++                    "pattern": "^[A-Z]{3}$"
++                  },
++                  "precision": {
++                    "type": "integer",
++                    "minimum": 0,
++                    "maximum": 8
++                  },
++                  "cost_basis": {
++                    "enum": [
++                      "advertising_spend",
++                      "declared_cohort_cost"
++                    ]
++                  },
++                  "allocation_basis": {
++                    "enum": [
++                      "whole_cohort",
++                      "declared_attribution"
++                    ]
++                  }
++                },
++                "required": [
++                  "amount",
++                  "currency",
++                  "precision",
++                  "cost_basis",
++                  "allocation_basis"
++                ],
++                "additionalProperties": false
++              },
++              {
++                "type": "null"
++              }
++            ]
++          },
++          "inquiries": {
++            "anyOf": [
++              {
++                "type": "object",
++                "properties": {
++                  "count": {
++                    "anyOf": [
++                      {
++                        "type": "integer",
++                        "minimum": 0,
++                        "maximum": 1000000000000
++                      },
++                      {
++                        "type": "null"
++                      }
++                    ]
++                  },
++                  "coverage": {
++                    "enum": [
++                      "complete",
++                      "partial",
++                      "unknown"
++                    ]
++                  }
++                },
++                "required": [
++                  "count",
++                  "coverage"
++                ],
++                "additionalProperties": false
++              },
++              {
++                "type": "null"
++              }
++            ]
++          },
++          "acceptance": {
++            "anyOf": [
++              {
++                "type": "object",
++                "properties": {
++                  "count": {
++                    "anyOf": [
++                      {
++                        "type": "integer",
++                        "minimum": 0,
++                        "maximum": 1000000000000
++                      },
++                      {
++                        "type": "null"
++                      }
++                    ]
++                  },
++                  "pending_count": {
++                    "anyOf": [
++                      {
++                        "type": "integer",
++                        "minimum": 0,
++                        "maximum": 1000000000000
++                      },
++                      {
++                        "type": "null"
++                      }
++                    ]
++                  },
++                  "criterion_code": {
++                    "enum": [
++                      "operator_defined",
++                      "within_service_area",
++                      "response_ready"
++                    ]
++                  },
++                  "criterion_version": {
++                    "type": "integer",
++                    "minimum": 1
++                  },
++                  "criterion_definition": {
++                    "anyOf": [
++                      {
++                        "type": "string",
++                        "minLength": 8,
++                        "maxLength": 500
++                      },
++                      {
++                        "type": "null"
++                      }
++                    ]
++                  },
+                   "cutoff": {
+                     "type": "string"
+                   },
+@@ -49808,7 +50068,7 @@
+                 "value": {
+                   "anyOf": [
+                     {
+-                      "$ref": "#/components/schemas/InquiryDeclarationValue"
++                      "$ref": "#/components/schemas/InquiryHistoricalDeclarationValue"
+                     },
+                     {
+                       "type": "null"
+diff --git "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\resources\\js\\api\\generated\\application.d.ts" b/resources/js/api/generated/application.d.ts
+index a265529..1d9549b 100644
+--- "a/C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume\\before\\resources\\js\\api\\generated\\application.d.ts"
++++ b/resources/js/api/generated/application.d.ts
+@@ -6743,6 +6743,52 @@ export interface components {
+                 /** @enum {unknown} */
+                 criterion_code: "operator_defined" | "within_service_area" | "response_ready";
+                 criterion_version: number;
++                criterion_definition: string | null;
++                cutoff: string;
++                /** @enum {unknown} */
++                maturity: "mature" | "pending" | "unknown";
++                /** @enum {unknown} */
++                coverage: "complete" | "partial" | "unknown";
++            } | null;
++        };
++        InquiryHistoricalDeclarationValue: {
++            cohort: {
++                /** @enum {unknown} */
++                channel_kind: "form" | "call" | "message" | "crm" | "other";
++                definition_version: number;
++                country_code: string | null;
++                /** @constant */
++                population: "recorded_inquiries";
++                /** @constant */
++                counting_policy: "distinct_inquiries";
++            };
++            observation: {
++                period_start: string;
++                period_end: string;
++                as_of: string;
++                timezone: string;
++            };
++            cost: {
++                amount: string;
++                currency: string;
++                precision: number;
++                /** @enum {unknown} */
++                cost_basis: "advertising_spend" | "declared_cohort_cost";
++                /** @enum {unknown} */
++                allocation_basis: "whole_cohort" | "declared_attribution";
++            } | null;
++            inquiries: {
++                count: number | null;
++                /** @enum {unknown} */
++                coverage: "complete" | "partial" | "unknown";
++            } | null;
++            acceptance: {
++                count: number | null;
++                pending_count: number | null;
++                /** @enum {unknown} */
++                criterion_code: "operator_defined" | "within_service_area" | "response_ready";
++                criterion_version: number;
++                criterion_definition?: string | null;
+                 cutoff: string;
+                 /** @enum {unknown} */
+                 maturity: "mature" | "pending" | "unknown";
+@@ -6785,7 +6831,7 @@ export interface components {
+                 state: "source_asserted" | "withdrawn";
+                 /** @enum {unknown} */
+                 reason: "initial" | "correction" | "withdrawal";
+-                value: components["schemas"]["InquiryDeclarationValue"] | null;
++                value: components["schemas"]["InquiryHistoricalDeclarationValue"] | null;
+                 recorded_at: string;
+                 /** Format: uuid */
+                 original_issuer: string;
+@@ -25208,7 +25254,7 @@ export interface operations {
+                                 state: "source_asserted" | "withdrawn";
+                                 /** @enum {unknown} */
+                                 reason: "initial" | "correction" | "withdrawal";
+-                                value: components["schemas"]["InquiryDeclarationValue"] | null;
++                                value: components["schemas"]["InquiryHistoricalDeclarationValue"] | null;
+                                 recorded_at: string;
+                                 /** Format: uuid */
+                                 original_issuer: string;
+@@ -25545,7 +25591,7 @@ export interface operations {
+                                 state: "source_asserted" | "withdrawn";
+                                 /** @enum {unknown} */
+                                 reason: "initial" | "correction" | "withdrawal";
+-                                value: components["schemas"]["InquiryDeclarationValue"] | null;
++                                value: components["schemas"]["InquiryHistoricalDeclarationValue"] | null;
+                                 recorded_at: string;
+                                 /** Format: uuid */
+                                 original_issuer: string;

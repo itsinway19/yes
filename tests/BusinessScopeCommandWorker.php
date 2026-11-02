@@ -10,14 +10,31 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+echo 'BOOT_STAGE=entry'.PHP_EOL;
+flush();
+register_shutdown_function(static function (): void {
+    $error = error_get_last();
+    if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        fwrite(STDERR, 'BOOT_FATAL='.json_encode($error, JSON_THROW_ON_ERROR).PHP_EOL);
+    }
+});
 require dirname(__DIR__).'/vendor/autoload.php';
+echo 'BOOT_STAGE=autoloaded'.PHP_EOL;
+flush();
 $app = require dirname(__DIR__).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
+echo 'BOOT_STAGE=kernel_ready'.PHP_EOL;
+flush();
 app(DisposableTestDatabaseGuard::class)->assertSafe();
 $f = json_decode(file_get_contents($argv[1]), true, flags: JSON_THROW_ON_ERROR);
 $user = User::findOrFail($f['actor']);
 DB::scalar("SELECT set_config('application_name',?,false)", [$f['run']]);
-echo 'READY_PID='.DB::scalar('SELECT pg_backend_pid()').PHP_EOL;
+$readyPid = (int) DB::scalar('SELECT pg_backend_pid()');
+// A durable test handshake does not depend on Windows stdout pipe delivery.
+if (! empty($f['ready'])) {
+    file_put_contents($f['ready'], json_encode(['pid' => $readyPid, 'run' => $f['run']], JSON_THROW_ON_ERROR), LOCK_EX);
+}
+echo 'READY_PID='.$readyPid.PHP_EOL;
 flush();
 $deadline = microtime(true) + 25;
 $releaseValue = null;

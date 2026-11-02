@@ -4,7 +4,7 @@ import { locale } from '../spa/locale';
 import { owned, stamp, TransportError } from '../spa/transport';
 import { drafts, key, type EditorDraft } from './drafts';
 import { write, type Surface } from './api';
-const props = defineProps<{ surface: Surface; refreshing?: boolean }>();
+const props = defineProps<{ surface: Surface; refreshing?: boolean; embedded?: boolean }>();
 const emit = defineEmits<{ refresh: [] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const resourceKey = key(props.surface.business.business_public_id, props.surface.authority_selection);
@@ -63,8 +63,8 @@ async function save() {
 }
 </script>
 <template>
-    <header class="bf-heading"><div><p class="bf-eyebrow">{{ t('معلومات النشاط', 'Business details') }}</p><h1 data-business-name>{{ displayedName }}</h1><p>{{ t('هذه المعلومات تخص النشاط المختار وحده.', 'These details belong only to the selected business.') }}</p></div></header>
-    <section class="bf-card bf-form" :data-business-public="business.business_public_id">
+    <header v-if="!embedded" class="bf-heading"><div><p class="bf-eyebrow">{{ t('معلومات النشاط', 'Business details') }}</p><h1 data-business-name>{{ displayedName }}</h1><p>{{ t('هذه المعلومات تخص النشاط المختار وحده.', 'These details belong only to the selected business.') }}</p></div></header>
+    <section class="bf-card bf-form" :data-business-public="embedded ? undefined : business.business_public_id">
         <p v-if="!options.length || denied" role="status" data-business-readonly>{{ t('يمكنك الاطلاع على المعلومات. لا يوجد تفويض متاح لتعديلها هنا.', 'You can view these details. No editing delegation is available here.') }}</p>
         <label v-if="options.length > 1" for="bf-write-path">{{ t('تفويض التعديل', 'Editing delegation') }}<select id="bf-write-path" v-model="draft.selected" :disabled="busy || !!draft.pending"><option value="">{{ t('اختر التفويض', 'Choose delegation') }}</option><option v-for="(option, i) in options" :key="option.grant_id" :value="option.grant_id">{{ t('تفويض', 'Delegation') }} {{ i + 1 }}</option></select></label>
         <form @submit.prevent="save">

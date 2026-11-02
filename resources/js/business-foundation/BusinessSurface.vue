@@ -7,14 +7,7 @@ import { owned, stamp } from '../spa/transport';
 import { locale } from '../spa/locale';
 import { key } from './drafts';
 import BusinessCreate from './BusinessCreate.vue';
-import BusinessEditor from './BusinessEditor.vue';
-import BusinessFacts from './BusinessFacts.vue';
-import BusinessCollaboration from './BusinessCollaboration.vue';
-import BusinessDelegation from './BusinessDelegation.vue';
-import BusinessDataUse from './BusinessDataUse.vue';
-import BusinessPurposes from './BusinessPurposes.vue';
-import BusinessHistory from './BusinessHistory.vue';
-import BusinessLegacyHistory from './BusinessLegacyHistory.vue';
+import BusinessWorkspace from './BusinessWorkspace.vue';
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const data = computed(() => current.value?.data);
 const route = useRoute();
@@ -61,23 +54,7 @@ async function refresh() {
             </ul>
             <RouterLink v-if="data.next_cursor" :to="`/businesses?after=${data.next_cursor}`" class="bf-link">{{ t('الصفحة التالية', 'Next page') }}</RouterLink>
         </template>
-        <template v-else-if="data && 'business' in data">
-            <BusinessEditor :key="key(data.business.business_public_id, data.authority_selection)" :surface="data" :refreshing="refreshing" @refresh="refresh" />
-            <details class="bf-card" data-business-commercial>
-                <summary>{{ t('الاشتراك وإتاحة الخدمات', 'Subscription and service availability') }}</summary>
-                <p>{{ t('يمكنك إدارة تصريحات النشاط وفق صلاحياتك. لم تُثبت بعد تغطية اشتراك أو حصة خدمة لهذا النشاط.', 'You can manage business declarations under your rights. Subscription coverage or a service allowance has not yet been established for this Business.') }}</p>
-                <p>{{ t('لا ننقل اشتراك مساحة التعاون إلى النشاط تلقائيًا. إدارة المصدر أو الدفع لا يمنحان حق استعمال بيانات العملاء.', 'A collaboration workspace subscription is not automatically transferred to this Business. Source management or payment grants no customer-data access.') }}</p>
-                <p>{{ t('الخدمات المشروطة غير مفعّلة دون عقد إتاحة وحصة مؤهل؛ عدم معرفة الحصة لا يعني صفرًا أو استعمالًا غير محدود.', 'Conditioned services remain unavailable without qualified entitlement and capacity. Unknown capacity means neither zero nor unlimited usage.') }}</p>
-            </details>
-            <BusinessFacts :key="`${key(data.business.business_public_id, data.authority_selection)}:facts`" :surface="data" :refreshing="refreshing" @refresh="refresh" />
-            <BusinessPurposes :key="`${key(data.business.business_public_id, data.authority_selection)}:purposes`" :surface="data" :refreshing="refreshing" />
-            <BusinessHistory :key="`${key(data.business.business_public_id, data.authority_selection)}:history`" :surface="data" :refreshing="refreshing" />
-            <BusinessLegacyHistory :key="`${key(data.business.business_public_id, data.authority_selection)}:legacy-history`" :surface="data" :refreshing="refreshing" />
-            <BusinessCollaboration :key="`${key(data.business.business_public_id, data.authority_selection)}:relationships`" :surface="data" :refreshing="refreshing" @refresh="refresh" />
-            <BusinessDelegation :key="`${key(data.business.business_public_id, data.authority_selection)}:delegations`" :surface="data" :refreshing="refreshing" @refresh="refresh" />
-            <BusinessDataUse :key="`${key(data.business.business_public_id, data.authority_selection)}:data-use`" :surface="data" :refreshing="refreshing" @refresh="refresh" />
-            <p v-if="refreshing" role="status" data-business-rechecking>{{ t('جارٍ التحقق من معلومات النشاط الحالية…', 'Checking current business information…') }}</p>
-        </template>
+        <BusinessWorkspace v-else-if="data && 'business' in data" :key="key(data.business.business_public_id, data.authority_selection)" :surface="data" :refreshing="refreshing" @refresh="refresh" />
         <BusinessCreate v-else-if="data && 'catalog' in data" :catalog="data.catalog" />
     </main>
 </template>

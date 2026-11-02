@@ -1,0 +1,99 @@
+{
+  "scope": "Generated InquiryDeclarationValue schema only; SQL constraints separately inspected, not executed.",
+  "baselineAccepted": true,
+  "acceptanceProperties": [
+    "count",
+    "pending_count",
+    "criterion_code",
+    "criterion_version",
+    "cutoff",
+    "maturity",
+    "coverage"
+  ],
+  "cohortProperties": [
+    "channel_kind",
+    "definition_version",
+    "country_code",
+    "population",
+    "counting_policy"
+  ],
+  "variants": [
+    {
+      "name": "criterion_definition",
+      "accepted": false,
+      "errors": [
+        {
+          "instancePath": "/acceptance",
+          "schemaPath": "#/properties/acceptance/anyOf/0/additionalProperties",
+          "keyword": "additionalProperties",
+          "params": {
+            "additionalProperty": "criterion_definition"
+          },
+          "message": "must NOT have additional properties"
+        },
+        {
+          "instancePath": "/acceptance",
+          "schemaPath": "#/properties/acceptance/anyOf/1/type",
+          "keyword": "type",
+          "params": {
+            "type": "null"
+          },
+          "message": "must be null"
+        },
+        {
+          "instancePath": "/acceptance",
+          "schemaPath": "#/properties/acceptance/anyOf",
+          "keyword": "anyOf",
+          "params": {},
+          "message": "must match a schema in anyOf"
+        }
+      ]
+    },
+    {
+      "name": "criterion_ref",
+      "accepted": false,
+      "errors": [
+        {
+          "instancePath": "/acceptance",
+          "schemaPath": "#/properties/acceptance/anyOf/0/additionalProperties",
+          "keyword": "additionalProperties",
+          "params": {
+            "additionalProperty": "criterion_ref"
+          },
+          "message": "must NOT have additional properties"
+        },
+        {
+          "instancePath": "/acceptance",
+          "schemaPath": "#/properties/acceptance/anyOf/1/type",
+          "keyword": "type",
+          "params": {
+            "type": "null"
+          },
+          "message": "must be null"
+        },
+        {
+          "instancePath": "/acceptance",
+          "schemaPath": "#/properties/acceptance/anyOf",
+          "keyword": "anyOf",
+          "params": {},
+          "message": "must match a schema in anyOf"
+        }
+      ]
+    },
+    {
+      "name": "cohort_definition",
+      "accepted": false,
+      "errors": [
+        {
+          "instancePath": "/cohort",
+          "schemaPath": "#/properties/cohort/additionalProperties",
+          "keyword": "additionalProperties",
+          "params": {
+            "additionalProperty": "definition"
+          },
+          "message": "must NOT have additional properties"
+        }
+      ]
+    }
+  ]
+}

@@ -50,7 +50,7 @@ final class MarketEvidenceConcurrencyTest extends TestCase
         $request->setLaravelSession(app('session')->driver());
         $command = (string) Str::uuid();
         $input = ['run' => $run, 'actor' => $user->id, 'session' => SessionAuthority::sessionKey($request), 'command' => $command,
-            'operation' => 'market-write', 'evidence' => $evidence, 'scope' => $right['scope_id'], 'expected' => 0,
+            'ready' => $path.'.ready', 'operation' => 'market-write', 'evidence' => $evidence, 'scope' => $right['scope_id'], 'expected' => 0,
             'payload' => $this->offer(), 'selection' => $this->marketSelection($right), 'release' => $release];
         $expiry = null;
         $evidenceExpires = in_array($mode, ['evidence_expiry', 'retained_expiry'], true);
@@ -74,10 +74,20 @@ final class MarketEvidenceConcurrencyTest extends TestCase
         $worker = new Process([PHP_BINARY, base_path('tests/BusinessScopeCommandWorker.php'), $path], base_path());
         $worker->setTimeout(45);
         $db = DB::connection('pgsql_migrations');
-        $proof = ['mode' => $mode, 'run' => $run, 'expiry' => $expiry];
+        $proof = ['mode' => $mode, 'run' => $run, 'expiry' => $expiry, 'started_at' => microtime(true)];
         try {
             $worker->start();
-            $this->waitFor(fn () => str_contains($worker->getOutput(), 'READY_PID='), $worker);
+            $proof['ready'] = $this->waitFor(function () use ($worker, $path, $run) {
+                clearstatcache(true, $path.'.ready');
+                $ready = is_file($path.'.ready') ? json_decode(file_get_contents($path.'.ready'), true) : null;
+                if (! $worker->isRunning() || ! is_array($ready) || ($ready['run'] ?? null) !== $run || ! is_int($ready['pid'] ?? null)) {
+                    return false;
+                }
+
+                // Fresh server observation: the exact live connection is outside a transaction.
+                return DB::selectOne('SELECT pid,application_name,backend_xid::text AS xid FROM pg_stat_activity WHERE pid=? AND application_name=? AND backend_xid IS NULL', [$ready['pid'], $run]);
+            }, $worker);
+            $proof['ready_at'] = microtime(true);
             if ($evidenceExpires) {
                 // Complete Business/right setup and bootstrap the worker before starting
                 // the existing three-second evidence window. Send its exact new ref only
@@ -140,12 +150,13 @@ final class MarketEvidenceConcurrencyTest extends TestCase
             if ($db->transactionLevel() > 0) {
                 $db->rollBack();
             }
+            $proof['before_cleanup'] = ['running' => $worker->isRunning(), 'exit' => $worker->getExitCode(), 'stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput()];
             if ($worker->isRunning()) {
                 $worker->stop();
             }
             $proof['worker'] = ['exit' => $worker->getExitCode(), 'stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput()];
             file_put_contents(storage_path('framework/testing/'.$run.'-evidence.json'), json_encode($proof, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
-            foreach ([$path, $release] as $file) {
+            foreach ([$path, $release, $path.'.ready'] as $file) {
                 if (is_file($file)) {
                     unlink($file);
                 }

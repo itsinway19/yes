@@ -1,0 +1,7 @@
+{
+  "run": "C:/dev/builderad-worktrees/ba-commercial-expertise-001/storage/framework/testing/goals-spa-30a67e58-6f5b-458d-a486-0444c12894fe",
+  "syntheticOnly": true,
+  "probes": [],
+  "errors": [],
+  "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n201 !== 200\n\n    at file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/docs/execution/structural-foundation/review-evidence/BF03-I01-FINAL-INDEPENDENT-REVIEW-001/ux-supplemental.mjs:36:146"
+}

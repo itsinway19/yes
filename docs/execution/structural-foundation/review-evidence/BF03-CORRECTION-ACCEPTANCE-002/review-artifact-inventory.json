@@ -1,0 +1,326 @@
+{
+  "report": "docs\\execution\\structural-foundation\\BF03_FINAL_CORRECTION_ACCEPTANCE_REVIEW.md",
+  "reportSha256": "0fcb3cac77e471abdaaaaee0b41e2ceb5c28ee2112d55c80a302322c84b05f0b",
+  "artifacts": [
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/acceptance-browser.mjs",
+      "bytes": 16539,
+      "sha256": "4819ed5b919535c4e14308076a959b756a6c0a1642303cb9809394f5eebfc767"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/actor-b-no-a-state.png",
+      "bytes": 31344,
+      "sha256": "86b4c6a6f807a88ff51efa4a978754375329570fca2a2fa4a28da6e488ea145f"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/candidate-audit.json",
+      "bytes": 1916,
+      "sha256": "5cb42bbf691810ea36db7c1bd7638d6596cedc03dfab2245d132f78272720a97"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/cleanup.json",
+      "bytes": 694,
+      "sha256": "1d352b06cc33cbbeb8039a907e675f7e43879dc568ff536abb57d68bb9f1f8d1"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/correction-source.diff",
+      "bytes": 89585,
+      "sha256": "03d3c8e1ee899e4eb22b98315450160a1fc35aa8081c7603edb189fe3f1bf016"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/criterion-history-ar.png",
+      "bytes": 174689,
+      "sha256": "177279f1fbbb24f1fb2cf1bd0d7da31173b204da62fa25ddb9cb881838ae0d5d"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/derived-runner.ps1",
+      "bytes": 15807,
+      "sha256": "a421ef47d49604b17e96049c42a66f302740dcb39631fcebefc9e6bb2c8484b3"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/expiry-fixture.php",
+      "bytes": 1379,
+      "sha256": "a803ebf9fe9fa7c917f5cc1f78ac4dd3fc10e0c9e1494a4aeb79bf1b8ba1f805"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/final-source-equivalence.json",
+      "bytes": 237,
+      "sha256": "c1f431d763479d015d5e8ec85667c7e1b3cba0cea53e6132321757f04597ad05"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/initial-source-manifest.json",
+      "bytes": 143927,
+      "sha256": "aa0ed714efde7107af92a30c05a0b50ddf522b4d5fe1bf64550723e8465952d3"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/initial-status.txt",
+      "bytes": 10441,
+      "sha256": "b68566401da68b79e7fcc78bb83b3c7142bb62e09a5cf8fa1e09c67f53f842ec"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/live-results.json",
+      "bytes": 7472,
+      "sha256": "79422f5e16cfe7af6eb651cb30efef451a3d803b7ff762ea73196e86becfbcf2"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/per-run-source-equivalence.json",
+      "bytes": 1111,
+      "sha256": "1af2a5de6d8afded36acf9994f1698a6b6409c4222cf04b359b912ea1022d3e6"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/probe-failure.png",
+      "bytes": 6886,
+      "sha256": "d295e686a649dacf925692276cce959a9d554c137884f6d90e09f1bab43b2d64"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/raw-evidence-audit.json",
+      "bytes": 3474,
+      "sha256": "02a872b138cd3e730d68320aee9c889b8522ef1e65186bb5e8d0f601defcb63d"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/revoked-return-concealed.png",
+      "bytes": 37757,
+      "sha256": "777bebff91a6d27a484574768830f2b48c3ea2985f5edb4cec47c6b0999df485"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/run-review.ps1",
+      "bytes": 1944,
+      "sha256": "5580b8c79c50a160f5363bbb09a4dc2a7b88c6a44e527fdab035246a06232256"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/runner-console.log",
+      "bytes": 8407,
+      "sha256": "63e7af8481de3064ed10ce072436840b8f0f792f69cd84596df57b47127bae4b"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/runner-derivation.json",
+      "bytes": 424,
+      "sha256": "0752c7d2b7e2c06e44be45b89269e6804c94b864313ceff370ce01b08f3385c0"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/acceptance-browser.mjs",
+      "bytes": 15964,
+      "sha256": "5b773eefefabd107afd087ef5d85f8c7ab2653135600d291abcf3c53762b27db"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/browser.log",
+      "bytes": 4797,
+      "sha256": "65e25a5d2ff77939105b510b0240f58ebf51b76c1e0d67e3a4d18432949020d7"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/criterion-history-ar.png",
+      "bytes": 174318,
+      "sha256": "ea755306d409c5cfeb92143fea089bb37dd062981736929515d68f71b6821b0a"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/derived-runner.ps1",
+      "bytes": 15807,
+      "sha256": "a421ef47d49604b17e96049c42a66f302740dcb39631fcebefc9e6bb2c8484b3"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/fixture-setup.log",
+      "bytes": 795,
+      "sha256": "bcfd3215001ff0acbdbddc0e09bb9ea029debbaddd9f8d988ed14b07efa86531"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/live-results.json",
+      "bytes": 4451,
+      "sha256": "d9a7c3ae3142ba7793e472641dd5f0afd76c68101c550934e90989f1cd5aafdd"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/postgres.log",
+      "bytes": 2507,
+      "sha256": "68d14b18565d6380f51def55778bf407ce218cbcac16409f2e9d4e72dc30e8a5"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/probe-failure.png",
+      "bytes": 130403,
+      "sha256": "589935957387a832c7cd0d0788042322ac3e579f2322a58a51f4fb0099584794"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/processes.json",
+      "bytes": 179,
+      "sha256": "8f134c20d7594fa6ca09c933b34713f429124815e675a895ca0ac66304da6860"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/runner-console.log",
+      "bytes": 14956,
+      "sha256": "c2d21b00fa069a406150aa1838fe7d195a65928417f9e9bb1d893cb83de14688"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/runner-derivation.json",
+      "bytes": 424,
+      "sha256": "bb98bdc0d07d946659e267bfea09de21e15b83d193bf58e0265b6e19eedef15c"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/server-8136-error.log",
+      "bytes": 43313,
+      "sha256": "7532da8c8ebec0939d0f75ebf879e19b04e2e51fc523001bececc233bacdad12"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/server-8137-error.log",
+      "bytes": 89,
+      "sha256": "d5f5cfeb8c5154f474a55ecb4c58c616fb86c4f86ea610cbd381fc85b1f4de3d"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/source-manifest.json",
+      "bytes": 145831,
+      "sha256": "2e892a507d359775f569a5c6dc126feaa2158f927cb5c7c4e60223ebac5ef2f6"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt1/source-unchanged.txt",
+      "bytes": 5,
+      "sha256": "60a33e6cf5151f2d52eddae9685cfa270426aa89d8dbc7dfb854606f1d1a40fe"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/acceptance-browser.mjs",
+      "bytes": 16483,
+      "sha256": "61ea0c65d56d8358a73073c95d7be9cdc147b1294f2045dd132c25d3d09848b7"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/actor-b-no-a-state.png",
+      "bytes": 31344,
+      "sha256": "86b4c6a6f807a88ff51efa4a978754375329570fca2a2fa4a28da6e488ea145f"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/browser.log",
+      "bytes": 4641,
+      "sha256": "8ff044ec336d7fbdd4a0eea58b38682db2177775d4af85a9e95bf09227428013"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/criterion-history-ar.png",
+      "bytes": 175065,
+      "sha256": "3dbc0d139efc8f279aa81b988f8f607dc2c7f18acd0cdcf13c7adf2fc145af07"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/derived-runner.ps1",
+      "bytes": 15807,
+      "sha256": "a421ef47d49604b17e96049c42a66f302740dcb39631fcebefc9e6bb2c8484b3"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/fixture-setup.log",
+      "bytes": 795,
+      "sha256": "a794aebb5b88ebd9a8d6677e89be5f10d80443501e5b51c6c365b2ce0dc58def"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/live-results.json",
+      "bytes": 4280,
+      "sha256": "9d7fa8aafa67d9d455f234bd3b6038371eed79a1a28587bf579ae6e065145e87"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/postgres.log",
+      "bytes": 4296,
+      "sha256": "a96d3dd7f1486b8779db744b9a2dd0c75f077da73d8143053da5432a839902be"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/probe-failure.png",
+      "bytes": 6886,
+      "sha256": "d295e686a649dacf925692276cce959a9d554c137884f6d90e09f1bab43b2d64"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/processes.json",
+      "bytes": 178,
+      "sha256": "6c644773c8bcbfa75a1dc88910767644862211113abe03def304905694a0aeb4"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/runner-console.log",
+      "bytes": 14798,
+      "sha256": "2038c81e48d207854988c9c974297800f95a1ceedf8ed157472c9e6f1a10f7cf"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/runner-derivation.json",
+      "bytes": 424,
+      "sha256": "87c870be355e3ef62586eba0a3f07534cc4016bf3bc1ffe64a495675ee27ae79"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/server-8136-error.log",
+      "bytes": 67984,
+      "sha256": "bf0fd28b9b8142ba1e0419cd3150b92afc36326372fed7ad14d31d8c7551bb73"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/server-8137-error.log",
+      "bytes": 89,
+      "sha256": "acde2c4aac1465951c85475e1d4e774a25d0ae96af47c60a793cd173923f393e"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/source-manifest.json",
+      "bytes": 148052,
+      "sha256": "9a3729ea244af63839e41fa37f084db88716ac20d3bbec76adaafac40c3ae10a"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt2/source-unchanged.txt",
+      "bytes": 5,
+      "sha256": "60a33e6cf5151f2d52eddae9685cfa270426aa89d8dbc7dfb854606f1d1a40fe"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/acceptance-browser.mjs",
+      "bytes": 16539,
+      "sha256": "4819ed5b919535c4e14308076a959b756a6c0a1642303cb9809394f5eebfc767"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/browser.log",
+      "bytes": 8097,
+      "sha256": "d7099c9bb4dc1b6558b34f341764ee9581a58652b255465191001a44b81bf992"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/derived-runner.ps1",
+      "bytes": 15807,
+      "sha256": "a421ef47d49604b17e96049c42a66f302740dcb39631fcebefc9e6bb2c8484b3"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/expiry-fixture.php",
+      "bytes": 1379,
+      "sha256": "a803ebf9fe9fa7c917f5cc1f78ac4dd3fc10e0c9e1494a4aeb79bf1b8ba1f805"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/fixture-setup.log",
+      "bytes": 795,
+      "sha256": "a794aebb5b88ebd9a8d6677e89be5f10d80443501e5b51c6c365b2ce0dc58def"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/live-results.json",
+      "bytes": 7472,
+      "sha256": "79422f5e16cfe7af6eb651cb30efef451a3d803b7ff762ea73196e86becfbcf2"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/postgres.log",
+      "bytes": 10559,
+      "sha256": "32c746b325fc846d637acbd99b6eab5a99c2e46784acbbbd5032ae0c5c3486ae"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/processes.json",
+      "bytes": 178,
+      "sha256": "59039210c4dc712bf5cf7f73ac9f5e820c6e2bdcb60c2e925ed555902c510500"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/runner-console.log",
+      "bytes": 8407,
+      "sha256": "63e7af8481de3064ed10ce072436840b8f0f792f69cd84596df57b47127bae4b"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/runner-derivation.json",
+      "bytes": 424,
+      "sha256": "0752c7d2b7e2c06e44be45b89269e6804c94b864313ceff370ce01b08f3385c0"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/server-8136-error.log",
+      "bytes": 129556,
+      "sha256": "4b5a1737d1dda5b65eeb816fb91025f8949dc908c57ee752cc1dddfdd090bf20"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/server-8137-error.log",
+      "bytes": 89,
+      "sha256": "5001f0f211bb2c1ffd5c89628d1d8c8d87ff6b78c42024d943dca05e221d0843"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/source-manifest.json",
+      "bytes": 150299,
+      "sha256": "3cbbe99ca298788f19957513f60ae5c7e1dd355a5c76c61b1ef06b10fed8781a"
+    },
+    {
+      "path": "docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/attempt3/source-unchanged.txt",
+      "bytes": 5,
+      "sha256": "60a33e6cf5151f2d52eddae9685cfa270426aa89d8dbc7dfb854606f1d1a40fe"
+    }
+  ]
+}

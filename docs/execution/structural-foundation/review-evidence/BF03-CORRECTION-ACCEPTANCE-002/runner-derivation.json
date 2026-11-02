@@ -1,0 +1,9 @@
+{
+  "changes": [
+    "Resolve canonical workspace root when executing review-owned copy",
+    "Dispatch one independent review browser probe instead of the existing browser selection"
+  ],
+  "application_or_existing_test_edits": false,
+  "canonical_sha256": "84308049BB8B178F12438366FD58732ABECCEB0A0577FF7317150021C68AF804",
+  "derived_sha256": "A421EF47D49604B17E96049C42A66F302740DCB39631FCEBEFC9E6BB2C8484B3"
+}
