@@ -1,0 +1,2498 @@
+{
+  "scope": "Independent Business reference flow; synthetic qualification roots; no live migration or operating issuer proof",
+  "cases": [
+    {
+      "name": "actual login, independent creation, list and opening without a Workspace identity",
+      "evidence": {
+        "createdBusiness": "01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+        "sharedWorkspaceInference": false
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "BF03 explicit creator opt-in, invalid inputs editable, assertion readback and historical meaning",
+      "evidence": {
+        "explicitOptIn": true,
+        "invalid422Editable": true,
+        "sourceAssurance": "SOURCE_ASSERTED",
+        "completeCurrentAndHistoryMeaning": true
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "BF03 stale correction rejected without overwriting newer revision and RTL mobile remains usable",
+      "evidence": {
+        "typedPreEffectConflict": true,
+        "newerRevisionRetained": true,
+        "mobileRTL": true
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "BF03 history denial clears detail and stored collection",
+      "evidence": {
+        "knownDenialConcealsHistoryAndCollection": true,
+        "recordPermissionDidNotImplyRead": true
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "BF03 positive UI correction and withdrawal preserve semantic versions and full history",
+      "evidence": {
+        "uiCorrectionCommitted": true,
+        "changedCountAndMeaning": true,
+        "uiWithdrawalCommitted": true,
+        "appendOnlyHistoryRevisions": 3
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "workspace task navigation preserves unsent inquiry fields through list and Business remount",
+      "evidence": {
+        "localTasksPreserveInput": true,
+        "listAndOtherBusinessRemountPreserveOwnDraft": true,
+        "crossBusinessDisclosure": false
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "workspace correction draft returns unchanged and revoked read prevents its restoration",
+      "evidence": {
+        "unsentCorrectionRestoredWithOriginalBaseline": true,
+        "readRevocationBlocksRestoration": true,
+        "reEnrollmentDoesNotReviveDiscardedProtectedDraft": true
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "workspace long activity identity and explicit zero remain distinct from missing evidence",
+      "evidence": {
+        "longBilingualBusinessName": true,
+        "nativeIdentifiersAccessible": true,
+        "knownZero": 0,
+        "unknownCost": null,
+        "unknownAcceptance": null
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "workspace compact collection complete details return focus and responsive bilingual themed matrix",
+      "evidence": {
+        "matrix": [
+          {
+            "language": "ar",
+            "theme": "light",
+            "width": 360,
+            "overflow": false
+          },
+          {
+            "language": "ar",
+            "theme": "light",
+            "width": 390,
+            "overflow": false
+          },
+          {
+            "language": "ar",
+            "theme": "light",
+            "width": 430,
+            "overflow": false
+          },
+          {
+            "language": "ar",
+            "theme": "light",
+            "width": 768,
+            "overflow": false
+          },
+          {
+            "language": "ar",
+            "theme": "light",
+            "width": 1024,
+            "overflow": false
+          },
+          {
+            "language": "ar",
+            "theme": "light",
+            "width": 1366,
+            "overflow": false
+          },
+          {
+            "language": "ar",
+            "theme": "light",
+            "width": 1920,
+            "overflow": false
+          },
+          {
+            "language": "ar",
+            "theme": "dark",
+            "width": 360,
+            "overflow": false
+          },
+          {
+            "language": "ar",
+            "theme": "dark",
+            "width": 390,
+            "overflow": false
+          },
+          {
+            "language": "ar",
+            "theme": "dark",
+            "width": 430,
+            "overflow": false
+          },
+          {
+            "language": "ar",
+            "theme": "dark",
+            "width": 768,
+            "overflow": false
+          },
+          {
+            "language": "ar",
+            "theme": "dark",
+            "width": 1024,
+            "overflow": false
+          },
+          {
+            "language": "ar",
+            "theme": "dark",
+            "width": 1366,
+            "overflow": false
+          },
+          {
+            "language": "ar",
+            "theme": "dark",
+            "width": 1920,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "light",
+            "width": 360,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "light",
+            "width": 390,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "light",
+            "width": 430,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "light",
+            "width": 768,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "light",
+            "width": 1024,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "light",
+            "width": 1366,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "light",
+            "width": 1920,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "dark",
+            "width": 360,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "dark",
+            "width": 390,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "dark",
+            "width": 430,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "dark",
+            "width": 768,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "dark",
+            "width": 1024,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "dark",
+            "width": 1366,
+            "overflow": false
+          },
+          {
+            "language": "en",
+            "theme": "dark",
+            "width": 1920,
+            "overflow": false
+          }
+        ],
+        "compactCollection": true,
+        "completeDetails": true,
+        "backRestoresFocus": true,
+        "formalUsabilityStudy": false
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "BF03 committed lost ACK survives remount and exact retry without duplicate declaration",
+      "evidence": {
+        "serverCommittedBeforeLostAck": true,
+        "remountRetainsOriginalCommand": true,
+        "exactReplay": true,
+        "duplicateEffects": 0
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "BF03 later denial cannot erase an earlier uncertain commit or authorize replacement",
+      "evidence": {
+        "priorUncertaintySurvives403": true,
+        "reEnrollmentDoesNotSilentlyReplace": true,
+        "duplicateEffects": 0
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "qualified agency relationship is managed through the same resource without granting access to workspace members",
+      "result": "FAIL",
+      "error": "TypeError: Cannot read properties of undefined (reading 'public_id')\n    at file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/tests/Support/business-surface-browser.mjs:548:82\n    at async check (file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/tests/Support/business-surface-browser.mjs:24:26)\n    at async file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/tests/Support/business-surface-browser.mjs:542:5",
+      "presentation": {
+        "path": "/businesses/01a19894-34d9-7b65-ba65-7bdeadfb60d6",
+        "state": "ready",
+        "text": "BuilderAd\nالوضع النهاري\nأنشطتي\nالحساب\nالأمان\nEnglish\nتسجيل الخروج\nأنشطتي\nمساحات التعاون\nنطاقات بيانات العملاء\nإدارة المصادر\n\nمساحة النشاط\n\nنشاط إدارة الوكالة\n\nمجال النشاط غير محدد\n\nمعلومات النشاط وتعديلها\n\nراجع معلومات نشاطك وبيانات الاستفسارات، وحدّد اتجاهه وأدر الوصول إليه من مكان واحد.\n\nنظرة عامة\nبيانات الاستفسارات\nالأسواق والأهداف\nإعدادات النشاط\nالوصول والصلاحيات\nنظرة عامة\n\nاختر ما تريد العمل عليه. يمكنك العودة إلى أي قسم دون المرور بالنماذج الأخرى.\n\nبيانات الاستفسارات\nسجّل بياناتك، راجع تفاصيلها وصحّحها مع حفظ تاريخها.\nفتح القسم ←\nالأسواق والأهداف\nحدّد الأسواق المستهدفة والنية التجارية وأولوياتك.\nفتح القسم ←\nإعدادات النشاط\nمعلومات النشاط، إتاحة الخدمات وسجل التغييرات.\nفتح القسم ←\nالوصول والصلاحيات\nالتعاون والتفويضات واستعمال بيانات العملاء وفق صلاحياتك.\nفتح القسم ←\n\nلا تحتاج إلى حساب إعلاني متصل أو CRM أو هدف معلن لاستعمال الأقسام المتاحة لك. كل إجراء يخضع لصلاحياته.",
+        "resources": [
+          {
+            "name": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/rights",
+            "duration": 699.1000000014901
+          },
+          {
+            "name": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+            "duration": 607.1000000014901
+          },
+          {
+            "name": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+            "duration": 630
+          },
+          {
+            "name": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/enrollment",
+            "duration": 827.3000000044703
+          },
+          {
+            "name": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+            "duration": 647.5
+          },
+          {
+            "name": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+            "duration": 1216.2000000029802
+          },
+          {
+            "name": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+            "duration": 1312.5
+          },
+          {
+            "name": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+            "duration": 1342.2000000029802
+          },
+          {
+            "name": "/businesses",
+            "duration": 687.7999999970198
+          },
+          {
+            "name": "/businesses",
+            "duration": 614.9000000059605
+          },
+          {
+            "name": "/favicon.ico",
+            "duration": 10.600000001490116
+          },
+          {
+            "name": "/businesses/01a19894-34d9-7b65-ba65-7bdeadfb60d6",
+            "duration": 1638.8999999985099
+          },
+          {
+            "name": "/businesses/01a19894-34d9-7b65-ba65-7bdeadfb60d6",
+            "duration": 1691.6000000014901
+          },
+          {
+            "name": "/identity/renew",
+            "duration": 573.0999999940395
+          },
+          {
+            "name": "/favicon.ico",
+            "duration": 1991.8000000044703
+          },
+          {
+            "name": "/api/businesses/01a19894-34d9-7b65-ba65-7bdeadfb60d6/surface",
+            "duration": 1966.1999999955297
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [],
+  "assets": [
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/main-C9UHWW2n.css",
+      "sha256": "233a97ca3a5f7b6138b78acfc34538e86e32b357db6048914a707e2a6cff14c0"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/api-BTIL3fcF.js",
+      "sha256": "7db1c80919d9510d853ba18174a4d1dc9a9f03fb5ac7cb09e836a08a7bff26f3"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/main-C8ie2C49.js",
+      "sha256": "2d62ff51b418502dcd81c06bed81e3a08ee1da4baf47ff3e21f74bde3b3c3577"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/AuthEntryView-CzZBWtYK.css",
+      "sha256": "f400e9d313b182ffde0b1c607d6ce9ee0b7ab72cb63cf19bd56517590b72e9b1"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/AuthEntryView-DJOE1C6x.js",
+      "sha256": "12d388abc00562d0bab2e3295e417c607e197a0424fccedabb6fe2da960bbf2e"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/passkeyCeremony-BPzDun1Y.js",
+      "sha256": "346a65e244ec1b04d0662c0279b31899c72b5bb329154e0e7b6f6ca0e439bb11"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/GoalsEditor-CIsSGOAY.js",
+      "sha256": "f325ed1c02c3915bf5f563b5b42e78a02c757548ddec17479aaabd9fc07b839e"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/GoalsReview-B3QImncQ.js",
+      "sha256": "70ceb2bd856ff990b5cb751d4583b54c0d9faeee9ff19623cf07da098dfef5da"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/main-C9UHWW2n.css",
+      "sha256": "233a97ca3a5f7b6138b78acfc34538e86e32b357db6048914a707e2a6cff14c0"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/api-BTIL3fcF.js",
+      "sha256": "7db1c80919d9510d853ba18174a4d1dc9a9f03fb5ac7cb09e836a08a7bff26f3"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/main-C8ie2C49.js",
+      "sha256": "2d62ff51b418502dcd81c06bed81e3a08ee1da4baf47ff3e21f74bde3b3c3577"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/api-C-8mc0wg.js",
+      "sha256": "5600d0b46832146ff56080e827ef57de2bcc5a2c7419a54dc1dc33dd291b0b20"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/goalSelection-J6kAV3aV.js",
+      "sha256": "a017c2e993c0a83d91835f78b33569f3a88e61afe283a901637cf1f21e2b41e9"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/BusinessSurface-Dh9Niwm9.js",
+      "sha256": "72dca40537d4f057196cf1ca66d9fd115642fb45a462b26d220ca54ddc210e13"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/BusinessSurface-Cp4NaUyh.css",
+      "sha256": "83e776ca32e7f879a108cb405fb28d7bf7d72398d1563e3ed99c3f886cfd61bb"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/ObjectPurposeEditor-BxRBb0KS.js",
+      "sha256": "ee742032ff6834bd215b6774885ec5a8c23a5029608b1680439b990137729bfe"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/businessCopy-EjwopKgY.js",
+      "sha256": "6e00234a4f3c1e216c70104949e47a512c57605ceceb5c34815372b600b8e479"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/GoalsEditor-CIsSGOAY.js",
+      "sha256": "f325ed1c02c3915bf5f563b5b42e78a02c757548ddec17479aaabd9fc07b839e"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/GoalsEditor-BSpSDRSn.css",
+      "sha256": "fc762bc2963a0615a09a7b6e77c1e9bef2f905525769e9f0f7e119d02ecbc48c"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/GoalsReview-B3QImncQ.js",
+      "sha256": "70ceb2bd856ff990b5cb751d4583b54c0d9faeee9ff19623cf07da098dfef5da"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/GoalsReview-DhXkbjfK.css",
+      "sha256": "e61c6142f6a604353c0d33da19a2d9aeefec5c15753de7ad9a7dec9aa041f02e"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/WorkspaceIndex-BqNm_sG6.js",
+      "sha256": "76c450b0b370cb6ca9dc8163178c123ae18189e61b8c40b3edb1ec42fad0e7cb"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/destination-CyQShiWv.js",
+      "sha256": "20199dba64d42c748c4b8b75ae603c42bbc8da617ca150e7ca43db7bfc4fdcf8"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/BusinessCreate-CA1l6faH.css",
+      "sha256": "f4cb19ba92e61cba47eef325f0f3c37355bf8e04015a3479a84ba557a30318d8"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/BusinessCreate-DBuZBUHd.js",
+      "sha256": "05b395f7de5650c1892b6d8d44e47db11f0b61aa5bfc6c219519145000d479cd"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/SourceRights-DQiAdO3M.js",
+      "sha256": "50a979d1b9a1400c9be63b3875c074f39b3907479a30a5e8a20add511d3d6420"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/api-C-8mc0wg.js",
+      "sha256": "5600d0b46832146ff56080e827ef57de2bcc5a2c7419a54dc1dc33dd291b0b20"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/DataBoundaries-CQViQfKg.js",
+      "sha256": "a1715e9e39731f7e24e579e45e6a16289e4a4e04155c8956c6965c2900e0a25c"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/BusinessSurface-Dh9Niwm9.js",
+      "sha256": "72dca40537d4f057196cf1ca66d9fd115642fb45a462b26d220ca54ddc210e13"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/ObjectPurposeEditor-BxRBb0KS.js",
+      "sha256": "ee742032ff6834bd215b6774885ec5a8c23a5029608b1680439b990137729bfe"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/businessCopy-EjwopKgY.js",
+      "sha256": "6e00234a4f3c1e216c70104949e47a512c57605ceceb5c34815372b600b8e479"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/BusinessContext-c3SaW85M.js",
+      "sha256": "0f57efbfc63a06f0365e05d1a9b2835766a9892277120393bbab38e780fd2439"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/BusinessSurface-Cp4NaUyh.css",
+      "sha256": "83e776ca32e7f879a108cb405fb28d7bf7d72398d1563e3ed99c3f886cfd61bb"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/BusinessContext-BH7mGHsQ.css",
+      "sha256": "ff4d3d416b7456009757a992285108e9cef2d9ff5ab0cc2c6cdbdd82415a83f2"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/ObjectPurposes-DydAV6TB.js",
+      "sha256": "fad2597395133c54cba96151f84321ef977980b87f6b375c39aeebc611af0bb7"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/ObjectPurposes-MiApoQuK.css",
+      "sha256": "9613b7833d3abc8e5b7a8f5f0cd5ed3feef5f518eca71a527bbc5736fe675c21"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/SourceView-CYgOjgrG.js",
+      "sha256": "73d1bccaf9c86dfc449881055ce0352aa2ce6a54283860f7b39e37c5dadc5b98"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/ProviderBrand-GsSgUln_.js",
+      "sha256": "41b4439405cadebf498c71d6fb6b619261addbd8470ac6d4a67b73c33b8d885d"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/ProviderBrand-DxahTX7o.css",
+      "sha256": "88ce6498902085fb1a29615ab93b2239da8710d25c5552be46591da354eda06d"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/SourceView-HnErX3wM.css",
+      "sha256": "0645903f8d1267d098bf1780b3cc2571f08467ff90eeb12ac1258fc0f547b710"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/AccountView-C12u02Q-.js",
+      "sha256": "097ae2dddb42f138fcba39f16ab11d4ac3e25e359d8e1d9901b5eddda3991b22"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/passkeyCeremony-BPzDun1Y.js",
+      "sha256": "346a65e244ec1b04d0662c0279b31899c72b5bb329154e0e7b6f6ca0e439bb11"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/AccountView-BOL-F10O.css",
+      "sha256": "07733541f9f810ab8cd124e36deb4aa7cfadd733daa3ca55c6bc5b93b8eee5a2"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/AuthEntryView-DJOE1C6x.js",
+      "sha256": "12d388abc00562d0bab2e3295e417c607e197a0424fccedabb6fe2da960bbf2e"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/AuthEntryView-CzZBWtYK.css",
+      "sha256": "f400e9d313b182ffde0b1c607d6ce9ee0b7ab72cb63cf19bd56517590b72e9b1"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/StaffEnrollmentView-Pn4qovu8.js",
+      "sha256": "2d16b8e48bd788e67501047cbf59d26e80c062ade7111537ce63d395c0b7bd3d"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/StaffEnrollmentView-CCI7XFjC.css",
+      "sha256": "de34e8fa6f41fdd2a7d6fdcf8efcb739777ada733c17e8d92c9e25b92c60e899"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/OperationsView-BuG_pXVc.js",
+      "sha256": "af03a167b313c7fe8ddb02b0d385b5ed49ab8272b2aeac5031cedf2c7e1416c4"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/OperationsShell-D2BqT6TW.js",
+      "sha256": "01e5eec4f4cb385c4fa92fb674f05f2d335474aec4f8237cd906fd9fdbd1102a"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/OperationsView-C2AL_hQg.css",
+      "sha256": "e0fb2a9871c3e7f70552eafa3f730e61379eb551dcba6d81509872fd22116c46"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/MaintenanceView-Xx9Wro1F.js",
+      "sha256": "7a3897e3de02ecfcde2e9d1739c1376cd487cf2edbe65e06cc44e3e3f081ae23"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/MaintenanceView-DY-N9hdB.css",
+      "sha256": "63d9badc288fd4e97d15ebf558a2cfd4d81971afb1593e7844a28c76019c9a47"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/AppearanceView-Bi7ItUy1.js",
+      "sha256": "962a33130848bc16c190880d292a8f7d9d966f059ea7b3d9af5864c9c3db5919"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/AppearanceView-DBtnAOpE.css",
+      "sha256": "03b8c4d9e56618657391b64e092f3656d9e0b546d1a518288e817885cc3f0b13"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/ServicesView-DU31YDgQ.js",
+      "sha256": "cd850c8de94bd1ddd8fb69444156e4d3c4fa73b4ea9af502f0667298d950da14"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/BusinessTypesView-kFRtiYau.js",
+      "sha256": "81cf5c9541553628354c60ee54517e1a3072ae81370bc3754a53777f71b8373a"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/BusinessTypesView-DB5Kyf-H.css",
+      "sha256": "3dc60a73563d8e5c471f20ed43a793995ae21b9fb623f1f9335aae686d24305e"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/AdministrationView-tNl1L7gu.js",
+      "sha256": "5ed879325fe2a995caf821498aedc2ac27746e65ac5efe47166b8706eca8e40a"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/AdministrationView-DZf9WrvX.css",
+      "sha256": "d4b39f2c580676f6e1acc78ed822ef35d8c6e54a5d4a8b15dd0587be92525e78"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/CustomersView-BoEpaTGq.js",
+      "sha256": "8071ccacc7f33369395fe05283e0706c84655cf56c1763dc50a53e08142f9009"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/CustomersView-CiW08vkf.css",
+      "sha256": "9ed915e45b873a34e021835b932932841966429f47b54d220fd092a7bd102347"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/OperationsView-ByybnaML.js",
+      "sha256": "474f49d30bfa06b4f7d042f907764f45d77333fac6453451d0e6035943e6228c"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/OperationsView-C-jtmey8.css",
+      "sha256": "82f21095b12076f533335633a32b76cf2c8d9a3f1e38f7d9d1369e2214005b57"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/PreparationView-CHf_naNS.js",
+      "sha256": "f2b40fd76964f8f6be3a5f49c3f7c17a0ee60761bc6b32bdca5636f640bc9de4"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/PreparationView-BkB8UPX6.css",
+      "sha256": "0e1ad03eea4bc4cdfd624105b4e9aa95b18c763a36af5a9125fd0ef5c950c3fb"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/goalSelection-J6kAV3aV.js",
+      "sha256": "a017c2e993c0a83d91835f78b33569f3a88e61afe283a901637cf1f21e2b41e9"
+    },
+    {
+      "url": "http://localhost:8136/build/goals-spa/assets/goalsCopy-Dh9blkhA.js",
+      "sha256": "e4b486f9277c25a9ce73eb18689f5bd64e6ebbb298511a10d6d0fea895748d57"
+    }
+  ],
+  "http": [
+    {
+      "path": "/login",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561033942.595,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.387,
+        "responseStart": 4160.155,
+        "responseEnd": 4171.06
+      }
+    },
+    {
+      "path": "/brand/theme.css",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561038242.009,
+        "domainLookupStart": 0,
+        "domainLookupEnd": 0,
+        "connectStart": 0,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.318,
+        "requestStart": 1.446,
+        "responseStart": 12.384,
+        "responseEnd": 51.15
+      }
+    },
+    {
+      "path": "/brand/theme.js",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561038240.698,
+        "domainLookupStart": 1.608,
+        "domainLookupEnd": 1.615,
+        "connectStart": 1.615,
+        "secureConnectionStart": -1,
+        "connectEnd": 3.338,
+        "requestStart": 3.937,
+        "responseStart": 18.373,
+        "responseEnd": 55.973
+      }
+    },
+    {
+      "path": "/brand/builderad-mark.svg",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561038486.2183,
+        "domainLookupStart": 0.248,
+        "domainLookupEnd": 0.255,
+        "connectStart": 0.255,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.514,
+        "requestStart": 1.619,
+        "responseStart": 4.095,
+        "responseEnd": 6.225
+      }
+    },
+    {
+      "path": "/login",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561038644.026,
+        "domainLookupStart": 0.212,
+        "domainLookupEnd": 0.219,
+        "connectStart": 0.219,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.475,
+        "requestStart": 1.577,
+        "responseStart": 2832.899,
+        "responseEnd": 3182.189
+      }
+    },
+    {
+      "path": "/login",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561039016.8508,
+        "domainLookupStart": 0.243,
+        "domainLookupEnd": 0.249,
+        "connectStart": 0.249,
+        "secureConnectionStart": -1,
+        "connectEnd": 4.212,
+        "requestStart": 4.935,
+        "responseStart": 7779.615,
+        "responseEnd": 7786.383
+      }
+    },
+    {
+      "path": "/login",
+      "status": 409,
+      "timing": {
+        "startTime": 1793561042067.317,
+        "domainLookupStart": 0.26,
+        "domainLookupEnd": 0.267,
+        "connectStart": 0.267,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.3,
+        "requestStart": 1.397,
+        "responseStart": 6448.322,
+        "responseEnd": 6458.98
+      }
+    },
+    {
+      "path": "/dashboard",
+      "status": 302,
+      "timing": {
+        "startTime": 1793561046820.6482,
+        "domainLookupStart": 894.822,
+        "domainLookupEnd": 894.831,
+        "connectStart": 894.831,
+        "secureConnectionStart": -1,
+        "connectEnd": 896.296,
+        "requestStart": 896.383,
+        "responseStart": 2377.204,
+        "responseEnd": 2389.9040000032983
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561049211.152,
+        "domainLookupStart": 0.265,
+        "domainLookupEnd": 0.271,
+        "connectStart": 0.271,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.325,
+        "requestStart": 1.431,
+        "responseStart": 1025.562,
+        "responseEnd": 1041.631
+      }
+    },
+    {
+      "path": "/brand/theme.css",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561050296.819,
+        "domainLookupStart": 0.253,
+        "domainLookupEnd": 0.26,
+        "connectStart": 0.26,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.401,
+        "requestStart": 1.57,
+        "responseStart": 15.302,
+        "responseEnd": 36.053
+      }
+    },
+    {
+      "path": "/brand/theme.js",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561050287.1519,
+        "domainLookupStart": 3.893,
+        "domainLookupEnd": 3.909,
+        "connectStart": 3.909,
+        "secureConnectionStart": -1,
+        "connectEnd": 6.267,
+        "requestStart": 7.745,
+        "responseStart": 16.628,
+        "responseEnd": 35.053
+      }
+    },
+    {
+      "path": "/brand/builderad-mark.svg",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561050408.811,
+        "domainLookupStart": 0.295,
+        "domainLookupEnd": 0.302,
+        "connectStart": 0.302,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.779,
+        "requestStart": 1.988,
+        "responseStart": 1871.268,
+        "responseEnd": 1894.639
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561053577.164,
+        "domainLookupStart": 0.216,
+        "domainLookupEnd": 0.223,
+        "connectStart": 0.223,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.356,
+        "requestStart": 1.463,
+        "responseStart": 1512.741,
+        "responseEnd": 1521.639
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561055100.8281,
+        "domainLookupStart": 9.791,
+        "domainLookupEnd": 9.805,
+        "connectStart": 9.805,
+        "secureConnectionStart": -1,
+        "connectEnd": 11.49,
+        "requestStart": 11.599,
+        "responseStart": 678.994,
+        "responseEnd": 686.055
+      }
+    },
+    {
+      "path": "/api/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561055923.0571,
+        "domainLookupStart": 0.327,
+        "domainLookupEnd": 0.334,
+        "connectStart": 0.334,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.227,
+        "requestStart": 2.377,
+        "responseStart": 1313.357,
+        "responseEnd": 1324.728
+      }
+    },
+    {
+      "path": "/businesses/new",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561057424.336,
+        "domainLookupStart": 638.405,
+        "domainLookupEnd": 638.445,
+        "connectStart": 638.445,
+        "secureConnectionStart": -1,
+        "connectEnd": 642.567,
+        "requestStart": 642.7,
+        "responseStart": 2865.708,
+        "responseEnd": 2873.02
+      }
+    },
+    {
+      "path": "/businesses/new",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561060301.969,
+        "domainLookupStart": 0.234,
+        "domainLookupEnd": 0.24,
+        "connectStart": 0.24,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.351,
+        "requestStart": 1.452,
+        "responseStart": 2696.271,
+        "responseEnd": 2705.391
+      }
+    },
+    {
+      "path": "/api/businesses",
+      "status": 201,
+      "timing": {
+        "startTime": 1793561063293.955,
+        "domainLookupStart": 0.376,
+        "domainLookupEnd": 0.386,
+        "connectStart": 0.386,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.161,
+        "requestStart": 2.269,
+        "responseStart": 1149.837,
+        "responseEnd": 1156.493
+      }
+    },
+    {
+      "path": "/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561064712.4548,
+        "domainLookupStart": 0.22,
+        "domainLookupEnd": 0.227,
+        "connectStart": 0.227,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.365,
+        "requestStart": 1.475,
+        "responseStart": 3257.429,
+        "responseEnd": 3263.387
+      }
+    },
+    {
+      "path": "/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561067980.5679,
+        "domainLookupStart": 0.22,
+        "domainLookupEnd": 0.226,
+        "connectStart": 0.226,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.447,
+        "requestStart": 1.556,
+        "responseStart": 1764.274,
+        "responseEnd": 1770.96
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561070059.799,
+        "domainLookupStart": 0.238,
+        "domainLookupEnd": 0.245,
+        "connectStart": 0.245,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.312,
+        "requestStart": 1.424,
+        "responseStart": 647.978,
+        "responseEnd": 655.077
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561070906.9597,
+        "domainLookupStart": 0.796,
+        "domainLookupEnd": 0.805,
+        "connectStart": 0.805,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.887,
+        "requestStart": 2.018,
+        "responseStart": 601.849,
+        "responseEnd": 608.051
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/enrollment",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561071662.883,
+        "domainLookupStart": 0.265,
+        "domainLookupEnd": 0.272,
+        "connectStart": 0.272,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.358,
+        "requestStart": 1.486,
+        "responseStart": 796.385,
+        "responseEnd": 802.61
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561072468.272,
+        "domainLookupStart": 0.223,
+        "domainLookupEnd": 0.23,
+        "connectStart": 0.23,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.797,
+        "requestStart": 1.901,
+        "responseStart": 548.724,
+        "responseEnd": 554.293
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561073025.45,
+        "domainLookupStart": 0.23,
+        "domainLookupEnd": 0.237,
+        "connectStart": 0.237,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.568,
+        "requestStart": 1.676,
+        "responseStart": 636.888,
+        "responseEnd": 642.698
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561073512.722,
+        "domainLookupStart": 0.844,
+        "domainLookupEnd": 0.855,
+        "connectStart": 0.855,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.998,
+        "requestStart": 2.102,
+        "responseStart": 780.637,
+        "responseEnd": 786.785
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 422,
+      "timing": {
+        "startTime": 1793561074732.501,
+        "domainLookupStart": 0.296,
+        "domainLookupEnd": 0.303,
+        "connectStart": 0.303,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.507,
+        "requestStart": 1.626,
+        "responseStart": 3070.391,
+        "responseEnd": 3075.506
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561079117.816,
+        "domainLookupStart": 0.843,
+        "domainLookupEnd": 0.854,
+        "connectStart": 0.854,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.054,
+        "requestStart": 2.202,
+        "responseStart": 1603.666,
+        "responseEnd": 1611.057
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561080732.516,
+        "domainLookupStart": 0.292,
+        "domainLookupEnd": 0.299,
+        "connectStart": 0.299,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.632,
+        "requestStart": 1.745,
+        "responseStart": 590.694,
+        "responseEnd": 601.393
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561081337.2952,
+        "domainLookupStart": 0.248,
+        "domainLookupEnd": 0.255,
+        "connectStart": 0.255,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.484,
+        "requestStart": 1.607,
+        "responseStart": 612.882,
+        "responseEnd": 618.358
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/01a19892-331a-79c5-8bef-0a2b4c4a3b93/history",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561082158.137,
+        "domainLookupStart": 0.232,
+        "domainLookupEnd": 0.238,
+        "connectStart": 0.238,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.322,
+        "requestStart": 1.443,
+        "responseStart": 671.329,
+        "responseEnd": 677.389
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561083061.152,
+        "domainLookupStart": 0.773,
+        "domainLookupEnd": 0.78,
+        "connectStart": 0.78,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.6,
+        "requestStart": 1.695,
+        "responseStart": 653.941,
+        "responseEnd": 660.678
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561083828.9038,
+        "domainLookupStart": 0.271,
+        "domainLookupEnd": 0.279,
+        "connectStart": 0.279,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.396,
+        "requestStart": 1.522,
+        "responseStart": 616.502,
+        "responseEnd": 618.653
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/01a19892-331a-79c5-8bef-0a2b4c4a3b93/revisions",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561084469.441,
+        "domainLookupStart": 0.321,
+        "domainLookupEnd": 0.328,
+        "connectStart": 0.328,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.329,
+        "requestStart": 1.458,
+        "responseStart": 1586.713,
+        "responseEnd": 1591.999
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/01a19892-331a-79c5-8bef-0a2b4c4a3b93/revisions",
+      "status": 409,
+      "timing": {
+        "startTime": 1793561086271.594,
+        "domainLookupStart": 0.327,
+        "domainLookupEnd": 0.337,
+        "connectStart": 0.337,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.936,
+        "requestStart": 2.07,
+        "responseStart": 2859.257,
+        "responseEnd": 2867.688
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561089414.694,
+        "domainLookupStart": 0.221,
+        "domainLookupEnd": 0.228,
+        "connectStart": 0.228,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.659,
+        "requestStart": 2.317,
+        "responseStart": 644.742,
+        "responseEnd": 648.852
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561090065.649,
+        "domainLookupStart": 0.216,
+        "domainLookupEnd": 0.222,
+        "connectStart": 0.222,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.83,
+        "requestStart": 1.944,
+        "responseStart": 733.268,
+        "responseEnd": 739.1
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561090840.103,
+        "domainLookupStart": 0.389,
+        "domainLookupEnd": 0.4,
+        "connectStart": 0.4,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.839,
+        "requestStart": 1.946,
+        "responseStart": 578.303,
+        "responseEnd": 585.59
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/rights",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561091975.018,
+        "domainLookupStart": 0.75,
+        "domainLookupEnd": 0.759,
+        "connectStart": 0.759,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.562,
+        "requestStart": 2.706,
+        "responseStart": 720.651,
+        "responseEnd": 727.624
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/01a19892-331a-79c5-8bef-0a2b4c4a3b93/history",
+      "status": 403,
+      "timing": {
+        "startTime": 1793561092777.772,
+        "domainLookupStart": 0.214,
+        "domainLookupEnd": 0.22,
+        "connectStart": 0.22,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.141,
+        "requestStart": 1.244,
+        "responseStart": 588.84,
+        "responseEnd": 595.687
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561093636.845,
+        "domainLookupStart": 0.282,
+        "domainLookupEnd": 0.29,
+        "connectStart": 0.29,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.681,
+        "requestStart": 1.802,
+        "responseStart": 564.579,
+        "responseEnd": 571.223
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/enrollment",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561094215.6548,
+        "domainLookupStart": 0.253,
+        "domainLookupEnd": 0.261,
+        "connectStart": 0.261,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.472,
+        "requestStart": 1.604,
+        "responseStart": 823.829,
+        "responseEnd": 832.878
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561095113.002,
+        "domainLookupStart": 0.245,
+        "domainLookupEnd": 0.252,
+        "connectStart": 0.252,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.902,
+        "requestStart": 2.021,
+        "responseStart": 676.569,
+        "responseEnd": 682.057
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561095797.475,
+        "domainLookupStart": 0.236,
+        "domainLookupEnd": 0.243,
+        "connectStart": 0.243,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.557,
+        "requestStart": 1.668,
+        "responseStart": 575.827,
+        "responseEnd": 581.268
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561096453.5498,
+        "domainLookupStart": 0.379,
+        "domainLookupEnd": 0.385,
+        "connectStart": 0.385,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.325,
+        "requestStart": 1.415,
+        "responseStart": 643.216,
+        "responseEnd": 645.238
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561097760.08,
+        "domainLookupStart": 0.223,
+        "domainLookupEnd": 0.23,
+        "connectStart": 0.23,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.521,
+        "requestStart": 1.745,
+        "responseStart": 2421.277,
+        "responseEnd": 2428.058
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561100192.2932,
+        "domainLookupStart": 0.213,
+        "domainLookupEnd": 0.22,
+        "connectStart": 0.22,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.502,
+        "requestStart": 1.607,
+        "responseStart": 651.309,
+        "responseEnd": 657.653
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561100851.868,
+        "domainLookupStart": 0.24,
+        "domainLookupEnd": 0.246,
+        "connectStart": 0.246,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.494,
+        "requestStart": 1.621,
+        "responseStart": 588.007,
+        "responseEnd": 593.658
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561101546.599,
+        "domainLookupStart": 0.23,
+        "domainLookupEnd": 0.235,
+        "connectStart": 0.235,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.291,
+        "requestStart": 1.398,
+        "responseStart": 652.139,
+        "responseEnd": 660.036
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/01a19892-7f33-74cb-9990-8d36c5ba5117/revisions",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561102527.6123,
+        "domainLookupStart": 0.244,
+        "domainLookupEnd": 0.25,
+        "connectStart": 0.25,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.04,
+        "requestStart": 2.546,
+        "responseStart": 2298.635,
+        "responseEnd": 2305.285
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561104835.076,
+        "domainLookupStart": 0.284,
+        "domainLookupEnd": 0.294,
+        "connectStart": 0.294,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.22,
+        "requestStart": 2.328,
+        "responseStart": 673.486,
+        "responseEnd": 679.708
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561105516.509,
+        "domainLookupStart": 0.226,
+        "domainLookupEnd": 0.233,
+        "connectStart": 0.233,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.8,
+        "requestStart": 1.919,
+        "responseStart": 603.657,
+        "responseEnd": 609.248
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561106170.981,
+        "domainLookupStart": 0.267,
+        "domainLookupEnd": 0.274,
+        "connectStart": 0.274,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.41,
+        "requestStart": 1.543,
+        "responseStart": 627.736,
+        "responseEnd": 636.83
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/01a19892-7f33-74cb-9990-8d36c5ba5117/history",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561106867.385,
+        "domainLookupStart": 0.259,
+        "domainLookupEnd": 0.267,
+        "connectStart": 0.267,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.46,
+        "requestStart": 1.578,
+        "responseStart": 642.117,
+        "responseEnd": 649.06
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/01a19892-7f33-74cb-9990-8d36c5ba5117/revisions",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561107778.853,
+        "domainLookupStart": 0.258,
+        "domainLookupEnd": 0.266,
+        "connectStart": 0.266,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.463,
+        "requestStart": 1.614,
+        "responseStart": 785.628,
+        "responseEnd": 790.912
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561108571.9219,
+        "domainLookupStart": 0.228,
+        "domainLookupEnd": 0.235,
+        "connectStart": 0.235,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.427,
+        "requestStart": 1.536,
+        "responseStart": 609.843,
+        "responseEnd": 616.27
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561109194.9802,
+        "domainLookupStart": 0.243,
+        "domainLookupEnd": 0.25,
+        "connectStart": 0.25,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.504,
+        "requestStart": 1.638,
+        "responseStart": 668.209,
+        "responseEnd": 677.195
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561109908.7363,
+        "domainLookupStart": 0.615,
+        "domainLookupEnd": 0.627,
+        "connectStart": 0.627,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.603,
+        "requestStart": 2.71,
+        "responseStart": 568.718,
+        "responseEnd": 642.547
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/01a19892-7f33-74cb-9990-8d36c5ba5117/history",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561110610.977,
+        "domainLookupStart": 0.236,
+        "domainLookupEnd": 0.242,
+        "connectStart": 0.242,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.348,
+        "requestStart": 1.456,
+        "responseStart": 711.089,
+        "responseEnd": 719.176
+      }
+    },
+    {
+      "path": "/api/data-rights/use-scopes",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561112273.1882,
+        "domainLookupStart": 0.255,
+        "domainLookupEnd": 0.263,
+        "connectStart": 0.263,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.998,
+        "requestStart": 3.288,
+        "responseStart": 542.937,
+        "responseEnd": 549.954
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561112473.1692,
+        "domainLookupStart": 0.282,
+        "domainLookupEnd": 0.292,
+        "connectStart": 0.292,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.467,
+        "requestStart": 1.586,
+        "responseStart": 1195.861,
+        "responseEnd": 1201.637
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561113681.236,
+        "domainLookupStart": 0.252,
+        "domainLookupEnd": 0.26,
+        "connectStart": 0.26,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.652,
+        "requestStart": 1.771,
+        "responseStart": 713.893,
+        "responseEnd": 724.366
+      }
+    },
+    {
+      "path": "/businesses/01a19891-6a0f-7255-be15-53e435c82e98",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561114539.834,
+        "domainLookupStart": 0.247,
+        "domainLookupEnd": 0.253,
+        "connectStart": 0.253,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.573,
+        "requestStart": 1.677,
+        "responseStart": 1557.663,
+        "responseEnd": 1563.917
+      }
+    },
+    {
+      "path": "/businesses/01a19891-6a0f-7255-be15-53e435c82e98",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561116108.9338,
+        "domainLookupStart": 0.247,
+        "domainLookupEnd": 0.254,
+        "connectStart": 0.254,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.518,
+        "requestStart": 2.653,
+        "responseStart": 1670.077,
+        "responseEnd": 1681.154
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561117937.2139,
+        "domainLookupStart": 0.249,
+        "domainLookupEnd": 0.256,
+        "connectStart": 0.256,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.598,
+        "requestStart": 1.715,
+        "responseStart": 626.966,
+        "responseEnd": 636.619
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561118589.0989,
+        "domainLookupStart": 0.246,
+        "domainLookupEnd": 0.253,
+        "connectStart": 0.253,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.378,
+        "requestStart": 2.518,
+        "responseStart": 647.927,
+        "responseEnd": 665.103
+      }
+    },
+    {
+      "path": "/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561119321.039,
+        "domainLookupStart": 0.209,
+        "domainLookupEnd": 0.215,
+        "connectStart": 0.215,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.578,
+        "requestStart": 1.697,
+        "responseStart": 1854.888,
+        "responseEnd": 1862.718
+      }
+    },
+    {
+      "path": "/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561121186.6628,
+        "domainLookupStart": 0.218,
+        "domainLookupEnd": 0.224,
+        "connectStart": 0.224,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.493,
+        "requestStart": 1.602,
+        "responseStart": 2008.161,
+        "responseEnd": 2013.384
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561123206.848,
+        "domainLookupStart": 0.289,
+        "domainLookupEnd": 0.295,
+        "connectStart": 0.295,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.779,
+        "requestStart": 1.888,
+        "responseStart": 797.507,
+        "responseEnd": 803.937
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561124014.112,
+        "domainLookupStart": 0.209,
+        "domainLookupEnd": 0.215,
+        "connectStart": 0.215,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.357,
+        "requestStart": 1.459,
+        "responseStart": 676.67,
+        "responseEnd": 682.391
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561125786.989,
+        "domainLookupStart": 0.731,
+        "domainLookupEnd": 0.738,
+        "connectStart": 0.738,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.484,
+        "requestStart": 2.667,
+        "responseStart": 649.928,
+        "responseEnd": 655.776
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561126447.366,
+        "domainLookupStart": 0.222,
+        "domainLookupEnd": 0.229,
+        "connectStart": 0.229,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.699,
+        "requestStart": 1.805,
+        "responseStart": 664.53,
+        "responseEnd": 671.825
+      }
+    },
+    {
+      "path": "/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561127189.4932,
+        "domainLookupStart": 0.217,
+        "domainLookupEnd": 0.223,
+        "connectStart": 0.223,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.678,
+        "requestStart": 1.789,
+        "responseStart": 2481.837,
+        "responseEnd": 2561.589
+      }
+    },
+    {
+      "path": "/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561129761.135,
+        "domainLookupStart": 0.246,
+        "domainLookupEnd": 0.252,
+        "connectStart": 0.252,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.278,
+        "requestStart": 1.387,
+        "responseStart": 3091.425,
+        "responseEnd": 3203.314
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561132964.654,
+        "domainLookupStart": 0.252,
+        "domainLookupEnd": 0.259,
+        "connectStart": 0.259,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.529,
+        "requestStart": 2.052,
+        "responseStart": 704.878,
+        "responseEnd": 712.514
+      }
+    },
+    {
+      "path": "/identity/renew",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561133656.206,
+        "domainLookupStart": 0.216,
+        "domainLookupEnd": 0.222,
+        "connectStart": 0.222,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.278,
+        "requestStart": 1.382,
+        "responseStart": 516.16,
+        "responseEnd": 524.317
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561133677.885,
+        "domainLookupStart": 0.231,
+        "domainLookupEnd": 0.238,
+        "connectStart": 0.238,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.417,
+        "requestStart": 1.553,
+        "responseStart": 1201.874,
+        "responseEnd": 1208.882
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/rights",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561135406.8818,
+        "domainLookupStart": 0.211,
+        "domainLookupEnd": 0.217,
+        "connectStart": 0.217,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.321,
+        "requestStart": 1.419,
+        "responseStart": 1726.53,
+        "responseEnd": 1733.715
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561137194.509,
+        "domainLookupStart": 0.256,
+        "domainLookupEnd": 0.264,
+        "connectStart": 0.264,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.334,
+        "requestStart": 1.419,
+        "responseStart": 1261.681,
+        "responseEnd": 1267.306
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561138467.216,
+        "domainLookupStart": 0.297,
+        "domainLookupEnd": 0.302,
+        "connectStart": 0.302,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.136,
+        "requestStart": 2.438,
+        "responseStart": 1462.974,
+        "responseEnd": 1468.889
+      }
+    },
+    {
+      "path": "/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561140013.8682,
+        "domainLookupStart": 0.229,
+        "domainLookupEnd": 0.235,
+        "connectStart": 0.235,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.683,
+        "requestStart": 1.816,
+        "responseStart": 1789.539,
+        "responseEnd": 1795.732
+      }
+    },
+    {
+      "path": "/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561141812.4448,
+        "domainLookupStart": 0.22,
+        "domainLookupEnd": 0.226,
+        "connectStart": 0.226,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.303,
+        "requestStart": 1.405,
+        "responseStart": 1780.756,
+        "responseEnd": 1786.808
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561143606.75,
+        "domainLookupStart": 0.243,
+        "domainLookupEnd": 0.249,
+        "connectStart": 0.249,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.386,
+        "requestStart": 1.524,
+        "responseStart": 700.11,
+        "responseEnd": 708.187
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561144350.552,
+        "domainLookupStart": 0.271,
+        "domainLookupEnd": 0.279,
+        "connectStart": 0.279,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.646,
+        "requestStart": 1.755,
+        "responseStart": 1332.742,
+        "responseEnd": 1341.349
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/enrollment",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561145697.6099,
+        "domainLookupStart": 0.223,
+        "domainLookupEnd": 0.229,
+        "connectStart": 0.229,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.494,
+        "requestStart": 1.604,
+        "responseStart": 1462.088,
+        "responseEnd": 1468.289
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561147246.499,
+        "domainLookupStart": 0.218,
+        "domainLookupEnd": 0.224,
+        "connectStart": 0.224,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.508,
+        "requestStart": 1.613,
+        "responseStart": 1544.846,
+        "responseEnd": 1552.952
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561148801.4587,
+        "domainLookupStart": 0.216,
+        "domainLookupEnd": 0.222,
+        "connectStart": 0.222,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.745,
+        "requestStart": 1.869,
+        "responseStart": 2471.003,
+        "responseEnd": 2479.463
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561151671.854,
+        "domainLookupStart": 0.264,
+        "domainLookupEnd": 0.271,
+        "connectStart": 0.271,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.775,
+        "requestStart": 1.918,
+        "responseStart": 2092.587,
+        "responseEnd": 2099.897
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/context",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561153976.707,
+        "domainLookupStart": 0.241,
+        "domainLookupEnd": 0.247,
+        "connectStart": 0.247,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.453,
+        "requestStart": 1.626,
+        "responseStart": 2544.315,
+        "responseEnd": 2552.165
+      }
+    },
+    {
+      "path": "/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561156548.532,
+        "domainLookupStart": 0.281,
+        "domainLookupEnd": 0.287,
+        "connectStart": 0.287,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.263,
+        "requestStart": 2.365,
+        "responseStart": 4746.482,
+        "responseEnd": 5066.848
+      }
+    },
+    {
+      "path": "/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561161603.944,
+        "domainLookupStart": 0.213,
+        "domainLookupEnd": 0.219,
+        "connectStart": 0.219,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.423,
+        "requestStart": 1.527,
+        "responseStart": 3218.501,
+        "responseEnd": 3226.921
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561165448.966,
+        "domainLookupStart": 0.361,
+        "domainLookupEnd": 0.371,
+        "connectStart": 0.371,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.668,
+        "requestStart": 1.794,
+        "responseStart": 1580.119,
+        "responseEnd": 1587.434
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561167042.436,
+        "domainLookupStart": 0.391,
+        "domainLookupEnd": 0.401,
+        "connectStart": 0.401,
+        "secureConnectionStart": -1,
+        "connectEnd": 4.354,
+        "requestStart": 4.58,
+        "responseStart": 1984.624,
+        "responseEnd": 1998.868
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561169048.6091,
+        "domainLookupStart": 0.269,
+        "domainLookupEnd": 0.275,
+        "connectStart": 0.275,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.513,
+        "requestStart": 1.623,
+        "responseStart": 2185.519,
+        "responseEnd": 2192.501
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561171266.562,
+        "domainLookupStart": 0.241,
+        "domainLookupEnd": 0.248,
+        "connectStart": 0.248,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.853,
+        "requestStart": 2.014,
+        "responseStart": 1217.598,
+        "responseEnd": 1225.473
+      }
+    },
+    {
+      "path": "/locale",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561176184.7659,
+        "domainLookupStart": 0.743,
+        "domainLookupEnd": 0.75,
+        "connectStart": 0.75,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.717,
+        "requestStart": 1.829,
+        "responseStart": 1160.251,
+        "responseEnd": 1184.093
+      }
+    },
+    {
+      "path": "/locale",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561182870.012,
+        "domainLookupStart": 0.732,
+        "domainLookupEnd": 0.74,
+        "connectStart": 0.74,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.888,
+        "requestStart": 2.067,
+        "responseStart": 1670.554,
+        "responseEnd": 1673.178
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561184609.842,
+        "domainLookupStart": 0.245,
+        "domainLookupEnd": 0.251,
+        "connectStart": 0.251,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.329,
+        "requestStart": 1.548,
+        "responseStart": 726.441,
+        "responseEnd": 733.017
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561188155.494,
+        "domainLookupStart": 1.946,
+        "domainLookupEnd": 1.955,
+        "connectStart": 1.955,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.833,
+        "requestStart": 2.934,
+        "responseStart": 690.054,
+        "responseEnd": 702.946
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561188859.5159,
+        "domainLookupStart": 0.551,
+        "domainLookupEnd": 0.558,
+        "connectStart": 0.558,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.621,
+        "requestStart": 1.722,
+        "responseStart": 580.277,
+        "responseEnd": 589.419
+      }
+    },
+    {
+      "path": "/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561189535.0598,
+        "domainLookupStart": 0.623,
+        "domainLookupEnd": 0.629,
+        "connectStart": 0.629,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.96,
+        "requestStart": 2.152,
+        "responseStart": 3734.121,
+        "responseEnd": 3744.936
+      }
+    },
+    {
+      "path": "/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561193282.26,
+        "domainLookupStart": 0.737,
+        "domainLookupEnd": 0.745,
+        "connectStart": 0.745,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.099,
+        "requestStart": 2.216,
+        "responseStart": 2699.353,
+        "responseEnd": 2704.171
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561196013.206,
+        "domainLookupStart": 1.536,
+        "domainLookupEnd": 1.545,
+        "connectStart": 1.545,
+        "secureConnectionStart": -1,
+        "connectEnd": 3.667,
+        "requestStart": 3.955,
+        "responseStart": 862.889,
+        "responseEnd": 889.005
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561196884.804,
+        "domainLookupStart": 0.709,
+        "domainLookupEnd": 0.729,
+        "connectStart": 0.729,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.773,
+        "requestStart": 1.882,
+        "responseStart": 946.398,
+        "responseEnd": 955.666
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561198410.5178,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": -1,
+        "responseStart": 1962.431,
+        "responseEnd": 1963.296
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561200381.52,
+        "domainLookupStart": 1.274,
+        "domainLookupEnd": 1.283,
+        "connectStart": 1.283,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.304,
+        "requestStart": 2.408,
+        "responseStart": 652.804,
+        "responseEnd": 665.429
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561200401.717,
+        "domainLookupStart": 0.265,
+        "domainLookupEnd": 0.271,
+        "connectStart": 0.271,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.372,
+        "requestStart": 1.48,
+        "responseStart": 1203.351,
+        "responseEnd": 1211.293
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561201048.917,
+        "domainLookupStart": 0.253,
+        "domainLookupEnd": 0.259,
+        "connectStart": 0.259,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.364,
+        "requestStart": 1.46,
+        "responseStart": 1314.099,
+        "responseEnd": 1320.405
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561201630.268,
+        "domainLookupStart": 0.258,
+        "domainLookupEnd": 0.264,
+        "connectStart": 0.264,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.295,
+        "requestStart": 1.395,
+        "responseStart": 1327.725,
+        "responseEnd": 1335.651
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/rights",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561204854.153,
+        "domainLookupStart": 0.666,
+        "domainLookupEnd": 0.674,
+        "connectStart": 0.674,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.446,
+        "requestStart": 1.539,
+        "responseStart": 694.427,
+        "responseEnd": 699.211
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 403,
+      "timing": {
+        "startTime": 1793561205631.743,
+        "domainLookupStart": 0.271,
+        "domainLookupEnd": 0.279,
+        "connectStart": 0.279,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.889,
+        "requestStart": 2.049,
+        "responseStart": 598.937,
+        "responseEnd": 607.504
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561206269.4111,
+        "domainLookupStart": 0.249,
+        "domainLookupEnd": 0.255,
+        "connectStart": 0.255,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.348,
+        "requestStart": 1.464,
+        "responseStart": 623.387,
+        "responseEnd": 630.023
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/enrollment",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561206905.0068,
+        "domainLookupStart": 0.264,
+        "domainLookupEnd": 0.271,
+        "connectStart": 0.271,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.478,
+        "requestStart": 1.601,
+        "responseStart": 821.556,
+        "responseEnd": 827.504
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561207787.029,
+        "domainLookupStart": 0.264,
+        "domainLookupEnd": 0.272,
+        "connectStart": 0.272,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.423,
+        "requestStart": 1.562,
+        "responseStart": 636.015,
+        "responseEnd": 647.755
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence/eligibility",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561207805.068,
+        "domainLookupStart": 0.281,
+        "domainLookupEnd": 0.288,
+        "connectStart": 0.288,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.554,
+        "requestStart": 1.668,
+        "responseStart": 1206.47,
+        "responseEnd": 1216.259
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561208439.815,
+        "domainLookupStart": 0.261,
+        "domainLookupEnd": 0.269,
+        "connectStart": 0.269,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.682,
+        "requestStart": 1.799,
+        "responseStart": 1303.925,
+        "responseEnd": 1312.616
+      }
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561209026.534,
+        "domainLookupStart": 0.27,
+        "domainLookupEnd": 0.277,
+        "connectStart": 0.277,
+        "secureConnectionStart": -1,
+        "connectEnd": 2.553,
+        "requestStart": 2.706,
+        "responseStart": 1333.548,
+        "responseEnd": 1342.324
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561213221.941,
+        "domainLookupStart": 0.794,
+        "domainLookupEnd": 0.803,
+        "connectStart": 0.803,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.932,
+        "requestStart": 2.067,
+        "responseStart": 682.727,
+        "responseEnd": 688.145
+      }
+    },
+    {
+      "path": "/businesses",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561213912.7268,
+        "domainLookupStart": 0.244,
+        "domainLookupEnd": 0.25,
+        "connectStart": 0.25,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.754,
+        "requestStart": 1.871,
+        "responseStart": 609.49,
+        "responseEnd": 615.041
+      }
+    },
+    {
+      "path": "/businesses/01a19894-34d9-7b65-ba65-7bdeadfb60d6",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561214606.165,
+        "domainLookupStart": 0.226,
+        "domainLookupEnd": 0.232,
+        "connectStart": 0.232,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.519,
+        "requestStart": 1.648,
+        "responseStart": 1631.53,
+        "responseEnd": 1639.124
+      }
+    },
+    {
+      "path": "/businesses/01a19894-34d9-7b65-ba65-7bdeadfb60d6",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561216248.601,
+        "domainLookupStart": 0.23,
+        "domainLookupEnd": 0.236,
+        "connectStart": 0.236,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.435,
+        "requestStart": 1.538,
+        "responseStart": 1684.688,
+        "responseEnd": 1691.818
+      }
+    },
+    {
+      "path": "/identity/renew",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561217814.372,
+        "domainLookupStart": 0.737,
+        "domainLookupEnd": 0.747,
+        "connectStart": 0.747,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.806,
+        "requestStart": 1.907,
+        "responseStart": 564.927,
+        "responseEnd": 573.213
+      }
+    },
+    {
+      "path": "/api/businesses/01a19894-34d9-7b65-ba65-7bdeadfb60d6/surface",
+      "status": 200,
+      "timing": {
+        "startTime": 1793561217983.958,
+        "domainLookupStart": 0.256,
+        "domainLookupEnd": 0.262,
+        "connectStart": 0.262,
+        "secureConnectionStart": -1,
+        "connectEnd": 1.387,
+        "requestStart": 1.496,
+        "responseStart": 1958.492,
+        "responseEnd": 1966.33
+      }
+    }
+  ],
+  "failedRequests": [
+    {
+      "path": "/build/goals-spa/assets/SourceRights-DQiAdO3M.js",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/build/goals-spa/assets/BusinessCreate-DBuZBUHd.js",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/build/goals-spa/assets/BusinessCreate-CA1l6faH.css",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "failure": "net::ERR_FAILED"
+    },
+    {
+      "path": "/api/businesses/01a19891-f1a7-73fa-881e-a4f1d90ffec1/inquiry-evidence",
+      "failure": "net::ERR_FAILED"
+    }
+  ],
+  "browser": "145.0.7632.6",
+  "createdBusiness": "01a19891-f1a7-73fa-881e-a4f1d90ffec1",
+  "result": "FAIL",
+  "failure": "TypeError: Cannot read properties of undefined (reading 'public_id')\n    at file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/tests/Support/business-surface-browser.mjs:548:82\n    at async check (file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/tests/Support/business-surface-browser.mjs:24:26)\n    at async file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/tests/Support/business-surface-browser.mjs:542:5"
+}

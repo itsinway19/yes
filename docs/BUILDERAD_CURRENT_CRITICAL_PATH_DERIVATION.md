@@ -1,5 +1,10 @@
 # Builderad — Current Critical Path Derivation 001
 
+## Post-D3 construction candidate — 2026-11-01
+
+The historical accepted baseline and decisions below remain preserved. The Owner-authorized Stage A [structural construction candidate](execution/structural-foundation/PROGRAM.md) and [capability coverage](execution/structural-foundation/CAPABILITY_COVERAGE.csv) describe the post-D3 baseline c747f6d and proposed dependency-ordered work. They are pending program acceptance, not new landed project truth or blanket implementation authority. The candidate adds bidirectional coverage and technology-fitness/flexibility criteria; it does not supersede canonical semantic owners or historical acceptance.
+
+
 Prepared **2026-10-06, Europe/Istanbul**. **Status: OWNER_ACCEPTED.** Final Owner acceptance and selection of the sole eligible direction are granted. Active product-work authority is Semantic Design only, with bounded supporting Discovery only when a specific unresolved fact blocks that design. Implementation Plan and implementation are not authorized. Landing status is established externally through Git / PR / CI / authoritative-main provenance; this document does not self-prove landing.
 
 ## 1. Baseline and task boundary

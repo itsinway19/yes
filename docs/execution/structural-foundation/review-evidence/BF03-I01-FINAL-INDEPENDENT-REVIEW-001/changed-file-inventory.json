@@ -1,0 +1,408 @@
+[
+  {
+    "status": " M",
+    "path": "AGENTS.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": " M",
+    "path": "DESIGN.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": " M",
+    "path": "UX-CONTRACT.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": " M",
+    "path": "contracts/application.openapi.json",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": " M",
+    "path": "docs/BUILDERAD_CURRENT_CRITICAL_PATH_DERIVATION.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": " M",
+    "path": "docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": " M",
+    "path": "docs/BUILDERAD_MASTER_EXECUTION_MAP.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": " M",
+    "path": "docs/execution/public-platform/SURFACES.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": " M",
+    "path": "package.json",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": " M",
+    "path": "resources/js/api/generated/application.d.ts",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": " M",
+    "path": "resources/js/business-foundation/BusinessEditor.vue",
+    "classification": "UX-integration",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": " M",
+    "path": "resources/js/business-foundation/BusinessSurface.vue",
+    "classification": "UX-integration",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": " M",
+    "path": "routes/web.php",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": " M",
+    "path": "scripts/application-openapi.mjs",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": " M",
+    "path": "tests/Support/business-surface-browser.mjs",
+    "classification": "BF03-and-later-UX",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "app/Commercial/InquiryEvidence.php",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "app/Http/Controllers/InquiryEvidenceController.php",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "database/migrations/0001_01_01_000540_create_inquiry_evidence.php",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "database/sql/inquiry_evidence/authority.sql",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "database/sql/inquiry_evidence/declarations.sql",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "database/sql/inquiry_evidence/permissions.sql",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "database/sql/inquiry_evidence/schema.sql",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "database/sql/inquiry_evidence/table_permissions.sql",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "database/sql/inquiry_evidence/validation.sql",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/B01_PRECEDENCE.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/B02_EVIDENCE_ROUTE.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/B02_RESEARCH_REUSE.csv",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/B02_SPECIALIST_QUALIFICATION.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/BF03_FINAL_INDEPENDENT_REVIEW_ASSIGNMENT.md",
+    "classification": "review-assignment",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/BF03_IMPLEMENTATION.json",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/BUSINESS_WORKSPACE_UX.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/CAPABILITY_COVERAGE.csv",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/CASE_A_CONTRACT.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/EVIDENCE.json",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/EXPERTISE_INTEGRATION.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/G8_FIRST_PACKAGE.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/IMPLEMENTATION_PROGRESS.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/NEXT_IMPLEMENTATION_PACKAGE.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/OWNER_MANDATE.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/PROGRAM.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/RESEARCH_ALIGNMENT.csv",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/RESEARCH_ALIGNMENT.md",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": "??",
+    "path": "docs/execution/structural-foundation/RESEARCH_INVENTORY.csv",
+    "classification": "governance-and-execution-records",
+    "presentInPreimplementationSnapshot": true,
+    "unchangedSincePreimplementationSnapshot": true
+  },
+  {
+    "status": "??",
+    "path": "resources/js/business-foundation/BusinessWorkspace.vue",
+    "classification": "UX-integration",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "resources/js/business-foundation/workspace.css",
+    "classification": "UX-integration",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "resources/js/business-foundation/workspacePresentation.ts",
+    "classification": "UX-integration",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "resources/js/inquiry-evidence/DeclarationDetails.vue",
+    "classification": "UX-integration",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "resources/js/inquiry-evidence/InquiryEvidencePanel.vue",
+    "classification": "BF03-and-later-UX",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "resources/js/inquiry-evidence/api.ts",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "resources/js/inquiry-evidence/editor.ts",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "resources/js/inquiry-evidence/presentationDrafts.ts",
+    "classification": "UX-integration",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "scripts/inquiry-evidence-openapi.mjs",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "tests/Feature/InquiryEvidenceAdmissionTest.php",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "tests/Feature/InquiryEvidenceConcurrencyTest.php",
+    "classification": "BF03-with-later-test-instrumentation",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "tests/Feature/InquiryEvidenceUpgradeTest.php",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "tests/Support/InquiryEvidenceFixture.php",
+    "classification": "BF03-implementation-and-contracts",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "tests/Support/InquiryEvidenceWorker.php",
+    "classification": "BF03-with-later-test-instrumentation",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  },
+  {
+    "status": "??",
+    "path": "tests/inquiry-evidence.test.mjs",
+    "classification": "BF03-and-later-UX",
+    "presentInPreimplementationSnapshot": false,
+    "unchangedSincePreimplementationSnapshot": false
+  }
+]

@@ -16,6 +16,7 @@ use App\Http\Controllers\GlobalAppearanceController;
 use App\Http\Controllers\GoalsSpaController;
 use App\Http\Controllers\GoogleConnectionController;
 use App\Http\Controllers\GoogleReportController;
+use App\Http\Controllers\InquiryEvidenceController;
 use App\Http\Controllers\InternalAdministrationController;
 use App\Http\Controllers\InternalBusinessTypeController;
 use App\Http\Controllers\InternalCustomerAdministrationController;
@@ -73,6 +74,14 @@ Route::post('/internal/locale', LocaleController::class)->name('internal.locale.
 Route::get('/dashboard', [BusinessContextController::class, 'entry'])
     ->middleware(['auth', EnsureCurrentPrincipal::class])->name('dashboard');
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
+    Route::get('/api/businesses/{business}/inquiry-evidence/eligibility', [InquiryEvidenceController::class, 'eligibility'])->whereUuid('business')->name('business-foundation.inquiry-evidence.eligibility');
+    Route::get('/api/businesses/{business}/inquiry-evidence', [InquiryEvidenceController::class, 'index'])->whereUuid('business')->name('business-foundation.inquiry-evidence.index');
+    Route::get('/api/businesses/{business}/inquiry-evidence/{declaration}/history', [InquiryEvidenceController::class, 'history'])->whereUuid('business')->whereUuid('declaration')->name('business-foundation.inquiry-evidence.history');
+    Route::post('/api/businesses/{business}/inquiry-evidence/enrollment', [InquiryEvidenceController::class, 'enroll'])->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('business-foundation.inquiry-evidence.enroll');
+    Route::post('/api/businesses/{business}/inquiry-evidence/rights', [InquiryEvidenceController::class, 'revoke'])->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('business-foundation.inquiry-evidence.revoke');
+    Route::post('/api/businesses/{business}/inquiry-evidence', [InquiryEvidenceController::class, 'store'])->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('business-foundation.inquiry-evidence.store');
+    Route::post('/api/businesses/{business}/inquiry-evidence/{declaration}/revisions', [InquiryEvidenceController::class, 'revise'])->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->whereUuid('declaration')->name('business-foundation.inquiry-evidence.revise');
+
     Route::post('/api/businesses/{business}/knowledge/customer-discovery', [KnowledgeConsumerController::class, 'customers'])->whereUuid('business')->name('business-foundation.knowledge.customers');
     Route::post('/api/businesses/{business}/knowledge/competition', [KnowledgeConsumerController::class, 'competition'])->whereUuid('business')->name('business-foundation.knowledge.competition');
     Route::post('/api/businesses/{business}/market-findings/capture', [BusinessFindingController::class, 'capture'])->whereUuid('business')->name('business-foundation.market-findings.capture');

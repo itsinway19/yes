@@ -2733,6 +2733,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/businesses/{business}/inquiry-evidence/eligibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readInquiryEvidenceEligibility"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/inquiry-evidence/enrollment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["enrollInquiryEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/inquiry-evidence/rights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["revokeInquiryEvidenceRight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/inquiry-evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readInquiryEvidence"];
+        put?: never;
+        post: operations["recordInquiryEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/inquiry-evidence/{declaration}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reviseInquiryEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/inquiry-evidence/{declaration}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readInquiryEvidenceHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -6598,6 +6694,170 @@ export interface components {
                 message: string;
                 next_step: string;
                 limits: string;
+            };
+        };
+        InquiryAuthoritySelection: {
+            /** @constant */
+            realm_kind: "direct";
+            realm_workspace_public_id: string | null;
+            requirements: {
+                /** @constant */
+                requirement_kind: "business";
+                leaf_grant_id: string;
+            }[];
+        };
+        InquiryDeclarationValue: {
+            cohort: {
+                /** @enum {unknown} */
+                channel_kind: "form" | "call" | "message" | "crm" | "other";
+                definition_version: number;
+                country_code: string | null;
+                /** @constant */
+                population: "recorded_inquiries";
+                /** @constant */
+                counting_policy: "distinct_inquiries";
+            };
+            observation: {
+                period_start: string;
+                period_end: string;
+                as_of: string;
+                timezone: string;
+            };
+            cost: {
+                amount: string;
+                currency: string;
+                precision: number;
+                /** @enum {unknown} */
+                cost_basis: "advertising_spend" | "declared_cohort_cost";
+                /** @enum {unknown} */
+                allocation_basis: "whole_cohort" | "declared_attribution";
+            } | null;
+            inquiries: {
+                count: number | null;
+                /** @enum {unknown} */
+                coverage: "complete" | "partial" | "unknown";
+            } | null;
+            acceptance: {
+                count: number | null;
+                pending_count: number | null;
+                /** @enum {unknown} */
+                criterion_code: "operator_defined" | "within_service_area" | "response_ready";
+                criterion_version: number;
+                criterion_definition: string | null;
+                cutoff: string;
+                /** @enum {unknown} */
+                maturity: "mature" | "pending" | "unknown";
+                /** @enum {unknown} */
+                coverage: "complete" | "partial" | "unknown";
+            } | null;
+        };
+        InquiryHistoricalDeclarationValue: {
+            cohort: {
+                /** @enum {unknown} */
+                channel_kind: "form" | "call" | "message" | "crm" | "other";
+                definition_version: number;
+                country_code: string | null;
+                /** @constant */
+                population: "recorded_inquiries";
+                /** @constant */
+                counting_policy: "distinct_inquiries";
+            };
+            observation: {
+                period_start: string;
+                period_end: string;
+                as_of: string;
+                timezone: string;
+            };
+            cost: {
+                amount: string;
+                currency: string;
+                precision: number;
+                /** @enum {unknown} */
+                cost_basis: "advertising_spend" | "declared_cohort_cost";
+                /** @enum {unknown} */
+                allocation_basis: "whole_cohort" | "declared_attribution";
+            } | null;
+            inquiries: {
+                count: number | null;
+                /** @enum {unknown} */
+                coverage: "complete" | "partial" | "unknown";
+            } | null;
+            acceptance: {
+                count: number | null;
+                pending_count: number | null;
+                /** @enum {unknown} */
+                criterion_code: "operator_defined" | "within_service_area" | "response_ready";
+                criterion_version: number;
+                criterion_definition?: string | null;
+                cutoff: string;
+                /** @enum {unknown} */
+                maturity: "mature" | "pending" | "unknown";
+                /** @enum {unknown} */
+                coverage: "complete" | "partial" | "unknown";
+            } | null;
+        };
+        InquiryEvidenceEligibility: {
+            /** Format: uuid */
+            business: string;
+            /** Format: uuid */
+            basis_qualification: string;
+            basis_revision: number;
+            /** @constant */
+            policy: "inquiry_evidence_custody_v1";
+            /** @constant */
+            policy_version: 1;
+            /** @constant */
+            mode: "own_private_statement";
+            grants: {
+                "business.inquiry_evidence.record"?: string;
+                "business.inquiry_evidence.correct"?: string;
+                "business.inquiry_evidence.read"?: string;
+            };
+        };
+        InquiryEvidenceRead: {
+            /** Format: uuid */
+            business: string;
+            /** @constant */
+            mode: "own_private_statement";
+            /** @constant */
+            assurance: "SOURCE_ASSERTED";
+            /** @constant */
+            independently_verified: false;
+            items: {
+                /** Format: uuid */
+                declaration_id: string;
+                revision: number;
+                /** @enum {unknown} */
+                state: "source_asserted" | "withdrawn";
+                /** @enum {unknown} */
+                reason: "initial" | "correction" | "withdrawal";
+                value: components["schemas"]["InquiryHistoricalDeclarationValue"] | null;
+                recorded_at: string;
+                /** Format: uuid */
+                original_issuer: string;
+                /** Format: uuid */
+                correcting_actor: string;
+            }[];
+            more: boolean;
+            next_declaration: string | null;
+            next_revision: number | null;
+            /** @constant */
+            collection_limit: 25;
+        };
+        InquiryEvidenceReceipt: {
+            /** Format: uuid */
+            command_id: string;
+            /** Format: uuid */
+            declaration_id: string;
+            revision: number;
+            /** @enum {unknown} */
+            state: "source_asserted" | "withdrawn";
+            /** @constant */
+            assurance: "SOURCE_ASSERTED";
+            /** @constant */
+            independently_verified: false;
+            versions: {
+                [key: string]: unknown;
             };
         };
     };
@@ -24575,6 +24835,774 @@ export interface operations {
                             message: string;
                             next_step: string;
                             limits: string;
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readInquiryEvidenceEligibility: {
+        parameters: {
+            query: {
+                access: string;
+            };
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business: string;
+                            /** Format: uuid */
+                            basis_qualification: string;
+                            basis_revision: number;
+                            /** @constant */
+                            policy: "inquiry_evidence_custody_v1";
+                            /** @constant */
+                            policy_version: 1;
+                            /** @constant */
+                            mode: "own_private_statement";
+                            grants: {
+                                "business.inquiry_evidence.record"?: string;
+                                "business.inquiry_evidence.correct"?: string;
+                                "business.inquiry_evidence.read"?: string;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    enrollInquiryEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    authority_selection: components["schemas"]["InquiryAuthoritySelection"];
+                    basis_revision: number;
+                    /** @constant */
+                    confirm: true;
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            command_id: string;
+                            /** @constant */
+                            policy: "inquiry_evidence_custody_v1";
+                            /** Format: uuid */
+                            qualification: string;
+                            grants: {
+                                "business.inquiry_evidence.record"?: string;
+                                "business.inquiry_evidence.correct"?: string;
+                                "business.inquiry_evidence.read"?: string;
+                            };
+                            versions: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    revokeInquiryEvidenceRight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    authority_selection: components["schemas"]["InquiryAuthoritySelection"];
+                    /** @enum {unknown} */
+                    action: "business.inquiry_evidence.record" | "business.inquiry_evidence.correct" | "business.inquiry_evidence.read";
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            command_id: string;
+                            /** @enum {unknown} */
+                            revoked_action: "business.inquiry_evidence.record" | "business.inquiry_evidence.correct" | "business.inquiry_evidence.read";
+                            versions: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readInquiryEvidence: {
+        parameters: {
+            query: {
+                access: string;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business: string;
+                            /** @constant */
+                            mode: "own_private_statement";
+                            /** @constant */
+                            assurance: "SOURCE_ASSERTED";
+                            /** @constant */
+                            independently_verified: false;
+                            items: {
+                                /** Format: uuid */
+                                declaration_id: string;
+                                revision: number;
+                                /** @enum {unknown} */
+                                state: "source_asserted" | "withdrawn";
+                                /** @enum {unknown} */
+                                reason: "initial" | "correction" | "withdrawal";
+                                value: components["schemas"]["InquiryHistoricalDeclarationValue"] | null;
+                                recorded_at: string;
+                                /** Format: uuid */
+                                original_issuer: string;
+                                /** Format: uuid */
+                                correcting_actor: string;
+                            }[];
+                            more: boolean;
+                            next_declaration: string | null;
+                            next_revision: number | null;
+                            /** @constant */
+                            collection_limit: 25;
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    recordInquiryEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    authority_selection: components["schemas"]["InquiryAuthoritySelection"];
+                    value: components["schemas"]["InquiryDeclarationValue"];
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            command_id: string;
+                            /** Format: uuid */
+                            declaration_id: string;
+                            revision: number;
+                            /** @enum {unknown} */
+                            state: "source_asserted" | "withdrawn";
+                            /** @constant */
+                            assurance: "SOURCE_ASSERTED";
+                            /** @constant */
+                            independently_verified: false;
+                            versions: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reviseInquiryEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+                declaration: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    authority_selection: components["schemas"]["InquiryAuthoritySelection"];
+                    expected_revision: number;
+                    /** @enum {unknown} */
+                    effect: "correct" | "withdraw";
+                    value: components["schemas"]["InquiryDeclarationValue"] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            command_id: string;
+                            /** Format: uuid */
+                            declaration_id: string;
+                            revision: number;
+                            /** @enum {unknown} */
+                            state: "source_asserted" | "withdrawn";
+                            /** @constant */
+                            assurance: "SOURCE_ASSERTED";
+                            /** @constant */
+                            independently_verified: false;
+                            versions: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readInquiryEvidenceHistory: {
+        parameters: {
+            query: {
+                access: string;
+                after?: number;
+            };
+            header?: never;
+            path: {
+                business: string;
+                declaration: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business: string;
+                            /** @constant */
+                            mode: "own_private_statement";
+                            /** @constant */
+                            assurance: "SOURCE_ASSERTED";
+                            /** @constant */
+                            independently_verified: false;
+                            items: {
+                                /** Format: uuid */
+                                declaration_id: string;
+                                revision: number;
+                                /** @enum {unknown} */
+                                state: "source_asserted" | "withdrawn";
+                                /** @enum {unknown} */
+                                reason: "initial" | "correction" | "withdrawal";
+                                value: components["schemas"]["InquiryHistoricalDeclarationValue"] | null;
+                                recorded_at: string;
+                                /** Format: uuid */
+                                original_issuer: string;
+                                /** Format: uuid */
+                                correcting_actor: string;
+                            }[];
+                            more: boolean;
+                            next_declaration: string | null;
+                            next_revision: number | null;
+                            /** @constant */
+                            collection_limit: 25;
                         };
                     };
                 };

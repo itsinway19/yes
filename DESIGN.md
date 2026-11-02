@@ -16,3 +16,8 @@ Public display: bold Segoe UI/Tahoma; body: Tahoma/Segoe UI/Arial with full Arab
 
 ## Canonical owners
 Runtime appearance: GlobalAppearance → published CSS variables → public styles / app styles / theme adapter. Display preference: public/brand/theme.js. Brand: BrandLogo and public brand partial, same static asset. Application behavior: UX-CONTRACT.md and the existing SPA identity/presentation protocol. Visual changes do not grant authority or advertise future capabilities as available.
+
+
+## Business workspace task organization — 2026-11-01
+
+The advertiser Business detail uses a true activity header and five bounded local task destinations; overview introduces the work, other destinations omit repeated orientation. Inquiry evidence collection stays compact; complete authorized meaning and version history live in an explicit detail view with back/focus context. Forms group business inputs before progressive definition/precision metadata. Existing brand/theme/font owners remain unchanged; `resources/js/business-foundation/workspace.css` consumes their tokens, with wide shell and task-specific form width. No new design system, dependency or global navigation.

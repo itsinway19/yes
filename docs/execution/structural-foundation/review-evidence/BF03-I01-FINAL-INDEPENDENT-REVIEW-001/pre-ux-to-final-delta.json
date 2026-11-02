@@ -1,0 +1,54 @@
+[
+  {
+    "path": "public/build/goals-spa/manifest.json",
+    "kind": "modified"
+  },
+  {
+    "path": "resources/js/business-foundation/BusinessEditor.vue",
+    "kind": "modified"
+  },
+  {
+    "path": "resources/js/business-foundation/BusinessSurface.vue",
+    "kind": "modified"
+  },
+  {
+    "path": "resources/js/business-foundation/BusinessWorkspace.vue",
+    "kind": "added"
+  },
+  {
+    "path": "resources/js/business-foundation/workspace.css",
+    "kind": "added"
+  },
+  {
+    "path": "resources/js/business-foundation/workspacePresentation.ts",
+    "kind": "added"
+  },
+  {
+    "path": "resources/js/inquiry-evidence/DeclarationDetails.vue",
+    "kind": "modified"
+  },
+  {
+    "path": "resources/js/inquiry-evidence/InquiryEvidencePanel.vue",
+    "kind": "modified"
+  },
+  {
+    "path": "resources/js/inquiry-evidence/presentationDrafts.ts",
+    "kind": "added"
+  },
+  {
+    "path": "tests/Feature/InquiryEvidenceConcurrencyTest.php",
+    "kind": "modified"
+  },
+  {
+    "path": "tests/inquiry-evidence.test.mjs",
+    "kind": "modified"
+  },
+  {
+    "path": "tests/Support/business-surface-browser.mjs",
+    "kind": "modified"
+  },
+  {
+    "path": "tests/Support/InquiryEvidenceWorker.php",
+    "kind": "modified"
+  }
+]

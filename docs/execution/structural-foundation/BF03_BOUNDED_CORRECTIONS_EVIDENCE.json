@@ -1,0 +1,102 @@
+{
+  "revision": "c747f6d8a8f2011fa5dcc368da2aa4e8449e0565",
+  "worktree": "C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001",
+  "scope": "dirty local bounded correction, no publication",
+  "disposition": "INCONCLUSIVE — REQUIRED_EVIDENCE_MISSING",
+  "unique_focused_passed": 37,
+  "focused_assertions": 223,
+  "unique_browser_journeys_passed": 41,
+  "final_browser_selection_passed": 15,
+  "independent_browser_probes_passed": 6,
+  "independent_final_review": "NOT_COMPLETED_USAGE_LIMIT",
+  "changed_actor_browser": "UNPROVEN_TIMEOUT_AFTER_LOGIN",
+  "foundation": "GLOBAL_FOUNDATION_FAILED_INCOMPLETE",
+  "publication": "NOT_AUTHORIZED",
+  "test_services": "STOPPED_BY_OFFICIAL_RUNNER",
+  "evidence": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-bounded-corrections-resume",
+  "report_sha256": "0c9d55df25bcaba477d1b74a31fd45c43f894b60333d9c59870aefaa0f7d58bd",
+  "correction_delta_sha256": "e4a533c6a584a91834361a9a040d2e73169637ad347c68a9824217f2a9e4def9",
+  "final_tested_source_manifest_sha256": "e1ca20d9d2005dba662d6783b5cae3c1d1ace0cacb19d06c2dd566e75deb3c7f",
+  "files": [
+    {
+      "path": "database/sql/inquiry_evidence/validation.sql",
+      "before": "4712caac9cd4cf7bafa76e0a2aaa46d30587c2d0435ac266e2f2ece7629dbec8",
+      "after": "6a8f3d1d7308265fe0e86f2f823b7eae31ed25e446b1e485917318441e07ebc8"
+    },
+    {
+      "path": "database/sql/inquiry_evidence/declarations.sql",
+      "before": "c3ff694c8964b4a2dd7acfd01233ca35deee657dfc1c71bb4d727f5c07542395",
+      "after": "d793f4763eb5f563bc44e53372d0c582bf1e79393c1aca7d3f64e17179ae2df2"
+    },
+    {
+      "path": "scripts/inquiry-evidence-openapi.mjs",
+      "before": "81bccdcd86a1aba6896c9338db6ac5fd0f0ca56963c6097c63eef2086ab29058",
+      "after": "da7df2e7b0e2e92c9ab1b31bc71a541ab2aaac7572f58ebe9b8d7a722673a417"
+    },
+    {
+      "path": "resources/js/inquiry-evidence/api.ts",
+      "before": "f15b57f8763f688fb41c89401de471bdc799062931daa009b38aeee8cc00c666",
+      "after": "5112fa633e3f2e97d3d58014cc57110fe992554ecd0e9ffdcc917e19aea6aff0"
+    },
+    {
+      "path": "resources/js/inquiry-evidence/InquiryEvidencePanel.vue",
+      "before": "0daee15df043ea75de2d47a5eab6b6cfe97358ad3e80a6936c258194273c4298",
+      "after": "979f9d64d971c192bd189e3c392d88449a304a08370a757b4ca027f3ae5b77c1"
+    },
+    {
+      "path": "resources/js/inquiry-evidence/DeclarationDetails.vue",
+      "before": "c2e7d6de499465c8965a3b74bfe81eaf3ce10aac94a1d955db1289338e5cfc1c",
+      "after": "da9952277c7e08b52b00083a391f14d989ca400f840e7454e68da538b4909249"
+    },
+    {
+      "path": "resources/js/inquiry-evidence/presentationDrafts.ts",
+      "before": "7b61450f427f7fbe5515780dd7f878d2100155e382b89882ee7c3d71894aba94",
+      "after": "a529a77fc770b8875bf2f2207085eaac37d0d1ca3777a3be9ba88560c9e0ede1"
+    },
+    {
+      "path": "resources/js/business-foundation/BusinessWorkspace.vue",
+      "before": "195e8c56ffeb6d274ecfc77e9d2dcd53e3f971c6bb0684661a98abd40e88a6cf",
+      "after": "d1ac1ae90e5a8420f8c6058e461a95359cba2c3887f3e427f86292b6772ded6e"
+    },
+    {
+      "path": "tests/Support/InquiryEvidenceFixture.php",
+      "before": "d04f41fff51ebbdc02e8202a56f0f196630deacb3fafe67ca538794e4844bbbf",
+      "after": "49877ae3cd794721b745efc4a18b948dad911c956b47c17dfd95e9e993c988f2"
+    },
+    {
+      "path": "tests/Feature/InquiryEvidenceAdmissionTest.php",
+      "before": "e613e224978456f08a92eed22b77e2aefb85511ebe8b3bc2aa36767c6e7b9d64",
+      "after": "234378f899ca1602d268b8a2f454e421d4967bc5c1878136c1ef394612d7ee03"
+    },
+    {
+      "path": "tests/Feature/InquiryEvidenceUpgradeTest.php",
+      "before": "afd7b98619cda5d12ba5cfa09c37c367dc46b20849d4314c3decdcbebbe173b1",
+      "after": "2c6c86668b6678269d51115cffb1411a8f7cfb27ec86a40379e973ef80f9f2cc"
+    },
+    {
+      "path": "tests/Support/business-surface-browser.mjs",
+      "before": "4fbc1f1ed2a9545c1afaa18a4b3aba68d1adb027482891b239d7a95634bbf231",
+      "after": "c7e6d88f3888fffdb7ebc5fc1366cb427dbecb0bc5cc8ebd63f8a8a0573343b2"
+    },
+    {
+      "path": "contracts/application.openapi.json",
+      "before": "ec23a4a468d0cd0bfc3198fa11628892b41c8c00747d41f09db8c72f158d3afc",
+      "after": "05ee50b42ff743ead137036f300080bc51f24208d0eb225d769a5ad334b32352"
+    },
+    {
+      "path": "resources/js/api/generated/application.d.ts",
+      "before": "dcabc6fa5cc964536a47a8261dfc3429252c7a79d3c85430dbac296d00b20dfa",
+      "after": "01c3a04dea9af3932dd1719c951ecce9011f698d1953b27f7df5c04ce2e6f81c"
+    },
+    {
+      "path": "UX-CONTRACT.md",
+      "after": "e439fbaf187f0880a35b523b88a97b5ee83e65fd3f08c5c67e89c12f988f6fb3",
+      "note": "bounded protection appendix; earlier candidate content preserved"
+    },
+    {
+      "path": "docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md",
+      "after": "7aec32df0b90a8e06fe0d0c493b64552589a9d9331c97d0f8260acfab9f6943b",
+      "note": "bounded protection appendix; earlier candidate content preserved"
+    }
+  ]
+}

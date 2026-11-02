@@ -1,0 +1,77 @@
+{
+  "review": "BF03-CORRECTION-ACCEPTANCE-002",
+  "syntheticOnly": true,
+  "run": "C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\storage\\framework\\testing\\goals-spa-59dc4466-f363-42ea-8ba5-9fd0073d446e",
+  "cases": [
+    {
+      "name": "SEM-001 actual two-rule current/history, exact replay and closed new admission",
+      "evidence": {
+        "history": [
+          [
+            1,
+            10,
+            "ACTOR_A_ONLY_RULE within service area and budget at least SAR 500"
+          ],
+          [
+            2,
+            11,
+            "قاعدة الفاعل الأول ضمن نطاق الخدمة والميزانية ألف ريال"
+          ]
+        ],
+        "exactReplay": 200,
+        "changedPayload": 409,
+        "missingDefinitionNewAdmission": 422,
+        "sourceAssertion": "SOURCE_ASSERTED"
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "still-authorized reentry preserves own unsent draft after fresh qualification",
+      "evidence": {
+        "ownDraftRestored": true,
+        "protectedDOMWhileHidden": 0
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "changed actor actual UI logout/login with late current/history replies and private drafts",
+      "result": "FAIL",
+      "error": "response.json: Protocol error (Network.getResponseBody): No resource with given identifier found\nResponse body is not available for a response that was navigated away from. Read response.body() before triggering any navigation.\n    at logout (C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\docs\\execution\\structural-foundation\\review-evidence\\BF03-CORRECTION-ACCEPTANCE-002\\acceptance-browser.mjs:37:310)\n    at async file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/acceptance-browser.mjs:77:57\n    at async check (C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\docs\\execution\\structural-foundation\\review-evidence\\BF03-CORRECTION-ACCEPTANCE-002\\acceptance-browser.mjs:16:105)\n    at async file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/acceptance-browser.mjs:68:2"
+    }
+  ],
+  "pageErrors": [],
+  "stages": [
+    {
+      "name": "actual-server-identity-a",
+      "identity": {
+        "lineage": "07c1158d-49f1-46aa-a1b4-f432b761053d",
+        "epoch": 1,
+        "boundary": "advertiser",
+        "credential": "e6b3df2e9d1dc0a4ffdfa5d54ec3f73eebb5f1f308c96bb4cc719ed576a29b47",
+        "principal": 1,
+        "lifecycle": 1,
+        "context": "6da5785fc9a244172d703e35ce738100712a06e2791ba9f58965536c31898f80",
+        "generation": "98524b513c288167bcbdb3f8fd15653e4266d23a55893307afa9a767a8adaf8c"
+      },
+      "redirect": "/dashboard",
+      "url": "http://localhost:8136/businesses"
+    },
+    {
+      "name": "SEM-001 actual two-rule current/history, exact replay and closed new admission",
+      "at": "2026-11-02T06:35:08.350Z"
+    },
+    {
+      "name": "still-authorized reentry preserves own unsent draft after fresh qualification",
+      "at": "2026-11-02T06:35:31.906Z"
+    },
+    {
+      "name": "changed actor actual UI logout/login with late current/history replies and private drafts",
+      "at": "2026-11-02T06:35:34.932Z"
+    }
+  ],
+  "requests": [],
+  "actorA": 1,
+  "actorB": 2,
+  "failure": "response.json: Protocol error (Network.getResponseBody): No resource with given identifier found\nResponse body is not available for a response that was navigated away from. Read response.body() before triggering any navigation.\n    at logout (C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\docs\\execution\\structural-foundation\\review-evidence\\BF03-CORRECTION-ACCEPTANCE-002\\acceptance-browser.mjs:37:310)\n    at async file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/acceptance-browser.mjs:77:57\n    at async check (C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\docs\\execution\\structural-foundation\\review-evidence\\BF03-CORRECTION-ACCEPTANCE-002\\acceptance-browser.mjs:16:105)\n    at async file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/acceptance-browser.mjs:68:2",
+  "result": "FAIL"
+}

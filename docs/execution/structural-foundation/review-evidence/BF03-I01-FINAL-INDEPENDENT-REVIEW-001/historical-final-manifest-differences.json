@@ -1,0 +1,42 @@
+[
+  {
+    "path": "DESIGN.md",
+    "recorded": "FC9D33F58EECDB9426C86D161AE61EC6CD3CB3AB839D45B7EF65EA2C989A8948",
+    "current": "4a3fe4a65d4225e4860d3f1e4f010983dacc733f0b428cc88a27256ef2d88adc"
+  },
+  {
+    "path": "docs/execution/public-platform/SURFACES.md",
+    "recorded": "29CC112CC70A156201279C8CE55E7AF6995F0962AE1418DC666D27C2B3E9F41F",
+    "current": "af9c16ac649659eb2bc6f8e8fbc567b2780c915eb69fac2f6d6b1089df959bb1"
+  },
+  {
+    "path": "docs/execution/structural-foundation/BF03_IMPLEMENTATION.json",
+    "recorded": "0A0400CD8288BD4775E0E245C40014592F61785303058A4E3A6473D87185F8EB",
+    "current": "cc2dfa19d7719a309bd77151895373d1c947d93fb191ec8fa837b4c198792fbd"
+  },
+  {
+    "path": "docs/execution/structural-foundation/EVIDENCE.json",
+    "recorded": "FB25CAD4B2426B1E38C8A50A9E3CEF056D2B97554765CC63E67AE28902C645A7",
+    "current": "530e86a1c051225974c8eb2510e8fc6b292b2ac7795dc785277d24c6bdf99d83"
+  },
+  {
+    "path": "docs/execution/structural-foundation/IMPLEMENTATION_PROGRESS.md",
+    "recorded": "30C734DE8D7F8F0F37FF5FF698A40EB32AE3A37CC3293F84D1ACE0E2BE555418",
+    "current": "827d697d8ee97601f959229bc9e4a87b9efefd5eadbfe12862728bcf13e0e848"
+  },
+  {
+    "path": "docs/execution/structural-foundation/OWNER_MANDATE.md",
+    "recorded": "B83E6BE21872A1F0B92F309E2FBC8302DF145B465CDDB9A98083B9A3C94EFB4D",
+    "current": "6d6dfdf4ff71a609230b2afc6610248fb19fcdd7f4eaf0ee1ffe569345c777c8"
+  },
+  {
+    "path": "public/build/goals-spa/manifest.json",
+    "recorded": "2B760F069B7FC6FAADF7287739BE7A20C5D1274D370709978CB902EDDB487344",
+    "current": "MISSING_OR_EXCLUDED"
+  },
+  {
+    "path": "UX-CONTRACT.md",
+    "recorded": "4F398D3DA4FAE2364A8E942FE7425B5AAD08BD012A0433AC5E5BF74FC2D799DD",
+    "current": "949a2a64170348a8bd9f6d7c029f3c8f909190293564a613a005251166cd80cb"
+  }
+]

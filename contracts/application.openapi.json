@@ -30465,6 +30465,1767 @@
           }
         }
       }
+    },
+    "/api/businesses/{business}/inquiry-evidence/eligibility": {
+      "get": {
+        "operationId": "readInquiryEvidenceEligibility",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "access",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,17}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "basis_qualification": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "basis_revision": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "policy": {
+                          "const": "inquiry_evidence_custody_v1"
+                        },
+                        "policy_version": {
+                          "const": 1
+                        },
+                        "mode": {
+                          "const": "own_private_statement"
+                        },
+                        "grants": {
+                          "type": "object",
+                          "properties": {
+                            "business.inquiry_evidence.record": {
+                              "type": "string",
+                              "pattern": "^[1-9][0-9]{0,17}$"
+                            },
+                            "business.inquiry_evidence.correct": {
+                              "type": "string",
+                              "pattern": "^[1-9][0-9]{0,17}$"
+                            },
+                            "business.inquiry_evidence.read": {
+                              "type": "string",
+                              "pattern": "^[1-9][0-9]{0,17}$"
+                            }
+                          },
+                          "required": [],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "business",
+                        "basis_qualification",
+                        "basis_revision",
+                        "policy",
+                        "policy_version",
+                        "mode",
+                        "grants"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/inquiry-evidence/enrollment": {
+      "post": {
+        "operationId": "enrollInquiryEvidence",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/InquiryAuthoritySelection"
+                  },
+                  "basis_revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "confirm": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "authority_selection",
+                  "basis_revision",
+                  "confirm"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "command_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "policy": {
+                          "const": "inquiry_evidence_custody_v1"
+                        },
+                        "qualification": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "grants": {
+                          "type": "object",
+                          "properties": {
+                            "business.inquiry_evidence.record": {
+                              "type": "string",
+                              "pattern": "^[1-9][0-9]{0,17}$"
+                            },
+                            "business.inquiry_evidence.correct": {
+                              "type": "string",
+                              "pattern": "^[1-9][0-9]{0,17}$"
+                            },
+                            "business.inquiry_evidence.read": {
+                              "type": "string",
+                              "pattern": "^[1-9][0-9]{0,17}$"
+                            }
+                          },
+                          "required": [],
+                          "additionalProperties": false
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {},
+                          "required": [],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "command_id",
+                        "policy",
+                        "qualification",
+                        "grants",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/inquiry-evidence/rights": {
+      "post": {
+        "operationId": "revokeInquiryEvidenceRight",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/InquiryAuthoritySelection"
+                  },
+                  "action": {
+                    "enum": [
+                      "business.inquiry_evidence.record",
+                      "business.inquiry_evidence.correct",
+                      "business.inquiry_evidence.read"
+                    ]
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "authority_selection",
+                  "action"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "command_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "revoked_action": {
+                          "enum": [
+                            "business.inquiry_evidence.record",
+                            "business.inquiry_evidence.correct",
+                            "business.inquiry_evidence.read"
+                          ]
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {},
+                          "required": [],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "command_id",
+                        "revoked_action",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/inquiry-evidence": {
+      "get": {
+        "operationId": "readInquiryEvidence",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "access",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,17}$"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "mode": {
+                          "const": "own_private_statement"
+                        },
+                        "assurance": {
+                          "const": "SOURCE_ASSERTED"
+                        },
+                        "independently_verified": {
+                          "const": false
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "declaration_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "minimum": 1
+                              },
+                              "state": {
+                                "enum": [
+                                  "source_asserted",
+                                  "withdrawn"
+                                ]
+                              },
+                              "reason": {
+                                "enum": [
+                                  "initial",
+                                  "correction",
+                                  "withdrawal"
+                                ]
+                              },
+                              "value": {
+                                "anyOf": [
+                                  {
+                                    "$ref": "#/components/schemas/InquiryHistoricalDeclarationValue"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "recorded_at": {
+                                "type": "string"
+                              },
+                              "original_issuer": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "correcting_actor": {
+                                "type": "string",
+                                "format": "uuid"
+                              }
+                            },
+                            "required": [
+                              "declaration_id",
+                              "revision",
+                              "state",
+                              "reason",
+                              "value",
+                              "recorded_at",
+                              "original_issuer",
+                              "correcting_actor"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 25
+                        },
+                        "more": {
+                          "type": "boolean"
+                        },
+                        "next_declaration": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "next_revision": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "collection_limit": {
+                          "const": 25
+                        }
+                      },
+                      "required": [
+                        "business",
+                        "mode",
+                        "assurance",
+                        "independently_verified",
+                        "items",
+                        "more",
+                        "next_declaration",
+                        "next_revision",
+                        "collection_limit"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "recordInquiryEvidence",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/InquiryAuthoritySelection"
+                  },
+                  "value": {
+                    "$ref": "#/components/schemas/InquiryDeclarationValue"
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "authority_selection",
+                  "value"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "command_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "declaration_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "state": {
+                          "enum": [
+                            "source_asserted",
+                            "withdrawn"
+                          ]
+                        },
+                        "assurance": {
+                          "const": "SOURCE_ASSERTED"
+                        },
+                        "independently_verified": {
+                          "const": false
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {},
+                          "required": [],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "command_id",
+                        "declaration_id",
+                        "revision",
+                        "state",
+                        "assurance",
+                        "independently_verified",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/inquiry-evidence/{declaration}/revisions": {
+      "post": {
+        "operationId": "reviseInquiryEvidence",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "declaration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/InquiryAuthoritySelection"
+                  },
+                  "expected_revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "effect": {
+                    "enum": [
+                      "correct",
+                      "withdraw"
+                    ]
+                  },
+                  "value": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/InquiryDeclarationValue"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "authority_selection",
+                  "expected_revision",
+                  "effect",
+                  "value"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "command_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "declaration_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "state": {
+                          "enum": [
+                            "source_asserted",
+                            "withdrawn"
+                          ]
+                        },
+                        "assurance": {
+                          "const": "SOURCE_ASSERTED"
+                        },
+                        "independently_verified": {
+                          "const": false
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {},
+                          "required": [],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "command_id",
+                        "declaration_id",
+                        "revision",
+                        "state",
+                        "assurance",
+                        "independently_verified",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/inquiry-evidence/{declaration}/history": {
+      "get": {
+        "operationId": "readInquiryEvidenceHistory",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "declaration",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "access",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,17}$"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000000000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "mode": {
+                          "const": "own_private_statement"
+                        },
+                        "assurance": {
+                          "const": "SOURCE_ASSERTED"
+                        },
+                        "independently_verified": {
+                          "const": false
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "declaration_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "minimum": 1
+                              },
+                              "state": {
+                                "enum": [
+                                  "source_asserted",
+                                  "withdrawn"
+                                ]
+                              },
+                              "reason": {
+                                "enum": [
+                                  "initial",
+                                  "correction",
+                                  "withdrawal"
+                                ]
+                              },
+                              "value": {
+                                "anyOf": [
+                                  {
+                                    "$ref": "#/components/schemas/InquiryHistoricalDeclarationValue"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "recorded_at": {
+                                "type": "string"
+                              },
+                              "original_issuer": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "correcting_actor": {
+                                "type": "string",
+                                "format": "uuid"
+                              }
+                            },
+                            "required": [
+                              "declaration_id",
+                              "revision",
+                              "state",
+                              "reason",
+                              "value",
+                              "recorded_at",
+                              "original_issuer",
+                              "correcting_actor"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 25
+                        },
+                        "more": {
+                          "type": "boolean"
+                        },
+                        "next_declaration": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "next_revision": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "collection_limit": {
+                          "const": 25
+                        }
+                      },
+                      "required": [
+                        "business",
+                        "mode",
+                        "assurance",
+                        "independently_verified",
+                        "items",
+                        "more",
+                        "next_declaration",
+                        "next_revision",
+                        "collection_limit"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -47662,6 +49423,768 @@
         },
         "required": [
           "data"
+        ],
+        "additionalProperties": false
+      },
+      "InquiryAuthoritySelection": {
+        "type": "object",
+        "properties": {
+          "realm_kind": {
+            "const": "direct"
+          },
+          "realm_workspace_public_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "requirement_kind": {
+                  "const": "business"
+                },
+                "leaf_grant_id": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,17}$"
+                }
+              },
+              "required": [
+                "requirement_kind",
+                "leaf_grant_id"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 1
+          }
+        },
+        "required": [
+          "realm_kind",
+          "realm_workspace_public_id",
+          "requirements"
+        ],
+        "additionalProperties": false
+      },
+      "InquiryDeclarationValue": {
+        "type": "object",
+        "properties": {
+          "cohort": {
+            "type": "object",
+            "properties": {
+              "channel_kind": {
+                "enum": [
+                  "form",
+                  "call",
+                  "message",
+                  "crm",
+                  "other"
+                ]
+              },
+              "definition_version": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "country_code": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Z]{2}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "population": {
+                "const": "recorded_inquiries"
+              },
+              "counting_policy": {
+                "const": "distinct_inquiries"
+              }
+            },
+            "required": [
+              "channel_kind",
+              "definition_version",
+              "country_code",
+              "population",
+              "counting_policy"
+            ],
+            "additionalProperties": false
+          },
+          "observation": {
+            "type": "object",
+            "properties": {
+              "period_start": {
+                "type": "string"
+              },
+              "period_end": {
+                "type": "string"
+              },
+              "as_of": {
+                "type": "string"
+              },
+              "timezone": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "period_start",
+              "period_end",
+              "as_of",
+              "timezone"
+            ],
+            "additionalProperties": false
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]{0,11})([.][0-9]{1,8})?$"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "precision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 8
+                  },
+                  "cost_basis": {
+                    "enum": [
+                      "advertising_spend",
+                      "declared_cohort_cost"
+                    ]
+                  },
+                  "allocation_basis": {
+                    "enum": [
+                      "whole_cohort",
+                      "declared_attribution"
+                    ]
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency",
+                  "precision",
+                  "cost_basis",
+                  "allocation_basis"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "inquiries": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "coverage": {
+                    "enum": [
+                      "complete",
+                      "partial",
+                      "unknown"
+                    ]
+                  }
+                },
+                "required": [
+                  "count",
+                  "coverage"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acceptance": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pending_count": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "criterion_code": {
+                    "enum": [
+                      "operator_defined",
+                      "within_service_area",
+                      "response_ready"
+                    ]
+                  },
+                  "criterion_version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "criterion_definition": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 8,
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "cutoff": {
+                    "type": "string"
+                  },
+                  "maturity": {
+                    "enum": [
+                      "mature",
+                      "pending",
+                      "unknown"
+                    ]
+                  },
+                  "coverage": {
+                    "enum": [
+                      "complete",
+                      "partial",
+                      "unknown"
+                    ]
+                  }
+                },
+                "required": [
+                  "count",
+                  "pending_count",
+                  "criterion_code",
+                  "criterion_version",
+                  "criterion_definition",
+                  "cutoff",
+                  "maturity",
+                  "coverage"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cohort",
+          "observation",
+          "cost",
+          "inquiries",
+          "acceptance"
+        ],
+        "additionalProperties": false
+      },
+      "InquiryHistoricalDeclarationValue": {
+        "type": "object",
+        "properties": {
+          "cohort": {
+            "type": "object",
+            "properties": {
+              "channel_kind": {
+                "enum": [
+                  "form",
+                  "call",
+                  "message",
+                  "crm",
+                  "other"
+                ]
+              },
+              "definition_version": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "country_code": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Z]{2}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "population": {
+                "const": "recorded_inquiries"
+              },
+              "counting_policy": {
+                "const": "distinct_inquiries"
+              }
+            },
+            "required": [
+              "channel_kind",
+              "definition_version",
+              "country_code",
+              "population",
+              "counting_policy"
+            ],
+            "additionalProperties": false
+          },
+          "observation": {
+            "type": "object",
+            "properties": {
+              "period_start": {
+                "type": "string"
+              },
+              "period_end": {
+                "type": "string"
+              },
+              "as_of": {
+                "type": "string"
+              },
+              "timezone": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "period_start",
+              "period_end",
+              "as_of",
+              "timezone"
+            ],
+            "additionalProperties": false
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]{0,11})([.][0-9]{1,8})?$"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "precision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 8
+                  },
+                  "cost_basis": {
+                    "enum": [
+                      "advertising_spend",
+                      "declared_cohort_cost"
+                    ]
+                  },
+                  "allocation_basis": {
+                    "enum": [
+                      "whole_cohort",
+                      "declared_attribution"
+                    ]
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency",
+                  "precision",
+                  "cost_basis",
+                  "allocation_basis"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "inquiries": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "coverage": {
+                    "enum": [
+                      "complete",
+                      "partial",
+                      "unknown"
+                    ]
+                  }
+                },
+                "required": [
+                  "count",
+                  "coverage"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acceptance": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pending_count": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "criterion_code": {
+                    "enum": [
+                      "operator_defined",
+                      "within_service_area",
+                      "response_ready"
+                    ]
+                  },
+                  "criterion_version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "criterion_definition": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 8,
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "cutoff": {
+                    "type": "string"
+                  },
+                  "maturity": {
+                    "enum": [
+                      "mature",
+                      "pending",
+                      "unknown"
+                    ]
+                  },
+                  "coverage": {
+                    "enum": [
+                      "complete",
+                      "partial",
+                      "unknown"
+                    ]
+                  }
+                },
+                "required": [
+                  "count",
+                  "pending_count",
+                  "criterion_code",
+                  "criterion_version",
+                  "cutoff",
+                  "maturity",
+                  "coverage"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cohort",
+          "observation",
+          "cost",
+          "inquiries",
+          "acceptance"
+        ],
+        "additionalProperties": false
+      },
+      "InquiryEvidenceEligibility": {
+        "type": "object",
+        "properties": {
+          "business": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "basis_qualification": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "basis_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "policy": {
+            "const": "inquiry_evidence_custody_v1"
+          },
+          "policy_version": {
+            "const": 1
+          },
+          "mode": {
+            "const": "own_private_statement"
+          },
+          "grants": {
+            "type": "object",
+            "properties": {
+              "business.inquiry_evidence.record": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,17}$"
+              },
+              "business.inquiry_evidence.correct": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,17}$"
+              },
+              "business.inquiry_evidence.read": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,17}$"
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "business",
+          "basis_qualification",
+          "basis_revision",
+          "policy",
+          "policy_version",
+          "mode",
+          "grants"
+        ],
+        "additionalProperties": false
+      },
+      "InquiryEvidenceRead": {
+        "type": "object",
+        "properties": {
+          "business": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "const": "own_private_statement"
+          },
+          "assurance": {
+            "const": "SOURCE_ASSERTED"
+          },
+          "independently_verified": {
+            "const": false
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "declaration_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "enum": [
+                    "source_asserted",
+                    "withdrawn"
+                  ]
+                },
+                "reason": {
+                  "enum": [
+                    "initial",
+                    "correction",
+                    "withdrawal"
+                  ]
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/InquiryHistoricalDeclarationValue"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "recorded_at": {
+                  "type": "string"
+                },
+                "original_issuer": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "correcting_actor": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "declaration_id",
+                "revision",
+                "state",
+                "reason",
+                "value",
+                "recorded_at",
+                "original_issuer",
+                "correcting_actor"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 25
+          },
+          "more": {
+            "type": "boolean"
+          },
+          "next_declaration": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "collection_limit": {
+            "const": 25
+          }
+        },
+        "required": [
+          "business",
+          "mode",
+          "assurance",
+          "independently_verified",
+          "items",
+          "more",
+          "next_declaration",
+          "next_revision",
+          "collection_limit"
+        ],
+        "additionalProperties": false
+      },
+      "InquiryEvidenceReceipt": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "declaration_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "state": {
+            "enum": [
+              "source_asserted",
+              "withdrawn"
+            ]
+          },
+          "assurance": {
+            "const": "SOURCE_ASSERTED"
+          },
+          "independently_verified": {
+            "const": false
+          },
+          "versions": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "command_id",
+          "declaration_id",
+          "revision",
+          "state",
+          "assurance",
+          "independently_verified",
+          "versions"
         ],
         "additionalProperties": false
       }

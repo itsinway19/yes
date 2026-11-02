@@ -1,0 +1,21 @@
+{
+  "scope": "Existing generated OpenAPI path/schema preservation; does not prove endpoint behavior",
+  "existingPathsPreserved": 168,
+  "existingSchemasPreserved": 194,
+  "newPaths": [
+    "/api/businesses/{business}/inquiry-evidence/eligibility",
+    "/api/businesses/{business}/inquiry-evidence/enrollment",
+    "/api/businesses/{business}/inquiry-evidence/rights",
+    "/api/businesses/{business}/inquiry-evidence",
+    "/api/businesses/{business}/inquiry-evidence/{declaration}/revisions",
+    "/api/businesses/{business}/inquiry-evidence/{declaration}/history"
+  ],
+  "newSchemas": [
+    "InquiryAuthoritySelection",
+    "InquiryDeclarationValue",
+    "InquiryEvidenceEligibility",
+    "InquiryEvidenceRead",
+    "InquiryEvidenceReceipt"
+  ],
+  "result": "PASS"
+}

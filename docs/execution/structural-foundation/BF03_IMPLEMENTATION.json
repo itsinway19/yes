@@ -1,0 +1,175 @@
+{
+  "package": "BF03-I01",
+  "state": "LOCAL_IMPLEMENTED_FOCUSED_VERIFIED / FOUNDATION_FAILED_INCOMPLETE",
+  "worktree": "C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001",
+  "baseline": "c747f6d8a8f2011fa5dcc368da2aa4e8449e0565",
+  "source_snapshot": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-implementation-20261101T155423Z\\baseline-source.json",
+  "source_snapshot_sha256": "e5bb8fcbd64e8a518439a2c91bf7c2e34b80ce2b5bdb49e1ed90c65a87be13f0",
+  "authorization": {
+    "C:\\Users\\stoma\\.codex\\attachments\\541193bb-a684-4b7f-b4c9-aa1e66e8bc3d\\Pasted text.txt": "1c84aa4be4218b7b28f01d9c5e53daa1055e2b29cb73a18d0d35f869a86243d3",
+    "C:\\Users\\stoma\\.codex\\attachments\\08140d3a-53b9-4915-bee8-53b941b52ba1\\Pasted text.txt": "f1cbf11f2f1f699725ef68eb35aed8e7d26660b5fad887c45bb81a1e910156b0"
+  },
+  "artifact_directory": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-implementation-20261101T155423Z",
+  "acceptance": [
+    "exact creator opt-in and original qualification dependency",
+    "separate record/correct/read rights with revocation",
+    "append-only revisions and exact replay after reauthorization",
+    "SQL runtime/effect/RLS boundaries and disposable upgrade/rollback",
+    "Arabic RTL discoverable browser workflow",
+    "focused tests and local Foundation",
+    "independent implemented-delta review"
+  ],
+  "excluded": [
+    "Case A calculation/diagnosis",
+    "PII/raw source import",
+    "verified commercial truth",
+    "sharing/export/analysis rights",
+    "Git publication/production effects"
+  ],
+  "processes_started": [
+    "guarded disposable PostgreSQL5433",
+    "guarded Redis6397",
+    "guarded PHP8136/8137",
+    "independent PHP test workers",
+    "headless Chromium"
+  ],
+  "ux_state": "PASS — UX_RESTRUCTURING_VERIFIED",
+  "ux_artifact_directory": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z",
+  "protected_backend_unchanged_by_ux": true,
+  "tested_application_files_unchanged_after_final_browser": true,
+  "program_and_capability_mapping_unchanged": true,
+  "backend_focused": {
+    "initial_bf03": {
+      "passed": 19,
+      "assertions": 123
+    },
+    "new_map": {
+      "passed": 1,
+      "assertions": 3
+    },
+    "affected_concurrency_and_map": {
+      "passed": 4,
+      "assertions": 28
+    }
+  },
+  "javascript": {
+    "complete_attempt": {
+      "total": 361,
+      "passed": 360,
+      "failed": 1,
+      "failure": "obsolete title/copy assertion after Owner UX terminology"
+    },
+    "affected_final": {
+      "total": 7,
+      "passed": 7
+    },
+    "no_comprehensive_rerun": true
+  },
+  "build": "PASS vue-tsc + Vite",
+  "api_check": "PASS",
+  "asset_guard": "PASS",
+  "browser": {
+    "result": "PASS",
+    "cases": 11,
+    "passed": 11,
+    "page_errors": [],
+    "matrix_combinations": 28,
+    "chromium": "145.0.7632.6",
+    "source_unchanged": true,
+    "evidence": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\final-browser-results.json"
+  },
+  "foundation": {
+    "status": "FAILED / INCOMPLETE",
+    "passing_events_not_success_count": 1304,
+    "pre_ready_errors": 2,
+    "aborted": "PHPUnit128MB memory exhausted",
+    "evidence": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-implementation-20261101T155423Z\\foundation-failed-memory",
+    "rerun": false,
+    "reason": "Owner requested no repeat comprehensive examination; affected-only evidence reused"
+  },
+  "review": {
+    "technical": "PASS bounded source reviews",
+    "visual": "PASS bounded actual-image re-evaluation",
+    "different_provider_evaluator": "UNAVAILABLE; independent same-model review",
+    "formal_usability_study": false,
+    "review_report_write": "Evaluator automatic approval review rejected temp report write due to usage quota; not retried/bypassed; delivered messages recorded by parent"
+  },
+  "processes_state": "ALL_TASK_OWNED_STOPPED; test ports not listening",
+  "files_changed": [
+    "app/Commercial/InquiryEvidence.php",
+    "app/Http/Controllers/InquiryEvidenceController.php",
+    "contracts/application.openapi.json",
+    "database/migrations/0001_01_01_000540_create_inquiry_evidence.php",
+    "database/sql/inquiry_evidence/authority.sql",
+    "database/sql/inquiry_evidence/declarations.sql",
+    "database/sql/inquiry_evidence/permissions.sql",
+    "database/sql/inquiry_evidence/schema.sql",
+    "database/sql/inquiry_evidence/table_permissions.sql",
+    "database/sql/inquiry_evidence/validation.sql",
+    "package.json",
+    "resources/js/api/generated/application.d.ts",
+    "resources/js/business-foundation/BusinessEditor.vue",
+    "resources/js/business-foundation/BusinessSurface.vue",
+    "resources/js/business-foundation/BusinessWorkspace.vue",
+    "resources/js/business-foundation/workspace.css",
+    "resources/js/business-foundation/workspacePresentation.ts",
+    "resources/js/inquiry-evidence/DeclarationDetails.vue",
+    "resources/js/inquiry-evidence/InquiryEvidencePanel.vue",
+    "resources/js/inquiry-evidence/api.ts",
+    "resources/js/inquiry-evidence/editor.ts",
+    "resources/js/inquiry-evidence/presentationDrafts.ts",
+    "routes/web.php",
+    "scripts/application-openapi.mjs",
+    "scripts/inquiry-evidence-openapi.mjs",
+    "tests/Feature/InquiryEvidenceAdmissionTest.php",
+    "tests/Feature/InquiryEvidenceConcurrencyTest.php",
+    "tests/Feature/InquiryEvidenceUpgradeTest.php",
+    "tests/Support/InquiryEvidenceFixture.php",
+    "tests/Support/InquiryEvidenceWorker.php",
+    "tests/Support/business-surface-browser.mjs",
+    "tests/inquiry-evidence.test.mjs"
+  ],
+  "artifact_sha256": {
+    "baseline.json": "1d79dcd25ffe9f90d044d3db4990b0133fcc210ef57ab917de3be197999fbb3f",
+    "final-browser-results.json": "e65deb0eb52440a38755ebe32c68bcba06bf2b9326a4e5a46de6a1990ea73d23",
+    "final-browser.log": "21d1161ef0a2aa9fc6f2663e47d9f51ae19d79f7a3a638613dd41c4e48ce8707",
+    "final-change-inventory.json": "b9fd62f7c82da82023ec6e029db82b7ead445fb007bfc0ac3cbb5c41e710b147",
+    "final-source-manifest.json": "a545a31d40fbd2533c3290981296225b421f52fdda5a8da7f75161f4057436c0",
+    "final-source-unchanged.txt": "3cbc87c7681f34db4617feaa2c8801931bc5e42d8d0f560e756dd4cd92885f18",
+    "final-tests.log": "62b6e2a2906103e8f93a3edd517f7415f666be353e25b389d7a1c493a5cee7e8",
+    "final-tests.xml": "5eaccbaf8072f1df99ba040db43b2f906fb3cc6bb7f76a49e0f2030d4c5d87c2",
+    "inquiry-basis-8b3f7c2d-68cb-4809-af69-1ddb49ca6342-evidence.json": "475c9645fcfd654e32b644a3edb3364d1ee038294d07c5e388cf84e4cf3fef48",
+    "inquiry-desktop.png": "f8b06d208b287a6dea817f7f0bb936ee40dcdc6948ee4cafae2932399657018e",
+    "inquiry-mobile.png": "7cdab902938d4b3d522274865b16ce213a784fbf17e53f02699b9ec1f79603e6",
+    "inquiry-revision-f12bd5bf-ddf9-4be0-86cd-3597e9413c6f-evidence.json": "d5eea9a428f1a6055ad6a4201ef1c6a18d404aacc08fa8c4a0cceef02440943c",
+    "inquiry-session-f68aae28-aada-4969-a3bb-6afce0e86f58-evidence.json": "7570302e6a2dbc5c89cff5949d5db7243f5deea796fd726aeaa7345695b50ef4",
+    "pre-ux-source-manifest.json": "9692f19136f884ade659cfecfc4da43c3a1a61306f0923dad2b45f9f4b4e65ce",
+    "visual-review.md": "3a0faa46a8e1e6907c4c881e60c30681a931cf795a4c2468ddc9fa3732c92ea4",
+    "workspace-ar-dark-1366-collection.png": "9451a3aae9f946827ff20d428d95379741c3898f0035fe3d3b788624bf0e85a9",
+    "workspace-ar-dark-1366-detail.png": "25c1f938e42b29084a7491657e6e359aba120d0620cb11f004bcb02df4f183ff",
+    "workspace-ar-dark-390-collection.png": "5396fbb01403d0e9fe5b75e103ddf59ede80e2d89590c12056e93fcf5e15cb91",
+    "workspace-ar-dark-390-detail.png": "9a63bb7d19298fdcad49126a364cb3e05b91a48030834c8b2fa3f35e01431def",
+    "workspace-ar-light-1280-form.png": "e44cb6d0a2874dc3fba391835a656b4537f4527b122ac8e10907921b1ecb689d",
+    "workspace-ar-light-1366-collection.png": "1b8cad2a89741fe2c9de48af9bde32dfa8588c89be7e5b47e90a9edd00ce8457",
+    "workspace-ar-light-1366-detail.png": "dca125612607b1db896845fd2e39521634fcf99d25f3ed66774c85bf780183a6",
+    "workspace-ar-light-390-collection.png": "a4dc7d3a2cb80f0217a2c9f0a3fb0759ae35b5e2c806275a229058596b80fbb6",
+    "workspace-ar-light-390-detail.png": "c59611af79aa04a9f21b8917c31dd426c8e2e63d06e76523ca83ecaff09f699c",
+    "workspace-ar-light-390-form.png": "7a9e7855a7e265dd2da9132f7c5073d686caeb08f9dd1a5be108071de41555ac",
+    "workspace-ar-light-390-timezone.png": "c739cec104f44aee59b0600c81371c3d3393b7cbffbe3f6f20ffc401087f8509",
+    "workspace-en-dark-1366-collection.png": "cd48f5ea6be4159e7059ad1c504c54fdca16a26cf15de9f70470e17726ee47d7",
+    "workspace-en-dark-1366-detail.png": "92511cd61194b2c6ea7d9eecfc7d0a9b0e0b581981ddd8bb287f860e7bab2378",
+    "workspace-en-dark-390-collection.png": "a91ee38d634bbcdb460c9ddfb0fcb18ed92f47f5d8d8180666b3286a6eaa9c34",
+    "workspace-en-dark-390-detail.png": "aa474ead72e055790726992858b16012c43313a105df9d59c479a8a91ceb7269",
+    "workspace-en-light-1366-collection.png": "d5bcdf452b8164a11dc063ad6eac2259c71baa4b0989b0ab1190750e76b7dc46",
+    "workspace-en-light-1366-detail.png": "eacddab8254beae433ababcda6dd6254d5282083c94ccc0da7cbdb6052828673",
+    "workspace-en-light-390-collection.png": "b4457abf1eca817d6983fcf20a068bbbbd371ea228461b02d51bae2e40d7253c",
+    "workspace-en-light-390-detail.png": "443d6a7380c2ef2f89f46dcb5695dfed35b2c68320c966dbd889f3f805a915a8"
+  },
+  "report": "docs/execution/structural-foundation/BUSINESS_WORKSPACE_UX.md",
+  "publication": "NOT_AUTHORIZED / NOT_PERFORMED",
+  "acceptance_limit": "Bounded local UX accepted by evidence; global Foundation acceptance remains failed/incomplete, no production readiness claim",
+  "inventory_control_record_hash_exclusion": [
+    "docs/execution/structural-foundation/BF03_IMPLEMENTATION.json",
+    "docs/execution/structural-foundation/EVIDENCE.json"
+  ]
+}

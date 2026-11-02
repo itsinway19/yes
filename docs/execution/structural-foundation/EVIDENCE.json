@@ -1,0 +1,1172 @@
+{
+  "date": "2026-11-01",
+  "timezone": "Europe/Istanbul",
+  "baseline": "c747f6d8a8f2011fa5dcc368da2aa4e8449e0565",
+  "scope": "Owner-authorized BF03-I01 local implementation plus bounded Business workspace UX; focused/backend/browser/source/visual evidence, no global Foundation acceptance or publication",
+  "checks": {
+    "coverage_rows": 87,
+    "source_rows_and_hashes_match": true,
+    "coverage_sections": {
+      "3.1": 7,
+      "3.2": 10,
+      "3.3": 10,
+      "3.4": 10,
+      "3.5": 11,
+      "3.6": 19,
+      "3.7": 10,
+      "3.8": 10
+    },
+    "association_semantics_not_predecessors": true,
+    "advertising_rows_individually_refined": 10,
+    "remaining_family_level_rows": 77,
+    "advertising_diagnosis_does_not_require_external_execution": true,
+    "limited_action_does_not_require_synthesis": true,
+    "intervention_evaluation_does_not_require_new_execution": true,
+    "group_ids_resolve": true,
+    "local_links_checked": 9,
+    "source_paths_checked": 30,
+    "illustrative_graph_edges": [
+      [
+        "Evidence",
+        "Explore"
+      ],
+      [
+        "Evidence",
+        "Diagnosis"
+      ],
+      [
+        "Business",
+        "Explore"
+      ],
+      [
+        "Business",
+        "Diagnosis"
+      ],
+      [
+        "Evidence",
+        "Joint"
+      ],
+      [
+        "Joint",
+        "Composite"
+      ],
+      [
+        "Composite",
+        "Action"
+      ],
+      [
+        "Single",
+        "Action"
+      ],
+      [
+        "Action",
+        "Execute"
+      ],
+      [
+        "Execute",
+        "EffectCheck"
+      ],
+      [
+        "Sales",
+        "SaleCheck"
+      ],
+      [
+        "Reference",
+        "MethodCheck"
+      ]
+    ],
+    "illustrative_graph_acyclic": true,
+    "no_external_action_edge_to_independent_sales_verification": true,
+    "supersedes_prior_global_mandatory_edge_claim": true,
+    "tracked_scope_verified": [
+      "AGENTS.md",
+      "docs/BUILDERAD_CURRENT_CRITICAL_PATH_DERIVATION.md",
+      "docs/BUILDERAD_MASTER_EXECUTION_MAP.md"
+    ],
+    "application_changes": 0,
+    "preexisting_agents_change_preserved": true,
+    "external_sources_unchanged": true,
+    "caei_architectural_decisions_mapped": 19,
+    "caei_acceptance_cases_assigned_to_future_or_existing_bounded_protection": 30,
+    "G8_no_eligible_package_exception_exists_in_original_mandate": true,
+    "all_20_planning_groups_have_eligibility_or_reuse_disposition": true,
+    "D03_context_dependency_is_conditional": true,
+    "action_proposal_and_approval_authority_separate": true,
+    "stage_A_not_conditioned_on_Targeting_witness": true,
+    "original_mandate_prefix_preserved_before_appended_acceptance": true,
+    "accepted_program_and_coverage_bytes_unchanged": true,
+    "acceptance_record_appended_without_rewriting_prior_authority": true
+  },
+  "files": {
+    "docs/execution/structural-foundation/B01_PRECEDENCE.md": "dc34f3da27859490163b4c33f8d849b4b2cd01133655218459c53cfc16181c35",
+    "docs/execution/structural-foundation/B02_EVIDENCE_ROUTE.md": "3183e0343aea77559d9ab9eb9f01dada97b76aeab7ad45a137e03d8bc7848155",
+    "docs/execution/structural-foundation/B02_RESEARCH_REUSE.csv": "e387f7f0504a49525cf116dc74bdaef7acadcf18a58ff3247475031e844fedb3",
+    "docs/execution/structural-foundation/B02_SPECIALIST_QUALIFICATION.md": "33ba7f0f1d9bafa12acac80731aabeab17cde0cb16da9d268cc6bf3c7ef98252",
+    "docs/execution/structural-foundation/CAPABILITY_COVERAGE.csv": "4a0d683ba6b74ddbdfcda5683533ea6c81a5ea58514b6a4cb7674a23dfd1185b",
+    "docs/execution/structural-foundation/G8_FIRST_PACKAGE.md": "9f79add912537f0fb796f1868f50e526254067798cf04b0821c22c6dba27e133",
+    "docs/execution/structural-foundation/OWNER_MANDATE.md": "6d6dfdf4ff71a609230b2afc6610248fb19fcdd7f4eaf0ee1ffe569345c777c8",
+    "docs/execution/structural-foundation/PROGRAM.md": "167219a27db7460491149c1ecdddf4c55f70643fc409993cfcf4f5197426aba7",
+    "docs/execution/structural-foundation/EXPERTISE_INTEGRATION.md": "b479b008323075ec8b8a32c54131ee6fc3905ab89214e3ce6fa0ad97948bd9b4",
+    "docs/execution/structural-foundation/CASE_A_CONTRACT.md": "1f7eee7ef5340cd866f68fa1e775e6ea2f02431a2993d4ae5b85638b7e7dbf7d",
+    "docs/execution/structural-foundation/NEXT_IMPLEMENTATION_PACKAGE.md": "283f5270776010c95d2c33c3b748d36795601127c379d9209ff9ca6b66050575",
+    "docs/execution/structural-foundation/RESEARCH_ALIGNMENT.md": "6d91d85b01219c6b043701be6b7a13b8aa4d14156acc11323987e3813dca1cc3",
+    "docs/execution/structural-foundation/RESEARCH_ALIGNMENT.csv": "c91242df1cea487cc89da61344394a924737d711a73e52de897c0f8a45a9d661",
+    "docs/execution/structural-foundation/RESEARCH_INVENTORY.csv": "85d5448dc4ae4f1bf230c6258fb7e7821e2c395fc1fbaf3a2187fc01cc9d9b25",
+    "docs/execution/structural-foundation/BF03_IMPLEMENTATION.json": "cc2dfa19d7719a309bd77151895373d1c947d93fb191ec8fa837b4c198792fbd",
+    "docs/execution/structural-foundation/BUSINESS_WORKSPACE_UX.md": "23d6c2833856e0bb1563a0cc977628c8a5f7a57be962f9e486923115e72fc148",
+    "docs/execution/structural-foundation/IMPLEMENTATION_PROGRESS.md": "827d697d8ee97601f959229bc9e4a87b9efefd5eadbfe12862728bcf13e0e848"
+  },
+  "inspected_source_files": {
+    "app/Providers/Ads/Google/GoogleReadExecution.php": "c9181492ed44339914d439fe1a898fe91f777dbbc9cd39f586aa9c4daedfdead",
+    "app/Providers/Ads/Meta/MetaReadExecution.php": "4b04b17b7bde8a189ec8d3cbf16a01b9b5e32b4e53b61ee2ac07d97a9683fa83",
+    "app/Providers/Ads/ObservationJournal.php": "d2404fc35abc39c5199b38157eae1a7806f59e0dd9689129ce49b84255f3e742",
+    "app/Providers/Ads/SharedRealityInterpretation.php": "41df16a3aa3c58ede0dc8f32ddfd22f361d9ea8d94424157d7703b99cf5d97f2",
+    "app/Providers/Ads/Snapchat/SnapchatReadExecution.php": "1fe69911cf7f5abb53f9d290e4552745f13e971e1de7cacbf74eaa37cf339edb",
+    "app/Providers/Ads/TikTok/TikTokReadExecution.php": "83661a7a4b923dfeade2ee8847aade7a5340afc55a069c74a845985eed6f395e",
+    "app/Providers/Ads/X/XReadExecution.php": "202051da863506021f7d3bbabf9fd3a6718c08284cd3bb09772f329fdca013bf",
+    "database/sql/market_processing/capture.sql": "eb6de3c59eedd9b51cb33d82b0816f9dd101bbc1496fb5bebea87bd514ebddee",
+    "docs/BUILDERAD_CORE_EXECUTION_GOVERNANCE.md": "74094391e9d3553156d20a3e48af5028ec1deab0d0701a6a4cc2fabc834da5db",
+    "docs/superpowers/specs/2026-10-06-joint-targeting-spend-semantic-design.md": "e54e4879c1d4d7ce9cacb464184e4fa308afe7b7a21430cb30c3dab8d1b54ff6",
+    "tests/Feature/ArchitectureSourceOptionalityTest.php": "6662fcd9c1ab76808b138e4b8633bac5a2461263a0cde7f730b9f8b78773c5fb",
+    "tests/Feature/BusinessFoundationTest.php": "15da387fc5263041ca72664f0389c348338408bc811143507d4fe58ce207f317",
+    "tests/Feature/BusinessQualifiedImportTest.php": "c8175eff230994593bd37acb29c2abef78a39b16bad21dbfa4b1dc919c78850f",
+    "tests/Feature/MarketBusinessFindingTest.php": "7b48459a9f5a49201d26ad6b88227ab0944ba728788de34184a0612567e1ee4f",
+    "tests/Feature/MarketEvidenceOriginTest.php": "ab6f37e3ebfc67d448f15fe9792c4841a7bcbdfc3dc712e37196388add9b8560",
+    "tests/Feature/MarketKnowledgeAuthorityTest.php": "d00d1c047c5bce18d28c9c7fec23b05e4049e0f68e6a2dfb70a89d2e00f69925",
+    "tests/Feature/MarketKnowledgeCompletionSecurityTest.php": "f41527298f17229bf11dfd0f7ce9941bc1c382351541e008a29cafb9cac7d6a9",
+    "tests/Feature/MarketKnowledgeConcurrencyTest.php": "fca26b5723ccbb0fceb21c1ad1612bca9c4c5daa651532807755c8a5b40a4a63",
+    "tests/Feature/MarketKnowledgeConsumersTest.php": "089d332edac189f76d5e7fedc2dc07ffa786d0ebf139eab88460ed23c5bbe83a",
+    "tests/Feature/MarketKnowledgeOperationsIntegrationTest.php": "1e358369ca1e3d3520e1c0f2f613be48a19c12f2baca35e14913494f8387b7e5",
+    "tests/Feature/MarketProcessingCompletionSecurityTest.php": "68d431f04df59f28c496dbec7f1cf128bca16dcdbb617871b9962a514ac57fbf",
+    "tests/Feature/Providers/ProviderAccessStoreTest.php": "f64d1d98a0b5fcd19816d66b535ade147092ee74d36f618274ece7a83a5fdd03",
+    "tests/Feature/Security/ServiceAuthorityTest.php": "45371106a8743fe38e5b779ece8dd57feaf2a9799dadc8386e9e229d2004bc51",
+    "tests/Unit/CoreDependencyBoundaryTest.php": "42317733077f175d5e9ae7f7d6932a8510212c412011041567b9ae22a01fae25",
+    "tests/Unit/GoogleObservationAdapterTest.php": "e4cba3f485344dfb30ac552dd14b4a4cbf8b99dfb01cbf7a576c06c534975de1",
+    "tests/Unit/MetaObservationAdapterTest.php": "368469ab332e205f7875cda42f0d9f855ff1eb5a19ceaaf64b3fd535fccb00b3",
+    "tests/Unit/SnapchatObservationAdapterTest.php": "1fc2a196b583edbfcba12ac7cbbfb2cf4e1bc122289a01cc155524def20bf746",
+    "tests/Unit/TikTokAdapterTest.php": "801534163b6f6614526f0cef19ddd528e1bdbf66cc4e415996a6f359b60639f2",
+    "tests/Unit/XCampaignReportTest.php": "691eee219ad0eff2fe7c3d9afcd8ee5557b14ed716359ad9cddbad664817753c",
+    "tests/market-knowledge-operations.test.mjs": "d61cfccd79334426cd492c5b206e2b030c8715d2b67b3c54836624dcfcfca0fb"
+  },
+  "external_sources": {
+    "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\BuilderAd_Competitive_Product_Blueprint_Decisive_AR_v1.1_2026-10-26.md": "8fbb67baf83c042a72d04ea8e42a3a45346164be4febd05bce438b9e8eb4c25b",
+    "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\COMMERCIAL_ADVERTISING_EXPERTISE\\BUILDERAD_GOVERNING_COMMERCIAL_ADVERTISING_EXPERTISE_ARCHITECTURE_V1_1_2026-11-01.md": "3bb7250a4cf7636282e78cdbbd0c95040f5455a160743698a54d4bc301eed00f"
+  },
+  "supplied_review_files": {
+    "C:\\Users\\stoma\\.codex\\attachments\\071ec084-e233-404b-bc4b-27732256a9c9\\Pasted text.txt": "9fda7accbfd13acdf11e532a2198aefd6e330e434fa046691009af04750e0c5f",
+    "C:\\Users\\stoma\\.codex\\attachments\\64bc7afa-ebce-4b8b-a80c-579fea47e69d\\Pasted text.txt": "b47a38b62aa55c8f5171c13b7104a0395a4db91e42f214093db336f3c252a903",
+    "C:\\Users\\stoma\\.codex\\attachments\\c025b9c3-9d31-4f26-a9ab-9946a947f52f\\Pasted text.txt": "cd444d8397df4e7da466b96016cb3fabeea02701a06a4eb377ece486e0c3764f",
+    "C:\\Users\\stoma\\.codex\\attachments\\d7aa8eec-9d65-45ef-838a-ea63efced93b\\Pasted text.txt": "97974d6978ebb8d00cd68e9059825b8a36104785a0944bd15d8cf545e62a197f"
+  },
+  "prior_evidence_sha256": "b3799929606d2cecf3000548e44613588ca158231146a522bc74605d57100390",
+  "prior_evidence_scope": "Retained digest of earlier documentation-only report; old global mandatory-edge list is superseded, not current proof",
+  "preexisting_agents_diff_sha256": "b1f11b73d1e174950465f76dd8a92303fb6ad042f52363f8763fb44f4e542967",
+  "open_acceptance_items": [
+    "Global Foundation FAILED/INCOMPLETE; do not claim full regression acceptance",
+    "Hosted CI/publication/merge/deployment remain unauthorized and unperformed",
+    "Historical B02 higher-level inference and future source/diagnostic permissions remain separately unqualified; no expansion by this local custody/UX package",
+    "No formal unfamiliar-user usability study or independent different-provider evaluation was performed"
+  ],
+  "not_executed": [
+    "repeat comprehensive Foundation after Owner direction",
+    "hosted CI for candidate",
+    "commit",
+    "push",
+    "PR",
+    "merge",
+    "production migration",
+    "deployment",
+    "live provider/customer acquisition",
+    "Case A diagnosis or analytic use"
+  ],
+  "limits": [
+    "Static document consistency does not prove general architectural or runtime flexibility",
+    "Ten advertising mappings are document-level refinements, not runtime feature reviews",
+    "The other 77 rows retain explicit family-level assessment",
+    "Source existence and retained tests do not prove five-provider live readiness",
+    "Reference closure is responsibility/constraint coverage of the named governing references, not exhaustive review of all archive documents or future features",
+    "Matrix/test-case mapping checks are static documentation checks, not execution of the mapped tests"
+  ],
+  "program_revision": "Stage A v1.2 candidate / 2026-11-01",
+  "governing_crosswalk_sources": {
+    "Core_Market_Provider": {
+      "path": "docs/BUILDERAD_CORE_EXECUTION_GOVERNANCE.md",
+      "sha256": "74094391e9d3553156d20a3e48af5028ec1deab0d0701a6a4cc2fabc834da5db",
+      "scope": "Core responsibilities and constraints; Market shared evidence and proof constraints; provider authority/substitutability/utilization, not all historical implementation status"
+    },
+    "CAEI_v1_1": {
+      "path": "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\COMMERCIAL_ADVERTISING_EXPERTISE\\BUILDERAD_GOVERNING_COMMERCIAL_ADVERTISING_EXPERTISE_ARCHITECTURE_V1_1_2026-11-01.md",
+      "sha256": "3bb7250a4cf7636282e78cdbbd0c95040f5455a160743698a54d4bc301eed00f",
+      "scope": "19 decisions, ownership/extension/action boundaries, T01-T30 assigned; implementation not proven"
+    },
+    "mandate_G8": {
+      "path": "docs\\execution\\structural-foundation\\OWNER_MANDATE.md",
+      "sha256": "a893073da9996fef642d26da4b1530198883de1fa4a23c17ad69e4dce9463bb9",
+      "scope": "Accepted responsibility and exact package contract or explicit scoped blocker when no package is eligible"
+    }
+  },
+  "stage_A_disposition": "CONSTRUCTION_PROGRAM_READY_FOR_OWNER_ACCEPTANCE",
+  "disposition_scope": "Preparation recommendation retained; subsequent explicit Owner acceptance is recorded separately in owner_acceptance. No READY code package, Core gate readiness, Stage B authority or deployment is asserted.",
+  "owner_acceptance": {
+    "date": "2026-11-01",
+    "timezone": "Europe/Istanbul",
+    "source": "Explicit Owner acceptance in current chat; continue same worktree",
+    "accepted_program": "BA-STRUCTURAL-FOUNDATION-001 v1.2",
+    "accepted_file_sha256": {
+      "docs/execution/structural-foundation/CAPABILITY_COVERAGE.csv": "4a0d683ba6b74ddbdfcda5683533ea6c81a5ea58514b6a4cb7674a23dfd1185b",
+      "docs/execution/structural-foundation/PROGRAM.md": "167219a27db7460491149c1ecdddf4c55f70643fc409993cfcf4f5197426aba7"
+    },
+    "pre_acceptance_evidence_sha256": "5f2a8271b0fbbc490e49b11e5bd2059a810d1f84ff7bca81ee50ae06e12d26e2",
+    "record_path": "docs/execution/structural-foundation/OWNER_MANDATE.md",
+    "scope": "Program acceptance with retained limitations and blockers; no application implementation or publication authority inferred"
+  },
+  "G8_qualification_authorization": {
+    "date": "2026-11-01",
+    "scope": "Bounded qualification only; same worktree; implementation envelope not yet established",
+    "record_path": "docs/execution/structural-foundation/OWNER_MANDATE.md"
+  },
+  "G8_qualification": {
+    "package": "U01-K01",
+    "contract_path": "docs/execution/structural-foundation/G8_FIRST_PACKAGE.md",
+    "status": "DEFERRED / NON_BLOCKING_IN_CURRENT_CONSTRUCTION_ORDER",
+    "meaning": "Operational proposal retained but implementation deferred by the Owner-directed precedence review. It is not a mandatory structural prerequisite or authorized package.",
+    "priority_path_result": "D1-D3 inspected bounded consumers do not establish the substantive first joint Targeting witness; the scoped historical blocker is not universal",
+    "independent_candidate": "Restricted human capture/publication workflow through existing D3 HTTP commands; operations UI currently read-only",
+    "source_sha256": {
+      "docs/superpowers/specs/2026-10-06-joint-targeting-spend-semantic-design.md": "e54e4879c1d4d7ce9cacb464184e4fa308afe7b7a21430cb30c3dab8d1b54ff6",
+      "app/Providers/Ads/SharedRealityInterpretation.php": "41df16a3aa3c58ede0dc8f32ddfd22f361d9ea8d94424157d7703b99cf5d97f2",
+      "app/Providers/Ads/ObservationJournal.php": "d2404fc35abc39c5199b38157eae1a7806f59e0dd9689129ce49b84255f3e742",
+      "app/MarketKnowledge/QualifiedMarketFact.php": "38c1037d114f96053358b752ec7935aac06be501375d59f8665e5047a2cd18db",
+      "app/MarketKnowledge/CustomerDiscoveryConsumer.php": "5afc52aa1830d630585e691d8fb77aebf20dd2f1736a6ec862fd796fc11be893",
+      "app/MarketKnowledge/CompetitiveIntelligenceConsumer.php": "e2985110d3c49e3920cc7146a0df214817cf956f8fc628a49b9cc741deb52cfb",
+      "app/Http/Controllers/MarketKnowledgeController.php": "27fc1b395a1c6218c1777be21f936660a19acc70360ba85bc9985f054b06d750",
+      "app/Http/Controllers/MarketOperationsController.php": "abfadad84cda1f4da61521296da9d4901df73e9a2024733627c255797b2238b6",
+      "app/MarketKnowledge/KnowledgeCapture.php": "eb9bce16ac14b0516ad7173322220dd919bf523f3093419312223e17aa3f37f8",
+      "app/MarketKnowledge/KnowledgePublisher.php": "e991b98c2510af4b579159e55b2a33e2fa619043f9207d685f787c6942f5224b",
+      "app/MarketKnowledge/MarketOperations.php": "244e3a783356f0cbf833f19480a931754c19122cafe740ecb81eefe05542b2a8",
+      "database/sql/market_knowledge/authority.sql": "602189afe52a6591ef135594a8f861312503b7ca3bebe47ccb980caafc5179e1",
+      "database/sql/market_knowledge/capture.sql": "50de0ae5e1aeb5e3557c320535d97b66b17fb437baf303e3bb28e4a945ea6448",
+      "database/sql/market_knowledge/operations.sql": "f536e5bd344de465b96e7d4e08add04bbdfd42cd987d9c39a67663d6f3962783",
+      "database/sql/market_knowledge/schema.sql": "d98e4d9000ef99545a5f9be4198bd58c0e12efd7d3b1c573289ebe762cdfc41f",
+      "contracts/application.openapi.json": "c028d64712b1f5b5ce0aaa3f2445b3c40d0d26d2af7acb1a0688d9d7319dc2dd",
+      "scripts/market-knowledge-openapi.mjs": "37ab7a9302591a626eea4e059640d9ae05876a0d9dac0199f4d867ca9310e87c",
+      "resources/js/market-knowledge/OperationsView.vue": "be3741eb07c823861c19ae13a124a3abc7677117930f4088c542703af3174534",
+      "resources/js/market-knowledge/state.ts": "87799f9abe104bc9c36481ff64c9e6f86487fcd3fb670c752fbae02ec53b00a9",
+      "resources/js/internal-operations/routes.ts": "746c3d8662396a50a6bfd0dce4eb9c191ffa7501b5e6b773e252c09b4bdfb012",
+      "resources/js/internal-operations/administrationNavigation.ts": "a65db8e03522c540bc821ba76dfa2c4c7d975b26e6fdc63e9488852080ddc0c0",
+      "resources/js/api/generated/application.d.ts": "d533389f7e13a224add2984156b1bad0877c7f467e775d054dda849aaafc8f46",
+      "docs/execution/public-platform/SURFACES.md": "c1582a27a6305ecbe3ba177375389d4ec5fa9b5066c621d9901f1c9c74f2e8d0",
+      "tests/Feature/MarketKnowledgeAuthorityTest.php": "d00d1c047c5bce18d28c9c7fec23b05e4049e0f68e6a2dfb70a89d2e00f69925",
+      "tests/Support/MarketKnowledgeFixture.php": "5176b4570e572918d784ba7307501916da0acd2393d764cc7d06dda6a5a97321",
+      "database/migrations/0001_01_01_000530_integrate_market_knowledge_operations.php": "c017442a70e52ac4802066a3e19d31266226f7f28c72631b5614edf90f25e277",
+      "scripts/builderad.ps1": "97994fc5511e2380e4064192e2f19550456a0b9e0d2ee8c2fe2de351c94fe853",
+      "scripts/Test-GoalsSpa.ps1": "84308049bb8b178f12438366fd58732abecceb0a0577ff7317150021c68af804",
+      "package.json": "35e266168a8f2a9deb3930c29083fc6e304afe764051cf7bb6814ee6e2f71848",
+      "database/sql/market_knowledge/publication.sql": "95c52fb6933a2ca275d5b331ddf12027b4f4453a4b2fd8a7f74a787f448f5cbf"
+    },
+    "static_checks": {
+      "existing_capture_post": true,
+      "existing_publish_post": true,
+      "workbench_get_absent": true,
+      "non_generated_UI_ingress_consumers_absent": true,
+      "accepted_Stage_A_program_bytes_unchanged": true,
+      "existing_modify_test_targets_checked": 13,
+      "planned_migration_540_not_present": true,
+      "process_display_authority_separation_explicit": true,
+      "application_changes": 0,
+      "distinct_capture_and_publication_identity_confirmed_from_current_SQL": true,
+      "no_unqualified_material_existence_or_metadata_discovery_in_proposed_contract": true,
+      "general_previous_runs_catalog_removed_from_proposed_scope": true,
+      "no_store_and_pagination_noninterference_tests_planned": true,
+      "priority_not_established_or_inferred": true
+    },
+    "implementation_boundaries": [
+      "Reuse the four existing shared methods and trusted completion",
+      "Keep observe-only operational projection unchanged",
+      "Require separate display rights for content-derived previews; no process-to-display escalation",
+      "No grants/rights/source enrollment, provider changes, raw app SQL permissions or credentials",
+      "No application implementation, commit, push, merge, deployment or real-data migration during qualification"
+    ],
+    "planned_tests_not_executed": [
+      "qualified workbench HTTP/SQL authority and field privacy",
+      "populated530 upgrade, seals, privileges and rollback",
+      "observed concurrent revocation/expiry",
+      "SPA command freeze, unknown response, replay and session cleanup",
+      "real browser operator prepare/publish/replay, denied states and Arabic RTL/mobile/themes",
+      "existing affected authority/completion/publication regressions",
+      "hosted Foundation only after separately authorized publication"
+    ],
+    "review_corrections": {
+      "M1": "Minimum discovery data, explicit rights matrix including existence and metadata, no global run history, qualified pagination/no-store, positive usability fixture required; static contract only",
+      "M2": "capture C/run R=C, distinct publish P!=C, separate immutable payload/replay and no cross-session assumption; grounded in current capture/publication source",
+      "M3": "Independent operational extension; no mandatory downstream foundation edges; no proof of construction-critical priority; explicit Owner selection not recorded"
+    },
+    "review_source": {
+      "path": "C:/Users/stoma/.codex/attachments/a966ce28-8d73-4a07-b834-308057fa62d0/Pasted text.txt",
+      "sha256": "a288234d6637c1a3d5ac05dfb535d0d474ada365d344ab8b5526761c80308bdc",
+      "additional_feedback": "Four numbered reviews pasted inline by Owner in current message; reviewer recommendations are not execution authorization"
+    }
+  },
+  "B01_precedence": {
+    "path": "docs/execution/structural-foundation/B01_PRECEDENCE.md",
+    "baseline": "c747f6d8a8f2011fa5dcc368da2aa4e8449e0565",
+    "result": "NO_PROVEN_REQUIRED_CODE_DELTA / BLOCKED_BY_EXACT_PREREQUISITE_FOR_FIRST_JOINT_BEHAVIOR",
+    "scope": "X01,D02,D03 and D04 only for the accepted joint claim; excludes universal project-readiness claims",
+    "decisions": {
+      "U01-K01": "deferred; operational proposal retained",
+      "X01": "reuse bounded existing method/input/qualification/trusted-completion mechanisms; no general registry delta justified",
+      "D02": "first scoped substantive witness not established by inspected native-report/D3 consumer paths",
+      "D03": "qualified expenditure is not a resource-use commitment; no independently complete new resource-question contract/premises established",
+      "D04": "no shared-coordinator prerequisite established; cannot replace missing domain premises"
+    },
+    "source_sha256": {
+      "docs/superpowers/specs/2026-10-06-joint-targeting-spend-semantic-design.md": "e54e4879c1d4d7ce9cacb464184e4fa308afe7b7a21430cb30c3dab8d1b54ff6",
+      "docs/superpowers/discovery/2026-10-06-targeting-evidence-source-discovery.md": "3ccfc95882ced5a3d926bd10c47b2cd20171682b2b68cb3f12488081d085f338",
+      "docs/superpowers/reviews/2026-10-07-real-targeting-case-availability-admissibility-review.md": "a3f710e9a025b9d29261b3901762e02effaecfa1362ac6322893e9e4edd34c1b",
+      "app/MarketKnowledge/Processing/MarketMethod.php": "6764ae873dbb91034fd26b2abff23fcdc9b3f7eef9f6b00771373833077c42ea",
+      "app/MarketKnowledge/Processing/MarketProcessingTask.php": "44d727f03d6f729a292f8fc45cff89d93610c16a242564f7b5c4665d40eb2e63",
+      "app/MarketKnowledge/Processing/MarketMethodSelector.php": "f41a849116de2f36e7d0078c5df8735679447d308bc1020dacce84769ae1b8f3",
+      "app/MarketKnowledge/Processing/MarketProcessing.php": "90c68f0c4d4c87d8fcc1cf977435bb8ead9c06e4ecb042dd82d57056f18af051",
+      "app/MarketKnowledge/Processing/BusinessFeasibility.php": "13260f63d52b909f7f7d95353716e7ebbbefe27d9d5fd472903a097a347d172f",
+      "database/sql/market_processing/capture.sql": "eb6de3c59eedd9b51cb33d82b0816f9dd101bbc1496fb5bebea87bd514ebddee",
+      "app/Providers/Ads/SharedRealityInterpretation.php": "41df16a3aa3c58ede0dc8f32ddfd22f361d9ea8d94424157d7703b99cf5d97f2",
+      "app/Providers/Ads/ObservationJournal.php": "d2404fc35abc39c5199b38157eae1a7806f59e0dd9689129ce49b84255f3e742",
+      "app/Providers/Ads/Meta/MetaGraphClient.php": "fed297554f7d99df64b74ec6ad6f566a111a68e2577143a29475db1694b989e0",
+      "app/Providers/Ads/Meta/MetaObservationAdapter.php": "0cc4c68b60fa9a269bd697fef0c650baad3cbb7d50cad0ec0bab0da5d05cfcc1",
+      "app/MarketKnowledge/QualifiedMarketFact.php": "38c1037d114f96053358b752ec7935aac06be501375d59f8665e5047a2cd18db",
+      "app/MarketKnowledge/CustomerDiscoveryConsumer.php": "5afc52aa1830d630585e691d8fb77aebf20dd2f1736a6ec862fd796fc11be893",
+      "app/MarketKnowledge/CompetitiveIntelligenceConsumer.php": "e2985110d3c49e3920cc7146a0df214817cf956f8fc628a49b9cc741deb52cfb",
+      "tests/Unit/MarketProcessingMethodsTest.php": "98e7e5c1f4c898f6e59f0759f405148123298261e834415a7d0ea1a0dd898e76",
+      "tests/Feature/MarketProcessingTest.php": "fba16204e00a2305d45466d4e5547f15ac8cfe415607e455e0b3c2c12f322323"
+    },
+    "source_anchor_checks": {
+      "finite_local_methods": {
+        "path": "app/MarketKnowledge/Processing/MarketMethodSelector.php",
+        "lines": {
+          "new OfferEquivalence": [
+            15
+          ],
+          "new QualifiedInterestChange": [
+            15
+          ],
+          "new BusinessFeasibility": [
+            15
+          ]
+        }
+      },
+      "qualified_inputs_recheck": {
+        "path": "database/sql/market_processing/capture.sql",
+        "lines": {
+          "material_use_plan": [
+            11,
+            22
+          ],
+          "require_material_use": [
+            23,
+            37,
+            65,
+            80
+          ],
+          "context_version": [
+            27
+          ],
+          "declared_markets": [
+            27,
+            28
+          ]
+        }
+      },
+      "no_implied_economics": {
+        "path": "app/MarketKnowledge/Processing/BusinessFeasibility.php",
+        "lines": {
+          "CAPACITY_NOT_ASSESSED": [
+            26
+          ],
+          "COST_NOT_ASSESSED": [
+            26
+          ],
+          "NO_COMMERCIAL_VIABILITY_CLAIM": [
+            26
+          ]
+        }
+      },
+      "no_geography_to_reach": {
+        "path": "app/MarketKnowledge/QualifiedMarketFact.php",
+        "lines": {
+          "GEOGRAPHY_IS_NOT_AUDIENCE_REACH": [
+            42,
+            52
+          ]
+        }
+      },
+      "bounded_exploration": {
+        "path": "app/MarketKnowledge/CustomerDiscoveryConsumer.php",
+        "lines": {
+          "investigate_reach": [
+            28
+          ],
+          "needs_interest_evidence": [
+            36
+          ]
+        }
+      },
+      "qualified_expenditure_limits": {
+        "path": "app/Providers/Ads/SharedRealityInterpretation.php",
+        "lines": {
+          "source_reported_advertising_expenditure": [
+            73,
+            118
+          ],
+          "accounting_population_and_request_compatibility_not_established": [
+            141
+          ],
+          "additivity_disjoint_population_and_union_coverage_not_established": [
+            178
+          ]
+        }
+      },
+      "current_meta_reporting_fields": {
+        "path": "app/Providers/Ads/Meta/MetaObservationAdapter.php",
+        "lines": {
+          "account_id,account_currency,campaign_id,date_start,date_stop,spend,impressions,clicks": [
+            134
+          ]
+        }
+      }
+    },
+    "smallest_resolution": "One traceable legitimate case locator and bounded proposition, then applicable E1-E5 only; if absent stop this branch without a generic framework or another broad source search",
+    "independent_paths": "Not blocked by Targeting; no new independent code package with a proven necessary delta and accepted complete contract was established in this bounded review",
+    "actual_verification": "Source/contract/links/hashes/change scope only. No PHP/JS/browser/Foundation tests, database/provider access, migration or code implementation performed.",
+    "old_case_review_limit": "2026-10-07 review remains a historical candidate and scoped source; no current global evidence inventory or live provider capability proof claimed"
+  },
+  "B02_evidence_route": {
+    "report": "docs/execution/structural-foundation/B02_EVIDENCE_ROUTE.md",
+    "result": "SEMANTIC_GAP — NATIVE_CONFIGURATION_INTERPRETATION_AND_READ_ENTITLEMENT_NOT_QUALIFIED",
+    "secondary_limit": "No authorized original case locator established in this task; no private account or store searched",
+    "source_sha256": {
+      "app/Providers/Ads/Meta/MetaGraphClient.php": "fed297554f7d99df64b74ec6ad6f566a111a68e2577143a29475db1694b989e0",
+      "app/Providers/Ads/Meta/MetaObservationAdapter.php": "0cc4c68b60fa9a269bd697fef0c650baad3cbb7d50cad0ec0bab0da5d05cfcc1",
+      "app/Providers/Ads/Meta/MetaAccessAdapter.php": "d5f8ad19221f2e081f83feeb24f4f48932243896de05e5a80edd77d6ea4a30e4",
+      "app/Providers/Ads/ObservationJournal.php": "d2404fc35abc39c5199b38157eae1a7806f59e0dd9689129ce49b84255f3e742",
+      "database/sql/provider_observation.sql": "589f45eeb701d245367b08054e1c3d985243ff151081f5bec570bad91dbc00d0",
+      "database/sql/market_processing/evidence.sql": "ca51ccd0fcb91bf5952976e97920fef94ac85b2c905111162eee9b185b0a2630",
+      "database/sql/market_evidence/evidence.sql": "bbd4ba5defac2e18f70cb39451b4cd2485de0c7978e83033ae692137c50d2b48",
+      "database/sql/business_scope/legacy_import.sql": "ede9288ec2ee6b3cea94f49e904bb748e763d580d4da07f2c0c2fbb59a1b8da4",
+      "app/MarketKnowledge/MarketEvidence.php": "97a3c0dbf7bd99696a5536f03b500a826a981e73fb3202fd10cc1f3c4e947280",
+      "docs/superpowers/specs/2026-10-05-shared-canonical-reality-design.md": "c842b0d29891e3ac3d1bbf00165fae655290ca20a3c9b263ef7039b4ae5e7817",
+      "docs/superpowers/specs/2026-10-06-joint-targeting-spend-semantic-design.md": "e54e4879c1d4d7ce9cacb464184e4fa308afe7b7a21430cb30c3dab8d1b54ff6",
+      "docs/superpowers/discovery/2026-10-06-targeting-evidence-source-discovery.md": "3ccfc95882ced5a3d926bd10c47b2cd20171682b2b68cb3f12488081d085f338"
+    },
+    "source_anchor_checks": {
+      "report_only": {
+        "path": "database/sql/provider_observation.sql",
+        "term": "CHECK(operation='report.read')",
+        "lines": [
+          5
+        ]
+      },
+      "snapshot_report_only": {
+        "path": "app/Providers/Ads/ObservationJournal.php",
+        "term": "$scope->operation !== 'report.read'",
+        "lines": [
+          22
+        ]
+      },
+      "finite_market_types": {
+        "path": "database/sql/market_processing/evidence.sql",
+        "term": "Unsupported evidence schema",
+        "lines": [
+          47
+        ]
+      },
+      "conditional_native_meaning": {
+        "path": "docs/superpowers/specs/2026-10-05-shared-canonical-reality-design.md",
+        "term": "SR9",
+        "lines": [
+          154
+        ]
+      },
+      "current_campaign_fields": {
+        "path": "app/Providers/Ads/Meta/MetaObservationAdapter.php",
+        "term": "account_id,account_currency,campaign_id,date_start,date_stop,spend,impressions,clicks",
+        "lines": [
+          134
+        ]
+      }
+    },
+    "new_finding": "Current report.read observation and finite market offer/signal ingresses do not establish a typed native targeting configuration ingestion/qualification path. Absence of a retained witness must not be equated with waiting for existing acquisition to produce it.",
+    "conditional_delta": "A native read/parser/admission extension may be necessary if this source/claim is selected, but native semantic and permission requirements are not qualified enough for READY code or an implementation envelope",
+    "public_primary_sources": [
+      {
+        "url": "https://raw.githubusercontent.com/meta/facebook-python-business-sdk/efd8423a2e595ea8d4c04eb824ce113f2f1d68cd/facebook_business/adobjects/adset.py",
+        "repository_commit": "efd8423a2e595ea8d4c04eb824ce113f2f1d68cd",
+        "sha256": "09bb520a7fd99e8e4790ed570f86767c4d1e30070ae7324697c03dba710608ee",
+        "bytes": 53589,
+        "coverage": "AdSet account/campaign/targeting fields and generated GET object contract only"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/meta/facebook-python-business-sdk/efd8423a2e595ea8d4c04eb824ce113f2f1d68cd/facebook_business/adobjects/targeting.py",
+        "repository_commit": "efd8423a2e595ea8d4c04eb824ce113f2f1d68cd",
+        "sha256": "e57afdcf4846a244a369cc3d082a45018906b33e3d73b519b375b7f3443d3a56",
+        "bytes": 11027,
+        "coverage": "Names and types of geo/exclusion/automation/relaxation fields; not effective semantics or authorization"
+      }
+    ],
+    "failed_primary_document_reads": [
+      {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign/",
+        "result": "web retrieval timeout"
+      },
+      {
+        "url": "https://developers.facebook.com/docs/permissions/",
+        "result": "web retrieval 429"
+      },
+      {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign-group/adsets/",
+        "result": "web retrieval 429"
+      }
+    ],
+    "source_restrictions": "Search snippets, mirrors, third-party connectors and historical memory are not used to certify native permission sufficiency or effective targeting semantics",
+    "smallest_resolution": "One source/version-bound premise→field→meaning→permission→qualification-behavior table, from accessible primary documentation or an independently authorized original artifact with provenance; no customer or paid provider required just to test a fixed contract",
+    "responsibility": "Engineering qualifies public native contract; Source/operator supplies authorized acquisition/retention context if real case access is needed; Owner alone authorizes external-account access or protected semantic changes",
+    "application_changes": 0,
+    "runtime_tests": "NOT_EXECUTED",
+    "live_provider_calls": "NOT_EXECUTED",
+    "sdk_installed": "NO",
+    "Stage_B": "NOT_AUTHORIZED"
+  },
+  "owner_regional_quality_direction": {
+    "date": "2026-11-01",
+    "authorization": "Owner asked to treat platform as large/regional without restricting it, then directed adjustment",
+    "record": "docs/execution/structural-foundation/OWNER_MANDATE.md",
+    "agents_path": "AGENTS.md",
+    "agents_before_sha256": "ec63f7fb1ca97c5125565ccec9eeaeea75f8f49acedf1b7329e62ac35b4692d6",
+    "agents_after_sha256": "6a8bc7d200e27744f1b2cf482e4ae9c1a00d5a42d891c4bd4235fdb6fa26a1f0",
+    "prior_agents_content_preserved": true,
+    "accepted_program_and_coverage_unchanged": true,
+    "plan_reference": "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\STRUCTURAL_FOUNDATION\\README.md",
+    "plan_reference_sha256": "85f57219132653d9ca3daec95b44423cd25101a873235bfcde36311bcf079b0e",
+    "backup": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\regional-quality-direction-20261101T132437Z",
+    "research_reuse_fields": 6,
+    "limits": "No application, SQL, tests, migrations or approved program edits; no account/purchase/experimentation/publication authority added"
+  },
+  "B02_specialist_qualification": {
+    "report": "docs/execution/structural-foundation/B02_SPECIALIST_QUALIFICATION.md",
+    "reuse_ledger": "docs/execution/structural-foundation/B02_RESEARCH_REUSE.csv",
+    "prior_sources_reused_in_declared_sections": 9,
+    "review_scope": "Parts explicitly named in ledger; not exhaustive archive or full-platform review",
+    "reference_cases_planned_not_run": [
+      "Q01",
+      "Q02",
+      "Q03",
+      "Q04",
+      "Q05",
+      "Q06",
+      "Q07",
+      "Q08",
+      "Q09",
+      "Q10",
+      "Q11",
+      "Q12",
+      "Q13",
+      "Q14",
+      "Q15",
+      "Q16"
+    ],
+    "result": "KNOWLEDGE_BASE_REUSED_AND_MECHANISM_BOUNDARIES_QUALIFIED_IN_SCOPE / EFFECTIVE_CONFIGURATION_READ_NOT_IMPLEMENTATION_READY",
+    "new_findings": [
+      "Pinned SDK apiconfig declares v26.0 and v26.0.2; not proof of actual configured/account version",
+      "AdAccount get_account_controls is a generated GET edge and AdAccountBusinessConstraints is a response type, introducing a conditional material-dependency check beyond AdSet.targeting",
+      "audience_controls also appears as a create_account_control parameter: write-field presence must not be misread as direct AdAccount GET support",
+      "Official Meta Postman AdSet GET example was accessible but does not request targeting or certify its endpoint-specific minimum permission",
+      "Published retrieval/ranking and cross-surface model descriptions bound inference; no per-advertiser performance/effectiveness claim follows"
+    ],
+    "sdk_primary_source_metadata": [
+      {
+        "url": "https://raw.githubusercontent.com/meta/facebook-python-business-sdk/efd8423a2e595ea8d4c04eb824ce113f2f1d68cd/facebook_business/adobjects/adset.py",
+        "repository_commit": "efd8423a2e595ea8d4c04eb824ce113f2f1d68cd",
+        "sha256": "09bb520a7fd99e8e4790ed570f86767c4d1e30070ae7324697c03dba710608ee",
+        "bytes": 53589,
+        "observed": "Public response bytes read during this task; no SDK installed or source vendored"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/meta/facebook-python-business-sdk/efd8423a2e595ea8d4c04eb824ce113f2f1d68cd/facebook_business/adobjects/targeting.py",
+        "repository_commit": "efd8423a2e595ea8d4c04eb824ce113f2f1d68cd",
+        "sha256": "e57afdcf4846a244a369cc3d082a45018906b33e3d73b519b375b7f3443d3a56",
+        "bytes": 11027,
+        "observed": "Public response bytes read during this task; no SDK installed or source vendored"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/meta/facebook-python-business-sdk/efd8423a2e595ea8d4c04eb824ce113f2f1d68cd/facebook_business/adobjects/targetinggeolocation.py",
+        "repository_commit": "efd8423a2e595ea8d4c04eb824ce113f2f1d68cd",
+        "sha256": "ec17c9e6bd5f11aedceff078e6d3fa0e1d367658d543bcaca0d9bf2ed918dcab",
+        "bytes": 2788,
+        "observed": "Public response bytes read during this task; no SDK installed or source vendored"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/meta/facebook-python-business-sdk/efd8423a2e595ea8d4c04eb824ce113f2f1d68cd/facebook_business/adobjects/adaccount.py",
+        "repository_commit": "efd8423a2e595ea8d4c04eb824ce113f2f1d68cd",
+        "sha256": "dd0a0d1acbc9c3a690f20f8b4ec28c7868211688a9973885c607660865313df6",
+        "bytes": 196654,
+        "observed": "Public response bytes read during this task; no SDK installed or source vendored"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/meta/facebook-python-business-sdk/efd8423a2e595ea8d4c04eb824ce113f2f1d68cd/facebook_business/apiconfig.py",
+        "repository_commit": "efd8423a2e595ea8d4c04eb824ce113f2f1d68cd",
+        "sha256": "0dd4561d332606a38ac3276cbb9d9c6ccbd7fe915a119d9558123d83632b4afd",
+        "bytes": 296,
+        "observed": "Public response bytes read during this task; no SDK installed or source vendored"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/meta/facebook-python-business-sdk/efd8423a2e595ea8d4c04eb824ce113f2f1d68cd/facebook_business/adobjects/adaccountbusinessconstraints.py",
+        "repository_commit": "efd8423a2e595ea8d4c04eb824ce113f2f1d68cd",
+        "sha256": "ad91b3a7bf7dff002aeeb1301ec7d8b6d4544fddcdb3771962852048583c41f3",
+        "bytes": 2503,
+        "observed": "Public response bytes read during this task; no SDK installed or source vendored"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/meta/facebook-python-business-sdk/efd8423a2e595ea8d4c04eb824ce113f2f1d68cd/facebook_business/adobjects/targetingautomation.py",
+        "repository_commit": "efd8423a2e595ea8d4c04eb824ce113f2f1d68cd",
+        "sha256": "46984ea78893ad2d44929bfb629ef97f924205722e798ac5eb5f5fd8256eb47b",
+        "bytes": 1362,
+        "observed": "Public response bytes read during this task; no SDK installed or source vendored"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/meta/facebook-python-business-sdk/efd8423a2e595ea8d4c04eb824ce113f2f1d68cd/facebook_business/adobjects/targetingrelaxation.py",
+        "repository_commit": "efd8423a2e595ea8d4c04eb824ce113f2f1d68cd",
+        "sha256": "0958fe3c6fe216caf9235870cc6ec6936372a567e71a2b5b0487aa89a366aa08",
+        "bytes": 1035,
+        "observed": "Public response bytes read during this task; no SDK installed or source vendored"
+      }
+    ],
+    "primary_web_sources": [
+      {
+        "url": "https://www.postman.com/meta/facebook-marketing-api/overview",
+        "role": "Verified workspace describes official Meta collection; not authority proof for any account"
+      },
+      {
+        "url": "https://www.postman.com/meta/facebook-marketing-api/request/vhwas2d/retrieving-adset-details-l2",
+        "role": "Specific object GET example without targeting in fields"
+      },
+      {
+        "url": "https://engineering.fb.com/2026/10/28/ml-applications/meta-andromeda-next-gen-ads-retrieval-gpu-co-design/",
+        "role": "Published retrieval/ranking/index-matching mechanism only; performance claims not independently replicated"
+      },
+      {
+        "url": "https://engineering.fb.com/2026/10/13/ml-applications/generative-ads-model-gem-scaling-frontier-ads-ai/",
+        "role": "Published cross-surface representations only; no secret weights or advertiser-level effect inferred"
+      }
+    ],
+    "practitioner_material": {
+      "url": "https://www.jonloomer.com/meta-ads-targeting-2026/?noamp=mobile",
+      "use": "Expert views used as questions/counterexamples only; not native permission/effective-semantic authority or independent causal proof"
+    },
+    "current_failed_or_restricted_document_reads": [
+      {
+        "url": "https://developers.facebook.com/docs/marketing-api/audiences/reference/targeting/",
+        "result": "inaccessible via tool"
+      },
+      {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign/",
+        "result": "timeout"
+      },
+      {
+        "url": "https://www.facebook.com/business/ads/meta-advantage-plus/audience",
+        "result": "login/temporarily-blocked response"
+      },
+      {
+        "url": "https://www.facebook.com/business/help/202297959811696",
+        "result": "login/temporarily-blocked response"
+      },
+      {
+        "url": "https://www.postman.com/meta/facebook-marketing-api/collection/0zr4mes/facebook-marketing-api-mapi",
+        "result": "first collection timeout; overview and specific GET subsequently accessible, not an account/API test"
+      }
+    ],
+    "static_checks": {
+      "ledger_source_hashes_match": true,
+      "Q01_Q16_unique": true,
+      "accepted_Stage_A_source_bytes_unchanged": true,
+      "preexisting_guidance_preserved": true,
+      "original_mandate_prefix_preserved": true,
+      "tracked_and_untracked_change_scope_checked": true
+    },
+    "not_executed": [
+      "independent specialist review",
+      "PHP tests",
+      "JavaScript tests",
+      "browser/runtime tests",
+      "Foundation",
+      "provider account calls",
+      "permission/token probes",
+      "experiments",
+      "application/SQL/migration edits",
+      "Git publication/merge"
+    ],
+    "rights_limits": "Public mechanism/SDK descriptions do not imply account evidence access, retention, redistribution rights or product implementation authority"
+  },
+  "B02_review_disposition": {
+    "date": "2026-11-01",
+    "report": "docs/execution/structural-foundation/B02_SPECIALIST_QUALIFICATION.md",
+    "revision": "v1.1",
+    "previous_report_sha256": "b6e049b9981d95bc712f462f010a3bfb10181dcde9984cbc8e27917f257e1216",
+    "status": "BOUNDED_RESEARCH_DISPOSITION_RECORDED / CONFIGURED_READ_GATE_SEPARATE / EFFECTIVE_INTERPRETATION_WITHHELD",
+    "external_review_inputs": [
+      {
+        "path": "C:\\Users\\stoma\\.codex\\attachments\\e29f4b4d-e903-4b58-ada6-a96f102b007f\\Pasted text.txt",
+        "sha256": "f51a18205827bba21abdbd691cc8b4e63994b607b908bd1d845bb2a1ad10e3a2"
+      },
+      {
+        "path": "C:\\Users\\stoma\\.codex\\attachments\\b81d4406-0c80-4874-8e26-51d8485316a2\\Pasted text.txt",
+        "sha256": "182244fa340857fcbbdde65aadd52ba812809adae200460c5eeb9336c473b590"
+      }
+    ],
+    "external_review_scope": "Supplied bounded reviewer statements considered and linked; not represented as fresh independent execution, validation of all source studies, or primary-source permission/effective-control proof",
+    "static_checks": {
+      "accepted_program_and_coverage_unchanged": true,
+      "regional_agents_guidance_unchanged": true,
+      "local_links_exist": true,
+      "account_control_dependency_claim_specific": true,
+      "configured_read_and_effective_interpretation_gates_separate": true,
+      "no_automatic_READY_or_next_package_claim": true
+    },
+    "plan_reference": "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\STRUCTURAL_FOUNDATION\\README.md",
+    "plan_reference_sha256": "fc71ac22da1efe8fb9d619f86473addde0f7990cdf549e01f42f72e51b75acde",
+    "plan_backup": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\b02-review-disposition-20261101T134943Z",
+    "non_authorized_actions": [
+      "reader implementation",
+      "SQL/migrations/tests",
+      "account access",
+      "paid providers",
+      "new general Meta research",
+      "Git commit/push/merge",
+      "deployment"
+    ]
+  },
+  "independent_expertise_integration": {
+    "report": "docs/execution/structural-foundation/EXPERTISE_INTEGRATION.md",
+    "status": "DIRECTION_RECORDED / CURRENT_FITNESS_BOUNDED / CASE_A_CONTRACT_NOT_YET_QUALIFIED",
+    "source_hashes": {
+      "app/MarketKnowledge/Processing/MarketMethod.php": "6764ae873dbb91034fd26b2abff23fcdc9b3f7eef9f6b00771373833077c42ea",
+      "app/MarketKnowledge/Processing/MarketProcessingTask.php": "44d727f03d6f729a292f8fc45cff89d93610c16a242564f7b5c4665d40eb2e63",
+      "app/MarketKnowledge/Processing/MarketMethodSelector.php": "f41a849116de2f36e7d0078c5df8735679447d308bc1020dacce84769ae1b8f3",
+      "app/MarketKnowledge/Processing/Findings.php": "cb0ad1a9d35c17d77fff548c892077dfa672993a4e68e9ff87f0bd0341323480",
+      "app/MarketKnowledge/Processing/MarketProcessing.php": "90c68f0c4d4c87d8fcc1cf977435bb8ead9c06e4ecb042dd82d57056f18af051",
+      "app/MarketKnowledge/Processing/OfferEquivalence.php": "573ce77c8a8b2c06322bff24f8dc896b1b8256c8c07f4f575b72faf21ca1ec83",
+      "app/MarketKnowledge/Processing/QualifiedInterestChange.php": "d7a1bff5e5953fd47e861109f4431f4d49a4a12f5a170535072417582f2a6ecf",
+      "app/MarketKnowledge/CustomerDiscoveryConsumer.php": "5afc52aa1830d630585e691d8fb77aebf20dd2f1736a6ec862fd796fc11be893",
+      "app/MarketKnowledge/CompetitiveIntelligenceConsumer.php": "e2985110d3c49e3920cc7146a0df214817cf956f8fc628a49b9cc741deb52cfb",
+      "database/sql/market_processing/schema.sql": "7fef6d7a5d5b03303c5e78db6e470323497b92cacd7016436cb41e49e19a1e9a",
+      "database/sql/market_processing/capture.sql": "eb6de3c59eedd9b51cb33d82b0816f9dd101bbc1496fb5bebea87bd514ebddee",
+      "docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md": "42c623b1891cb4676320b0db4a9464f822874a6370f4c773423a08e44264e94c",
+      "docs/superpowers/specs/2026-10-06-joint-targeting-spend-semantic-design.md": "e54e4879c1d4d7ce9cacb464184e4fa308afe7b7a21430cb30c3dab8d1b54ff6",
+      "tests/Support/MarketProcessingExamples.php": "098d9936b0742fbbc13c4f7577dc67e4d49b6c0617a706de91cc611da6047a4c"
+    },
+    "research_sources": {
+      "C:\\dev\\builderad sections\\الأقسام\\قسم 3 التفاعل وتحويل الاهتمام إلى استفسار مؤهل\\BuilderAd_BF03_Final_Arbitrated_Reference_AR_v1.1_2026-10-22.md": "08a7f1cee2fbb3c69c35f37ae1538e398f7b706bd76e022a70c197dc68611d9f",
+      "C:\\dev\\builderad sections\\الأقسام\\القسم 4 العلاقة التجارية، الصفقات، الطلبات، الوفاء، الفوترة، المدفوعات، التسوية، والنتائج\\BuilderAd_BF04_Final_Unified_Arbitrated_Reference_AR_v1.1_2026-10-22.md": "6f9a7a8b5afcfbd3e9801669394aa1c8cb64fd28c26495ae8f221720e719b615",
+      "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\COMMERCIAL_ADVERTISING_EXPERTISE\\BUILDERAD_GOVERNING_COMMERCIAL_ADVERTISING_EXPERTISE_ARCHITECTURE_V1_1_2026-11-01.md": "3bb7250a4cf7636282e78cdbbd0c95040f5455a160743698a54d4bc301eed00f",
+      "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\BuilderAd_Competitive_Product_Blueprint_Decisive_AR_v1.1_2026-10-26.md": "8fbb67baf83c042a72d04ea8e42a3a45346164be4febd05bce438b9e8eb4c25b"
+    },
+    "owner_input_hashes": {
+      "C:\\Users\\stoma\\.codex\\attachments\\613e8408-f3b9-4b38-be2f-c9372e73566d\\Pasted text.txt": "afe90d3344669d63ac09d65f923bab4e740472a01b88be581b31f7f072013656",
+      "C:\\Users\\stoma\\.codex\\attachments\\28379481-ea58-46bd-88e1-59ae6d7df384\\Pasted text.txt": "272ccdf4fd00862c85079d4a80efb61e727b9040c4639efc29a6e05b182bcf7b"
+    },
+    "probe_artifacts": {
+      "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\expertise-existing-method-probes.php": "43d9cd95a7a8ca35e4cddefdefce0c6da59e433b97728ca4d57450ececea97b0",
+      "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\expertise-existing-method-probes.json": "26e2a873248a1c0a292ef56345adc1fd90a18e731e1d25b8bc38d907d11fe4ca"
+    },
+    "probe_passed": 8,
+    "probe_scope": "Pure existing production logic, synthetic fixtures; not future expertise or integration proof",
+    "accepted_bytes_preserved": {
+      "PROGRAM.md": "167219a27db7460491149c1ecdddf4c55f70643fc409993cfcf4f5197426aba7",
+      "CAPABILITY_COVERAGE.csv": "4a0d683ba6b74ddbdfcda5683533ea6c81a5ea58514b6a4cb7674a23dfd1185b"
+    },
+    "guidance_sha256": "6e906e17b3c5ea4883d051f90144b1c71ce8475ec82d1f7ed4e5a311c353e70e",
+    "backup": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\expertise-intent-20261101T141651Z",
+    "application_changes": 0,
+    "not_executed": [
+      "Case A implementation",
+      "application/authority/SQL integration tests",
+      "browser",
+      "Foundation",
+      "hosted CI",
+      "provider/account access",
+      "Git publication"
+    ],
+    "plan_reference": "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\STRUCTURAL_FOUNDATION\\README.md",
+    "plan_reference_sha256": "5562a21d17bb87c1ddaa1ef1ec9758786f9e5cf6526bf73d47ac5162dea96e41",
+    "final_document_checks": {
+      "file_hashes_verified": 9,
+      "source_hashes_verified": 14,
+      "report_relative_links_verified": 8,
+      "original_guidance_and_mandate_prefix_preserved": true,
+      "git_diff_check": "PASS",
+      "archive_verifier": "PASS: 319 indexed files; 187 section files; 26 independent decision records + S03 group",
+      "retained_intermediate_failure": "First archive verification detected stale FILES_INDEX.csv checksum after the reference update; refreshed that index entry in FILES_SHA256.csv; official verifier then passed. No application behavior changed."
+    }
+  },
+  "case_a_contract": {
+    "document": "docs/execution/structural-foundation/CASE_A_CONTRACT.md",
+    "disposition": "BOUNDED_CONTRACT_READY_FOR_REVIEW / STRUCTURAL_CODE_PRECEDENCE_NOT_ESTABLISHED / APPLICATION_IMPLEMENTATION_NOT_AUTHORIZED",
+    "backup": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\case-a-contract-20261101T143121Z",
+    "review_inputs": {
+      "C:\\Users\\stoma\\.codex\\attachments\\c138efbd-8885-472a-baa3-06e6211a5c8d\\Pasted text.txt": "61eaaa307da76a39fd2e6defb79680f3a5b3c7ae8537214a8dd516af687c30df",
+      "C:\\Users\\stoma\\.codex\\attachments\\4fd0bda2-f0e8-4b0e-b8c4-2a9ef557880b\\Pasted text.txt": "9716116e4a4b70f1c6d8655a18c02ebf82738020c3a4dce9f1b28d820236fa87"
+    },
+    "additional_inspected_sources": {
+      "app/Business/AdvertiserGoalPreferences.php": "051cea849365700b7f1f74f97e606be2c228a72facd5730e65dc29d0d2cbd0eb",
+      "tests/Unit/CoreDependencyBoundaryTest.php": "42317733077f175d5e9ae7f7d6932a8510212c412011041567b9ae22a01fae25",
+      "docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md": "42c623b1891cb4676320b0db4a9464f822874a6370f4c773423a08e44264e94c"
+    },
+    "research_source_hashes_reused": {
+      "C:\\dev\\builderad sections\\الأقسام\\قسم 3 التفاعل وتحويل الاهتمام إلى استفسار مؤهل\\BuilderAd_BF03_Final_Arbitrated_Reference_AR_v1.1_2026-10-22.md": "08a7f1cee2fbb3c69c35f37ae1538e398f7b706bd76e022a70c197dc68611d9f",
+      "C:\\dev\\builderad sections\\الأقسام\\القسم 4 العلاقة التجارية، الصفقات، الطلبات، الوفاء، الفوترة، المدفوعات، التسوية، والنتائج\\BuilderAd_BF04_Final_Unified_Arbitrated_Reference_AR_v1.1_2026-10-22.md": "6f9a7a8b5afcfbd3e9801669394aa1c8cb64fd28c26495ae8f221720e719b615",
+      "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\COMMERCIAL_ADVERTISING_EXPERTISE\\BUILDERAD_GOVERNING_COMMERCIAL_ADVERTISING_EXPERTISE_ARCHITECTURE_V1_1_2026-11-01.md": "3bb7250a4cf7636282e78cdbbd0c95040f5455a160743698a54d4bc301eed00f",
+      "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\BuilderAd_Competitive_Product_Blueprint_Decisive_AR_v1.1_2026-10-26.md": "8fbb67baf83c042a72d04ea8e42a3a45346164be4febd05bce438b9e8eb4c25b"
+    },
+    "arithmetic_witness": {
+      "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\case-a-contract-arithmetic-witnesses.json",
+      "sha256": "b4871d81852ad14c85f40dabf8e97b1a9660b57dcd3e98ecc8931716b09dd936",
+      "checks": 2,
+      "scope": "Fraction arithmetic only; no Case A application implementation"
+    },
+    "proposed_acceptance_cases": 20,
+    "acceptance_cases_executed": 0,
+    "application_changes": 0,
+    "earlier_eight_probes_rerun": false,
+    "not_executed": [
+      "PHP/JS tests",
+      "application/authority/SQL integration",
+      "browser",
+      "Foundation/CI",
+      "account access",
+      "Git publication"
+    ],
+    "document_checks": {
+      "revision": "v0.2",
+      "manifest_hashes_verified": 10,
+      "accepted_program_and_coverage_unchanged": true,
+      "production_sources_and_guidance_unchanged": true,
+      "prior_mandate_preserved": true,
+      "case_ids_unique": 20,
+      "local_links_exist": true,
+      "git_diff_check": "PASS",
+      "scope": "Document/source verification only; 20 application acceptance cases remain NOT EXECUTED"
+    },
+    "revision": "v0.2",
+    "bounded_review_correction": {
+      "backup": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\case-a-amendment-20261101T144305Z",
+      "previous_contract_sha256": "9026fa7c264feb04a1181699af48d0cf182d37bc0316d2279554d18d4cbc8652",
+      "changes": [
+        "per-measure and per-comparison eligibility",
+        "claim-specific descriptive versus causal premises",
+        "aggregate and longitudinal disclosure qualification",
+        "independent accepted-inquiry measures where total-inquiry count is unavailable",
+        "existing implemented consumer not a universal prerequisite"
+      ],
+      "acceptance_cases_added": [
+        "A17",
+        "A18",
+        "A19",
+        "A20"
+      ],
+      "production_or_test_changes": 0,
+      "new_tests_executed": 0,
+      "review_inputs": {
+        "C:\\Users\\stoma\\.codex\\attachments\\8ea09d17-4380-40c6-9a2b-376257b938a9\\Pasted text.txt": "25aa70f05881cd2beee04da088f20062df0ec42841baa0d45b99491cfdbd397c",
+        "C:\\Users\\stoma\\.codex\\attachments\\6b6b6cea-09cd-43e3-b929-d10d951e658f\\Pasted text.txt": "1bfe708759c98675412d4305f815f2ef3fb89dc8a81e2d475a60682481d88b34"
+      },
+      "batch": "BOUNDED_CONTRACT_CORRECTION_CLOSED / DOCUMENT_CHECKS_PASS"
+    }
+  },
+  "next_construction_choice": {
+    "record": "docs/execution/structural-foundation/NEXT_IMPLEMENTATION_PACKAGE.md",
+    "recommendation": "BF03-I01 — Scoped Inquiry Cohort Evidence Admission & Readback",
+    "status": "SCOPE_RECOMMENDED / PROTECTED_ENTRY_GATE_OPEN / APPLICATION_IMPLEMENTATION_NOT_AUTHORIZED",
+    "priority_scope": "Dependency ordering within chosen independent-expertise path; not universal critical-path proof",
+    "source_hashes": {
+      "app/Foundation/Business/BusinessScope.php": "6f107cb4f513f5078e94b5e8332d93156dd92aaa20eb932581f87a9a9ddecbc1",
+      "app/Commercial/CommercialContext.php": "efb7f9071758c1173479dac51111dae668701de872d45c6ad0d6a01fd074b290",
+      "app/Sources/EffectiveCapability.php": "3114a1f123e75618e0ccf53c840ad70abd3a367da2786d8f708eb9dc97f5fa77",
+      "app/Http/Controllers/BusinessSurfaceController.php": "882e911dfcaaed5186d281c05ef0836824220d2456128d19932dbddd7769a75d",
+      "resources/js/commercial/routes.ts": "58f3993c5b7e192ba7a8dbb2679c6e461f01b048b11ff38ca43bf129d8c2b990"
+    },
+    "backup": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\next-package-20261101T145137Z",
+    "application_changes": 0,
+    "tests_executed": 0,
+    "preserved": [
+      "Stage A accepted bytes",
+      "U01 deferral",
+      "Case A v0.2 limits",
+      "D1-D3 accepted contracts"
+    ],
+    "entry_gate": "Explicit source assertion custody, operation permissions and scoped display approval; then finalize bounded authority mapping and SPA integration",
+    "not_executed": [
+      "product implementation",
+      "PHP/JS/browser tests",
+      "Foundation/CI",
+      "Git publication",
+      "account access",
+      "production operations"
+    ],
+    "document_checks": {
+      "file_hashes_verified": 11,
+      "links_exist": true,
+      "prior_record_prefixes_preserved": true,
+      "accepted_program_bytes_unchanged": true,
+      "inspected_source_hashes_unchanged": true,
+      "git_diff_check": "PASS",
+      "scope": "Document verification; no runtime acceptance claim"
+    }
+  },
+  "research_alignment": {
+    "report": "docs/execution/structural-foundation/RESEARCH_ALIGNMENT.md",
+    "ledger": "docs/execution/structural-foundation/RESEARCH_ALIGNMENT.csv",
+    "inventory": "docs/execution/structural-foundation/RESEARCH_INVENTORY.csv",
+    "status": "VISION_ALIGNMENT_SUPPORTED_IN_REVIEWED_PASSAGES / CORPUS_REVIEW_PARTIAL / IMPLEMENTATION_READINESS_NOT_ASSESSED",
+    "selected_references": 17,
+    "indexed_section_files": 188,
+    "inventory_only_files": 171,
+    "independent_study_count": "NOT_ESTABLISHED; file/reference count is not independent evidence",
+    "source_manifest": "C:\\dev\\builderad sections\\08_MANIFEST\\FILES_SHA256.csv",
+    "source_manifest_sha256": "585e7b3da6f2aaa74d786ce23f1c56cf4802fabaa0da42fc6af61155a9ed7a8f",
+    "backup": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\research-alignment-20261101T152235Z",
+    "guidance_sha256": "9237521c5a0702e9be7e5f050852b0ebec1c02336acb5e73380c7a706c46165a",
+    "source_paths_and_hashes": {
+      "C:\\dev\\builderad sections\\الأقسام\\قسم 1 النشاط والأهداف\\BuilderAd_BF01_Final_Consolidated_Foundation_AR_v1.1_2026-10-22.md": "196b3f249f9426bb6dc0c19532135b994956f3352931dbd4ac66fcf6b9124dea",
+      "C:\\dev\\builderad sections\\الأقسام\\قسم 2 السوق والطلب واكتشاف الفرص والعملاء\\BuilderAd_BF02_OP01_Final_Unified_Reference_AR_v1.1_2026-10-22.md": "6d51043dddba1e98c3fcd30d8e42e6de33d7c2613674f22dd462b74ba14c5961",
+      "C:\\dev\\builderad sections\\الأقسام\\قسم 3 التفاعل وتحويل الاهتمام إلى استفسار مؤهل\\BuilderAd_BF03_Final_Arbitrated_Reference_AR_v1.1_2026-10-22.md": "08a7f1cee2fbb3c69c35f37ae1538e398f7b706bd76e022a70c197dc68611d9f",
+      "C:\\dev\\builderad sections\\الأقسام\\القسم 4 العلاقة التجارية، الصفقات، الطلبات، الوفاء، الفوترة، المدفوعات، التسوية، والنتائج\\BuilderAd_BF04_Final_Unified_Arbitrated_Reference_AR_v1.1_2026-10-22.md": "6f9a7a8b5afcfbd3e9801669394aa1c8cb64fd28c26495ae8f221720e719b615",
+      "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_Advertising_06-01_Goal_Optimization_Research_Reference_AR_2026-10-21.md": "c8ff4b95f6563b04a10fd0ba2c76917d3966f06e0547edc72fd07928b708f3f9",
+      "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-02_Consolidated_Research_Decision_AR_2026-10-21.md": "e6139c1f46754a34d7247336feb7b9d361b0a3db667dffd12e3f7dccde372e3d",
+      "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-03_Consolidated_Research_Decision_AR_2026-10-22.md": "41e61ba3a40e7c3ce377b5bfc80b1c7f85942335756f1a9403e552c08a67fb10",
+      "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-04_Consolidated_Research_Engineering_Decision_AR_v1.1_2026-10-22.md": "8729411136b3f698d54cc82f380d31488fef354b99cf9f949584e69f1a90a1a6",
+      "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-05_Consolidated_Research_Engineering_Decision_AR_v1.1_2026-10-22.md": "97cdb828448944161957123415647f3944bbf5eafc93308f2f1bb6e3b3403d13",
+      "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-06_Consolidated_Research_Engineering_Decision_AR_v1.1_2026-10-22.md": "3622a766d1440d19f028d3f5f20bf1fe3fc773ecca1ad3878495432133a4dac9",
+      "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-07_Consolidated_Functional_Engineering_Research_Decision_AR_v1.1_2026-10-22.md": "a41d44ec5ddec2c4295ef8a4a24e8073ace6250a53a370e941c61b41d57ab202",
+      "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-08_Unified_Research_Engineering_Reference_AR_v1.1_2026-10-22.md": "f944f2c4cb745a95a9757b69716287cf1f32fa631a8ec8e865622263a6006287",
+      "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-09_Final_Research_Functional_Engineering_Reference_AR_v1.1_2026-10-22.md": "36eaa85218368cbb7511a7ed4684a2bef79fd1d6d42faae9a2897d0e5757fead",
+      "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_X_Ads_Final_Trusted_Research_Reference_AR_v1.1_2026-10-22.md": "c6025f498ef9b3a294433d7ab2a20600fd9a649c51542c3a6dcd76db1499f44d",
+      "C:\\dev\\builderad sections\\الأقسام\\SRC-INTEL-01\\BuilderAd_SRC_INTEL_01_Canonical_Integrated_Research_AR_v1.0_2026-10-24.md": "3039750561233b96786b94b3d824ce0f913f6dadffe3637054dbedd7c3f36df5",
+      "C:\\dev\\builderad sections\\الأقسام\\قسم F الظهور والاكتشاف غير الإعلاني\\BuilderAd_F_Canonical_Final_Deep_Research_and_ARCH00B_Handoff_AR_v2.0_2026-10-23.md": "8d5273b74121fc5fb3332da11c61291648c02f0be8718f55bda851f6627a71d8",
+      "C:\\dev\\builderad sections\\الأقسام\\قسم H الاحتفاظ واقتصاد النمو\\BuilderAd_H_Research_Final_Synthesis_F_Dependencies_ARCH00B_AR_v1.0_2026-10-23.md": "2bafcd8327bf9462d5799dbe33723e7ab86c6bb6c64e40318e0069f5abbbe0f5"
+    },
+    "original_archives_unpacked": false,
+    "primary_external_claims_revalidated": false,
+    "application_changes": 0,
+    "tests_executed": 0,
+    "BF03_implementation_authorized": false,
+    "accepted_program_unchanged": true,
+    "document_checks": {
+      "file_manifest_hashes_verified": 14,
+      "source_inventory_hashes_verified": 188,
+      "selected_reference_hashes_verified": 17,
+      "review_line_references_exist": true,
+      "construction_groups_resolve": true,
+      "local_links_exist": true,
+      "accepted_program_bytes_preserved": true,
+      "prior_guidance_and_record_prefixes_preserved": true,
+      "git_diff_check": "PASS",
+      "scope": "Document/source traceability checks; not scientific revalidation, runtime proof or implementation acceptance"
+    }
+  },
+  "bf03_research_consumption": {
+    "record": "docs/execution/structural-foundation/NEXT_IMPLEMENTATION_PACKAGE.md#8",
+    "status": "RESEARCH_CONSUMPTION_TRACED / NAMED_AUTHORITY_POLICY_PROPOSED / OWNER_DECISION_REQUIRED / NO_APPLICATION_IMPLEMENTATION",
+    "backup": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-research-consumption-20261101T153448Z",
+    "traced_result_ids": [
+      "K01",
+      "K02",
+      "K03",
+      "K04",
+      "K05",
+      "K06",
+      "K07"
+    ],
+    "proposed_actions": [
+      "business.inquiry_evidence.record",
+      "business.inquiry_evidence.correct",
+      "business.inquiry_evidence.read"
+    ],
+    "proposed_policy": "inquiry_evidence_custody_v1",
+    "policy_approved": false,
+    "actual_root_eligibility_established": false,
+    "source_hashes": {
+      "database/sql/business_scope/grant_commands.sql": "3fa568a2db5f758ed25d21f8dd2966bf33c8ac20bad562deb2e7b98c5be764e7",
+      "database/sql/business_scope/authority.sql": "8184b7cc56585b6df5f3bf5d449357e154297faa48ef875e4f1299dd8e08cbb6",
+      "database/sql/business_scope/scope_authority.sql": "b2da151ae4eef8682c2c999a6fbc5f28f4ffd6a9e372a610c9977d606c917224",
+      "database/sql/business_scope/schema.sql": "5571c836e6e261756f04888d20db2f1cee18cc7cd6f96fa015dce462867f0e0e",
+      "database/sql/business_scope/permissions.sql": "1b7d0e297b9bca60cd1be57f904459672ae62e05de473e599cec9df86cdc756c",
+      "database/sql/business_scope/source_facts.sql": "e96eca63a5674eef5b09f72826ce30668106546ef9771205650a78656ac39de2",
+      "database/sql/business_scope/data_use.sql": "64df56b08ee3d0dee8fd6889eb2dec91cf41b7bf140d4334af58cc31d0a4037b",
+      "database/sql/business_scope/resource_rights.sql": "58feee02c71d6030863ef5a2d019f04645c8163f81ed3c5f25177f9bb5f14989",
+      "app/Foundation/Business/BusinessScope.php": "6f107cb4f513f5078e94b5e8332d93156dd92aaa20eb932581f87a9a9ddecbc1",
+      "resources/js/workspaces/routes.ts": "d6dfafc611f13a234f0b3d9b478ae94eb95d651041cf99d7b00336d723a910c1",
+      "database/sql/business_scope/commands.sql": "1b9cfdfb29f993aaf155985918789e6c5bb80969caedc4bc7c35a954aec9d2cd"
+    },
+    "research_hashes_reused_verified": 17,
+    "new_research_references_reviewed": 0,
+    "prior_partial_batch_closed": true,
+    "application_changes": 0,
+    "tests_executed": 0,
+    "not_executed": [
+      "PHP/JS/SQL tests",
+      "browser",
+      "Foundation/CI",
+      "account/source access",
+      "Git publication",
+      "production changes"
+    ],
+    "remaining_gate": "Owner acceptance of explicit own-private-statement opt-in policy, new operations, scoped display and dependency/revocation rules, with bounded implementation authority.",
+    "proposed_policy_mode": "own_private_statement",
+    "existing_eligibility_basis_identified": true,
+    "actual_root_note": "Existing own-statement creator/qualification basis identified in source; new policy and actual enrollment not implemented or tested.",
+    "document_checks": {
+      "file_hashes_verified": 14,
+      "source_hashes_verified": 11,
+      "reused_research_hashes_verified": 17,
+      "result_to_contract_test_links": 7,
+      "proposed_operations": 3,
+      "local_links_exist": true,
+      "accepted_program_and_coverage_unchanged": true,
+      "prior_owner_record_preserved": true,
+      "first_alignment_batch_counts_unchanged": true,
+      "git_diff_check": "PASS",
+      "runtime_or_policy_implementation_verified": false
+    },
+    "historical_pre_authorization": true,
+    "superseded_for_local_implementation_by": "BF03_IMPLEMENTATION.json / explicit Owner attachments541193bb,08140d3a"
+  },
+  "pre_implementation_disposition": {
+    "scope": "Owner-directed closure of partial research alignment and concrete BF03 research-to-authority-policy trace; no implementation authorization",
+    "open_acceptance_items": [
+      "The configured-only read package still needs a selected justified scope, exact source/version/read and retention rights, implementation contract and authorization; it does not require proving unrelated higher-level claims",
+      "Effective-configuration inference remains withheld only where a material control applicability/precedence/meaning or reading right is unqualified",
+      "Supplied bounded reviews are recorded; no full independent validation or runtime test success is asserted",
+      "No independent new code package is established READY by this disposition; accepted-program selection rules and local blockers remain",
+      "U01 remains deferred; Git publication/merge, external accounts and production operations remain unauthorized"
+    ],
+    "not_executed": [
+      "PHP tests",
+      "JavaScript tests",
+      "browser tests",
+      "Foundation",
+      "commit",
+      "push",
+      "merge",
+      "production migration",
+      "deployment"
+    ],
+    "limits": [
+      "Static document consistency does not prove general architectural or runtime flexibility",
+      "Ten advertising mappings are document-level refinements, not runtime feature reviews",
+      "The other 77 rows retain explicit family-level assessment",
+      "Source existence and retained tests do not prove five-provider live readiness",
+      "Reference closure is responsibility/constraint coverage of the named governing references, not exhaustive review of all archive documents or future features",
+      "Matrix/test-case mapping checks are static documentation checks, not execution of the mapped tests"
+    ]
+  },
+  "bf03_local_implementation": {
+    "record": "docs/execution/structural-foundation/BF03_IMPLEMENTATION.json",
+    "sha256": "cc2dfa19d7719a309bd77151895373d1c947d93fb191ec8fa837b4c198792fbd",
+    "ux_report": "docs/execution/structural-foundation/BUSINESS_WORKSPACE_UX.md",
+    "ux_status": "PASS — UX_RESTRUCTURING_VERIFIED",
+    "backend_status": "LOCAL_IMPLEMENTED_FOCUSED_VERIFIED / FOUNDATION_FAILED_INCOMPLETE",
+    "browser": {
+      "result": "PASS",
+      "cases": 11,
+      "passed": 11,
+      "page_errors": [],
+      "matrix_combinations": 28,
+      "chromium": "145.0.7632.6",
+      "source_unchanged": true,
+      "evidence": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\final-browser-results.json"
+    },
+    "foundation": {
+      "status": "FAILED / INCOMPLETE",
+      "passing_events_not_success_count": 1304,
+      "pre_ready_errors": 2,
+      "aborted": "PHPUnit128MB memory exhausted",
+      "evidence": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\bf03-implementation-20261101T155423Z\\foundation-failed-memory",
+      "rerun": false,
+      "reason": "Owner requested no repeat comprehensive examination; affected-only evidence reused"
+    },
+    "source_inventory": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\final-change-inventory.json",
+    "protected_backend_unchanged_by_ux": true,
+    "program_mapping_unchanged": true,
+    "source_control_publication": false,
+    "processes_stopped": true
+  },
+  "final_application_file_hashes": {
+    "app/Commercial/InquiryEvidence.php": "6bca921b00b32e36ebc45a485984f5ed7fe2f8e31044b63c8c4966800efd59f5",
+    "app/Http/Controllers/InquiryEvidenceController.php": "69627afcddf70f5f19697e09cacfc9388ebba2d0e5c2b4f1e751fbabf69115c2",
+    "contracts/application.openapi.json": "ec23a4a468d0cd0bfc3198fa11628892b41c8c00747d41f09db8c72f158d3afc",
+    "database/migrations/0001_01_01_000540_create_inquiry_evidence.php": "72482dcc1492f50dcee9112d926900bcbf02c85159b54adbeb4bc82725230491",
+    "database/sql/inquiry_evidence/authority.sql": "455c5e826d8f325863136c4e69354ae11842127dc337ddf850eeefaa0f3ca1ac",
+    "database/sql/inquiry_evidence/declarations.sql": "c3ff694c8964b4a2dd7acfd01233ca35deee657dfc1c71bb4d727f5c07542395",
+    "database/sql/inquiry_evidence/permissions.sql": "1be02b795c9db26526234565aecdf34508e9a8cb480aeb781caaa9729affa4cc",
+    "database/sql/inquiry_evidence/schema.sql": "207df31e83aed40acabd0814d5a78f2d33505223f53025d995b7a424d1a80b72",
+    "database/sql/inquiry_evidence/table_permissions.sql": "361babed1adc07d6a58750e2af3c56e97adfe446d1ef2d2a8359f487d3605e2f",
+    "database/sql/inquiry_evidence/validation.sql": "4712caac9cd4cf7bafa76e0a2aaa46d30587c2d0435ac266e2f2ece7629dbec8",
+    "package.json": "adb0e319a491eae51d951196c581c5cd95b396a7afa3650bc9f903d282eeadb8",
+    "resources/js/api/generated/application.d.ts": "dcabc6fa5cc964536a47a8261dfc3429252c7a79d3c85430dbac296d00b20dfa",
+    "resources/js/business-foundation/BusinessEditor.vue": "2a1e563e6b0a55150083c22b5198f8ed00c4367fe0234a926f0b6cc6f1385e8f",
+    "resources/js/business-foundation/BusinessSurface.vue": "d7d4e31f9a42aec4baccc6088bd60b1950bd53a303ad74ae3cd1e9c632b488ac",
+    "resources/js/business-foundation/BusinessWorkspace.vue": "195e8c56ffeb6d274ecfc77e9d2dcd53e3f971c6bb0684661a98abd40e88a6cf",
+    "resources/js/business-foundation/workspace.css": "adfdb5d9ba065e8a5cbcad68686436a4dfcfbb5a0db369df3f69f48df06b4113",
+    "resources/js/business-foundation/workspacePresentation.ts": "08af7abeaf7cf85b3589618bf592e9ca5ce0c652ad1430d1d58a389cacd2254c",
+    "resources/js/inquiry-evidence/DeclarationDetails.vue": "c2e7d6de499465c8965a3b74bfe81eaf3ce10aac94a1d955db1289338e5cfc1c",
+    "resources/js/inquiry-evidence/InquiryEvidencePanel.vue": "0daee15df043ea75de2d47a5eab6b6cfe97358ad3e80a6936c258194273c4298",
+    "resources/js/inquiry-evidence/api.ts": "f15b57f8763f688fb41c89401de471bdc799062931daa009b38aeee8cc00c666",
+    "resources/js/inquiry-evidence/editor.ts": "a68beaa23ee7cc0f9437b4675836eb914299755056e6914b58ef2d0ac0b060fd",
+    "resources/js/inquiry-evidence/presentationDrafts.ts": "7b61450f427f7fbe5515780dd7f878d2100155e382b89882ee7c3d71894aba94",
+    "routes/web.php": "95e50271dddd422d9f7f6d33599912a49848483ec15e203b524acae6eec931d5",
+    "scripts/application-openapi.mjs": "370faecb74e5f7cf6a5580387cfc4883f26cd5fd1baa4298b0ff282296745ba2",
+    "scripts/inquiry-evidence-openapi.mjs": "81bccdcd86a1aba6896c9338db6ac5fd0f0ca56963c6097c63eef2086ab29058",
+    "tests/Feature/InquiryEvidenceAdmissionTest.php": "e613e224978456f08a92eed22b77e2aefb85511ebe8b3bc2aa36767c6e7b9d64",
+    "tests/Feature/InquiryEvidenceConcurrencyTest.php": "a1a55055be65a9e3b815bba68047e9d190b13ae38f3e5c0721afc405eabb7829",
+    "tests/Feature/InquiryEvidenceUpgradeTest.php": "afd7b98619cda5d12ba5cfa09c37c367dc46b20849d4314c3decdcbebbe173b1",
+    "tests/Support/InquiryEvidenceFixture.php": "d04f41fff51ebbdc02e8202a56f0f196630deacb3fafe67ca538794e4844bbbf",
+    "tests/Support/InquiryEvidenceWorker.php": "def1c671c16897f8fcfbbd5aaa70921bef0e93db8b79c80ffbc41c16214d65bc",
+    "tests/Support/business-surface-browser.mjs": "4fbc1f1ed2a9545c1afaa18a4b3aba68d1adb027482891b239d7a95634bbf231",
+    "tests/inquiry-evidence.test.mjs": "f53bb4aed652fc6d25d06a8c4c4475814a81f167b0ea42ac4e317a6487ae0ba8"
+  },
+  "ux_artifact_sha256": {
+    "baseline.json": "1d79dcd25ffe9f90d044d3db4990b0133fcc210ef57ab917de3be197999fbb3f",
+    "final-browser-results.json": "e65deb0eb52440a38755ebe32c68bcba06bf2b9326a4e5a46de6a1990ea73d23",
+    "final-browser.log": "21d1161ef0a2aa9fc6f2663e47d9f51ae19d79f7a3a638613dd41c4e48ce8707",
+    "final-change-inventory.json": "b9fd62f7c82da82023ec6e029db82b7ead445fb007bfc0ac3cbb5c41e710b147",
+    "final-source-manifest.json": "a545a31d40fbd2533c3290981296225b421f52fdda5a8da7f75161f4057436c0",
+    "final-source-unchanged.txt": "3cbc87c7681f34db4617feaa2c8801931bc5e42d8d0f560e756dd4cd92885f18",
+    "final-tests.log": "62b6e2a2906103e8f93a3edd517f7415f666be353e25b389d7a1c493a5cee7e8",
+    "final-tests.xml": "5eaccbaf8072f1df99ba040db43b2f906fb3cc6bb7f76a49e0f2030d4c5d87c2",
+    "inquiry-basis-8b3f7c2d-68cb-4809-af69-1ddb49ca6342-evidence.json": "475c9645fcfd654e32b644a3edb3364d1ee038294d07c5e388cf84e4cf3fef48",
+    "inquiry-desktop.png": "f8b06d208b287a6dea817f7f0bb936ee40dcdc6948ee4cafae2932399657018e",
+    "inquiry-mobile.png": "7cdab902938d4b3d522274865b16ce213a784fbf17e53f02699b9ec1f79603e6",
+    "inquiry-revision-f12bd5bf-ddf9-4be0-86cd-3597e9413c6f-evidence.json": "d5eea9a428f1a6055ad6a4201ef1c6a18d404aacc08fa8c4a0cceef02440943c",
+    "inquiry-session-f68aae28-aada-4969-a3bb-6afce0e86f58-evidence.json": "7570302e6a2dbc5c89cff5949d5db7243f5deea796fd726aeaa7345695b50ef4",
+    "pre-ux-source-manifest.json": "9692f19136f884ade659cfecfc4da43c3a1a61306f0923dad2b45f9f4b4e65ce",
+    "visual-review.md": "3a0faa46a8e1e6907c4c881e60c30681a931cf795a4c2468ddc9fa3732c92ea4",
+    "workspace-ar-dark-1366-collection.png": "9451a3aae9f946827ff20d428d95379741c3898f0035fe3d3b788624bf0e85a9",
+    "workspace-ar-dark-1366-detail.png": "25c1f938e42b29084a7491657e6e359aba120d0620cb11f004bcb02df4f183ff",
+    "workspace-ar-dark-390-collection.png": "5396fbb01403d0e9fe5b75e103ddf59ede80e2d89590c12056e93fcf5e15cb91",
+    "workspace-ar-dark-390-detail.png": "9a63bb7d19298fdcad49126a364cb3e05b91a48030834c8b2fa3f35e01431def",
+    "workspace-ar-light-1280-form.png": "e44cb6d0a2874dc3fba391835a656b4537f4527b122ac8e10907921b1ecb689d",
+    "workspace-ar-light-1366-collection.png": "1b8cad2a89741fe2c9de48af9bde32dfa8588c89be7e5b47e90a9edd00ce8457",
+    "workspace-ar-light-1366-detail.png": "dca125612607b1db896845fd2e39521634fcf99d25f3ed66774c85bf780183a6",
+    "workspace-ar-light-390-collection.png": "a4dc7d3a2cb80f0217a2c9f0a3fb0759ae35b5e2c806275a229058596b80fbb6",
+    "workspace-ar-light-390-detail.png": "c59611af79aa04a9f21b8917c31dd426c8e2e63d06e76523ca83ecaff09f699c",
+    "workspace-ar-light-390-form.png": "7a9e7855a7e265dd2da9132f7c5073d686caeb08f9dd1a5be108071de41555ac",
+    "workspace-ar-light-390-timezone.png": "c739cec104f44aee59b0600c81371c3d3393b7cbffbe3f6f20ffc401087f8509",
+    "workspace-en-dark-1366-collection.png": "cd48f5ea6be4159e7059ad1c504c54fdca16a26cf15de9f70470e17726ee47d7",
+    "workspace-en-dark-1366-detail.png": "92511cd61194b2c6ea7d9eecfc7d0a9b0e0b581981ddd8bb287f860e7bab2378",
+    "workspace-en-dark-390-collection.png": "a91ee38d634bbcdb460c9ddfb0fcb18ed92f47f5d8d8180666b3286a6eaa9c34",
+    "workspace-en-dark-390-detail.png": "aa474ead72e055790726992858b16012c43313a105df9d59c479a8a91ceb7269",
+    "workspace-en-light-1366-collection.png": "d5bcdf452b8164a11dc063ad6eac2259c71baa4b0989b0ab1190750e76b7dc46",
+    "workspace-en-light-1366-detail.png": "eacddab8254beae433ababcda6dd6254d5282083c94ccc0da7cbdb6052828673",
+    "workspace-en-light-390-collection.png": "b4457abf1eca817d6983fcf20a068bbbbd371ea228461b02d51bae2e40d7253c",
+    "workspace-en-light-390-detail.png": "443d6a7380c2ef2f89f46dcb5695dfed35b2c68320c966dbd889f3f805a915a8"
+  },
+  "evidence_hash_rule": "No self-hash. Inventory control records excluded to avoid circular hashes; BF03_IMPLEMENTATION hash is in files."
+}

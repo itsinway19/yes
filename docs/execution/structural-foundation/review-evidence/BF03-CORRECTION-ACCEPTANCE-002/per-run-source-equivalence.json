@@ -1,0 +1,44 @@
+[
+  {
+    "run": "focused-first",
+    "differencesFromCurrent": [
+      "resources/js/inquiry-evidence/InquiryEvidencePanel.vue",
+      "tests/Feature/InquiryEvidenceAdmissionTest.php",
+      "tests/Support/business-surface-browser.mjs",
+      "UX-CONTRACT.md",
+      "docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md"
+    ]
+  },
+  {
+    "run": "focused-final",
+    "differencesFromCurrent": [
+      "tests/Support/business-surface-browser.mjs",
+      "UX-CONTRACT.md",
+      "docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md"
+    ]
+  },
+  {
+    "run": "browser-first",
+    "differencesFromCurrent": [
+      "tests/Support/business-surface-browser.mjs",
+      "UX-CONTRACT.md",
+      "docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md"
+    ]
+  },
+  {
+    "run": "browser-bf03-final",
+    "differencesFromCurrent": [
+      "tests/Support/business-surface-browser.mjs"
+    ]
+  },
+  {
+    "run": "browser-legacy-first",
+    "differencesFromCurrent": [
+      "tests/Support/business-surface-browser.mjs"
+    ]
+  },
+  {
+    "run": "browser-legacy-final",
+    "differencesFromCurrent": []
+  }
+]

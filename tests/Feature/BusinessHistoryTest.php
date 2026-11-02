@@ -120,10 +120,10 @@ final class BusinessHistoryTest extends TestCase
         $file = storage_path('framework/testing/'.$run.'.json');
         $release = $file.'.release';
         file_put_contents($file, json_encode(['actor' => $actor->id, 'session' => SessionAuthority::sessionKey($request), 'run' => $run, 'release' => $release,
-            'operation' => 'history', 'business' => $a['business_public_id'], 'read_grant' => $a['grant_refs']['business.context.read']], JSON_THROW_ON_ERROR));
+            'ready' => $file.'.ready', 'operation' => 'history', 'business' => $a['business_public_id'], 'read_grant' => $a['grant_refs']['business.context.read']], JSON_THROW_ON_ERROR));
         $worker = new Process([PHP_BINARY, base_path('tests/BusinessScopeCommandWorker.php'), $file], base_path());
         $worker->setTimeout(45);
-        $evidence = [];
+        $evidence = ['started_at' => microtime(true)];
         $wait = function (callable $probe) use ($worker) {
             $deadline = microtime(true) + 15;
             do {
@@ -135,11 +135,21 @@ final class BusinessHistoryTest extends TestCase
                 }
                 usleep(10000);
             } while (microtime(true) < $deadline);
-            throw new \RuntimeException('Actual history read contention was not observed');
+            throw new \RuntimeException('History worker observation missing: '.$worker->getOutput().$worker->getErrorOutput());
         };
         try {
             $worker->start();
-            $wait(fn () => str_contains($worker->getOutput(), 'READY_PID='));
+            $evidence['ready'] = $wait(function () use ($worker, $file, $run) {
+                clearstatcache(true, $file.'.ready');
+                $ready = is_file($file.'.ready') ? json_decode(file_get_contents($file.'.ready'), true) : null;
+                if (! $worker->isRunning() || ! is_array($ready) || ($ready['run'] ?? null) !== $run || ! is_int($ready['pid'] ?? null)) {
+                    return false;
+                }
+
+                // Fresh server observation: the exact live connection is outside a transaction.
+                return DB::selectOne('SELECT pid,application_name,backend_xid::text AS xid FROM pg_stat_activity WHERE pid=? AND application_name=? AND backend_xid IS NULL', [$ready['pid'], $run]);
+            });
+            $evidence['ready_at'] = microtime(true);
             $db->beginTransaction();
             $blocker = (int) $db->scalar('SELECT pg_backend_pid()');
             $db->select('SELECT business_id FROM business_authority_fences WHERE business_id=? FOR UPDATE', [$businessId]);
@@ -158,12 +168,13 @@ final class BusinessHistoryTest extends TestCase
             if ($db->transactionLevel() > 0) {
                 $db->rollBack();
             }
+            $evidence['before_cleanup'] = ['running' => $worker->isRunning(), 'exit' => $worker->getExitCode(), 'stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput()];
             if ($worker->isRunning()) {
                 $worker->stop();
             }
             $evidence['worker'] = ['stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput(), 'exit' => $worker->getExitCode()];
             file_put_contents(storage_path('framework/testing/'.$run.'-evidence.json'), json_encode($evidence, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
-            foreach ([$file, $release] as $path) {
+            foreach ([$file, $release, $file.'.ready'] as $path) {
                 if (is_file($path)) {
                     unlink($path);
                 }

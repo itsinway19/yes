@@ -1,0 +1,92 @@
+{
+  "review": "BF03-CORRECTION-ACCEPTANCE-002",
+  "syntheticOnly": true,
+  "run": "C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\storage\\framework\\testing\\goals-spa-af7ea2c4-2f49-420f-9994-ec8e960e5ecb",
+  "cases": [
+    {
+      "name": "SEM-001 actual two-rule current/history, exact replay and closed new admission",
+      "evidence": {
+        "history": [
+          [
+            1,
+            10,
+            "ACTOR_A_ONLY_RULE within service area and budget at least SAR 500"
+          ],
+          [
+            2,
+            11,
+            "قاعدة الفاعل الأول ضمن نطاق الخدمة والميزانية ألف ريال"
+          ]
+        ],
+        "exactReplay": 200,
+        "changedPayload": 409,
+        "missingDefinitionNewAdmission": 422,
+        "sourceAssertion": "SOURCE_ASSERTED"
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "still-authorized reentry preserves own unsent draft after fresh qualification",
+      "evidence": {
+        "ownDraftRestored": true,
+        "protectedDOMWhileHidden": 0
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "changed actor actual UI logout/login with late current/history replies and private drafts",
+      "result": "FAIL",
+      "error": "page.waitForFunction: Timeout 20000ms exceeded.\n    at C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\docs\\execution\\structural-foundation\\review-evidence\\BF03-CORRECTION-ACCEPTANCE-002\\acceptance-browser.mjs:84:44\n    at async check (C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\docs\\execution\\structural-foundation\\review-evidence\\BF03-CORRECTION-ACCEPTANCE-002\\acceptance-browser.mjs:16:105)\n    at async file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/acceptance-browser.mjs:70:2"
+    }
+  ],
+  "pageErrors": [],
+  "stages": [
+    {
+      "name": "actual-server-identity-a",
+      "identity": {
+        "lineage": "40364a53-b17a-40ae-b43d-215ef87c6ccf",
+        "epoch": 1,
+        "boundary": "advertiser",
+        "credential": "f0cdc07dd4e080d1ee4d4b2ce759d06d8da5ad7f9436e4a3db3aafbd27bd1813",
+        "principal": 1,
+        "lifecycle": 1,
+        "context": "73baf911b7cf54355983236288a3f6655bd01cb89feb4f02e175aca5e58a0a18",
+        "generation": "728bb20139816e3e2029b22e7eae59d7bc12b29e4f764418baa270223a53c497"
+      },
+      "redirect": "/dashboard",
+      "url": "http://localhost:8136/businesses"
+    },
+    {
+      "name": "SEM-001 actual two-rule current/history, exact replay and closed new admission",
+      "at": "2026-11-02T06:38:51.644Z"
+    },
+    {
+      "name": "still-authorized reentry preserves own unsent draft after fresh qualification",
+      "at": "2026-11-02T06:39:25.437Z"
+    },
+    {
+      "name": "changed actor actual UI logout/login with late current/history replies and private drafts",
+      "at": "2026-11-02T06:39:35.300Z"
+    },
+    {
+      "name": "actual-server-identity-b",
+      "identity": {
+        "lineage": "40364a53-b17a-40ae-b43d-215ef87c6ccf",
+        "epoch": 3,
+        "boundary": "advertiser",
+        "credential": "09ba20cfeff4f8f14bb3235af573d955da6c59a4b845f239e261f40847a83e81",
+        "principal": 2,
+        "lifecycle": 1,
+        "context": "1dab3e436d0a44653c6b8bf162f17cfccbc200f94a7d5c14f7d31068471eb67a",
+        "generation": "12f4d26bf8ded34aac5c049fa06288851244417169a6ccaf4da9d1dd96748c65"
+      },
+      "redirect": "/dashboard",
+      "url": "http://localhost:8136/businesses"
+    }
+  ],
+  "requests": [],
+  "actorA": 1,
+  "actorB": 2,
+  "failure": "page.waitForFunction: Timeout 20000ms exceeded.\n    at C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\docs\\execution\\structural-foundation\\review-evidence\\BF03-CORRECTION-ACCEPTANCE-002\\acceptance-browser.mjs:84:44\n    at async check (C:\\dev\\builderad-worktrees\\ba-commercial-expertise-001\\docs\\execution\\structural-foundation\\review-evidence\\BF03-CORRECTION-ACCEPTANCE-002\\acceptance-browser.mjs:16:105)\n    at async file:///C:/dev/builderad-worktrees/ba-commercial-expertise-001/docs/execution/structural-foundation/review-evidence/BF03-CORRECTION-ACCEPTANCE-002/acceptance-browser.mjs:70:2",
+  "result": "FAIL"
+}

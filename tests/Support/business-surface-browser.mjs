@@ -57,10 +57,10 @@ try {
         await page.waitForFunction(selector => document.querySelector('[data-application-spa]')?.dataset.state === 'ready' && !!document.querySelector(selector), selector);
     };
     const index = async () => { await page.getByRole('link', { name: 'أنشطتي', exact: true }).first().click(); await page.waitForURL(origin+'/businesses'); await ready(); };
-    const open = async name => { await page.locator('[data-business-list] li').filter({ has: page.getByRole('heading', { name, exact: true }) }).getByRole('link', { name: 'فتح النشاط', exact: true }).click(); await ready('[data-business-public]'); };
+    const open = async (name,section='settings') => { await page.locator('[data-business-list] li').filter({ has: page.getByRole('heading', { name, exact: true }) }).getByRole('link', { name: 'فتح النشاط', exact: true }).click(); await ready('[data-business-public]'); await page.locator(`[data-workspace-section="${section}"]`).click(); };
     // Full-run scenarios deliberately rename this Business. Its display label is
     // not its identity; later scenarios must open that same immutable resource.
-    const openCreated = async () => { await page.locator(`[data-business-list] a[href^="/businesses/${result.createdBusiness}?"]`).click(); await ready('[data-business-public]'); assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'),result.createdBusiness); };
+    const openCreated = async (section) => { await page.locator(`[data-business-list] a[href^="/businesses/${result.createdBusiness}?"]`).click(); await ready('[data-business-public]'); assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'),result.createdBusiness); if(section)await page.locator(`[data-workspace-section="${section}"]`).click(); };
     const sendFrom = async (tab, url, method = 'GET', body) => tab.evaluate(async ({ url, method, body }) => {
         const identity = JSON.parse(document.getElementById('application-bootstrap').textContent).identity;
         const response = await fetch(url, { method, credentials: 'same-origin', redirect: 'manual', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': identity.csrf, 'X-Builderad-Document': identity.receipt, 'X-Builderad-Transition': identity.transition }, body: body ? JSON.stringify(body) : undefined });
@@ -79,10 +79,242 @@ try {
         await page.getByRole('button', { name: 'إنشاء النشاط', exact: true }).click();
         await page.locator('[data-business-created]').waitFor(); await page.getByRole('link', { name: 'فتح النشاط', exact: true }).click(); await ready('[data-business-public]');
         assert.equal(await page.locator('[data-business-name]').textContent(), 'نشاط مستقل للمتصفح');
+        await page.locator('[data-workspace-section="settings"]').click();
         assert.equal(await page.locator('#bf-type').inputValue(), selectedType);
         result.createdBusiness = await page.locator('[data-business-public]').getAttribute('data-business-public');
         assert.notEqual(result.createdBusiness, delegated.business);
         return { createdBusiness: result.createdBusiness, sharedWorkspaceInference: false };
+    });
+    const workspaceSection=async section=>{await page.locator(`[data-workspace-section="${section}"]`).click();await page.locator(`[data-workspace-panel="${section}"]`).waitFor({state:'visible'});};
+    const openInquiryDetail=async()=>{await inquiryPanel().locator('[data-inquiry-open]').first().click();await inquiryPanel().locator('[data-inquiry-detail]').waitFor();};
+    const inquiryPanel=()=>page.locator('[data-inquiry-panel]');
+    const inquiryRecord=()=>inquiryPanel().getByRole('button',{name:'تسجيل تصريح جديد',exact:true});
+    const inquirySend=async(method='GET',suffix='',body)=>send(`/api/businesses/${result.createdBusiness}/inquiry-evidence${suffix}`,method,body);
+    const inquirySelection=grant=>({realm_kind:'direct',realm_workspace_public_id:null,requirements:[{requirement_kind:'business',leaf_grant_id:String(grant)}]});
+    let inquiryAccess,inquiryGrants,inquiryPayload;
+    const fillInquiry=async()=>{
+        const panel=inquiryPanel();
+        await panel.locator('[data-inquiry-start]').fill('2020-01-01T00:00:00Z');
+        await panel.locator('[data-inquiry-end]').fill('2020-01-02T00:00:00Z');
+        await panel.locator('[data-inquiry-asof]').fill('2020-01-03T00:00:00Z');
+        await panel.locator('[data-inquiry-cost]').fill('1000.00');
+        await panel.locator('[data-inquiry-count]').fill('100');
+        await panel.locator('[data-inquiry-acceptance-toggle]').check();
+        await panel.locator('[data-inquiry-accepted]').fill('10');
+        await panel.locator('textarea[data-inquiry-criterion-definition]').fill('الاستفسار يطلب خدمة متاحة ضمن نطاق النشاط');
+        await panel.locator('[data-inquiry-cutoff]').fill('2020-01-03T00:00:00Z');
+    };
+    await check('BF03 explicit creator opt-in, invalid inputs editable, assertion readback and historical meaning',async()=>{
+        await workspaceSection('inquiries');const panel=inquiryPanel();await panel.locator('[data-inquiry-optin]').waitFor();
+        inquiryAccess=new URL(page.url()).searchParams.get('access');assert.ok(inquiryAccess);
+        const before=await inquirySend('GET',`/eligibility?access=${inquiryAccess}`);assert.equal(before.status,200);assert.deepEqual(before.body.data.grants,{});
+        await panel.locator('[data-inquiry-optin] input[type=checkbox]').check();
+        await panel.getByRole('button',{name:'تفعيل السجل الخاص',exact:true}).click();await inquiryRecord().waitFor();
+        inquiryGrants=(await inquirySend('GET',`/eligibility?access=${inquiryAccess}`)).body.data.grants;assert.equal(Object.keys(inquiryGrants).length,3);
+        await inquiryRecord().click();await fillInquiry();await panel.locator('[data-inquiry-asof]').fill('2099-01-03T00:00:00Z');
+        await panel.getByRole('button',{name:'حفظ التصريح',exact:true}).click();await panel.getByText('لم تُحفظ البيانات. صحّح النموذج ثم احفظه من جديد.',{exact:true}).waitFor();
+        assert.equal(await panel.locator('[data-inquiry-count]').isDisabled(),false);assert.equal(await panel.locator('[data-inquiry-unknown]').count(),0);
+        await panel.locator('[data-inquiry-asof]').fill('2020-01-03T00:00:00Z');
+        await page.screenshot({path:path.join(run,'workspace-ar-light-1280-form.png'),fullPage:true});await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);const timezoneInput=panel.getByLabel('المنطقة الزمنية',{exact:true});assert.equal(await timezoneInput.isVisible(),true);assert.equal(await timezoneInput.inputValue(),'Asia/Riyadh');await timezoneInput.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(run,'workspace-ar-light-390-timezone.png')});await page.screenshot({path:path.join(run,'workspace-ar-light-390-form.png'),fullPage:true});await page.setViewportSize({width:1280,height:900});
+        page.on('request',request=>{if(request.method()==='POST'&&new URL(request.url()).pathname===`/api/businesses/${result.createdBusiness}/inquiry-evidence`)inquiryPayload=request.postDataJSON();});
+        await panel.getByRole('button',{name:'حفظ التصريح',exact:true}).click();await panel.locator('.inquiry-item').waitFor();
+        assert.ok((await panel.innerText()).includes('غير متحقق منه'));
+        await openInquiryDetail();assert.ok((await panel.locator('[data-inquiry-detail]').innerText()).includes('نضج القبول'));
+        await panel.getByRole('button',{name:'قراءة التاريخ',exact:true}).first().click();await panel.locator('[data-inquiry-history] article details summary').first().click();
+        assert.ok((await panel.locator('[data-inquiry-history]').innerText()).includes('معيار القبول'));assert.ok((await panel.locator('[data-inquiry-history]').innerText()).includes('إصدار معيار القبول'));
+        const data=(await inquirySend('GET',`?access=${inquiryGrants['business.inquiry_evidence.read']}`)).body.data;
+        assert.equal(data.independently_verified,false);assert.equal(data.items[0].value.acceptance.count,10);
+        return {explicitOptIn:true,invalid422Editable:true,sourceAssurance:'SOURCE_ASSERTED',completeCurrentAndHistoryMeaning:true};
+    });
+    await check('BF03 stale correction rejected without overwriting newer revision and RTL mobile remains usable',async()=>{
+        const panel=inquiryPanel();if(await panel.locator('[data-inquiry-open]').count())await openInquiryDetail();await panel.getByRole('button',{name:'فتح التصحيح',exact:true}).first().click();
+        const current=(await inquirySend('GET',`?access=${inquiryGrants['business.inquiry_evidence.read']}`)).body.data.items[0];
+        const changed=structuredClone(current.value);changed.acceptance.count=11;
+        const updated=await inquirySend('POST',`/${current.declaration_id}/revisions`,{command_id:crypto.randomUUID(),authority_selection:inquirySelection(inquiryGrants['business.inquiry_evidence.correct']),expected_revision:current.revision,effect:'correct',value:changed});assert.equal(updated.status,200);
+        await panel.locator('[data-inquiry-accepted]').fill('15');await panel.getByRole('button',{name:'حفظ التصحيح',exact:true}).click();
+        await panel.getByText('رُفض التصحيح لأن الإصدار تغير. ألغِ التعديل وافتح النسخة الحالية.',{exact:true}).waitFor();assert.equal(await panel.locator('[data-inquiry-unknown]').count(),0);
+        await panel.getByRole('button',{name:'إلغاء التعديل',exact:true}).click();await panel.getByRole('button',{name:'التحقق من الحالة الحالية',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');
+        const latest=(await inquirySend('GET',`?access=${inquiryGrants['business.inquiry_evidence.read']}`)).body.data.items[0];assert.equal(latest.revision,2);assert.equal(latest.value.acceptance.count,11);
+        await page.screenshot({path:path.join(run,'inquiry-desktop.png'),fullPage:true});await page.setViewportSize({width:390,height:844});
+        assert.equal(await panel.getAttribute('dir'),'rtl');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+        await page.screenshot({path:path.join(run,'inquiry-mobile.png'),fullPage:true});await page.setViewportSize({width:1280,height:900});
+        return {typedPreEffectConflict:true,newerRevisionRetained:true,mobileRTL:true};
+    });
+    await check('BF03 history denial clears detail and stored collection',async()=>{
+        const panel=inquiryPanel();if(await panel.locator('[data-inquiry-open]').count())await openInquiryDetail();
+        const revoked=await inquirySend('POST','/rights',{command_id:crypto.randomUUID(),action:'business.inquiry_evidence.read',authority_selection:inquirySelection(inquiryGrants['business.inquiry_evidence.read'])});assert.equal(revoked.status,200);
+        await panel.getByRole('button',{name:'قراءة التاريخ',exact:true}).first().click();await panel.getByText('تعذر تأهيل قراءة التاريخ.',{exact:true}).waitFor();
+        assert.equal(await panel.locator('[data-inquiry-editor]').count(),0);assert.equal(await panel.locator('[data-inquiry-list]').count(),0);
+        const eligible=(await inquirySend('GET',`/eligibility?access=${inquiryAccess}`)).body.data;
+        assert.equal(eligible.grants['business.inquiry_evidence.read'],undefined);assert.ok(eligible.grants['business.inquiry_evidence.record']);
+        const renewed=await inquirySend('POST','/enrollment',{command_id:crypto.randomUUID(),basis_revision:eligible.basis_revision,confirm:true,authority_selection:inquirySelection(inquiryAccess)});assert.equal(renewed.status,200);
+        await panel.getByRole('button',{name:'التحقق من الحالة الحالية',exact:true}).click();await panel.locator('.inquiry-item').waitFor();
+        inquiryGrants=(await inquirySend('GET',`/eligibility?access=${inquiryAccess}`)).body.data.grants;
+        return {knownDenialConcealsHistoryAndCollection:true,recordPermissionDidNotImplyRead:true};
+    });
+    await check('BF03 positive UI correction and withdrawal preserve semantic versions and full history',async()=>{
+        const panel=inquiryPanel();
+        await inquiryRecord().click();await fillInquiry();
+        const recorded=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`/api/businesses/${result.createdBusiness}/inquiry-evidence`);
+        await panel.getByRole('button',{name:'حفظ التصريح',exact:true}).click();assert.equal((await recorded).status(),200);
+        await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');
+        await openInquiryDetail();const item=panel.locator('[data-inquiry-detail]');
+        const created=(await inquirySend('GET',`?access=${inquiryGrants['business.inquiry_evidence.read']}`)).body.data.items[0];assert.equal(created.revision,1);
+        await item.getByRole('button',{name:'فتح التصحيح',exact:true}).click();
+        await panel.locator('[data-inquiry-accepted]').fill('12');
+        await panel.getByLabel('نوع التكلفة').selectOption('advertising_spend');
+        await panel.locator('[data-inquiry-definition-details] summary').click();await panel.getByLabel('إصدار معيار القبول',{exact:true}).fill('2');
+        const corrected=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname.endsWith(`/${created.declaration_id}/revisions`));
+        await panel.getByRole('button',{name:'حفظ التصحيح',exact:true}).click();assert.equal((await corrected).status(),200);
+        await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');
+        await item.locator('.inquiry-detail-heading').filter({hasText:'إصدار 2'}).waitFor();
+        let latest=(await inquirySend('GET',`?access=${inquiryGrants['business.inquiry_evidence.read']}`)).body.data.items[0];
+        assert.equal(latest.declaration_id,created.declaration_id);assert.equal(latest.value.acceptance.count,12);assert.equal(latest.value.acceptance.criterion_version,2);assert.equal(latest.value.cost.cost_basis,'advertising_spend');
+        await item.getByRole('button',{name:'قراءة التاريخ',exact:true}).click();await panel.locator('[data-inquiry-history] article').nth(1).waitFor();
+        assert.ok((await panel.locator('[data-inquiry-history] article').nth(0).innerText()).includes('المقبول المصرح به: 10'));
+        assert.ok((await panel.locator('[data-inquiry-history] article').nth(1).innerText()).includes('المقبول المصرح به: 12'));
+        const withdrawn=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname.endsWith(`/${created.declaration_id}/revisions`));
+        await item.getByRole('button',{name:'سحب التصريح مع حفظ التاريخ',exact:true}).click();assert.equal((await withdrawn).status(),200);
+        await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');
+        await item.getByText('مسحوب؛ التاريخ محفوظ',{exact:true}).waitFor();
+        latest=(await inquirySend('GET',`?access=${inquiryGrants['business.inquiry_evidence.read']}`)).body.data.items[0];assert.equal(latest.revision,3);assert.equal(latest.state,'withdrawn');assert.equal(latest.value,null);
+        await item.getByRole('button',{name:'قراءة التاريخ',exact:true}).click();await panel.locator('[data-inquiry-history] article').nth(2).waitFor();
+        const historyRows=panel.locator('[data-inquiry-history] article');assert.equal(await historyRows.count(),3);
+        assert.ok((await historyRows.nth(0).innerText()).includes('المقبول المصرح به: 10'));assert.ok((await historyRows.nth(1).innerText()).includes('المقبول المصرح به: 12'));assert.ok((await historyRows.nth(2).innerText()).includes('سحب'));
+        await panel.locator('[data-inquiry-back]').click();return {uiCorrectionCommitted:true,changedCountAndMeaning:true,uiWithdrawalCommitted:true,appendOnlyHistoryRevisions:3};
+    });
+
+    await check('workspace task navigation preserves unsent inquiry fields through list and Business remount',async()=>{
+        await workspaceSection('overview');
+        assert.equal(await page.locator('[data-workspace-panel="overview"]').isVisible(),true);
+        assert.equal(await inquiryPanel().isVisible(),false);
+        assert.ok((await page.locator('[data-business-name]').innerText()).includes('نشاط مستقل'));
+        await workspaceSection('inquiries');await inquiryRecord().click();await fillInquiry();
+        await inquiryPanel().locator('[data-inquiry-count]').fill('73');
+        await workspaceSection('direction');await page.locator('[data-workspace-panel=\"direction\"]').waitFor();
+        await workspaceSection('settings');await page.locator('#bf-name').waitFor();
+        await workspaceSection('access');assert.ok((await page.locator('[data-workspace-panel="access"]').innerText()).includes('الصلاحيات')||(await page.locator('[data-workspace-panel="access"]').innerText()).includes('التفويض'));
+        await workspaceSection('inquiries');assert.equal(await inquiryPanel().locator('[data-inquiry-count]').inputValue(),'73');
+        await index();await open('نشاط العميل المفوض');await workspaceSection('overview');
+        await index();await openCreated();await inquiryPanel().locator('[data-inquiry-editor]').waitFor();
+        assert.equal(await inquiryPanel().locator('[data-inquiry-count]').inputValue(),'73');
+        await inquiryPanel().getByRole('button',{name:'إلغاء التعديل',exact:true}).click();
+        return {localTasksPreserveInput:true,listAndOtherBusinessRemountPreserveOwnDraft:true,crossBusinessDisclosure:false};
+    });
+    await check('workspace correction draft returns unchanged and revoked read prevents its restoration',async()=>{
+        const panel=inquiryPanel();await panel.locator('.inquiry-item:has(.inquiry-record-preview) [data-inquiry-open]').first().click();
+        await panel.getByRole('button',{name:'فتح التصحيح',exact:true}).click();await panel.locator('[data-inquiry-accepted]').fill('19');
+        await index();await openCreated();await workspaceSection('inquiries');await panel.locator('[data-inquiry-editor]').waitFor();assert.equal(await panel.locator('[data-inquiry-accepted]').inputValue(),'19');
+        const revoked=await inquirySend('POST','/rights',{command_id:crypto.randomUUID(),action:'business.inquiry_evidence.read',authority_selection:inquirySelection(inquiryGrants['business.inquiry_evidence.read'])});assert.equal(revoked.status,200);
+        await index();await openCreated();await workspaceSection('inquiries');await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');
+        assert.equal(await panel.locator('[data-inquiry-editor]').count(),0);assert.equal(await panel.locator('[data-inquiry-list]').count(),0);
+        const eligible=(await inquirySend('GET',`/eligibility?access=${inquiryAccess}`)).body.data;
+        const renewed=await inquirySend('POST','/enrollment',{command_id:crypto.randomUUID(),basis_revision:eligible.basis_revision,confirm:true,authority_selection:inquirySelection(inquiryAccess)});assert.equal(renewed.status,200);
+        await panel.getByRole('button',{name:'التحقق من الحالة الحالية',exact:true}).click();await panel.locator('[data-inquiry-open]').first().waitFor();assert.equal(await panel.locator('[data-inquiry-editor]').count(),0);
+        inquiryGrants=(await inquirySend('GET',`/eligibility?access=${inquiryAccess}`)).body.data.grants;
+        return {unsentCorrectionRestoredWithOriginalBaseline:true,readRevocationBlocksRestoration:true,reEnrollmentDoesNotReviveDiscardedProtectedDraft:true};
+    });
+    await check('workspace long activity identity and explicit zero remain distinct from missing evidence',async()=>{
+        const name=('نشاط إقليمي للاستفسارات وخدمات الأعمال — '+ 'RegionalBusinessReference'.repeat(3)).slice(0,120);
+        await workspaceSection('settings');await page.locator('#bf-name').fill(name);
+        const saved=page.waitForResponse(r=>r.request().method()==='PUT'&&new URL(r.url()).pathname===`/api/businesses/${result.createdBusiness}/context`);
+        await page.getByRole('button',{name:'حفظ المعلومات',exact:true}).click();assert.equal((await saved).status(),200);
+        await page.waitForFunction(wanted=>document.querySelector('[data-business-name]')?.textContent===wanted,name);
+        await workspaceSection('inquiries');const panel=inquiryPanel();await inquiryRecord().click();await fillInquiry();await panel.locator('[data-inquiry-count]').fill('0');await panel.locator('[data-inquiry-cost]').fill('');await panel.locator('[data-inquiry-acceptance-toggle]').uncheck();
+        const recorded=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`/api/businesses/${result.createdBusiness}/inquiry-evidence`);
+        await panel.getByRole('button',{name:'حفظ التصريح',exact:true}).click();assert.equal((await recorded).status(),200);await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');
+        const latest=(await inquirySend('GET',`?access=${inquiryGrants['business.inquiry_evidence.read']}`)).body.data.items[0];assert.equal(latest.value.inquiries.count,0);assert.equal(latest.value.cost,null);assert.equal(latest.value.acceptance,null);
+        await openInquiryDetail();const detail=panel.locator('[data-inquiry-detail]');assert.ok((await detail.innerText()).includes('غير معلوم'));assert.ok((await detail.innerText()).includes('0'));
+        await detail.locator('.inquiry-metadata summary').click();assert.ok((await detail.innerText()).includes(latest.declaration_id));await panel.locator('[data-inquiry-back]').click();
+        return {longBilingualBusinessName:true,nativeIdentifiersAccessible:true,knownZero:0,unknownCost:null,unknownAcceptance:null};
+    });
+    await check('workspace compact collection complete details return focus and responsive bilingual themed matrix',async()=>{
+        const panel=inquiryPanel();await panel.locator('.inquiry-item:has(.inquiry-record-preview) [data-inquiry-open]').first().waitFor();
+        assert.equal(await panel.locator('[data-inquiry-detail]').count(),0);
+        assert.equal(await panel.locator('[data-inquiry-list] [data-inquiry-semantics]').count(),0);
+        const matrix=[];
+        for(const language of ['ar','en']){
+            if(await page.locator('html').getAttribute('lang')!==language){await page.locator('[data-application="locale"]').click();await page.waitForFunction(lang=>document.documentElement.lang===lang,language);}
+            const savedMessage=panel.locator('[data-inquiry-message]');if(await savedMessage.count())assert.ok((await savedMessage.innerText()).includes(language==='ar'?'تم الحفظ':'Saved'));
+            for(const theme of ['light','dark']){
+                if(await page.locator('html').getAttribute('data-theme')!==theme){await page.locator('[data-theme-toggle]').first().click();await page.waitForFunction(wanted=>document.documentElement.dataset.theme===wanted,theme);}
+                for(const width of [360,390,430,768,1024,1366,1920]){
+                    await page.setViewportSize({width,height:900});
+                    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`${language}/${theme}/${width} overflow`);
+                    const nav=page.locator('[data-workspace-section="inquiries"]');assert.equal(await nav.getAttribute('aria-current'),'page');
+                    const first=panel.locator('.inquiry-item:has(.inquiry-record-preview) [data-inquiry-open]').first();assert.ok((await first.boundingBox()).height>=44);
+                    if(width===390||width===1366)await page.screenshot({path:path.join(run,`workspace-${language}-${theme}-${width}-collection.png`),fullPage:true});
+                    matrix.push({language,theme,width,overflow:false});
+                }
+                await panel.locator('.inquiry-item:has(.inquiry-record-preview) [data-inquiry-open]').first().click();await panel.locator('[data-inquiry-detail]').waitFor();
+                const detail=await panel.locator('[data-inquiry-detail]').innerText();
+                assert.ok(detail.includes(language==='ar'?'غير متحقق':'not independently verified')||detail.includes(language==='ar'?'ليست نتائج':'not results'));
+                for(const width of [390,1366]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:path.join(run,`workspace-${language}-${theme}-${width}-detail.png`),fullPage:true});}
+                await panel.locator('[data-inquiry-back]').click();await panel.locator('.inquiry-item:has(.inquiry-record-preview) [data-inquiry-open]').first().waitFor();assert.equal(await page.locator(':focus').getAttribute('data-inquiry-open')!==null,true);
+            }
+        }
+        if(await page.locator('html').getAttribute('lang')!=='ar'){await page.locator('[data-application="locale"]').click();await page.waitForFunction(()=>document.documentElement.lang==='ar');}
+        await page.setViewportSize({width:1280,height:900});
+        return {matrix,compactCollection:true,completeDetails:true,backRestoresFocus:true,formalUsabilityStudy:false};
+    });
+
+    await check('BF03 committed lost ACK survives remount and exact retry without duplicate declaration',async()=>{
+        const panel=inquiryPanel(),commands=[];const beforeCount=(await inquirySend('GET',`?access=${inquiryGrants['business.inquiry_evidence.read']}`)).body.data.items.length;let first=true,ackDropped;const dropped=new Promise(resolve=>{ackDropped=resolve;});
+        await page.route(`**/api/businesses/${result.createdBusiness}/inquiry-evidence`,async route=>{
+            if(route.request().method()!=='POST')return route.continue();commands.push(route.request().postDataJSON());
+            const response=await route.fetch();assert.equal(response.status(),200);if(first){first=false;await route.abort('failed');ackDropped();return;}return route.fulfill({response});
+        });
+        await inquiryRecord().click();await fillInquiry();await panel.getByRole('button',{name:'حفظ التصريح',exact:true}).click();await dropped;await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');await panel.locator('[data-inquiry-unknown]').waitFor();
+        await index();await openCreated();await workspaceSection('inquiries');await inquiryPanel().locator('[data-inquiry-unknown]').waitFor();
+        await inquiryPanel().getByRole('button',{name:'إعادة طلب نتيجة الأمر نفسه',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('[data-inquiry-unknown]'));
+        await page.unroute(`**/api/businesses/${result.createdBusiness}/inquiry-evidence`);
+        assert.equal(commands.length,2);assert.deepEqual(commands[0],commands[1]);
+        const data=(await inquirySend('GET',`?access=${inquiryGrants['business.inquiry_evidence.read']}`)).body.data;assert.equal(data.items.length,beforeCount+1);
+        return {serverCommittedBeforeLostAck:true,remountRetainsOriginalCommand:true,exactReplay:true,duplicateEffects:0};
+    });
+    await check('BF03 later denial cannot erase an earlier uncertain commit or authorize replacement',async()=>{
+        const panel=inquiryPanel();const beforeCount=(await inquirySend('GET',`?access=${inquiryGrants['business.inquiry_evidence.read']}`)).body.data.items.length;let intercepted=false,ackDropped;const dropped=new Promise(resolve=>{ackDropped=resolve;});
+        await page.route(`**/api/businesses/${result.createdBusiness}/inquiry-evidence`,async route=>{
+            if(route.request().method()!=='POST'||intercepted)return route.continue();intercepted=true;const response=await route.fetch();assert.equal(response.status(),200);await route.abort('failed');ackDropped();
+        });
+        await inquiryRecord().click();await fillInquiry();await panel.getByRole('button',{name:'حفظ التصريح',exact:true}).click();await dropped;await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');await panel.locator('[data-inquiry-unknown]').waitFor();
+        await page.unroute(`**/api/businesses/${result.createdBusiness}/inquiry-evidence`);
+        const revoked=await inquirySend('POST','/rights',{command_id:crypto.randomUUID(),action:'business.inquiry_evidence.record',authority_selection:inquirySelection(inquiryGrants['business.inquiry_evidence.record'])});assert.equal(revoked.status,200);
+        await panel.getByRole('button',{name:'إعادة طلب نتيجة الأمر نفسه',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');
+        assert.equal(await panel.locator('[data-inquiry-unknown]').count(),1);
+        const eligible=(await inquirySend('GET',`/eligibility?access=${inquiryAccess}`)).body.data;
+        const renewed=await inquirySend('POST','/enrollment',{command_id:crypto.randomUUID(),basis_revision:eligible.basis_revision,confirm:true,authority_selection:inquirySelection(inquiryAccess)});assert.equal(renewed.status,200);
+        await panel.getByRole('button',{name:'التحقق من الحالة الحالية',exact:true}).click();assert.ok(await inquiryRecord().count()===0||await inquiryRecord().isDisabled());assert.equal(await panel.locator('[data-inquiry-unknown]').count(),1);
+        const rights=(await inquirySend('GET',`/eligibility?access=${inquiryAccess}`)).body.data.grants;
+        assert.equal((await inquirySend('GET',`?access=${rights['business.inquiry_evidence.read']}`)).body.data.items.length,beforeCount+1);
+        return {priorUncertaintySurvives403:true,reEnrollmentDoesNotSilentlyReplace:true,duplicateEffects:0};
+    });
+    await check('BF03 retained reentry qualifies before protected DOM and record-only revocation retains reading',async()=>{
+        const created=await send('/api/businesses','POST',{command_id:crypto.randomUUID(),name:'نشاط اختبار إعادة تأهيل العرض',business_type_id:null});assert.equal(created.status,201);
+        const b=created.body.data,business=b.business_public_id,basis=b.grant_refs['business.context.read'];
+        const base=`/api/businesses/${business}/inquiry-evidence`;
+        const e=await send(`${base}/eligibility?access=${basis}`);assert.equal(e.status,200);
+        const enrolled=await send(`${base}/enrollment`,'POST',{command_id:crypto.randomUUID(),authority_selection:inquirySelection(basis),basis_revision:e.body.data.basis_revision,confirm:true});assert.equal(enrolled.status,200);
+        const grants=enrolled.body.data.grants;
+        const value={cohort:{channel_kind:'form',definition_version:1,country_code:null,population:'recorded_inquiries',counting_policy:'distinct_inquiries'},observation:{period_start:'2020-01-01T00:00:00Z',period_end:'2020-01-02T00:00:00Z',as_of:'2020-01-03T00:00:00Z',timezone:'Asia/Riyadh'},cost:null,inquiries:{count:37,coverage:'complete'},acceptance:null};
+        assert.equal((await send(base,'POST',{command_id:crypto.randomUUID(),authority_selection:inquirySelection(grants['business.inquiry_evidence.record']),value})).status,200);
+        await index();await open('نشاط اختبار إعادة تأهيل العرض','inquiries');const panel=inquiryPanel();await panel.locator('[data-inquiry-open]').waitFor();await openInquiryDetail();
+        await workspaceSection('overview');assert.equal(await panel.locator('[data-inquiry-detail],[data-inquiry-history],.inquiry-record').count(),0);
+        let reached,releaseRead;const waiting=new Promise(resolve=>{reached=resolve;});const held=new Promise(resolve=>{releaseRead=resolve;});
+        await page.route(`**${base}?*`,async route=>{const response=await route.fetch();assert.equal(response.status(),200);reached();await held;await route.fulfill({response});});
+        await workspaceSection('inquiries');await waiting;assert.equal(await panel.locator('[data-inquiry-detail],[data-inquiry-history],.inquiry-record,[data-inquiry-count]').count(),0);
+        assert.equal(await panel.locator('[data-inquiry-message]').count(),0);releaseRead();await panel.locator('[data-inquiry-open]').waitFor();await page.unroute(`**${base}?*`);
+        await inquiryRecord().click();await panel.locator('[data-inquiry-count]').fill('73');
+        assert.equal((await send(`${base}/rights`,'POST',{command_id:crypto.randomUUID(),action:'business.inquiry_evidence.record',authority_selection:inquirySelection(grants['business.inquiry_evidence.record'])})).status,200);
+        await panel.getByRole('button',{name:'التحقق من الحالة الحالية',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');
+        assert.equal(await panel.locator('form').count(),0);assert.ok((await panel.locator('[data-inquiry-message]').innerText()).includes('لم تعد صلاحية'));
+        assert.equal((await send(`${base}?access=${grants['business.inquiry_evidence.read']}`)).status,200);
+        await openInquiryDetail();assert.equal(await panel.getByRole('button',{name:'فتح التصحيح',exact:true}).isEnabled(),true);
+        assert.equal((await send(`${base}/rights`,'POST',{command_id:crypto.randomUUID(),action:'business.inquiry_evidence.read',authority_selection:inquirySelection(grants['business.inquiry_evidence.read'])})).status,200);
+        assert.equal((await send(`${base}?access=${grants['business.inquiry_evidence.read']}`)).status,403);
+        await workspaceSection('overview');await workspaceSection('inquiries');await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');
+        assert.equal(await panel.locator('[data-inquiry-detail],[data-inquiry-history],.inquiry-record,[data-inquiry-count]').count(),0);
+        return {authorizedReentryDelayed:true,noProtectedDOMBeforeQualification:true,recordOnlyRevocation:true,readStill200:true,directRevokedRead403:true,noRetainedDisclosure:true};
     });
     let aUrl;
     await check('A to B to A keeps each human draft and its originating version separate', async () => {
@@ -173,7 +405,7 @@ try {
     };
     const factForm = kind => page.locator(`[data-business-fact-form="${kind}"]`);
     await check('independent markets, explicit whole-business intent and advertiser preferences are discoverable and persist through the shared API', async () => {
-        await ready('[data-business-facts]');
+        await workspaceSection('direction'); await ready('[data-business-facts]');
         await factForm('markets').locator('#bf-market-codes').selectOption(['SA', 'JO']);
         await factForm('markets').getByRole('button', { name: 'حفظ التصريح', exact: true }).click();
         await factForm('markets').locator('[data-fact-saved]').waitFor();
@@ -216,13 +448,13 @@ try {
     let third;
     await check('fact drafts and missing declarations stay separate when switching between independent businesses', async () => {
         third = (await send('/api/businesses', 'POST', { command_id: crypto.randomUUID(), name: 'النشاط الثالث لاختبار الفصل', business_type_id: null })).body.data;
-        await index(); await open('النشاط الثالث لاختبار الفصل');
+        await index(); await open('النشاط الثالث لاختبار الفصل'); await workspaceSection('direction');
         assert.deepEqual((await surface()).business.declared_markets, []);
         assert.equal((await surface()).business.current_intent, null);
         await factForm('markets').locator('#bf-market-codes').selectOption(['AE']);
-        await index(); await open('التعديل بعد مراجعة النسخة الأحدث');
+        await index(); await open('التعديل بعد مراجعة النسخة الأحدث'); await workspaceSection('direction');
         assert.deepEqual(await factForm('markets').locator('#bf-market-codes').evaluate(el => Array.from(el.selectedOptions).map(o => o.value)), ['JO','SA']);
-        await index(); await open('النشاط الثالث لاختبار الفصل');
+        await index(); await open('النشاط الثالث لاختبار الفصل'); await workspaceSection('direction');
         assert.deepEqual(await factForm('markets').locator('#bf-market-codes').evaluate(el => Array.from(el.selectedOptions).map(o => o.value)), ['AE']);
         return { independentDrafts: true, absentIntentIsNull: true };
     });
@@ -236,9 +468,9 @@ try {
             await route.fulfill({ response });
         });
         await factForm('markets').getByRole('button', { name: 'حفظ التصريح', exact: true }).click(); await reached;
-        await index(); await open('التعديل بعد مراجعة النسخة الأحدث'); release();
+        await index(); await open('التعديل بعد مراجعة النسخة الأحدث'); await workspaceSection('direction'); release();
         assert.deepEqual((await surface()).business.declared_markets, ['JO','SA']);
-        await index(); await open('النشاط الثالث لاختبار الفصل');
+        await index(); await open('النشاط الثالث لاختبار الفصل'); await workspaceSection('direction');
         await factForm('markets').locator('[data-fact-unknown]').waitFor();
         await factForm('markets').getByRole('button', { name: 'تحقق بالطلب الأصلي', exact: true }).click();
         await factForm('markets').locator('[data-fact-saved]').waitFor();
@@ -255,7 +487,7 @@ try {
             expected_grant: 1, expires_at: null, delegable: false, realm_workspace_public_id: null, authority_selection: { ...current.authority_selection,
                 requirements: [{ requirement_kind: 'business', leaf_grant_id: third.grant_refs['business.markets.declare'] }] } });
         assert.equal(self.status, 200);
-        await index(); await open('النشاط الثالث لاختبار الفصل');
+        await index(); await open('النشاط الثالث لاختبار الفصل'); await workspaceSection('direction');
         assert.equal(await factForm('markets').count(), 0);
         assert.equal((await surface()).fact_write_options.intent.length, 1);
         await page.getByRole('button', { name: 'النية التجارية الحالية', exact: true }).click();
@@ -270,7 +502,7 @@ try {
     };
     let workspace, firstLink;
     await check('team collaboration is discoverable, draft authority cannot become agency authority and ending preserves history', async () => {
-        await settled(); const current = await linkState();
+        await workspaceSection('access'); await settled(); const current = await linkState();
         assert.equal(current.collaboration.options.length, 1);
         assert.equal(current.collaboration.options[0].allows_agency, false);
         assert.equal(current.collaboration.workspaces.length, 2);
@@ -324,9 +556,9 @@ try {
             await route.fulfill({ response });
         });
         await collaboration.getByRole('button', { name: 'إنهاء العلاقة', exact: true }).click(); await reached;
-        await index(); await open('التعديل بعد مراجعة النسخة الأحدث'); release();
+        await index(); await open('التعديل بعد مراجعة النسخة الأحدث','access'); release();
         assert.deepEqual((await surface()).collaboration.relationships, []);
-        await index(); await open('النشاط الثالث لاختبار الفصل');
+        await index(); await open('النشاط الثالث لاختبار الفصل','access');
         await collaboration.locator('[data-collaboration-unknown]').waitFor();
         await collaboration.getByRole('button', { name: 'تحقق بالطلب الأصلي', exact: true }).click();
         await collaboration.locator('[data-collaboration-confirmed]').waitFor(); await settled();
@@ -338,7 +570,7 @@ try {
     await check('qualified agency relationship is managed through the same resource without granting access to workspace members', async () => {
         fixture('agency-setup');
         const agency = JSON.parse(await readFile(path.join(run, 'business-agency-fixture.json'), 'utf8'));
-        await index(); await open('نشاط إدارة الوكالة'); await settled();
+        await index(); await open('نشاط إدارة الوكالة','access'); await settled();
         const current = await linkState(agency.business, agency.read.leaf);
         assert.equal(current.collaboration.options[0].allows_agency, true);
         await collaboration.locator('#bf-link-workspace').selectOption(workspace.public_id);
@@ -365,7 +597,7 @@ try {
     });
     await check('withdrawing independent workspace authority removes its metadata and rejects forged management without withdrawing business reading', async () => {
         fixture('withdraw-workspace');
-        await index(); await open('النشاط الثالث لاختبار الفصل'); await settled();
+        await index(); await open('النشاط الثالث لاختبار الفصل','access'); await settled();
         const current = await linkState();
         assert.equal(current.collaboration.workspaces.some(w => w.public_id === workspace.public_id), false);
         assert.deepEqual(current.collaboration.relationships, []);
@@ -384,7 +616,7 @@ try {
         await index();
         const activity = delegationFixture[key];
         await page.locator(`[data-business-list] a[href="/businesses/${activity.business}?access=${activity.read}"]`).click();
-        await ready('[data-business-delegation]'); await settled();
+        await ready('[data-business-public]'); await workspaceSection('access'); await ready('[data-business-delegation]'); await settled();
     };
     const delegationState = async key => {
         const activity = delegationFixture[key];
@@ -421,6 +653,7 @@ try {
         await recipientPage.locator(`[data-business-list] a[href="/businesses/${delegationFixture.a.business}?access=${firstGrant}"]`).click();
         await recipientPage.locator('[data-business-name]').waitFor();
         assert.equal(await recipientPage.locator('[data-business-name]').textContent(), 'عميل التفويض الأول');
+        await recipientPage.locator('[data-workspace-section="access"]').click();
         assert.equal(await recipientPage.locator('[data-delegation-readonly]').count(), 1);
         assert.equal((await sendFrom(recipientPage, `/api/businesses/${delegationFixture.a.business}/surface?access=${firstGrant}`)).status, 200);
         return { issued: firstGrant, recipientRealRead: 200, recipientDelegationOptions: 0, recipientAccountWithoutBusiness: true, identifierDiscoveredInUI: true,
@@ -705,7 +938,7 @@ try {
         const b = dataFixture[key].business; const response = await send(`/api/businesses/${b.business_public_id}/surface?access=${b.grant_refs['business.context.read']}`);
         assert.equal(response.status, 200); return response.body.data;
     };
-    const openData = async key => { await index(); await open(dataFixture[key].name); await dataPanel.waitFor(); await page.waitForFunction(() => !document.querySelector('[data-business-rechecking]') && (!!document.querySelector('[data-data-use-reconcile]') || !document.querySelector('#bf-data-scope')?.matches(':disabled'))); };
+    const openData = async key => { await index(); await open(dataFixture[key].name,'access'); await dataPanel.waitFor(); await page.waitForFunction(() => !document.querySelector('[data-business-rechecking]') && (!!document.querySelector('[data-data-use-reconcile]') || !document.querySelector('#bf-data-scope')?.matches(':disabled'))); };
     const selectData = async key => { await dataPanel.locator('#bf-data-scope').selectOption(String(dataFixture[key].data.grant_id)); await dataPanel.locator('[data-data-use-details]').waitFor(); };
     const bindData = async key => {
         await selectData(key); await dataPanel.getByRole('button', { name: 'طلب ربط النطاق بالنشاط', exact: true }).click();
@@ -926,13 +1159,13 @@ try {
         await page.evaluate(() => window.__legacyDelay.restore()); release = undefined;
         assert.equal(await legacyPanel.locator('[data-legacy-purpose]').count(), 0);
         assert.equal(await legacyPanel.locator('[data-legacy-empty]').count(), 1);
-        await index(); await openCreated(); await legacyPanel.locator('summary').click(); await legacyPanel.locator('[data-legacy-empty]').waitFor();
+        await index(); await openCreated('settings'); await legacyPanel.locator('summary').click(); await legacyPanel.locator('[data-legacy-empty]').waitFor();
         return { qualificationWithdrawn: true, oldCompletedResponseDiscarded: true, unrelatedBusinessEmptyQualifiedSubset: true, nativeHistoryRetainedByBackendProof: true };
     });
     await check('native Business Purpose declaration, current applicability and correction use one owner', async () => {
         fixture('purpose-setup');
         const f = JSON.parse(await readFile(path.join(run, 'business-purpose-fixture.json'), 'utf8'));
-        await page.goto(`${origin}/businesses/${f.business}?access=${f.read.leaf}`); await ready('[data-business-public]');
+        await page.goto(`${origin}/businesses/${f.business}?access=${f.read.leaf}`); await ready('[data-business-public]'); await workspaceSection('settings');
         const panel = page.locator('[data-business-purposes]');
         await panel.locator('summary').first().click(); await panel.locator('[data-purpose-empty]').waitFor();
         await panel.locator('[data-purpose-create]').click();
@@ -970,7 +1203,7 @@ try {
     await check('native Business Purpose write revocation retains independent read and stale response cannot cross Business', async () => {
         const f = JSON.parse(await readFile(path.join(run,'business-purpose-fixture.json'),'utf8'));
         fixture('purpose-revoke-write');
-        await page.goto(`${origin}/businesses/${f.business}?access=${f.read.leaf}`); await ready('[data-business-public]');
+        await page.goto(`${origin}/businesses/${f.business}?access=${f.read.leaf}`); await ready('[data-business-public]'); await workspaceSection('settings');
         const panel=page.locator('[data-business-purposes]'); await panel.locator('summary').first().click(); await panel.locator('[data-purpose-item]').waitFor();
         assert.equal(await panel.locator('[data-purpose-create], [data-purpose-edit]').count(),0);
         await page.evaluate(target=>{

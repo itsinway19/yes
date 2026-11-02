@@ -1,0 +1,172 @@
+[
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\baseline.json",
+    "sha256": "1d79dcd25ffe9f90d044d3db4990b0133fcc210ef57ab917de3be197999fbb3f",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\final-browser-results.json",
+    "sha256": "e65deb0eb52440a38755ebe32c68bcba06bf2b9326a4e5a46de6a1990ea73d23",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\final-browser.log",
+    "sha256": "21d1161ef0a2aa9fc6f2663e47d9f51ae19d79f7a3a638613dd41c4e48ce8707",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\final-change-inventory.json",
+    "sha256": "b9fd62f7c82da82023ec6e029db82b7ead445fb007bfc0ac3cbb5c41e710b147",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\final-source-manifest.json",
+    "sha256": "a545a31d40fbd2533c3290981296225b421f52fdda5a8da7f75161f4057436c0",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\final-source-unchanged.txt",
+    "sha256": "3cbc87c7681f34db4617feaa2c8801931bc5e42d8d0f560e756dd4cd92885f18",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\final-tests.log",
+    "sha256": "62b6e2a2906103e8f93a3edd517f7415f666be353e25b389d7a1c493a5cee7e8",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\final-tests.xml",
+    "sha256": "5eaccbaf8072f1df99ba040db43b2f906fb3cc6bb7f76a49e0f2030d4c5d87c2",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\inquiry-basis-8b3f7c2d-68cb-4809-af69-1ddb49ca6342-evidence.json",
+    "sha256": "475c9645fcfd654e32b644a3edb3364d1ee038294d07c5e388cf84e4cf3fef48",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\inquiry-desktop.png",
+    "sha256": "f8b06d208b287a6dea817f7f0bb936ee40dcdc6948ee4cafae2932399657018e",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\inquiry-mobile.png",
+    "sha256": "7cdab902938d4b3d522274865b16ce213a784fbf17e53f02699b9ec1f79603e6",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\inquiry-revision-f12bd5bf-ddf9-4be0-86cd-3597e9413c6f-evidence.json",
+    "sha256": "d5eea9a428f1a6055ad6a4201ef1c6a18d404aacc08fa8c4a0cceef02440943c",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\inquiry-session-f68aae28-aada-4969-a3bb-6afce0e86f58-evidence.json",
+    "sha256": "7570302e6a2dbc5c89cff5949d5db7243f5deea796fd726aeaa7345695b50ef4",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\pre-ux-source-manifest.json",
+    "sha256": "9692f19136f884ade659cfecfc4da43c3a1a61306f0923dad2b45f9f4b4e65ce",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\visual-review.md",
+    "sha256": "3a0faa46a8e1e6907c4c881e60c30681a931cf795a4c2468ddc9fa3732c92ea4",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-ar-dark-1366-collection.png",
+    "sha256": "9451a3aae9f946827ff20d428d95379741c3898f0035fe3d3b788624bf0e85a9",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-ar-dark-1366-detail.png",
+    "sha256": "25c1f938e42b29084a7491657e6e359aba120d0620cb11f004bcb02df4f183ff",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-ar-dark-390-collection.png",
+    "sha256": "5396fbb01403d0e9fe5b75e103ddf59ede80e2d89590c12056e93fcf5e15cb91",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-ar-dark-390-detail.png",
+    "sha256": "9a63bb7d19298fdcad49126a364cb3e05b91a48030834c8b2fa3f35e01431def",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-ar-light-1280-form.png",
+    "sha256": "e44cb6d0a2874dc3fba391835a656b4537f4527b122ac8e10907921b1ecb689d",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-ar-light-1366-collection.png",
+    "sha256": "1b8cad2a89741fe2c9de48af9bde32dfa8588c89be7e5b47e90a9edd00ce8457",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-ar-light-1366-detail.png",
+    "sha256": "dca125612607b1db896845fd2e39521634fcf99d25f3ed66774c85bf780183a6",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-ar-light-390-collection.png",
+    "sha256": "a4dc7d3a2cb80f0217a2c9f0a3fb0759ae35b5e2c806275a229058596b80fbb6",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-ar-light-390-detail.png",
+    "sha256": "c59611af79aa04a9f21b8917c31dd426c8e2e63d06e76523ca83ecaff09f699c",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-ar-light-390-form.png",
+    "sha256": "7a9e7855a7e265dd2da9132f7c5073d686caeb08f9dd1a5be108071de41555ac",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-ar-light-390-timezone.png",
+    "sha256": "c739cec104f44aee59b0600c81371c3d3393b7cbffbe3f6f20ffc401087f8509",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-en-dark-1366-collection.png",
+    "sha256": "cd48f5ea6be4159e7059ad1c504c54fdca16a26cf15de9f70470e17726ee47d7",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-en-dark-1366-detail.png",
+    "sha256": "92511cd61194b2c6ea7d9eecfc7d0a9b0e0b581981ddd8bb287f860e7bab2378",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-en-dark-390-collection.png",
+    "sha256": "a91ee38d634bbcdb460c9ddfb0fcb18ed92f47f5d8d8180666b3286a6eaa9c34",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-en-dark-390-detail.png",
+    "sha256": "aa474ead72e055790726992858b16012c43313a105df9d59c479a8a91ceb7269",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-en-light-1366-collection.png",
+    "sha256": "d5bcdf452b8164a11dc063ad6eac2259c71baa4b0989b0ab1190750e76b7dc46",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-en-light-1366-detail.png",
+    "sha256": "eacddab8254beae433ababcda6dd6254d5282083c94ccc0da7cbdb6052828673",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-en-light-390-collection.png",
+    "sha256": "b4457abf1eca817d6983fcf20a068bbbbd371ea228461b02d51bae2e40d7253c",
+    "match": true
+  },
+  {
+    "path": "C:\\Users\\stoma\\.codex\\visualizations\\2026\\10\\30\\01a18cdf-2b2d-7682-ac51-b50f944e5fcc\\workspace-ux-20261101T171558Z\\workspace-en-light-390-detail.png",
+    "sha256": "443d6a7380c2ef2f89f46dcb5695dfed35b2c68320c966dbd889f3f805a915a8",
+    "match": true
+  }
+]
