@@ -21,7 +21,7 @@ export const useForm = input => {
  post(url, options) { globalThis.__purposeTest.posts.push({ url, payload: JSON.parse(JSON.stringify(Object.fromEntries(keys.map(k => [k, form[k]])))), options }); }
  }); globalThis.__purposeTest.forms.push(form); return form;
 };
-export const RouterLink=Link,useRoute=()=>({params:{workspace:'business'},query:{},fullPath:'/workspaces/business/object-purposes'}),unresolved=()=>undefined,restore=()=>undefined,remember=()=>{},forget=()=>{},retryPurpose=()=>{};
+export const RouterLink=Link,useRoute=()=>({params:{workspace:'business'},query:{},fullPath:'/workspaces/business/purpose-history'}),unresolved=()=>undefined,restore=()=>undefined,remember=()=>{},forget=()=>{},retryPurpose=()=>{};
 export const refreshPurpose=(route,options)=>router.reload(options),submitPurpose=(workspace,payload,options)=>router.post(workspace,payload,options);`);
 const replacements = { vue: import.meta.resolve('vue'), '@inertiajs/vue3': inertia };
 function rewrite(code, extra = {}) {
@@ -154,7 +154,7 @@ test('current DTM labels warn only for actual drift and historical references st
  for (const mode of ['current_alignment','current_dependency','historical_attestation']) {
   const snapshot=retainedSnapshot(); snapshot.dtm={mode,version:7,countries:['SA'],subset:[],statement:'Exact retained relationship'};
   const item=retainedPurpose(snapshot); item.dtm_standing=mode==='historical_attestation'?'HISTORICAL_ATTESTATION':'CURRENT_REFERENCE_AT_READ';
-  const v=mount({workspace:{public_id:'business',name:'Real workspace'},projection:{state:'DECLARED',items:[item],current_context_version:7,latest_dtm_event_context_version:7,effective_at:'2026-10-07T00:00:00Z',known_at:'2026-10-07T00:00:00Z'},selectedPurpose:'purpose-1',business:{currentIntent:{value:null,version:7}}},purposePage.component);
+  const v=mount({workspace:{public_id:'business',name:'Real workspace'},canReviseHistory:false,projection:{state:'DECLARED',items:[item],current_context_version:7,latest_dtm_event_context_version:7,effective_at:'2026-10-07T00:00:00Z',known_at:'2026-10-07T00:00:00Z'},selectedPurpose:'purpose-1',business:{currentIntent:{value:null,version:7}}},purposePage.component);
   assert.doesNotMatch(text(v.root),/current relationship requires revalidation/);
   if(mode==='historical_attestation') assert.match(text(v.root),/Historical attestation; not a current claim/);
   else {

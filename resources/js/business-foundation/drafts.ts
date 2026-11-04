@@ -1,5 +1,5 @@
 import { onClose, scope } from '../spa/transport';
-import type { ContextCommand, CreateCommand, DraftResult, FactCommand, FactKind, Goals, LinkCommand, GrantCommand, ResourceCommand, BindingCommand } from './api';
+import type { ContextCommand, CreateCommand, DraftResult, FactCommand, FactKind, Goals, LinkCommand, GrantCommand, ResourceCommand, BindingCommand, InternalTeamCommand } from './api';
 export type EditorDraft = { name: string; type: number | null; baselineName: string; baselineType: number | null; version: number; selected: string; pending?: ContextCommand; notice: string };
 export const drafts = new Map<string, EditorDraft>();
 export type FactFields = { codes: string[]; goals: Goals; clearing: boolean; direction: string; description: string; meaning: string;
@@ -13,6 +13,10 @@ export const linkDrafts = new Map<string, LinkDraft>();
 export type DelegationDraft = { selected: string; recipient: string; agency: string; expires: string; delegable: boolean;
     pending?: GrantCommand; notice: string; confirmed: boolean; blocked: boolean };
 export const delegationDrafts = new Map<string, DelegationDraft>();
+export type InternalTeamDraft = { workspace: string; recipient: string; confirmed: boolean; pending?: InternalTeamCommand; notice: string };
+export const internalTeamDrafts = new Map<string, InternalTeamDraft>();
+export const directTeamDrafts = new Map<string, { confirmed: boolean; pending?: import('./api').DirectTeamEnrollment; blocked: boolean; notice: string }>();
+export const purposeEnrollmentDrafts = new Map<string, { confirmed: boolean; pending?: import('./api').PurposeStatementEnrollment; blocked: boolean; notice: string }>();
 export type BoundaryDraft = { choice: string; selected: string; revision: number; membership: string | null;
     pending?: ResourceCommand; confirmed: boolean; notice: string; blocked: boolean };
 export const boundaryDrafts = new Map<string, BoundaryDraft>();
@@ -25,4 +29,4 @@ export const dataUseDrafts = new Map<string, DataUseDraft>();
 export const creation: { name: string; type: number | null; pending?: CreateCommand; receipt?: DraftResult } = { name: '', type: null };
 // This in-document store is deliberately not shared with another principal or lifecycle.
 export function key(business: string, realm: unknown) { return JSON.stringify([scope, business, realm, 'business.context:1']); }
-onClose(() => { drafts.clear(); factDrafts.clear(); linkDrafts.clear(); delegationDrafts.clear(); boundaryDrafts.clear(); sourceDrafts.clear(); dataUseDrafts.clear(); Object.assign(creation, { name: '', type: null, pending: undefined, receipt: undefined }); });
+onClose(() => { drafts.clear(); factDrafts.clear(); linkDrafts.clear(); delegationDrafts.clear(); internalTeamDrafts.clear(); directTeamDrafts.clear(); purposeEnrollmentDrafts.clear(); boundaryDrafts.clear(); sourceDrafts.clear(); dataUseDrafts.clear(); Object.assign(creation, { name: '', type: null, pending: undefined, receipt: undefined }); });

@@ -36,6 +36,7 @@ BEGIN
  IF b IS NULL OR NOT EXISTS(SELECT 1 FROM public.security_action_grants WHERE id=p_read AND business_id=b AND subject_user_id=actor AND scope_kind='business' AND action='business.context.read' AND status='active' AND revoked_at IS NULL)
  THEN RAISE EXCEPTION 'Explicit own Business read path required' USING ERRCODE='42501'; END IF;
  selection:=builderad_private.business_selection(p_read);
+ IF selection->>'realm_kind'='internal_team' THEN RAISE EXCEPTION 'Internal file access does not release legacy private history' USING ERRCODE='42501'; END IF;
  SELECT coalesce(array_agg(mapping_id ORDER BY mapping_id),'{}'::uuid[]),coalesce(jsonb_agg(to_jsonb(x) ORDER BY mapping_id),'[]') INTO candidate_ids,initial_rows FROM(
   SELECT * FROM public.legacy_scope_mappings WHERE target_business_id=b AND status='qualified' AND origin_table=table_name AND(p_after IS NULL OR mapping_id>p_after) ORDER BY mapping_id LIMIT 32) x;
  SELECT array_agg(DISTINCT qualification_ref) INTO qual_ids FROM public.legacy_scope_mappings WHERE mapping_id=ANY(candidate_ids);
@@ -56,6 +57,7 @@ BEGIN
   RAISE EXCEPTION 'Historical qualification principal changed' USING ERRCODE='40001';
  END IF;
  read_proof:=builderad_private.require_business(b,actor,'business.context.read',selection,p_session);
+ IF read_proof#>>'{qualification,policy_id}'='business_declaration_team_admin_v1' THEN RAISE EXCEPTION 'Current declaration team access does not release private legacy history' USING ERRCODE='42501'; END IF;
  PERFORM builderad_private.principal(p_session);
  SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY mapping_id),'[]') INTO current_rows FROM public.legacy_scope_mappings x WHERE mapping_id=ANY(candidate_ids) AND target_business_id=b AND status='qualified';
  IF current_rows IS DISTINCT FROM initial_rows THEN RAISE EXCEPTION 'Prepared historical mappings changed' USING ERRCODE='40001'; END IF;

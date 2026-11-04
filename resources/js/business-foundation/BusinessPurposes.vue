@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import ObjectPurposeEditor from '../Components/Business/ObjectPurposeEditor.vue';
+import PurposeStatementEnrollment from './PurposeStatementEnrollment.vue';
 import { businessPurposes, writeBusinessPurpose, type BusinessPurposes, type Surface, type Selection } from './api';
 import type { PurposeItem } from '../types/object-purpose';
 import type { PurposeCommand } from '../object-purpose/api';
@@ -10,6 +11,7 @@ import { status } from '../spa/presentation';
 import { owned, stamp } from '../spa/transport';
 import { key } from './drafts';
 const props = defineProps<{ surface: Surface; refreshing: boolean }>();
+const emit = defineEmits<{ refresh: [] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const opened = ref(false), loading = ref(false), failed = ref(false), editing = ref(false);
 const page = ref<BusinessPurposes>(), selected = ref<PurposeItem | null>(null);
@@ -52,8 +54,9 @@ function time(value: string) { return new Date(value).toLocaleString(locale.valu
 </script>
 <template>
     <details class="bf-card bf-purposes" data-business-purposes :open="opened" @toggle="toggle">
-        <summary>{{ t('أغراض العناصر الإعلانية', 'Advertising object purposes') }}</summary>
+        <summary>{{ t('أغراض النشاط المعلنة', 'Declared business purposes') }}</summary>
         <template v-if="opened">
+            <PurposeStatementEnrollment :surface="surface" :refreshing="refreshing" @refresh="emit('refresh')" />
             <p>{{ t('راجع الغرض المصرّح به للعناصر وتوقيت انطباقه، أو صححه بتصريح جديد. التصريح لا يثبت نتيجة إعلانية ولا يمنح حق الوصول إلى بيانات المصدر.', 'Review each object’s declared purpose and effective timing, or correct it through a new declaration. A declaration proves no advertising result and grants no source-data access.') }}</p>
             <button type="button" class="bf-secondary" :disabled="loading || refreshing" @click="read">{{ t('تحديث الأغراض', 'Refresh purposes') }}</button>
             <p v-if="loading" role="status">{{ t('جارٍ التحقق من الأغراض…', 'Checking purposes…') }}</p>
@@ -67,9 +70,10 @@ function time(value: string) { return new Date(value).toLocaleString(locale.valu
                     <h3>{{ item.applicable?.snapshot.meaning ?? t('لا تصريح منطبق في الوقت الحالي', 'No declaration applicable now') }}</h3>
                     <p v-if="item.relationship_revalidation_required" role="status">{{ t('تغيرت الأسواق؛ يحتاج الارتباط الحالي إلى إعادة تأكيد.', 'Markets changed; the current relationship needs reconfirmation.') }}</p>
                     <p v-if="item.applicable?.snapshot.end_condition">{{ t('الاستمرار مشروط، ولم يُثبت تحقق الشرط:', 'Continuity is conditional; the condition has not been verified:') }} {{ item.applicable.snapshot.end_condition }}</p>
-                    <details><summary>{{ t('التصريحات والتصحيحات المحفوظة', 'Saved declarations and corrections') }}</summary><ol>
+                    <details v-if="surface.private_history_available"><summary>{{ t('التصريحات والتصحيحات المحفوظة', 'Saved declarations and corrections') }}</summary><ol>
                         <li v-for="revision in item.history" :key="revision.revision_id">{{ revision.version }} · {{ time(revision.accepted_at) }} · {{ revision.operation === 'withdraw' ? t('سحب التصريح', 'Withdrawn') : revision.snapshot?.meaning }}<p>{{ revision.reason }}</p></li>
                     </ol></details>
+                    <p v-else>{{ t('يعرض تصريح الغرض المنطبق حاليًا؛ السجل الخاص غير متاح بهذا الحق.', 'Shows the currently applicable purpose statement; private history is unavailable with this access.') }}</p>
                     <button v-if="grant && !editing" type="button" class="bf-secondary" data-purpose-edit @click="edit(item)">{{ t('مراجعة أو تصحيح أو سحب', 'Review, correct or withdraw') }}</button>
                 </article>
                 <ObjectPurposeEditor v-if="editing && grant" :key="`${scopeKey}:${selected?.purpose_id ?? 'new'}`" :workspace-id="scopeKey" business-mode :purpose="selected" :context-version="page.projection.current_context_version" :dtm-transition-version="page.projection.latest_dtm_event_context_version" :current-intent="{ value: surface.business.current_intent, version: surface.business.versions.intent }" :command-writer="commandWriter" :refresh-resource="read" @saved="read" />

@@ -179,9 +179,13 @@ class ProviderAccessStoreTest extends TestCase
 
     public function test_provider_geography_never_populates_or_overwrites_declared_markets(): void
     {
+        $file = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Independent geography declaration'])->assertCreated()->json('data');
+        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.markets.declare']]]];
         $snapshot = fn () => [(array) $this->owner()->table('workspaces')->find($this->workspaceId),
             $this->owner()->table('business_target_markets')->where('workspace_id', $this->workspaceId)->orderBy('country_code')->get()->toArray(),
-            $this->owner()->table('business_target_market_events')->where('workspace_id', $this->workspaceId)->orderBy('id')->get()->toArray()];
+            $this->owner()->table('business_target_market_events')->where('workspace_id', $this->workspaceId)->orderBy('id')->get()->toArray(),
+            $this->owner()->table('business_declared_markets')->orderBy('country_code')->get()->toArray(),
+            $this->owner()->table('business_market_transitions')->orderBy('event_id')->get()->toArray()];
         $acceptGeography = function (ProviderScope $scope, int $generation, string $country): void {
             $native = $this->journalObservation($scope, '10.01');
             $observation = new AdObservation($scope, $native->campaignId, $native->window, $native->spend,
@@ -200,9 +204,8 @@ class ProviderAccessStoreTest extends TestCase
             $acceptGeography($scope, 0, 'JO');
             $this->assertEquals($before, $snapshot());
         }
-        $this->post('/workspaces/'.$this->workspace.'/business/authority',
-            ['decision' => 'authorize', 'reason' => 'complete_business_context'])->assertRedirect();
-        $this->post('/workspaces/'.$this->workspace.'/business/target-markets', ['country_codes' => ['SA', 'KW'], 'version' => 0])->assertRedirect();
+        $this->putJson('/api/businesses/'.$file['business_public_id'].'/markets', ['command_id' => (string) Str::uuid(),
+            'codes' => ['SA', 'KW'], 'expected_context' => 0, 'authority_selection' => $selection])->assertOk();
         $before = $snapshot();
         foreach ($this->scopes as $scope) {
             $acceptGeography($scope, 1, 'AE');
@@ -214,11 +217,13 @@ class ProviderAccessStoreTest extends TestCase
         foreach ($providerTables as $table) {
             $providerBefore[$table] = $this->owner()->table($table)->get()->toArray();
         }
-        $this->post('/workspaces/'.$this->workspace.'/business/target-markets', ['country_codes' => [], 'version' => 1])->assertRedirect();
+        $this->putJson('/api/businesses/'.$file['business_public_id'].'/markets', ['command_id' => (string) Str::uuid(),
+            'codes' => [], 'expected_context' => 1, 'authority_selection' => $selection])->assertOk();
         foreach ($providerTables as $table) {
             $this->assertEquals($providerBefore[$table], $this->owner()->table($table)->get()->toArray(), $table);
         }
         $this->assertSame([], $this->owner()->table('business_target_markets')->pluck('country_code')->all());
+        $this->assertSame([], $this->owner()->table('business_declared_markets')->pluck('country_code')->all());
     }
 
     public function test_stored_tokens_do_not_bypass_current_permission_expiry_or_missing_evidence(): void
@@ -5174,7 +5179,13 @@ class ProviderAccessStoreTest extends TestCase
         }
     }
 
-    public function test_shared_reality_coherence_concurrent_restatement_cannot_change_captured_membership(): void
+    public static function coherenceEntryOutputModes(): array
+    {
+        return ['normal stdout' => [false], 'stdout deferred until release' => [true]];
+    }
+
+    #[DataProvider('coherenceEntryOutputModes')]
+    public function test_shared_reality_coherence_concurrent_restatement_cannot_change_captured_membership(bool $deferEntryOutput): void
     {
         $scope = $this->scopes['meta'];
         $this->store($scope, (string) Str::uuid());
@@ -5184,10 +5195,13 @@ class ProviderAccessStoreTest extends TestCase
         $request->setLaravelSession($this->app['session']->driver());
         $gateBase = storage_path('framework/testing/scr-coherence-'.Str::uuid());
         $gate = ['ready' => $gateBase.'-ready.json', 'release' => $gateBase.'-release'];
+        $run = 'scr-coherence-'.Str::uuid();
+        $command = (string) Str::uuid();
         $worker = new Process([PHP_BINARY, base_path('tests/ObservationCommandWorker.php'), json_encode([
             'entry_external_gate' => $gate,
-            'run' => 'scr-coherence-'.Str::uuid(), 'actor' => $this->actor->id, 'scope' => $scope->jsonSerialize(),
-            'session' => SessionAuthority::sessionKey($request), 'command' => (string) Str::uuid(), 'generation' => 1,
+            'defer_entry_ready_stdout' => $deferEntryOutput,
+            'run' => $run, 'actor' => $this->actor->id, 'scope' => $scope->jsonSerialize(),
+            'session' => SessionAuthority::sessionKey($request), 'command' => $command, 'generation' => 1,
             'payload' => ['coverage' => 'COMPLETE', 'failure' => null, 'provenance' => $o->provenance,
                 'encrypted_progress' => null, 'progress_fingerprint' => null,
                 'observations' => [['identity' => $o->identity(), 'content_hash' => $o->contentHash(), 'observation' => $o->jsonSerialize()]]],
@@ -5207,13 +5221,42 @@ class ProviderAccessStoreTest extends TestCase
             }
         };
         $this->app->instance(SharedRealityInterpretation::class, $double);
+        $evidence = ['run' => $run, 'command' => $command, 'deferred_stdout' => $deferEntryOutput];
         try {
+            // Even a syntactically valid prior signal with a live database PID
+            // cannot admit this worker. Partial JSON cannot signal readiness.
+            $stale = ['pid' => (int) DB::scalar('SELECT pg_backend_pid()'), 'xid' => null,
+                'run' => 'prior-'.Str::uuid(), 'command' => (string) Str::uuid()];
+            foreach ([$stale, array_replace($stale, ['run' => $run]), array_replace($stale, ['command' => $command])] as $oldState) {
+                file_put_contents($gate['ready'], json_encode($oldState, JSON_THROW_ON_ERROR), LOCK_EX);
+                $this->assertNull($this->readObservationEntry($gate['ready'], $run, $command), 'A prior run or command cannot establish current worker readiness.');
+            }
+            file_put_contents($gate['ready'], '{"pid":', LOCK_EX);
+            $this->assertNull($this->readObservationEntry($gate['ready'], $run, $command), 'A partially published signal is not readiness.');
+            file_put_contents($gate['ready'], json_encode($stale, JSON_THROW_ON_ERROR), LOCK_EX);
             $worker->start();
-            $ready = $worker->waitUntil(static fn (string $type, string $output): bool => str_contains($output, 'ENTRY_READY'));
-            $this->assertTrue($ready, $worker->getErrorOutput());
-            $state = json_decode(file_get_contents($gate['ready']), true, flags: JSON_THROW_ON_ERROR);
+            // Poll the existing durable handoff; stdout is diagnostic and may
+            // be delayed or drained in chunks by process status checks.
+            do {
+                $worker->checkTimeout(); // Keep the original process watchdog.
+                if (! $worker->isRunning()) {
+                    throw new \RuntimeException('Observation worker exited before qualified readiness: '.$worker->getOutput().$worker->getErrorOutput());
+                }
+                $state = $this->readObservationEntry($gate['ready'], $run, $command);
+                if ($state !== null) {
+                    break;
+                }
+                usleep(10000);
+            } while (true);
+            $this->assertTrue($worker->isRunning(), 'The admitted worker must still be alive.');
             $this->assertNull($state['xid'], 'Writer readiness must precede its product transaction.');
             $this->assertGreaterThan(0, $state['pid']);
+            $connection = DB::selectOne('SELECT pid,backend_xid::text AS xid FROM pg_stat_activity WHERE pid=? AND application_name=?', [$state['pid'], $run]);
+            $this->assertNotNull($connection, 'The current worker must own the announced live database connection.');
+            $this->assertNull($connection->xid, 'The live connection must still precede the product transaction.');
+            $evidence['entry'] = $state;
+            $evidence['live_connection'] = (array) $connection;
+            $this->assertFileDoesNotExist($gate['release'], 'The worker can be released only after snapshot capture.');
             $view = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
             $this->assertTrue($worker->isSuccessful(), $worker->getErrorOutput());
             $this->assertStringStartsWith('ENTRY_READY'.PHP_EOL.'RESULT=', $worker->getOutput());
@@ -5225,11 +5268,26 @@ class ProviderAccessStoreTest extends TestCase
             if ($worker->isRunning()) {
                 $worker->stop();
             }
+            $evidence['worker'] = ['stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput(), 'exit' => $worker->getExitCode()];
+            $evidence['ready_file'] = @file_get_contents($gate['ready']);
+            file_put_contents($gateBase.'-evidence.json', json_encode($evidence, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
         }
         $new = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
         $this->assertSame(2, $new['generation']);
         $this->assertSame(2, $new['claims'][0]['generation']);
         $this->assertSame('13', $new['claims'][0]['expenditure']['amount']);
+    }
+
+    private function readObservationEntry(string $path, string $run, string $command): ?array
+    {
+        clearstatcache(true, $path);
+        $state = json_decode((string) @file_get_contents($path), true);
+        if (! is_array($state) || ($state['run'] ?? null) !== $run || ($state['command'] ?? null) !== $command
+            || ! is_int($state['pid'] ?? null) || $state['pid'] <= 0 || ! array_key_exists('xid', $state) || $state['xid'] !== null) {
+            return null;
+        }
+
+        return $state;
     }
 
     private function withinWorkspace(callable $callback): mixed

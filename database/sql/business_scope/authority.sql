@@ -68,7 +68,15 @@ BEGIN
   IF jsonb_typeof(row_value) IS DISTINCT FROM 'object' OR coalesce(row_value->>'fence_id','') !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN RAISE EXCEPTION 'Exact dependency fence identity required' USING ERRCODE='22023'; END IF;
   current_id:=(row_value->>'fence_id')::uuid;
   IF prior_id IS NOT NULL AND current_id<=prior_id THEN RAISE EXCEPTION 'Canonical distinct resource dependency set required' USING ERRCODE='22023'; END IF;
-  payload:=payload||builderad_private.row_image('public.resource_right_fences',row_value);prior_id:=current_id;
+  IF row_value->>'data_use_scope_id' IS NULL THEN
+   -- v1 receipts predate the market data-use column. Its NULL must not
+   -- change the encoded historical six-field dependency image.
+   IF (SELECT array_agg(k ORDER BY k COLLATE "C") FROM jsonb_object_keys(row_value-'data_use_scope_id') k)
+    IS DISTINCT FROM ARRAY['adoption_state','boundary_id','fence_id','kind','rights_epoch','source_id']::text[]
+   THEN RAISE EXCEPTION 'Complete controlled resource row image required' USING ERRCODE='22023'; END IF;
+   payload:=payload||builderad_private.fields(row_value-'data_use_scope_id','{"fence_id":"U","source_id":"U","boundary_id":"U","rights_epoch":"I"}');
+  ELSE payload:=payload||builderad_private.row_image('public.resource_right_fences',row_value); END IF;
+  prior_id:=current_id;
  END LOOP;
  payload:=builderad_private.frame('A',payload);
  IF octet_length(payload)>2097152 THEN RAISE EXCEPTION 'Resource dependency byte limit' USING ERRCODE='22023'; END IF;
@@ -99,7 +107,9 @@ BEGIN
   SELECT session_key_hash INTO session_ref FROM public.security_sessions WHERE user_id=i.actor_user_id AND lifecycle_generation=i.generation
    AND sha256(convert_to(session_key_hash,'UTF8'))=i.session_ref_digest;
   IF session_ref IS NULL THEN RAISE EXCEPTION 'Final bound session unavailable' USING ERRCODE='42501'; END IF;
-  PERFORM builderad_private.principal(session_ref,false);
+  IF i.action IN('market.knowledge.capture','market.knowledge.publish') THEN
+   PERFORM builderad_private.market_operator(session_ref,i.action,false);
+  ELSE PERFORM builderad_private.principal(session_ref,false); END IF;
  END IF;
  WITH RECURSIVE walk(k,v,d) AS(
   SELECT ''::text,i.authority_selection,0 UNION ALL
@@ -187,7 +197,7 @@ BEGIN
   SELECT EXISTS(SELECT 1 FROM public.resource_right_fences f WHERE f.kind='source' AND f.adoption_state='v2_adopted'
    AND f.source_id IN((before_row->>CASE WHEN TG_TABLE_NAME='source_registry' THEN 'id' ELSE 'source_id' END)::uuid,
     (after_row->>CASE WHEN TG_TABLE_NAME='source_registry' THEN 'id' ELSE 'source_id' END)::uuid)) INTO adopted_source;
-  IF NOT adopted_source THEN
+  IF NOT adopted_source AND NOT(TG_TABLE_NAME='source_registry' AND coalesce(after_row->>'custody_kind',before_row->>'custody_kind','')='platform_market') THEN
    IF session_user='builderad_app' AND NOT builderad_private.native_source_gate_held(coalesce((after_row->>CASE WHEN TG_TABLE_NAME='source_registry' THEN 'id' ELSE 'source_id' END)::uuid,(before_row->>CASE WHEN TG_TABLE_NAME='source_registry' THEN 'id' ELSE 'source_id' END)::uuid))
    THEN RAISE EXCEPTION 'Native source admission required' USING ERRCODE='42501'; END IF;
    IF TG_OP='DELETE' THEN RETURN OLD;ELSE RETURN NEW;END IF;
@@ -196,7 +206,12 @@ BEGIN
  IF TG_TABLE_NAME='security_action_grants' THEN
   SELECT EXISTS(SELECT 1 FROM public.resource_right_fences f WHERE f.kind='source' AND f.adoption_state='v2_adopted' AND f.source_id IN((before_row->>'source_target_id')::uuid,(after_row->>'source_target_id')::uuid)) INTO adopted_source;
   IF coalesce(before_row->>'scope_kind','') NOT IN ('business','client_data','data_use')
-   AND coalesce(after_row->>'scope_kind','') NOT IN ('business','client_data','data_use') THEN
+   AND coalesce(after_row->>'scope_kind','') NOT IN ('business','client_data','data_use')
+   AND NOT(coalesce(after_row->>'scope_kind',before_row->>'scope_kind')='workspace'
+    AND coalesce(after_row->>'action',before_row->>'action')='workspace.view'
+    AND EXISTS(SELECT 1 FROM builderad_private.invocations i WHERE i.backend_pid=pg_backend_pid() AND i.transaction_id=pg_current_xact_id()
+     AND i.phase='authorized' AND i.action='organization.team.add'
+     AND i.target_tuple->>'workspace_id'=coalesce(after_row->>'workspace_id',before_row->>'workspace_id'))) THEN
    IF NOT adopted_source AND session_user='builderad_authority' AND (before_row->>'scope_kind'='source' OR after_row->>'scope_kind'='source')
     AND (((before_row->>'source_target_id') IS NOT NULL AND NOT builderad_private.native_source_gate_held((before_row->>'source_target_id')::uuid))
       OR((after_row->>'source_target_id') IS NOT NULL AND NOT builderad_private.native_source_gate_held((after_row->>'source_target_id')::uuid)))
@@ -206,6 +221,13 @@ BEGIN
     NULL;
    ELSIF (coalesce(before_row->>'scope_kind','')='workspace' AND before_row->>'action'='business.context.manage')
     OR(coalesce(after_row->>'scope_kind','')='workspace' AND after_row->>'action'='business.context.manage') THEN
+    -- Withdrawal survives commercial retirement; it cannot create, renew or
+    -- widen a grant, and the terminal commercial-grant guard checks its image.
+    IF session_user IN('builderad_authority','builderad_owner') AND TG_OP='UPDATE'
+     AND before_row->>'status'='active' AND after_row->>'status'='revoked' AND after_row->>'revoked_at' IS NOT NULL
+     AND (after_row->>'version')::bigint=(before_row->>'version')::bigint+1
+     AND before_row-ARRAY['status','revoked_at','version','updated_at','runtime_lock_marker']=after_row-ARRAY['status','revoked_at','version','updated_at','runtime_lock_marker']
+    THEN RETURN NEW; END IF;
     IF session_user='builderad_owner' THEN
      IF EXISTS(SELECT 1 FROM public.migration_cohort_members m JOIN public.migration_cohort_control c ON c.cohort_id=m.cohort_id
       WHERE m.workspace_id=coalesce((after_row->>'workspace_id')::bigint,(before_row->>'workspace_id')::bigint) AND c.mode='LEGACY_ACTIVE') THEN

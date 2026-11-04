@@ -46,6 +46,32 @@ class SourceRegistryTest extends TestCase
         }
     }
 
+    public function test_organization_sources_continue_after_commercial_legacy_drains_without_reopening_raw_facts(): void
+    {
+        $this->command($this->input)->assertOk();
+        $cohort = $this->owner()->table('migration_cohort_members')->where('workspace_id', $this->workspaceId)->value('cohort_id');
+        $this->owner()->scalar("SELECT builderad_v2_cohort_transition(?::uuid,?::uuid,'LEGACY_ACTIVE',0,'DRAINING',NULL,decode(?,'hex'))",
+            [(string) Str::uuid(), $cohort, hash('sha256', 'synthetic commercial drain')]);
+        $this->getJson('/workspaces/'.$this->workspace)->assertOk()
+            ->assertJsonMissingPath('data.business')->assertJsonMissingPath('data.guidance');
+        $request = $this->request();
+        app(WorkspaceContext::class)->run($this->actor, $this->workspace, function () {
+            $this->assertSame(0, DB::table('workspaces')->count(), 'Raw commercial profile remains fenced');
+            $metadata = DB::table('organization_workspaces')->sole();
+            $this->assertSame($this->workspace, $metadata->public_id);
+            $this->assertFalse(property_exists($metadata, 'business_type_id'));
+            $this->assertFalse(property_exists($metadata, 'current_intent'));
+            $this->assertFalse(property_exists($metadata, 'business_context_version'));
+        }, $request);
+        $this->command($this->transition('rename', 1, ['label' => 'Organization source after commercial retirement']))->assertOk();
+        $this->assertSame(2, $this->owner()->table('source_versions')->count());
+        $this->owner()->table('workspace_memberships')->where('workspace_id', $this->workspaceId)->where('user_id', $this->actor->id)
+            ->update(['status' => 'revoked', 'revoked_at' => now()]);
+        $this->getJson('/workspaces/'.$this->workspace)->assertForbidden();
+        $this->command($this->transition('rename', 2, ['label' => 'Denied after departure']))->assertForbidden();
+        $this->assertSame(2, $this->owner()->table('source_versions')->count());
+    }
+
     public function test_registration_replay_conflict_truthful_projection_and_five_families(): void
     {
         foreach (['meta', 'google', 'snapchat', 'tiktok', 'x', 'business'] as $family) {
@@ -1570,7 +1596,6 @@ class SourceRegistryTest extends TestCase
     {
         $user = User::factory()->create();
         $id = $this->owner()->table('workspaces')->insertGetId(['name' => 'Synthetic source Workspace',
-            'business_type_id' => $this->owner()->table('business_types')->where('key', 'real_estate')->value('id'),
             'slug' => 'bb1-'.Str::uuid(), 'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
         $this->owner()->table('workspace_memberships')->insert(['workspace_id' => $id, 'user_id' => $user->id,
             'role' => 'owner', 'status' => 'active', 'created_at' => now()]);

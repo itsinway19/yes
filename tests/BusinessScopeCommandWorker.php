@@ -103,6 +103,10 @@ try {
         if ($f['operation'] === 'surface') {
             return DB::scalar('SELECT builderad_v2_business_surface(?,?::uuid,?)', [$f['session'], $f['business'], $f['read_grant']]);
         }
+        if ($f['operation'] === 'internal-team') {
+            return DB::scalar('SELECT builderad_v2_internal_team_command(?,?::uuid,?::uuid,?::uuid,?,?::uuid,?,?::jsonb)',
+                [$f['session'], $f['business'], $f['command'], $f['workspace'], $f['effect'], $f['recipient'], $f['expected'], json_encode($f['selection'])]);
+        }
         if ($f['operation'] === 'history') {
             return DB::scalar('SELECT builderad_v2_business_history(?,?::uuid,?,\'context\',0)', [$f['session'], $f['business'], $f['read_grant']]);
         }

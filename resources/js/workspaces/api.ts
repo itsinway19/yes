@@ -1,9 +1,9 @@
 import { api } from '../spa/api';
 import type { components } from '../api/generated/application';
 
-export type CreateBusiness = components['schemas']['CreateBusiness'];
+export type CreateOrganization = components['schemas']['CreateOrganization'];
 export type WorkspaceIndexResource = components['schemas']['WorkspaceIndexResource'];
-export type BusinessCreationResource = components['schemas']['BusinessCreationResource'];
+export type OrganizationCreationResource = components['schemas']['OrganizationCreationResource'];
 
 export async function readWorkspaces(headers: Record<string, string> = {}, signal?: AbortSignal) {
     const result = await api.GET('/workspaces', { headers, signal });
@@ -11,15 +11,15 @@ export async function readWorkspaces(headers: Record<string, string> = {}, signa
     return result.data;
 }
 
-export async function readCreation(additional: boolean, headers: Record<string, string> = {}, signal?: AbortSignal) {
-    const result = await api.GET('/business/start', { params: { query: additional ? { new: '1' } : {} }, headers, signal });
-    if (!result.data) throw Error('Business creation projection is unavailable');
+export async function readCreation(headers: Record<string, string> = {}, signal?: AbortSignal) {
+    const result = await api.GET('/organizations/new', { headers, signal });
+    if (!result.data) throw Error('Organization creation projection is unavailable');
     return result.data;
 }
 
-export async function createBusiness(body: CreateBusiness) {
-    const result = await api.POST('/business/start', { body });
-    if (!result.data) throw Error('Business creation acknowledgement is unavailable');
+export async function createOrganization(body: CreateOrganization) {
+    const result = await api.POST('/organizations', { body });
+    if (!result.data) throw Error('Organization creation acknowledgement is unavailable');
     return result.data;
 }
 

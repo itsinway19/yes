@@ -139,8 +139,7 @@ class CommercialMarketPreparationTest extends TestCase
         $this->getJson('/internal/commercial')->assertOk()->assertJsonPath('data.founderAccess', true)->assertJsonCount(1, 'data.markets');
         $this->assertSame(4, $db->table('commercial_command_results')->count());
         $beneficiary = User::factory()->create();
-        $workspace = $db->table('workspaces')->insertGetId(['business_type_id' => $db->table('business_types')->where('key', 'professional_services')->value('id'),
-            'name' => 'Founder beneficiary', 'slug' => 'founder-'.Str::uuid7(), 'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
+        $workspace = $db->table('workspaces')->insertGetId(['name' => 'Founder beneficiary', 'slug' => 'founder-'.Str::uuid7(), 'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
         $db->table('workspace_memberships')->insert(['workspace_id' => $workspace, 'user_id' => $beneficiary->id, 'role' => 'owner', 'status' => 'active', 'created_at' => now()]);
         $db->table('workspace_ownerships')->insert(['workspace_id' => $workspace, 'responsible_owner_user_id' => $beneficiary->id, 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
         $page = $this->getJson('/internal/commercial')->assertOk();

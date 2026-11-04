@@ -29,7 +29,7 @@ final class ServiceWorkspaceContext
                     [$servicePublicId, $credential, $workspacePublicId],
                 );
 
-                $workspace = Workspace::query()->whereKey($workspaceId)->first();
+                $workspace = Workspace::organizationalQuery()->whereKey($workspaceId)->first();
                 if (! $workspace) {
                     throw new AuthorizationException('Service Workspace authority is unavailable.');
                 }

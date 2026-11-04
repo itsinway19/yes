@@ -47,7 +47,6 @@ class CoreDependencyBoundaryTest extends TestCase
         $root = dirname(__DIR__, 2);
         // Existing presentation/catalog and evidence-classification references, not live integration authority.
         $exceptions = [
-            'app/Business/BusinessContext.php' => ['App\\Providers\\Ads\\Provider'],
             'app/Business/PromotionProduct.php' => ['App\\Providers\\Ads\\Provider'],
             'app/Sources/EffectiveCapability.php' => ['App\\Providers\\Ads\\ProviderEvidenceValidity'],
         ];

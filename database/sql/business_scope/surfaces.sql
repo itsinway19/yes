@@ -194,7 +194,10 @@ BEGIN
      UNION ALL SELECT x->>'valid_until' FROM jsonb_array_elements(proof->'qualifications') x
     ) limits WHERE value IS NOT NULL;
     delegation_options:=delegation_options||jsonb_build_array(jsonb_build_object('grant_id',g.id::text,'action',write_action,
-     'can_issue',parent_row.delegable AND jsonb_array_length(proof->'grants')<16,'max_expires_at',expiry,'chain_depth',jsonb_array_length(proof->'grants')));
+     'can_issue',parent_row.delegable AND jsonb_array_length(proof->'grants')<16,
+     'can_delegate_onward',proof#>>'{qualification,policy_id}' NOT IN('internal_client_file_admin_v1','business_declaration_team_admin_v1'),
+     'can_choose_agency',read_selection->>'realm_kind'='direct' AND proof#>>'{qualification,policy_id}' NOT IN('internal_client_file_admin_v1','business_declaration_team_admin_v1'),
+     'max_expires_at',expiry,'chain_depth',jsonb_array_length(proof->'grants')));
    END IF;
    proofs:=proofs||jsonb_build_array(proof);
   EXCEPTION WHEN insufficient_privilege THEN CONTINUE; END;
@@ -221,6 +224,14 @@ BEGIN
    JOIN public.workspaces w ON w.id=x.workspace_id WHERE w.id=ANY(workspace_ids) AND builderad_private.workspace_allowed(w.id,actor,true);
  END IF;
  result:=jsonb_build_object('business',public.builderad_v2_business_read(p_session,p_business,read_selection),'authority_selection',read_selection,
+ 'private_history_available',read_selection->>'realm_kind'<>'internal_team' AND read_proof#>>'{qualification,policy_id}'<>'business_declaration_team_admin_v1',
+ 'direct_team_enrollment_available',read_proof#>>'{qualification,policy_id}'='self_declared_draft' AND NOT EXISTS(SELECT 1 FROM public.authority_qualification_receipts WHERE policy_id='business_declaration_team_admin_v1' AND target_ref=p_business AND target_kind='business' AND subject_user_id=actor AND status='active'),
+ 'purpose_statement',jsonb_build_object('authority_scope','own_business_statement_only','establishes_external_authority',false,
+  'enrollment_available',read_proof#>>'{qualification,policy_id}'='self_declared_draft' AND actor=(SELECT created_by FROM public.businesses WHERE id=b),
+  'previous_grant',coalesce((SELECT max(x.id)::text FROM public.security_action_grants x JOIN public.authority_qualification_receipts qualified ON qualified.qualification_id=x.qualification_id WHERE x.business_id=b AND x.subject_user_id=actor AND qualified.policy_id='business_purpose_statement_v1'),'0'),
+  'current_grant',(SELECT jsonb_build_object('id',x.id::text,'version',x.version) FROM public.security_action_grants x JOIN public.authority_qualification_receipts qualified ON qualified.qualification_id=x.qualification_id
+   WHERE x.business_id=b AND x.subject_user_id=actor AND qualified.policy_id='business_purpose_statement_v1'
+    AND EXISTS(SELECT 1 FROM jsonb_array_elements(fact_options->'purpose') admitted WHERE admitted->>'grant_id'=x.id::text) ORDER BY x.id DESC LIMIT 1)),
  'context_write_options',options,'fact_write_options',fact_options,'data_use',jsonb_build_object('bindings',bindings,'bindings_limit',64,'bindings_more',bindings_more),
  'collaboration',jsonb_build_object('options',link_options,'workspaces',workspace_choices,'relationships',relationships,
   'workspace_limit',32,'workspace_more',cardinality(workspace_candidates)>32,'relationship_limit',64),

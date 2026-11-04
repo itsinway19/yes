@@ -241,23 +241,3 @@ BEGIN
  PERFORM builderad_private.principal(p_session);PERFORM builderad_private.require_business(b,actor,'business.purpose.declare',p_selection,p_session);
  PERFORM builderad_private.record_command(b,actor,cid,'business.purpose.declare',payload,result);PERFORM builderad_private.finish_command();RETURN result;
 END $$;
-
-CREATE FUNCTION builderad_v2_business_purpose_snapshot(p_session text,p_business uuid,p_read bigint,p_purpose uuid DEFAULT NULL) RETURNS jsonb
-LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
-DECLARE b bigint;actor bigint;selection jsonb;context_version bigint;heads jsonb;result jsonb;now_value timestamptz;
-BEGIN
- b:=builderad_private.lock_business(p_business);actor:=builderad_private.principal(p_session,false);selection:=builderad_private.business_selection(p_read);
- IF NOT EXISTS(SELECT 1 FROM public.security_action_grants WHERE id=p_read AND business_id=b AND subject_user_id=actor AND action='business.context.read') THEN RAISE EXCEPTION 'Exact own Business read path required' USING ERRCODE='42501'; END IF;
- PERFORM builderad_private.require_business(b,actor,'business.context.read',selection,p_session);PERFORM builderad_private.principal(p_session);
- SELECT h.context_version INTO context_version FROM public.business_context_heads h WHERE business_id=b FOR SHARE;
- PERFORM 1 FROM public.object_purposes WHERE business_id=b AND(p_purpose IS NULL OR id=p_purpose) ORDER BY id FOR SHARE;
- IF (SELECT count(*) FROM public.object_purposes WHERE business_id=b AND(p_purpose IS NULL OR id=p_purpose))>64 THEN RAISE EXCEPTION 'Select exact Purpose; bounded projection unavailable' USING ERRCODE='22023'; END IF;
- IF p_purpose IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.object_purposes WHERE business_id=b AND id=p_purpose) THEN RAISE EXCEPTION 'Purpose unavailable in this Business' USING ERRCODE='42501'; END IF;
- SELECT coalesce(jsonb_agg(jsonb_build_object('id',h.id,'head_version',h.head_version,'history',
-  (SELECT coalesce(jsonb_agg((to_jsonb(r)-ARRAY['workspace_id','business_id','actor_user_id','actor_generation','ownership_version','business_authority_epoch','command_id']) ORDER BY r.version),'[]') FROM public.object_purpose_revisions r WHERE r.business_id=b AND r.purpose_id=h.id)) ORDER BY h.id),'[]') INTO heads
- FROM public.object_purposes h WHERE h.business_id=b AND(p_purpose IS NULL OR h.id=p_purpose);
- result:=jsonb_build_object('business_public_id',p_business,'heads',heads,'context_version',context_version,'dtm_version',builderad_private.purpose_latest_markets(NULL,b),'scope','native_business_purposes_only');
- IF octet_length(result::text)>2097152 THEN RAISE EXCEPTION 'Complete Purpose projection exceeds bound' USING ERRCODE='22023'; END IF;
- PERFORM builderad_private.principal(p_session);PERFORM builderad_private.require_business(b,actor,'business.context.read',selection,p_session);
- RETURN result||jsonb_build_object('read_at',clock_timestamp());
-END $$;

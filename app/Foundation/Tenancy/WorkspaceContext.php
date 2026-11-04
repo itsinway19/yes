@@ -29,7 +29,7 @@ final class WorkspaceContext
         return $this->execute($principal, $workspacePublicId, $callback, $request, false);
     }
 
-    public function runBusinessMutation(User $principal, string $workspacePublicId, Closure $callback, Request $request): mixed
+    public function runLegacyPurposeHistory(User $principal, string $workspacePublicId, Closure $callback, Request $request): mixed
     {
         return $this->execute($principal, $workspacePublicId, $callback, $request, true);
     }
@@ -43,7 +43,7 @@ final class WorkspaceContext
         return $this->execute($principal, $workspacePublicId, $callback, $request, false, $source);
     }
 
-    private function execute(User $principal, string $workspacePublicId, Closure $callback, Request $request, bool $businessMutation, ?string $nativeSource = null): mixed
+    private function execute(User $principal, string $workspacePublicId, Closure $callback, Request $request, bool $legacyHistory, ?string $nativeSource = null): mixed
     {
         $connection = DB::connection();
 
@@ -56,13 +56,15 @@ final class WorkspaceContext
             throw new AuthorizationException('An active workspace membership is required.');
         }
 
-        return $connection->transaction(function () use ($connection, $principal, $workspacePublicId, $callback, $request, $businessMutation, $nativeSource) {
+        return $connection->transaction(function () use ($connection, $principal, $workspacePublicId, $callback, $request, $legacyHistory, $nativeSource) {
             $this->principals->activate($principal);
             try {
                 if ($nativeSource !== null) {
                     $connection->selectOne('SELECT builderad_v2_native_source_enter(?::uuid,?::uuid)', [$workspacePublicId, $nativeSource]);
                 }
-                $connection->selectOne('SELECT builderad_v2_legacy_enter(?::uuid)', [$workspacePublicId]);
+                if ($legacyHistory) {
+                    $connection->selectOne('SELECT builderad_v2_legacy_enter(?::uuid)', [$workspacePublicId]);
+                }
             } catch (QueryException $error) {
                 if ($error->getCode() !== '42501') {
                     throw $error;
@@ -75,7 +77,7 @@ final class WorkspaceContext
             }
             $this->sessions->assertCurrent($request, $principal, $generation);
 
-            $workspace = Workspace::query()
+            $workspace = Workspace::organizationalQuery()
                 ->where('public_id', $workspacePublicId)
                 ->where('status', 'active')
                 ->first();
@@ -95,11 +97,7 @@ final class WorkspaceContext
             }
 
             try {
-                if ($businessMutation) {
-                    $connection->selectOne('SELECT builderad_business_context_begin(?,?)', [$workspace->getKey(), SessionAuthority::sessionKey($request)]);
-                } else {
-                    $connection->selectOne('SELECT builderad_select_workspace_context(?)', [$workspace->getKey()]);
-                }
+                $connection->selectOne('SELECT builderad_select_workspace_context(?)', [$workspace->getKey()]);
             } catch (QueryException $exception) {
                 if ($exception->getCode() !== '42501') {
                     throw $exception;
@@ -125,7 +123,7 @@ final class WorkspaceContext
                 throw new AuthorizationException('An explicit Workspace view grant is required.');
             }
 
-            $workspace = Workspace::query()
+            $workspace = Workspace::organizationalQuery()
                 ->whereKey($workspace->getKey())
                 ->where('status', 'active')
                 ->first();

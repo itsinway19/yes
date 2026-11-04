@@ -21,9 +21,13 @@ if (isset($fixture['entry_external_gate'])) {
     }
     $gate = $fixture['entry_external_gate'];
     $state = DB::selectOne('SELECT pg_backend_pid() AS pid, pg_current_xact_id_if_assigned()::text AS xid');
-    file_put_contents($gate['ready'], json_encode($state, JSON_THROW_ON_ERROR), LOCK_EX);
-    echo 'ENTRY_READY'.PHP_EOL;
-    flush();
+    file_put_contents($gate['ready'], json_encode((array) $state + ['run' => $fixture['run'], 'command' => $fixture['command']], JSON_THROW_ON_ERROR), LOCK_EX);
+    // Test-only transport variation: readiness is already durable even when
+    // stdout cannot be delivered until the parent releases this worker.
+    if (empty($fixture['defer_entry_ready_stdout'])) {
+        echo 'ENTRY_READY'.PHP_EOL;
+        flush();
+    }
     $deadline = hrtime(true) + 30_000_000_000;
     do {
         clearstatcache(true, $gate['release']);
@@ -35,6 +39,10 @@ if (isset($fixture['entry_external_gate'])) {
         }
         usleep(10000);
     } while (true);
+    if (! empty($fixture['defer_entry_ready_stdout'])) {
+        echo 'ENTRY_READY'.PHP_EOL;
+        flush();
+    }
 }
 try {
     $result = DB::transaction(function () use ($fixture) {

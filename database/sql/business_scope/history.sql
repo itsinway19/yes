@@ -2,7 +2,7 @@
 -- historical authority, or a reinterpretation of legacy Workspace versions.
 CREATE FUNCTION builderad_v2_business_history(p_session text,p_business uuid,p_read bigint,p_kind text,p_after bigint DEFAULT 0) RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
-DECLARE b bigint;actor bigint;selection jsonb;items jsonb;more boolean;cursor_value bigint;imported boolean;
+DECLARE b bigint;actor bigint;selection jsonb;items jsonb;more boolean;cursor_value bigint;imported boolean;proof jsonb;
 BEGIN
  IF p_kind IS NULL OR p_kind NOT IN('context','markets','intent','preferences') OR p_after IS NULL OR p_after<0 THEN
   RAISE EXCEPTION 'Typed history owner and cursor required' USING ERRCODE='22023';
@@ -12,7 +12,8 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.security_action_grants WHERE id=p_read AND business_id=b AND subject_user_id=actor AND action='business.context.read') THEN
   RAISE EXCEPTION 'Explicit own Business read path required' USING ERRCODE='42501';
  END IF;
- PERFORM builderad_private.require_business(b,actor,'business.context.read',selection,p_session);
+ proof:=builderad_private.require_business(b,actor,'business.context.read',selection,p_session);
+ IF selection->>'realm_kind'='internal_team' OR proof#>>'{qualification,policy_id}'='business_declaration_team_admin_v1' THEN RAISE EXCEPTION 'Current declaration team access does not release private history' USING ERRCODE='42501'; END IF;
  PERFORM builderad_private.principal(p_session);
  WITH transitions AS (
   SELECT event_id,before_context_version prior,after_context_version revision,before_context_version,after_context_version,before_value,after_value,recorded_at

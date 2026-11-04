@@ -35,12 +35,25 @@ BEGIN
    OR EXISTS(SELECT 1 FROM jsonb_array_elements(proof->'grants') grant_item(value) WHERE grant_item.value->>'expires_at' IS NOT NULL AND(p_expires IS NULL OR p_expires>(grant_item.value->>'expires_at')::timestamptz))
   THEN RAISE EXCEPTION 'Delegation exceeds complete parent validity window' USING ERRCODE='42501'; END IF;
   IF NOT EXISTS(SELECT 1 FROM public.principal_lifecycles l JOIN public.users u ON u.id=l.user_id WHERE l.user_id=recipient AND l.status='current' AND l.principal_class='advertiser' AND u.email_verified_at IS NOT NULL) THEN RAISE EXCEPTION 'Current recipient required' USING ERRCODE='42501'; END IF;
+  IF root_q.policy_id='internal_client_file_admin_v1' AND(p_delegable OR p_realm_workspace IS NULL
+   OR p_realm_workspace IS DISTINCT FROM(SELECT public_id FROM public.workspaces WHERE id=parent.delegation_workspace_id)
+   OR p_action NOT IN('business.context.read','business.context.manage','business.intent.declare','business.markets.declare','business.preferences.manage'))
+  THEN RAISE EXCEPTION 'Internal staff authority is exact, team-bound and nondelegable' USING ERRCODE='42501'; END IF;
+  IF root_q.policy_id='business_declaration_team_admin_v1' AND(p_delegable OR p_realm_workspace IS NOT NULL
+   OR p_action NOT IN('business.context.read','business.context.manage','business.intent.declare','business.markets.declare','business.preferences.manage'))
+  THEN RAISE EXCEPTION 'Independent staff rights are exact, direct and nondelegable' USING ERRCODE='42501'; END IF;
   IF p_realm_workspace IS NOT NULL THEN
    SELECT id INTO realm_id FROM public.workspaces WHERE public_id=p_realm_workspace;
-   IF realm_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.business_workspace_links relationship JOIN public.authority_qualification_receipts qualified_link ON qualified_link.qualification_id=relationship.authority_ref WHERE relationship.business_id=b AND relationship.workspace_id=realm_id AND relationship.kind='agency' AND relationship.status='active' AND relationship.valid_from<=clock_timestamp() AND(relationship.valid_until IS NULL OR relationship.valid_until>clock_timestamp()) AND qualified_link.status='active' AND qualified_link.target_kind='business' AND qualified_link.target_ref=p_business AND qualified_link.issuer_kind<>'self_declared_draft' AND 'business.link.manage'=ANY(qualified_link.allowed_actions) AND qualified_link.valid_from<=clock_timestamp() AND(qualified_link.valid_until IS NULL OR qualified_link.valid_until>clock_timestamp()))
+   IF root_q.policy_id='internal_client_file_admin_v1' THEN
+    IF realm_id IS DISTINCT FROM parent.delegation_workspace_id OR NOT EXISTS(SELECT 1 FROM public.business_workspace_links relationship
+     WHERE relationship.business_id=b AND relationship.workspace_id=realm_id AND relationship.kind='internal_team' AND relationship.status='active'
+     AND root_q.evidence_ref='internal-team:'||relationship.link_id::text)
+     OR NOT EXISTS(SELECT 1 FROM public.workspace_memberships WHERE workspace_id=realm_id AND user_id=recipient AND status='active')
+    THEN RAISE EXCEPTION 'Current internal file team recipient required' USING ERRCODE='42501'; END IF;
+   ELSIF realm_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.business_workspace_links relationship JOIN public.authority_qualification_receipts qualified_link ON qualified_link.qualification_id=relationship.authority_ref WHERE relationship.business_id=b AND relationship.workspace_id=realm_id AND relationship.kind='agency' AND relationship.status='active' AND relationship.valid_from<=clock_timestamp() AND(relationship.valid_until IS NULL OR relationship.valid_until>clock_timestamp()) AND qualified_link.status='active' AND qualified_link.target_kind='business' AND qualified_link.target_ref=p_business AND qualified_link.issuer_kind<>'self_declared_draft' AND 'business.link.manage'=ANY(qualified_link.allowed_actions) AND qualified_link.valid_from<=clock_timestamp() AND(qualified_link.valid_until IS NULL OR qualified_link.valid_until>clock_timestamp()))
     OR NOT EXISTS(SELECT 1 FROM public.workspace_memberships WHERE workspace_id=realm_id AND user_id=recipient AND status='active') THEN RAISE EXCEPTION 'Qualified agency and recipient team required' USING ERRCODE='42501'; END IF;
   END IF;
-  IF parent.delegation_realm_kind='agency' AND parent.delegation_workspace_id IS DISTINCT FROM realm_id THEN RAISE EXCEPTION 'Agency authority cannot escape its realm' USING ERRCODE='42501'; END IF;
+  IF parent.delegation_realm_kind IN('agency','internal_team') AND parent.delegation_workspace_id IS DISTINCT FROM realm_id THEN RAISE EXCEPTION 'Organizational authority cannot escape its realm' USING ERRCODE='42501'; END IF;
   PERFORM builderad_private.start_command(actor,p_session,p_command,'business.grant.issue',jsonb_build_object('business_id',b),proof);
   q.qualification_id:=uuidv7();q.policy_id:='bounded_parent_delegation';q.policy_version:=1;q.issuer_kind:='existing_grant';q.issuer_grant_id:=parent.id;
   q.subject_user_id:=recipient;q.target_kind:='business';q.target_ref:=p_business;q.allowed_actions:=ARRAY[p_action];q.evidence_ref:='command:'||p_command::text;q.evidence_digest:=payload;
@@ -49,7 +62,7 @@ BEGIN
   g.id:=nextval('public.security_action_grants_id_seq');g.subject_user_id:=recipient;g.granted_by:=actor;g.source:='qualified_delegation';g.action:=p_action;g.scope_kind:='business';g.business_id:=b;
   SELECT generation INTO g.subject_generation FROM public.principal_lifecycles WHERE user_id=recipient;
   g.reason:='Bounded explicit parent delegation';g.status:='active';g.version:=1;g.expires_at:=p_expires;g.created_at:=clock_timestamp();g.updated_at:=g.created_at;g.runtime_lock_marker:=false;
-  g.qualification_id:=q.qualification_id;g.parent_grant_id:=parent.id;g.delegable:=p_delegable;g.delegation_realm_kind:=CASE WHEN realm_id IS NULL THEN 'direct' ELSE 'agency' END;g.delegation_workspace_id:=realm_id;
+  g.qualification_id:=q.qualification_id;g.parent_grant_id:=parent.id;g.delegable:=p_delegable;g.delegation_realm_kind:=CASE WHEN realm_id IS NULL THEN 'direct' WHEN root_q.policy_id='internal_client_file_admin_v1' THEN 'internal_team' ELSE 'agency' END;g.delegation_workspace_id:=realm_id;
   PERFORM builderad_private.permit('public.security_action_grants','insert',NULL,to_jsonb(g));INSERT INTO public.security_action_grants SELECT(g).*;
  ELSE
   SELECT * INTO old_g FROM public.security_action_grants WHERE id=p_grant AND business_id=b AND scope_kind='business' FOR UPDATE;

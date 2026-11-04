@@ -1,12 +1,8 @@
 <?php
 
-use App\Business\ObjectPurpose;
-use App\Foundation\Tenancy\WorkspaceContext;
-use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\BusinessAuthorityFixture;
-use Tests\Support\ObjectPurposeTestCase;
 
 // Included only by the guarded Business browser fixture after isolated DB checks.
 $db = DB::connection('pgsql_migrations');
@@ -18,20 +14,11 @@ if ($mode === 'legacy-history-withdraw') {
     }
 } elseif ($mode === 'legacy-history-setup') {
     $workspace = $db->table('workspaces')->select('id', 'public_id')->where('id', $base['a']['workspaces'][0]['id'])->sole();
-    $command = ObjectPurposeTestCase::command();
-    $command['declaration']['meaning'] = 'غرض إعلاني أصلي قبل الإطلاق';
-    $first = app(WorkspaceContext::class)->run($owner, $workspace->public_id,
-        fn (Workspace $w) => app(ObjectPurpose::class)->write($request, $w, $command), $request);
-    $command['command_id'] = (string) Str::uuid();
-    $command['purpose_id'] = $first['purpose_id'];
-    $command['expected_version'] = 1;
-    $command['operation'] = 'correct';
-    $command['supersedes_revision_id'] = $first['revision_id'];
-    $command['correction_reason'] = 'تصحيح أصلي موثق في الاختبار';
-    $command['confirmations']['transition'] = true;
-    $command['declaration']['meaning'] = 'غرض إعلاني أصلي بعد التصحيح';
-    $second = app(WorkspaceContext::class)->run($owner, $workspace->public_id,
-        fn (Workspace $w) => app(ObjectPurpose::class)->write($request, $w, $command), $request);
+    if (($base['legacy_purpose']['workspace'] ?? null) !== $workspace->public_id) {
+        throw new RuntimeException('Historical Purpose must be seeded before retirement, never by a target writer');
+    }
+    $first = $base['legacy_purpose']['first'];
+    $second = $base['legacy_purpose']['second'];
     $business = $scope->create($request, (string) Str::uuid(), 'نشاط السجل السابق المؤهل', null);
     $businessId = $db->table('businesses')->where('public_id', $business['business_public_id'])->value('id');
     $read = BusinessAuthorityFixture::root($businessId, $recipient->id, 'business.context.read');

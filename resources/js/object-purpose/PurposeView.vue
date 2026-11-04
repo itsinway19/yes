@@ -6,7 +6,7 @@ import { locale } from '@/spa/locale';
 import type { PurposeAcknowledgement } from './api';
 import type { PurposeItem, PurposeIntent } from '@/types/object-purpose';
 import { computed, ref } from 'vue';
-const props = defineProps<{workspace: {public_id:string;name:string}; projection: {state:string;items:PurposeItem[];current_context_version:number;latest_dtm_event_context_version:number;effective_at:string;known_at:string}; selectedPurpose:string|null; business:{currentIntent:{value:PurposeIntent|null;version:number}}}>();
+const props = defineProps<{workspace: {public_id:string;name:string}; projection: {state:string;items:PurposeItem[];current_context_version:number;latest_dtm_event_context_version:number;effective_at:string;known_at:string}; selectedPurpose:string|null; canReviseHistory:boolean; business:{currentIntent:{value:PurposeIntent|null;version:number}}}>();
 const { t } = useBusinessCopy(locale);
 const emit = defineEmits<{ saved: [reply: PurposeAcknowledgement] }>();
 const editor = ref<{ hasUnsaved: () => boolean; pending: () => boolean }>();
@@ -15,10 +15,11 @@ const selected = computed(() => props.projection.items.find(item => item.purpose
 </script>
 <template>
 <section>
-    <h1>{{ t('purposeTitle') }}</h1><p>{{ workspace.name }}</p>
-    <Link class="biz-link" :to="`/workspaces/${workspace.public_id}/business`">{{ t('context') }}</Link>
+    <h1>{{ locale === 'ar' ? 'تاريخ تصريحات الأغراض الأصلية' : 'Original Purpose statement history' }}</h1><p>{{ workspace.name }}</p>
+    <p>{{ locale === 'ar' ? 'تصريحات محفوظة بسندها الأصلي. يمكنك تصحيح تصريح موجود أو سحبه ضمن صلاحياتك الحالية؛ إنشاء أغراض النشاط وإدارتها متاحان داخل النشاط التجاري المستقل.' : 'Statements retained under their original authority. Current qualified owners may correct or withdraw an existing statement. Create and manage current business statements within the independent Business.' }}</p>
+    <Link class="biz-link" :to="`/workspaces/${workspace.public_id}/commercial-history`">{{ t('context') }}</Link>
     <p v-if="projection.state === 'UNKNOWN'">{{ t('purposeUnknown') }}</p>
-    <ul v-if="!selectedPurpose"><li v-for="item in projection.items" :key="item.purpose_id"><Link class="biz-link" :to="`/workspaces/${workspace.public_id}/object-purposes/${item.purpose_id}`">{{ t('purposeRead') }} · {{ item.applicable?.snapshot.meaning ?? item.purpose_id }} · {{ item.head_version }}</Link></li></ul>
+    <ul v-if="!selectedPurpose"><li v-for="item in projection.items" :key="item.purpose_id"><Link class="biz-link" :to="`/workspaces/${workspace.public_id}/purpose-history/${item.purpose_id}`">{{ t('purposeRead') }} · {{ item.applicable?.snapshot.meaning ?? item.purpose_id }} · {{ item.head_version }}</Link></li></ul>
     <section v-if="selected" class="grid gap-4" style="overflow-wrap:anywhere">
         <p>{{ t('purposeRevision') }} · {{ selected.applicable?.version ?? '—' }} · {{ selected.purpose_id }}</p>
         <p v-if="selected.relationship_revalidation_required" role="status">{{ t('purposeRevalidation') }}</p>
@@ -39,6 +40,6 @@ const selected = computed(() => props.projection.items.find(item => item.purpose
             <p v-if="revision.supersedes_revision_id">{{ t('purposeAffected') }}: {{ revision.supersedes_revision_id }} · {{ revision.affected_revision_ids.join(', ') }}</p>
         </article>
     </section>
-    <ObjectPurposeEditor ref="editor" :key="selectedPurpose ?? 'new'" :workspace-id="workspace.public_id" :purpose="selected" :context-version="projection.current_context_version" :dtm-transition-version="projection.latest_dtm_event_context_version" :current-intent="business.currentIntent" @saved="emit('saved', $event)" />
+    <ObjectPurposeEditor v-if="selected && canReviseHistory" history-only ref="editor" :key="selectedPurpose ?? 'new'" :workspace-id="workspace.public_id" :purpose="selected" :context-version="projection.current_context_version" :dtm-transition-version="projection.latest_dtm_event_context_version" :current-intent="business.currentIntent" @saved="emit('saved', $event)" />
 </section>
 </template>

@@ -162,7 +162,6 @@ class CustomerAdministrationTest extends TestCase
         $this->actingAs($owner)->post('/workspaces', ['name' => 'Customer Space', 'slug' => 'customer-space'])->assertRedirect();
         $db = DB::connection('pgsql_migrations');
         $workspace = $db->table('workspaces')->where('slug', 'customer-space')->first();
-        $this->post('/workspaces/'.$workspace->public_id.'/business', ['business_type_id' => $db->table('business_types')->where('key', 'real_estate')->value('id'), 'version' => 0])->assertRedirect();
         $workspace = $db->table('workspaces')->where('id', $workspace->id)->first();
 
         return [$owner, $workspace];

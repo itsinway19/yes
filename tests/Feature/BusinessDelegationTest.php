@@ -68,6 +68,60 @@ final class BusinessDelegationTest extends TestCase
         $this->assertSame(7, DB::connection('pgsql_migrations')->table('security_action_grants')->where('scope_kind', 'business')->count());
     }
 
+    public function test_client_files_created_without_clients_cannot_be_assigned_to_employees_by_draft_or_workspace_membership(): void
+    {
+        $manager = User::factory()->create();
+        $employees = [User::factory()->create(), User::factory()->create()];
+        $db = DB::connection('pgsql_migrations');
+        $this->request($manager);
+        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($manager, 1);
+        $this->post('/workspaces', ['name' => 'Internal agency team', 'slug' => 'internal-agency-team'])->assertRedirect();
+        $workspace = $db->table('workspaces')->where('slug', 'internal-agency-team')->sole();
+        foreach ($employees as $employee) {
+            $db->table('workspace_memberships')->insert(['workspace_id' => $workspace->id, 'user_id' => $employee->id,
+                'role' => 'member', 'status' => 'active', 'created_at' => now()]);
+        }
+        for ($client = 1; $client <= 3; $client++) {
+            $this->actingAs($manager);
+            $draft = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'External client '.$client])
+                ->assertCreated()->assertJsonPath('data.state', 'declared_draft')->json('data');
+            $base = '/api/businesses/'.$draft['business_public_id'];
+            $this->putJson($base.'/context', ['command_id' => (string) Str::uuid(), 'name' => 'Internal client file '.$client,
+                'business_type_id' => null, 'expected_context' => 0,
+                'authority_selection' => $this->selection($draft['grant_refs']['business.context.manage'])])->assertOk();
+            $this->postJson($base.'/workspace-links', ['command_id' => (string) Str::uuid(),
+                'workspace_public_id' => $workspace->public_id, 'kind' => 'collaboration', 'effect' => 'add', 'expected_revision' => 0,
+                'authority_selection' => $this->selection($draft['grant_refs']['business.link.manage'])])->assertOk();
+            $this->postJson($base.'/workspace-links', ['command_id' => (string) Str::uuid(),
+                'workspace_public_id' => $workspace->public_id, 'kind' => 'agency', 'effect' => 'add', 'expected_revision' => 0,
+                'authority_selection' => $this->selection($draft['grant_refs']['business.link.manage'])])->assertForbidden();
+            foreach ($employees as $employee) {
+                foreach ([null, $workspace->public_id] as $realm) {
+                    $this->postJson($base.'/grants', ['command_id' => (string) Str::uuid(),
+                        'authority_selection' => $this->selection($draft['grant_refs']['business.context.read']),
+                        'effect' => 'issue', 'grantee_public_id' => $employee->public_id, 'action' => 'business.context.read',
+                        'parent_grant_id' => $draft['grant_refs']['business.context.read'], 'grant_id' => null,
+                        'expected_grant' => 0, 'expires_at' => null, 'delegable' => false, 'realm_workspace_public_id' => $realm])->assertForbidden();
+                }
+            }
+            foreach ($employees as $employee) {
+                $this->actingAs($employee)->postJson($base.'/read', [
+                    'authority_selection' => $this->selection($draft['grant_refs']['business.context.read']),
+                ])->assertForbidden();
+                $this->putJson($base.'/context', ['command_id' => (string) Str::uuid(), 'name' => 'Unauthorized change',
+                    'business_type_id' => null, 'expected_context' => 1,
+                    'authority_selection' => $this->selection($draft['grant_refs']['business.context.manage'])])->assertForbidden();
+                $this->getJson('/api/businesses')->assertOk()->assertJsonCount(0, 'data.items');
+            }
+        }
+        $this->assertSame(3, $db->table('users')->count(), 'No external client account was created.');
+        $this->assertSame(3, $db->table('businesses')->count());
+        $this->assertSame(21, $db->table('security_action_grants')->where('scope_kind', 'business')->count());
+        $this->assertSame(0, $db->table('security_action_grants')->where('scope_kind', 'business')->where('delegable', true)->count());
+        $this->assertSame(0, $db->table('business_workspace_links')->where('kind', 'agency')->count());
+        $this->assertSame(0, $db->table('security_action_grants')->whereIn('scope_kind', ['source', 'client_data', 'data_use'])->count());
+    }
+
     public function test_two_independent_paths_survive_exact_revocation_and_do_not_resurrect(): void
     {
         $owner = User::factory()->create();

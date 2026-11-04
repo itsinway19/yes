@@ -55,7 +55,7 @@ class WorkspaceCreationTest extends TestCase
             ->where('event', 'workspace_created')->count());
 
         $this->withCredentials()->getJson('/workspaces/'.$workspace->public_id.'/foundation')->assertOk();
-        $this->get('/workspaces/'.$workspace->public_id)->assertRedirect(route('workspaces.business.edit', $workspace->public_id));
+        $this->get('/workspaces/'.$workspace->public_id)->assertOk();
         $this->getJson('/workspaces')->assertOk()
             ->assertJsonCount(1, 'data.workspaces')
             ->assertJsonPath('data.workspaces.0.public_id', $workspace->public_id);

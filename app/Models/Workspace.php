@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Str;
@@ -10,6 +11,12 @@ use Illuminate\Support\Str;
 #[Fillable(['name', 'slug', 'status', 'currency_code', 'timezone'])]
 class Workspace extends Model
 {
+    /** Read only organizational metadata; never the retired commercial profile. */
+    public static function organizationalQuery(): Builder
+    {
+        return static::query()->from('organization_workspaces as workspaces');
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Workspace $workspace): void {

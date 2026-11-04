@@ -11,7 +11,7 @@ use Illuminate\Testing\TestResponse;
 use Symfony\Component\Process\Process;
 use Tests\Support\ApplicationContractAssertions;
 use Tests\Support\BusinessAuthorityFixture;
-use Tests\Support\ObjectPurposeTestCase;
+use Tests\Support\PurposeDeclarationFixture;
 use Tests\TestCase;
 
 final class BusinessPurposeTest extends TestCase
@@ -47,7 +47,7 @@ final class BusinessPurposeTest extends TestCase
     public function test_independent_native_owner_opaque_objects_current_projection_and_exact_replay(): void
     {
         [$b, $selection] = $this->setupPurpose();
-        $command = ObjectPurposeTestCase::command();
+        $command = PurposeDeclarationFixture::command();
         $command['declaration']['end_condition'] = null;
         $result = $this->write($b, $selection, $command)->assertCreated()->json('data');
         $this->assertSame($result, $this->write($b, $selection, $command)->assertCreated()->json('data'));
@@ -73,9 +73,9 @@ final class BusinessPurposeTest extends TestCase
         [$b, $selection] = $this->setupPurpose();
         $wrong = $selection;
         $wrong['requirements'][0]['leaf_grant_id'] = $b['grant_refs']['business.context.manage'];
-        $this->write($b, $wrong, ObjectPurposeTestCase::command())->assertForbidden();
+        $this->write($b, $wrong, PurposeDeclarationFixture::command())->assertForbidden();
         $other = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Other business'])->assertCreated()->json('data');
-        $this->write($other, $selection, ObjectPurposeTestCase::command())->assertForbidden();
+        $this->write($other, $selection, PurposeDeclarationFixture::command())->assertForbidden();
         $this->read($b)->assertOk()->assertJsonCount(0, 'data.projection.items');
         foreach (['object_purposes', 'object_purpose_revisions', 'object_purpose_command_receipts'] as $table) {
             $this->assertFalse((bool) DB::scalar("SELECT has_table_privilege(current_user, ?, 'INSERT,UPDATE,DELETE')", [$table]));
@@ -85,7 +85,7 @@ final class BusinessPurposeTest extends TestCase
     public function test_correct_and_withdraw_preserve_temporal_history_and_known_time(): void
     {
         [$b, $selection] = $this->setupPurpose();
-        $command = ObjectPurposeTestCase::command();
+        $command = PurposeDeclarationFixture::command();
         $first = $this->write($b, $selection, $command)->assertCreated()->json('data');
         $known = $this->read($b)->assertOk()->json('data.projection.known_at');
         $command = array_replace($command, ['command_id' => (string) Str::uuid(), 'purpose_id' => $first['purpose_id'], 'expected_version' => 1,
@@ -104,18 +104,18 @@ final class BusinessPurposeTest extends TestCase
     public function test_revoked_path_and_stale_context_never_publish_or_confirm_success(): void
     {
         [$b, $selection, $actor] = $this->setupPurpose();
-        $this->write($b, $selection, ObjectPurposeTestCase::command(), 1)->assertStatus(409);
+        $this->write($b, $selection, PurposeDeclarationFixture::command(), 1)->assertStatus(409);
         $id = $selection['requirements'][0]['leaf_grant_id'];
         $q = DB::connection('pgsql_migrations')->table('security_action_grants')->where('id', $id)->value('qualification_id');
         BusinessAuthorityFixture::revokeQualification($q, $actor->id);
-        $this->write($b, $selection, ObjectPurposeTestCase::command())->assertForbidden();
+        $this->write($b, $selection, PurposeDeclarationFixture::command())->assertForbidden();
         $this->read($b)->assertOk()->assertJsonCount(0, 'data.projection.items');
     }
 
     public function test_current_markets_reference_revalidates_and_stale_head_or_reference_cannot_write(): void
     {
         [$b, $selection] = $this->setupPurpose();
-        $command = ObjectPurposeTestCase::command();
+        $command = PurposeDeclarationFixture::command();
         $command['declaration']['dtm'] = ['mode' => 'current_alignment', 'version' => 0, 'countries' => [], 'subset' => [], 'statement' => 'Reviewed current markets'];
         $command['confirmations']['dtm'] = true;
         $first = $this->write($b, $selection, $command)->assertCreated()->json('data');
@@ -137,7 +137,7 @@ final class BusinessPurposeTest extends TestCase
     public function test_future_declaration_is_scheduled_and_never_inferred_current_before_its_effective_time(): void
     {
         [$b, $selection] = $this->setupPurpose();
-        $command = ObjectPurposeTestCase::command();
+        $command = PurposeDeclarationFixture::command();
         $command['effective_from'] = now()->addHour()->toIso8601String();
         $result = $this->write($b, $selection, $command)->assertCreated()->json('data');
         $this->read($b)->assertOk()->assertJsonPath('data.projection.state', 'UNKNOWN')->assertJsonPath('data.projection.items.0.scheduled_revision_ids', [$result['revision_id']]);
@@ -147,7 +147,7 @@ final class BusinessPurposeTest extends TestCase
     public function test_two_real_deliveries_of_one_new_purpose_command_commit_one_native_identity_and_same_receipt(): void
     {
         [$b, $selection, $actor] = $this->setupPurpose();
-        $command = ObjectPurposeTestCase::command();
+        $command = PurposeDeclarationFixture::command();
         $request = Request::create('/api/businesses');
         $request->setLaravelSession(app('session')->driver());
         $run = 'purpose-replay-'.Str::uuid();

@@ -3,6 +3,6 @@ import { load, clear } from './state';
 
 const meta = { presentation: { load, clear } };
 export const objectPurposeRoutes: RouteRecordRaw[] = [
-    { path: '/workspaces/:workspace/object-purposes', component: () => import('./ObjectPurposes.vue'), meta },
-    { path: '/workspaces/:workspace/object-purposes/:purpose', component: () => import('./ObjectPurposes.vue'), meta },
+    { path: '/workspaces/:workspace/purpose-history', component: () => import('./ObjectPurposes.vue'), meta },
+    { path: '/workspaces/:workspace/purpose-history/:purpose', component: () => import('./ObjectPurposes.vue'), meta },
 ];

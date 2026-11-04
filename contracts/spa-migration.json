@@ -1,60 +1,150 @@
 {
-  "basis": "Owner-authorized definitive retirement. Local journey acceptance is not final Foundation, CI or release acceptance.",
+  "basis": "Current SPA responsibility ledger after PR56 commercial retirement. Original routes are recorded as retired, not operating journeys. Focused evidence does not establish comprehensive Foundation or release acceptance.",
   "journeys": [
     {
       "id": "workspace-selection",
-      "journey": "Choose an authorized business and reassess eligible owner authority",
-      "routes": ["GET /workspaces", "POST /workspaces/{workspace}/reassess-owner-grant"],
+      "journey": "Choose the organizational membership/resource context and reassess eligible original organizational authority",
+      "routes": [
+        "GET /workspaces",
+        "POST /workspaces/{workspace}/reassess-owner-grant"
+      ],
       "spaBoundary": "/workspaces; reassessment remains an existing Laravel effect endpoint",
-      "businessOwners": ["App\\Security\\WorkspaceAuthority", "App\\Security\\GrantAuthority"],
+      "businessOwners": [
+        "App\\Security\\WorkspaceAuthority",
+        "App\\Security\\GrantAuthority"
+      ],
       "apiContract": "contracts/application.openapi.json",
-      "tests": ["WorkspaceSpaIntegrationTest", "WorkspaceCreationTest", "OwnerGrantReassessmentTest", "tests/Support/workspace-spa-browser.mjs"],
+      "tests": [
+        "WorkspaceSpaIntegrationTest",
+        "WorkspaceCreationTest",
+        "OwnerGrantReassessmentTest",
+        "tests/Support/workspace-spa-browser.mjs"
+      ],
       "status": "LOCAL_JOURNEY_ACCEPTED",
-      "cutover": "WorkspaceController@index serves only the unified SPA shell/resource. Legacy list rendering is unreachable. Links from remaining legacy pages cross through native document navigation. Selected business/context/source destinations remain native until their own cutover."
+      "cutover": "Workspace is the existing organization boundary. It is not a client Business. The selector uses read-only organizational metadata independently of legacy commercial cohorts; original reassessment does not issue retired commercial grants."
     },
     {
       "id": "business-creation",
-      "journey": "Create one classified business, retain uncertain original command, and continue to Goals",
-      "routes": ["GET /business/start", "POST /business/start"],
-      "spaBoundary": "/business/start; Laravel retains the atomic writer and next-journey redirect",
-      "businessOwners": ["App\\Security\\WorkspaceAuthority", "App\\Business\\BusinessContext"],
+      "journey": "Create an independent Business without a Workspace, with the original qualified creator basis",
+      "routes": [
+        "GET /businesses",
+        "GET /businesses/new",
+        "POST /api/businesses"
+      ],
+      "spaBoundary": "Unified SPA with current independent Business or explicit original-history qualification",
+      "businessOwners": [
+        "App\\Foundation\\Business\\BusinessScope"
+      ],
       "apiContract": "contracts/application.openapi.json",
-      "tests": ["WorkspaceSpaIntegrationTest", "BusinessFoundationTest", "tests/application-api-client.test.mjs", "tests/Support/workspace-spa-browser.mjs"],
-      "status": "LOCAL_JOURNEY_ACCEPTED",
-      "cutover": "BusinessContextController@start serves only the unified SPA. The previous Context creation presentation is unreachable. The existing creation key, SQL writer, transaction and non-JSON redirects are preserved. Successful creation continues to canonical Goals in the same unified SPA document; this is not acceptance of the whole advertiser group."
+      "tests": [
+        "BusinessFoundationContractTest",
+        "BusinessDirectTeamTest",
+        "tests/Support/business-surface-browser.mjs"
+      ],
+      "status": "PR56_CORRECTED_FINAL_ACCEPTANCE_PENDING",
+      "cutover": "Business creation is independent. The former business/start POST is410; GET redirects to natural organization registration. No old Context writer or Workspace commercial grant is issued.",
+      "retiredRoutes": [
+        "GET /business/start",
+        "POST /business/start"
+      ]
     },
     {
       "id": "advertiser-goals",
-      "journey": "Choose business goals, priority and per-goal outcomes; review conflicts and saved state without repeating uncertain writes",
-      "routes": ["GET /workspaces/{workspace}/goals", "GET /workspaces/{workspace}/goals/context", "GET /workspaces/{workspace}/goals/review", "POST /workspaces/{workspace}/goals"],
-      "spaBoundary": "Canonical editor and saved review use the shared Vue Router; Laravel retains the existing writer and scoped contextual reads",
-      "businessOwners": ["App\\Business\\AdvertiserGoalPreferences", "App\\Business\\BusinessContext", "App\\Foundation\\Tenancy\\WorkspaceContext"],
+      "journey": "Manage this Business’s declared goals, priority and matching outcomes",
+      "routes": [
+        "PUT /api/businesses/{business}/preferences"
+      ],
+      "spaBoundary": "Unified SPA with current independent Business or explicit original-history qualification",
+      "businessOwners": [
+        "App\\Foundation\\Business\\BusinessScope"
+      ],
       "apiContract": "contracts/application.openapi.json",
-      "tests": ["AdvertiserGoalPreferencesTest", "GoalsSpaIntegrationTest", "GoalsSpaProofTest", "tests/spa-goals-interaction.test.mjs", "tests/Support/goals-spa-browser.mjs", "tests/Support/goals-spa-closure.mjs"],
-      "status": "LOCAL_JOURNEY_ACCEPTED",
-      "cutover": "Canonical HTML routes contain only the unified shell and no business projection. The former Business/Goals Vue renderer and locale adapter are deleted; behavior tests exercise the actual SPA editor. Existing opt-in proof URLs reuse this renderer and shared entry; their production flag is not enabled. Business context, sources and account/security destinations remain native boundaries pending their cutover. Final Foundation, remote CI and B/C/device acceptance remain separate."
+      "tests": [
+        "BusinessPreferenceVariantsTest",
+        "BusinessFactFinalAuthorityTest",
+        "tests/advertiser-workspace.test.mjs"
+      ],
+      "status": "PR56_CORRECTED_FINAL_ACCEPTANCE_PENDING",
+      "cutover": "Business preferences are the only operating owner. Workspace Goals HTTP entrances return410, their writers/editors are removed, and original preferences/events remain protected history.",
+      "retiredRoutes": [
+        "GET /workspaces/{workspace}/goals",
+        "GET /workspaces/{workspace}/goals/context",
+        "GET /workspaces/{workspace}/goals/review",
+        "POST /workspaces/{workspace}/goals"
+      ]
     },
     {
       "id": "business-context",
-      "journey": "Edit classified business name/type, request explicit authority, replace target markets, and replace or clear Current Intent with independent drafts and CAS review",
-      "routes": ["GET /workspaces/{workspace}/business", "POST /workspaces/{workspace}/business", "POST /workspaces/{workspace}/business/authority", "POST /workspaces/{workspace}/business/target-markets", "POST /workspaces/{workspace}/business/current-intent"],
-      "spaBoundary": "Canonical context screen in the shared SPA; existing Laravel continuation remains authoritative and exits natively only for un-migrated destinations",
-      "businessOwners": ["App\\Business\\BusinessContext", "App\\Security\\GrantAuthority", "App\\Foundation\\Tenancy\\WorkspaceContext"],
+      "journey": "Manage independent Business context, markets and explicitly confirmed whole-business intent",
+      "routes": [
+        "PUT /api/businesses/{business}/context",
+        "PUT /api/businesses/{business}/markets",
+        "PUT /api/businesses/{business}/intent",
+        "GET /workspaces/{workspace}/commercial-history"
+      ],
+      "spaBoundary": "Unified SPA with current independent Business or explicit original-history qualification",
+      "businessOwners": [
+        "App\\Foundation\\Business\\BusinessScope"
+      ],
       "apiContract": "contracts/application.openapi.json",
-      "tests": ["WorkspaceSpaIntegrationTest", "BusinessFoundationTest", "CurrentIntentTest", "CurrentIntentSecurityTest", "DeclaredTargetMarketsTest", "DeclaredTargetMarketsSecurityTest", "ArchitectureSourceOptionalityTest", "tests/current-intent-interaction.test.mjs", "tests/target-markets-interaction.test.mjs", "tests/business-context-commands.test.mjs", "tests/Support/business-context-spa-browser.mjs"],
-      "status": "LOCAL_JOURNEY_ACCEPTED",
-      "cutover": "BusinessContextController no longer renders a legacy page. The former Pages/Business/Context renderer is moved into the SPA feature without any legacy imports; its component requirements remain tested. Existing native redirects are preserved; JSON commands acknowledge the same original writers. Memory-only Workspace/form drafts survive same-document suspension and clear on terminal document closure. Sources/Object Purpose and authentication/internal destinations remain pending; this is not complete advertiser or final Foundation/CI acceptance."
+      "tests": [
+        "BusinessFoundationContractTest",
+        "BusinessIntentOptionsTest",
+        "BusinessFactFinalAuthorityTest",
+        "WorkspaceCommercialRetirementTest",
+        "WorkspaceSpaIntegrationTest",
+        "tests/advertiser-workspace.test.mjs"
+      ],
+      "status": "PR56_CORRECTED_FINAL_ACCEPTANCE_PENDING",
+      "cutover": "All old Workspace Context/Markets/Intent HTTP commands return410 and callable SQL writers/preparation are removed. Protected original history has no competing editor. Organization/source metadata and membership remain separate.",
+      "retiredRoutes": [
+        "GET /workspaces/{workspace}/business",
+        "POST /workspaces/{workspace}/business",
+        "POST /workspaces/{workspace}/business/authority",
+        "POST /workspaces/{workspace}/business/target-markets",
+        "POST /workspaces/{workspace}/business/current-intent"
+      ]
     },
     {
       "id": "object-purpose",
-      "journey": "Declare exact finite advertising-object purpose, review canonical temporal history, correct/replace/withdraw with explicit DTM/Intent references and an immutable unresolved command",
-      "routes": ["GET /workspaces/{workspace}/object-purposes", "GET /workspaces/{workspace}/object-purposes/{purpose}", "GET /workspaces/{workspace}/object-purposes/context", "GET /workspaces/{workspace}/object-purposes/{purpose}/context", "POST /workspaces/{workspace}/object-purposes", "POST /workspaces/{workspace}/object-purposes/{purpose}/revisions"],
-      "spaBoundary": "Canonical list/detail and same-document business-context links in the shared SPA; existing raw JSON projections and 201 writers remain canonical",
-      "businessOwners": ["App\\Business\\ObjectPurpose", "App\\Foundation\\Tenancy\\WorkspaceContext", "App\\Security\\SessionAuthority", "App\\Http\\Requests\\ObjectPurposeCommandRequest"],
+      "journey": "Manage own Business Purpose statements through explicit original-creator opt-in; preserve independently qualified original history",
+      "routes": [
+        "POST /api/businesses/{business}/purpose-enrollment",
+        "GET /api/businesses/{business}/purposes",
+        "POST /api/businesses/{business}/purposes",
+        "GET /workspaces/{workspace}/purpose-history",
+        "GET /workspaces/{workspace}/purpose-history/{purpose}",
+        "GET /workspaces/{workspace}/purpose-history/context",
+        "GET /workspaces/{workspace}/purpose-history/{purpose}/context",
+        "POST /workspaces/{workspace}/purpose-history/{purpose}/revisions"
+      ],
+      "spaBoundary": "Unified SPA with current independent Business or explicit original-history qualification",
+      "businessOwners": [
+        "App\\Foundation\\Business\\BusinessScope",
+        "App\\Business\\ObjectPurpose",
+        "App\\Foundation\\Tenancy\\WorkspaceContext"
+      ],
       "apiContract": "contracts/application.openapi.json",
-      "tests": ["ObjectPurposeHttpTest", "ObjectPurposeSecurityTest", "ObjectPurposeTest", "ObjectPurposeDtmLineageTest", "ArchitectureSourceOptionalityTest", "tests/object-purpose-interaction.test.mjs", "tests/object-purpose-spa.test.mjs", "tests/Support/object-purpose-spa-browser.mjs"],
-      "status": "LOCAL_JOURNEY_ACCEPTED",
-      "cutover": "Legacy Business/ObjectPurposes rendering is removed. The same view/editor now use official Vue Router and the shared typed client/transport. Unknown outcomes lock replacement until an explicit exact-original retry is acknowledged; terminal closure clears document memory. The original SQL owner/membership/freshness predicate, temporal writer, receipt fingerprint and Meta-only HTTP admission remain unchanged. Generic canonical object identity is not reduced to Meta. Final Foundation/CI, source/provider/auth/internal migration and B/C/device gates remain separate."
+      "tests": [
+        "BusinessPurposeStatementPolicyTest",
+        "BusinessPurposeTemporalTest",
+        "BusinessPurposeAuthorityTest",
+        "BusinessPurposeDtmLineageTest",
+        "LegacyPurposeHistoryTest",
+        "tests/object-purpose-interaction.test.mjs",
+        "tests/object-purpose-spa.test.mjs",
+        "tests/Support/business-surface-browser.mjs"
+      ],
+      "status": "PR56_CORRECTED_FINAL_ACCEPTANCE_PENDING",
+      "cutover": "Owner-approved original-creator statement policy uses existing qualifications/grants/receipts and grants no external ownership, source/data use, ad execution or onward delegation. Old object-purposes HTTP routes return410 and native writer is dropped. Original-history routes admit existing correction/withdrawal only under their distinct original qualification; no automatic transfer to Business.",
+      "retiredRoutes": [
+        "GET /workspaces/{workspace}/object-purposes",
+        "GET /workspaces/{workspace}/object-purposes/{purpose}",
+        "GET /workspaces/{workspace}/object-purposes/context",
+        "GET /workspaces/{workspace}/object-purposes/{purpose}/context",
+        "POST /workspaces/{workspace}/object-purposes",
+        "POST /workspaces/{workspace}/object-purposes/{purpose}/revisions"
+      ]
     },
     {
       "id": "source-management",
@@ -141,79 +231,278 @@
     {
       "id": "advertiser-profile",
       "journey": "Read own account, edit name, preserve native email validation and fully retire the old identity before a terminal email handoff",
-      "routes": ["GET /profile", "PATCH /profile"],
+      "routes": [
+        "GET /profile",
+        "PATCH /profile"
+      ],
       "spaBoundary": "Canonical Profile uses the existing shared SPA; email changes remain an explicit native Laravel form/redirect boundary after synchronous shared document closure",
-      "businessOwners": ["App\\Http\\Controllers\\ProfileController", "App\\Security\\LifecycleAuthority", "App\\Security\\SessionAuthority", "App\\Security\\IdentityLifecycle"],
+      "businessOwners": [
+        "App\\Http\\Controllers\\ProfileController",
+        "App\\Security\\LifecycleAuthority",
+        "App\\Security\\SessionAuthority",
+        "App\\Security\\IdentityLifecycle"
+      ],
       "apiContract": "contracts/application.openapi.json",
-      "tests": ["ProfileTest", "AccountSecuritySpaTest", "ProductionIdentityTest", "ClientVisibilityTest", "InertiaHistorySecurityTest", "tests/account-spa.test.mjs", "tests/Support/account-spa-browser.mjs"],
+      "tests": [
+        "ProfileTest",
+        "AccountSecuritySpaTest",
+        "ProductionIdentityTest",
+        "ClientVisibilityTest",
+        "InertiaHistorySecurityTest",
+        "tests/account-spa.test.mjs",
+        "tests/Support/account-spa-browser.mjs"
+      ],
       "status": "LOCAL_JOURNEY_ACCEPTED",
       "cutover": "Legacy advertiser Profile/Edit and its information form are removed. Existing native redirects, email revocation, notices and Inertia.clearHistory remain. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including native email validation, terminal closure before dispatch, Back denial and committed lost acknowledgement without replay. Local journey acceptance only; Foundation, devices and B/C remain separate."
     },
     {
       "id": "advertiser-security-devices",
       "journey": "Manage own advertiser sessions/password/passkeys with real WebAuthn, fresh authentication and no automatic uncertain-command replay while retaining internal legacy behavior",
-      "routes": ["GET /security/devices", "DELETE /security/sessions/{session}", "POST /security/sessions/revoke-others", "POST /security/sessions/sign-out-this-device", "GET /security/passkeys/options", "POST /security/passkeys", "DELETE /security/passkeys/{passkey}", "PUT /password"],
+      "routes": [
+        "GET /security/devices",
+        "DELETE /security/sessions/{session}",
+        "POST /security/sessions/revoke-others",
+        "POST /security/sessions/sign-out-this-device",
+        "GET /security/passkeys/options",
+        "POST /security/passkeys",
+        "DELETE /security/passkeys/{passkey}",
+        "PUT /password"
+      ],
       "spaBoundary": "Advertiser presentation in the unified SPA; existing terminal logout stays on the shared transport; internal routes retain Inertia and original redirects",
-      "businessOwners": ["App\\Http\\Controllers\\SecurityDevicesController", "App\\Http\\Controllers\\PasskeyManagementController", "App\\Http\\Controllers\\Auth\\PasswordController", "App\\Security\\SessionAuthority", "Laravel\\Passkeys\\Actions\\StorePasskey", "Laravel\\Passkeys\\Actions\\DeletePasskey"],
+      "businessOwners": [
+        "App\\Http\\Controllers\\SecurityDevicesController",
+        "App\\Http\\Controllers\\PasskeyManagementController",
+        "App\\Http\\Controllers\\Auth\\PasswordController",
+        "App\\Security\\SessionAuthority",
+        "Laravel\\Passkeys\\Actions\\StorePasskey",
+        "Laravel\\Passkeys\\Actions\\DeletePasskey"
+      ],
       "apiContract": "contracts/application.openapi.json",
-      "tests": ["AccountSecuritySpaTest", "SecurityDevicesTest", "PasswordUpdateTest", "PasskeyBoundaryTest", "InternalAuthorityTest", "ProductionIdentityTest", "tests/account-spa.test.mjs", "tests/Support/account-spa-browser.mjs"],
+      "tests": [
+        "AccountSecuritySpaTest",
+        "SecurityDevicesTest",
+        "PasswordUpdateTest",
+        "PasskeyBoundaryTest",
+        "InternalAuthorityTest",
+        "ProductionIdentityTest",
+        "tests/account-spa.test.mjs",
+        "tests/Support/account-spa-browser.mjs"
+      ],
       "status": "LOCAL_JOURNEY_ACCEPTED",
       "cutover": "SecurityDevicesController shares its existing projection between a thin advertiser SpaPage method and the unchanged internal Inertia renderer. Combined isolated Laravel/Chromium acceptance passed 18 journeys, including real virtual-authenticator enrollment, expired/consumed/invalid registration, cancellation, unknown writes, session closure and independent internal passkey login/enrollment/minimum/freshness. Existing authority and staff minima remain unchanged. Local journey acceptance only; no platform/release acceptance."
     },
     {
       "id": "advertiser-auth-entry",
       "journey": "Advertiser public entry, guest authentication, registration, recovery, email verification, fresh password confirmation and authenticated identity switch",
-      "routes": ["GET /", "GET /login", "GET /register", "GET /forgot-password", "GET /reset-password/{token}", "GET /verify-email", "GET /confirm-password", "GET /identity/switch"],
+      "routes": [
+        "GET /",
+        "GET /login",
+        "GET /register",
+        "GET /forgot-password",
+        "GET /reset-password/{token}",
+        "GET /verify-email",
+        "GET /confirm-password",
+        "GET /identity/switch"
+      ],
       "spaBoundary": "Static native Welcome and the existing unified SPA/router; original JSON identity writers and native Laravel recovery/verification/confirmation boundaries",
-      "businessOwners": ["App\\Security\\IdentityAuthentication", "App\\Security\\SessionAuthority", "App\\Security\\LifecycleAuthority", "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController", "App\\Http\\Controllers\\Auth\\RegisteredUserController", "App\\Http\\Controllers\\Auth\\PasskeySessionController", "App\\Http\\Controllers\\Auth\\NewPasswordController", "App\\Http\\Controllers\\Auth\\VerifyEmailController", "App\\Http\\Controllers\\Auth\\ConfirmablePasswordController"],
+      "businessOwners": [
+        "App\\Security\\IdentityAuthentication",
+        "App\\Security\\SessionAuthority",
+        "App\\Security\\LifecycleAuthority",
+        "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController",
+        "App\\Http\\Controllers\\Auth\\RegisteredUserController",
+        "App\\Http\\Controllers\\Auth\\PasskeySessionController",
+        "App\\Http\\Controllers\\Auth\\NewPasswordController",
+        "App\\Http\\Controllers\\Auth\\VerifyEmailController",
+        "App\\Http\\Controllers\\Auth\\ConfirmablePasswordController"
+      ],
       "apiContract": "contracts/application.openapi.json",
-      "tests": ["AuthEntrySpaTest", "AuthenticationTest", "RegistrationTest", "PasswordResetTest", "EmailVerificationTest", "PasswordConfirmationTest", "ProductionIdentityTest", "IdentityRenewalTest", "InternalAuthorityTest", "ClientVisibilityTest", "InertiaHistorySecurityTest", "tests/auth-entry-spa.test.mjs", "tests/Support/auth-entry-browser.mjs"],
+      "tests": [
+        "AuthEntrySpaTest",
+        "AuthenticationTest",
+        "RegistrationTest",
+        "PasswordResetTest",
+        "EmailVerificationTest",
+        "PasswordConfirmationTest",
+        "ProductionIdentityTest",
+        "IdentityRenewalTest",
+        "InternalAuthorityTest",
+        "ClientVisibilityTest",
+        "InertiaHistorySecurityTest",
+        "tests/auth-entry-spa.test.mjs",
+        "tests/Support/auth-entry-browser.mjs"
+      ],
       "status": "LOCAL_JOURNEY_ACCEPTED",
       "cutover": "Eight display routes leave the legacy renderer: static native Welcome and seven unified SPA entries. Fifteen integrated isolated Laravel/Chromium journeys pass with zero unhandled page errors, real virtual UV passkeys, signed mail verification, broker reset/expiry/reuse, native confirmation, pending staff enrollment, unknown deliveries without replay and late-read/Back/Forward protection. Seven unused public components are deleted; internal login, onboarding, devices and their N1/history/visibility consumers remain. The independently baseline-reproduced InitialVisit bootstrap rejection is handled only at its Promise owner, without changing cancellation tokens or identity authority. Physical devices, native BFCache/pre-JavaScript confidentiality, B/C, central Foundation and release acceptance remain separate."
     },
     {
       "id": "internal-identity-staff-enrollment",
       "journey": "Internal passkey-only login and identity switch, internal session/passkey management, and pending employee/founder enrollment without authority promotion",
-      "routes": ["GET /internal/login", "GET /internal/identity/switch", "GET /internal/security/devices", "GET /staff/onboarding"],
+      "routes": [
+        "GET /internal/login",
+        "GET /internal/identity/switch",
+        "GET /internal/security/devices",
+        "GET /staff/onboarding"
+      ],
       "spaBoundary": "Existing unified Vue SPA/router/generated client and shared boundary-bound transport; staff_enrollment remains on web and internal authentication requires a separate server-owned document transition. Restoration loaders forward the existing passive-read intent without touching authority deadlines",
-      "businessOwners": ["App\\Security\\IdentityAuthentication", "App\\Security\\SessionAuthority", "App\\Security\\LifecycleAuthority", "App\\Security\\StaffAuthority", "App\\Security\\AuthorityVerifyPasskey", "App\\Http\\Controllers\\Auth\\InternalAuthenticatedSessionController", "App\\Http\\Controllers\\SecurityDevicesController", "App\\Http\\Controllers\\PasskeyManagementController", "App\\Http\\Controllers\\StaffOnboardingController"],
+      "businessOwners": [
+        "App\\Security\\IdentityAuthentication",
+        "App\\Security\\SessionAuthority",
+        "App\\Security\\LifecycleAuthority",
+        "App\\Security\\StaffAuthority",
+        "App\\Security\\AuthorityVerifyPasskey",
+        "App\\Http\\Controllers\\Auth\\InternalAuthenticatedSessionController",
+        "App\\Http\\Controllers\\SecurityDevicesController",
+        "App\\Http\\Controllers\\PasskeyManagementController",
+        "App\\Http\\Controllers\\StaffOnboardingController"
+      ],
       "apiContract": "contracts/application.openapi.json",
-      "tests": ["InternalIdentitySpaTest", "InternalAuthorityTest", "ProductionIdentityTest", "ProductionPasskeyTest", "IdentityRenewalTest", "PasskeyAssertionTest", "PasskeyBoundaryTest", "ClientVisibilityTest", "InertiaHistorySecurityTest", "LocaleTest", "tests/auth-entry-spa.test.mjs", "tests/account-spa.test.mjs", "tests/Support/internal-identity-browser.mjs", "tests/Support/account-spa-browser.mjs", "tests/Support/auth-entry-browser.mjs"],
+      "tests": [
+        "InternalIdentitySpaTest",
+        "InternalAuthorityTest",
+        "ProductionIdentityTest",
+        "ProductionPasskeyTest",
+        "IdentityRenewalTest",
+        "PasskeyAssertionTest",
+        "PasskeyBoundaryTest",
+        "ClientVisibilityTest",
+        "InertiaHistorySecurityTest",
+        "LocaleTest",
+        "tests/auth-entry-spa.test.mjs",
+        "tests/account-spa.test.mjs",
+        "tests/Support/internal-identity-browser.mjs",
+        "tests/Support/account-spa-browser.mjs",
+        "tests/Support/auth-entry-browser.mjs"
+      ],
       "status": "LOCAL_JOURNEY_ACCEPTED",
       "cutover": "Four actual display routes now return SpaPage/AuthEntryPage instead of Inertia. The three unconsumed Internal/Login, Internal/Onboarding and Security/Devices components are removed. Isolated Laravel/Chromium internal journeys prove real signed UV login, A-to-B-to-A replacement with old reads suppressed, cancellation, pending employee/founder enrollment, signed verification, employee activation through existing HTTP owners, protected factor minima, freshness, uncertain writes without replay, selected-session revocation, CSRF fallback rejection, expiry and terminal logout. Shared advertiser Account/Auth regressions remain protected. Remaining Administration owns the tested N1 visibility/history behavior. Internal JSON device commands acknowledge the original writers; native commands retain redirects. No authority, guard, RLS, security timeout or N1 semantic change. Virtual factors and synthetic operator attestation are not physical independence acceptance. Final Foundation/CI, native BFCache, devices, B/C and release remain separate."
     },
     {
       "id": "internal-operations",
       "journey": "Staff authority operations, founder customer decisions, business configuration and one-time service credentials",
-      "routes": ["GET /internal/administration", "GET /internal/administration/customers", "GET /internal/business-types", "GET /internal/services", "POST /internal/staff", "POST /internal/staff/{staff}/resend-invitation", "POST /internal/staff/{staff}/attest", "POST /internal/staff/{staff}/activate", "POST /internal/staff/{staff}/revoke", "POST /internal/staff/{staff}/attest-factors", "POST /internal/grants", "DELETE /internal/grants/{grant}", "POST /internal/administration/customers/status", "POST /internal/business-types", "POST /internal/business-types/{type}", "POST /internal/business-types/{type}/guidance", "POST /internal/business-types/{type}/prior", "POST /internal/services", "POST /internal/services/{service}/rotate", "POST /internal/services/{service}/revoke", "POST /internal/service-grants", "DELETE /internal/service-grants/{grant}"],
+      "routes": [
+        "GET /internal/administration",
+        "GET /internal/administration/customers",
+        "GET /internal/business-types",
+        "GET /internal/services",
+        "POST /internal/staff",
+        "POST /internal/staff/{staff}/resend-invitation",
+        "POST /internal/staff/{staff}/attest",
+        "POST /internal/staff/{staff}/activate",
+        "POST /internal/staff/{staff}/revoke",
+        "POST /internal/staff/{staff}/attest-factors",
+        "POST /internal/grants",
+        "DELETE /internal/grants/{grant}",
+        "POST /internal/administration/customers/status",
+        "POST /internal/business-types",
+        "POST /internal/business-types/{type}",
+        "POST /internal/business-types/{type}/guidance",
+        "POST /internal/business-types/{type}/prior",
+        "POST /internal/services",
+        "POST /internal/services/{service}/rotate",
+        "POST /internal/services/{service}/revoke",
+        "POST /internal/service-grants",
+        "DELETE /internal/service-grants/{grant}"
+      ],
       "spaBoundary": "Four canonical displays share the existing Vue SPA/router, generated client and shared transport. Commercial and Commercial Market Preparation remain native document crossings to Inertia.",
-      "businessOwners": ["App\\Security\\StaffAuthority", "App\\Security\\GrantAuthority", "App\\Security\\ServiceIdentityAuthority", "App\\Foundation\\Tenancy\\PrincipalContext", "PostgreSQL builderad_customer_status", "PostgreSQL builderad_business_config"],
+      "businessOwners": [
+        "App\\Security\\StaffAuthority",
+        "App\\Security\\GrantAuthority",
+        "App\\Security\\ServiceIdentityAuthority",
+        "App\\Foundation\\Tenancy\\PrincipalContext",
+        "PostgreSQL builderad_customer_status",
+        "PostgreSQL builderad_business_config"
+      ],
       "apiContract": "contracts/application.openapi.json",
-      "tests": ["InternalOperationsSpaTest", "InternalAuthorityTest", "CustomerAdministrationTest", "BusinessFoundationTest", "ServiceAuthorityTest", "ClientVisibilityTest", "InertiaHistorySecurityTest", "tests/internal-operations-spa.test.mjs", "tests/Support/internal-operations-browser.mjs"],
+      "tests": [
+        "InternalOperationsSpaTest",
+        "InternalAuthorityTest",
+        "CustomerAdministrationTest",
+        "BusinessFoundationTest",
+        "ServiceAuthorityTest",
+        "ClientVisibilityTest",
+        "InertiaHistorySecurityTest",
+        "tests/internal-operations-spa.test.mjs",
+        "tests/Support/internal-operations-browser.mjs"
+      ],
       "status": "LOCAL_JOURNEY_ACCEPTED",
       "cutover": "Four SpaPage renderers replace legacy operational displays; their four dead Pages and Inertia business editor are removed. Grouped real Laravel/PostgreSQL/RLS/Redis/Chromium proof exercises existing writers, current authority, unknown ACKs without automatic replay, customer identical-command resolution, SQL prior approval invalidation and service component-local one-time delivery. Secrets never enter ordinary read projections; authority, hash-only issuance and audit writers are unchanged. Remaining commercial consumers retain native document transitions, N1 encrypted history and Client Visibility. Final affected gates and independent review are separately recorded in INTERNAL_OPERATIONS_SPA_EXECUTION.md. No physical-device, pre-JavaScript BFCache, B/C or production acceptance."
     },
     {
       "id": "final-commercial-displays",
       "journey": "Commercial market preparation, composite founder intents, approved references, immutable configuration, assignability, beneficiary registration, command receipts and audit recovery",
-      "routes": ["GET /internal/commercial", "GET /internal/administration/commercial-markets"],
+      "routes": [
+        "GET /internal/commercial",
+        "GET /internal/administration/commercial-markets"
+      ],
       "spaBoundary": "Existing unified application, shared Vue Router, generated same-origin API and visibility-admitted transport; no new authority or command protocol",
-      "businessOwners": ["App\\Http\\Controllers\\CommercialController", "App\\Http\\Controllers\\CommercialMarketPreparationController", "App\\Commercial\\MarketRegistry", "App\\Commercial\\ApprovedCatalogReference", "App\\Commercial\\RegisterCommercialScope", "App\\Commercial\\CommercialAuditDelivery", "App\\Security\\GrantAuthority", "App\\Security\\SessionAuthority", "PostgreSQL authority/RLS"],
+      "businessOwners": [
+        "App\\Http\\Controllers\\CommercialController",
+        "App\\Http\\Controllers\\CommercialMarketPreparationController",
+        "App\\Commercial\\MarketRegistry",
+        "App\\Commercial\\ApprovedCatalogReference",
+        "App\\Commercial\\RegisterCommercialScope",
+        "App\\Commercial\\CommercialAuditDelivery",
+        "App\\Security\\GrantAuthority",
+        "App\\Security\\SessionAuthority",
+        "PostgreSQL authority/RLS"
+      ],
       "apiContract": "contracts/application.openapi.json",
-      "tests": ["CommercialScopeTest", "CommercialMarketPreparationTest", "ClientVisibilityTest", "InertiaHistorySecurityTest", "tests/commercial-preparation-spa.test.mjs", "tests/commercial-editor-concurrency.test.mjs", "tests/Support/commercial-spa-browser.mjs"],
+      "tests": [
+        "CommercialScopeTest",
+        "CommercialMarketPreparationTest",
+        "ClientVisibilityTest",
+        "InertiaHistorySecurityTest",
+        "tests/commercial-preparation-spa.test.mjs",
+        "tests/commercial-editor-concurrency.test.mjs",
+        "tests/Support/commercial-spa-browser.mjs"
+      ],
       "status": "LOCAL_JOURNEY_ACCEPTED",
       "cutover": "Both existing displays now return SpaPage without private bootstrap data. Original writers, composite intent/target/child binding, frozen command versions, contract-specific explicit retries, exact receipt fingerprints and current server authority remain. Final proof and dependency classification are recorded separately in FINAL_COMMERCIAL_SPA_EXECUTION.md. Zero render routes is not dependency-removal or release acceptance; N1/runtime, legacy entry/assets, old test-consumed components and shared visibility/history protections remain pending their separately authorized removal assessment."
     },
     {
       "id": "locale-command",
       "journey": "Switch the application language using the existing encrypted locale cookie",
-      "routes": ["POST /locale"],
+      "routes": [
+        "POST /locale"
+      ],
       "spaBoundary": "Shared Laravel HTTP command; no additional Vue application",
-      "businessOwners": ["App\\Http\\Controllers\\LocaleController", "App\\Http\\Middleware\\ResolveLocale"],
+      "businessOwners": [
+        "App\\Http\\Controllers\\LocaleController",
+        "App\\Http\\Middleware\\ResolveLocale"
+      ],
       "apiContract": "contracts/application.openapi.json",
-      "tests": ["LocaleTest", "WorkspaceSpaIntegrationTest", "tests/Support/workspace-spa-browser.mjs"],
+      "tests": [
+        "LocaleTest",
+        "WorkspaceSpaIntegrationTest",
+        "tests/Support/workspace-spa-browser.mjs"
+      ],
       "status": "SHARED_HTTP_OWNER_VERIFIED",
       "cutover": "JSON acknowledgement added for the unified SPA; existing native/legacy cookie and redirect contracts remain. Arabic/English direction and creation draft retention were exercised in Chromium."
+    },
+    {
+      "id": "organization-registration",
+      "journey": "Register an agency/company directly and manage its actual team without commercial setup",
+      "routes": [
+        "GET /organizations/new",
+        "POST /organizations",
+        "GET /api/organizations/{organization}/team",
+        "POST /api/organizations/{organization}/team"
+      ],
+      "spaBoundary": "Existing organizational Workspace owner; no extra organization container",
+      "businessOwners": [
+        "App\\Security\\WorkspaceAuthority",
+        "App\\Foundation\\Tenancy\\OrganizationTeam"
+      ],
+      "apiContract": "contracts/application.openapi.json",
+      "tests": [
+        "OrganizationRegistrationTest",
+        "OrganizationTeamTest",
+        "OrganizationResourcesUpgradeTest",
+        "tests/Support/business-surface-browser.mjs"
+      ],
+      "status": "PR56_CORRECTED_FINAL_ACCEPTANCE_PENDING",
+      "cutover": "Explicit organizational membership, scoped client-file assignment and self-departure. Membership and source administration never issue Business/client-data rights."
     }
   ]
 }

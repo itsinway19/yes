@@ -1,39 +1,4 @@
 export interface paths {
-    "/workspaces/{workspace}/goals": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Accept application/json for canonical preferences. Native HTML requests receive the unified SPA shell, without a business projection. */
-        get: operations["readGoals"];
-        put?: never;
-        /** @description Canonical existing writer; exact two-field JSON object, maximum 8192 bytes. No automatic retry after uncertain delivery. Same-origin Laravel CSRF checks remain authoritative. */
-        post: operations["saveGoals"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/workspaces/{workspace}/goals/context": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Unified SPA contextual read through the existing WorkspaceContext, Goals and BusinessContext readers. Passive/witness requests preserve canonical idle authority. */
-        get: operations["readCanonicalGoalsContext"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/workspaces": {
         parameters: {
             query?: never;
@@ -50,17 +15,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/business/start": {
+    "/organizations/new": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["readBusinessCreation"];
+        get: operations["readOrganizationCreation"];
         put?: never;
-        /** @description Existing atomic WorkspaceAuthority/BusinessContext writer and session creation key. No automatic retry after uncertain delivery. An explicit same-command retry preserves the original key and body. */
-        post: operations["createBusiness"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Register the organization through the atomic WorkspaceAuthority owner/membership/resource boundary, without commercial facts or goals. Exact creation-key retry; no automatic retry. */
+        post: operations["createOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organizations/{organization}/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readOrganizationTeam"];
+        put?: never;
+        post: operations["writeOrganizationTeam"];
         delete?: never;
         options?: never;
         head?: never;
@@ -84,71 +81,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{workspace}/business": {
+    "/workspaces/{workspace}/commercial-history": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["readBusinessContext"];
+        get: operations["readWorkspaceCommercialHistory"];
         put?: never;
-        post: operations["updateBusinessContext"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{workspace}/business/authority": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["requestBusinessContextAuthority"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/workspaces/{workspace}/business/target-markets": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["replaceBusinessTargetMarkets"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/workspaces/{workspace}/business/current-intent": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["replaceOrClearCurrentIntent"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/workspaces/{workspace}/object-purposes": {
+    "/workspaces/{workspace}/purpose-history": {
         parameters: {
             query?: never;
             header?: never;
@@ -157,15 +106,14 @@ export interface paths {
         };
         get: operations["readObjectPurposeProjection"];
         put?: never;
-        /** @description Original fresh-authenticated Meta-only HTTP admission edge and canonical SQL writer. Command identity is idempotent; uncertain delivery is never automatically replayed or replaced. */
-        post: operations["declareObjectPurpose"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{workspace}/object-purposes/{purpose}": {
+    "/workspaces/{workspace}/purpose-history/{purpose}": {
         parameters: {
             query?: never;
             header?: never;
@@ -181,7 +129,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{workspace}/object-purposes/context": {
+    "/workspaces/{workspace}/purpose-history/context": {
         parameters: {
             query?: never;
             header?: never;
@@ -197,7 +145,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{workspace}/object-purposes/{purpose}/context": {
+    "/workspaces/{workspace}/purpose-history/{purpose}/context": {
         parameters: {
             query?: never;
             header?: never;
@@ -213,7 +161,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{workspace}/object-purposes/{purpose}/revisions": {
+    "/workspaces/{workspace}/purpose-history/{purpose}/revisions": {
         parameters: {
             query?: never;
             header?: never;
@@ -223,7 +171,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** @description Original fresh-authenticated Meta-only HTTP admission edge and canonical SQL writer. Command identity is idempotent; uncertain delivery is never automatically replayed or replaced. */
-        post: operations["reviseObjectPurpose"];
+        post: operations["reviseOriginalPurposeHistory"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2327,6 +2275,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/businesses/{business}/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["qualifiedBusinessSources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/businesses/{business}/purposes": {
         parameters: {
             query?: never;
@@ -2591,6 +2555,57 @@ export interface paths {
         put?: never;
         /** @description This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response. */
         post: operations["writeIndependentBusinessGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/internal-team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readInternalClientFileTeam"];
+        put?: never;
+        /** @description This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response. */
+        post: operations["writeInternalClientFileTeam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/direct-team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response. */
+        post: operations["enrollIndependentBusinessTeam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/purpose-enrollment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response. */
+        post: operations["enrollOwnBusinessPurposeStatements"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2921,6 +2936,7 @@ export interface components {
         WorkspaceIndexData: {
             workspaces: components["schemas"]["WorkspaceReference"][];
             reassessableWorkspaces: components["schemas"]["WorkspaceReference"][];
+            canCreateWorkspace: boolean;
         };
         WorkspaceIndexResource: {
             data: components["schemas"]["WorkspaceIndexData"];
@@ -2936,28 +2952,50 @@ export interface components {
             active: boolean;
             version: number;
         };
-        BusinessCreationData: {
-            types: components["schemas"]["BusinessType"][];
-            /** @constant */
-            canManage: true;
-            /** @constant */
-            canRequestAuthority: false;
+        OrganizationCreationData: {
             /** Format: uuid */
             creationKey: string;
-            /** @constant */
-            version: 0;
         };
-        BusinessCreationResource: {
-            data: components["schemas"]["BusinessCreationData"];
+        OrganizationCreationResource: {
+            data: components["schemas"]["OrganizationCreationData"];
             /** @enum {unknown} */
             locale: "ar" | "en";
             visibility: components["schemas"]["Visibility"];
         };
-        CreateBusiness: {
+        CreateOrganization: {
             name: string;
-            business_type_id: number;
             /** Format: uuid */
             creation_key: string;
+        };
+        OrganizationTeam: {
+            /** Format: uuid */
+            workspace_public_id: string;
+            /** Format: uuid */
+            actor_public_id: string;
+            revision: number;
+            can_manage: boolean;
+            can_leave: boolean;
+            members: {
+                /** Format: uuid */
+                public_id: string;
+                /** @enum {unknown} */
+                role: "owner" | "admin" | "member";
+                /** @enum {unknown} */
+                state: "active" | "revoked";
+            }[];
+        };
+        OrganizationTeamCommand: {
+            /** Format: uuid */
+            command_id: string;
+            /** @enum {unknown} */
+            effect: "add" | "remove" | "leave";
+            /** Format: uuid */
+            recipient_public_id: string;
+            expected_revision: number;
+        };
+        OrganizationTeamError: {
+            /** @constant */
+            error: "organization_team_request_rejected";
         };
         ApplicationDestination: {
             redirect: string;
@@ -3004,57 +3042,38 @@ export interface components {
             targetMarketsDeclared: boolean;
             targetMarkets: components["schemas"]["CountryReference"][];
         };
-        BusinessContextData: {
-            workspace: {
-                /** Format: uuid */
-                public_id: string;
-                name: string;
-                business_type_id: number | null;
-                business_context_version: number;
-            };
-            types: components["schemas"]["BusinessType"][];
-            canManage: boolean;
-            canRequestAuthority: boolean;
-            version: number;
-            business: components["schemas"]["BusinessContextProjection"];
-            countryOptions: components["schemas"]["CountryReference"][];
-            timezoneOptions: string[];
-        };
-        BusinessContextResource: {
-            data: components["schemas"]["BusinessContextData"];
+        WorkspaceCommercialHistoryResource: {
+            data: components["schemas"]["WorkspaceCommercialHistoryData"];
             /** @enum {unknown} */
             locale: "ar" | "en";
             visibility: components["schemas"]["Visibility"];
         };
-        UpdateBusinessContext: {
-            name: string;
-            business_type_id: number;
-            version: number;
-        };
-        RequestBusinessContextAuthority: {
-            /** @constant */
-            decision: "authorize";
-            /** @constant */
-            reason: "complete_business_context";
-        };
-        ReplaceTargetMarkets: {
-            country_codes: string[];
-            version: number;
-        };
-        CurrentIntentCommand: {
-            /** @enum {unknown} */
-            command: "replace" | "clear";
-            value: components["schemas"]["CurrentIntentValue"] | null;
-            confirmations: {
-                declaration?: boolean;
-                business_wide?: boolean;
-                outcome?: boolean;
-                acceptance_clear?: boolean;
-                clarification_required?: boolean;
-                quantity?: boolean;
-                horizon?: boolean;
+        WorkspaceCommercialHistoryData: {
+            workspace: {
+                /** Format: uuid */
+                public_id: string;
+                name: string;
             };
-            version: number;
+            /** @enum {unknown} */
+            kind: "context" | "markets" | "intent" | "preferences";
+            /** @constant */
+            scope: "original_workspace_history_only";
+            /** @constant */
+            read_only: true;
+            /** @constant */
+            current_business_inferred: false;
+            head: {
+                [key: string]: unknown;
+            };
+            items: ({
+                id: number;
+                occurred_at: string;
+                version?: number;
+                after_version?: number;
+            } & {
+                [key: string]: unknown;
+            })[];
+            next_after: number | null;
         };
         PurposeObject: {
             provider: string;
@@ -3155,6 +3174,7 @@ export interface components {
             };
             projection: components["schemas"]["PurposeProjection"];
             selectedPurpose: string | null;
+            canReviseHistory: boolean;
             business: components["schemas"]["BusinessContextProjection"];
         };
         ObjectPurposeResource: {
@@ -3189,6 +3209,14 @@ export interface components {
                 transition: boolean;
             };
         };
+        LegacyPurposeHistoryCommand: components["schemas"]["PurposeCommand"] & ({
+            /** Format: uuid */
+            purpose_id: string;
+            /** @enum {unknown} */
+            operation: "correct" | "withdraw";
+        } & {
+            [key: string]: unknown;
+        });
         PurposeAcknowledgement: {
             /** Format: uuid */
             purpose_id: string;
@@ -3342,25 +3370,6 @@ export interface components {
         };
         WorkspaceSourcesData: {
             workspace: components["schemas"]["WorkspaceReference"];
-            business: components["schemas"]["BusinessContextProjection"];
-            guidance: {
-                sources: {
-                    provider: string;
-                    label: string;
-                    priority: number;
-                    rationale: string | null;
-                }[];
-                priors: {
-                    id: number;
-                    provider: string;
-                    product: string;
-                    label: string;
-                    rationale: string;
-                    applicability: string;
-                    limits: string;
-                    basis: string;
-                }[];
-            };
             canRequestSourceAuthority: boolean;
             canManageServices: boolean;
             /** Format: uuid */
@@ -4627,6 +4636,50 @@ export interface components {
             reason: string;
             expires_at: string;
         };
+        InternalTeamCommand: {
+            /** Format: uuid */
+            command_id: string;
+            authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+            /** Format: uuid */
+            workspace_public_id: string;
+            /** @enum {unknown} */
+            effect: "enroll" | "appoint" | "remove" | "end";
+            recipient_public_id: string | null;
+            expected_revision: number;
+        };
+        InternalTeamReceipt: {
+            /** Format: uuid */
+            business_public_id: string;
+            /** Format: uuid */
+            workspace_public_id: string;
+            /** Format: uuid */
+            link_ref: string;
+            /** @enum {unknown} */
+            state: "active" | "ended";
+            recipient_public_id: string | null;
+            grant_refs: {
+                [key: string]: string;
+            };
+            versions: {
+                link: number;
+            };
+        };
+        InternalTeamSurface: {
+            /** Format: uuid */
+            business_public_id: string;
+            creator_basis: boolean;
+            can_admin: boolean;
+            teams: {
+                /** Format: uuid */
+                link_ref: string;
+                /** Format: uuid */
+                workspace_public_id: string;
+                workspace_slug: string;
+                /** @enum {unknown} */
+                state: "active" | "ended";
+                revision: number;
+            }[];
+        };
         BusinessHistory: {
             /** Format: uuid */
             business_public_id: string;
@@ -5156,7 +5209,7 @@ export interface components {
                 namespace_count: number;
                 authority_selection: {
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                     requirements: {
                         /** @enum {unknown} */
@@ -5187,7 +5240,7 @@ export interface components {
                     namespace_count: number;
                     authority_selection: {
                         /** @enum {unknown} */
-                        realm_kind: "direct" | "agency";
+                        realm_kind: "direct" | "agency" | "internal_team";
                         realm_workspace_public_id: string | null;
                         requirements: {
                             /** @enum {unknown} */
@@ -5231,7 +5284,7 @@ export interface components {
             };
             authority_selection: {
                 /** @enum {unknown} */
-                realm_kind: "direct" | "agency";
+                realm_kind: "direct" | "agency" | "internal_team";
                 realm_workspace_public_id: string | null;
                 requirements: {
                     /** @enum {unknown} */
@@ -5251,6 +5304,62 @@ export interface components {
             /** @constant */
             rights_limit: 64;
             rights_more: boolean;
+        };
+        BusinessSources: {
+            /** Format: uuid */
+            business_public_id: string;
+            /** @constant */
+            scope: "current_operator_in_linked_workspaces";
+            /** @constant */
+            inventory_kind: "manageable_sources";
+            /** @constant */
+            establishes_business_data_use: false;
+            sources: {
+                /** Format: uuid */
+                source_id: string;
+                label: string;
+                /** @enum {unknown} */
+                status: "UNVERIFIED" | "REVOKED";
+                resource: string;
+                operation: string;
+                purpose: string;
+                access_grant_id: string;
+                family: string;
+                namespace: string;
+                /** Format: uuid */
+                workspace_public_id: string;
+                workspace_slug: string;
+            }[];
+            next_cursor: string | null;
+        };
+        BusinessSourcesResult: {
+            data: {
+                /** Format: uuid */
+                business_public_id: string;
+                /** @constant */
+                scope: "current_operator_in_linked_workspaces";
+                /** @constant */
+                inventory_kind: "manageable_sources";
+                /** @constant */
+                establishes_business_data_use: false;
+                sources: {
+                    /** Format: uuid */
+                    source_id: string;
+                    label: string;
+                    /** @enum {unknown} */
+                    status: "UNVERIFIED" | "REVOKED";
+                    resource: string;
+                    operation: string;
+                    purpose: string;
+                    access_grant_id: string;
+                    family: string;
+                    namespace: string;
+                    /** Format: uuid */
+                    workspace_public_id: string;
+                    workspace_slug: string;
+                }[];
+                next_cursor: string | null;
+            };
         };
         NativeSourceChoicesResult: {
             data: {
@@ -5287,7 +5396,7 @@ export interface components {
                 };
                 authority_selection: {
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                     requirements: {
                         /** @enum {unknown} */
@@ -5317,7 +5426,7 @@ export interface components {
                 state: "active" | "restricted" | "archived";
                 read_grant_id: string;
                 /** @enum {unknown} */
-                realm_kind: "direct" | "agency";
+                realm_kind: "direct" | "agency" | "internal_team";
                 realm_workspace_public_id: string | null;
             }[];
             next_cursor: string | null;
@@ -5332,7 +5441,7 @@ export interface components {
             };
             authority_selection: {
                 /** @enum {unknown} */
-                realm_kind: "direct" | "agency";
+                realm_kind: "direct" | "agency" | "internal_team";
                 realm_workspace_public_id: string | null;
                 requirements: {
                     /** @enum {unknown} */
@@ -5363,7 +5472,7 @@ export interface components {
                     state: "active" | "restricted" | "archived";
                     read_grant_id: string;
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                 }[];
                 next_cursor: string | null;
@@ -5380,7 +5489,7 @@ export interface components {
                 };
                 authority_selection: {
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                     requirements: {
                         /** @enum {unknown} */
@@ -5413,7 +5522,7 @@ export interface components {
                 state: string;
                 read_grant_id: string;
                 /** @enum {unknown} */
-                realm_kind: "direct" | "agency";
+                realm_kind: "direct" | "agency" | "internal_team";
                 realm_workspace_public_id: string | null;
             }[];
             next_cursor: string | null;
@@ -5442,13 +5551,13 @@ export interface components {
                     /** Format: uuid */
                     workspace_public_id: string;
                     /** @enum {unknown} */
-                    kind: "collaboration" | "agency";
+                    kind: "collaboration" | "agency" | "internal_team";
                     revision: number;
                 }[];
             };
             authority_selection: {
                 /** @enum {unknown} */
-                realm_kind: "direct" | "agency";
+                realm_kind: "direct" | "agency" | "internal_team";
                 realm_workspace_public_id: string | null;
                 requirements: {
                     /** @enum {unknown} */
@@ -5459,6 +5568,20 @@ export interface components {
             context_write_options: {
                 grant_id: string;
             }[];
+            private_history_available: boolean;
+            direct_team_enrollment_available: boolean;
+            purpose_statement: {
+                /** @constant */
+                authority_scope: "own_business_statement_only";
+                /** @constant */
+                establishes_external_authority: false;
+                enrollment_available: boolean;
+                previous_grant: string;
+                current_grant: {
+                    id: string;
+                    version: number;
+                } | null;
+            };
             fact_write_options: {
                 markets: {
                     grant_id: string;
@@ -5490,7 +5613,7 @@ export interface components {
                     workspace_public_id: string;
                     workspace_slug: string;
                     /** @enum {unknown} */
-                    kind: "collaboration" | "agency";
+                    kind: "collaboration" | "agency" | "internal_team";
                     /** @enum {unknown} */
                     state: "active" | "ended";
                     revision: number;
@@ -5508,6 +5631,8 @@ export interface components {
                     grant_id: string;
                     action: string;
                     can_issue: boolean;
+                    can_delegate_onward: boolean;
+                    can_choose_agency: boolean;
                     max_expires_at: string | null;
                     chain_depth: number;
                 }[];
@@ -5523,7 +5648,7 @@ export interface components {
                     expires_at: string | null;
                     delegable: boolean;
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                 }[];
                 /** @constant */
@@ -5650,6 +5775,10 @@ export interface components {
             business_public_id: string;
             /** @constant */
             scope: "native_business_purposes_only";
+            /** @constant */
+            authority_scope: "business_declaration_only";
+            /** @constant */
+            establishes_external_authority: false;
             projection: {
                 state: string;
                 items: {
@@ -5657,7 +5786,7 @@ export interface components {
                     purpose_id: string;
                     head_version: number;
                     state: string;
-                    applicable: {
+                    applicable: ({
                         /** Format: uuid */
                         purpose_id: string;
                         /** Format: uuid */
@@ -5683,7 +5812,18 @@ export interface components {
                             historical: boolean;
                             transition: boolean;
                         };
-                    } | null;
+                    } | {
+                        /** Format: uuid */
+                        purpose_id: string;
+                        /** Format: uuid */
+                        revision_id: string;
+                        version: number;
+                        operation: string;
+                        effective_from: string;
+                        effective_until: string | null;
+                        accepted_at: string;
+                        snapshot: components["schemas"]["PurposeSnapshot"];
+                    }) | null;
                     history: {
                         /** Format: uuid */
                         purpose_id: string;
@@ -5728,6 +5868,10 @@ export interface components {
                 business_public_id: string;
                 /** @constant */
                 scope: "native_business_purposes_only";
+                /** @constant */
+                authority_scope: "business_declaration_only";
+                /** @constant */
+                establishes_external_authority: false;
                 projection: {
                     state: string;
                     items: {
@@ -5735,7 +5879,7 @@ export interface components {
                         purpose_id: string;
                         head_version: number;
                         state: string;
-                        applicable: {
+                        applicable: ({
                             /** Format: uuid */
                             purpose_id: string;
                             /** Format: uuid */
@@ -5761,7 +5905,18 @@ export interface components {
                                 historical: boolean;
                                 transition: boolean;
                             };
-                        } | null;
+                        } | {
+                            /** Format: uuid */
+                            purpose_id: string;
+                            /** Format: uuid */
+                            revision_id: string;
+                            version: number;
+                            operation: string;
+                            effective_from: string;
+                            effective_until: string | null;
+                            accepted_at: string;
+                            snapshot: components["schemas"]["PurposeSnapshot"];
+                        }) | null;
                         history: {
                             /** Format: uuid */
                             purpose_id: string;
@@ -5835,6 +5990,10 @@ export interface components {
             version: number;
             /** Format: uuid */
             business_public_id: string;
+            /** @constant */
+            authority_scope: "business_declaration_only";
+            /** @constant */
+            establishes_external_authority: false;
             versions: {
                 context: number;
             };
@@ -5850,7 +6009,7 @@ export interface components {
                     state: string;
                     read_grant_id: string;
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                 }[];
                 next_cursor: string | null;
@@ -5881,13 +6040,13 @@ export interface components {
                         /** Format: uuid */
                         workspace_public_id: string;
                         /** @enum {unknown} */
-                        kind: "collaboration" | "agency";
+                        kind: "collaboration" | "agency" | "internal_team";
                         revision: number;
                     }[];
                 };
                 authority_selection: {
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                     requirements: {
                         /** @enum {unknown} */
@@ -5898,6 +6057,20 @@ export interface components {
                 context_write_options: {
                     grant_id: string;
                 }[];
+                private_history_available: boolean;
+                direct_team_enrollment_available: boolean;
+                purpose_statement: {
+                    /** @constant */
+                    authority_scope: "own_business_statement_only";
+                    /** @constant */
+                    establishes_external_authority: false;
+                    enrollment_available: boolean;
+                    previous_grant: string;
+                    current_grant: {
+                        id: string;
+                        version: number;
+                    } | null;
+                };
                 fact_write_options: {
                     markets: {
                         grant_id: string;
@@ -5929,7 +6102,7 @@ export interface components {
                         workspace_public_id: string;
                         workspace_slug: string;
                         /** @enum {unknown} */
-                        kind: "collaboration" | "agency";
+                        kind: "collaboration" | "agency" | "internal_team";
                         /** @enum {unknown} */
                         state: "active" | "ended";
                         revision: number;
@@ -5947,6 +6120,8 @@ export interface components {
                         grant_id: string;
                         action: string;
                         can_issue: boolean;
+                        can_delegate_onward: boolean;
+                        can_choose_agency: boolean;
                         max_expires_at: string | null;
                         chain_depth: number;
                     }[];
@@ -5962,7 +6137,7 @@ export interface components {
                         expires_at: string | null;
                         delegable: boolean;
                         /** @enum {unknown} */
-                        realm_kind: "direct" | "agency";
+                        realm_kind: "direct" | "agency" | "internal_team";
                         realm_workspace_public_id: string | null;
                     }[];
                     /** @constant */
@@ -6401,7 +6576,7 @@ export interface components {
         };
         BusinessAuthoritySelection: {
             /** @enum {unknown} */
-            realm_kind: "direct" | "agency";
+            realm_kind: "direct" | "agency" | "internal_team";
             realm_workspace_public_id: string | null;
             requirements: {
                 /** @enum {unknown} */
@@ -6456,7 +6631,7 @@ export interface components {
                     /** Format: uuid */
                     workspace_public_id: string;
                     /** @enum {unknown} */
-                    kind: "collaboration" | "agency";
+                    kind: "collaboration" | "agency" | "internal_team";
                     revision: number;
                 }[];
             };
@@ -6869,226 +7044,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    readGoals: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                workspace: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Authorized canonical projection. Never shared-cache private data. */
-            200: {
-                headers: {
-                    /** @description Server document evidence, verified by the web transport. Not independent authority. */
-                    "X-Builderad-Identity"?: string;
-                    "Cache-Control"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Preferences"];
-                };
-            };
-            /** @description No current authenticated session. A stale document may instead be rejected with identityConflict 409 before auth. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Unverified principal, absent Workspace scope or withdrawn grant. No write effect. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description CAS mismatch: preserve draft and explicitly review current version. identityConflict=true instead closes the document; never adopt it as a CAS conflict. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description CSRF rejection, including a transport session that no longer contains the CSRF token. No write effect. */
-            419: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Invalid exact JSON value/version shape, size or domain selection; errors.value contains validation messages. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationError"];
-                };
-            };
-        };
-    };
-    saveGoals: {
-        parameters: {
-            query?: never;
-            header?: {
-                /** @description Browser CSRF token. Laravel 13 may accept trusted same-origin Fetch Metadata before token validation; absent that evidence a valid token is required. */
-                "X-CSRF-TOKEN"?: string;
-            };
-            path: {
-                workspace: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SaveGoals"];
-            };
-        };
-        responses: {
-            /** @description Authorized canonical projection. Never shared-cache private data. */
-            200: {
-                headers: {
-                    /** @description Server document evidence, verified by the web transport. Not independent authority. */
-                    "X-Builderad-Identity"?: string;
-                    "Cache-Control"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Preferences"];
-                };
-            };
-            /** @description No current authenticated session. A stale document may instead be rejected with identityConflict 409 before auth. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Unverified principal, absent Workspace scope or withdrawn grant. No write effect. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description CAS mismatch: preserve draft and explicitly review current version. identityConflict=true instead closes the document; never adopt it as a CAS conflict. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description CSRF rejection, including a transport session that no longer contains the CSRF token. No write effect. */
-            419: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Invalid exact JSON value/version shape, size or domain selection; errors.value contains validation messages. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationError"];
-                };
-            };
-        };
-    };
-    readCanonicalGoalsContext: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Goals-Passive"?: "1";
-                "X-Goals-Witness"?: "1";
-            };
-            path: {
-                workspace: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Authorized canonical projection. Never shared-cache private data. */
-            200: {
-                headers: {
-                    /** @description Server document evidence, verified by the web transport. Not independent authority. */
-                    "X-Builderad-Identity"?: string;
-                    "Cache-Control"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GoalsContext"] | components["schemas"]["GoalsWitness"];
-                };
-            };
-            /** @description No current authenticated session. A stale document may instead be rejected with identityConflict 409 before auth. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Unverified principal, absent Workspace scope or withdrawn grant. No write effect. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description CAS mismatch: preserve draft and explicitly review current version. identityConflict=true instead closes the document; never adopt it as a CAS conflict. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description CSRF rejection, including a transport session that no longer contains the CSRF token. No write effect. */
-            419: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Invalid exact JSON value/version shape, size or domain selection; errors.value contains validation messages. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationError"];
-                };
-            };
-        };
-    };
     listWorkspaces: {
         parameters: {
             query?: never;
@@ -7166,11 +7121,9 @@ export interface operations {
             };
         };
     };
-    readBusinessCreation: {
+    readOrganizationCreation: {
         parameters: {
-            query?: {
-                new?: "1";
-            };
+            query?: never;
             header?: {
                 "X-Builderad-Passive"?: "1";
                 "X-Builderad-Witness"?: "1";
@@ -7186,15 +7139,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BusinessCreationResource"] | components["schemas"]["GoalsWitness"];
+                    "application/json": components["schemas"]["OrganizationCreationResource"] | components["schemas"]["GoalsWitness"];
                 };
-            };
-            /** @description Existing businesses redirect to their list unless new=1. Use a new native document for this boundary. */
-            302: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description Original Laravel authorization, CSRF, validation or service failure. */
             401: {
@@ -7252,7 +7198,7 @@ export interface operations {
             };
         };
     };
-    createBusiness: {
+    createOrganization: {
         parameters: {
             query?: never;
             header?: never;
@@ -7261,7 +7207,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateBusiness"];
+                "application/json": components["schemas"]["CreateOrganization"];
             };
         };
         responses: {
@@ -7317,6 +7263,176 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readOrganizationTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["OrganizationTeam"];
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Organization membership admission rejected; this does not establish an earlier command outcome. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationTeamError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Organization membership admission rejected; this does not establish an earlier command outcome. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationTeamError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Organization membership admission rejected; this does not establish an earlier command outcome. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationTeamError"] | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    writeOrganizationTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationTeamCommand"];
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            workspace_public_id: string;
+                            /** Format: uuid */
+                            recipient_public_id: string;
+                            /** @enum {unknown} */
+                            state: "active" | "revoked";
+                            versions: {
+                                team: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Organization membership admission rejected; this does not establish an earlier command outcome. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationTeamError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Organization membership admission rejected; this does not establish an earlier command outcome. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationTeamError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Organization membership admission rejected; this does not establish an earlier command outcome. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationTeamError"] | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
                 };
             };
             /** @description Original Laravel authorization, CSRF, validation or service failure. */
@@ -7406,9 +7522,12 @@ export interface operations {
             };
         };
     };
-    readBusinessContext: {
+    readWorkspaceCommercialHistory: {
         parameters: {
-            query?: never;
+            query?: {
+                kind?: "context" | "markets" | "intent" | "preferences";
+                after?: number;
+            };
             header?: {
                 "X-Builderad-Passive"?: "1";
                 "X-Builderad-Witness"?: "1";
@@ -7426,7 +7545,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BusinessContextResource"] | components["schemas"]["GoalsWitness"];
+                    "application/json": components["schemas"]["WorkspaceCommercialHistoryResource"] | components["schemas"]["GoalsWitness"];
                 };
             };
             /** @description Original Laravel authorization, CSRF, validation or service failure. */
@@ -7449,362 +7568,6 @@ export interface operations {
             };
             /** @description Identity context conflict; close the document when identityConflict is true. */
             409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            419: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationError"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    updateBusinessContext: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                workspace: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateBusinessContext"];
-            };
-        };
-        responses: {
-            /** @description Authorized existing Laravel owner response. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationDestination"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Identity context conflict; close the document when identityConflict is true. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original technical input-size boundary; preserve the full draft. */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            419: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationError"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    requestBusinessContextAuthority: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                workspace: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RequestBusinessContextAuthority"];
-            };
-        };
-        responses: {
-            /** @description Authorized existing Laravel owner response. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationDestination"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Identity context conflict; close the document when identityConflict is true. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original technical input-size boundary; preserve the full draft. */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            419: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationError"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    replaceBusinessTargetMarkets: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                workspace: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ReplaceTargetMarkets"];
-            };
-        };
-        responses: {
-            /** @description Authorized existing Laravel owner response. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationDestination"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Identity context conflict; close the document when identityConflict is true. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original technical input-size boundary; preserve the full draft. */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            419: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationError"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    replaceOrClearCurrentIntent: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                workspace: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CurrentIntentCommand"];
-            };
-        };
-        responses: {
-            /** @description Authorized existing Laravel owner response. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationDestination"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Identity context conflict; close the document when identityConflict is true. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original technical input-size boundary; preserve the full draft. */
-            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7886,86 +7649,6 @@ export interface operations {
             };
             /** @description Unknown exact purpose; never an empty successful read. */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Identity context conflict; close the document when identityConflict is true. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            419: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationError"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    declareObjectPurpose: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                workspace: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PurposeCommand"];
-            };
-        };
-        responses: {
-            /** @description Authorized existing Laravel owner response. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PurposeAcknowledgement"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Original Laravel authorization, CSRF, validation or service failure. */
-            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8289,7 +7972,7 @@ export interface operations {
             };
         };
     };
-    reviseObjectPurpose: {
+    reviseOriginalPurposeHistory: {
         parameters: {
             query?: never;
             header?: never;
@@ -8301,7 +7984,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PurposeCommand"];
+                "application/json": components["schemas"]["LegacyPurposeHistoryCommand"];
             };
         };
         responses: {
@@ -19975,7 +19658,7 @@ export interface operations {
                                 namespace_count: number;
                                 authority_selection: {
                                     /** @enum {unknown} */
-                                    realm_kind: "direct" | "agency";
+                                    realm_kind: "direct" | "agency" | "internal_team";
                                     realm_workspace_public_id: string | null;
                                     requirements: {
                                         /** @enum {unknown} */
@@ -20174,7 +19857,7 @@ export interface operations {
                             };
                             authority_selection: {
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                                 requirements: {
                                     /** @enum {unknown} */
@@ -20386,7 +20069,7 @@ export interface operations {
                             };
                             authority_selection: {
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                                 requirements: {
                                     /** @enum {unknown} */
@@ -20495,7 +20178,7 @@ export interface operations {
                                 state: "active" | "restricted" | "archived";
                                 read_grant_id: string;
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                             }[];
                             next_cursor: string | null;
@@ -20589,7 +20272,7 @@ export interface operations {
                             };
                             authority_selection: {
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                                 requirements: {
                                     /** @enum {unknown} */
@@ -20696,7 +20379,7 @@ export interface operations {
                                 state: "active" | "restricted" | "archived";
                                 read_grant_id: string;
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                             }[];
                             next_cursor: string | null;
@@ -20793,7 +20476,7 @@ export interface operations {
                             };
                             authority_selection: {
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                                 requirements: {
                                     /** @enum {unknown} */
@@ -20905,7 +20588,7 @@ export interface operations {
                                 state: string;
                                 read_grant_id: string;
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                             }[];
                             next_cursor: string | null;
@@ -21124,13 +20807,13 @@ export interface operations {
                                     /** Format: uuid */
                                     workspace_public_id: string;
                                     /** @enum {unknown} */
-                                    kind: "collaboration" | "agency";
+                                    kind: "collaboration" | "agency" | "internal_team";
                                     revision: number;
                                 }[];
                             };
                             authority_selection: {
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                                 requirements: {
                                     /** @enum {unknown} */
@@ -21141,6 +20824,20 @@ export interface operations {
                             context_write_options: {
                                 grant_id: string;
                             }[];
+                            private_history_available: boolean;
+                            direct_team_enrollment_available: boolean;
+                            purpose_statement: {
+                                /** @constant */
+                                authority_scope: "own_business_statement_only";
+                                /** @constant */
+                                establishes_external_authority: false;
+                                enrollment_available: boolean;
+                                previous_grant: string;
+                                current_grant: {
+                                    id: string;
+                                    version: number;
+                                } | null;
+                            };
                             fact_write_options: {
                                 markets: {
                                     grant_id: string;
@@ -21172,7 +20869,7 @@ export interface operations {
                                     workspace_public_id: string;
                                     workspace_slug: string;
                                     /** @enum {unknown} */
-                                    kind: "collaboration" | "agency";
+                                    kind: "collaboration" | "agency" | "internal_team";
                                     /** @enum {unknown} */
                                     state: "active" | "ended";
                                     revision: number;
@@ -21190,6 +20887,8 @@ export interface operations {
                                     grant_id: string;
                                     action: string;
                                     can_issue: boolean;
+                                    can_delegate_onward: boolean;
+                                    can_choose_agency: boolean;
                                     max_expires_at: string | null;
                                     chain_depth: number;
                                 }[];
@@ -21205,7 +20904,7 @@ export interface operations {
                                     expires_at: string | null;
                                     delegable: boolean;
                                     /** @enum {unknown} */
-                                    realm_kind: "direct" | "agency";
+                                    realm_kind: "direct" | "agency" | "internal_team";
                                     realm_workspace_public_id: string | null;
                                 }[];
                                 /** @constant */
@@ -21504,13 +21203,13 @@ export interface operations {
                                     /** Format: uuid */
                                     workspace_public_id: string;
                                     /** @enum {unknown} */
-                                    kind: "collaboration" | "agency";
+                                    kind: "collaboration" | "agency" | "internal_team";
                                     revision: number;
                                 }[];
                             };
                             authority_selection: {
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                                 requirements: {
                                     /** @enum {unknown} */
@@ -21521,6 +21220,20 @@ export interface operations {
                             context_write_options: {
                                 grant_id: string;
                             }[];
+                            private_history_available: boolean;
+                            direct_team_enrollment_available: boolean;
+                            purpose_statement: {
+                                /** @constant */
+                                authority_scope: "own_business_statement_only";
+                                /** @constant */
+                                establishes_external_authority: false;
+                                enrollment_available: boolean;
+                                previous_grant: string;
+                                current_grant: {
+                                    id: string;
+                                    version: number;
+                                } | null;
+                            };
                             fact_write_options: {
                                 markets: {
                                     grant_id: string;
@@ -21552,7 +21265,7 @@ export interface operations {
                                     workspace_public_id: string;
                                     workspace_slug: string;
                                     /** @enum {unknown} */
-                                    kind: "collaboration" | "agency";
+                                    kind: "collaboration" | "agency" | "internal_team";
                                     /** @enum {unknown} */
                                     state: "active" | "ended";
                                     revision: number;
@@ -21570,6 +21283,8 @@ export interface operations {
                                     grant_id: string;
                                     action: string;
                                     can_issue: boolean;
+                                    can_delegate_onward: boolean;
+                                    can_choose_agency: boolean;
                                     max_expires_at: string | null;
                                     chain_depth: number;
                                 }[];
@@ -21585,7 +21300,7 @@ export interface operations {
                                     expires_at: string | null;
                                     delegable: boolean;
                                     /** @enum {unknown} */
-                                    realm_kind: "direct" | "agency";
+                                    realm_kind: "direct" | "agency" | "internal_team";
                                     realm_workspace_public_id: string | null;
                                 }[];
                                 /** @constant */
@@ -21738,6 +21453,113 @@ export interface operations {
             };
         };
     };
+    qualifiedBusinessSources: {
+        parameters: {
+            query: {
+                access: number;
+                after?: number;
+            };
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            /** @constant */
+                            scope: "current_operator_in_linked_workspaces";
+                            /** @constant */
+                            inventory_kind: "manageable_sources";
+                            /** @constant */
+                            establishes_business_data_use: false;
+                            sources: {
+                                /** Format: uuid */
+                                source_id: string;
+                                label: string;
+                                /** @enum {unknown} */
+                                status: "UNVERIFIED" | "REVOKED";
+                                resource: string;
+                                operation: string;
+                                purpose: string;
+                                access_grant_id: string;
+                                family: string;
+                                namespace: string;
+                                /** Format: uuid */
+                                workspace_public_id: string;
+                                workspace_slug: string;
+                            }[];
+                            next_cursor: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     readBusinessPurposes: {
         parameters: {
             query: {
@@ -21766,6 +21588,10 @@ export interface operations {
                             business_public_id: string;
                             /** @constant */
                             scope: "native_business_purposes_only";
+                            /** @constant */
+                            authority_scope: "business_declaration_only";
+                            /** @constant */
+                            establishes_external_authority: false;
                             projection: {
                                 state: string;
                                 items: {
@@ -21773,7 +21599,7 @@ export interface operations {
                                     purpose_id: string;
                                     head_version: number;
                                     state: string;
-                                    applicable: {
+                                    applicable: ({
                                         /** Format: uuid */
                                         purpose_id: string;
                                         /** Format: uuid */
@@ -21799,7 +21625,18 @@ export interface operations {
                                             historical: boolean;
                                             transition: boolean;
                                         };
-                                    } | null;
+                                    } | {
+                                        /** Format: uuid */
+                                        purpose_id: string;
+                                        /** Format: uuid */
+                                        revision_id: string;
+                                        version: number;
+                                        operation: string;
+                                        effective_from: string;
+                                        effective_until: string | null;
+                                        accepted_at: string;
+                                        snapshot: components["schemas"]["PurposeSnapshot"];
+                                    }) | null;
                                     history: {
                                         /** Format: uuid */
                                         purpose_id: string;
@@ -21938,7 +21775,7 @@ export interface operations {
                     expected_context: number;
                     authority_selection: {
                         /** @enum {unknown} */
-                        realm_kind: "direct" | "agency";
+                        realm_kind: "direct" | "agency" | "internal_team";
                         realm_workspace_public_id: string | null;
                         requirements: {
                             /** @enum {unknown} */
@@ -21965,6 +21802,10 @@ export interface operations {
                             version: number;
                             /** Format: uuid */
                             business_public_id: string;
+                            /** @constant */
+                            authority_scope: "business_declaration_only";
+                            /** @constant */
+                            establishes_external_authority: false;
                             versions: {
                                 context: number;
                             };
@@ -22471,7 +22312,7 @@ export interface operations {
                                 state: string;
                                 read_grant_id: string;
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                             }[];
                             next_cursor: string | null;
@@ -23251,7 +23092,7 @@ export interface operations {
                                 /** Format: uuid */
                                 workspace_public_id: string;
                                 /** @enum {unknown} */
-                                kind: "collaboration" | "agency";
+                                kind: "collaboration" | "agency" | "internal_team";
                                 revision: number;
                             }[];
                         };
@@ -23956,6 +23797,411 @@ export interface operations {
                             /** @enum {unknown} */
                             status: "active" | "revoked";
                             versions: {
+                                grant: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Current scoped authority denied; no authority inferred from Workspace membership. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Typed command, shape or semantic validation rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["ValidationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readInternalClientFileTeam: {
+        parameters: {
+            query: {
+                access: number;
+            };
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            creator_basis: boolean;
+                            can_admin: boolean;
+                            teams: {
+                                /** Format: uuid */
+                                link_ref: string;
+                                /** Format: uuid */
+                                workspace_public_id: string;
+                                workspace_slug: string;
+                                /** @enum {unknown} */
+                                state: "active" | "ended";
+                                revision: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    writeInternalClientFileTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                    /** Format: uuid */
+                    workspace_public_id: string;
+                    /** @enum {unknown} */
+                    effect: "enroll" | "appoint" | "remove" | "end";
+                    recipient_public_id: string | null;
+                    expected_revision: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            /** Format: uuid */
+                            workspace_public_id: string;
+                            /** Format: uuid */
+                            link_ref: string;
+                            /** @enum {unknown} */
+                            state: "active" | "ended";
+                            recipient_public_id: string | null;
+                            grant_refs: {
+                                [key: string]: string;
+                            };
+                            versions: {
+                                link: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Current scoped authority denied; no authority inferred from Workspace membership. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Typed command, shape or semantic validation rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["ValidationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    enrollIndependentBusinessTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            grant_refs: {
+                                [key: string]: string;
+                            };
+                            /** Format: uuid */
+                            qualification_ref: string;
+                            versions: {
+                                qualification: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Current scoped authority denied; no authority inferred from Workspace membership. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Typed command, shape or semantic validation rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["ValidationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    enrollOwnBusinessPurposeStatements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                    /** @constant */
+                    confirmed: true;
+                    previous_grant: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            grant_refs: {
+                                "business.purpose.declare": string;
+                            };
+                            /** Format: uuid */
+                            qualification_ref: string;
+                            /** @constant */
+                            authority_scope: "own_business_statement_only";
+                            /** @constant */
+                            establishes_external_authority: false;
+                            versions: {
+                                qualification: number;
                                 grant: number;
                             };
                         };

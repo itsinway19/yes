@@ -13,7 +13,7 @@ type BilingualNotice={ar:string;en:string};
 const notice=(ar:string,en:string):BilingualNotice=>({ar,en});
 const busy=ref(false),message=ref<BilingualNotice>(),unavailable=ref(false),confirmed=ref(false),editorOpen=ref(false),pending=ref<Pending>();
 const edit=ref<EditSnapshot>();let disposed=false;let attempt=0;
-const title=computed(()=>t('بيانات الاستفسارات','Inquiry evidence'));
+const title=computed(()=>t('إفادات الاستفسارات','Inquiry declarations'));
 const selectedId=ref<string>();
 const selected=computed(()=>collection.value?.items.find(item=>item.declaration_id===selectedId.value));
 const detailHeading=ref<HTMLElement>();
@@ -112,8 +112,9 @@ onBeforeUnmount(()=>{retainUnsentDraft();disposed=true;attempt++;collection.valu
 </script>
 <template>
 <section ref="panelRoot" class="inquiry-panel" data-inquiry-panel :aria-busy="busy" :dir="locale==='ar'?'rtl':'ltr'">
- <header class="inquiry-toolbar"><h2 v-if="!embedded">{{title}}</h2><button v-if="grant('business.inquiry_evidence.record') && !editorOpen" type="button" class="workspace-button" :disabled="locked" @click="startNew">{{t('تسجيل تصريح جديد','Record a declaration')}}</button></header>
- <p class="inquiry-orientation">{{t('بيانات عن الاستفسارات سجّلها النشاط، وليست نتائج تحققت منها Builderad بصورة مستقلة.','Information about inquiries recorded by the Business, not results independently verified by Builderad.')}}</p>
+ <header class="inquiry-toolbar"><h3 v-if="embedded" class="workspace-subheading">{{title}}</h3><h2 v-else>{{title}}</h2><button v-if="grant('business.inquiry_evidence.record') && !editorOpen" type="button" class="workspace-button" data-inquiry-record-action :disabled="locked" @click="startNew">{{t('تسجيل بيانات مجمّعة','Record grouped figures')}}</button></header>
+ <p class="inquiry-orientation">{{t('أعداد لفترة وقناة محددتين. افتح المجموعة لمراجعة معناها ومصدرها وتاريخها، دون بيانات أشخاص.','Counts for a defined period and channel. Open a group to review its meaning, origin and history, without personal data.')}}</p>
+ <details class="inquiry-utilities"><summary>{{t('كيف تُقرأ هذه الأرقام؟','How should these figures be read?')}}</summary><p>{{t('بيانات الاستفسارات سجّلها النشاط، وليست نتائج تحققت منها Builderad بصورة مستقلة.','Inquiry figures recorded by the Business, not results independently verified by Builderad.')}}</p><p>{{t('قناة التسجيل لا تثبت مصدر الاكتساب. كل مجموعة لها فترتها وتغطيتها؛ لا نجمعها هنا كعملاء أو مبيعات.','The recording channel does not establish acquisition origin. Each group has its own period and coverage; this view does not combine them into customers or sales.')}}</p></details>
  <p v-if="message" role="status" data-inquiry-message>{{locale==='ar'?message.ar:message.en}}</p>
  <p v-if="busy" role="status" data-inquiry-loading>{{t('جارٍ التحقق من البيانات والصلاحيات…','Checking data and permissions…')}}</p>
  <p v-if="pending" role="status" data-inquiry-unknown>{{t('نتيجة الأمر غير مؤكدة. احتفظنا بالأمر الأصلي ولا ننشئ بديلًا له.','The outcome is uncertain. The original command is retained; no replacement is created.')}} <button type="button" :disabled="busy" @click="execute()">{{t('إعادة طلب نتيجة الأمر نفسه','Request the same command result')}}</button></p>

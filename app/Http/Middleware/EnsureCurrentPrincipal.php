@@ -51,7 +51,7 @@ final class EnsureCurrentPrincipal
 
             return $next($request); // The identity transition owns its outer authority transaction.
         }
-        if ($request->routeIs('business-foundation.*', 'market-evidence.write', 'internal.market-knowledge.capture', 'internal.market-knowledge.publish', 'workspaces.foundation', 'workspaces.show', 'workspaces.business.*', 'workspaces.goals.*', 'workspaces.object-purposes.*', 'workspaces.services.*', 'workspaces.sources.*',
+        if ($request->routeIs('organization-team.*', 'business-foundation.*', 'market-evidence.write', 'internal.market-knowledge.capture', 'internal.market-knowledge.publish', 'workspaces.foundation', 'workspaces.show', 'workspaces.commercial-history', 'workspaces.purpose-history.*', 'workspaces.business.*', 'workspaces.goals.*', 'workspaces.object-purposes.*', 'workspaces.services.*', 'workspaces.sources.*',
             'workspaces.providers.meta.*', 'providers.meta.callback', 'workspaces.providers.google.*', 'providers.google.callback',
             'workspaces.providers.tiktok.*', 'providers.tiktok.callback', 'workspaces.providers.snapchat.*', 'providers.snapchat.callback',
             'workspaces.providers.x.*', 'providers.x.callback')) {

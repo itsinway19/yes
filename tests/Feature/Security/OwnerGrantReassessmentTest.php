@@ -151,8 +151,6 @@ class OwnerGrantReassessmentTest extends TestCase
         ])->assertRedirect();
         $workspace = DB::connection('pgsql_migrations')->table('workspaces')
             ->where('slug', $slug)->first();
-        // The existing Business prerequisite applies after authority reassessment too.
-        $this->post('/workspaces/'.$workspace->public_id.'/business', ['business_type_id' => DB::connection('pgsql_migrations')->table('business_types')->where('key', 'real_estate')->value('id'), 'version' => 0])->assertRedirect();
         $workspace = DB::connection('pgsql_migrations')->table('workspaces')->where('id', $workspace->id)->first();
 
         return [$owner, $workspace];

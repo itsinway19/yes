@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
 use Tests\Support\BusinessAuthorityFixture as Fixture;
-use Tests\Support\ObjectPurposeTestCase;
+use Tests\Support\PurposeDeclarationFixture;
 use Tests\TestCase;
 
 final class BusinessFactFinalAuthorityTest extends TestCase
@@ -59,7 +59,14 @@ final class BusinessFactFinalAuthorityTest extends TestCase
             'context' => 'business.context.manage', 'markets' => 'business.markets.declare', 'intent' => 'business.intent.declare', 'preferences' => 'business.preferences.manage',
             'grant_issue', 'grant_revoke' => 'business.context.read', 'purpose' => 'business.purpose.declare'
         };
-        $grant = $kind === 'purpose' ? Fixture::root($db->table('businesses')->where('public_id', $a['business_public_id'])->value('id'), $user->id, $action)->id : $a['grant_refs'][$action];
+        $grant = $a['grant_refs'][$action] ?? null;
+        if ($kind === 'purpose') {
+            $basisSelection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+                'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs']['business.context.read']]]];
+            $enrollment = $this->postJson('/api/businesses/'.$a['business_public_id'].'/purpose-enrollment', ['command_id' => (string) Str::uuid(),
+                'confirmed' => true, 'previous_grant' => '0', 'authority_selection' => $basisSelection])->assertOk()->json('data');
+            $grant = (int) $enrollment['grant_refs']['business.purpose.declare'];
+        }
         $recipient = null;
         $issued = null;
         if (str_starts_with($kind, 'grant_')) {
@@ -67,6 +74,12 @@ final class BusinessFactFinalAuthorityTest extends TestCase
             $grant = Fixture::root($db->table('businesses')->where('public_id', $a['business_public_id'])->value('id'), $user->id, $action)->id;
         }
         $qualification = $db->table('security_action_grants')->where('id', $grant)->value('qualification_id');
+        if ($kind === 'purpose') {
+            // The operating policy also depends on the original creator basis;
+            // its expiry during the actual final receipt wait must roll back all
+            // Purpose rows even while the new declaration grant itself is live.
+            $qualification = $db->table('security_action_grants')->where('id', $a['grant_refs']['business.context.read'])->value('qualification_id');
+        }
         $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
         if ($kind === 'grant_revoke') {
             $issued = $this->postJson('/api/businesses/'.$a['business_public_id'].'/grants', ['command_id' => (string) Str::uuid(),
@@ -92,7 +105,7 @@ final class BusinessFactFinalAuthorityTest extends TestCase
             $input['operation'] = 'grant';
         }
         if ($kind === 'purpose') {
-            $input['purpose_command'] = ObjectPurposeTestCase::command();
+            $input['purpose_command'] = PurposeDeclarationFixture::command();
             $input['purpose_command']['command_id'] = $input['command'];
         }
         file_put_contents($path, json_encode($input, JSON_THROW_ON_ERROR));

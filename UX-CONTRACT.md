@@ -1,5 +1,23 @@
 # BuilderAd affected-surface interaction contract
 
+## Canonical commercial workflow and previous records — 2026-11-03
+
+Business Sources displays current manageable source metadata only when both the selected Business read path and an explicit Business/Workspace relationship qualify. Connection management remains in the Workspace and does not grant Business/customer-data use. The source list distinguishes unavailable reads from no visible authority, avoids stale Business responses, and never labels source registration as a verified provider connection. Advanced BusinessDataUse remains mounted after first Sources visit; its unresolved-command reopen control stays outside the disclosure. The earlier provider-hint route remains available within the existing Workspace navigation and OAuth callback identity still wins over a hint.
+
+Business details/markets/intent/preferences belong to the independent Business flow. Workspace previous profile/goals/purposes remain authorized original routes, grouped as Previous workspace records and clearly marked on direct entry; they are not silently redirected, made read-only, matched by name or synchronized. Connected platforms stay outside this previous-record group. Business Sources and data mounts the existing BusinessDataUse owner once on first visit, retaining its exact draft/authority lifecycle across local navigation; it is explicitly a qualified data-use binding surface, not a complete Business-native connection inventory. Existing BusinessPurposes is discoverable through a dedicated settings subview without a second writer. No source or Workspace inferred from Business identity. Arabic/English labels and current-page semantics share the canonical locale/navigation owners. Original pending/unknown command, departure, private-state and denial guards remain unchanged.
+
+## Actual advertiser presentation — 2026-11-03 continuation
+
+The native Business/source/data-rights surfaces now share one advertiser navigation hierarchy. Business creation presents one unconfirmed-outcome notice only after pending network work ends; explicit checking retains the original command and values. Inquiry declarations activate only under Business settings → Data and declarations and stay mounted across local views while resource/document-private ownership remains intact. No Business context is inferred from a Workspace link. Current implementation and verification limits are recorded in [IMPLEMENTATION_PROGRESS.md](docs/execution/structural-foundation/IMPLEMENTATION_PROGRESS.md); the historical baseline phase below is not the current implementation status.
+
+## Advertiser target baseline — 2026-11-03
+
+[Advertiser UX baseline](docs/execution/structural-foundation/ADVERTISER_UX_BASELINE.md) fixes seven main destinations and two supporting destinations, one primary placement per function and the compact visual/interaction acceptance contract. [BA-ADVERTISER-UX-C01](docs/execution/structural-foundation/ADVERTISER_UX_IMPLEMENTATION_PACKAGE.md) is the proposed bounded implementation envelope; this documentation update does not implement the new Vue shell or mark it browser verified.
+
+BF03 management's target placement is Business settings → Data & declarations → Inquiry declarations. It remains private aggregate source-assertion custody/readback, with independent current record/correct/read rights. Counts, recording channel, period, coverage and full revision meaning remain understandable; this does not grant aggregation/analysis/export or identify acquisition source. Operational sales tracking is a distinct, currently deferred product function. The five local destinations described below are the existing implementation/history, not a requirement to preserve their old prominence in the target menu.
+
+Existing route admission, Business/actor/document/authority keys, activation tickets, synchronous concealment, exact pending commands and qualified draft restoration remain mandatory during relocation. Inquiry activation means its exact visible subview, not the broader Settings section. No production evidence or authority enters localStorage. Product section placement changes presentation only and must not create a new semantic owner. The shared contracts below remain applicable.
+
 This records current owners for the public-platform change; it does not replace canonical governance or require unrelated screen rewrites.
 
 | Capability | Canonical owner | Source of truth | Allowed variants | Verification |

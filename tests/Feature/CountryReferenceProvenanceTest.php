@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Security\GrantAuthority;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CountryReferenceProvenanceTest extends TestCase
@@ -50,15 +50,16 @@ class CountryReferenceProvenanceTest extends TestCase
     public function test_label_only_change_preserves_identity_and_intent(): void
     {
         $actor = User::factory()->create();
-        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($actor, 1);
-        $this->actingAs($actor)->post('/workspaces', ['name' => 'Label preservation', 'slug' => 'label-preservation'])->assertRedirect();
+        $this->actingAs($actor);
+        $file = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Label preservation'])->assertCreated()->json('data');
         $db = DB::connection('pgsql_migrations');
-        $workspace = $db->table('workspaces')->where('slug', 'label-preservation')->first();
-        $url = '/workspaces/'.$workspace->public_id.'/business';
-        $this->post($url.'/target-markets', ['country_codes' => ['SA', 'KW', 'AE'], 'version' => 0])->assertRedirect();
-        $snapshot = fn () => [(array) $db->table('workspaces')->find($workspace->id),
-            $db->table('business_target_markets')->where('workspace_id', $workspace->id)->orderBy('country_code')->get()->toArray(),
-            $db->table('business_target_market_events')->where('workspace_id', $workspace->id)->orderBy('id')->get()->toArray()];
+        $business = $db->table('businesses')->where('public_id', $file['business_public_id'])->value('id');
+        $url = '/api/businesses/'.$file['business_public_id'];
+        $this->putJson($url.'/markets', ['command_id' => (string) Str::uuid(), 'codes' => ['SA', 'KW', 'AE'], 'expected_context' => 0,
+            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.markets.declare']]]]])->assertOk();
+        $snapshot = fn () => [(array) $db->table('business_context_heads')->where('business_id', $business)->first(['business_id', 'display_name', 'context_version']),
+            $db->table('business_declared_markets')->where('business_id', $business)->orderBy('country_code')->get()->toArray(),
+            $db->table('business_market_transitions')->where('business_id', $business)->orderBy('event_id')->get()->toArray()];
         $before = $snapshot();
         $catalog = $this->catalog();
         $old = $db->table('country_references')->where('code', 'AE')->first();
@@ -69,9 +70,12 @@ class CountryReferenceProvenanceTest extends TestCase
             $this->assertSame(array_column($catalog, 'code'), array_column($changed, 'code'));
             $this->assertNotSame($this->localization($catalog), $this->localization($changed));
             $this->assertEquals($before, $snapshot());
-            $this->getJson($url)->assertOk()->assertJsonPath('data.business.targetMarkets.0.code', 'AE')
-                ->assertJsonPath('data.business.targetMarkets.0.name_en', 'Synthetic display correction')->assertJsonPath('data.business.targetMarkets.0.name_ar', 'تصحيح عرض اصطناعي')
-                ->assertJsonPath('data.business.version', 1)->assertJsonPath('data.business.targetMarketsDeclared', true);
+            $surface = $this->getJson($url.'/surface?access='.$file['grant_refs']['business.context.read'])->assertOk()
+                ->assertJsonPath('data.business.versions.context', 1)->assertJsonPath('data.business.declared_markets', ['AE', 'KW', 'SA']);
+            $country = collect($surface->json('data.catalog.countries'))->firstWhere('code', 'AE');
+            $this->assertSame('Synthetic display correction', $country['name_en']);
+            $this->assertSame('تصحيح عرض اصطناعي', $country['name_ar']);
+            $this->assertSame(0, $db->table('workspaces')->count());
         } finally {
             $db->table('country_references')->where('code', 'AE')->update(['name_en' => $old->name_en, 'name_ar' => $old->name_ar]);
         }

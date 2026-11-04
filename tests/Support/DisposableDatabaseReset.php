@@ -23,6 +23,15 @@ final class DisposableDatabaseReset
         app(DisposableTestDatabaseGuard::class)->assertSafe();
         DB::disconnect('pgsql');
         DB::disconnect('pgsql_authority');
+        // This declared read-only projection is owned by the isolated executor;
+        // db:wipe's table cleanup does not remove views or executor-owned objects.
+        $resetOwner = DB::connection('pgsql_migrations');
+        $resetOwner->statement('SET ROLE builderad_scope_executor');
+        try {
+            $resetOwner->statement('DROP VIEW IF EXISTS public.organization_workspaces RESTRICT');
+        } finally {
+            $resetOwner->statement('RESET ROLE');
+        }
         if (Artisan::call('db:wipe', ['--database' => 'pgsql_migrations', '--force' => true]) !== 0) {
             throw new RuntimeException('Disposable table reset failed.');
         }
@@ -33,7 +42,7 @@ final class DisposableDatabaseReset
         $scopeFunctions = $owner->select(<<<'SQL'
             SELECT format('%I.%I(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)) AS signature
             FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-            WHERE n.nspname='public' AND p.prokind='f' AND p.proname LIKE 'builderad_v2_%'
+            WHERE n.nspname='public' AND p.prokind='f' AND p.proname LIKE 'builderad_%'
               AND p.proowner=(SELECT oid FROM pg_roles WHERE rolname='builderad_scope_executor')
             SQL);
         if ($scopeFunctions !== []) {

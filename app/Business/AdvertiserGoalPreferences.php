@@ -2,12 +2,7 @@
 
 namespace App\Business;
 
-use App\Models\Workspace;
-use App\Security\SessionAuthority;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-
-/** Workspace-owned advertiser preferences, never Intent or Object Purpose declarations. */
+/** Shared finite preference catalog; current declarations belong to Business. */
 final class AdvertiserGoalPreferences
 {
     public static function catalog(): array
@@ -49,20 +44,5 @@ final class AdvertiserGoalPreferences
         }
 
         return $catalog;
-    }
-
-    public function projection(Workspace $workspace): array
-    {
-        $row = DB::table('advertiser_goal_preferences')->where('workspace_id', $workspace->id)->first();
-
-        return ['value' => $row ? json_decode($row->value, true, flags: JSON_THROW_ON_ERROR)
-            : ['goals' => [], 'priority' => null, 'results' => (object) []], 'version' => (int) ($row?->version ?? 0)];
-    }
-
-    public function write(Request $request, Workspace $workspace, array $value, int $version): array
-    {
-        return json_decode(DB::scalar('SELECT builderad_advertiser_goals_write(?,?,?::jsonb,?)', [
-            $workspace->id, SessionAuthority::sessionKey($request), json_encode($value, JSON_THROW_ON_ERROR), $version,
-        ]), true, flags: JSON_THROW_ON_ERROR);
     }
 }

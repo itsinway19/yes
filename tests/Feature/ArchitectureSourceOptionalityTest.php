@@ -6,8 +6,9 @@ use App\Models\User;
 use App\Security\GrantAuthority;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Testing\Fluent\AssertableJson;
-use Tests\Support\ObjectPurposeTestCase;
+use Illuminate\Support\Str;
+use Tests\Support\BusinessAuthorityFixture;
+use Tests\Support\PurposeDeclarationFixture;
 use Tests\TestCase;
 
 class ArchitectureSourceOptionalityTest extends TestCase
@@ -22,56 +23,38 @@ class ArchitectureSourceOptionalityTest extends TestCase
         $this->get('/')->assertOk();
         $this->get('/login')->assertOk();
         $actor = User::factory()->create();
-        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($actor, 1);
-        $this->actingAs($actor)->post('/workspaces', ['name' => 'Source optional business', 'slug' => 'source-optional'])->assertRedirect();
-        $owner = DB::connection('pgsql_migrations');
-        $workspace = $owner->table('workspaces')->where('slug', 'source-optional')->first();
-        $url = '/workspaces/'.$workspace->public_id.'/business';
-        // An authorized synthetic catalog fixture, never provider evidence or real Pilot data.
-        $type = $owner->table('business_types')->where('key', 'real_estate')->value('id');
-        $owner->table('business_types')->where('id', $type)->update(['active' => true]);
-        $this->post($url, ['business_type_id' => $type, 'name' => 'Confirmed business', 'version' => 0])->assertRedirect();
-        $this->post($url.'/target-markets', ['country_codes' => ['SA', 'AE'], 'version' => 1])->assertRedirect($url);
+        $this->actingAs($actor);
+        $file = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Source-optional Business'])->assertCreated()->json('data');
+        $base = '/api/businesses/'.$file['business_public_id'];
+        $selection = fn ($grant) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (int) $grant]]];
+        $command = fn ($action) => ['command_id' => (string) Str::uuid(), 'authority_selection' => $selection($file['grant_refs'][$action])];
+        $this->putJson($base.'/context', $command('business.context.manage') + ['name' => 'Confirmed independent Business', 'business_type_id' => null, 'expected_context' => 0])->assertOk();
+        $this->putJson($base.'/markets', $command('business.markets.declare') + ['codes' => ['SA', 'AE'], 'expected_context' => 1])->assertOk();
         $intent = ['direction' => 'increase_value', 'scope' => 'business_wide', 'description' => null,
             'outcome' => ['meaning' => 'Completed bookings', 'clarification' => null, 'count_unit' => null], 'quantity' => null, 'horizon' => null];
-        $this->postJson($url.'/current-intent', ['command' => 'replace', 'version' => 2, 'value' => $intent,
-            'confirmations' => ['declaration' => true, 'business_wide' => true, 'outcome' => true, 'acceptance_clear' => true]])->assertOk()->assertJsonPath('redirect', $url);
-        $this->get($url)->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
-        $context = $this->getJson($url)->assertOk()->assertJsonPath('data.workspace.name', 'Confirmed business')->assertJsonPath('data.business.version', 3)
-            ->assertJsonPath('data.business.targetMarketsDeclared', true)->assertJsonPath('data.business.targetMarkets.0.code', 'AE')
-            ->assertJsonPath('data.business.targetMarkets.1.code', 'SA');
-        $context->assertJson(fn (AssertableJson $json) => $json->where('data.business.currentIntent.value', $intent)->etc());
-        $this->get('/workspaces/'.$workspace->public_id)->assertOk();
-
-        $goalUrl = '/workspaces/'.$workspace->public_id.'/goals';
-        $this->get($goalUrl)->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
-        $this->getJson($goalUrl.'/context')->assertOk()->assertJsonCount(4, 'catalog');
-        $this->postJson($goalUrl, ['version' => 0, 'value' => [
-            'goals' => ['sales', 'customers'], 'priority' => 'sales',
-            'results' => ['sales' => ['actual_sales'], 'customers' => []],
-        ]])->assertOk()->assertJsonPath('version', 1);
-        $this->getJson($goalUrl)->assertOk()->assertJsonPath('value.results.sales', ['actual_sales']);
-        $this->assertEquals($intent, json_decode($owner->table('workspaces')->where('id', $workspace->id)->value('current_intent'), true));
-
-        // Explicit, finite synthetic identity and provenance are still mandatory; no discovery or inferred identity.
-        $command = ObjectPurposeTestCase::command();
-        $command['declaration']['included_objects'] = [['provider' => 'meta', 'account_namespace' => 'meta_ads_account',
-            'account_id' => '100', 'object_kind' => 'campaign', 'object_id' => '200', 'incarnation' => null]];
-        $purposeUrl = '/workspaces/'.$workspace->public_id.'/object-purposes';
-        $this->getJson($purposeUrl)->assertOk()->assertJsonPath('state', 'UNKNOWN');
-        $first = $this->postJson($purposeUrl, $command)->assertCreated()->json();
-        $read = $this->getJson($purposeUrl.'/'.$first['purpose_id'])->assertOk()
-            ->assertJsonCount(1, 'items.0.applicable.snapshot.included_objects');
-        foreach ($command['declaration']['included_objects'][0] as $key => $value) {
-            $read->assertJsonPath('items.0.applicable.snapshot.included_objects.0.'.$key, $value);
+        $this->putJson($base.'/intent', $command('business.intent.declare') + ['value' => $intent, 'expected_context' => 2, 'expected_intent' => 0,
+            'confirmations' => ['declaration' => true, 'business_wide' => true, 'outcome' => true, 'acceptance_clear' => true]])->assertOk();
+        $this->putJson($base.'/preferences', $command('business.preferences.manage') + ['value' => ['goals' => ['sales'], 'priority' => 'sales', 'results' => (object) []], 'expected_preference' => 0])->assertOk();
+        $db = DB::connection('pgsql_migrations');
+        $this->assertSame(0, $db->table('workspaces')->count());
+        // Synthetic qualification tests source independence, not an operating
+        // Purpose issuer or evidence of real external object rights.
+        $id = $db->table('businesses')->where('public_id', $file['business_public_id'])->value('id');
+        $purpose = BusinessAuthorityFixture::root($id, $actor->id, 'business.purpose.declare');
+        $this->getJson($base.'/purposes?access='.$file['grant_refs']['business.context.read'])->assertOk()->assertJsonPath('data.projection.state', 'UNKNOWN');
+        $body = ['command' => PurposeDeclarationFixture::command(), 'expected_context' => 3, 'authority_selection' => $selection($purpose->id)];
+        $this->postJson($base.'/purposes', $body)->assertCreated();
+        $body['command'] = PurposeDeclarationFixture::command();
+        $body['command']['declaration']['included_objects'] = [];
+        $this->postJson($base.'/purposes', $body)->assertUnprocessable();
+        $this->assertSame(1, $db->table('object_purpose_revisions')->count());
+        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($actor, 1);
+        $key = $this->getJson('/organizations/new')->assertOk()->json('data.creationKey');
+        $organization = $this->postJson('/organizations', ['name' => 'Source-optional organization', 'creation_key' => $key])->assertOk()->json('redirect');
+        $this->getJson($organization)->assertOk()->assertJsonMissingPath('data.business')->assertJsonMissingPath('data.guidance');
+        foreach (['business_context_events', 'business_current_intent_events', 'business_target_markets', 'advertiser_goal_preferences', 'source_registry', 'provider_access'] as $table) {
+            $this->assertSame(0, $db->table($table)->count(), $table);
         }
-        $missingIdentity = ObjectPurposeTestCase::command();
-        $missingIdentity['declaration']['included_objects'] = [];
-        $this->postJson($purposeUrl, $missingIdentity)->assertUnprocessable();
-        $this->assertSame(1, $owner->table('object_purpose_revisions')->count());
-        $this->assertSame(3, $owner->table('workspaces')->where('id', $workspace->id)->value('business_context_version'));
-        $this->assertSame(0, $owner->table('source_registry')->count());
-        $this->assertSame(0, $owner->table('provider_access')->count());
         Http::assertNothingSent();
     }
 }

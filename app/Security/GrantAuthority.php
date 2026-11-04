@@ -138,12 +138,6 @@ final class GrantAuthority
 
     private const SENSITIVE_STAFF_ACTIONS = ['grant.manage', 'service.manage', 'platform.maintenance.manage', 'market.knowledge.observe', 'market.knowledge.capture', 'market.knowledge.publish'];
 
-    /** Existing fresh responsible-Owner evidence issues a narrow grant; mutation itself is grant-based. */
-    public function requestBusinessContextGrant(Request $request, int $workspaceId): void
-    {
-        DB::selectOne('SELECT builderad_v2_legacy_context_grant(?,?)', [$workspaceId, SessionAuthority::sessionKey($request)]);
-    }
-
     public const SOURCE_ACTIONS = ['source.register', 'source.manage', 'source.read', 'source.audit.recover',
         'provider.connect', 'provider.read', 'provider.revoke'];
 
@@ -802,7 +796,7 @@ final class GrantAuthority
         }
         if ($lifecycle->principal_class === 'advertiser') {
             $allowedAdvertiserAction = ($action === 'workspace.create' && $scope === 'platform' && $workspaceId === null) ||
-                (in_array($action, ['workspace.view', 'service.scope', 'business.context.manage'], true) && $scope === 'workspace' && $workspaceId !== null);
+                (in_array($action, ['workspace.view', 'service.scope'], true) && $scope === 'workspace' && $workspaceId !== null);
             if (! $allowedAdvertiserAction) {
                 return false;
             }
