@@ -2327,6 +2327,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/businesses/{business}/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["qualifiedBusinessSources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/businesses/{business}/purposes": {
         parameters: {
             query?: never;
@@ -2591,6 +2607,23 @@ export interface paths {
         put?: never;
         /** @description This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response. */
         post: operations["writeIndependentBusinessGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/internal-team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readInternalClientFileTeam"];
+        put?: never;
+        /** @description This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response. */
+        post: operations["writeInternalClientFileTeam"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2921,6 +2954,7 @@ export interface components {
         WorkspaceIndexData: {
             workspaces: components["schemas"]["WorkspaceReference"][];
             reassessableWorkspaces: components["schemas"]["WorkspaceReference"][];
+            canCreateWorkspace: boolean;
         };
         WorkspaceIndexResource: {
             data: components["schemas"]["WorkspaceIndexData"];
@@ -4627,6 +4661,50 @@ export interface components {
             reason: string;
             expires_at: string;
         };
+        InternalTeamCommand: {
+            /** Format: uuid */
+            command_id: string;
+            authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+            /** Format: uuid */
+            workspace_public_id: string;
+            /** @enum {unknown} */
+            effect: "enroll" | "appoint" | "remove" | "end";
+            recipient_public_id: string | null;
+            expected_revision: number;
+        };
+        InternalTeamReceipt: {
+            /** Format: uuid */
+            business_public_id: string;
+            /** Format: uuid */
+            workspace_public_id: string;
+            /** Format: uuid */
+            link_ref: string;
+            /** @enum {unknown} */
+            state: "active" | "ended";
+            recipient_public_id: string | null;
+            grant_refs: {
+                [key: string]: string;
+            };
+            versions: {
+                link: number;
+            };
+        };
+        InternalTeamSurface: {
+            /** Format: uuid */
+            business_public_id: string;
+            creator_basis: boolean;
+            can_admin: boolean;
+            teams: {
+                /** Format: uuid */
+                link_ref: string;
+                /** Format: uuid */
+                workspace_public_id: string;
+                workspace_slug: string;
+                /** @enum {unknown} */
+                state: "active" | "ended";
+                revision: number;
+            }[];
+        };
         BusinessHistory: {
             /** Format: uuid */
             business_public_id: string;
@@ -5156,7 +5234,7 @@ export interface components {
                 namespace_count: number;
                 authority_selection: {
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                     requirements: {
                         /** @enum {unknown} */
@@ -5187,7 +5265,7 @@ export interface components {
                     namespace_count: number;
                     authority_selection: {
                         /** @enum {unknown} */
-                        realm_kind: "direct" | "agency";
+                        realm_kind: "direct" | "agency" | "internal_team";
                         realm_workspace_public_id: string | null;
                         requirements: {
                             /** @enum {unknown} */
@@ -5231,7 +5309,7 @@ export interface components {
             };
             authority_selection: {
                 /** @enum {unknown} */
-                realm_kind: "direct" | "agency";
+                realm_kind: "direct" | "agency" | "internal_team";
                 realm_workspace_public_id: string | null;
                 requirements: {
                     /** @enum {unknown} */
@@ -5251,6 +5329,54 @@ export interface components {
             /** @constant */
             rights_limit: 64;
             rights_more: boolean;
+        };
+        BusinessSources: {
+            /** Format: uuid */
+            business_public_id: string;
+            /** @constant */
+            scope: "current_operator_in_linked_workspaces";
+            sources: {
+                /** Format: uuid */
+                source_id: string;
+                label: string;
+                /** @enum {unknown} */
+                status: "UNVERIFIED" | "REVOKED";
+                resource: string;
+                operation: string;
+                purpose: string;
+                access_grant_id: string;
+                family: string;
+                namespace: string;
+                /** Format: uuid */
+                workspace_public_id: string;
+                workspace_slug: string;
+            }[];
+            next_cursor: string | null;
+        };
+        BusinessSourcesResult: {
+            data: {
+                /** Format: uuid */
+                business_public_id: string;
+                /** @constant */
+                scope: "current_operator_in_linked_workspaces";
+                sources: {
+                    /** Format: uuid */
+                    source_id: string;
+                    label: string;
+                    /** @enum {unknown} */
+                    status: "UNVERIFIED" | "REVOKED";
+                    resource: string;
+                    operation: string;
+                    purpose: string;
+                    access_grant_id: string;
+                    family: string;
+                    namespace: string;
+                    /** Format: uuid */
+                    workspace_public_id: string;
+                    workspace_slug: string;
+                }[];
+                next_cursor: string | null;
+            };
         };
         NativeSourceChoicesResult: {
             data: {
@@ -5287,7 +5413,7 @@ export interface components {
                 };
                 authority_selection: {
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                     requirements: {
                         /** @enum {unknown} */
@@ -5317,7 +5443,7 @@ export interface components {
                 state: "active" | "restricted" | "archived";
                 read_grant_id: string;
                 /** @enum {unknown} */
-                realm_kind: "direct" | "agency";
+                realm_kind: "direct" | "agency" | "internal_team";
                 realm_workspace_public_id: string | null;
             }[];
             next_cursor: string | null;
@@ -5332,7 +5458,7 @@ export interface components {
             };
             authority_selection: {
                 /** @enum {unknown} */
-                realm_kind: "direct" | "agency";
+                realm_kind: "direct" | "agency" | "internal_team";
                 realm_workspace_public_id: string | null;
                 requirements: {
                     /** @enum {unknown} */
@@ -5363,7 +5489,7 @@ export interface components {
                     state: "active" | "restricted" | "archived";
                     read_grant_id: string;
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                 }[];
                 next_cursor: string | null;
@@ -5380,7 +5506,7 @@ export interface components {
                 };
                 authority_selection: {
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                     requirements: {
                         /** @enum {unknown} */
@@ -5413,7 +5539,7 @@ export interface components {
                 state: string;
                 read_grant_id: string;
                 /** @enum {unknown} */
-                realm_kind: "direct" | "agency";
+                realm_kind: "direct" | "agency" | "internal_team";
                 realm_workspace_public_id: string | null;
             }[];
             next_cursor: string | null;
@@ -5442,13 +5568,13 @@ export interface components {
                     /** Format: uuid */
                     workspace_public_id: string;
                     /** @enum {unknown} */
-                    kind: "collaboration" | "agency";
+                    kind: "collaboration" | "agency" | "internal_team";
                     revision: number;
                 }[];
             };
             authority_selection: {
                 /** @enum {unknown} */
-                realm_kind: "direct" | "agency";
+                realm_kind: "direct" | "agency" | "internal_team";
                 realm_workspace_public_id: string | null;
                 requirements: {
                     /** @enum {unknown} */
@@ -5490,7 +5616,7 @@ export interface components {
                     workspace_public_id: string;
                     workspace_slug: string;
                     /** @enum {unknown} */
-                    kind: "collaboration" | "agency";
+                    kind: "collaboration" | "agency" | "internal_team";
                     /** @enum {unknown} */
                     state: "active" | "ended";
                     revision: number;
@@ -5523,7 +5649,7 @@ export interface components {
                     expires_at: string | null;
                     delegable: boolean;
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                 }[];
                 /** @constant */
@@ -5850,7 +5976,7 @@ export interface components {
                     state: string;
                     read_grant_id: string;
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                 }[];
                 next_cursor: string | null;
@@ -5881,13 +6007,13 @@ export interface components {
                         /** Format: uuid */
                         workspace_public_id: string;
                         /** @enum {unknown} */
-                        kind: "collaboration" | "agency";
+                        kind: "collaboration" | "agency" | "internal_team";
                         revision: number;
                     }[];
                 };
                 authority_selection: {
                     /** @enum {unknown} */
-                    realm_kind: "direct" | "agency";
+                    realm_kind: "direct" | "agency" | "internal_team";
                     realm_workspace_public_id: string | null;
                     requirements: {
                         /** @enum {unknown} */
@@ -5929,7 +6055,7 @@ export interface components {
                         workspace_public_id: string;
                         workspace_slug: string;
                         /** @enum {unknown} */
-                        kind: "collaboration" | "agency";
+                        kind: "collaboration" | "agency" | "internal_team";
                         /** @enum {unknown} */
                         state: "active" | "ended";
                         revision: number;
@@ -5962,7 +6088,7 @@ export interface components {
                         expires_at: string | null;
                         delegable: boolean;
                         /** @enum {unknown} */
-                        realm_kind: "direct" | "agency";
+                        realm_kind: "direct" | "agency" | "internal_team";
                         realm_workspace_public_id: string | null;
                     }[];
                     /** @constant */
@@ -6401,7 +6527,7 @@ export interface components {
         };
         BusinessAuthoritySelection: {
             /** @enum {unknown} */
-            realm_kind: "direct" | "agency";
+            realm_kind: "direct" | "agency" | "internal_team";
             realm_workspace_public_id: string | null;
             requirements: {
                 /** @enum {unknown} */
@@ -6456,7 +6582,7 @@ export interface components {
                     /** Format: uuid */
                     workspace_public_id: string;
                     /** @enum {unknown} */
-                    kind: "collaboration" | "agency";
+                    kind: "collaboration" | "agency" | "internal_team";
                     revision: number;
                 }[];
             };
@@ -19975,7 +20101,7 @@ export interface operations {
                                 namespace_count: number;
                                 authority_selection: {
                                     /** @enum {unknown} */
-                                    realm_kind: "direct" | "agency";
+                                    realm_kind: "direct" | "agency" | "internal_team";
                                     realm_workspace_public_id: string | null;
                                     requirements: {
                                         /** @enum {unknown} */
@@ -20174,7 +20300,7 @@ export interface operations {
                             };
                             authority_selection: {
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                                 requirements: {
                                     /** @enum {unknown} */
@@ -20386,7 +20512,7 @@ export interface operations {
                             };
                             authority_selection: {
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                                 requirements: {
                                     /** @enum {unknown} */
@@ -20495,7 +20621,7 @@ export interface operations {
                                 state: "active" | "restricted" | "archived";
                                 read_grant_id: string;
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                             }[];
                             next_cursor: string | null;
@@ -20589,7 +20715,7 @@ export interface operations {
                             };
                             authority_selection: {
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                                 requirements: {
                                     /** @enum {unknown} */
@@ -20696,7 +20822,7 @@ export interface operations {
                                 state: "active" | "restricted" | "archived";
                                 read_grant_id: string;
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                             }[];
                             next_cursor: string | null;
@@ -20793,7 +20919,7 @@ export interface operations {
                             };
                             authority_selection: {
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                                 requirements: {
                                     /** @enum {unknown} */
@@ -20905,7 +21031,7 @@ export interface operations {
                                 state: string;
                                 read_grant_id: string;
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                             }[];
                             next_cursor: string | null;
@@ -21124,13 +21250,13 @@ export interface operations {
                                     /** Format: uuid */
                                     workspace_public_id: string;
                                     /** @enum {unknown} */
-                                    kind: "collaboration" | "agency";
+                                    kind: "collaboration" | "agency" | "internal_team";
                                     revision: number;
                                 }[];
                             };
                             authority_selection: {
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                                 requirements: {
                                     /** @enum {unknown} */
@@ -21172,7 +21298,7 @@ export interface operations {
                                     workspace_public_id: string;
                                     workspace_slug: string;
                                     /** @enum {unknown} */
-                                    kind: "collaboration" | "agency";
+                                    kind: "collaboration" | "agency" | "internal_team";
                                     /** @enum {unknown} */
                                     state: "active" | "ended";
                                     revision: number;
@@ -21205,7 +21331,7 @@ export interface operations {
                                     expires_at: string | null;
                                     delegable: boolean;
                                     /** @enum {unknown} */
-                                    realm_kind: "direct" | "agency";
+                                    realm_kind: "direct" | "agency" | "internal_team";
                                     realm_workspace_public_id: string | null;
                                 }[];
                                 /** @constant */
@@ -21504,13 +21630,13 @@ export interface operations {
                                     /** Format: uuid */
                                     workspace_public_id: string;
                                     /** @enum {unknown} */
-                                    kind: "collaboration" | "agency";
+                                    kind: "collaboration" | "agency" | "internal_team";
                                     revision: number;
                                 }[];
                             };
                             authority_selection: {
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                                 requirements: {
                                     /** @enum {unknown} */
@@ -21552,7 +21678,7 @@ export interface operations {
                                     workspace_public_id: string;
                                     workspace_slug: string;
                                     /** @enum {unknown} */
-                                    kind: "collaboration" | "agency";
+                                    kind: "collaboration" | "agency" | "internal_team";
                                     /** @enum {unknown} */
                                     state: "active" | "ended";
                                     revision: number;
@@ -21585,7 +21711,7 @@ export interface operations {
                                     expires_at: string | null;
                                     delegable: boolean;
                                     /** @enum {unknown} */
-                                    realm_kind: "direct" | "agency";
+                                    realm_kind: "direct" | "agency" | "internal_team";
                                     realm_workspace_public_id: string | null;
                                 }[];
                                 /** @constant */
@@ -21678,6 +21804,109 @@ export interface operations {
                                 bindings_limit: 64;
                                 bindings_more: boolean;
                             };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    qualifiedBusinessSources: {
+        parameters: {
+            query: {
+                access: number;
+                after?: number;
+            };
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            /** @constant */
+                            scope: "current_operator_in_linked_workspaces";
+                            sources: {
+                                /** Format: uuid */
+                                source_id: string;
+                                label: string;
+                                /** @enum {unknown} */
+                                status: "UNVERIFIED" | "REVOKED";
+                                resource: string;
+                                operation: string;
+                                purpose: string;
+                                access_grant_id: string;
+                                family: string;
+                                namespace: string;
+                                /** Format: uuid */
+                                workspace_public_id: string;
+                                workspace_slug: string;
+                            }[];
+                            next_cursor: string | null;
                         };
                     };
                 };
@@ -21938,7 +22167,7 @@ export interface operations {
                     expected_context: number;
                     authority_selection: {
                         /** @enum {unknown} */
-                        realm_kind: "direct" | "agency";
+                        realm_kind: "direct" | "agency" | "internal_team";
                         realm_workspace_public_id: string | null;
                         requirements: {
                             /** @enum {unknown} */
@@ -22471,7 +22700,7 @@ export interface operations {
                                 state: string;
                                 read_grant_id: string;
                                 /** @enum {unknown} */
-                                realm_kind: "direct" | "agency";
+                                realm_kind: "direct" | "agency" | "internal_team";
                                 realm_workspace_public_id: string | null;
                             }[];
                             next_cursor: string | null;
@@ -23251,7 +23480,7 @@ export interface operations {
                                 /** Format: uuid */
                                 workspace_public_id: string;
                                 /** @enum {unknown} */
-                                kind: "collaboration" | "agency";
+                                kind: "collaboration" | "agency" | "internal_team";
                                 revision: number;
                             }[];
                         };
@@ -23957,6 +24186,209 @@ export interface operations {
                             status: "active" | "revoked";
                             versions: {
                                 grant: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Current scoped authority denied; no authority inferred from Workspace membership. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Typed command, shape or semantic validation rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["ValidationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readInternalClientFileTeam: {
+        parameters: {
+            query: {
+                access: number;
+            };
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            creator_basis: boolean;
+                            can_admin: boolean;
+                            teams: {
+                                /** Format: uuid */
+                                link_ref: string;
+                                /** Format: uuid */
+                                workspace_public_id: string;
+                                workspace_slug: string;
+                                /** @enum {unknown} */
+                                state: "active" | "ended";
+                                revision: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    writeInternalClientFileTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                    /** Format: uuid */
+                    workspace_public_id: string;
+                    /** @enum {unknown} */
+                    effect: "enroll" | "appoint" | "remove" | "end";
+                    recipient_public_id: string | null;
+                    expected_revision: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            /** Format: uuid */
+                            workspace_public_id: string;
+                            /** Format: uuid */
+                            link_ref: string;
+                            /** @enum {unknown} */
+                            state: "active" | "ended";
+                            recipient_public_id: string | null;
+                            grant_refs: {
+                                [key: string]: string;
+                            };
+                            versions: {
+                                link: number;
                             };
                         };
                     };

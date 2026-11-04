@@ -23,16 +23,21 @@ final class WorkspaceController extends Controller
 {
     public function index(Request $request, WorkspaceAuthority $authority, GrantAuthority $grants): SpaPage
     {
+        // Qualify the same signed principal for both the resource and its witness.
+        // Otherwise grant RLS sees a clean context on witness-only requests.
+        $workspaces = $authority->visibleTo(
+            $request->user(),
+            (int) $request->session()->get('a001_generation', 0),
+        );
         if (! SpaPage::needsData($request)) {
             return new SpaPage([]);
         }
 
         return new SpaPage([
-            'workspaces' => $authority->visibleTo(
-                $request->user(),
-                (int) $request->session()->get('a001_generation', 0),
-            ),
+            'workspaces' => $workspaces,
             'reassessableWorkspaces' => $grants->reassessableOwnerWorkspaces($request),
+            'canCreateWorkspace' => $grants->has($request->user(),
+                (int) $request->session()->get('a001_generation', 0), 'workspace.create'),
         ]);
     }
 

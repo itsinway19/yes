@@ -13,6 +13,7 @@ BEGIN
   RAISE EXCEPTION 'Explicit own Business read path required' USING ERRCODE='42501';
  END IF;
  PERFORM builderad_private.require_business(b,actor,'business.context.read',selection,p_session);
+ IF selection->>'realm_kind'='internal_team' THEN RAISE EXCEPTION 'Internal file access does not release private history' USING ERRCODE='42501'; END IF;
  PERFORM builderad_private.principal(p_session);
  WITH transitions AS (
   SELECT event_id,before_context_version prior,after_context_version revision,before_context_version,after_context_version,before_value,after_value,recorded_at

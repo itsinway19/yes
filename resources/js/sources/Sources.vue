@@ -2,7 +2,7 @@
 import { computed, ref, reactive, onMounted, onBeforeUnmount } from 'vue';
 import ProviderBrand from '@/Components/ProviderBrand.vue';
 import type { ProviderSummary } from '@/Components/Business/providerPresentation';
-import { RouterLink, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { locale } from '../spa/locale';
 import { commandsFor, submit, remember, restore } from './commands';
 import { stamp, owned, TransportError } from '../spa/transport';
@@ -15,6 +15,7 @@ import GoogleConnectionPanel from './GoogleConnectionPanel.vue';
 import TikTokConnectionPanel from './TikTokConnectionPanel.vue';
 import SnapchatConnectionPanel from './SnapchatConnectionPanel.vue';
 import XConnectionPanel from './XConnectionPanel.vue';
+import { initialAdvertisingPlatform } from './providerDestination';
 type Guidance = { provider: string; label: string; priority: number; rationale: string | null };
 const props = defineProps<{
     workspace: { public_id: string; name: string; slug: string };
@@ -42,6 +43,7 @@ const sourceGrid = ref<HTMLElement | null>(null);
 const panelsReady = ref(Boolean(callbackProvider));
 function openSource(provider: string) { panelsReady.value = true; selected.value = keyFor(provider); dialog.value?.showModal(); }
 const router = useRouter();
+const route = useRoute();
 function closeSource() { dialog.value?.close(); selected.value = null; if (/^#(meta|google|tiktok|snapchat|x)-(flow|result)=/.test(location.hash)) void router.replace(location.pathname + location.search); }
 const statusCopy: Record<string, [string, string]> = {
     loading: ['جارٍ التحقق…', 'Checking…'], unknown: ['حالة غير متحققة', 'Status unverified'],
@@ -59,8 +61,9 @@ function actionLabel(provider: string) {
         ? c('ربط المصدر', 'Connect source') : c('عرض المصدر', 'View source');
 }
 onMounted(async () => {
-    if (callbackProvider) {
-        openSource(callbackProvider);
+    const requested = initialAdvertisingPlatform(route.query.provider, window.location.hash);
+    if (requested) {
+        openSource(requested);
         return;
     }
     // Visible branding gets a head start over the five snapshot requests on
@@ -108,9 +111,13 @@ async function revokeService(service: string) {
 </script>
 <template>
     <div>
-        <header class="source-heading"><div><p class="biz-eyebrow">{{ t('sources') }}</p><h1>{{ c('اربط منصاتك', 'Connect your platforms') }}</h1><p class="biz-lead">{{ c('اختر المنصة التي تستخدمها، وتعرّف على ما يمكنها توفيره لنشاطك.', 'Choose a platform you use and see what it can provide for your business.') }}</p></div></header>
-        <div class="source-business"><div><span>{{ c('نشاطك', 'Your business') }}</span><strong>{{ workspace.name }}</strong><span class="source-business-type">{{ localized(business.type) }}</span></div><RouterLink v-if="business.canManage" :to="`/workspaces/${workspace.public_id}/business`" class="biz-link">{{ c('تعديل النشاط', 'Edit business') }}</RouterLink></div>
-        <p class="biz-lead"><span>{{ t('marketsSummary') }}: </span><template v-if="business.targetMarketsDeclared"><span v-for="(country, index) in business.targetMarkets" :key="country.code">{{ index ? '، ' : '' }}{{ localized(country) }}</span></template><span v-else>{{ t('marketsUnknown') }}</span></p>
+        <header class="source-heading"><div><p class="biz-eyebrow">{{ c('موارد مساحة العمل', 'Workspace resources') }}</p><h1>{{ c('الحسابات والمصادر', 'Accounts and sources') }}</h1><p class="biz-lead">{{ c('راجع مصادر هذه المساحة، واختر المنصة لفتح تفاصيلها والأفعال المتاحة لك.', 'Review this workspace’s sources. Choose a platform to open its details and your available actions.') }}</p></div></header>
+        <div class="source-business"><div><span>{{ c('مساحة العمل', 'Workspace') }}</span><strong>{{ workspace.name }}</strong></div><RouterLink v-if="business.canManage" :to="`/workspaces/${workspace.public_id}/business`" class="biz-link">{{ c('الملف التجاري السابق', 'Previous business profile') }}</RouterLink></div>
+        <details class="advertiser-context-note" data-source-previous-context><summary>{{ c('السياق التجاري السابق لهذه المساحة', 'Previous business context for this workspace') }}</summary>
+            <p>{{ c('هذه معلومات المسار السابق، ولا تثبت ارتباط الحسابات بنشاط مستقل.', 'These details belong to the previous workflow and do not establish an account’s association with an independent business.') }}</p>
+            <p v-if="business.type">{{ c('نوع النشاط السابق', 'Previous business type') }}: {{ localized(business.type) }}</p>
+        <p class="biz-lead"><span>{{ c('الأسواق المحفوظة في الملف السابق', 'Markets saved in the previous profile') }}: </span><template v-if="business.targetMarketsDeclared"><span v-for="(country, index) in business.targetMarkets" :key="country.code">{{ index ? '، ' : '' }}{{ localized(country) }}</span></template><span v-else>{{ t('marketsUnknown') }}</span></p>
+        </details>
         <section aria-labelledby="source-collection-title" class="source-collection">
             <div class="source-collection-heading"><h2 id="source-collection-title">{{ c('أين تعلن؟', 'Where do you advertise?') }}</h2><p>{{ c('ابدأ بما تستخدمه بالفعل. يمكنك إضافة مصادر أخرى لاحقًا.', 'Start with what you already use. You can add other sources later.') }}</p></div>
             <div ref="sourceGrid" class="source-grid"><article v-for="source in ordered" :key="source.provider" class="source-tile" :data-provider="keyFor(source.provider)">

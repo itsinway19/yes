@@ -81,7 +81,7 @@ function issue() {
     if (!valid.value || !selected.value) return;
     void execute({ command_id: crypto.randomUUID(), effect: 'issue', grantee_public_id: draft.recipient.trim(), action: selected.value.action,
         parent_grant_id: Number(selected.value.grant_id), grant_id: null, expected_grant: 0, expires_at: expiry.value,
-        delegable: draft.delegable, realm_workspace_public_id: props.surface.authority_selection.realm_workspace_public_id ?? (draft.agency.trim() || null),
+        delegable: props.surface.authority_selection.realm_kind === 'internal_team' ? false : draft.delegable, realm_workspace_public_id: props.surface.authority_selection.realm_workspace_public_id ?? (draft.agency.trim() || null),
         authority_selection: selection(selected.value.grant_id) });
 }
 function revoke(row: Surface['delegation']['issued'][number]) {
@@ -107,7 +107,7 @@ function revoke(row: Surface['delegation']['issued'][number]) {
                 <p v-if="!metadata.issued.length">{{ t('لا حقوق صادرة معروضة.', 'No issued rights displayed.') }}</p>
                 <article v-for="row in metadata.issued" :key="row.grant_id" class="bf-issued" :data-issued-grant="row.grant_id" :data-issued-status="row.recorded_status">
                     <strong>{{ label(row.action) }}</strong><p>{{ t('الحساب', 'Account') }}: <code>{{ row.recipient_public_id }}</code></p>
-                    <p>{{ t('الحق', 'Right') }} {{ row.grant_id }} ← {{ t('السند', 'Parent') }} {{ row.parent_grant_id }} · {{ row.realm_kind === 'agency' ? t('نطاق وكالة', 'Agency realm') : t('مباشر', 'Direct') }}</p>
+                    <p>{{ t('الحق', 'Right') }} {{ row.grant_id }} ← {{ t('السند', 'Parent') }} {{ row.parent_grant_id }} · {{ row.realm_kind === 'internal_team' ? t('إدارة ملف داخلي', 'Internal file administration') : row.realm_kind === 'agency' ? t('نطاق وكالة', 'Agency realm') : t('مباشر', 'Direct') }}</p>
                     <p>{{ row.recorded_status === 'revoked' ? t('مسحوب', 'Withdrawn') : t('مسجل نشطًا — الاستعمال مشروط', 'Recorded active — use remains conditional') }} · {{ row.delegable ? t('يسمح بتفويض تابع', 'Further delegation permitted') : t('للمستفيد فقط', 'Recipient only') }}</p>
                     <p v-if="row.expires_at">{{ t('انتهاء السند', 'Expiry') }}: <time>{{ row.expires_at }}</time></p>
                     <button v-if="row.recorded_status === 'active'" type="button" :disabled="!enabled || !!draft.pending || !Number.isSafeInteger(Number(row.grant_id))" @click="revoke(row)">{{ t('سحب هذا الحق', 'Withdraw this right') }}</button>
@@ -125,8 +125,8 @@ function revoke(row: Surface['delegation']['issued'][number]) {
                     <input id="bf-delegation-expires" v-model="draft.expires" type="datetime-local" :required="!!selected?.max_expires_at" />
                     <p>{{ t('ترك المدة فارغة مسموح فقط إذا لم تحدد السلسلة سقفًا؛ تبقى الصلاحية قابلة للسحب ومشروطة بصحة سندها.', 'An empty expiry is allowed only when the chain imposes no upper bound; authority remains revocable and conditional.') }}</p>
                     <template v-if="surface.authority_selection.realm_kind === 'direct'"><label for="bf-delegation-agency">{{ t('معرّف مساحة الوكالة — اختياري', 'Agency workspace identifier — optional') }}</label><input id="bf-delegation-agency" v-model="draft.agency" type="text" dir="ltr" maxlength="36" autocomplete="off" /><p>{{ t('اتركه فارغًا لوصول مباشر. نطاق الوكالة يحتاج علاقة مؤهلة وعضوية حالية للمستفيد.', 'Leave empty for direct access. An agency realm requires a qualified relationship and current recipient membership.') }}</p></template>
-                    <p v-else>{{ t('يبقى التفويض داخل نطاق الوكالة الحالي.', 'Delegation stays within the current agency realm.') }}</p>
-                    <label class="bf-check"><input v-model="draft.delegable" type="checkbox" />{{ t('السماح للمستفيد بتفويض الحق نفسه ضمن قيود السلسلة', 'Allow the recipient to delegate the same right within chain limits') }}</label>
+                    <p v-else>{{ surface.authority_selection.realm_kind === 'internal_team' ? t('التفويض مقيد بإدارة الملف داخل هذا الفريق، ولا يمنح حقوقًا خارجية.', 'Delegation is limited to file administration in this team and grants no external rights.') : t('يبقى التفويض داخل نطاق الوكالة الحالي.', 'Delegation stays within the current agency realm.') }}</p>
+                    <label v-if="surface.authority_selection.realm_kind !== 'internal_team'" class="bf-check"><input v-model="draft.delegable" type="checkbox" />{{ t('السماح للمستفيد بتفويض الحق نفسه ضمن قيود السلسلة', 'Allow the recipient to delegate the same right within chain limits') }}</label>
                 </fieldset>
                 <p v-if="draft.pending && !busy" role="status" data-delegation-unknown>{{ t('يوجد طلب غير محسوم. لا نرسل طلبًا جديدًا قبل التحقق بالأمر الأصلي.', 'A command is unresolved. No new command is sent before original-command reconciliation.') }}</p>
                 <p v-if="draft.notice" role="status">{{ draft.notice }}</p><p v-if="draft.confirmed" role="status" data-delegation-confirmed>{{ t('استُلم تأكيد الأمر. الحالة المعروضة تُعاد قراءتها بصلاحياتك الحالية.', 'The command was acknowledged. Displayed state is read back under current authority.') }}</p>

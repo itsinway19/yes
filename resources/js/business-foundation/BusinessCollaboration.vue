@@ -73,7 +73,7 @@ function add() {
     if (canAdd.value) void execute(command('add', draft.workspace, draft.kind, draft.version));
 }
 function end(row: Surface['collaboration']['relationships'][number]) {
-    if (!canManage.value || draft.pending || row.state !== 'active' || row.kind === 'agency' && !selected.value?.allows_agency) return;
+    if (!canManage.value || draft.pending || row.state !== 'active' || row.kind === 'internal_team' || row.kind === 'agency' && !selected.value?.allows_agency) return;
     draft.workspace = row.workspace_public_id; draft.kind = row.kind;
     void execute(command('end', row.workspace_public_id, row.kind, row.revision));
 }
@@ -92,9 +92,9 @@ function end(row: Surface['collaboration']['relationships'][number]) {
                 <div v-if="metadata.relationships.length" class="bf-relationship-list">
                     <h3>{{ t('حالة العلاقات المعروضة', 'Displayed relationship state') }}</h3>
                     <article v-for="row in metadata.relationships" :key="row.link_ref" class="bf-relationship" :data-relationship-state="row.state" :data-relationship-kind="row.kind">
-                        <strong>{{ row.workspace_slug }}</strong><span>{{ row.kind === 'agency' ? t('علاقة وكالة', 'Agency relationship') : t('تعاون', 'Collaboration') }}</span>
+                        <strong>{{ row.workspace_slug }}</strong><span>{{ row.kind === 'internal_team' ? t('إدارة ملف داخلي', 'Internal file administration') : row.kind === 'agency' ? t('علاقة وكالة', 'Agency relationship') : t('تعاون', 'Collaboration') }}</span>
                         <span>{{ row.state === 'active' ? t('نشطة', 'Active') : t('منتهية — يحتفظ النظام بتاريخها', 'Ended — its history is retained') }}</span>
-                        <button v-if="row.state === 'active'" type="button" :disabled="!canManage || !!draft.pending || row.kind === 'agency' && !selected?.allows_agency" @click="end(row)">{{ t('إنهاء العلاقة', 'End relationship') }}</button>
+                        <button v-if="row.state === 'active' && row.kind !== 'internal_team'" type="button" :disabled="!canManage || !!draft.pending || row.kind === 'agency' && !selected?.allows_agency" @click="end(row)">{{ t('إنهاء العلاقة', 'End relationship') }}</button>
                     </article>
                 </div>
             </template>

@@ -99,8 +99,10 @@ class InternalAuthorityTest extends TestCase
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        config()->set('services.google_ads.privacy_url', '');
-        config()->set('services.google_ads.notice_revision', '');
+        // This fixture tests an unconfigured installation, independently of local preview settings.
+        foreach (['meta_ads', 'google_ads', 'tiktok_ads', 'snapchat_ads', 'x_ads'] as $provider) {
+            config()->set('services.'.$provider, []);
+        }
         $this->getJson('/internal/administration')->assertOk()->assertJson(fn (Assert $page) => $page
             ->where('data.metaOperatorStatus', null)
             ->where('data.googleOperatorStatus', null)->where('data.tiktokOperatorStatus', null)->where('data.snapchatOperatorStatus', null)->where('data.xOperatorStatus', null)->etc());

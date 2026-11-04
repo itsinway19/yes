@@ -52,6 +52,16 @@ final class BusinessFoundationController
         return $this->respond(fn () => $scope->source($request, $source, (int) $input['access']));
     }
 
+    public function businessSources(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $input = $request->validate([
+            'access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX],
+            'after' => ['sometimes', 'integer', 'min:0', 'max:'.PHP_INT_MAX],
+        ]);
+
+        return $this->respond(fn () => $scope->businessSources($request, $business, (int) $input['access'], (int) ($input['after'] ?? 0)));
+    }
+
     public function boundary(Request $request, string $boundary, BusinessScope $scope): JsonResponse
     {
         $input = $request->validate(['access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX]]);
@@ -254,6 +264,24 @@ final class BusinessFoundationController
         return $this->respond(fn () => $scope->grant($request, $business, $raw->command_id, $raw->effect, $raw->grantee_public_id,
             $raw->action, $raw->parent_grant_id, $raw->grant_id, $raw->expected_grant, $raw->expires_at, $raw->delegable,
             $raw->realm_workspace_public_id, $this->selection($raw)));
+    }
+
+    public function internalTeam(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $raw = $this->commandBody($request, ['workspace_public_id', 'effect', 'recipient_public_id', 'expected_revision'], 80000);
+        abort_unless(is_string($raw->workspace_public_id) && Str::isUuid($raw->workspace_public_id)
+            && in_array($raw->effect, ['enroll', 'appoint', 'remove', 'end'], true)
+            && ($raw->recipient_public_id === null || (is_string($raw->recipient_public_id) && Str::isUuid($raw->recipient_public_id))), 422);
+
+        return $this->respond(fn () => $scope->internalTeam($request, $business, $raw->command_id, $raw->workspace_public_id,
+            $raw->effect, $raw->recipient_public_id, $raw->expected_revision, $this->selection($raw)));
+    }
+
+    public function internalTeamSurface(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $input = $request->validate(['access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX]]);
+
+        return $this->respond(fn () => $scope->internalTeamSurface($request, $business, (int) $input['access']));
     }
 
     public function resourceRight(Request $request, BusinessScope $scope): JsonResponse

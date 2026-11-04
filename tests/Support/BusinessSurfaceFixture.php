@@ -36,7 +36,25 @@ $scope = app(BusinessScope::class);
 $path = $run.'/business-surface-fixture.json';
 $mode = $argv[1] ?? 'setup';
 $select = fn (int $grant) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
-if (in_array($mode, ['purpose-setup', 'purpose-revoke-read', 'purpose-revoke-write'], true)) {
+if ($mode === 'internal-team-setup') {
+    $team = $base['b']['workspaces'][0];
+    DB::connection('pgsql_migrations')->table('workspace_memberships')->updateOrInsert(
+        ['workspace_id' => $team['id'], 'user_id' => $owner->id],
+        ['role' => 'member', 'status' => 'active', 'created_at' => now()],
+    );
+    $store = new Store('internal-file-browser', new ArraySessionHandler(120));
+    $store->start();
+    $creatorRequest = Request::create('/api/businesses');
+    $creatorRequest->setLaravelSession($store);
+    $creatorRequest->setUserResolver(fn () => $recipient);
+    app(SessionAuthority::class)->issue($creatorRequest, $recipient);
+    $store->save();
+    $draft = $scope->create($creatorRequest, (string) Str::uuid(), 'ملف عميل لإدارة الفريق', null);
+    file_put_contents($run.'/internal-team-browser-fixture.json', json_encode([
+        'business' => $draft, 'team' => $team, 'staff' => $owner->public_id,
+        'qualification' => 'REAL CREATOR PATH; NO SYNTHETIC INTERNAL TEAM ROOT',
+    ], JSON_THROW_ON_ERROR));
+} elseif (in_array($mode, ['purpose-setup', 'purpose-revoke-read', 'purpose-revoke-write'], true)) {
     require __DIR__.'/BusinessPurposeBrowserFixture.php';
 } elseif (in_array($mode, ['legacy-history-setup', 'legacy-history-withdraw'], true)) {
     require __DIR__.'/LegacyHistoryBrowserFixture.php';

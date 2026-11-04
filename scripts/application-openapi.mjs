@@ -105,7 +105,7 @@ export const spec = {
         schemas: {
             ...goals.components.schemas,
             WorkspaceReference: object({ public_id: uuid, name: text, slug: text }),
-            WorkspaceIndexData: object({ workspaces: list(ref('WorkspaceReference')), reassessableWorkspaces: list(ref('WorkspaceReference')) }),
+            WorkspaceIndexData: object({ workspaces: list(ref('WorkspaceReference')), reassessableWorkspaces: list(ref('WorkspaceReference')), canCreateWorkspace: { type: 'boolean' } }),
             WorkspaceIndexResource: envelope('WorkspaceIndexData'),
             BusinessType: object({ id: { type: 'integer', minimum: 1 }, key: text, name_ar: text, name_en: text, active: { type: 'boolean' }, version: { type: 'integer', minimum: 0 } }),
             BusinessCreationData: object({ types: list(ref('BusinessType')), canManage: { const: true }, canRequestAuthority: { const: false }, creationKey: uuid, version: { const: 0 } }),

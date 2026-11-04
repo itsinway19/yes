@@ -7,6 +7,8 @@ import { owned, stamp } from '../spa/transport';
 import { status } from '../spa/presentation';
 import { key } from './drafts';
 import SourceRightsEditor from './SourceRightsEditor.vue';
+import AdvertiserWorkspaceLayout from './AdvertiserWorkspaceLayout.vue';
+import { Link2 } from '@lucide/vue';
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const data = computed(() => current.value?.data);
 const route = useRoute(), refreshing = ref(false);
@@ -20,15 +22,17 @@ async function refresh() {
 }
 </script>
 <template>
-    <main class="bf-main" data-spa-private data-source-rights-surface>
-        <nav class="bf-nav"><RouterLink to="/businesses">{{ t('أنشطتي', 'My businesses') }}</RouterLink><RouterLink to="/source-rights">{{ t('إدارة المصادر', 'Manage sources') }}</RouterLink><RouterLink to="/data-rights">{{ t('نطاقات بيانات العملاء', 'Client data boundaries') }}</RouterLink></nav>
-        <header class="bf-heading"><div><p class="bf-eyebrow">{{ t('مصادر البيانات', 'Data sources') }}</p><h1>{{ t('إدارة المصادر', 'Manage sources') }}</h1><p>{{ t('إدارة المصدر وحقوقه التقنية لا تمنح حقًا على بيانات نشاط أو عميل، ولا تثبت جاهزية مزود خارجي.', 'Source administration and technical rights grant no business or client-data authority and do not establish provider readiness.') }}</p></div></header>
+    <div data-spa-private data-source-rights-surface>
+        <AdvertiserWorkspaceLayout>
+        <header class="bf-heading"><div><p class="bf-eyebrow">{{ t('المصادر والتكاملات', 'Sources and integrations') }}</p><h1>{{ t('حقوق المصادر', 'Source rights') }}</h1><p>{{ t('راجع المصادر التي يمكنك إدارتها، وحدود استعمال كل منها.', 'Review the sources you can manage and how each may be used.') }}</p></div><RouterLink class="bf-link" to="/workspaces">{{ t('الحسابات المتصلة في مساحات العمل', 'Connected accounts in workspaces') }}</RouterLink></header>
         <template v-if="data && 'sources' in data">
-            <section v-if="!data.sources.length" class="bf-card" data-source-rights-empty><h2>{{ t('لا مصادر مؤهلة للإدارة معروضة', 'No qualified sources displayed for administration') }}</h2><p>{{ t('تظهر فقط المصادر ذات سند الإدارة الحالي وصاحب المسؤولية المؤهل. غيابها هنا لا يعني غياب بيانات أو نجاح اتصال.', 'Only sources with current management authority and a qualified responsible owner appear. Absence here says nothing about data or connection success.') }}</p></section>
-            <ul v-else class="bf-grid" data-source-rights-list><li v-for="item in data.sources" :key="item.access_grant_id" class="bf-card"><h2>{{ item.label }}</h2><p>{{ item.status === 'REVOKED' ? t('متقاعد — التاريخ محفوظ', 'Retired — history retained') : t('تصريح غير متحقق خارجيًا', 'Not externally verified') }}</p><p class="bf-wrap">{{ item.resource }} · {{ item.operation }} · {{ item.purpose }}</p><RouterLink class="bf-link" :to="`/source-rights/${item.source_id}?access=${item.access_grant_id}`">{{ t('فتح إدارة المصدر', 'Open source administration') }}</RouterLink></li></ul>
+            <section v-if="!data.sources.length" class="bf-card advertiser-empty" data-source-rights-empty><Link2 aria-hidden="true" /><h2>{{ t('لا توجد مصادر متاحة لك لإدارتها', 'No sources are available for you to manage') }}</h2><p>{{ t('تظهر هنا المصادر التي تملك حق إدارتها. للوصول إلى حسابات الإعلان، افتح مساحة العمل المناسبة.', 'Sources you can manage appear here. Open the appropriate workspace to find advertising accounts.') }}</p><RouterLink class="bf-primary" to="/workspaces">{{ t('فتح مساحات العمل', 'Open workspaces') }}</RouterLink></section>
+            <ul v-else class="bf-grid" data-source-rights-list><li v-for="item in data.sources" :key="item.access_grant_id" class="bf-card"><h2>{{ item.label }}</h2><p>{{ item.status === 'REVOKED' ? t('انتهت إدارته — السجل محفوظ', 'Administration ended — history retained') : t('تصريح غير متحقق خارجيًا', 'Not externally verified') }}</p><details class="advertiser-context-note"><summary>{{ t('تفاصيل المصدر', 'Source details') }}</summary><p class="bf-wrap">{{ item.resource }} · {{ item.operation }} · {{ item.purpose }}</p></details><RouterLink class="bf-link" :to="`/source-rights/${item.source_id}?access=${item.access_grant_id}`">{{ t('فتح إدارة المصدر', 'Open source administration') }}</RouterLink></li></ul>
             <RouterLink v-if="data.next_cursor" class="bf-link" :to="`/source-rights?after=${data.next_cursor}`">{{ t('الصفحة التالية', 'Next page') }}</RouterLink>
         </template>
         <SourceRightsEditor v-else-if="data && 'source' in data" :key="key(data.source.source_id, data.authority_selection)" :surface="data" :refreshing="refreshing" @refresh="refresh" />
         <p v-if="refreshing" role="status">{{ t('جارٍ التحقق من المصدر وحقوقه…', 'Checking source and rights…') }}</p>
-    </main>
+        <details class="advertiser-context-note"><summary>{{ t('ما الفرق بين المصدر والحساب المتصل؟', 'How does a source differ from a connected account?') }}</summary><p>{{ t('تدير هذه الصفحة المصدر وحدود استعماله. ظهور المصدر لا يثبت نجاح اتصال خارجي، وإدارته لا تمنح حقًا على بيانات نشاط أو عميل. الحسابات المتصلة لها سياقها في مساحة العمل.', 'This page manages source administration and permitted use. A listed source does not establish an external connection, and management grants no business or client-data access. Connected accounts retain their workspace context.') }}</p></details>
+        </AdvertiserWorkspaceLayout>
+    </div>
 </template>

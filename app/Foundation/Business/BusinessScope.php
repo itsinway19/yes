@@ -47,6 +47,14 @@ final class BusinessScope
         )));
     }
 
+    public function businessSources(Request $request, string $business, int $readGrant, int $after = 0): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar(
+            'SELECT builderad_v2_business_source_choices(?,?::uuid,?,?)',
+            [SessionAuthority::sessionKey($request), $business, $readGrant, $after],
+        )));
+    }
+
     public function dataUseChoices(Request $request, int $after = 0): array
     {
         return $this->run($request, fn () => $this->decode(DB::scalar(
@@ -139,6 +147,21 @@ final class BusinessScope
         return $this->run($request, fn () => $this->decode(DB::scalar(
             'SELECT builderad_v2_business_create_draft(?,?::uuid,?,?)',
             [SessionAuthority::sessionKey($request), $command, $name, $type],
+        )));
+    }
+
+    public function internalTeam(Request $request, string $business, string $command, string $workspace, string $effect, ?string $recipient, int $expected, array $selection): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar(
+            'SELECT builderad_v2_internal_team_command(?,?::uuid,?::uuid,?::uuid,?,?::uuid,?,?::jsonb)',
+            [SessionAuthority::sessionKey($request), $business, $command, $workspace, $effect, $recipient, $expected, json_encode($selection, JSON_THROW_ON_ERROR)],
+        )));
+    }
+
+    public function internalTeamSurface(Request $request, string $business, int $read): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar(
+            'SELECT builderad_v2_internal_team_surface(?,?::uuid,?)', [SessionAuthority::sessionKey($request), $business, $read],
         )));
     }
 

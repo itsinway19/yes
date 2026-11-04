@@ -1,5 +1,21 @@
 # BuilderAd visual context
 
+## Canonical Business and previous Workspace records — 2026-11-03
+
+Current Business Sources reads only source metadata the operator can manage in a Workspace explicitly linked to the selected Business. Connection custody and provider actions stay in that Workspace; customer-data use still needs its independent qualified scope. A Business-only agency client sees no private agency source metadata. Advanced scope administration and unresolved-command reopening remain available. Connection readiness is never inferred from source registration.
+
+Independent Business is the commercial fact surface. Its source/data-use and advertising-purpose owners remain the existing qualified components, now discoverable as Sources and data and Business settings → Advertising purposes. Workspace connections remain operational under their existing owner. Previous Workspace commercial profile/goals/purposes stay reachable in a collapsed Previous workspace records group, open for its active route, with a shared notice explaining that edits do not automatically update an independent Business. No inferred mapping, migration, retirement, duplicate writer or shared-source authority is implied. Reuse the compact theme, sidebar and native details elements.
+
+## Actual advertiser presentation — 2026-11-03 continuation
+
+The native Vue Business list/create/workspace and source/data-rights pages now use `AdvertiserWorkspaceLayout.vue` and scoped `advertiser.css`, with compact shared utility controls in `spa/main.ts`. Typography is 14px base, 22–24px page headings, readable secondary text and compact desktop controls, retaining 44px mobile targets. Existing brand/theme/locale and private presentation owners remain authoritative. The seven-plus-two map uses real destinations and a collapsed informative future group; no unavailable commercial service is fabricated. BF03 lives under Business settings → Data and declarations. See the [current execution evidence](docs/execution/structural-foundation/IMPLEMENTATION_PROGRESS.md); rendered visual acceptance remains separate.
+
+## Advertiser baseline freeze — 2026-11-03
+
+The latest Owner-supplied `BuilderAd_Advertiser_Workspace_Prototype_AR(3).html` is the retained visual source for the [advertiser target contract](docs/execution/structural-foundation/ADVERTISER_UX_BASELINE.md). Its [corrected local reference](designs/builderad-ux-baseline-v1/index.html) preserves the compact layout while aligning exact navigation names and removing prototype behaviors that contradict current semantics. Source and final provenance/verification are [recorded separately](designs/builderad-ux-baseline-v1/VERIFICATION.md). Earlier design variants remain historical alternatives, not concurrent implementation references.
+
+The implementation contract uses shared typography/spacing/control roles, one navigation hierarchy, existing brand/theme owners, accessible local navigation and explicit evidence states. Do not improvise per-page styles or rename/redistribute sections for visual preference. This freeze is a design direction and reviewable artifact; rendered quality, real Vue integration and browser acceptance remain separate pending evidence. Existing runtime ownership and already verified behavior below remain unchanged by this documentary stage.
+
 ## Register and audience
 Hybrid: `/` is a public Arabic-first marketing entry; authenticated advertiser and internal administration remain task-oriented applications. Arabic RTL and complete English LTR are peers. The public page makes availability explicit; domain internals are not product copy.
 

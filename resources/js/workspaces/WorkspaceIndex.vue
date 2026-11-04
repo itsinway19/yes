@@ -1,15 +1,21 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { current } from './state';
 import { reassessOwnerGrant } from './api';
 import { bootstrap, owned, stamp } from '../spa/transport';
 import { applicationDestination } from '../spa/destination';
 import { locale } from '../spa/locale';
+import AdvertiserWorkspaceLayout from '../business-foundation/AdvertiserWorkspaceLayout.vue';
+import { ArrowLeft, Layers3 } from '@lucide/vue';
+import { advertisingPlatforms, selectedAdvertisingPlatform } from '../sources/providerDestination';
 
 const data = computed(() => current.value && 'workspaces' in current.value.data ? current.value.data : undefined);
 const busy = ref(''), error = ref('');
 const copy = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
+const route = useRoute();
+const selectedPlatform = computed(() => advertisingPlatforms.find(platform => platform.id === selectedAdvertisingPlatform(route.query.provider)));
+const connectionDestination = (workspace: string) => ({ path: `/workspaces/${encodeURIComponent(workspace)}`, query: selectedPlatform.value ? { provider: selectedPlatform.value.id } : {} });
 let alive = true;
 onBeforeUnmount(() => { alive = false; });
 async function reassess(workspace: string) {
@@ -26,16 +32,17 @@ async function reassess(workspace: string) {
 </script>
 
 <template>
-    <main class="workspace-page" data-spa-private data-workspaces="index">
-        <p class="workspace-eyebrow">{{ copy('مساحات التعاون', 'Collaboration workspaces') }}</p>
-        <h1>{{ copy('اختر مساحة التعاون', 'Choose a collaboration workspace') }}</h1>
-        <p>{{ copy('اختر مساحة لمتابعة مواردها وأعضاء فريقها. اختيار المساحة لا يمنح صلاحية على نشاط تجاري.', 'Choose a workspace to continue with its resources and team. Choosing a workspace does not grant Business authority.') }}</p>
-        <div class="workspace-list">
-            <RouterLink v-for="workspace in data?.workspaces" :key="workspace.public_id" :to="`/workspaces/${workspace.public_id}`" class="workspace-row">
-                <span>{{ workspace.name }}</span><span>{{ copy('متابعة', 'Continue') }}</span>
-            </RouterLink>
-            <p v-if="!data?.workspaces.length">{{ copy('لا توجد مساحات تعاون متاحة لك حاليًا.', 'No collaboration workspaces are available to you yet.') }}</p>
-        </div>
+    <div data-spa-private data-workspaces="index">
+        <AdvertiserWorkspaceLayout workspace-context>
+        <nav class="advertiser-breadcrumb" :aria-label="copy('مسار الصفحة', 'Breadcrumb')"><RouterLink to="/businesses">{{ copy('أنشطتي', 'My businesses') }}</RouterLink><span aria-hidden="true">/</span><span aria-current="page">{{ copy('مساحات العمل', 'Workspaces') }}</span></nav>
+        <header class="bf-heading"><div><p class="bf-eyebrow">{{ copy('التعاون وموارد العمل', 'Collaboration and work resources') }}</p><h1>{{ copy('مساحات العمل', 'Workspaces') }}</h1><p>{{ copy('ابدأ من أنشطتك التجارية. مساحة العمل تنظّم التعاون والموارد المتاحة وفق صلاحياتك؛ لا تحتاج إلى إنشائها لإضافة نشاط أو إدارته.', 'Start with your businesses. A workspace organizes collaboration and resources available under your rights; creating one is not required to add or manage a business.') }}</p></div><RouterLink v-if="data?.canCreateWorkspace === true" class="bf-primary" data-workspaces-add to="/business/start?new=1">{{ copy('إضافة مساحة عمل', 'Add workspace') }}</RouterLink></header>
+        <section v-if="selectedPlatform" class="workspace-source-connection" data-workspace-platform-selection>
+            <h2>{{ copy('اختر مساحة لإدارة اتصال', 'Choose a workspace to manage') }} {{ selectedPlatform.label }}</h2>
+            <p>{{ copy('اختر أين تريد مراجعة اتصال المنصة. ستفتح تفاصيلها للتحقق من الحسابات والصلاحيات المتاحة؛ لا تُختار مساحة تلقائيًا ولا تُربط مصادرها بالنشاط بمجرد فتحها.', 'Choose where to review the platform connection. Its details will show the available accounts and permissions. No workspace is selected automatically and opening it does not bind its sources to a business.') }}</p>
+        </section>
+        <p v-if="data?.canCreateWorkspace === false" class="workspace-creation-status" data-workspaces-creation-unavailable>{{ copy('إضافة مساحة عمل غير متاحة لحسابك حاليًا. يمكنك فتح المساحات المتاحة لك أدناه.', 'Adding a workspace is not currently available to your account. You can open the workspaces available below.') }}</p>
+        <section v-if="!data?.workspaces.length" class="bf-card advertiser-empty" data-workspaces-empty><Layers3 aria-hidden="true" /><h2>{{ copy('لا توجد مساحات عمل متاحة لك حاليًا', 'No workspaces are currently available to you') }}</h2><p>{{ copy('يمكنك العودة إلى أنشطتك. مساحة العمل سياق للتعاون والموارد، وليست النشاط التجاري نفسه.', 'You can return to your businesses. A workspace is a collaboration and resource context, separate from a business.') }}</p><RouterLink class="bf-primary" to="/businesses">{{ copy('العودة إلى أنشطتي', 'Back to my businesses') }}</RouterLink></section>
+        <ul v-else class="bf-grid" data-workspaces-list><li v-for="workspace in data.workspaces" :key="workspace.public_id" class="bf-card"><p class="bf-badge">{{ copy('مساحة عمل', 'Workspace') }}</p><h2>{{ workspace.name }}</h2><p>{{ copy('افتح الحسابات والمصادر التي يمكنك الوصول إليها.', 'Open the accounts and sources available to you.') }}</p><RouterLink :to="connectionDestination(workspace.public_id)" class="bf-link bf-open"><span>{{ selectedPlatform ? `${copy('مراجعة اتصال', 'Review connection')} ${selectedPlatform.label}` : copy('فتح المساحة', 'Open workspace') }}</span><ArrowLeft aria-hidden="true" /></RouterLink></li></ul>
         <section v-if="data?.reassessableWorkspaces.length" class="workspace-list">
             <h2>{{ copy('إعادة تقييم صلاحية المالك', 'Reassess owner authority') }}</h2>
             <p>{{ copy('بعد تغيير البريد وتأكيده، راجع مساحاتك القائمة بدخول حديث. لا تُعاد أي منحة سُحبت أو انتهت صلاحيتها.', 'After changing and verifying your email, review existing workspaces with a recent sign-in. Revoked or expired grants are not restored.') }}</p>
@@ -45,6 +52,12 @@ async function reassess(workspace: string) {
                 <button type="button" :disabled="!!busy" @click="reassess(workspace.public_id)">{{ busy === workspace.public_id ? copy('جارٍ التقييم…', 'Reassessing…') : copy('إعادة تقييم الصلاحية', 'Reassess authority') }}</button>
             </div>
         </section>
-        <RouterLink class="workspace-action" to="/businesses/new">{{ copy('إضافة نشاط', 'Add a business') }}</RouterLink>
-    </main>
+        <details class="advertiser-context-note"><summary>{{ copy('ما الفرق بين النشاط ومساحة العمل؟', 'How does a business differ from a workspace?') }}</summary><p>{{ copy('النشاط هو العمل التجاري المستقل. مساحة العمل تنظّم التعاون والموارد في سياق وصول محدد؛ اختيارها لا يمنح حقًا على نشاط أو بيانات عملائه، ولا ينشئ علاقة بينهما.', 'A business is the independent commercial activity. A workspace organizes collaboration and resources in an access context. Selecting it grants no business or client-data access and creates no relationship between them.') }}</p></details>
+        <RouterLink class="bf-link workspace-secondary-action" to="/businesses/new">{{ copy('هل تحتاج نشاطًا تجاريًا جديدًا؟', 'Need a new business?') }}</RouterLink>
+        </AdvertiserWorkspaceLayout>
+    </div>
 </template>
+
+<style scoped>
+.workspace-creation-status{margin:0 0 16px;color:var(--ad-muted);font-size:12px;line-height:1.8}.bf-heading>.bf-primary{display:inline-flex;align-items:center;white-space:nowrap;flex-shrink:0}@media(max-width:760px){.bf-heading{flex-wrap:wrap}}
+</style>

@@ -389,6 +389,7 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->prefix('api/business
     Route::get('/', [BusinessFoundationController::class, 'choices'])->name('business-foundation.choices');
     Route::get('/catalog', [BusinessFoundationController::class, 'catalog'])->name('business-foundation.catalog');
     Route::get('/{business}/surface', [BusinessFoundationController::class, 'surface'])->whereUuid('business')->name('business-foundation.surface');
+    Route::get('/{business}/sources', [BusinessFoundationController::class, 'businessSources'])->whereUuid('business')->name('business-foundation.business-sources');
     Route::get('/{business}/purposes', [BusinessFoundationController::class, 'purposes'])->whereUuid('business')->name('business-foundation.purposes');
     Route::post('/{business}/purposes', [BusinessFoundationController::class, 'writePurpose'])->whereUuid('business')->name('business-foundation.write-purpose');
     Route::get('/{business}/history', [BusinessFoundationController::class, 'history'])->whereUuid('business')->name('business-foundation.history');
@@ -404,6 +405,8 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->prefix('api/business
     Route::post('/{business}/materials/read', [BusinessFoundationController::class, 'material'])->whereUuid('business')->name('business-foundation.material');
     Route::post('/{business}/lifecycle', [BusinessFoundationController::class, 'lifecycle'])->whereUuid('business')->name('business-foundation.lifecycle');
     Route::post('/{business}/grants', [BusinessFoundationController::class, 'grant'])->whereUuid('business')->name('business-foundation.grant');
+    Route::post('/{business}/internal-team', [BusinessFoundationController::class, 'internalTeam'])->whereUuid('business')->name('business-foundation.internal-team');
+    Route::get('/{business}/internal-team', [BusinessFoundationController::class, 'internalTeamSurface'])->whereUuid('business')->name('business-foundation.internal-team-surface');
     Route::post('/{business}/workspace-links', [BusinessFoundationController::class, 'link'])->whereUuid('business')->name('business-foundation.link');
 });
 Route::post('/api/data-rights/commands', [BusinessFoundationController::class, 'resourceRight'])

@@ -2,6 +2,26 @@ import type { components, operations } from '../api/generated/application';
 import { api } from '../spa/api';
 export type Choices = components['schemas']['BusinessChoices'];
 export type SourceChoices = components['schemas']['NativeSourceChoices'];
+export type InternalTeamCommand = components['schemas']['InternalTeamCommand'];
+export type InternalTeamSurface = components['schemas']['InternalTeamSurface'];
+export async function internalTeamSurface(business: string, access: number): Promise<InternalTeamSurface> {
+    const result = await api.GET('/api/businesses/{business}/internal-team', { params: { path: { business }, query: { access } } });
+    if (!result.data) throw Error('Internal file team unavailable');
+    return result.data.data;
+}
+export async function writeInternalTeam(business: string, body: InternalTeamCommand) {
+    const result = await api.POST('/api/businesses/{business}/internal-team', { params: { path: { business } }, body });
+    if (!result.data) throw Error('Internal file custody receipt unavailable');
+    return result.data.data;
+}
+export type BusinessSources = components['schemas']['BusinessSources'];
+export async function businessSources(business: string, access: number, after?: number): Promise<BusinessSources> {
+    const result = await api.GET('/api/businesses/{business}/sources', {
+        params: { path: { business }, query: { access, ...(after ? { after } : {}) } },
+    });
+    if (!result.data) throw Error('Qualified Business sources unavailable');
+    return result.data.data;
+}
 export type SourceSurface = components['schemas']['NativeSourceSurface'];
 export type DataUseChoices = components['schemas']['DataUseChoices'];
 export type BindingCommand = operations['writeBusinessDataUseBinding']['requestBody']['content']['application/json'];

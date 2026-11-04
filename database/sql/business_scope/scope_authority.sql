@@ -69,7 +69,8 @@ BEGIN
  IF p_selection IS NULL OR jsonb_typeof(p_selection)<>'object' OR octet_length(p_selection::text)>65536
  OR (SELECT array_agg(k ORDER BY k COLLATE "C") FROM jsonb_object_keys(p_selection) k) IS DISTINCT FROM ARRAY['realm_kind','realm_workspace_public_id','requirements']::text[]
  OR jsonb_typeof(p_selection->'requirements')<>'array' OR jsonb_array_length(p_selection->'requirements') NOT BETWEEN 1 AND 32
- OR jsonb_typeof(p_selection->'realm_kind') IS DISTINCT FROM 'string' OR p_selection->>'realm_kind' NOT IN('direct','agency') THEN RAISE EXCEPTION 'Explicit complete authority selection required' USING ERRCODE='42501'; END IF;
+ OR jsonb_typeof(p_selection->'realm_kind') IS DISTINCT FROM 'string' OR p_selection->>'realm_kind' NOT IN('direct','agency','internal_team') THEN RAISE EXCEPTION 'Explicit complete authority selection required' USING ERRCODE='42501'; END IF;
+ IF p_selection->>'realm_kind'='internal_team' AND p_kind<>'business' THEN RAISE EXCEPTION 'Internal file authority cannot qualify external data' USING ERRCODE='42501'; END IF;
  IF p_selection->>'realm_kind'='direct' THEN
   IF p_selection->'realm_workspace_public_id' IS DISTINCT FROM 'null'::jsonb THEN RAISE EXCEPTION 'Direct realm cannot infer a workspace' USING ERRCODE='42501'; END IF;
  ELSE
@@ -122,16 +123,35 @@ BEGIN
    IF q.issuer_kind='self_declared_draft' AND(p_kind<>'business' OR g.source<>'business_draft_creation' OR g.delegable OR g.delegation_realm_kind<>'direct'
     OR q.subject_user_id<>(SELECT created_by FROM public.businesses WHERE id=p_target::bigint)) THEN RAISE EXCEPTION 'Own declarations only' USING ERRCODE='42501'; END IF;
   ELSIF q.issuer_kind<>'existing_grant' OR q.issuer_grant_id IS DISTINCT FROM g.parent_grant_id OR g.source<>'qualified_delegation' THEN RAISE EXCEPTION 'Qualified parent edge required' USING ERRCODE='42501'; END IF;
-  IF g.delegation_realm_kind='agency' THEN
+  IF g.delegation_realm_kind IN('agency','internal_team') THEN
    IF NOT EXISTS(SELECT 1 FROM public.workspaces w JOIN public.workspace_memberships m ON m.workspace_id=w.id AND m.user_id=g.subject_user_id AND m.status='active'
     JOIN public.workspace_ownerships o ON o.workspace_id=w.id JOIN public.principal_lifecycles l ON l.user_id=o.responsible_owner_user_id AND l.status='current' AND l.principal_class='advertiser'
     JOIN public.users u ON u.id=l.user_id AND u.email_verified_at IS NOT NULL
     JOIN public.workspace_memberships om ON om.workspace_id=w.id AND om.user_id=o.responsible_owner_user_id AND om.role='owner' AND om.status='active'
     WHERE w.id=g.delegation_workspace_id AND w.status='active') THEN RAISE EXCEPTION 'Current agency team required' USING ERRCODE='42501'; END IF;
-   IF p_kind='business' AND NOT EXISTS(SELECT 1 FROM public.business_workspace_links relationship JOIN public.authority_qualification_receipts qualified_link ON qualified_link.qualification_id=relationship.authority_ref WHERE relationship.business_id=p_target::bigint AND relationship.workspace_id=g.delegation_workspace_id AND relationship.kind='agency' AND relationship.status='active' AND relationship.valid_from<=clock_timestamp() AND(relationship.valid_until IS NULL OR relationship.valid_until>clock_timestamp()) AND qualified_link.status='active' AND qualified_link.target_kind='business' AND qualified_link.target_ref=(SELECT public_id FROM public.businesses WHERE id=p_target::bigint) AND qualified_link.issuer_kind<>'self_declared_draft' AND 'business.link.manage'=ANY(qualified_link.allowed_actions) AND qualified_link.valid_from<=clock_timestamp() AND(qualified_link.valid_until IS NULL OR qualified_link.valid_until>clock_timestamp()))
+   IF g.delegation_realm_kind='internal_team' THEN
+    IF p_kind<>'business' OR p_action NOT IN('business.context.read','business.context.manage','business.intent.declare','business.markets.declare','business.preferences.manage')
+    OR NOT EXISTS(SELECT 1 FROM public.business_workspace_links relationship JOIN public.authority_qualification_receipts basis ON basis.qualification_id=relationship.authority_ref
+     WHERE relationship.business_id=p_target::bigint AND relationship.workspace_id=g.delegation_workspace_id AND relationship.kind='internal_team'
+     AND relationship.status='active' AND relationship.valid_from<=clock_timestamp() AND(relationship.valid_until IS NULL OR relationship.valid_until>clock_timestamp())
+     AND basis.policy_id='internal_client_file_team_basis_v1' AND basis.policy_version=1 AND basis.status='active'
+     AND basis.target_kind='business' AND basis.target_ref=(SELECT public_id FROM public.businesses WHERE id=p_target::bigint)
+     AND basis.valid_from<=clock_timestamp() AND(basis.valid_until IS NULL OR basis.valid_until>clock_timestamp()))
+    THEN RAISE EXCEPTION 'Current internal file team required' USING ERRCODE='42501'; END IF;
+   ELSIF p_kind='business' AND NOT EXISTS(SELECT 1 FROM public.business_workspace_links relationship JOIN public.authority_qualification_receipts qualified_link ON qualified_link.qualification_id=relationship.authority_ref WHERE relationship.business_id=p_target::bigint AND relationship.workspace_id=g.delegation_workspace_id AND relationship.kind='agency' AND relationship.status='active' AND relationship.valid_from<=clock_timestamp() AND(relationship.valid_until IS NULL OR relationship.valid_until>clock_timestamp()) AND qualified_link.status='active' AND qualified_link.target_kind='business' AND qualified_link.target_ref=(SELECT public_id FROM public.businesses WHERE id=p_target::bigint) AND qualified_link.issuer_kind<>'self_declared_draft' AND 'business.link.manage'=ANY(qualified_link.allowed_actions) AND qualified_link.valid_from<=clock_timestamp() AND(qualified_link.valid_until IS NULL OR qualified_link.valid_until>clock_timestamp()))
    THEN RAISE EXCEPTION 'Qualified agency relationship required' USING ERRCODE='42501'; END IF;
   END IF;
   child:=g;chain:=chain||jsonb_build_array(to_jsonb(g));quals:=quals||jsonb_build_array(to_jsonb(q));
  END LOOP;
+ IF operation_realm IS NOT NULL AND p_selection->>'realm_kind'='internal_team' THEN
+  IF root_q.policy_id<>'internal_client_file_admin_v1' OR root_q.policy_version<>1 OR root_q.issuer_kind<>'qualified_policy'
+  OR NOT EXISTS(SELECT 1 FROM public.business_workspace_links relationship WHERE relationship.business_id=p_target::bigint
+   AND relationship.workspace_id=operation_realm AND relationship.kind='internal_team' AND relationship.status='active'
+   AND root_q.evidence_ref='internal-team:'||relationship.link_id::text)
+  OR EXISTS(SELECT 1 FROM public.security_action_grants path WHERE path.id=ANY(ids) AND(path.delegation_realm_kind<>'internal_team' OR path.delegation_workspace_id<>operation_realm))
+  THEN RAISE EXCEPTION 'Exact internal custody policy lineage required' USING ERRCODE='42501'; END IF;
+ ELSIF root_q.policy_id='internal_client_file_admin_v1' THEN
+  RAISE EXCEPTION 'Internal custody cannot escape its team' USING ERRCODE='42501';
+ END IF;
  RETURN jsonb_build_object('codec_version',1,'actor',p_actor,'generation',(SELECT generation FROM public.principal_lifecycles WHERE user_id=p_actor),'action',p_action,'realm',p_selection-'requirements','grants',chain,'qualifications',quals,'qualification',to_jsonb(root_q),'relationships',relationships,'relationship_qualifications',relationship_quals,'epochs',CASE WHEN p_kind='business' THEN (SELECT jsonb_build_object('business_id',p_target::bigint,'auth_epoch',f.auth_epoch,'cohort_id',c.cohort_id,'cohort_epoch',c.epoch) FROM public.business_authority_fences f JOIN public.migration_cohort_members m ON m.business_id=f.business_id JOIN public.migration_cohort_control c ON c.cohort_id=m.cohort_id WHERE f.business_id=p_target::bigint) ELSE (SELECT jsonb_agg(to_jsonb(f) ORDER BY f.fence_id) FROM public.resource_right_fences f WHERE f.boundary_id=CASE p_kind WHEN 'client_data' THEN p_target::uuid ELSE (SELECT boundary_id FROM public.data_use_scopes WHERE scope_id=p_target::uuid) END OR f.source_id=(SELECT source_id FROM public.data_use_scopes WHERE p_kind='data_use' AND scope_id=p_target::uuid)) END);
 END $$;
