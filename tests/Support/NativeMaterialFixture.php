@@ -2,8 +2,11 @@
 
 namespace Tests\Support;
 
+use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
 use App\Security\GrantAuthority;
+use App\Security\SessionAuthority;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\BusinessAuthorityFixture as Fixture;
@@ -11,14 +14,26 @@ use Tests\Support\BusinessAuthorityFixture as Fixture;
 /** Actual scoped-read fixtures; no live provider or operating root issuer is asserted. */
 trait NativeMaterialFixture
 {
-    private function original(string $operation = 'retained_read', array $fields = ['spend'], int $count = 1, bool $adoptViaCommand = false): array
+    private function original(string $operation = 'retained_read', array $fields = ['spend'], int $count = 1, bool $adoptViaCommand = false, bool $historicalWorkspace = false): array
     {
         sort($fields, SORT_STRING);
         $user = User::factory()->create();
         $this->actingAs($user);
         $a = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Material client'])->assertCreated()->json('data');
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
-        $this->post('/workspaces', ['name' => 'Native material custody', 'slug' => 'material-custody'])->assertRedirect();
+        if ($historicalWorkspace) {
+            // The organizational read view is a later migration. Populate the
+            // historical schema through its real signed canonical creator,
+            // without asking current HTTP presentation to emulate an old app.
+            $request = Request::create('/workspaces');
+            $request->setLaravelSession(app('session')->driver());
+            DB::transaction(function () use ($user, $request): void {
+                app(PrincipalContext::class)->activate($user);
+                DB::scalar('SELECT builderad_create_workspace(?,?,?,?)', [$user->id, SessionAuthority::sessionKey($request), 'Native material custody', 'material-custody']);
+            });
+        } else {
+            $this->post('/workspaces', ['name' => 'Native material custody', 'slug' => 'material-custody'])->assertRedirect();
+        }
         $db = DB::connection('pgsql_migrations');
         $workspace = $db->table('workspaces')->first();
         $business = $db->table('businesses')->where('public_id', $a['business_public_id'])->value('id');

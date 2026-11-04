@@ -15,7 +15,7 @@ export async function runWorkspaceCases({ browser, check, login, meta, result, f
         const validator = ajv.compile({ $ref: `application#/components/schemas/${schema}` });
         assert.ok(validator(body), JSON.stringify(validator.errors));
     };
-    command('restore'); command('restore-view'); command('restore-create');
+    command('restore-view'); command('restore-create');
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     context.on('response', response => {
         if (response.url().includes('/build/') && response.status() === 200) result.assets.push({ url: response.url(), status: response.status() });
@@ -37,7 +37,6 @@ export async function runWorkspaceCases({ browser, check, login, meta, result, f
         const reply = await client.GET('/workspaces', { headers: await headers() });
         assert.equal(reply.response.status, 200); validate('WorkspaceIndexResource', reply.data); return reply.data.data.workspaces;
     };
-    let type;
     try {
         await check('legacy navigation crosses once into the sole SPA workspace chooser', 'spa', async () => {
             await login(page, 'application');
@@ -58,22 +57,21 @@ export async function runWorkspaceCases({ browser, check, login, meta, result, f
         });
         await check('application contract actual 200/403/409/419/422 and atomic creation retry', 'spa', async () => {
             const before = await list();
-            const read = await client.GET('/business/start', { params: { query: { new: '1' } }, headers: await headers() });
-            assert.equal(read.response.status, 200); validate('BusinessCreationResource', read.data);
-            type = read.data.data.types.find(type => type.active).id;
-            const body = { name: 'API creation ' + Date.now(), business_type_id: type, creation_key: read.data.data.creationKey };
-            const invalid = await client.POST('/business/start', { body: { ...body, name: 'x' }, headers: await headers() });
+            const read = await client.GET('/organizations/new', { headers: await headers() });
+            assert.equal(read.response.status, 200); validate('OrganizationCreationResource', read.data);
+            const body = { name: 'API creation ' + Date.now(), creation_key: read.data.data.creationKey };
+            const invalid = await client.POST('/organizations', { body: { ...body, name: 'x' }, headers: await headers() });
             assert.equal(invalid.response.status, 422); validate('ValidationError', invalid.error);
-            const csrf = await client.POST('/business/start', { body, headers: { ...await headers(), 'X-CSRF-TOKEN': 'invalid' } });
+            const csrf = await client.POST('/organizations', { body, headers: { ...await headers(), 'X-CSRF-TOKEN': 'invalid' } });
             assert.equal(csrf.response.status, 419);
-            const stale = await client.POST('/business/start', { body, headers: { ...await headers(), 'X-Builderad-Document': 'invalid' } });
+            const stale = await client.POST('/organizations', { body, headers: { ...await headers(), 'X-Builderad-Document': 'invalid' } });
             assert.equal(stale.response.status, 409); assert.equal(stale.error.identityConflict, true);
-            const denied = await client.POST('/business/start', { body: { ...body, creation_key: '11111111-1111-4111-8111-111111111111' }, headers: await headers() });
+            const denied = await client.POST('/organizations', { body: { ...body, creation_key: '11111111-1111-4111-8111-111111111111' }, headers: await headers() });
             assert.equal(denied.response.status, 403);
             assert.equal((await list()).length, before.length);
-            const first = await client.POST('/business/start', { body, headers: await headers() });
+            const first = await client.POST('/organizations', { body, headers: await headers() });
             assert.equal(first.response.status, 200); validate('ApplicationDestination', first.data);
-            const repeated = await client.POST('/business/start', { body, headers: await headers() });
+            const repeated = await client.POST('/organizations', { body, headers: await headers() });
             assert.equal(repeated.response.status, 200); assert.deepEqual(repeated.data, first.data);
             const after = await list();
             assert.equal(after.length, before.length + 1);
@@ -85,16 +83,16 @@ export async function runWorkspaceCases({ browser, check, login, meta, result, f
         });
         await check('creation draft survives locale change and SPA traversal with narrow RTL/LTR layout', 'spa', async () => {
             await page.reload(); await appReady(page, 'index');
-            await page.getByRole('link', { name: 'إضافة نشاط', exact: true }).click(); await appReady(page, 'create');
+            await page.locator('[data-workspaces-add]').click(); await appReady(page, 'create');
             await page.locator('[data-workspaces="name"]').fill('Retained creation draft');
-            await page.locator('[data-workspaces="type"]').selectOption(String(type));
+            assert.equal(await page.locator('[data-workspaces="type"]').count(),0);
             await page.locator('[data-application="locale"]').click();
             await page.waitForFunction(() => document.documentElement.lang === 'en');
             assert.equal(await page.locator('[data-workspaces="name"]').inputValue(), 'Retained creation draft');
-            await page.getByRole('link', { name: 'Review my businesses', exact: true }).click(); await appReady(page, 'index');
-            await page.getByRole('link', { name: 'Add a business', exact: true }).click(); await appReady(page, 'create');
+            await page.locator('[data-workspaces="create"] a[href="/workspaces"]').last().click(); await appReady(page, 'index');
+            await page.locator('[data-workspaces-add]').click(); await appReady(page, 'create');
             assert.equal(await page.locator('[data-workspaces="name"]').inputValue(), 'Retained creation draft');
-            assert.equal(await page.locator('[data-workspaces="type"]').inputValue(), String(type));
+            assert.equal(await page.locator('[data-workspaces="type"]').count(),0);
             await page.setViewportSize({ width: 390, height: 844 });
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0);
             await page.screenshot({ path: path.join(run, 'workspace-creation-mobile-en.png'), fullPage: true });
@@ -110,7 +108,7 @@ export async function runWorkspaceCases({ browser, check, login, meta, result, f
             await page.locator('[data-workspaces="name"]').fill(name);
             const payloads = [];
             let lose = true;
-            await page.route('**/business/start', async route => {
+            await page.route('**/organizations', async route => {
                 if (route.request().method() !== 'POST') return route.continue();
                 payloads.push(route.request().postDataJSON());
                 if (!lose) return route.continue();
@@ -127,7 +125,7 @@ export async function runWorkspaceCases({ browser, check, login, meta, result, f
             assert.equal(await page.locator('[data-workspaces="name"]').inputValue(), name);
             await page.waitForTimeout(300); assert.equal(payloads.length, 1);
             command('deny-create');
-            const rejected = page.waitForResponse(response => response.url().endsWith('/business/start') && response.request().method() === 'POST');
+            const rejected = page.waitForResponse(response => response.url().endsWith('/organizations') && response.request().method() === 'POST');
             await page.locator('[data-workspaces="retry"]').click();
             assert.equal((await rejected).status(), 403);
             await page.waitForFunction(() => !document.querySelector('[data-workspaces="retry"]')?.disabled);
@@ -136,14 +134,14 @@ export async function runWorkspaceCases({ browser, check, login, meta, result, f
             assert.deepEqual(payloads[1], payloads[0]);
             command('restore-create');
             await page.locator('[data-workspaces="retry"]').click();
-            await page.waitForURL(/\/workspaces\/[^/]+\/goals$/);
-            await page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready' && document.querySelector('[data-goals="form"]'));
+            await page.waitForURL(/\/workspaces\/[^/]+$/);
+            await page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready' && document.querySelector('[data-sources-workspace]'));
             assert.equal((await meta(page)).binding.generation, originalDocument.binding.generation);
             assert.equal(payloads.length, 3); assert.deepEqual(payloads[2], payloads[0]);
             const after = await list();
             assert.equal(after.length, before.length + 1);
             assert.equal(after.filter(row => row.name === name).length, 1);
-            return { lostAckAfterServerCommit: true, initialDelivery: 1, automaticRetries: 0, explicitRetries: 2, deniedRetryPreservesOriginalUnknown: true, exactOriginalPayload: true, createdWorkspaces: 1, nextJourney: 'Canonical Goals in the same unified SPA document' };
+            return { lostAckAfterServerCommit: true, initialDelivery: 1, automaticRetries: 0, explicitRetries: 2, deniedRetryPreservesOriginalUnknown: true, exactOriginalPayload: true, createdWorkspaces: 1, nextJourney: 'Organization team and resources in the same SPA document; no legacy commercial profile' };
         });
         await check('revoked session cannot restore chooser data or use its old receipt', 'spa', async () => {
             await page.goto('http://localhost:8138/workspaces'); await appReady(page, 'index');

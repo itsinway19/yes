@@ -51,7 +51,7 @@ class LifecycleActivationTest extends TestCase
         // instead of submitting the old pending document's signed receipt.
         $this->useIdentityDocument('/profile');
         $this->get('/dashboard')->assertRedirect(route('business-foundation.index-page'));
-        $this->get('/business/start')->assertOk();
+        $this->get('/organizations/new')->assertOk();
 
         $this->get($url)->assertRedirect();
         $this->assertSame(1, (int) DB::table('principal_lifecycles')->where('user_id', $user->id)->value('generation'));

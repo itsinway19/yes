@@ -219,6 +219,15 @@ final class BusinessFoundationController
         return json_decode(json_encode($raw->authority_selection, JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
     }
 
+    public function enrollPurposeStatement(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $raw = $this->commandBody($request, ['confirmed', 'previous_grant'], 65536);
+        abort_unless($raw->confirmed === true && is_string($raw->previous_grant) && preg_match('/^(0|[1-9][0-9]{0,18})$/D', $raw->previous_grant), 422);
+        validator(['previous_grant' => $raw->previous_grant], ['previous_grant' => ['integer', 'min:0', 'max:'.PHP_INT_MAX]])->validate();
+
+        return $this->respond(fn () => $scope->enrollPurposeStatement($request, $business, $raw->command_id, $raw->confirmed, $raw->previous_grant, $this->selection($raw)));
+    }
+
     public function context(Request $request, string $business, BusinessScope $scope): JsonResponse
     {
         $raw = $this->commandBody($request, ['name', 'business_type_id', 'expected_context'], 70000);
@@ -264,6 +273,13 @@ final class BusinessFoundationController
         return $this->respond(fn () => $scope->grant($request, $business, $raw->command_id, $raw->effect, $raw->grantee_public_id,
             $raw->action, $raw->parent_grant_id, $raw->grant_id, $raw->expected_grant, $raw->expires_at, $raw->delegable,
             $raw->realm_workspace_public_id, $this->selection($raw)));
+    }
+
+    public function enrollDirectTeam(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $raw = $this->commandBody($request, [], 80000);
+
+        return $this->respond(fn () => $scope->enrollDirectTeam($request, $business, $raw->command_id, $this->selection($raw)));
     }
 
     public function internalTeam(Request $request, string $business, BusinessScope $scope): JsonResponse

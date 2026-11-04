@@ -132,7 +132,7 @@ try {
   if($LASTEXITCODE -ne 0){throw 'Foundation production asset guard failed'}
  }
  if($Phase -in @('Focused','Affected','Acceptance')) {
-  $proofFilter=if($Phase -in @('Acceptance','Affected')){'GoalsSpaProofTest|AdvertiserGoalPreferencesTest|ProductionIdentityTest|IdentityRenewalTest|IdentityDocumentTest|SessionAuthorityTest|DatabaseAuthorityBoundaryTest|CoreDependencyBoundaryTest|ArchitectureSourceOptionalityTest'}else{'GoalsSpaProofTest'}
+  $proofFilter=if($Phase -in @('Acceptance','Affected')){'WorkspaceCommercialRetirementTest|BusinessFoundationContractTest|LegacyPurposeHistoryTest|ProductionIdentityTest|IdentityRenewalTest|IdentityDocumentTest|SessionAuthorityTest|DatabaseAuthorityBoundaryTest|CoreDependencyBoundaryTest|ArchitectureSourceOptionalityTest'}else{'WorkspaceCommercialRetirementTest'}
   if($TestFilter){$proofFilter=$TestFilter}
   $proofJunit='storage/framework/testing/'+(Split-Path -Leaf $proofRun)+'/tests.xml'
   & pwsh -NoProfile -File scripts/builderad.ps1 test --compact --display-warnings "--filter=$proofFilter" "--log-junit=$proofJunit" 2>&1 | Tee-Object -FilePath (Join-Path $proofRun 'tests.log')

@@ -14,7 +14,7 @@ const labels: Record<string, [string, string]> = {
     'business.markets.declare': ['التصريح بالأسواق', 'Declare markets'],
     'business.intent.declare': ['التصريح بالنية التجارية', 'Declare commercial intent'],
     'business.preferences.manage': ['تعديل أولويات المعلن', 'Edit advertiser preferences'],
-    'business.purpose.declare': ['التصريح بأغراض العناصر الإعلانية', 'Declare advertising object purposes'],
+    'business.purpose.declare': ['تصريحات غرض النشاط', 'Business purpose statements'],
     'business.link.manage': ['إدارة علاقات التعاون', 'Manage collaboration relationships'],
     'business.draft.archive': ['أرشفة المسودة', 'Archive draft'],
     'business.lifecycle.manage': ['إدارة حالة النشاط', 'Manage business lifecycle'],
@@ -24,9 +24,12 @@ const labels: Record<string, [string, string]> = {
 const label = (action: string) => labels[action] ? t(...labels[action]) : action;
 const metadata = computed(() => props.surface.delegation);
 const options = computed(() => metadata.value.options.filter(o => Number.isSafeInteger(Number(o.grant_id))));
+const ownStatement = computed(() => props.surface.purpose_statement?.current_grant);
+const ownConfirmed = ref(false);
+const ownsSelection = (id: string) => ownStatement.value?.id === id || options.value.some(o => o.grant_id === id);
 const resourceKey = `${key(props.surface.business.business_public_id, props.surface.authority_selection)}:delegations:1`;
 const retained = delegationDrafts.get(resourceKey);
-if (retained && !options.value.some(o => o.grant_id === retained.selected)) delegationDrafts.delete(resourceKey);
+if (retained && !retained.pending && !ownsSelection(retained.selected)) delegationDrafts.delete(resourceKey);
 const draft = reactive<DelegationDraft>(delegationDrafts.get(resourceKey) ?? { selected: options.value.length === 1 ? options.value[0].grant_id : '',
     recipient: '', agency: '', expires: '', delegable: false, notice: '', confirmed: false, blocked: false });
 delegationDrafts.set(resourceKey, draft);
@@ -39,13 +42,14 @@ const uuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4
 const expiry = computed(() => draft.expires && Number.isFinite(Date.parse(draft.expires)) ? new Date(draft.expires).toISOString() : null);
 const valid = computed(() => enabled.value && !!selected.value?.can_issue && uuid(draft.recipient.trim())
     && draft.recipient.trim().toLowerCase() !== metadata.value.actor_public_id.toLowerCase()
-    && (!draft.agency.trim() || uuid(draft.agency.trim()))
+    && (!selected.value?.can_choose_agency || !draft.agency.trim() || uuid(draft.agency.trim()))
     && (!draft.expires || !!expiry.value)
     && (!selected.value.max_expires_at || !!draft.expires && Date.parse(expiry.value!) <= Date.parse(selected.value.max_expires_at))
     && (!expiry.value || Date.parse(expiry.value) > Date.now()));
 watch(() => props.surface, () => {
-    if (draft.selected && !options.value.some(o => o.grant_id === draft.selected)) {
-        draft.blocked = true; delegationDrafts.delete(resourceKey);
+    if (draft.selected && !ownsSelection(draft.selected)) {
+        draft.blocked = true;
+        if (!draft.pending) delegationDrafts.delete(resourceKey);
         draft.notice = t('لم يعد السند المختار مؤهلًا. لم نستبدله بسند آخر أو نفترض نتيجة الطلب.', 'The selected path is no longer qualified. No replacement authority or command outcome was inferred.');
     }
 });
@@ -63,11 +67,18 @@ async function execute(command: GrantCommand) {
         if (disposed || !owned(captured)) return;
         if (result.business_public_id !== business || result.status !== (frozen.effect === 'issue' ? 'active' : 'revoked')
             || frozen.effect === 'revoke' && result.grant_id !== frozen.grant_id) throw Error('Delegation acknowledgement target mismatch');
+        if (frozen.effect === 'revoke' && frozen.action === 'business.purpose.declare' && frozen.grantee_public_id === metadata.value.actor_public_id
+            && frozen.grant_id === frozen.authority_selection.requirements[0]?.leaf_grant_id) draft.selected = '';
         draft.pending = undefined; draft.confirmed = true; emit('refresh');
     } catch (error) {
         if (disposed || !owned(captured)) return;
         if (error instanceof TransportError && error.status === 403) {
-            draft.blocked = true; delegationDrafts.delete(resourceKey);
+            draft.blocked = true;
+            // A self-surrender may already have committed before a lost ACK.
+            // Its withdrawn authority cannot reconcile a receipt; retain the
+            // exact unresolved request rather than infer its outcome.
+            if (!(frozen.effect === 'revoke' && frozen.action === 'business.purpose.declare'
+                && frozen.grantee_public_id === metadata.value.actor_public_id)) delegationDrafts.delete(resourceKey);
             draft.notice = t('لم يعد هذا الطلب مخولًا. لم ننشئ حقًا بديلًا ولم نفترض نجاحه.', 'This command is no longer authorized. No replacement right or success was inferred.'); emit('refresh');
         } else if (error instanceof TransportError && error.status === 422) {
             draft.pending = undefined; draft.notice = t('لم يقبل الخادم بيانات الطلب. راجع الحساب والسند والمدة والنطاق.', 'The server rejected the command fields. Review account, authority, expiry and realm.');
@@ -81,7 +92,7 @@ function issue() {
     if (!valid.value || !selected.value) return;
     void execute({ command_id: crypto.randomUUID(), effect: 'issue', grantee_public_id: draft.recipient.trim(), action: selected.value.action,
         parent_grant_id: Number(selected.value.grant_id), grant_id: null, expected_grant: 0, expires_at: expiry.value,
-        delegable: props.surface.authority_selection.realm_kind === 'internal_team' ? false : draft.delegable, realm_workspace_public_id: props.surface.authority_selection.realm_workspace_public_id ?? (draft.agency.trim() || null),
+        delegable: selected.value?.can_delegate_onward === true && draft.delegable, realm_workspace_public_id: props.surface.authority_selection.realm_workspace_public_id ?? (selected.value?.can_choose_agency ? (draft.agency.trim() || null) : null),
         authority_selection: selection(selected.value.grant_id) });
 }
 function revoke(row: Surface['delegation']['issued'][number]) {
@@ -91,11 +102,29 @@ function revoke(row: Surface['delegation']['issued'][number]) {
         parent_grant_id: null, grant_id: Number(row.grant_id), expected_grant: row.revision, expires_at: null, delegable: false,
         realm_workspace_public_id: row.realm_workspace_public_id, authority_selection: selection(row.parent_grant_id) });
 }
+function surrenderOwnStatement() {
+    const grant = ownStatement.value;
+    if (!grant || !ownConfirmed.value || !enabled.value || draft.pending || !Number.isSafeInteger(Number(grant.id)) || !Number.isSafeInteger(grant.version)) return;
+    draft.selected = grant.id; ownConfirmed.value = false;
+    void execute({ command_id: crypto.randomUUID(), effect: 'revoke', grantee_public_id: metadata.value.actor_public_id, action: 'business.purpose.declare',
+        parent_grant_id: null, grant_id: Number(grant.id), expected_grant: grant.version, expires_at: null, delegable: false,
+        realm_workspace_public_id: null, authority_selection: selection(grant.id) });
+}
 </script>
 
 <template>
     <section class="bf-card bf-delegation" data-business-delegation>
         <h2>{{ t('الأشخاص والتفويضات', 'People and delegations') }}</h2>
+        <section v-if="ownStatement" data-own-purpose-right>
+            <h3>{{ t('حق إدارة تصريحات غرض نشاطك', 'Your business purpose statement right') }}</h3>
+            <p>{{ t('يمكنك التنازل عن هذا الحق وحده. يبقى تاريخ التصريحات والتصحيحات وحق القراءة المستقل محفوظين. لا يتضمن الحق صلاحية على مصدر أو عنصر خارجي.', 'Surrender only this right. Statement and correction history and independent reading remain preserved. This right grants no source or external-object authority.') }}</p>
+            <label class="bf-check"><input v-model="ownConfirmed" type="checkbox" data-purpose-surrender-confirm :disabled="!enabled || !!draft.pending">{{ t('أؤكد التنازل عن حق التصريحات المحدد فقط.', 'I confirm surrendering only this statement right.') }}</label>
+            <button type="button" data-purpose-surrender :disabled="!enabled || !!draft.pending || !ownConfirmed || !Number.isSafeInteger(Number(ownStatement.id))" @click="surrenderOwnStatement">{{ t('إيقاف حق التصريحات', 'Surrender statement right') }}</button>
+        </section>
+        <div v-if="!options.length && draft.pending" role="status" data-purpose-surrender-unresolved>
+            <p>{{ t('طلب محفوظ غير محسوم. غياب الحق الحالي لا يثبت نتيجة طلب السحب السابق، ولا يعيد تفعيله.', 'An unresolved request is retained. Current absence of authority does not prove the earlier surrender outcome or reactivate it.') }}</p>
+            <p>{{ draft.notice }}</p><button type="button" data-purpose-surrender-retry :disabled="!enabled" @click="execute(draft.pending!)">{{ t('التحقق بالطلب الأصلي', 'Check original request') }}</button>
+        </div>
         <p>{{ t('امنح حقًا محددًا من سند يسمح لك بالتفويض، أو اسحب حقًا أصدرته من ذلك السند. عضوية الفريق وحدها لا تمنح حقًا على النشاط أو بيانات العميل.', 'Delegate a specific right from a qualified path, or withdraw a right issued from that path. Team membership alone grants no business or client-data authority.') }}</p>
         <p v-if="!options.length || draft.blocked" role="status" data-delegation-readonly>{{ t('لا يوجد سند مؤهل معروض لإدارة تفويضات الآخرين. لا تُرقّى المسودة إلى سلطة فريق.', 'No qualified path for managing others’ delegations is displayed. A draft cannot become team authority.') }}</p>
         <template v-else>
@@ -124,9 +153,10 @@ function revoke(row: Surface['delegation']['issued'][number]) {
                     <label for="bf-delegation-expires">{{ t('ينتهي التفويض في — بتوقيت جهازك', 'Delegation expires — your device timezone') }}</label>
                     <input id="bf-delegation-expires" v-model="draft.expires" type="datetime-local" :required="!!selected?.max_expires_at" />
                     <p>{{ t('ترك المدة فارغة مسموح فقط إذا لم تحدد السلسلة سقفًا؛ تبقى الصلاحية قابلة للسحب ومشروطة بصحة سندها.', 'An empty expiry is allowed only when the chain imposes no upper bound; authority remains revocable and conditional.') }}</p>
-                    <template v-if="surface.authority_selection.realm_kind === 'direct'"><label for="bf-delegation-agency">{{ t('معرّف مساحة الوكالة — اختياري', 'Agency workspace identifier — optional') }}</label><input id="bf-delegation-agency" v-model="draft.agency" type="text" dir="ltr" maxlength="36" autocomplete="off" /><p>{{ t('اتركه فارغًا لوصول مباشر. نطاق الوكالة يحتاج علاقة مؤهلة وعضوية حالية للمستفيد.', 'Leave empty for direct access. An agency realm requires a qualified relationship and current recipient membership.') }}</p></template>
+                    <template v-if="selected?.can_choose_agency"><label for="bf-delegation-agency">{{ t('معرّف مساحة الوكالة — اختياري', 'Agency workspace identifier — optional') }}</label><input id="bf-delegation-agency" v-model="draft.agency" type="text" dir="ltr" maxlength="36" autocomplete="off" /><p>{{ t('اتركه فارغًا لوصول مباشر. نطاق الوكالة يحتاج علاقة مؤهلة وعضوية حالية للمستفيد.', 'Leave empty for direct access. An agency realm requires a qualified relationship and current recipient membership.') }}</p></template>
+                    <p v-else-if="surface.authority_selection.realm_kind === 'direct'">{{ t('الصلاحية مباشرة لهذا النشاط، ولا تنتقل إلى وكالة أو مصدر بيانات.', 'Authority is direct for this business and cannot extend to an agency or data source.') }}</p>
                     <p v-else>{{ surface.authority_selection.realm_kind === 'internal_team' ? t('التفويض مقيد بإدارة الملف داخل هذا الفريق، ولا يمنح حقوقًا خارجية.', 'Delegation is limited to file administration in this team and grants no external rights.') : t('يبقى التفويض داخل نطاق الوكالة الحالي.', 'Delegation stays within the current agency realm.') }}</p>
-                    <label v-if="surface.authority_selection.realm_kind !== 'internal_team'" class="bf-check"><input v-model="draft.delegable" type="checkbox" />{{ t('السماح للمستفيد بتفويض الحق نفسه ضمن قيود السلسلة', 'Allow the recipient to delegate the same right within chain limits') }}</label>
+                    <label v-if="selected?.can_delegate_onward" class="bf-check"><input v-model="draft.delegable" type="checkbox" />{{ t('السماح للمستفيد بتفويض الحق نفسه ضمن قيود السلسلة', 'Allow the recipient to delegate the same right within chain limits') }}</label>
                 </fieldset>
                 <p v-if="draft.pending && !busy" role="status" data-delegation-unknown>{{ t('يوجد طلب غير محسوم. لا نرسل طلبًا جديدًا قبل التحقق بالأمر الأصلي.', 'A command is unresolved. No new command is sent before original-command reconciliation.') }}</p>
                 <p v-if="draft.notice" role="status">{{ draft.notice }}</p><p v-if="draft.confirmed" role="status" data-delegation-confirmed>{{ t('استُلم تأكيد الأمر. الحالة المعروضة تُعاد قراءتها بصلاحياتك الحالية.', 'The command was acknowledged. Displayed state is read back under current authority.') }}</p>

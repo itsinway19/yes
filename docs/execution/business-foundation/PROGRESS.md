@@ -4,7 +4,11 @@ Owner-approved scope: G3-F v1.0.1 / G4 E01–E05, isolated implementation and te
 
 ## Governing current status — read before historical checkpoints
 
-### Final local Foundation / publication candidate — 2026-11-04
+### PR56 architectural correction — later Owner direction, 2026-11-04
+
+**ARCHITECTURAL_ACCEPTANCE_BLOCKED** above reference `881091bfd1b33dca86e8c6d7187c0d7ded6a8268`. [Current correction/evidence](../structural-foundation/IMPLEMENTATION_PROGRESS.md#pr56-mandatory-correction--2026-11-04) and [retirement matrix](PR56_RETIREMENT_MATRIX.md) supersede any broader interpretation of the bounded candidate acceptance below. Natural organizational registration, independent Business employee opt-in and operating membership/self-departure are implemented and tested in isolation. The local target now retires native commercial writers/editors, separates organizational resources, and implements the Owner-approved finite Purpose statement issuer. Original history and its independently qualified correction/withdrawal remain distinct. Current focused/browser verification and final candidate evidence are recorded in the matrix; no complete architectural acceptance is claimed. Latest Owner reserves comprehensive Foundation execution: **NOT_RUN on this correction**, no new publication or persistent-data migration.
+
+### Historical final local Foundation / publication candidate — 2026-11-04
 
 **CORRECTED_AND_VERIFIED (approved isolated scope), LOCAL_FOUNDATION_PASS / HOSTED_CI_PENDING.** The Owner completed the official Windows Foundation entry; current logs and JUnit prove **1401 PHP tests /20547 assertions /0 errors /0 failures /0 skipped**, **384 JavaScript tests**, full Pint591files, OpenAPI/types, Composer validation/audit, npm high-severity threshold, production build and asset guard PASS. The final source-unchanged marker is True; all1337manifest entries matched current files before these documentation updates. Source-manifest SHA256=`C59DD1251E79A4E3CF78CF547B9CE327962A37D1FA0BBEFF30386905F6FCCFFE`, run `goals-spa-50b151a9-c2bf-445c-ab0c-813128509f57`. Final operating-issuer browser run `a7a506d9-7b4e-44cb-8bba-11a603d0e345` retains both passing cases, private-boundary denial and Arabic390px no overflow. Five moderate development-tool advisories remain; no audit threshold changed. Task test services stopped and preview restored.
 

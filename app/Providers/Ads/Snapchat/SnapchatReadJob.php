@@ -73,7 +73,7 @@ final class SnapchatReadJob implements ShouldBeEncrypted, ShouldQueue
         app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', $accessVersion);
 
         return new self($request->user()->getAuthIdentifier(), (int) $request->session()->get('a001_generation', 0),
-            $request->session()->getId(), DB::table('workspaces')->where('id', $scope->workspaceId)->value('public_id'),
+            $request->session()->getId(), DB::table('organization_workspaces')->where('id', $scope->workspaceId)->value('public_id'),
             $scope, $window, $stream, $command, $generation, $accessVersion, $settings->version,
             $deadline, $settings->binding(), $asynchronous);
     }
@@ -120,10 +120,9 @@ final class SnapchatReadJob implements ShouldBeEncrypted, ShouldQueue
         $request->setLaravelSession($session);
         DB::transaction(function () use ($request, $actor, $principals, $reader, $execution): void {
             $principals->activate($actor);
-            DB::selectOne('SELECT builderad_v2_legacy_enter(?::uuid)', [$this->workspacePublicId]);
             DB::selectOne('SELECT builderad_select_workspace_context(?)', [$this->scope->workspaceId]);
             if ((int) DB::table('principal_lifecycles')->where('user_id', $this->actorId)->value('generation') !== $this->actorGeneration
-                || DB::table('workspaces')->where('id', $this->scope->workspaceId)->value('public_id') !== $this->workspacePublicId) {
+                || DB::table('organization_workspaces')->where('id', $this->scope->workspaceId)->value('public_id') !== $this->workspacePublicId) {
                 throw new AuthorizationException('Snapchat queued actor or Workspace changed.');
             }
             SnapchatCacheBinding::context(app()->runningUnitTests() ? Cache::store() : Cache::store('redis'), $request, $this->scope, $this->accessVersion, hash('sha256', $this->version));

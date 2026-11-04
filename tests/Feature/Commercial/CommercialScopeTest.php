@@ -159,13 +159,18 @@ class CommercialScopeTest extends TestCase
             app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($advertiser, 1);
             $this->actingAs($advertiser)->post('/workspaces', ['name' => 'DTM independent Commercial', 'slug' => 'commercial-dtm-'.$index])->assertRedirect();
             $workspace = $this->owner()->table('workspaces')->where('slug', 'commercial-dtm-'.$index)->first();
+            $file = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Independent declared markets'])->assertCreated()->json('data');
+            $businessId = $this->owner()->table('businesses')->where('public_id', $file['business_public_id'])->value('id');
+            $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.markets.declare']]]];
             if ($codes !== []) {
-                $this->post('/workspaces/'.$workspace->public_id.'/business/target-markets', ['country_codes' => $codes, 'version' => 0])->assertRedirect();
+                $this->putJson('/api/businesses/'.$file['business_public_id'].'/markets', ['command_id' => (string) Str::uuid(), 'codes' => $codes, 'expected_context' => 0, 'authority_selection' => $selection])->assertOk();
             }
-            $snapshot = function () use ($workspace): array {
+            $snapshot = function () use ($workspace, $businessId): array {
                 return [(array) $this->owner()->table('workspaces')->find($workspace->id),
                     $this->owner()->table('business_target_markets')->where('workspace_id', $workspace->id)->orderBy('country_code')->get()->toArray(),
-                    $this->owner()->table('business_target_market_events')->where('workspace_id', $workspace->id)->orderBy('id')->get()->toArray()];
+                    $this->owner()->table('business_target_market_events')->where('workspace_id', $workspace->id)->orderBy('id')->get()->toArray(),
+                    $this->owner()->table('business_declared_markets')->where('business_id', $businessId)->orderBy('country_code')->get()->toArray(),
+                    $this->owner()->table('business_market_transitions')->where('business_id', $businessId)->orderBy('event_id')->get()->toArray()];
             };
             $before = $snapshot();
             $this->actingAsInternal($this->operator)->withCredentials();
@@ -179,12 +184,13 @@ class CommercialScopeTest extends TestCase
             foreach ($commercialTables as $table) {
                 $commercialBefore[$table] = $this->owner()->table($table)->get()->toArray();
             }
-            $this->actingAs($advertiser)->post('/workspaces/'.$workspace->public_id.'/business/target-markets',
-                ['country_codes' => [], 'version' => $codes === [] ? 0 : 1])->assertRedirect();
+            $this->actingAs($advertiser)->putJson('/api/businesses/'.$file['business_public_id'].'/markets',
+                ['command_id' => (string) Str::uuid(), 'codes' => [], 'expected_context' => $codes === [] ? 0 : 1, 'authority_selection' => $selection])->assertOk();
             foreach ($commercialTables as $table) {
                 $this->assertEquals($commercialBefore[$table], $this->owner()->table($table)->get()->toArray(), $table);
             }
             $this->assertSame(0, $this->owner()->table('business_target_markets')->where('workspace_id', $workspace->id)->count());
+            $this->assertSame(0, $this->owner()->table('business_declared_markets')->where('business_id', $businessId)->count());
         }
     }
 
@@ -889,7 +895,7 @@ class CommercialScopeTest extends TestCase
     private function workspace(): array
     {
         $user = User::factory()->create();
-        $workspace = $this->owner()->table('workspaces')->insertGetId(['business_type_id' => $this->owner()->table('business_types')->where('key', 'professional_services')->value('id'), 'name' => 'Synthetic beneficiary', 'slug' => 'synthetic-'.$this->id(), 'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
+        $workspace = $this->owner()->table('workspaces')->insertGetId(['name' => 'Synthetic beneficiary', 'slug' => 'synthetic-'.$this->id(), 'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
         $this->owner()->table('workspace_memberships')->insert(['workspace_id' => $workspace, 'user_id' => $user->id, 'role' => 'owner', 'status' => 'active', 'created_at' => now()]);
         $this->owner()->table('workspace_ownerships')->insert(['workspace_id' => $workspace, 'responsible_owner_user_id' => $user->id, 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
         $this->owner()->table('security_action_grants')->insert(['subject_user_id' => $user->id, 'source' => 'system_workspace_creation', 'action' => 'workspace.view', 'scope_kind' => 'workspace', 'workspace_id' => $workspace, 'subject_generation' => 1, 'reason' => 'synthetic_fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

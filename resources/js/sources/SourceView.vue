@@ -7,11 +7,13 @@ import { pending } from './commands';
 import { confirmDeparture } from '../spa/presentation';
 import { locale } from '../spa/locale';
 import AdvertiserWorkspaceLayout from '../business-foundation/AdvertiserWorkspaceLayout.vue';
+import OrganizationTeam from '../workspaces/OrganizationTeam.vue';
+import { hasPendingTeamCommand } from '../workspaces/team';
 const copy = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
-const canLeave = () => !pending.size || confirm('توجد أوامر مصادر غير محسومة. هل تريد المغادرة مع الاحتفاظ بها في هذا المستند؟');
+const canLeave = () => (!pending.size && !hasPendingTeamCommand()) || confirm(copy('توجد أوامر غير محسومة. هل تريد المغادرة مع الاحتفاظ بها في هذا المستند؟', 'Some commands have unknown outcomes. Leave while retaining them in this document?'));
 confirmDeparture.value = canLeave;
 onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
-const beforeUnload = (event: BeforeUnloadEvent) => { if (pending.size) { event.preventDefault(); event.returnValue = ''; } };
+const beforeUnload = (event: BeforeUnloadEvent) => { if (pending.size || hasPendingTeamCommand()) { event.preventDefault(); event.returnValue = ''; } };
 window.addEventListener('beforeunload', beforeUnload);
 onBeforeUnmount(() => { if (confirmDeparture.value === canLeave) confirmDeparture.value = () => true; window.removeEventListener('beforeunload', beforeUnload); });
 </script>
@@ -19,6 +21,7 @@ onBeforeUnmount(() => { if (confirmDeparture.value === canLeave) confirmDepartur
     <div v-if="current" data-spa-private :data-sources-workspace="current.data.workspace.public_id">
         <AdvertiserWorkspaceLayout :context="current.data.workspace.name" :workspace-id="current.data.workspace.public_id" workspace-context>
             <nav class="advertiser-breadcrumb" :aria-label="copy('مسار الصفحة', 'Breadcrumb')"><RouterLink to="/businesses">{{ copy('أنشطتي', 'My businesses') }}</RouterLink><span aria-hidden="true">/</span><RouterLink to="/workspaces">{{ copy('مساحات العمل', 'Workspaces') }}</RouterLink><span aria-hidden="true">/</span><span aria-current="page">{{ current.data.workspace.name }}</span></nav>
+            <OrganizationTeam :key="current.data.workspace.public_id" :workspace="current.data.workspace.public_id" />
             <div class="sources-page"><Sources v-bind="current.data" /></div>
         </AdvertiserWorkspaceLayout>
     </div>

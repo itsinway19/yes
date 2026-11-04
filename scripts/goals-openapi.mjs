@@ -30,15 +30,7 @@ const operation = (operationId, schema) => ({ operationId, security, parameters,
 const preferences = object({ value: ref('GoalValue'), version: { type: 'integer', minimum: 0 } });
 export const spec = {
     openapi: '3.1.0', info: { title: 'BuilderAd internal Goals contract', version: '1.0.0', description: 'Native SPA Goals. Cookies and identity headers describe the WEB transport only. Not a mobile authentication design.' },
-    paths: {
-        '/workspaces/{workspace}/goals': {
-            get: { ...operation('readGoals', ref('Preferences')), description: 'Accept application/json for canonical preferences. Native HTML requests receive the unified SPA shell, without a business projection.' },
-            post: { ...operation('saveGoals', ref('Preferences')), description: 'Canonical existing writer; exact two-field JSON object, maximum 8192 bytes. No automatic retry after uncertain delivery. Same-origin Laravel CSRF checks remain authoritative.', requestBody: { required: true, ...json(ref('SaveGoals')) }, parameters: [...parameters, { name: 'X-CSRF-TOKEN', in: 'header', schema: text, description: 'Browser CSRF token. Laravel 13 may accept trusted same-origin Fetch Metadata before token validation; absent that evidence a valid token is required.' }] },
-        },
-        '/workspaces/{workspace}/goals/context': {
-            get: { ...operation('readCanonicalGoalsContext', { oneOf: [ref('GoalsContext'), ref('GoalsWitness')] }), description: 'Unified SPA contextual read through the existing WorkspaceContext, Goals and BusinessContext readers. Passive/witness requests preserve canonical idle authority.', parameters: [...parameters, { name: 'X-Goals-Passive', in: 'header', schema: { enum: ['1'] } }, { name: 'X-Goals-Witness', in: 'header', schema: { enum: ['1'] } }] },
-        },
-    },
+    paths: {},
     components: {
         securitySchemes: {
             sessionCookie: { type: 'apiKey', in: 'cookie', name: 'builderad-session', description: 'Default advertiser cookie; SESSION_COOKIE may override it. Server SQL/Redis admission remains mandatory.' },

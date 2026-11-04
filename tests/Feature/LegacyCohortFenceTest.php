@@ -2,9 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Business\BusinessContext;
 use App\Foundation\Business\BusinessScope;
-use App\Foundation\Tenancy\PrincipalContext;
 use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\User;
 use App\Models\Workspace;
@@ -47,29 +45,27 @@ final class LegacyCohortFenceTest extends TestCase
             [(string) Str::uuid(), $cohort, $before, $epoch, $after, hash('sha256', 'isolated legacy checkpoint')]);
     }
 
-    public function test_draining_denies_old_sql_and_http_writers_while_new_business_is_independent(): void
+    public function test_draining_preserves_organizational_entry_and_recovery_cannot_reactivate_retired_writers(): void
     {
         [$u, $r, $w, $cohort] = $this->fixture();
         $db = DB::connection('pgsql_migrations');
         $a = app(BusinessScope::class)->create($r, (string) Str::uuid(), 'Canonical independent business', null);
-        app(WorkspaceContext::class)->runBusinessMutation($u, $w->public_id,
-            fn (Workspace $scope) => app(BusinessContext::class)->replaceTargetMarkets($r, $scope, ['SA'], 0), $r);
         $before = $db->table('business_target_market_events')->count();
         $this->transition($cohort, 'LEGACY_ACTIVE', 0, 'DRAINING');
-        $this->post('/workspaces/'.$w->public_id.'/business/target-markets', ['country_codes' => ['JO'], 'version' => 1])->assertForbidden();
-        $this->denied(fn () => DB::transaction(function () use ($u, $w) {
-            app(PrincipalContext::class)->activate($u);
-            DB::scalar('SELECT builderad_select_workspace_context(?)', [$w->id]);
-        }));
-        $this->denied(fn () => DB::connection('pgsql_authority')->statement("UPDATE security_action_grants SET status='revoked',revoked_at=clock_timestamp() WHERE workspace_id=? AND action='business.context.manage'", [$w->id]));
+        $this->postJson('/workspaces/'.$w->public_id.'/business/target-markets', ['country_codes' => ['JO'], 'version' => 0])->assertStatus(410);
+        $this->getJson('/workspaces/'.$w->public_id.'/foundation')->assertOk()->assertJsonPath('workspace.public_id', $w->public_id);
+        app(WorkspaceContext::class)->run($u, $w->public_id, function (Workspace $scope) use ($w) {
+            $this->assertSame($w->public_id, $scope->public_id);
+            $this->assertSame(0, DB::table('workspaces')->count());
+            $this->assertArrayNotHasKey('business_type_id', $scope->getAttributes());
+        }, $r);
         $this->assertSame($before, $db->table('business_target_market_events')->count());
-        $this->assertSame(1, $db->table('workspaces')->where('id', $w->id)->value('business_context_version'));
         $this->assertSame('Canonical independent business', app(BusinessScope::class)->read($r, $a['business_public_id'],
             ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs']['business.context.read']]]])['name']);
         $this->transition($cohort, 'DRAINING', 1, 'LEGACY_ACTIVE');
-        app(WorkspaceContext::class)->runBusinessMutation($u, $w->public_id,
-            fn (Workspace $scope) => app(BusinessContext::class)->replaceTargetMarkets($r, $scope, ['JO'], 1), $r);
-        $this->assertSame(2, $db->table('workspaces')->where('id', $w->id)->value('business_context_version'));
+        $this->postJson('/workspaces/'.$w->public_id.'/business/target-markets', ['country_codes' => ['JO'], 'version' => 0])->assertStatus(410);
+        $this->assertNull($db->scalar("SELECT to_regprocedure('builderad_business_target_markets_write(bigint,text,text[],bigint)')"));
+        $this->assertSame(0, $db->table('workspaces')->where('id', $w->id)->value('business_context_version'));
     }
 
     public function test_stale_owner_definer_without_entry_cannot_write_around_table_guard(): void

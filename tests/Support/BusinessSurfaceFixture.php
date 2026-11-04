@@ -36,7 +36,10 @@ $scope = app(BusinessScope::class);
 $path = $run.'/business-surface-fixture.json';
 $mode = $argv[1] ?? 'setup';
 $select = fn (int $grant) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
-if ($mode === 'internal-team-setup') {
+if ($mode === 'team-identities') {
+    file_put_contents($run.'/team-identities.json', json_encode(['manager' => $recipient->public_id, 'staff' => $owner->public_id,
+        'qualification' => 'IDENTITY FIXTURES ONLY; NO MEMBERSHIP OR BUSINESS GRANT INSERTED'], JSON_THROW_ON_ERROR));
+} elseif ($mode === 'internal-team-setup') {
     $team = $base['b']['workspaces'][0];
     DB::connection('pgsql_migrations')->table('workspace_memberships')->updateOrInsert(
         ['workspace_id' => $team['id'], 'user_id' => $owner->id],

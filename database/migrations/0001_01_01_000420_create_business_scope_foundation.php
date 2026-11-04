@@ -11,7 +11,7 @@ return new class extends Migration
         if (! $role || $role->rolcanlogin || $role->rolsuper || $role->rolbypassrls || $role->rolinherit || $role->rolcreaterole || $role->rolcreatedb || $role->runtime_member || ! $role->deployer_can_set) {
             throw new RuntimeException('Qualified non-login Business executor must be provisioned by administrative bootstrap.');
         }
-        foreach (['schema', 'codec', 'authority', 'scope_authority', 'commands', 'facts', 'grant_commands', 'resource_rights', 'source_rights', 'data_use', 'producer_contracts', 'material_lineage', 'material_use', 'material_publish', 'lifecycle', 'cohort', 'legacy_fences', 'purpose', 'source_adoption', 'source_facts', 'legacy_import', 'surfaces', 'history', 'legacy_history', 'permissions', 'legacy_install_seal'] as $part) {
+        foreach (['schema', 'codec', 'authority', 'scope_authority', 'commands', 'facts', 'grant_commands', 'resource_rights', 'source_rights', 'data_use', 'producer_contracts', 'material_lineage', 'material_use', 'material_publish', 'lifecycle', 'cohort', 'legacy_fences', 'purpose', 'purpose_snapshot', 'source_adoption', 'source_facts', 'legacy_import', 'surfaces', 'history', 'legacy_history', 'permissions', 'legacy_install_seal'] as $part) {
             DB::unprepared(file_get_contents(database_path("sql/business_scope/{$part}.sql")));
         }
     }

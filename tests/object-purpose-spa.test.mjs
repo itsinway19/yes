@@ -56,7 +56,7 @@ test('actual Purpose draft memory separates exact purposes and Workspaces and re
     reset(); commands.remember('workspace', 'purpose-a', { value: ['original'], version: 3 }); const value = commands.restore('workspace', 'purpose-a'); value.value.push('changed');
     assert.deepEqual(commands.restore('workspace', 'purpose-a'), { value: ['original'], version: 3 }); assert.equal(commands.restore('other', 'purpose-a'), undefined); assert.equal(commands.restore('workspace', 'purpose-b'), undefined);
 });
-test('private Purpose schemas keep the canonical object tuple generic and the enabled HTTP admission Meta-only', async () => {
+test('Purpose schemas keep Business tuples generic and original-history HTTP corrections Meta-only', async () => {
     const spec = JSON.parse(await readFile(new URL('../contracts/application.openapi.json', import.meta.url), 'utf8'));
     const ajv = new Ajv2020({ strict: false, validateFormats: false }); ajv.addSchema({ $id: 'application', components: spec.components });
     const generic = ajv.compile({ $ref: 'application#/components/schemas/PurposeObject' }), edge = ajv.compile({ $ref: 'application#/components/schemas/MetaPurposeObject' });
@@ -67,5 +67,5 @@ test('private Purpose schemas keep the canonical object tuple generic and the en
 test('generated Purpose client preserves nullable command fields and never retries uncertain delivery', async () => {
     let attempts = 0; const original = { command_id: crypto.randomUUID(), purpose_id: reply.purpose_id, expected_version: 1, operation: 'withdraw', declaration: null, effective_from: null, effective_until: null, supersedes_revision_id: reply.revision_id, affected_revision_ids: [reply.revision_id], correction_reason: null, withdrawal_reason: 'Explicit synthetic withdrawal', confirmations: { meaning: true, scope: true, authority: true, identity: true, standing: true, dtm: false, intent: false, historical: false, transition: true } };
     const client = createApplicationClient('https://builderad.test', async request => { attempts++; assert.deepEqual(await request.json(), original); throw Error('unknown delivery'); });
-    await assert.rejects(client.POST('/workspaces/{workspace}/object-purposes/{purpose}/revisions', { params: { path: { workspace: 'workspace', purpose: reply.purpose_id } }, body: original }), /unknown delivery/); assert.equal(attempts, 1);
+    await assert.rejects(client.POST('/workspaces/{workspace}/purpose-history/{purpose}/revisions', { params: { path: { workspace: 'workspace', purpose: reply.purpose_id } }, body: original }), /unknown delivery/); assert.equal(attempts, 1);
 });

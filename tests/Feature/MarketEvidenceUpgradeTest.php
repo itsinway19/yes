@@ -25,7 +25,7 @@ final class MarketEvidenceUpgradeTest extends TestCase
             // Current HTTP admission requires its operational singleton even on this historical domain schema.
             $paths[] = database_path('migrations/0001_01_01_000470_create_platform_maintenance.php');
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $paths, '--realpath' => true, '--force' => true]));
-            $f = $this->original();
+            $f = $this->original(historicalWorkspace: true);
             $route = '/api/businesses/'.$f['a']['business_public_id'].'/materials/read';
             $before = $this->postJson($route, $f['body'])->assertOk()->json();
             $db = DB::connection('pgsql_migrations');

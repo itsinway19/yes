@@ -123,58 +123,33 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             return { sourceUrlRetained: true, mountedDraftRetained: true, sourceInert: true, cancelledTargetCannotPublish: true,
                 resourceAndWitnessRequests: requests.map(row => ({ status: row.status, ms: row.finished - row.start, bytes: row.bytes })), beforeAfterSpeedup: 'NOT_MEASURED' };
         });
-        await check('A production Workspace navigation and actual Back/Forward preserve scoped human drafts without writes', 'auth', async () => {
-            const first = fixture.a.workspaces[0].public_id, second = fixture.a.workspaces[1].public_id;
-            const goalsPath = id => `/workspaces/${id}/goals`;
-            const goalsReady = id => page.waitForFunction(id => document.getElementById('application-spa')?.dataset.state === 'ready' && document.querySelector(`[data-goals-workspace="${id}"]`), id);
-            await login('a', goalsPath(first)); await goalsReady(first);
-            const mark = result.wire.length;
-            const goal = page.locator('[data-goals^="select-"]').first(), selector = await goal.getAttribute('data-goals');
-            await goal.check();
-            await page.locator(`header a[href="/workspaces/${first}/business"]`).click();
-            await page.waitForURL(`**/workspaces/${first}/business`); await privateReady();
-            await page.goBack(); await goalsReady(first);
-            assert.equal(await page.locator(`[data-goals="${selector}"]`).isChecked(), true);
-            await page.goForward(); await page.waitForURL(`**/workspaces/${first}/business`); await privateReady();
-            await page.locator('header a[href="/workspaces"]').click(); await page.waitForURL('**/workspaces'); await privateReady();
-            await page.locator(`a.workspace-row[href="/workspaces/${second}"]`).click();
-            await page.waitForURL(`**/workspaces/${second}`); await privateReady();
-            await page.locator(`header a[href="${goalsPath(second)}"]`).click(); await goalsReady(second);
-            assert.equal(await page.locator(`[data-goals="${selector}"]`).isChecked(), false);
-            await page.locator('header a[href="/workspaces"]').click(); await page.waitForURL('**/workspaces'); await privateReady();
-            await page.locator(`a.workspace-row[href="/workspaces/${first}"]`).click(); await privateReady();
-            await page.locator(`header a[href="${goalsPath(first)}"]`).click(); await goalsReady(first);
-            assert.equal(await page.locator(`[data-goals="${selector}"]`).isChecked(), true);
-            assert.equal((await get(page, goalsPath(first) + '/context')).body.preferences.version, 0);
-            assert.equal(result.wire.slice(mark).filter(row => row.method === 'POST' && row.path.startsWith('/workspaces/')).length, 0);
-            await logout();
-            return { productionAssets: true, realBackForward: true, crossWorkspace: true, humanDraftRetained: true, draftIsolation: true, navigationWrites: 0 };
-        });
-        await check('A same-record Workspace updates honor actual editor guards and passive history conceals old data', 'auth', async () => {
+        await check('A actual Back/Forward and passive resource admission preserve only the qualified original history', 'auth', async () => {
             const first=fixture.a.workspaces[0].public_id,second=fixture.a.workspaces[1].public_id;
-            const target=id=>`/workspaces/${id}/goals`;
-            const goalsReady=id=>page.waitForFunction(id=>document.getElementById('application-spa')?.dataset.state==='ready'&&document.querySelector(`[data-goals-workspace="${id}"]`),id);
-            await login('a',target(first));await goalsReady(first);
-            const choice=page.locator('[data-goals^="select-"]').first(),selector=await choice.getAttribute('data-goals');await choice.check();
-            page.removeAllListeners('dialog');page.on('dialog',dialog=>dialog.dismiss());
-            await page.evaluate(path=>document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(path),target(first)+'?review=1');
-            assert.equal(new URL(page.url()).search,'','Unsaved guard rejects same-record query updates too');
-            await page.evaluate(path=>document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(path),target(second));
-            assert.equal(new URL(page.url()).pathname,target(first));assert.equal(await choice.isChecked(),true);
-            page.removeAllListeners('dialog');page.on('dialog',dialog=>dialog.accept());
-            await page.evaluate(path=>document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(path),target(second));await goalsReady(second);
-            assert.equal(await page.locator(`[data-goals="${selector}"]`).isChecked(),false);
-            let once=true;await page.route(`**${target(first)}/context`,async route=>{
-                if(once){once=false;await route.continue({headers:{...route.request().headers(),'X-Proof-Hold':'passive-history-source'}});}else await route.continue();
+            const target=id=>`/workspaces/${id}/commercial-history`;
+            const historyReady=()=>page.waitForFunction(()=>document.getElementById('application-spa')?.dataset.state==='ready'&&document.querySelector('[data-commercial-history]'));
+            const push=url=>page.evaluate(url=>document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(url),url);
+            await login('a',target(first));await historyReady();
+            const original=await page.locator('[data-commercial-history]').innerText(),mark=result.wire.length;
+            await push(target(first)+'?kind=intent');await historyReady();
+            assert.equal(new URL(page.url()).search,'?kind=intent');
+            await push(target(second));await historyReady();
+            let once=true;const key='passive-original-history';
+            await page.route(`**${target(first)}?kind=intent`,async route=>{
+                if(once){once=false;await route.continue({headers:{...route.request().headers(),'X-Proof-Hold':key}});}else await route.continue();
             });
-            await page.evaluate(()=>history.back());await until(()=>held.has('passive-history-source'));
-            assert.equal(new URL(page.url()).pathname,target(first));
-            assert.equal(await page.locator('[data-spa-private]:visible').count(),0);
-            assert.equal(await page.locator(`[data-goals-workspace="${second}"]`).count(),1,'Source editor remains mounted while hidden');
-            held.get('passive-history-source').deliver();held.delete('passive-history-source');await goalsReady(first);
-            assert.equal(await page.locator(`[data-goals="${selector}"]`).isChecked(),true);
-            await page.unroute(`**${target(first)}/context`);await logout();
-            return {sameRecordDeniedUpdate:true,acceptedUpdate:true,scopedDraft:true,actualHistory:true,hiddenBeforeTargetAdmission:true,sourceLifetimeRetained:true};
+            try {
+                await page.evaluate(()=>history.back());await until(()=>held.has(key));
+                assert.equal(new URL(page.url()).pathname,target(first));
+                assert.equal(await page.locator('[data-spa-private]:visible').count(),0);
+                held.get(key).deliver();held.delete(key);await historyReady();
+                await page.unroute(`**${target(first)}?kind=intent`);
+                await page.goBack();await historyReady();
+                assert.equal(await page.locator('[data-commercial-history]').innerText(),original);
+                assert.equal(await page.locator('[data-commercial-history] form').count(),0);
+                assert.equal(result.wire.slice(mark).filter(row=>row.method==='POST'&&row.path.startsWith('/workspaces/')).length,0);
+                await logout();
+                return {sameRecordHistorySelection:true,actualBack:true,hiddenBeforeAdmission:true,readOnly:true,navigationWrites:0,draftBehavior:'Business operating browser cases cover retained editing drafts'};
+            } finally {if(held.has(key)){held.get(key).deliver();held.delete(key);}await page.unroute(`**${target(first)}?kind=intent`);}
         });
         await check('A actual virtual resident UV passkey enrollment and native passkey login retain server verification and consumed-document denial', 'auth', async () => {
             const cdp = await context.newCDPSession(page); await cdp.send('WebAuthn.enable');

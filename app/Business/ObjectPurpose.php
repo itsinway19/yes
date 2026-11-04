@@ -12,9 +12,9 @@ use Illuminate\Validation\ValidationException;
 /** Canonical declaration access, within WorkspaceContext::run's signed transaction. */
 final class ObjectPurpose
 {
-    public function write(Request $request, Workspace $workspace, array $command): array
+    public function reviseOriginalHistory(Request $request, Workspace $workspace, array $command): array
     {
-        return json_decode(DB::scalar('SELECT builderad_object_purpose_write(?,?,?::jsonb)', [
+        return json_decode(DB::scalar('SELECT builderad_v2_legacy_purpose_history_revise(?,?,?::jsonb)', [
             $workspace->id, SessionAuthority::sessionKey($request), json_encode($command, JSON_THROW_ON_ERROR),
         ]), true, flags: JSON_THROW_ON_ERROR);
     }
@@ -64,11 +64,12 @@ final class ObjectPurpose
     }
 
     /** Pure native temporal owner; both admitted namespaces supply qualified rows. */
-    public function projectHistory(array $heads, int $contextVersion, int $dtmTransitionVersion, DateTimeImmutable $effectiveAt, DateTimeImmutable $knownAt, ?array $object = null): array
+    public function projectHistory(array $heads, int $contextVersion, int $dtmTransitionVersion, DateTimeImmutable $effectiveAt, DateTimeImmutable $knownAt, ?array $object = null, bool $historyAvailable = true): array
     {
         $items = [];
         foreach ($heads as $head) {
-            $history = array_values(array_filter($head->history, fn ($revision) => new DateTimeImmutable($revision['accepted_at']) <= $knownAt));
+            $qualified = $historyAvailable ? $head->history : ($head->current === null ? [] : [$head->current]);
+            $history = array_values(array_filter($qualified, fn ($revision) => new DateTimeImmutable($revision['accepted_at']) <= $knownAt));
             $segments = [];
             $transitions = [];
             foreach ($history as $revision) {
@@ -109,7 +110,7 @@ final class ObjectPurpose
             $historical = $dtm !== null && $dtm['mode'] === 'historical_attestation';
             $revalidate = $dtm !== null && ! $historical && $dtmTransitionVersion > $dtm['version'];
             $items[] = ['purpose_id' => $head->id, 'head_version' => (int) $head->head_version,
-                'state' => $applicable === null ? 'UNKNOWN' : 'DECLARED', 'applicable' => $applicable, 'history' => $history,
+                'state' => $applicable === null ? 'UNKNOWN' : 'DECLARED', 'applicable' => $applicable, 'history' => $historyAvailable ? $history : [],
                 'dtm_standing' => $dtm === null ? 'NO_RELATION_DECLARED' : ($historical ? 'HISTORICAL_ATTESTATION' : ($revalidate
                     ? 'REFERENCED_CURRENT_CLAIM_REQUIRES_REVALIDATION' : 'CURRENT_REFERENCE_AT_READ')),
                 'relationship_revalidation_required' => $revalidate,

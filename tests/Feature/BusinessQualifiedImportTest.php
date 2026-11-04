@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Business\BusinessContext;
+use App\Business\ObjectPurpose;
 use App\Foundation\Tenancy\PrincipalContext;
 use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\User;
@@ -16,7 +16,8 @@ use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
 use Tests\Support\ApplicationContractAssertions;
 use Tests\Support\BusinessAuthorityFixture as Fixture;
-use Tests\Support\ObjectPurposeTestCase;
+use Tests\Support\LegacyCommercialUpgradeFixture;
+use Tests\Support\PurposeDeclarationFixture;
 use Tests\TestCase;
 
 final class BusinessQualifiedImportTest extends TestCase
@@ -25,6 +26,7 @@ final class BusinessQualifiedImportTest extends TestCase
 
     private function importFixture(bool $withPurpose = false): array
     {
+        LegacyCommercialUpgradeFixture::install();
         $user = User::factory()->create();
         $this->actingAs($user)->withCredentials();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
@@ -36,19 +38,17 @@ final class BusinessQualifiedImportTest extends TestCase
         $r->setLaravelSession(app('session')->driver());
         $type = $db->table('business_types')->where('key', 'real_estate')->value('id');
         foreach (['Historic B', 'Legacy A'] as $version => $name) {
-            app(WorkspaceContext::class)->runBusinessMutation($user, $w->public_id, fn (Workspace $scope) => app(BusinessContext::class)->write($r, $scope,
-                ['name' => $name, 'business_type_id' => $type, 'version' => $version]), $r);
+            LegacyCommercialUpgradeFixture::write($user, $r, $w, 'context', [$type, $name, $version]);
         }
-        app(WorkspaceContext::class)->runBusinessMutation($user, $w->public_id, fn (Workspace $scope) => app(BusinessContext::class)->replaceTargetMarkets($r, $scope, ['JO', 'SA'], 2), $r);
+        LegacyCommercialUpgradeFixture::write($user, $r, $w, 'markets', [json_encode(['JO', 'SA']), 2]);
         $intent = ['description' => null, 'direction' => 'increase_value', 'scope' => 'business_wide', 'outcome' => ['meaning' => 'Qualified original intent', 'clarification' => null, 'count_unit' => null], 'quantity' => null, 'horizon' => null];
-        app(WorkspaceContext::class)->runBusinessMutation($user, $w->public_id, fn (Workspace $scope) => app(BusinessContext::class)->replaceCurrentIntent($r, $scope, $intent,
-            ['declaration' => true, 'business_wide' => true, 'outcome' => true, 'acceptance_clear' => true, 'clarification_required' => false, 'quantity' => true, 'horizon' => true], 3), $r);
-        $this->postJson('/workspaces/'.$w->public_id.'/goals', ['value' => ['goals' => ['sales'], 'priority' => 'sales', 'results' => ['sales' => ['actual_sales']]], 'version' => 0])->assertOk();
+        LegacyCommercialUpgradeFixture::write($user, $r, $w, 'intent', [json_encode($intent), json_encode(['declaration' => true, 'business_wide' => true, 'outcome' => true, 'acceptance_clear' => true, 'clarification_required' => false, 'quantity' => true, 'horizon' => true]), 3]);
+        LegacyCommercialUpgradeFixture::write($user, $r, $w, 'preferences', [json_encode(['goals' => ['sales'], 'priority' => 'sales', 'results' => ['sales' => ['actual_sales']]]), 0]);
         if ($withPurpose) {
-            $command = ObjectPurposeTestCase::command();
+            $command = PurposeDeclarationFixture::command();
             $command['declaration']['meaning'] = 'Original qualified purpose';
             $command['declaration']['included_objects'] = [['provider' => 'meta', 'account_namespace' => 'meta_ads_account', 'account_id' => '100', 'object_kind' => 'campaign', 'object_id' => '200', 'incarnation' => null]];
-            $first = $this->postJson('/workspaces/'.$w->public_id.'/object-purposes', $command)->assertCreated()->json();
+            $first = json_decode(LegacyCommercialUpgradeFixture::write($user, $r, $w, 'purpose', [json_encode($command)]), true);
             $command['command_id'] = (string) Str::uuid();
             $command['purpose_id'] = $first['purpose_id'];
             $command['expected_version'] = 1;
@@ -57,8 +57,9 @@ final class BusinessQualifiedImportTest extends TestCase
             $command['correction_reason'] = 'Original supported correction';
             $command['confirmations']['transition'] = true;
             $command['declaration']['meaning'] = 'Corrected qualified purpose';
-            $this->postJson('/workspaces/'.$w->public_id.'/object-purposes/'.$first['purpose_id'].'/revisions', $command)->assertCreated();
+            LegacyCommercialUpgradeFixture::write($user, $r, $w, 'purpose', [json_encode($command)]);
         }
+        LegacyCommercialUpgradeFixture::upgrade();
         $nativeSource = (string) Str::uuid7();
         $tuple = ['source_id' => $nativeSource, 'resource' => 'synthetic-import-account', 'operation' => 'report.read', 'purpose' => 'advertising_analysis', 'reason' => 'explicit_synthetic_import_source'];
         foreach (['source.register', 'source.read', 'source.manage', 'source.audit.recover'] as $action) {
@@ -178,7 +179,7 @@ final class BusinessQualifiedImportTest extends TestCase
         $this->denied(fn () => $db->scalar('SELECT builderad_v2_legacy_resolve(?::uuid,?::uuid)', [$f['a']['business_public_id'], $historical->mapping_id]));
         $unknown = $db->table('legacy_scope_mappings')->where('status', 'unresolved')->sole();
         $this->denied(fn () => $db->scalar('SELECT builderad_v2_legacy_resolve(?::uuid,?::uuid)', [$f['a']['business_public_id'], $unknown->mapping_id]));
-        $this->postJson('/workspaces/'.$f['w']->public_id.'/business/target-markets', ['country_codes' => ['AE'], 'version' => 4])->assertForbidden();
+        $this->postJson('/workspaces/'.$f['w']->public_id.'/business/target-markets', ['country_codes' => ['AE'], 'version' => 4])->assertStatus(410);
         $this->denied(fn () => $db->table('workspaces')->where('id', $f['w']->id)->update(['business_context_version' => 5]));
         $this->putJson('/api/businesses/'.$f['a']['business_public_id'].'/context', ['command_id' => (string) Str::uuid(), 'name' => 'Canonical forward change', 'business_type_id' => null, 'expected_context' => 0,
             'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $f['a']['grant_refs']['business.context.manage']]]]])->assertOk();
@@ -276,7 +277,8 @@ final class BusinessQualifiedImportTest extends TestCase
         $read = $db->table('security_action_grants')->where('id', $f['a']['grant_refs']['business.context.read'])->value('qualification_id');
         Fixture::revokeQualification($read, $f['user']->id);
         $this->getJson($url($f['a'], 'object_purpose'))->assertForbidden();
-        $this->getJson('/workspaces/'.$f['w']->public_id.'/object-purposes')->assertForbidden();
+        $this->getJson('/workspaces/'.$f['w']->public_id.'/object-purposes')->assertStatus(410);
+        $this->getJson('/workspaces/'.$f['w']->public_id.'/purpose-history')->assertForbidden();
         $this->assertSame($before, $this->snapshot());
         $this->assertSame($native, $db->table('object_purpose_revisions')->orderBy('version')->get()->map(fn ($r) => (array) $r)->all());
     }
@@ -455,16 +457,26 @@ final class BusinessQualifiedImportTest extends TestCase
         }
     }
 
-    public function test_drain_waits_for_real_legacy_writer_and_refuses_its_stale_prepared_baseline(): void
+    public function test_drain_waits_for_qualified_original_history_correction_and_refuses_its_stale_baseline(): void
     {
-        $f = $this->importFixture();
+        $f = $this->importFixture(true);
         $this->transition($f['source'], 'DRAINING', 1, 'LEGACY_ACTIVE');
         $w = $this->worker($f, ['operation' => 'transition', 'mode' => 'LEGACY_ACTIVE', 'epoch' => 2, 'next' => 'DRAINING', 'manifest' => null, 'checkpoint' => hash('sha256', 'isolated-drain')]);
         $observer = DB::build(config('database.connections.pgsql_migrations'));
-        $evidence = ['kind' => 'legacy-writer-drain'];
+        $evidence = ['kind' => 'original-history-correction-drain'];
         try {
-            app(WorkspaceContext::class)->runBusinessMutation($f['user'], $f['w']->public_id, function (Workspace $scope) use ($f, $w, $observer, &$evidence): void {
-                app(BusinessContext::class)->replaceTargetMarkets($f['r'], $scope, ['AE'], 4);
+            app(WorkspaceContext::class)->runLegacyPurposeHistory($f['user'], $f['w']->public_id, function (Workspace $scope) use ($f, $w, $observer, &$evidence): void {
+                $db = DB::connection('pgsql_migrations');
+                $previous = $db->table('object_purpose_revisions')->orderByDesc('version')->first();
+                $command = PurposeDeclarationFixture::command();
+                $command['declaration'] = json_decode($previous->snapshot, true);
+                $command['declaration']['meaning'] = 'Supported original correction during qualified drain';
+                $command = [...$command, 'purpose_id' => $previous->purpose_id, 'expected_version' => $previous->version,
+                    'operation' => 'correct', 'supersedes_revision_id' => $previous->revision_id,
+                    'affected_revision_ids' => $db->table('object_purpose_revisions')->orderBy('version')->pluck('revision_id')->all(),
+                    'correction_reason' => 'Preserved original-history correction'];
+                $command['confirmations']['transition'] = true;
+                app(ObjectPurpose::class)->reviseOriginalHistory($f['r'], $scope, $command);
                 $holder = DB::scalar('SELECT pg_backend_pid()');
                 file_put_contents($w['release'], 'release');
                 $evidence['waiter'] = $this->await(function () use ($w, $observer, $holder) {
@@ -477,7 +489,8 @@ final class BusinessQualifiedImportTest extends TestCase
             $w['worker']->wait();
             $this->assertSame(0, $w['worker']->getExitCode(), $w['worker']->getOutput().$w['worker']->getErrorOutput());
             $db = DB::connection('pgsql_migrations');
-            $this->assertSame(5, $db->table('workspaces')->where('id', $f['w']->id)->value('business_context_version'));
+            $this->assertSame(4, $db->table('workspaces')->where('id', $f['w']->id)->value('business_context_version'));
+            $this->assertSame(3, $db->table('object_purpose_revisions')->count());
             $this->assertSame('DRAINING', $db->table('migration_cohort_control')->where('cohort_id', $f['source'])->value('mode'));
             $this->assertSame(3, $db->table('migration_cohort_control')->where('cohort_id', $f['source'])->value('epoch'));
             $f['inventory']['epoch'] = 3;

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
-import { Building2, ChevronLeft, Layers3, Link2, ShieldCheck, Target, Settings2 } from '@lucide/vue';
+import { Building2, ChevronLeft, Layers3, Link2, ShieldCheck, Target } from '@lucide/vue';
 import { locale } from '../spa/locale';
 import { advertiserNavigationCurrent, deferredAdvertiserDestinations } from './advertiserNavigation';
 import './advertiser.css';
 defineProps<{ context?: string; businessSelected?: boolean; workspaceContext?: boolean; workspaceId?: string }>();
 const navigation = ref<HTMLDetailsElement>();
 const route = useRoute();
-const legacyRecord = computed(() => /^\/workspaces\/[^/]+\/(?:business|goals(?:\/review)?|object-purposes(?:\/[^/]+)?)\/?$/.test(route.path));
+const legacyRecord = computed(() => /^\/workspaces\/[^/]+\/(?:commercial-history|purpose-history(?:\/[^/]+)?)\/?$/.test(route.path));
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 let viewport: MediaQueryList | undefined;
 const syncNavigation = () => { if (navigation.value && viewport) navigation.value.open = viewport.matches; };
@@ -33,9 +33,8 @@ function closeNavigation() { if (navigation.value && viewport && !viewport.match
                             <RouterLink :to="`/workspaces/${encodeURIComponent(workspaceId)}`" :aria-current="$route.path === `/workspaces/${encodeURIComponent(workspaceId)}` ? 'page' : undefined"><Link2 aria-hidden="true" />{{ t('المنصات المتصلة', 'Connected platforms') }}</RouterLink>
                             <details class="advertiser-legacy-navigation" :open="legacyRecord" data-workspace-previous-navigation>
                                 <summary @click.stop>{{ t('السجلات السابقة للمساحة', 'Previous workspace records') }}</summary>
-                                <RouterLink :to="`/workspaces/${encodeURIComponent(workspaceId)}/goals`" :aria-current="advertiserNavigationCurrent($route.path, `/workspaces/${encodeURIComponent(workspaceId)}/goals`) ? 'page' : undefined"><Target aria-hidden="true" />{{ t('الأهداف السابقة', 'Previous goals') }}</RouterLink>
-                                <RouterLink :to="`/workspaces/${encodeURIComponent(workspaceId)}/object-purposes`" :aria-current="advertiserNavigationCurrent($route.path, `/workspaces/${encodeURIComponent(workspaceId)}/object-purposes`) ? 'page' : undefined"><Target aria-hidden="true" />{{ t('الأغراض الإعلانية السابقة', 'Previous advertising purposes') }}</RouterLink>
-                                <RouterLink :to="`/workspaces/${encodeURIComponent(workspaceId)}/business`" :aria-current="$route.path === `/workspaces/${encodeURIComponent(workspaceId)}/business` ? 'page' : undefined"><Settings2 aria-hidden="true" />{{ t('الملف التجاري السابق', 'Previous business profile') }}</RouterLink>
+                                <RouterLink :to="`/workspaces/${encodeURIComponent(workspaceId)}/commercial-history`" :aria-current="advertiserNavigationCurrent($route.path, `/workspaces/${encodeURIComponent(workspaceId)}/commercial-history`) ? 'page' : undefined"><Target aria-hidden="true" />{{ t('التاريخ التجاري المحفوظ', 'Preserved commercial history') }}</RouterLink>
+                                <RouterLink :to="`/workspaces/${encodeURIComponent(workspaceId)}/purpose-history`" :aria-current="advertiserNavigationCurrent($route.path, `/workspaces/${encodeURIComponent(workspaceId)}/purpose-history`) ? 'page' : undefined"><Target aria-hidden="true" />{{ t('الأغراض الإعلانية السابقة', 'Previous advertising purposes') }}</RouterLink>
                             </details>
                         </template>
                         <p class="advertiser-nav-label">{{ t('المصادر والتكاملات', 'Sources and integrations') }}</p>
@@ -55,7 +54,7 @@ function closeNavigation() { if (navigation.value && viewport && !viewport.match
         <main id="advertiser-content" class="bf-main advertiser-content" tabindex="-1">
             <aside v-if="workspaceId && legacyRecord" class="advertiser-legacy-notice" data-workspace-previous-notice>
                 <strong>{{ t('أنت في السجل التجاري السابق لهذه المساحة', 'You are viewing this workspace’s previous business records') }}</strong>
-                <p>{{ t('هذه البيانات محفوظة ضمن المسار السابق. تعديلها لا يحدّث النشاط المستقل تلقائيًا. لإدارة معلومات النشاط وأسواقه وأولوياته، افتحه من أنشطتي التجارية.', 'These records belong to the previous workflow. Editing them does not automatically update an independent business. Open My businesses to manage its details, markets and priorities.') }}</p>
+                <p>{{ t('حقائق النشاط الحالية تدار في النشاط المستقل. التاريخ محفوظ بحقوقه الأصلية، ولا نفترض ارتباطه بنشاط معين.', 'Current commercial facts belong to the independent business. History retains its original rights; no business association is inferred.') }}</p>
                 <RouterLink to="/businesses">{{ t('اختيار النشاط التجاري', 'Choose a business') }}</RouterLink>
             </aside>
             <slot />

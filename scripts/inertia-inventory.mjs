@@ -6,7 +6,12 @@ import { execFileSync } from 'node:child_process';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = path => readFile(resolve(root, path), 'utf8');
 const migration = JSON.parse(await read('contracts/spa-migration.json'));
-const migratedRoutes = new Map(migration.journeys.flatMap(journey => journey.routes.map(route => [route, journey])));
+const migratedRoutes = new Map(migration.journeys.flatMap(journey => [
+    ...journey.routes.map(route => [route, journey]),
+    ...(journey.retiredRoutes ?? []).map(route => [route, { ...journey, status: 'RETIRED_HTTP_410_OR_REDIRECT',
+        journey: 'Retired original entry; use the current independent owner', spaBoundary: 'No operating editor or commercial writer',
+        apiContract: 'RETIRED; not an operating API contract' }]),
+]));
 async function walk(directory) {
     const entries = await readdir(resolve(root, directory), { withFileTypes: true });
     return (await Promise.all(entries.map(entry => entry.isDirectory()
@@ -80,8 +85,8 @@ for (const path of (await walk('routes')).filter(path => path.endsWith('.php')))
             pages,
             legacyBehavior: /Inertia::(?:render|location|clearHistory|encryptHistory)/.test(body) ? 'INERTIA'
                 : /new SpaPage\(/.test(body) ? 'SPA_RESOURCE' : 'HTTP_OR_DELEGATED',
-            spaBoundary: controller?.endsWith('GoalsSpaController') ? 'OPT_IN_EXISTING_GOALS' : 'NOT_MIGRATED',
-            apiContract: /GoalsSpaController|AdvertiserGoalPreferencesController/.test(controller ?? '') ? 'contracts/goals.openapi.json' : 'NOT_CONTRACTED',
+            spaBoundary: /BusinessSurfaceController|BusinessFoundationController|WorkspaceCommercialHistoryController|LegacyPurposeHistoryController/.test(controller ?? '') ? 'SPA_RESOURCE' : 'HTTP_OR_DELEGATED',
+            apiContract: /BusinessSurfaceController|BusinessFoundationController|WorkspaceCommercialHistoryController|LegacyPurposeHistoryController/.test(controller ?? '') ? 'contracts/application.openapi.json' : 'NOT_CONTRACTED',
         });
     }
 }
@@ -98,7 +103,10 @@ for (const [path, source] of sources) {
 }
 const support = {};
 for (const directory of ['app/Http/Middleware', 'resources/views', 'tests', 'scripts', 'compat']) {
-    for (const path of await walk(directory)) {
+    let paths;
+    try { paths = await walk(directory); }
+    catch (error) { if (directory === 'compat' && error.code === 'ENOENT') continue; throw error; }
+    for (const path of paths) {
         if (!/\.(php|vue|ts|js|mjs|ps1|json)$/.test(path)) continue;
         const source = await read(path);
         const count = [...source.matchAll(/inertia|goals-spa|X-Builderad-Document|clientVisibility/gi)].length;

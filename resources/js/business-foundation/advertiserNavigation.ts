@@ -9,5 +9,5 @@ export const advertiserDestinations = [
     { id: 'decisions', ar: 'القرارات والتحسين', en: 'Decisions and improvement' },
 ] as const;
 export const deferredAdvertiserDestinations = advertiserDestinations.filter(item => ['market', 'sales', 'results', 'decisions'].includes(item.id));
-export const isAdvertiserWorkspacePath = (path: string) => path === '/business/start' || /^\/(?:businesses|source-rights|data-rights)(?:\/|$)/.test(path) || /^\/workspaces(?:\/[^/]+(?:\/(?:goals(?:\/review)?|business|object-purposes(?:\/[^/]+)?))?)?\/?$/.test(path);
+export const isAdvertiserWorkspacePath = (path: string) => (path === '/business/start' || path === '/organizations/new') || /^\/(?:businesses|source-rights|data-rights)(?:\/|$)/.test(path) || /^\/workspaces(?:\/[^/]+(?:\/(?:commercial-history|purpose-history(?:\/[^/]+)?))?)?\/?$/.test(path);
 export const advertiserNavigationCurrent = (path: string, destination: string) => path === destination || path.startsWith(destination + '/');

@@ -24,7 +24,7 @@ final readonly class TikTokOAuthState
         $this->requests->requireCurrent($request, $scope, 'provider.connect', $accessVersion);
         $state = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $key = $this->key($state);
-        $workspace = DB::table('workspaces')->where('id', $scope->workspaceId)->value('public_id');
+        $workspace = DB::table('organization_workspaces')->where('id', $scope->workspaceId)->value('public_id');
         $envelope = Crypt::encryptString(json_encode(['binding' => $binding, 'workspace' => $workspace, 'expires_at' => now()->timestamp + 300], JSON_THROW_ON_ERROR));
         // Do not publish correlation for a source operation that later rolls back.
         DB::afterCommit(function () use ($key, $envelope): void {

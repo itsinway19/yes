@@ -26,5 +26,6 @@ BEGIN
    'workspace_public_id',workspace_public,'workspace_slug',workspace_slug));
  END LOOP;
  RETURN jsonb_build_object('business_public_id',p_business,'sources',matched,
-  'next_cursor',native_choices->'next_cursor','scope','current_operator_in_linked_workspaces');
+  'next_cursor',native_choices->'next_cursor','scope','current_operator_in_linked_workspaces',
+  'inventory_kind','manageable_sources','establishes_business_data_use',false);
 END $$;

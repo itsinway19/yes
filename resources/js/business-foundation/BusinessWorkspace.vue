@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { computed, nextTick, ref, onMounted, onBeforeUnmount } from 'vue';
+import { RouterLink, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import { ArrowLeft, Building2, FileText, House, Link2, Settings2, Target, Users } from '@lucide/vue';
 import AdvertiserWorkspaceLayout from './AdvertiserWorkspaceLayout.vue';
 import BusinessSources from './BusinessSources.vue';
 import { locale } from '../spa/locale';
-import { key } from './drafts';
+import { key, purposeEnrollmentDrafts } from './drafts';
 import type { Surface } from './api';
 import { workspacePresentation, workspacePresentationKey, workspaceLocation, type WorkspaceSection, type WorkspaceSettingsView } from './workspacePresentation';
 import BusinessEditor from './BusinessEditor.vue';
@@ -13,6 +13,8 @@ import BusinessFacts from './BusinessFacts.vue';
 import BusinessCollaboration from './BusinessCollaboration.vue';
 import BusinessDelegation from './BusinessDelegation.vue';
 import InternalClientFileTeam from './InternalClientFileTeam.vue';
+import DirectBusinessTeam from './DirectBusinessTeam.vue';
+import OrganizationTeam from '../workspaces/OrganizationTeam.vue';
 import BusinessDataUse from './BusinessDataUse.vue';
 import BusinessPurposes from './BusinessPurposes.vue';
 import BusinessHistory from './BusinessHistory.vue';
@@ -23,6 +25,12 @@ const props = withDefaults(defineProps<{ surface: Surface; refreshing?: boolean 
 const emit = defineEmits<{ refresh: [] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const resource = key(props.surface.business.business_public_id, props.surface.authority_selection);
+const hasPendingPurposeEnrollment = () => !!purposeEnrollmentDrafts.get(`${resource}:purpose-enrollment:1`)?.pending;
+const canDepartPurposeEnrollment = () => !hasPendingPurposeEnrollment() || confirm(t('نتيجة تفعيل التصريحات غير محسومة. هل تريد المغادرة مع الاحتفاظ بالطلب داخل هذا المستند؟', 'Statement enrollment has an unknown outcome. Leave while retaining its exact request in this document?'));
+onBeforeRouteLeave(canDepartPurposeEnrollment); onBeforeRouteUpdate(canDepartPurposeEnrollment);
+const guardPurposeUnload = (event: BeforeUnloadEvent) => { if (hasPendingPurposeEnrollment()) { event.preventDefault(); event.returnValue = ''; } };
+onMounted(() => window.addEventListener?.('beforeunload', guardPurposeUnload));
+onBeforeUnmount(() => window.removeEventListener?.('beforeunload', guardPurposeUnload));
 const presentationKey = workspacePresentationKey(resource);
 const retained = workspacePresentation.get(presentationKey) ?? { section: 'overview' as WorkspaceSection, settingsView: 'details' as WorkspaceSettingsView, positions: {} as Partial<Record<WorkspaceSection, number>> };
 const initial = workspaceLocation(retained.section, retained.settingsView);
@@ -71,7 +79,7 @@ async function navigate(section: WorkspaceSection, subview?: WorkspaceSettingsVi
             <button type="button" data-workspace-section="settings" :aria-current="active === 'settings' ? 'page' : undefined" @click="navigate('settings')"><Settings2 aria-hidden="true" />{{ t('النشاط والفريق والإعدادات', 'Business, team and settings') }}</button>
         </nav>
     </template>
-    <section class="business-workspace" data-business-workspace :data-business-public="surface.business.business_public_id">
+    <section class="business-workspace" data-business-workspace :data-business-public="surface.business.business_public_id" :aria-busy="refreshing">
         <header class="workspace-identity">
             <div><p class="workspace-eyebrow">{{ t('النشاط التجاري', 'Business') }}</p><h1 data-business-name>{{ surface.business.name }}</h1><p class="workspace-type">{{ businessType ? (locale === 'ar' ? businessType.name_ar : businessType.name_en) : t('يمكنك تحديد مجال النشاط من الإعدادات', 'Choose a business field in settings') }}</p></div>
             <button v-if="active === 'overview'" type="button" class="workspace-button" @click="navigate('settings', 'details')"><Building2 aria-hidden="true" />{{ t('معلومات النشاط', 'Business details') }}</button>
@@ -109,17 +117,19 @@ async function navigate(section: WorkspaceSection, subview?: WorkspaceSettingsVi
                 <section v-if="visitedSettings.has('details')" v-show="settingsView === 'details'" data-workspace-settings-panel="details">
                     <BusinessEditor :surface="surface" :refreshing="refreshing" embedded @refresh="emit('refresh')" />
                     <details class="workspace-disclosure" data-business-commercial><summary>{{ t('إتاحة الخدمات والاشتراك', 'Service availability and subscription') }}</summary><p>{{ t('لم تُحدد لهذا النشاط تغطية اشتراك أو حصة خدمة بعد. لا يُنقل اشتراك مساحة التعاون إليه تلقائيًا، وإدارة المصدر أو الدفع لا يفتحان بيانات العملاء.', 'Subscription coverage or a service allowance has not been established for this business. Workspace subscriptions do not transfer automatically, and source management or payment grants no client-data access.') }}</p><p>{{ t('الخدمات المشروطة تحتاج عقد إتاحة وحصة مناسبين. الحصة غير المعروفة لا تعني صفرًا أو استعمالًا غير محدود.', 'Conditioned services need appropriate entitlement and capacity. Unknown capacity means neither zero nor unlimited usage.') }}</p></details>
-                    <BusinessHistory v-if="surface.authority_selection.realm_kind !== 'internal_team'" :surface="surface" :refreshing="refreshing" />
-                    <BusinessLegacyHistory v-if="surface.authority_selection.realm_kind !== 'internal_team'" :surface="surface" :refreshing="refreshing" />
+                    <BusinessHistory v-if="surface.private_history_available" :surface="surface" :refreshing="refreshing" />
+                    <BusinessLegacyHistory v-if="surface.private_history_available" :surface="surface" :refreshing="refreshing" />
                 </section>
                 <section v-if="visitedSettings.has('purposes')" v-show="settingsView === 'purposes'" data-workspace-settings-panel="purposes">
-                    <BusinessPurposes :surface="surface" :refreshing="refreshing" />
+                    <BusinessPurposes :surface="surface" :refreshing="refreshing" @refresh="emit('refresh')" />
                 </section>
                 <section v-if="visited.has('inquiries')" v-show="inquiryActive" data-workspace-panel="inquiries" data-workspace-settings-panel="data">
-                    <InquiryEvidencePanel v-if="surface.authority_selection.realm_kind !== 'internal_team'" embedded :active="inquiryActive" :business="surface.business.business_public_id" :basis-access="String(surface.authority_selection.requirements[0].leaf_grant_id)" />
+                    <InquiryEvidencePanel v-if="surface.private_history_available" embedded :active="inquiryActive" :business="surface.business.business_public_id" :basis-access="String(surface.authority_selection.requirements[0].leaf_grant_id)" />
                     <p v-else>{{ t('إدارة الملف الداخلي لا تتيح الاستفسارات أو السجلات الخاصة. تحتاج هذه البيانات إلى صلاحية مستقلة.', 'Internal file administration does not provide inquiries or private records. These require independent authority.') }}</p>
                 </section>
                 <section v-if="visitedSettings.has('access')" v-show="settingsView === 'access'" data-workspace-panel="access" data-workspace-settings-panel="access">
+                    <OrganizationTeam v-if="surface.authority_selection.realm_kind === 'internal_team' && surface.authority_selection.realm_workspace_public_id" :workspace="surface.authority_selection.realm_workspace_public_id" />
+                    <DirectBusinessTeam :surface="surface" :refreshing="refreshing" @refresh="emit('refresh')" />
                     <InternalClientFileTeam :surface="surface" :active="active === 'settings' && settingsView === 'access'" @refresh="emit('refresh')" />
                     <BusinessCollaboration :surface="surface" :refreshing="refreshing" @refresh="emit('refresh')" />
                     <BusinessDelegation :surface="surface" :refreshing="refreshing" @refresh="emit('refresh')" />

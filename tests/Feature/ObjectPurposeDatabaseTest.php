@@ -4,18 +4,11 @@ namespace Tests\Feature;
 
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\PurposeDeclarationFixture;
 use Tests\TestCase;
 
 class ObjectPurposeDatabaseTest extends TestCase
 {
-    public static function declaration(): array
-    {
-        return ['meaning' => 'Introduce the business before launch.', 'qualifications' => null, 'phase' => 'PRE_LAUNCH',
-            'included_objects' => [['provider' => 'opaque-provider', 'account_namespace' => 'account', 'account_id' => 'Ac-1', 'object_kind' => 'kind', 'object_id' => 'Id-A', 'incarnation' => null]],
-            'excluded_objects' => [], 'provenance' => ['speaker' => null, 'statement_at' => null, 'source' => 'Owner statement', 'identity_basis' => 'Owner identifies exact objects belonging to this business', 'authority_basis' => 'Responsible Owner', 'historical_support' => null, 'effective_basis' => 'Applies on acceptance'],
-            'dtm' => null, 'intent' => null, 'end_condition' => 'Until launch or withdrawal', 'limitations' => null, 'conflicts' => []];
-    }
-
     private function normalize(array $value): array
     {
         return json_decode(DB::connection('pgsql_migrations')->scalar('SELECT builderad_object_purpose_normalize(?::jsonb)', [json_encode($value)]), true);
@@ -23,7 +16,7 @@ class ObjectPurposeDatabaseTest extends TestCase
 
     public function test_opaque_identity_is_case_preserved_and_provider_neutral(): void
     {
-        $value = self::declaration();
+        $value = PurposeDeclarationFixture::declaration();
         $this->assertEquals($value, $this->normalize($value));
         $value['included_objects'][0]['provider'] = 'meta';
         $value['included_objects'][0]['object_id'] = 'Non-numeric-native-ID';
@@ -32,7 +25,7 @@ class ObjectPurposeDatabaseTest extends TestCase
 
     public function test_duplicate_disjointness_unknown_keys_and_false_shapes_are_rejected(): void
     {
-        $base = self::declaration();
+        $base = PurposeDeclarationFixture::declaration();
         $duplicate = $base;
         $duplicate['included_objects'][] = $base['included_objects'][0];
         $excluded = $base;

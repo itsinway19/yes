@@ -24,7 +24,7 @@ async function load(after?: number) {
     try {
         const page = await businessSources(target, access.value, after);
         if (attempt !== generation || !owned(captured) || !props.active || target !== business.value) return;
-        if (page.business_public_id !== target) throw Error('Business source target changed');
+        if (page.business_public_id !== target || page.inventory_kind !== 'manageable_sources' || page.establishes_business_data_use !== false) throw Error('Business source inventory identity changed');
         result.value = after && result.value
             ? { ...page, sources: [...result.value.sources, ...page.sources] }
             : page;
@@ -44,7 +44,8 @@ onBeforeUnmount(() => { generation++; });
 
 <template>
     <section class="business-sources" data-business-source-inventory>
-        <p class="workspace-intro">{{ t('تُدار الاتصالات داخل مساحة العمل. هنا ترى فقط المصادر التي يمكنك إدارتها في مساحة مرتبطة بهذا النشاط. استعمال بياناتها في نتائج النشاط يحتاج حقًا مستقلًا.', 'Connections are managed in a workspace. Here you see only sources you can manage in a workspace linked to this business. Using their data for business results requires separate authority.') }}</p>
+        <h3>{{ t('مصادر يمكنك إدارتها', 'Sources you can manage') }}</h3>
+        <p class="workspace-intro">{{ t('هذا جرد إداري، وليس قائمة مصادر مسموح للنشاط باستخدام بياناتها. تُدار الاتصالات لدى الجهة المرتبطة؛ استعمال البيانات يحتاج صلاحية مستقلة للغرض والعملية والمورد.', 'This is an administrative inventory, not a list of sources whose data this business may use. Connections belong to the linked organization; data use needs independent purpose, operation and resource rights.') }}</p>
         <p v-if="loading && !result" role="status">{{ t('جارٍ فحص المصادر المتاحة…', 'Checking available sources…') }}</p>
         <div v-if="unavailable" role="alert" class="workspace-source-status">
             <p>{{ t('تعذر التحقق من المصادر الآن. لا يعني هذا عدم وجودها.', 'Sources could not be checked. This does not mean none exist.') }}</p>

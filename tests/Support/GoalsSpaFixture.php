@@ -1,9 +1,6 @@
 <?php
 
-use App\Business\BusinessContext;
-use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\User;
-use App\Models\Workspace;
 use App\Security\DisposableTestDatabaseGuard;
 use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
@@ -13,6 +10,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Tests\Support\LegacyCommercialUpgradeFixture;
+use Tests\Support\PurposeDeclarationFixture;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
@@ -25,6 +25,7 @@ $mode = $argv[1] ?? 'setup';
 $db = DB::connection('pgsql_migrations');
 $file = getenv('GOALS_SPA_RUN').'/fixture.json';
 if ($mode === 'setup') {
+    LegacyCommercialUpgradeFixture::install();
     $out = [];
     foreach (['a', 'b'] as $who) {
         $user = User::factory()->create(['name' => 'Goals proof '.$who, 'email' => 'goals-'.$who.'@example.test', 'password' => Hash::make('DisposableGoalsProof42!')]);
@@ -43,13 +44,29 @@ if ($mode === 'setup') {
         $workspaces = [];
         foreach ([1, 2] as $index) {
             $created = DB::transaction(fn () => app(WorkspaceAuthority::class)->create($request, 'نشاط '.$who.' '.$index, 'spa-'.$who.'-'.$index));
-            $type = $db->table('business_types')->where('key', 'real_estate')->value('id');
-            app(WorkspaceContext::class)->runBusinessMutation($user, $created['public_id'],
-                fn (Workspace $active) => app(BusinessContext::class)->write($request, $active, ['business_type_id' => $type, 'version' => 0]), $request);
+            // Historical data is created only on the historical installation,
+            // then upgraded before any browser operation on the target schema.
+            if ($who === 'a' && $index === 1) {
+                $nativeWorkspace = $db->table('workspaces')->where('id', $created['id'])->sole();
+                LegacyCommercialUpgradeFixture::write($user, $request, $nativeWorkspace, 'context', [
+                    $db->table('business_types')->where('active', true)->orderBy('id')->value('id'), 'نشاط a 1', 0,
+                ]);
+                $purposeCommand = PurposeDeclarationFixture::command();
+                $purposeCommand['declaration']['meaning'] = 'غرض إعلاني أصلي قبل الإطلاق';
+                $purposeCommand['declaration']['included_objects'] = [['provider' => 'meta', 'account_namespace' => 'meta_ads_account', 'account_id' => '100', 'object_kind' => 'campaign', 'object_id' => '200', 'incarnation' => null]];
+                $first = json_decode(LegacyCommercialUpgradeFixture::write($user, $request, $nativeWorkspace, 'purpose', [json_encode($purposeCommand)]), true);
+                $purposeCommand = [...$purposeCommand, 'command_id' => (string) Str::uuid(), 'purpose_id' => $first['purpose_id'], 'expected_version' => 1,
+                    'operation' => 'correct', 'supersedes_revision_id' => $first['revision_id'], 'correction_reason' => 'تصحيح أصلي موثق في الاختبار'];
+                $purposeCommand['confirmations']['transition'] = true;
+                $purposeCommand['declaration']['meaning'] = 'غرض إعلاني أصلي بعد التصحيح';
+                $second = json_decode(LegacyCommercialUpgradeFixture::write($user, $request, $nativeWorkspace, 'purpose', [json_encode($purposeCommand)]), true);
+                $out['legacy_purpose'] = ['workspace' => $created['public_id'], 'first' => $first, 'second' => $second];
+            }
             $workspaces[] = $created;
         }
         $out[$who] = ['user' => $user->id, 'workspaces' => $workspaces];
     }
+    LegacyCommercialUpgradeFixture::upgrade();
     file_put_contents($file, json_encode($out, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
 } else {
     $fixture = json_decode(file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
@@ -76,30 +93,11 @@ if ($mode === 'setup') {
         'revoke' => $db->table('security_sessions')->where('user_id', $user)->update(['revoked_at' => now()]),
         'deny-create' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('action', 'workspace.create')->update(['status' => 'revoked', 'revoked_at' => now()]),
         'restore-create' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('action', 'workspace.create')->update(['status' => 'active', 'revoked_at' => null]),
-        'deny' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('workspace_id', $workspace)->where('action', 'business.context.manage')->update(['status' => 'revoked', 'revoked_at' => now()]),
-        'restore' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('workspace_id', $workspace)->where('action', 'business.context.manage')->update(['status' => 'active', 'revoked_at' => null]),
         'deny-view' => $db->table('workspace_memberships')->where('user_id', $user)->where('workspace_id', $workspace)->update(['status' => 'revoked', 'revoked_at' => now()]),
         'restore-view' => $db->table('workspace_memberships')->where('user_id', $user)->where('workspace_id', $workspace)->update(['status' => 'active', 'revoked_at' => null]),
         'inspect' => null,
-        'locks' => null,
         default => throw new RuntimeException('Unknown fixture action'),
     };
-}
-if ($mode === 'locks') {
-    // Read-only observer of this guarded disposable server. Application roles
-    // retain their actual privileges; no monitoring privilege is granted to them.
-    $observer = config('database.connections.pgsql_migrations');
-    $observer['username'] = 'postgres';
-    $observer['password'] = '';
-    config(['database.connections.goals_proof_observer' => $observer]);
-    echo json_encode(DB::connection('goals_proof_observer')->select(<<<'SQL'
-        SELECT pid, usename, application_name, state, wait_event_type, wait_event,
-               backend_xid, query, to_json(pg_blocking_pids(pid))::text blockers
-        FROM pg_stat_activity
-        WHERE datname = current_database() AND pid <> pg_backend_pid()
-          AND wait_event_type = 'Lock' AND query LIKE '%builderad_advertiser_goals_write%'
-        SQL), JSON_THROW_ON_ERROR).PHP_EOL;
-    exit;
 }
 echo json_encode(['database' => $db->selectOne('select current_database() db, current_user role, inet_server_port() port'),
     'rls' => $db->select("select relname,relrowsecurity,relforcerowsecurity from pg_class where relname in ('workspaces','advertiser_goal_preferences')"),
@@ -109,5 +107,5 @@ echo json_encode(['database' => $db->selectOne('select current_database() db, cu
     'purposeRevisionCount' => $db->table('object_purpose_revisions')->count(),
     'purposeReceiptCount' => $db->table('object_purpose_command_receipts')->count(),
     'transitions' => $db->table('browser_identity_transitions')->get(['lineage_id', 'epoch', 'principal_id', 'current_session_key_hash', 'status', 'kind']),
-    'sessions' => $db->table('security_sessions')->get(['session_key_hash', 'idle_expires_at', 'absolute_expires_at', 'revoked_at']),
+    'sessions' => $db->table('security_sessions')->get(['user_id', 'session_key_hash', 'idle_expires_at', 'absolute_expires_at', 'revoked_at']),
     'effects' => $db->table('advertiser_goal_preference_events')->count()], JSON_THROW_ON_ERROR).PHP_EOL;

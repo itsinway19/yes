@@ -30,7 +30,7 @@ final readonly class XOAuthState
             || preg_match('/[\x00-\x20\x7f]/', $temporary->value('oauth_token_secret'))) {
             throw new LogicException('Exact X temporary token pair required.');
         }
-        $workspace = DB::table('workspaces')->where('id', $scope->workspaceId)->value('public_id');
+        $workspace = DB::table('organization_workspaces')->where('id', $scope->workspaceId)->value('public_id');
         $cipher = Crypt::encryptString(json_encode(['binding' => $binding, 'workspace' => $workspace,
             'credentials' => $credentials, 'expires_at' => now()->timestamp + 300], JSON_THROW_ON_ERROR));
         // A local five-minute correlation lease is not a native token expiry or legal retention policy.

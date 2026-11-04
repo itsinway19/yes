@@ -18,7 +18,7 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
     if (stage === 'all') fixture.a.workspaces[0] = command('source-fresh');
     const workspace = fixture.a.workspaces[0].public_id, other = fixture.a.workspaces[1].public_id, foreign = fixture.b.workspaces[0].public_id;
     const base = `/workspaces/${workspace}`;
-    command('restore-view'); command('restore');
+    command('restore-view');
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } }), page = await context.newPage();
     page.setDefaultTimeout(15000); page.on('dialog', dialog => dialog.accept());
     page.on('crash', () => result.errors.push({ mode: 'sources', message: 'Source browser page crashed' }));
@@ -179,7 +179,7 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
                 if (provider === 'google') {
                     await report.getByText('تعذّر تأكيد نتيجة الطلب.', { exact: false }).waitFor();
                     assert.equal(posts.length, 1); original = posts[0];
-                    await visit(base + '/goals'); await page.locator('[data-goals-workspace]').waitFor(); await visit(base); await ready(); await open('google');
+                    await visit(base + '/commercial-history'); await page.locator('[data-commercial-history]').waitFor(); await visit(base); await ready(); await open('google');
                     const restored = panel('google').locator('[data-source-report="google"]'); assert.equal(await restored.locator('input[type=date]').first().inputValue(), '2026-09-01');
                     assert.equal(await restored.locator('input[type=date]').first().isDisabled(), true);
                     await restored.locator('button[type=submit]').click();
@@ -253,7 +253,7 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
                 if (provider === 'google') {
                     await current.locator('[data-source-confirm-disconnect]').click(); await until(() => committed, 'actual disconnect committed before losing its acknowledgement');
                     await current.getByRole('button', { name: 'إعادة إرسال الأمر الأصلي', exact: true }).click({ trial: true });
-                    await visit(base + '/goals'); await page.locator('[data-goals-workspace]').waitFor(); await visit(base); await ready(); await open(provider);
+                    await visit(base + '/commercial-history'); await page.locator('[data-commercial-history]').waitFor(); await visit(base); await ready(); await open(provider);
                     await page.reload(); await ready(); await open(provider);
                     assert.equal(bodies.length, 1); await panel(provider).getByRole('button', { name: 'إعادة إرسال الأمر الأصلي', exact: true }).click();
                     await panel(provider).locator('[data-source-pending]').waitFor({ state: 'detached' }); assert.deepEqual(bodies[1], bodies[0]);
@@ -294,7 +294,7 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
                 else await route.continue();
             });
             await page.evaluate(url => { void __goalsSpa.router.push(url); }, `/workspaces/${other}`); await until(() => held.has(key));
-            await visit(base + '/goals'); await page.locator('[data-goals-workspace]').waitFor(); await visit(base); await ready(); held.get(key).deliver(); held.delete(key); await page.waitForTimeout(100);
+            await visit(base + '/commercial-history'); await page.locator('[data-commercial-history]').waitFor(); await visit(base); await ready(); held.get(key).deliver(); held.delete(key); await page.waitForTimeout(100);
             assert.equal(await page.locator('[data-sources-workspace]').getAttribute('data-sources-workspace'), workspace);
             await page.unroute(`**/workspaces/${other}`); return { stalePublication: false, actualLaravelRead: 200 };
         });
@@ -304,14 +304,14 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
                 if (once) { once = false; await route.continue({ headers: { ...route.request().headers(), 'X-Proof-Hold': key } }); } else await route.continue();
             });
             await open('google'); await panel('google').getByRole('button', { name: 'تحديث حالة الربط', exact: true }).click({ noWaitAfter: true }); await until(() => held.has(key));
-            const sibling = await context.newPage(); await sibling.goto('http://localhost:8138' + base + '/goals'); await sibling.waitForFunction(() => __goalsSpa.status.value === 'ready');
+            const sibling = await context.newPage(); await sibling.goto('http://localhost:8138' + base + '/commercial-history'); await sibling.waitForFunction(() => __goalsSpa.status.value === 'ready');
             const switched = await post(sibling, '/identity/switch', { email: 'goals-b@example.test', password: 'DisposableGoalsProof42!' }); assert.equal(switched.status, 200);
-            await sibling.goto(`http://localhost:8138/workspaces/${foreign}/goals`); await sibling.waitForFunction(() => __goalsSpa.status.value === 'ready');
+            await sibling.goto(`http://localhost:8138/workspaces/${foreign}/commercial-history`); await sibling.waitForFunction(() => __goalsSpa.status.value === 'ready');
             assert.equal((await meta(sibling)).binding.principal, fixture.b.user);
             await page.evaluate(() => __goalsSpa.resume()); await page.waitForFunction(() => __goalsSpa.status.value === 'closed');
             held.get(key).deliver(); held.delete(key); assert.equal(await page.locator('[data-sources-workspace]').count(), 0);
             const denied = await post(page, `${base}/providers/google/select`, { selection: 'old-context' }); assert.ok([401, 409].includes(denied.status));
-            const latest = await get(sibling, `/workspaces/${foreign}/goals`); assert.equal(latest.status, 200);
+            const latest = await get(sibling, `/workspaces/${foreign}/commercial-history`); assert.equal(latest.status, 200);
             await sibling.close(); return { closed: true, oldEffect: denied.status, stalePublication: false };
         });
         for (const failure of ['expired-session', 'csrf']) await check(`Source ${failure} is a terminal real Laravel failure rather than a provider success`, 'sources', async () => {

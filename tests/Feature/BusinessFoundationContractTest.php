@@ -13,6 +13,26 @@ final class BusinessFoundationContractTest extends TestCase
 {
     use ApplicationContractAssertions;
 
+    public function test_current_business_retains_inactive_type_history_without_admitting_it_as_a_new_selection(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $db = DB::connection('pgsql_migrations');
+        $types = $db->table('business_types')->orderBy('id')->limit(2)->pluck('id');
+        $db->table('business_types')->whereIn('id', $types)->update(['active' => true]);
+        $file = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Type continuity', 'business_type_id' => $types[0]])->assertCreated()->json('data');
+        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.context.manage']]]];
+        $body = ['command_id' => (string) Str::uuid(), 'name' => 'Type continuity', 'business_type_id' => $types[0], 'expected_context' => 0, 'authority_selection' => $selection];
+        $db->table('business_types')->where('id', $types[0])->update(['active' => false]);
+        $base = '/api/businesses/'.$file['business_public_id'].'/context';
+        $this->putJson($base, $body)->assertOk()->assertJsonPath('data.versions.context', 0);
+        $this->putJson($base, [...$body, 'command_id' => (string) Str::uuid(), 'business_type_id' => $types[1]])->assertOk();
+        $this->putJson($base, [...$body, 'command_id' => (string) Str::uuid(), 'expected_context' => 1])->assertUnprocessable();
+        $this->assertSame(1, $db->table('business_context_transitions')->count());
+        $before = json_decode($db->table('business_context_transitions')->value('before_value'), true);
+        $this->assertSame($types[0], $before['business_type_id']);
+        $this->assertSame(0, $db->table('workspaces')->count());
+    }
+
     public function test_implemented_http_contracts_preserve_independent_identity_versions_and_explicit_authority(): void
     {
         $u = User::factory()->create();

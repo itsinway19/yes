@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted, onBeforeUnmount } from 'vue';
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue';
 import ProviderBrand from '@/Components/ProviderBrand.vue';
 import type { ProviderSummary } from '@/Components/Business/providerPresentation';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
@@ -16,24 +16,18 @@ import TikTokConnectionPanel from './TikTokConnectionPanel.vue';
 import SnapchatConnectionPanel from './SnapchatConnectionPanel.vue';
 import XConnectionPanel from './XConnectionPanel.vue';
 import { initialAdvertisingPlatform } from './providerDestination';
-type Guidance = { provider: string; label: string; priority: number; rationale: string | null };
 const props = defineProps<{
     workspace: { public_id: string; name: string; slug: string };
-    business: { type: { id: number; key: string; name_ar: string; name_en: string; active: boolean } | null; version: number; canManage: boolean; targetMarketsDeclared: boolean; targetMarkets: { code: string; name_ar: string; name_en: string }[] };
-    guidance: { sources: Guidance[]; priors: { id: number; provider: string; product: string; label: string; rationale: string; applicability: string; limits: string; basis: string }[] };
     canRequestSourceAuthority: boolean; canManageServices: boolean; sourceCandidateId: string;
     sources: InstanceType<typeof SourceRegistryPanel>['$props']['sources'];
     services: { public_id: string; name: string; purpose: string }[];
     commercial: { state: string; context: { scope_id: string; market_id: string; market_label: string; configuration_id: string; catalog_identity: string; catalog_version: string; denomination_code: string; effective_at: string } | null; agreement_state: string; amount_state: string };
 }>();
-const { t, localized } = useBusinessCopy(locale);
+const { t } = useBusinessCopy(locale);
 const providers = { meta: { label: 'Meta Ads', component: MetaConnectionPanel }, google: { label: 'Google Ads', component: GoogleConnectionPanel }, tiktok: { label: 'TikTok Ads', component: TikTokConnectionPanel }, snapchat: { label: 'Snapchat Ads', component: SnapchatConnectionPanel }, x: { label: 'X Ads', component: XConnectionPanel } };
 type ProviderKey = keyof typeof providers;
 const keyFor = (provider: string) => provider.toLowerCase() as ProviderKey;
-const ordered = computed(() => {
-    const configured = [...props.guidance.sources].sort((a, b) => a.priority - b.priority);
-    return [...configured, ...Object.keys(providers).filter(key => !configured.some(row => keyFor(row.provider) === key)).map(provider => ({ provider, label: providers[keyFor(provider)].label, rationale: null, priority: 1001 }))].filter(row => providers[keyFor(row.provider)]);
-});
+const ordered = Object.keys(providers).map(provider => ({ provider }));
 const c = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const summaries = ref<Record<string, ProviderSummary>>({});
 const dialog = ref<HTMLDialogElement | null>(null);
@@ -112,17 +106,13 @@ async function revokeService(service: string) {
 <template>
     <div>
         <header class="source-heading"><div><p class="biz-eyebrow">{{ c('موارد مساحة العمل', 'Workspace resources') }}</p><h1>{{ c('الحسابات والمصادر', 'Accounts and sources') }}</h1><p class="biz-lead">{{ c('راجع مصادر هذه المساحة، واختر المنصة لفتح تفاصيلها والأفعال المتاحة لك.', 'Review this workspace’s sources. Choose a platform to open its details and your available actions.') }}</p></div></header>
-        <div class="source-business"><div><span>{{ c('مساحة العمل', 'Workspace') }}</span><strong>{{ workspace.name }}</strong></div><RouterLink v-if="business.canManage" :to="`/workspaces/${workspace.public_id}/business`" class="biz-link">{{ c('الملف التجاري السابق', 'Previous business profile') }}</RouterLink></div>
-        <details class="advertiser-context-note" data-source-previous-context><summary>{{ c('السياق التجاري السابق لهذه المساحة', 'Previous business context for this workspace') }}</summary>
-            <p>{{ c('هذه معلومات المسار السابق، ولا تثبت ارتباط الحسابات بنشاط مستقل.', 'These details belong to the previous workflow and do not establish an account’s association with an independent business.') }}</p>
-            <p v-if="business.type">{{ c('نوع النشاط السابق', 'Previous business type') }}: {{ localized(business.type) }}</p>
-        <p class="biz-lead"><span>{{ c('الأسواق المحفوظة في الملف السابق', 'Markets saved in the previous profile') }}: </span><template v-if="business.targetMarketsDeclared"><span v-for="(country, index) in business.targetMarkets" :key="country.code">{{ index ? '، ' : '' }}{{ localized(country) }}</span></template><span v-else>{{ t('marketsUnknown') }}</span></p>
-        </details>
+        <div class="source-business"><div><span>{{ c('الجهة التنظيمية', 'Organization') }}</span><strong>{{ workspace.name }}</strong></div></div>
+        <p class="biz-lead" data-source-administration-only>{{ c('إدارة اتصال أو حساب هنا لا تمنح أي نشاط حق استعمال بياناته. راجع حقوق الاستعمال داخل النشاط المعني.', 'Managing a connection or account here grants no business the right to use its data. Review use rights within the relevant business.') }}</p>
         <section aria-labelledby="source-collection-title" class="source-collection">
             <div class="source-collection-heading"><h2 id="source-collection-title">{{ c('أين تعلن؟', 'Where do you advertise?') }}</h2><p>{{ c('ابدأ بما تستخدمه بالفعل. يمكنك إضافة مصادر أخرى لاحقًا.', 'Start with what you already use. You can add other sources later.') }}</p></div>
             <div ref="sourceGrid" class="source-grid"><article v-for="source in ordered" :key="source.provider" class="source-tile" :data-provider="keyFor(source.provider)">
                 <header><ProviderBrand :provider="keyFor(source.provider)" :size="48" /><h3 dir="ltr">{{ providers[keyFor(source.provider)].label }}</h3></header>
-                <p class="source-usefulness" dir="auto">{{ source.rationale || c('الحملات والإنفاق وبيانات النتائج التي توفرها المنصة.', 'Campaigns, spending and result data supplied by the platform.') }}</p>
+                <p class="source-usefulness" dir="auto">{{ c('الحملات والإنفاق وبيانات النتائج التي توفرها المنصة.', 'Campaigns, spending and result data supplied by the platform.') }}</p>
                 <p class="source-state" :data-state="stateFor(source.provider)" role="status"><span aria-hidden="true">{{ stateFor(source.provider) === 'ready' ? '✓' : stateFor(source.provider) === 'attention' || stateFor(source.provider) === 'blocked' ? '!' : '•' }}</span>{{ stateLabel(source.provider) }}</p>
                 <button class="source-action" type="button" aria-haspopup="dialog" @click="openSource(source.provider)">{{ actionLabel(source.provider) }}<span aria-hidden="true">{{ locale === 'ar' ? '←' : '→' }}</span></button>
             </article></div>
@@ -132,7 +122,6 @@ async function revokeService(service: string) {
             <div class="source-dialog-heading"><span>{{ c('تفاصيل المصدر', 'Source details') }}</span><button type="button" class="source-dialog-close" @click="closeSource">{{ c('إغلاق', 'Close') }} <span aria-hidden="true">×</span></button></div>
             <div v-for="(provider, key) in providers" v-show="selected === key" :key="`${key}-${workspace.public_id}`"><component v-if="panelsReady" :is="provider.component" :workspace-id="workspace.public_id" :can-manage="canRequestSourceAuthority" @summary="summary => summaries[key] = summary" /></div>
         </dialog>
-        <section v-if="guidance.priors.length" class="biz-divider"><h2>{{ t('priors') }}</h2><p class="biz-lead">{{ t('priorIntro') }}</p><article v-for="prior in guidance.priors" :key="prior.id" class="prior"><h3 class="prior-brand"><ProviderBrand :provider="prior.provider" :size="32" />{{ prior.label }}</h3><p>{{ prior.rationale }}</p><dl><div><dt>{{ t('applies') }}</dt><dd>{{ prior.applicability }}</dd></div><div><dt>{{ t('limits') }}</dt><dd>{{ prior.limits }}</dd></div></dl></article></section>
         <PendingCommands :workspace-id="workspace.public_id" @settled="read(workspace.public_id, true)" />
         <details class="biz-divider"><summary>{{ t('technical') }}</summary>
             <fieldset class="min-w-0 border-0 p-0" :disabled="commandsFor(workspace.public_id).length > 0"><SourceRegistryPanel :workspace-id="workspace.public_id" :candidate-id="sourceCandidateId" :can-request-authority="canRequestSourceAuthority" :sources="sources" />

@@ -7,10 +7,8 @@ import { bootstrap, documentStatus, departure, startLease, logout, internalBound
 import { confirmDeparture, status, admittedRoute, navigating, navigationError, conceal, prepare, commitRoute, failed } from './presentation';
 import { installBrowserLifecycle } from './browserLifecycle';
 import { createApplicationRouter } from './router';
-import { goalsRoutes } from '../goals-spa/routes';
 import { workspaceRoutes } from '../workspaces/routes';
 import { independentBusinessRoutes } from '../business-foundation/routes';
-import { businessContextRoutes } from '../business-context/routes';
 import { objectPurposeRoutes } from '../object-purpose/routes';
 import { sourceRoutes } from '../sources/routes';
 import { accountRoutes } from '../account/routes';
@@ -27,7 +25,7 @@ import '../business-foundation/advertiser.css';
 const root = document.getElementById('application-spa')!;
 watch(status, value => { root.dataset.state = value; }, { immediate: true, flush: 'sync' });
 const style=document.createElement('style');style.textContent='[data-application-spa]:not([data-state="ready"]) [data-spa-private]{display:none!important} .business-main{max-width:1040px;margin:auto;padding:32px}';document.head.append(style);
-const router = createApplicationRouter([...independentBusinessRoutes, ...workspaceRoutes, ...goalsRoutes, ...businessContextRoutes, ...objectPurposeRoutes, ...sourceRoutes, ...accountRoutes, ...authEntryRoutes, ...staffEnrollmentRoutes, ...internalOperationsRoutes, ...commercialRoutes], {
+const router = createApplicationRouter([...independentBusinessRoutes, ...workspaceRoutes, ...objectPurposeRoutes, ...sourceRoutes, ...accountRoutes, ...authEntryRoutes, ...staffEnrollmentRoutes, ...internalOperationsRoutes, ...commercialRoutes], {
     pending: (active, passive) => { if (active && passive) conceal(); navigating.value = active; if (active) navigationError.value = false; },
     prepare, commit: commitRoute, failed,
 });

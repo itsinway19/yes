@@ -57,6 +57,7 @@ BEGIN
   RAISE EXCEPTION 'Historical qualification principal changed' USING ERRCODE='40001';
  END IF;
  read_proof:=builderad_private.require_business(b,actor,'business.context.read',selection,p_session);
+ IF read_proof#>>'{qualification,policy_id}'='business_declaration_team_admin_v1' THEN RAISE EXCEPTION 'Current declaration team access does not release private legacy history' USING ERRCODE='42501'; END IF;
  PERFORM builderad_private.principal(p_session);
  SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY mapping_id),'[]') INTO current_rows FROM public.legacy_scope_mappings x WHERE mapping_id=ANY(candidate_ids) AND target_business_id=b AND status='qualified';
  IF current_rows IS DISTINCT FROM initial_rows THEN RAISE EXCEPTION 'Prepared historical mappings changed' USING ERRCODE='40001'; END IF;

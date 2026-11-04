@@ -118,4 +118,28 @@ final class BusinessScopeCodecTest extends TestCase
             }
         }
     }
+
+    public function test_historical_v1_dependency_encoding_is_stable_with_null_extension_and_distinct_from_market_scope_encoding(): void
+    {
+        $legacy = ['fence_id' => '11111111-1111-7111-8111-111111111111', 'kind' => 'source',
+            'source_id' => '22222222-2222-7222-8222-222222222222', 'boundary_id' => null, 'rights_epoch' => 7, 'adoption_state' => 'v2_adopted'];
+        $digest = fn (array $row) => $this->executor(fn ($db) => $db->scalar("SELECT encode(builderad_private.resource_dependency_digest(?::jsonb),'hex')", [json_encode([$row])]));
+        $old = $digest($legacy);
+        $this->assertSame($old, $digest($legacy + ['data_use_scope_id' => null]), 'Adding the nullable market column must not reinterpret a v1 dependency.');
+        $market = array_replace($legacy, ['kind' => 'data_use', 'source_id' => null,
+            'data_use_scope_id' => '33333333-3333-7333-8333-333333333333']);
+        $expected = $this->executor(fn ($db) => $db->scalar("SELECT encode(builderad_private.digest('dependency-set:1',?::jsonb,?::jsonb),'hex')", [
+            json_encode([$market]), json_encode([['fence_id' => 'U', 'source_id' => 'U', 'boundary_id' => 'U', 'data_use_scope_id' => 'U', 'rights_epoch' => 'I']]),
+        ]));
+        $this->assertSame($expected, $digest($market));
+        $this->assertNotSame($old, $digest($market));
+        foreach ([array_diff_key($market, ['rights_epoch' => true]), $market + ['caller_hash' => 'invented']] as $invalid) {
+            try {
+                $digest($invalid);
+                $this->fail('An incomplete or expanded market dependency image was admitted.');
+            } catch (QueryException $error) {
+                $this->assertSame('22023', $error->errorInfo[0]);
+            }
+        }
+    }
 }

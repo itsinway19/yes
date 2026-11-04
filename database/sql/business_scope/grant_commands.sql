@@ -39,6 +39,9 @@ BEGIN
    OR p_realm_workspace IS DISTINCT FROM(SELECT public_id FROM public.workspaces WHERE id=parent.delegation_workspace_id)
    OR p_action NOT IN('business.context.read','business.context.manage','business.intent.declare','business.markets.declare','business.preferences.manage'))
   THEN RAISE EXCEPTION 'Internal staff authority is exact, team-bound and nondelegable' USING ERRCODE='42501'; END IF;
+  IF root_q.policy_id='business_declaration_team_admin_v1' AND(p_delegable OR p_realm_workspace IS NOT NULL
+   OR p_action NOT IN('business.context.read','business.context.manage','business.intent.declare','business.markets.declare','business.preferences.manage'))
+  THEN RAISE EXCEPTION 'Independent staff rights are exact, direct and nondelegable' USING ERRCODE='42501'; END IF;
   IF p_realm_workspace IS NOT NULL THEN
    SELECT id INTO realm_id FROM public.workspaces WHERE public_id=p_realm_workspace;
    IF root_q.policy_id='internal_client_file_admin_v1' THEN

@@ -123,14 +123,15 @@ final class BusinessScope
             $snapshot = $this->decode(DB::scalar('SELECT builderad_v2_business_purpose_snapshot(?,?::uuid,?,?::uuid)',
                 [SessionAuthority::sessionKey($request), $business, $readGrant, $purpose]));
             $now = new \DateTimeImmutable($snapshot['read_at']);
+            abort_if(! $snapshot['history_available'] && ($effectiveAt !== null || $knownAt !== null), 403, 'Current declaration access does not release temporal history.');
             $knownAt ??= $now;
             if ($knownAt > $now) {
                 throw ValidationException::withMessages(['known_at' => 'Knowledge time cannot be in the future.']);
             }
             $heads = array_map(static fn ($row) => (object) $row, $snapshot['heads']);
-            $projection = app(ObjectPurpose::class)->projectHistory($heads, $snapshot['context_version'], $snapshot['dtm_version'], $effectiveAt ?? $now, $knownAt);
+            $projection = app(ObjectPurpose::class)->projectHistory($heads, $snapshot['context_version'], $snapshot['dtm_version'], $effectiveAt ?? $now, $knownAt, historyAvailable: $snapshot['history_available']);
 
-            return ['business_public_id' => $business, 'scope' => $snapshot['scope'], 'projection' => $projection];
+            return ['business_public_id' => $business, 'scope' => $snapshot['scope'], 'authority_scope' => 'business_declaration_only', 'establishes_external_authority' => false, 'projection' => $projection];
         });
     }
 
@@ -139,7 +140,7 @@ final class BusinessScope
         return $this->run($request, fn () => $this->decode(DB::scalar(
             'SELECT builderad_v2_business_purpose_write(?,?::uuid,?::jsonb,?,?::jsonb)',
             [SessionAuthority::sessionKey($request), $business, json_encode($command, JSON_THROW_ON_ERROR), $expectedContext, json_encode($selection, JSON_THROW_ON_ERROR)],
-        )));
+        )) + ['authority_scope' => 'business_declaration_only', 'establishes_external_authority' => false]);
     }
 
     public function create(Request $request, string $command, string $name, ?int $type): array
@@ -147,6 +148,22 @@ final class BusinessScope
         return $this->run($request, fn () => $this->decode(DB::scalar(
             'SELECT builderad_v2_business_create_draft(?,?::uuid,?,?)',
             [SessionAuthority::sessionKey($request), $command, $name, $type],
+        )));
+    }
+
+    public function enrollDirectTeam(Request $request, string $business, string $command, array $selection): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar(
+            'SELECT builderad_v2_business_team_enroll(?,?::uuid,?::uuid,?::jsonb)',
+            [SessionAuthority::sessionKey($request), $business, $command, json_encode($selection, JSON_THROW_ON_ERROR)],
+        )));
+    }
+
+    public function enrollPurposeStatement(Request $request, string $business, string $command, bool $confirmed, string $previous, array $selection): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar(
+            'SELECT builderad_v2_business_purpose_enroll(?,?::uuid,?::uuid,?,?::bigint,?::jsonb)',
+            [SessionAuthority::sessionKey($request), $business, $command, $confirmed, $previous, json_encode($selection, JSON_THROW_ON_ERROR)],
         )));
     }
 

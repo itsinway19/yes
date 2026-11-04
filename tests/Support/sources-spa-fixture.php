@@ -1,9 +1,6 @@
 <?php
 
-use App\Business\BusinessContext;
-use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\User;
-use App\Models\Workspace;
 use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderReportingEvidence;
 use App\Providers\Ads\ProviderScope;
@@ -31,9 +28,6 @@ if ($mode === 'source-fresh') {
     app(SessionAuthority::class)->issue($request, $actor);
     $session->save();
     $created = DB::transaction(fn () => app(WorkspaceAuthority::class)->create($request, 'Synthetic Sources proof', 'sources-'.Str::uuid()));
-    $type = $db->table('business_types')->where('key', 'real_estate')->value('id');
-    app(WorkspaceContext::class)->runBusinessMutation($actor, $created['public_id'],
-        fn (Workspace $active) => app(BusinessContext::class)->write($request, $active, ['business_type_id' => $type, 'version' => 0]), $request);
     $fixture[$who]['workspaces'][0] = $created;
     file_put_contents($file, json_encode($fixture, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
     echo json_encode($created, JSON_THROW_ON_ERROR).PHP_EOL;

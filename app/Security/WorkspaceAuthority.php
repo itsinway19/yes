@@ -27,7 +27,7 @@ final class WorkspaceAuthority
 
         $this->principals->activate($user);
 
-        return Workspace::query()
+        return Workspace::organizationalQuery()
             ->whereExists(function ($query) use ($user, $generation): void {
                 $query->selectRaw('1')->from('security_action_grants as grant_record')
                     ->whereColumn('grant_record.workspace_id', 'workspaces.id')
@@ -61,8 +61,7 @@ final class WorkspaceAuthority
             [$request->user()->id, SessionAuthority::sessionKey($request), $name, $slug],
         );
 
-        DB::selectOne('SELECT builderad_v2_legacy_enter(?::uuid)', [$result->public_id]);
-        $workspace = Workspace::query()->where('public_id', $result->public_id)->firstOrFail();
+        $workspace = Workspace::organizationalQuery()->where('public_id', $result->public_id)->firstOrFail();
 
         return ['id' => $workspace->id, 'public_id' => $workspace->public_id];
     }

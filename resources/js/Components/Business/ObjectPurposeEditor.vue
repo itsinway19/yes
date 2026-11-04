@@ -7,7 +7,7 @@ import { forget, remember, restore, unresolved, submitPurpose, retryPurpose, ref
 import type { PurposeWriter } from '@/object-purpose/commands';
 import type { PurposeAcknowledgement, PurposeCommand } from '@/object-purpose/api';
 import type { PurposeItem, PurposeObject, PurposeSnapshot, PurposeIntent } from '@/types/object-purpose';
-const props = defineProps<{ workspaceId: string; businessMode?: boolean; commandWriter?: PurposeWriter; refreshResource?: () => Promise<void>; purpose: PurposeItem | null; contextVersion: number; dtmTransitionVersion: number; currentIntent: { value: PurposeIntent | null; version: number } | null }>();
+const props = defineProps<{ workspaceId: string; businessMode?: boolean; historyOnly?: boolean; commandWriter?: PurposeWriter; refreshResource?: () => Promise<void>; purpose: PurposeItem | null; contextVersion: number; dtmTransitionVersion: number; currentIntent: { value: PurposeIntent | null; version: number } | null }>();
 const { t } = useBusinessCopy(locale);
 const emit = defineEmits<{ saved: [reply: PurposeAcknowledgement] }>();
 const route = useRoute();
@@ -28,7 +28,7 @@ const draft = reactive({ meaning: saved?.meaning ?? '', qualifications: saved?.q
     from: '', until: retainedInstant(last()?.effective_until), condition: saved?.end_condition ?? '', limitations: saved?.limitations ?? '', conflicts: saved?.conflicts.join('\n') ?? '',
     dtmMode: saved?.dtm?.mode ?? 'none', dtmVersion: saved?.dtm?.version ?? props.contextVersion,
     countries: saved?.dtm?.countries.join(', ') ?? '', subset: saved?.dtm?.subset.join(', ') ?? '', dtmStatement: saved?.dtm?.statement ?? '',
-    intentEnabled: saved?.intent !== null && saved?.intent !== undefined, intentStatement: saved?.intent?.statement ?? '', operation: 'replace', reason: '' });
+    intentEnabled: saved?.intent !== null && saved?.intent !== undefined, intentStatement: saved?.intent?.statement ?? '', operation: props.historyOnly ? 'correct' : 'replace', reason: '' });
 const flags = reactive({ meaning: false, scope: false, authority: false, identity: false, standing: false, dtm: false, intent: false, historical: false, transition: false });
 type Flag = keyof typeof flags;
 const processing = ref(false), settling = ref(false), changed = ref(false), reviewed = ref(false), errors = ref<Record<string,string>>({});
@@ -58,7 +58,9 @@ const required = computed<Flag[]>(() => ['meaning', 'scope', 'authority', 'ident
     ...(!withdrawing.value && draft.dtmMode !== 'none' ? ['dtm' as const] : []),
     ...(!withdrawing.value && draft.intentEnabled ? ['intent' as const] : []),
     ...(historical.value ? ['historical' as const] : []), ...(baseline.value ? ['transition' as const] : [])]);
-const flagLabels = computed<Record<Flag,string>>(() => ({ meaning: t('purposeConfirmMeaning'), scope: t('purposeConfirmScope'), authority: t('purposeConfirmAuthority'), identity: t('purposeConfirmIdentity'), standing: t('purposeConfirmStanding'), dtm: t('purposeConfirmDtm'), intent: t('purposeConfirmIntent'), historical: t('purposeConfirmHistorical'), transition: t('purposeConfirmTransition') }));
+const flagLabels = computed<Record<Flag,string>>(() => ({ meaning: t('purposeConfirmMeaning'), scope: t('purposeConfirmScope'),
+    authority: props.businessMode ? (locale.value === 'ar' ? 'أؤكد سلطة تسجيل تصريح النشاط ضمن الحق المحدد؛ لا أدعي بهذا التأكيد ملكية عنصر خارجي أو إذنًا للتصرف فيه.' : 'I confirm authority to record this Business statement within the selected right; this does not assert external object ownership or permission to act on it.') : t('purposeConfirmAuthority'),
+    identity: t('purposeConfirmIdentity'), standing: t('purposeConfirmStanding'), dtm: t('purposeConfirmDtm'), intent: t('purposeConfirmIntent'), historical: t('purposeConfirmHistorical'), transition: t('purposeConfirmTransition') }));
 const nullable = (v: string) => v.trim() === '' ? null : v;
 const codes = (v: string) => v.split(',').map(code => code.trim()).filter(Boolean);
 async function review() { if (props.refreshResource) { await props.refreshResource(); reviewed.value = true; changed.value = true; } else void refreshPurpose(route, { onSuccess: () => { reviewed.value = true; changed.value = true; } }); }
@@ -72,6 +74,7 @@ function useCurrentIntentReference() {
     reset(); commandId = null;
 }
 function save() {
+    if (props.historyOnly && (!baseline.value || !['correct', 'withdraw'].includes(draft.operation))) return;
     if (processing.value || settling.value || pending.value || changed.value || !required.value.every(key => flags[key])) return;
     if (!withdrawing.value && (!draft.meaning.trim() || !draft.source.trim() || !draft.identity_basis.trim() || !draft.authority_basis.trim() || !draft.effective_basis.trim())) return;
     if (historical.value && !(withdrawing.value ? draft.reason : draft.historical_support).trim()) return;
@@ -110,7 +113,7 @@ onBeforeUnmount(() => { if (!savedSuccessfully) remember(workspaceKey, purposeKe
     <fieldset class="purpose-fields grid gap-4" :disabled="processing || settling || !!pending"><legend class="sr-only">{{ t('purposeTitle') }}</legend>
     <p class="biz-lead">{{ t('purposeIntro') }}</p>
     <div v-if="changed" role="alert"><p>{{ t('purposeStale') }}</p><button type="button" data-purpose="review" class="biz-link" :disabled="processing" @click="review">{{ t('purposeReview') }}</button><button v-if="reviewed" type="button" data-purpose="adopt" class="biz-link" :disabled="processing" @click="adopt">{{ t('purposeAdopt') }}</button></div>
-    <label v-if="purpose">{{ t('purposeOperation') }}<select v-model="draft.operation" data-purpose="operation"><option value="replace">{{ t('purposeReplace') }}</option><option value="correct">{{ t('purposeCorrect') }}</option><option value="withdraw">{{ t('purposeWithdraw') }}</option></select></label>
+    <label v-if="purpose">{{ t('purposeOperation') }}<select v-model="draft.operation" data-purpose="operation"><option v-if="!historyOnly" value="replace">{{ t('purposeReplace') }}</option><option value="correct">{{ t('purposeCorrect') }}</option><option value="withdraw">{{ t('purposeWithdraw') }}</option></select></label>
     <template v-if="!withdrawing">
         <label>{{ t('purposeMeaning') }}<textarea v-model="draft.meaning" data-purpose="meaning" maxlength="4000" required /></label>
         <label>{{ t('purposeQualifications') }}<textarea v-model="draft.qualifications" maxlength="4000" /></label>

@@ -17,7 +17,7 @@ confirmDeparture.value = canLeave;
 onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 async function saved(reply: PurposeAcknowledgement) {
     const captured = stamp(); await nextTick(); if (!owned(captured)) return;
-    const target = `/workspaces/${encodeURIComponent(String(route.params.workspace))}/object-purposes/${encodeURIComponent(reply.purpose_id)}`;
+    const target = `/workspaces/${encodeURIComponent(String(route.params.workspace))}/purpose-history/${encodeURIComponent(reply.purpose_id)}`;
     if (route.fullPath !== target) await router.push(target);
     else { const latest = await read(route, true); if (owned(captured) && latest) generation.value++; }
 }
@@ -28,7 +28,7 @@ onBeforeUnmount(() => { if (confirmDeparture.value === canLeave) confirmDepartur
 <template>
     <div v-if="current" data-spa-private :data-purpose-workspace="current.data.workspace.public_id">
         <AdvertiserWorkspaceLayout :context="current.data.workspace.name" :workspace-id="current.data.workspace.public_id" workspace-context>
-            <nav class="advertiser-breadcrumb" :aria-label="locale === 'ar' ? 'مسار الصفحة' : 'Breadcrumb'"><RouterLink to="/businesses">{{ locale === 'ar' ? 'أنشطتي' : 'My businesses' }}</RouterLink><span aria-hidden="true">/</span><RouterLink to="/workspaces">{{ locale === 'ar' ? 'مساحات العمل' : 'Workspaces' }}</RouterLink><span aria-hidden="true">/</span><RouterLink :to="`/workspaces/${current.data.workspace.public_id}`">{{ current.data.workspace.name }}</RouterLink><span aria-hidden="true">/</span><span aria-current="page">{{ locale === 'ar' ? 'الأغراض الإعلانية' : 'Advertising purposes' }}</span></nav>
+            <nav class="advertiser-breadcrumb" :aria-label="locale === 'ar' ? 'مسار الصفحة' : 'Breadcrumb'"><RouterLink to="/businesses">{{ locale === 'ar' ? 'أنشطتي' : 'My businesses' }}</RouterLink><span aria-hidden="true">/</span><RouterLink to="/workspaces">{{ locale === 'ar' ? 'مساحات العمل' : 'Workspaces' }}</RouterLink><span aria-hidden="true">/</span><RouterLink :to="`/workspaces/${current.data.workspace.public_id}`">{{ current.data.workspace.name }}</RouterLink><span aria-hidden="true">/</span><span aria-current="page">{{ locale === 'ar' ? 'تاريخ الأغراض الأصلية' : 'Original Purpose history' }}</span></nav>
             <div class="purpose-page"><PurposeView ref="editor" :key="`${route.fullPath}:${generation}`" v-bind="current.data" @saved="saved" /></div>
         </AdvertiserWorkspaceLayout>
     </div>

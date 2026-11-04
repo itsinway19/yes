@@ -4,6 +4,18 @@ export type Choices = components['schemas']['BusinessChoices'];
 export type SourceChoices = components['schemas']['NativeSourceChoices'];
 export type InternalTeamCommand = components['schemas']['InternalTeamCommand'];
 export type InternalTeamSurface = components['schemas']['InternalTeamSurface'];
+export type DirectTeamEnrollment = operations['enrollIndependentBusinessTeam']['requestBody']['content']['application/json'];
+export type PurposeStatementEnrollment = operations['enrollOwnBusinessPurposeStatements']['requestBody']['content']['application/json'];
+export async function enrollPurposeStatement(business: string, body: PurposeStatementEnrollment) {
+    const result = await api.POST('/api/businesses/{business}/purpose-enrollment', { params: { path: { business } }, body });
+    if (!result.data) throw Error('Purpose statement enrollment receipt unavailable');
+    return result.data.data;
+}
+export async function enrollDirectTeam(business: string, body: DirectTeamEnrollment) {
+    const result = await api.POST('/api/businesses/{business}/direct-team', { params: { path: { business } }, body });
+    if (!result.data) throw Error('Independent team enrollment receipt unavailable');
+    return result.data.data;
+}
 export async function internalTeamSurface(business: string, access: number): Promise<InternalTeamSurface> {
     const result = await api.GET('/api/businesses/{business}/internal-team', { params: { path: { business }, query: { access } } });
     if (!result.data) throw Error('Internal file team unavailable');

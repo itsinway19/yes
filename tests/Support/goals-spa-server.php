@@ -83,7 +83,6 @@ try {
 if ($environment !== 'local' || config('session.driver') !== 'redis' || (int) config('database.redis.default.port') !== 6397) {
     throw new RuntimeException('The proof requires real CSRF and its dedicated Redis process.');
 }
-require __DIR__.'/goals-spa-routes.php';
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 $request = Request::capture();
 $proofMark('handle_begin');

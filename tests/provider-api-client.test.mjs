@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import Ajv from 'ajv/dist/2020.js';
 import { createApplicationClient } from '../resources/js/api/application.ts';
@@ -55,8 +54,9 @@ test('Snapchat renewal retains the real 200 success and 502 action-required resp
 });
 
 test('every generated provider HTTP operation matches an existing runtime-registered route', async () => {
-    const inventory = JSON.parse(await readFile(new URL('../docs/inertia-inventory.json', import.meta.url), 'utf8'));
-    const routes = inventory.runtime.goalsDisabled;
+    const routes = JSON.parse(execFileSync(process.env.BUILDERAD_PHP ?? (process.platform === 'win32' ? 'C:\\tools\\php85\\php.exe' : 'php'),
+        ['artisan', 'route:list', '--json', '--except-vendor'], { cwd: new URL('../', import.meta.url), encoding: 'utf8' }));
+    assert.ok(Array.isArray(routes) && routes.length > 0, 'The actual application must register its HTTP routes.');
     for (const [path, operations] of Object.entries(spec.paths).filter(([path]) => path.includes('/providers/'))) {
         for (const method of Object.keys(operations)) assert.ok(routes.some(route => route.uri === path.slice(1) && route.method.split('|').includes(method.toUpperCase())), `${method} ${path}`);
     }
