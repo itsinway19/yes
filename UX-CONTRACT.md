@@ -1,5 +1,23 @@
 # BuilderAd affected-surface interaction contract
 
+## Advertiser closure variant — 2026-11-04
+
+Login/verified entry resolves currently qualified Business choices; an employee is never required to create a new Business. Name/type and target-market setup reuse their independent canonical commands. Acknowledged creation survives a later market failure; unknown creation/market requests retain immutable identities and are never replaced automatically. Target markets do not declare country of establishment. Normal switch/list entry remains a chooser, while a dedicated initial entry may open its sole qualified item; pagination and multiple authority paths must not be mistaken for a single complete choice.
+
+The Business owns the user's visible work context. Advertising platforms remain visible even with zero sources; all five brands use ProviderBrand and the shared AdvertisingAccounts surface. Connection status derives from real provider snapshots in an explicitly selected eligible organizational resource. Workspace metadata/view is never provider-connect or data-use authority. Source/Business pointers and session return hints carry presentation only; each destination is re-admitted by the existing resource+witness protocol. Hints contain no tokens, accept no arbitrary URL and are cleared on identity closure. Connected/readiness in a provider resource does not authorize use by a Business.
+
+Definitive initial422 releases the rejected command for reviewed confirmation;409 refreshes authoritative state before any newly confirmed command;403 denies until eligibility review. A rejection while reconciling an earlier unknown request does not prove that request never committed: preserve the original. No automatic replacement/replay on navigation. Operational source pending commands and unsent data remain with their existing identity-scoped owners.
+
+| Capability | Canonical owner | Source of truth | Allowed variant | Verification |
+|---|---|---|---|---|
+| Select/Listbox | native select and existing bounded country checkbox list | server catalog and qualified choices | organization selection/type/target markets | popup, keyboard and real browser |
+| Form | BusinessCreate/BusinessFacts and existing API adapters | explicit commands, versions and receipts | setup versus existing fact edit | component and HTTP/browser |
+| Dialog | shared AdvertisingAccounts native dialog | actual provider panel/snapshot | platform account review | focus, Escape, backdrop, restoration |
+| CRUD | BusinessSurface/BusinessWorkspace and existing router | admitted resource/witness and exact command result | first entry/normal chooser/local task | end-to-end source and Business isolation |
+| Status | localized inline role=status/alert | current read or receipt, never inference | success/rejected/conflict/unknown | component and browser failures |
+
+Existing locale, display preference, scrollbar, identity and authority owners below remain canonical. No table-selection or date semantic change is introduced; native platform popup ownership remains deliberate. No standalone toast/permission store or new frontend framework is introduced.
+
 ## Canonical commercial workflow and previous records — 2026-11-03
 
 Business Sources displays current manageable source metadata only when both the selected Business read path and an explicit Business/Workspace relationship qualify. Connection management remains in the Workspace and does not grant Business/customer-data use. The source list distinguishes unavailable reads from no visible authority, avoids stale Business responses, and never labels source registration as a verified provider connection. Advanced BusinessDataUse remains mounted after first Sources visit; its unresolved-command reopen control stays outside the disclosure. The earlier provider-hint route remains available within the existing Workspace navigation and OAuth callback identity still wins over a hint.

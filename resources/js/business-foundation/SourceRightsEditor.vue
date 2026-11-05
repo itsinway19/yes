@@ -3,13 +3,14 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { locale } from '../spa/locale';
 import { TransportError, owned, stamp } from '../spa/transport';
 import { writeResourceRight, type ResourceCommand, type SourceSurface } from './api';
-import { key, sourceDrafts, type SourceDraft } from './drafts';
+import { beginDelivery, definitiveRejection, key, sourceDrafts, type SourceDraft } from './drafts';
 const props = defineProps<{ surface: SourceSurface; refreshing: boolean }>();
 const emit = defineEmits<{ refresh: [] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const cacheKey = `${key(props.surface.source.source_id, props.surface.authority_selection)}:source-editor:1`;
 const draft = reactive<SourceDraft>(sourceDrafts.get(cacheKey) ?? { label: props.surface.source.label, revision: props.surface.source.revision, action: 'source.read', notice: '', confirmed: false, acknowledged: false, blocked: false });
 sourceDrafts.set(cacheKey, draft);
+draft.uncertain ??= !!draft.pending;
 const busy = ref(false); let disposed = false;
 onBeforeUnmount(() => { disposed = true; });
 const exact = computed(() => props.surface.authority_selection.requirements.every(item => Number.isSafeInteger(item.leaf_grant_id) && item.leaf_grant_id > 0) && Number.isSafeInteger(props.surface.source.revision));
@@ -26,6 +27,7 @@ async function execute(command: ResourceCommand) {
     if (!enabled.value) return;
     draft.pending ??= JSON.parse(JSON.stringify(command));
     const frozen = JSON.parse(JSON.stringify(draft.pending)) as ResourceCommand, captured = stamp();
+    const uncertain = beginDelivery(draft);
     busy.value = true; draft.acknowledged = false; draft.notice = '';
     try {
         const result = await writeResourceRight(frozen);
@@ -35,13 +37,14 @@ async function execute(command: ResourceCommand) {
         } else if (frozen.effect === 'qualify_issue') {
             if (!('grant_id' in result) || result.status !== 'active') throw Error('Issued grant acknowledgement required');
         } else if (!('source_id' in result) || result.source_id !== frozen.target_ref) throw Error('Exact source acknowledgement required');
-        draft.pending = undefined; draft.acknowledged = true; draft.confirmed = false; emit('refresh');
+        draft.pending = undefined; draft.uncertain = false; draft.acknowledged = true; draft.confirmed = false; emit('refresh');
     } catch (error) {
         if (disposed || !owned(captured)) return;
         if (error instanceof TransportError && error.status === 403) {
-            draft.blocked = true; sourceDrafts.delete(cacheKey); draft.notice = t('لم يعد الأمر مؤهلًا. لم نفترض نجاحه أو نستبدل التفويض.', 'The command is no longer qualified. No success or replacement authority was inferred.'); emit('refresh');
-        } else if (error instanceof TransportError && error.status === 422) {
-            draft.pending = undefined; draft.notice = t('رُفضت بيانات الأمر. راجع الحقول قبل طلب جديد.', 'Command fields were rejected. Review them before a new request.');
+            Object.assign(draft, { label: '', revision: 0, action: 'source.read', confirmed: false, acknowledged: false, blocked: true });
+            draft.notice = t('لم يعد الأمر مؤهلًا. لم نفترض نجاحه أو نستبدل التفويض.', 'The command is no longer qualified. No success or replacement authority was inferred.'); emit('refresh');
+        } else if (definitiveRejection(error, uncertain)) {
+            draft.pending = undefined; draft.uncertain = false; draft.notice = t('رُفضت بيانات الأمر. راجع الحقول قبل طلب جديد.', 'Command fields were rejected. Review them before a new request.');
         } else draft.notice = t('النتيجة غير محسومة أو متعارضة. حُفظ الأمر الأصلي للتحقق، دون إعادة تلقائية أو استنتاج نجاح.', 'The outcome is unresolved or conflicted. The original command is retained for explicit reconciliation, without automatic retry or inferred success.');
     } finally { if (!disposed && owned(captured)) busy.value = false; }
 }
@@ -61,7 +64,7 @@ function revoke(row: SourceSurface['rights'][number]) { if (!draft.pending && dr
         <p>{{ current.status === 'REVOKED' ? t('المصدر متقاعد. التاريخ محفوظ؛ لا نعتمد صلاحيته للاستعمال.', 'The source is retired. History is retained; usability is not established.') : t('هوية المصدر وقدرة المزود غير متحققتين خارجيًا.', 'Source identity and provider capability are not externally verified.') }}</p>
         <p v-if="!surface.can_command" role="status">{{ t('يلزم تجديد التحقق من هويتك قبل إجراءات الإدارة.', 'Renew authentication before administration commands.') }}</p>
         <p v-if="!exact" role="status">{{ t('تعذر حفظ دقة المعرّفات؛ التعديل متوقف.', 'Identifier precision is unavailable; changes are disabled.') }}</p>
-        <template v-if="!refreshing">
+        <template v-if="!refreshing && !draft.blocked">
             <label class="bf-check"><input v-model="draft.confirmed" type="checkbox" :disabled="!enabled || !!draft.pending" data-source-confirm>{{ t('أؤكد الإجراء المحدد على هذا المصدر وحقوقه فقط.', 'I confirm the selected action on this source and its rights only.') }}</label>
             <button v-if="!current.adopted" type="button" :disabled="!enabled || !draft.confirmed || !!draft.pending" data-source-adopt @click="adopt">{{ t('نقل المصدر إلى الإدارة المحمية', 'Adopt protected source administration') }}</button>
             <template v-else>

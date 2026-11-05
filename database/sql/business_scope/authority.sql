@@ -190,6 +190,12 @@ BEGIN
   ELSE
    SELECT EXISTS(SELECT 1 FROM public.resource_right_fences WHERE source_id=(after_row->>'source_id')::uuid AND kind='source' AND adoption_state='v2_adopted') INTO adopted_source;
   END IF;
+  IF NOT adopted_source THEN
+   SELECT EXISTS(SELECT 1 FROM public.source_registry s WHERE to_jsonb(s)->>'custody_kind'='business_native'
+    AND s.id=CASE WHEN TG_TABLE_NAME='source_audit_delivery' THEN
+     (SELECT source_id FROM public.source_audit_obligations WHERE id=(after_row->>'obligation_id')::uuid)
+     ELSE(after_row->>'source_id')::uuid END) INTO adopted_source;
+  END IF;
   IF NOT adopted_source THEN RETURN NEW; END IF;
  END IF;
  IF TG_TABLE_NAME IN('source_registry','source_capabilities') THEN
@@ -197,6 +203,11 @@ BEGIN
   SELECT EXISTS(SELECT 1 FROM public.resource_right_fences f WHERE f.kind='source' AND f.adoption_state='v2_adopted'
    AND f.source_id IN((before_row->>CASE WHEN TG_TABLE_NAME='source_registry' THEN 'id' ELSE 'source_id' END)::uuid,
     (after_row->>CASE WHEN TG_TABLE_NAME='source_registry' THEN 'id' ELSE 'source_id' END)::uuid)) INTO adopted_source;
+  IF NOT adopted_source THEN
+   adopted_source:=coalesce(after_row->>'custody_kind',before_row->>'custody_kind','')='business_native'
+    OR EXISTS(SELECT 1 FROM public.source_registry s WHERE to_jsonb(s)->>'custody_kind'='business_native'
+     AND s.id=coalesce((after_row->>'source_id')::uuid,(before_row->>'source_id')::uuid));
+  END IF;
   IF NOT adopted_source AND NOT(TG_TABLE_NAME='source_registry' AND coalesce(after_row->>'custody_kind',before_row->>'custody_kind','')='platform_market') THEN
    IF session_user='builderad_app' AND NOT builderad_private.native_source_gate_held(coalesce((after_row->>CASE WHEN TG_TABLE_NAME='source_registry' THEN 'id' ELSE 'source_id' END)::uuid,(before_row->>CASE WHEN TG_TABLE_NAME='source_registry' THEN 'id' ELSE 'source_id' END)::uuid))
    THEN RAISE EXCEPTION 'Native source admission required' USING ERRCODE='42501'; END IF;
@@ -205,6 +216,10 @@ BEGIN
  END IF;
  IF TG_TABLE_NAME='security_action_grants' THEN
   SELECT EXISTS(SELECT 1 FROM public.resource_right_fences f WHERE f.kind='source' AND f.adoption_state='v2_adopted' AND f.source_id IN((before_row->>'source_target_id')::uuid,(after_row->>'source_target_id')::uuid)) INTO adopted_source;
+  IF NOT adopted_source THEN
+   SELECT EXISTS(SELECT 1 FROM public.source_registry s WHERE to_jsonb(s)->>'custody_kind'='business_native'
+    AND s.id IN((before_row->>'source_target_id')::uuid,(after_row->>'source_target_id')::uuid)) INTO adopted_source;
+  END IF;
   IF coalesce(before_row->>'scope_kind','') NOT IN ('business','client_data','data_use')
    AND coalesce(after_row->>'scope_kind','') NOT IN ('business','client_data','data_use')
    AND NOT(coalesce(after_row->>'scope_kind',before_row->>'scope_kind')='workspace'

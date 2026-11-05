@@ -11,6 +11,7 @@ const emit = defineEmits<{ refresh: [] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const draftKey = `${key(props.surface.business.business_public_id, props.surface.authority_selection)}:internal-team:1`;
 const draft = reactive<InternalTeamDraft>(internalTeamDrafts.get(draftKey) ?? { workspace: '', recipient: '', confirmed: false, notice: '' });
+draft.uncertain ??= !!draft.pending;
 internalTeamDrafts.set(draftKey, draft);
 const data = ref<InternalTeamSurface>(), busy = ref(false), unavailable = ref(false), loading = ref(false);
 const teamRead = ref('');
@@ -31,7 +32,7 @@ async function load() {
 }
 watch(() => [props.active, props.surface], () => { generation++; data.value = undefined; if (props.active) void load(); }, { immediate: true });
 watch(() => [draft.workspace, draft.recipient], () => { draft.confirmed = false; });
-onBeforeUnmount(() => { disposed = true; generation++; });
+onBeforeUnmount(() => { if (draft.pending) draft.uncertain = true; disposed = true; generation++; });
 function prepare(effect: InternalTeamCommand['effect']) {
     if (!canEdit.value || draft.pending || !draft.confirmed || !uuid(draft.workspace)) return;
     if (effect === 'enroll' && (!data.value?.creator_basis || !eligible.value.some(team => team.public_id === draft.workspace))) return;
@@ -46,19 +47,21 @@ function prepare(effect: InternalTeamCommand['effect']) {
 async function execute() {
     if (!draft.pending || busy.value || !canEdit.value) return;
     const command = JSON.parse(JSON.stringify(draft.pending)) as InternalTeamCommand, captured = stamp(), business = props.surface.business.business_public_id;
+    const reconciling = !!draft.uncertain;
+    draft.uncertain = true;
     busy.value = true; draft.notice = '';
     try {
         const receipt = await writeInternalTeam(business, command);
         if (disposed || !owned(captured)) return;
         if (receipt.business_public_id !== business || receipt.workspace_public_id !== command.workspace_public_id || receipt.recipient_public_id !== command.recipient_public_id) throw Error('Custody acknowledgement mismatch');
         if (command.effect === 'enroll') teamRead.value = receipt.grant_refs['business.context.read'] ?? '';
-        draft.pending = undefined; draft.confirmed = false;
+        draft.pending = undefined; draft.uncertain = false; draft.confirmed = false;
         draft.notice = t('تم تأكيد العملية. راجع حالة الفريق الحالية.', 'Operation confirmed. Review the current team state.');
         emit('refresh'); void load();
     } catch (error) {
         if (disposed || !owned(captured)) return;
-        if (error instanceof TransportError && (error.status === 422 || error.status === 409 && 'error' in error.body && error.body.error === 'business_relation_revision_rejected')) {
-            draft.pending = undefined; draft.confirmed = false;
+        if (error instanceof TransportError && (error.status === 422 && !reconciling || error.status === 409 && 'error' in error.body && error.body.error === 'business_relation_revision_rejected')) {
+            draft.pending = undefined; draft.uncertain = false; draft.confirmed = false;
             draft.notice = t('رُفض الطلب قبل التنفيذ. حدّث الحالة وراجع اختيارك.', 'The request was rejected before effect. Refresh and review your choice.'); void load();
         } else {
             draft.notice = t('لم تتأكد نتيجة الطلب. احتُفظ بالطلب الأصلي ولا يُعاد تلقائيًا.', 'The outcome is unconfirmed. The original command is retained and is never retried automatically.');

@@ -4,6 +4,7 @@ namespace App\Providers\Ads\Google;
 
 use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
+use App\Providers\Ads\NativeSourceQueueContext;
 use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderQueuePolicy;
 use App\Providers\Ads\ProviderReadBudget;
@@ -43,7 +44,8 @@ final class GoogleReadJob implements ShouldBeEncrypted, ShouldQueue
     private ?DateTimeImmutable $notBefore = null;
 
     private function __construct(private int $actorId, private int $actorGeneration,
-        #[\SensitiveParameter] private string $sessionId, private string $workspacePublicId,
+        #[\SensitiveParameter] private string $sessionId, /* Serialized field retained for existing queued organizational work; holds the exact native owner public ID. */
+        private string $workspacePublicId,
         private ProviderScope $scope, private ReportWindow $window, private string $stream, private string $command,
         private int $generation, private int $accessVersion, private string $version,
         private DateTimeImmutable $deadline, private string $configuration)
@@ -70,7 +72,7 @@ final class GoogleReadJob implements ShouldBeEncrypted, ShouldQueue
         app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', $accessVersion);
 
         return new self($request->user()->getAuthIdentifier(), (int) $request->session()->get('a001_generation', 0),
-            $request->session()->getId(), DB::table('organization_workspaces')->where('id', $scope->workspaceId)->value('public_id'),
+            $request->session()->getId(), NativeSourceQueueContext::capture($request, $scope),
             $scope, $window, $stream, $command, $generation, $accessVersion, $settings->version,
             $deadline, $settings->binding());
     }
@@ -109,7 +111,7 @@ final class GoogleReadJob implements ShouldBeEncrypted, ShouldQueue
             throw new AuthorizationException('Google queued API configuration changed.');
         }
         $actor = User::findOrFail($this->actorId);
-        $request = Request::create('/workspaces/'.$this->workspacePublicId);
+        $request = Request::create(($this->scope->businessId === null ? '/workspaces/' : '/businesses/').$this->workspacePublicId);
         $request->setUserResolver(fn () => $actor);
         $session = new Store('bb2-google-worker', new ArraySessionHandler(120));
         $session->setId($this->sessionId);
@@ -117,11 +119,7 @@ final class GoogleReadJob implements ShouldBeEncrypted, ShouldQueue
         $request->setLaravelSession($session);
         DB::transaction(function () use ($request, $actor, $principals, $reader, $execution, $settings): void {
             $principals->activate($actor);
-            DB::selectOne('SELECT builderad_select_workspace_context(?)', [$this->scope->workspaceId]);
-            if ((int) DB::table('principal_lifecycles')->where('user_id', $this->actorId)->value('generation') !== $this->actorGeneration
-                || DB::table('organization_workspaces')->where('id', $this->scope->workspaceId)->value('public_id') !== $this->workspacePublicId) {
-                throw new AuthorizationException('Google queued actor or Workspace changed.');
-            }
+            NativeSourceQueueContext::restore($request, $this->scope, $this->workspacePublicId, $this->actorGeneration);
             GoogleCacheBinding::context(app()->runningUnitTests() ? Cache::store() : Cache::store('redis'), $request, $this->scope, $this->accessVersion, hash('sha256', $this->version));
             $fingerprint = hash('sha256', json_encode([$this->window->jsonSerialize(), $this->version,
                 $this->rootCommand, $this->number, $this->deadline->format(DATE_ATOM)], JSON_THROW_ON_ERROR));

@@ -18,7 +18,7 @@ const stateUrl = moduleUrl(`import {shallowRef} from ${JSON.stringify(vue)};expo
 const { current } = await import(stateUrl);
 const iconsUrl = moduleUrl(`export const Building2={render:()=>null};export const ChevronLeft=Building2,Layers3=Building2,Link2=Building2,ShieldCheck=Building2,ArrowLeft=Building2,Plus=Building2,FileText=Building2,House=Building2,Megaphone=Building2,Settings2=Building2,Target=Building2,Users=Building2;`);
 const plainUrl = moduleUrl(`import {h} from ${JSON.stringify(vue)};export default {render(){return h('div',{'data-existing-editor':true})}};`);
-const apiUrl = moduleUrl('export const calls=[];export const pending=[];export const create=command=>{calls.push(JSON.parse(JSON.stringify(command)));return new Promise((resolve,reject)=>pending.push({resolve,reject}));};export const factCalls=[];export const factPending=[];export const writeFact=(business,command)=>{factCalls.push({business,command:JSON.parse(JSON.stringify(command))});return new Promise((resolve,reject)=>factPending.push({resolve,reject}));};');
+const apiUrl = moduleUrl('export const businessSurface=async()=>{throw Error("Unexpected surface read")};export const calls=[];export const pending=[];export const create=command=>{calls.push(JSON.parse(JSON.stringify(command)));return new Promise((resolve,reject)=>pending.push({resolve,reject}));};export const factCalls=[];export const factPending=[];export const writeFact=(business,command)=>{factCalls.push({business,command:JSON.parse(JSON.stringify(command))});return new Promise((resolve,reject)=>factPending.push({resolve,reject}));};');
 const creationApi = await import(apiUrl);
 async function scriptModule(file) {
     return moduleUrl(compile(await readFile(file, 'utf8')).replaceAll("'../spa/transport'", JSON.stringify(transportUrl)));
@@ -33,7 +33,7 @@ const drafts = await import(draftsUrl);
 async function component(file, ports = {}) {
     const { descriptor } = parse(await readFile(file, 'utf8'));
     let source = compile(compileScript(descriptor, { id: file, inlineTemplate: true }).content).replace(/import ['"][^'"]+\.css['"];?/g, '');
-    const imports = { vue, 'vue-router': vueRouter, '@lucide/vue': iconsUrl, '../spa/locale': languageUrl, '../spa/transport': transportUrl, '../spa/presentation': presentationUrl, './state': stateUrl, './api': apiUrl, './drafts': draftsUrl, './advertiserNavigation': navigationUrl, './workspacePresentation': workspacePresentationUrl, '../sources/providerDestination': providerDestinationUrl, './providerDestination': providerDestinationUrl, '../Components/ProviderBrand.vue': providerBrandUrl, ...ports };
+    const imports = { '../sources/AdvertisingAccounts.vue': plainUrl, '../workspaces/api': moduleUrl('export const readWorkspaces=async()=>({data:{workspaces:[],reassessableWorkspaces:[],canCreateWorkspace:false}});'), '../sources/api':moduleUrl('export const sources={read:async()=>{throw Error("Unexpected source read")}};'), '../sources/businessReturn':moduleUrl('export const rememberBusinessReturn=()=>{};'), '../sources/commands':moduleUrl('export const pending=new Map();'), vue, 'vue-router': vueRouter, '@lucide/vue': iconsUrl, '../spa/locale': languageUrl, '../spa/transport': transportUrl, '../spa/presentation': presentationUrl, './state': stateUrl, './api': apiUrl, './drafts': draftsUrl, './advertiserNavigation': navigationUrl, './workspacePresentation': workspacePresentationUrl, '../sources/providerDestination': providerDestinationUrl, './providerDestination': providerDestinationUrl, '../Components/ProviderBrand.vue': providerBrandUrl, ...ports };
     for (const [name, target] of Object.entries(imports)) source = source.replaceAll(`from '${name}'`, `from ${JSON.stringify(target)}`).replaceAll(`from "${name}"`, `from ${JSON.stringify(target)}`);
     const url = moduleUrl(source); return { url, value: (await import(url)).default };
 }
@@ -63,17 +63,18 @@ const sourceStateUrl = moduleUrl(`import {shallowRef} from ${JSON.stringify(vue)
 const sourceCommandsUrl = moduleUrl('export const pending=new Map();');
 const sourcePresentationUrl = moduleUrl(`import {ref} from ${JSON.stringify(vue)};export const confirmDeparture=ref(()=>true);`);
 const sourcesChildUrl = moduleUrl(`import {h} from ${JSON.stringify(vue)};export default {props:['workspace'],setup(p){return()=>h('section',{'data-existing-sources':p.workspace.public_id},p.workspace.name)}};`);
-const sourcesView = await component('resources/js/sources/SourceView.vue', { '../workspaces/OrganizationTeam.vue':plainUrl,'../workspaces/team':moduleUrl('export const hasPendingTeamCommand=()=>false;'),'./Sources.vue': sourcesChildUrl, './state': sourceStateUrl, './commands': sourceCommandsUrl, '../spa/presentation': sourcePresentationUrl, '../business-foundation/AdvertiserWorkspaceLayout.vue': layout.url });
+const sourcesView = await component('resources/js/sources/SourceView.vue', { '../workspaces/OrganizationTeam.vue':plainUrl,'../workspaces/team':moduleUrl('export const hasPendingTeamCommand=()=>false;'),'./Sources.vue': sourcesChildUrl, './businessReturn':moduleUrl('export const businessReturn=()=>undefined;export const businessReturnPath=()=>"/businesses";'), './state': sourceStateUrl, './commands': sourceCommandsUrl, '../spa/presentation': sourcePresentationUrl, '../business-foundation/AdvertiserWorkspaceLayout.vue': layout.url });
 const businessCopyUrl = moduleUrl(`export const useBusinessCopy=()=>({t:key=>key,localized:value=>value?.name_ar??value?.label??''});`);
 const sourcesCommandsFullUrl = moduleUrl('export const commandsFor=()=>[];export const submit=async()=>{throw Error("No command expected")};export const remember=()=>{};export const restore=()=>undefined;');
-const operationalSources = await component('resources/js/sources/Sources.vue', { '@/Components/ProviderBrand.vue':providerBrandUrl, '@/localization/businessCopy':businessCopyUrl, './commands':sourcesCommandsFullUrl, './PendingCommands.vue':plainUrl, './SourceRegistryPanel.vue':plainUrl, './MetaConnectionPanel.vue':plainUrl, './GoogleConnectionPanel.vue':plainUrl, './SnapchatConnectionPanel.vue':plainUrl, './TikTokConnectionPanel.vue':plainUrl, './XConnectionPanel.vue':plainUrl, './state': moduleUrl('export const read=async()=>{};') });
+const actualAccounts = await component('resources/js/sources/AdvertisingAccounts.vue', {'../Components/ProviderBrand.vue':providerBrandUrl,'./providerDestination':providerDestinationUrl,...Object.fromEntries(['Meta','Google','TikTok','Snapchat','X'].map(name=>['./'+name+'ConnectionPanel.vue',plainUrl]))});
+const operationalSources = await component('resources/js/sources/Sources.vue', { './AdvertisingAccounts.vue':actualAccounts.url, '@/Components/ProviderBrand.vue':providerBrandUrl, '@/localization/businessCopy':businessCopyUrl, './commands':sourcesCommandsFullUrl, './PendingCommands.vue':plainUrl, './SourceRegistryPanel.vue':plainUrl, './MetaConnectionPanel.vue':plainUrl, './GoogleConnectionPanel.vue':plainUrl, './SnapchatConnectionPanel.vue':plainUrl, './TikTokConnectionPanel.vue':plainUrl, './XConnectionPanel.vue':plainUrl, './state': moduleUrl('export const read=async()=>{};') });
 
 const historyStateUrl = moduleUrl(`import {shallowRef} from ${JSON.stringify(vue)};export const commercialHistory=shallowRef();`);
 const historyPage = await component('resources/js/workspaces/CommercialHistory.vue', { './commercialHistory': historyStateUrl, '../business-foundation/AdvertiserWorkspaceLayout.vue': layout.url });
 const routes = ['/businesses', '/businesses/new', '/businesses/:business', '/organizations/new', '/source-rights', '/source-rights/:source', '/data-rights', '/data-rights/:boundary', '/workspaces', '/workspaces/:workspace', '/workspaces/:workspace/commercial-history', '/workspaces/:workspace/purpose-history', '/workspaces/:workspace/purpose-history/:purpose'].map(path => ({ path, component: { render: () => null } }));
 async function routerAt(path) { const router = createRouter({ history: createMemoryHistory(), routes }); await router.push(path); await router.isReady(); return router; }
 async function render(component, path, data) { current.value = { data }; const app = createSSRApp(component); app.use(await routerAt(path)); return renderToString(app); }
-const businessSurface = name => ({ private_history_available:true,direct_team_enrollment_available:false,business: { business_public_id: name, name, business_type_id: 1 }, catalog: { business_types: [{ id: 1, name_ar: 'خدمات', name_en: 'Services' }] }, authority_selection: { requirements: [{ leaf_grant_id: 'read-one' }] } });
+const businessSurface = name => ({ private_history_available:true,direct_team_enrollment_available:false,business: { business_public_id: name, name, business_type_id: 1, declared_markets:[] }, catalog: { countries: [], business_types: [{ id: 1, name_ar: 'خدمات', name_en: 'Services' }] }, authority_selection: { requirements: [{ leaf_grant_id: 'read-one' }] } });
 
 test('real business list and empty state prioritize opening or creating a business inside one private shell', async () => {
     const empty = await render(surface.value, '/businesses', { items: [], actor_public_id: 'actor-one', next_cursor: null });
@@ -83,7 +84,7 @@ test('real business list and empty state prioritize opening or creating a busine
     const listed = await render(surface.value, '/businesses', { items: [{ read_grant_id: 'read-grant', business_public_id: 'b-one', name: 'First business', realm_kind: 'business', state: 'declared_draft' }], actor_public_id: 'actor-one', next_cursor: 'next-page' });
     assert.match(listed, /First business/); assert.match(listed, /href="\/businesses\/b-one\?access=read-grant"/); assert.match(listed, /href="\/businesses\?after=next-page"/);
     assert.doesNotMatch(listed, /class="bf-nav"/);
-    const created = await render(surface.value, '/businesses/new', { catalog: { business_types: [] } });
+    const created = await render(surface.value, '/businesses/new', { catalog: { countries:[], business_types: [] } });
     assert.match(created, /id="bf-create-name"/); assert.match(created, /id="bf-create-type"/); assert.equal((created.match(/<main /g) ?? []).length, 1);
 });
 
@@ -105,7 +106,7 @@ test('workspace chooser shares the advertiser shell and keeps resource context d
     const emptyApp = createSSRApp(chooser.value); emptyApp.use(router);
     const empty = await renderToString(emptyApp);
     assert.match(empty, /data-spa-private/); assert.match(empty, /data-advertiser-shell/); assert.match(empty, /data-workspaces-empty/);
-    assert.equal((empty.match(/<main /g) ?? []).length, 1); assert.match(empty, /مساحات العمل/); assert.doesNotMatch(empty, /مساحات التعاون/);
+    assert.equal((empty.match(/<main /g) ?? []).length, 1); assert.match(empty, /الفريق والموارد المشتركة/); assert.match(empty, /جهات العمل والفريق/); assert.doesNotMatch(empty, /تسجيل وكالة أو شركة|مساحات التعاون/);
     assert.match(empty, /href="\/businesses"/); assert.match(empty, /ليست النشاط التجاري نفسه/);
     assert.match(empty, /data-workspaces-creation-unavailable/); assert.doesNotMatch(empty, /data-workspaces-add|href="\/business\/start/); assert.match(empty, /لا تحتاج إلى تسجيل جهة للعمل منفردًا/);
     workspaceState.current.value = { data: { workspaces: [{ public_id: 'workspace-one', name: 'Shared resources A' }], reassessableWorkspaces: [], canCreateWorkspace: true } };
@@ -117,6 +118,8 @@ test('workspace chooser shares the advertiser shell and keeps resource context d
     assert.match(denied, /href="\/workspaces\/workspace-one"/); assert.doesNotMatch(denied, /data-workspaces-add|href="\/business\/start/);
     const workspaceLink = [...list.matchAll(/<a [^>]*href="\/workspaces"[^>]*>/g)].map(m => m[0]);
     assert.ok(workspaceLink.some(tag => tag.includes('aria-current="page"')));
+    locale.value = 'en';
+    try { const englishApp = createSSRApp(chooser.value); englishApp.use(router); const english = await renderToString(englishApp); assert.match(english, /Organizations and team/); assert.match(english, /Team and shared resources/); assert.doesNotMatch(english, /Register an agency or company|client businesses/); } finally { locale.value = 'ar'; }
 });
 
 test('workspace source root keeps one private shell, parent navigation and resource props, with departure guards intact', async () => {
@@ -134,9 +137,14 @@ test('workspace source root keeps one private shell, parent navigation and resou
         const owner = find(root, 'data-sources-workspace', 'workspace-one'); assert.ok(owner); assert.ok('data-spa-private' in owner.props);
         assert.ok(find(root, 'data-advertiser-shell')); assert.equal(find(root, 'data-existing-sources').props['data-existing-sources'], 'workspace-one');
         const breadcrumb = all(root).find(node => node.tag === 'nav' && node.props.class === 'advertiser-breadcrumb');
-        assert.match(text(breadcrumb), /مساحات العمل/); assert.match(text(breadcrumb), /Private workspace A/);
+        assert.match(text(breadcrumb), /جهات العمل والفريق/); assert.match(text(breadcrumb), /Private workspace A/);
         assert.deepEqual(all(breadcrumb).filter(node => node.tag === 'a').map(node => node.props.href), ['/businesses', '/workspaces']);
         const workspacePageLink = all(root).find(node => node.tag === 'a' && node.props.href === '/workspaces/workspace-one' && node.props['aria-current'] === 'page'); assert.ok(workspacePageLink);
+        const teamTab = all(root).find(node => node.tag === 'button' && text(node) === 'الفريق'); assert.ok(teamTab); teamTab.props.onClick(); await nextTick();
+        assert.match(text(root), /فتح الأنشطة المتاحة/); assert.match(text(root), /جميع الأنشطة المتاحة لك/); assert.doesNotMatch(text(root), /الفريق والعملاء|فتح أنشطة العملاء/);
+        locale.value = 'en'; await nextTick();
+        const globalBusinesses = all(root).find(node => node.tag === 'a' && text(node) === 'Open available businesses'); assert.ok(globalBusinesses); assert.equal(globalBusinesses.props.href, '/businesses');
+        assert.match(text(root), /all businesses available to you/); assert.doesNotMatch(text(root), /Team and clients|Open available client businesses/); locale.value = 'ar'; await nextTick();
         sourceCommands.pending.set('uncertain-source-command', {});
         assert.equal(sourcePresentation.confirmDeparture.value(), false, 'Unresolved source commands still govern leaving');
         const event = { prevented: false, preventDefault() { this.prevented = true; }, returnValue: undefined }; listeners.get('beforeunload')(event); assert.equal(event.prevented, true); assert.equal(event.returnValue, '');
@@ -182,6 +190,7 @@ function element(tag, text = '') {
         addEventListener(name, handler) { const handlers = listeners.get(name) ?? new Set(); handlers.add(handler); listeners.set(name, handlers); },
         removeEventListener(name, handler) { listeners.get(name)?.delete(handler); },
         dispatchEvent(event) { if (!event.target) Object.defineProperty(event, 'target', { value: this }); for (const handler of listeners.get(event.type) ?? []) handler(event); const handler = this.props['on' + event.type[0].toUpperCase() + event.type.slice(1)]; if (typeof handler === 'function') handler(event); return !event.defaultPrevented; },
+        closest(selectors) { for (let node = this; node; node = node.parent) { if (selectors.split(',').some(selector => { const match = /^(\w+)(?:\[([^\]]+)\])?$/.exec(selector.trim()); return match && node.tag === match[1] && (!match[2] || match[2] in node.props); })) return node; } return null; },
         getRootNode() { return {}; }, querySelectorAll() { return []; }, showModal() { this.open = true; this.modalCount = (this.modalCount ?? 0) + 1; }, close() { this.open = false; },
         focus() { this.focusCount++; }, getBoundingClientRect() { return { top: 0 }; }, setAttribute(name, value) { this.props[name] = value; }, removeAttribute(name) { delete this.props[name]; },
     });
@@ -218,7 +227,7 @@ test('settings data navigation activates BF03 only while visible and retains its
         find(root, 'data-workspace-section', 'direction').props.onClick(); await nextTick(); assert.equal(panel.props['data-active'], false);
         find(root, 'data-workspace-section', 'settings').props.onClick(); await nextTick(); find(root, 'data-workspace-settings', 'data').props.onClick(); await nextTick();
         assert.equal(find(root, 'data-test-inquiry'), panel); assert.equal(panel.props['data-active'], true); assert.equal(events.filter(e => e[0] === 'mount').length, 1);
-        locale.value = 'en'; await nextTick(); assert.match(text(root), /Data and declarations/); assert.match(text(root), /Business, team and settings/);
+        locale.value = 'en'; await nextTick(); assert.match(text(root), /Data and declarations/); assert.match(text(root), /Business management/);
         selected.value = businessSurface('Business B'); await nextTick(); assert.equal(find(root, 'data-test-inquiry'), undefined, 'Another Business must not inherit the previous local data location');
         assert.deepEqual(events, [['mount', 'Business A'], ['unmount', 'Business A']]);
     } finally { app.unmount(); locale.value = 'ar'; delete globalThis.window; }
@@ -254,8 +263,8 @@ test('workspace creation keeps its separate labels, exact unknown-command replay
     try {
         assert.ok(find(root, 'data-workspaces', 'create')); assert.ok(find(root, 'data-advertiser-shell'));
         assert.equal(all(root).filter(node => node.tag === 'main').length, 1);
-        assert.equal(text(all(root).find(node => node.tag === 'h1')), 'تسجيل وكالة أو شركة');
-        assert.match(text(root), /اسم الوكالة أو الشركة/); assert.match(text(root), /لا تحتاج إلى إنشاء حاوية أخرى/); assert.match(text(root), /لا ينشئ التسجيل نشاطًا تجاريًا/);
+        assert.equal(text(all(root).find(node => node.tag === 'h1')), 'إعداد جهة للفريق والموارد');
+        assert.match(text(root), /اسم جهة العمل/); assert.match(text(root), /فريقها ومواردها المشتركة/); assert.doesNotMatch(text(root), /حساب الجهة التنظيمي|تسجيل وكالة أو شركة/); assert.match(text(root), /لا ينشئ التسجيل نشاطًا تجاريًا/);
         assert.equal(find(root, 'data-workspaces', 'type'), undefined, 'Organization registration requires no commercial type');
         assert.ok(all(root).some(node => node.tag === 'a' && node.props.href === '/businesses/new'));
         assert.ok(all(root).some(node => node.tag === 'a' && node.props.href === '/workspaces' && /العودة/.test(text(node))));
@@ -268,7 +277,8 @@ test('workspace creation keeps its separate labels, exact unknown-command replay
         assert.equal(all(root).filter(node => node.props['data-workspaces'] === 'uncertain').length, 1);
         assert.match(text(find(root, 'data-workspaces', 'uncertain')), /الجهة/);
         state.creationDraft.name = 'Later draft'; locale.value = 'en'; await nextTick();
-        assert.match(text(root), /Agency or company name/); assert.match(text(root), /Check the outcome/);
+        assert.match(text(root), /Organization name/); assert.match(text(root), /Set up team and resource administration/); assert.match(text(root), /Check the outcome/);
+        assert.match(text(root), /team and shared resources/); assert.doesNotMatch(text(root), /organizational account/);
         await submit(); assert.equal(api.calls.length, 1, 'An ordinary submit cannot replace an unresolved command');
         const retry = find(root, 'data-workspaces', 'retry').props.onClick(); await nextTick(); assert.deepEqual(api.calls[1], original);
         api.pending.shift().resolve({ redirect: '/workspaces/created-workspace' }); await retry; await flushFacts();
@@ -294,7 +304,7 @@ test('creation checks a lost acknowledgement with the exact original command and
     globalThis.ShadowRoot = class TestShadowRoot {};
     Object.assign(drafts.creation, { name: 'Exact original name', type: null, pending: undefined, receipt: undefined });
     creationApi.calls.length = 0; creationApi.pending.length = 0;
-    const root = element('root'), app = renderer.createApp(creation.value, { catalog: { business_types: [] } });
+    const root = element('root'), app = renderer.createApp(creation.value, { catalog: { countries: [], business_types: [] } });
     app.use(await routerAt('/businesses/new')); app.mount(root);
     const form = () => all(root).find(node => node.tag === 'form');
     const submit = () => form().props.onSubmit({ preventDefault() {} });
@@ -310,7 +320,7 @@ test('creation checks a lost acknowledgement with the exact original command and
         const original = structuredClone(creationApi.calls[0]);
         assert.ok(original.command_id); assert.equal(original.name, 'Exact original name');
         locale.value = 'en'; await nextTick();
-        assert.match(text(root), /Check the outcome/); assert.match(text(root), /We could not confirm creation/);
+        assert.match(text(root), /Check the outcome/); assert.match(text(root), /save outcome is unknown/);
         drafts.creation.name = 'A later draft must not replace the command';
         const retry = submit(); await nextTick();
         assert.equal(find(root, 'data-business-unknown'), undefined, 'Checking hides the old unknown notice during the request');
@@ -424,7 +434,7 @@ test('canonical Business sources and purposes are discoverable without inferring
     try {
         assert.doesNotMatch(text(root), /إدارة المساحة/);
         assert.equal(find(root, 'data-test-data-use'), undefined);
-        const sourceNavigation = find(root, 'data-workspace-section', 'sources'); assert.ok(sourceNavigation); assert.match(text(sourceNavigation), /المصادر والحسابات الإعلانية/);
+        const sourceNavigation = find(root, 'data-workspace-section', 'sources'); assert.ok(sourceNavigation); assert.equal(text(sourceNavigation), 'المصادر');
         find(root, 'data-business-source-task').props.onClick(); await nextTick();
         assert.notEqual(find(root, 'data-workspace-panel', 'sources').style.display, 'none');
         const panel = find(root, 'data-test-data-use'), input = find(root, 'data-use-draft');
@@ -442,13 +452,14 @@ test('canonical Business sources and purposes are discoverable without inferring
         assert.equal(find(root, 'data-test-business-purpose').props['data-test-business-purpose'], 'Business-source-A');
         find(root, 'data-workspace-section', 'sources').props.onClick(); await nextTick();
         assert.equal(find(root, 'data-use-draft'), input); assert.equal(input.props.value, 'Unsent exact scope selection');
-        locale.value = 'en'; await nextTick(); assert.match(text(root), /Sources and ad accounts/);
+        locale.value = 'en'; await nextTick(); assert.equal(text(find(root, 'data-workspace-section', 'sources')), 'Sources');
         selected.value = businessSurface('Business-source-B'); await nextTick();
         assert.equal(find(root, 'data-test-data-use'), undefined); assert.equal(find(root, 'data-test-business-purpose'), undefined);
     } finally { app.unmount(); globalThis.window = previousWindow; locale.value = 'ar'; presentation.workspacePresentation.clear(); }
 });
 
 test('Business source inventory discards a prior Business response and shows only current qualified sources', async () => {
+    const previousWindow = globalThis.window; globalThis.window = {addEventListener(){},removeEventListener(){}};
     const inventoryApi = moduleUrl('export const calls=[];export const pending=[];export const businessSources=(business,access,after)=>{calls.push({business,access,after});return new Promise((resolve,reject)=>pending.push({resolve,reject}));};');
     const { calls, pending } = await import(inventoryApi);
     const inventory = await component('resources/js/business-foundation/BusinessSources.vue', { './api': inventoryApi });
@@ -471,7 +482,117 @@ test('Business source inventory discards a prior Business response and shows onl
         await nextTick(); await nextTick();
         assert.ok(find(root, 'data-business-sources-empty'));
         assert.doesNotMatch(text(root), /Agency secret account|Agency tools/);
-    } finally { app.unmount(); }
+    } finally { app.unmount();globalThis.window=previousWindow; }
+});
+
+test('actual shared-source entry preserves the selected Business through a fresh SourceView document and fences organization and identity changes', async () => {
+    const previousWindow = globalThis.window, previousStorage = globalThis.sessionStorage;
+    globalThis.window = { addEventListener(){}, removeEventListener(){} };
+    const saved = new Map();
+    globalThis.sessionStorage = { get length(){return saved.size;},key:index=>[...saved.keys()][index],getItem:key=>saved.get(key)??null,setItem:(key,value)=>saved.set(key,value),removeItem:key=>saved.delete(key) };
+    const businessA='01a1a220-7dcf-7aa7-851b-4c490880c314', businessB='01a1a220-7dcf-7aa7-851b-4c490880c315';
+    const organization='01a10d55-979d-78dc-9fd3-e49cf4f649e0', otherOrganization='01a10d55-979d-78dc-9fd3-e49cf4f649e1';
+    let documentNumber=0;
+    async function returnModule(principal=1) {
+        const transport=moduleUrl(`export const documentNumber=${++documentNumber};export const bootstrap={identity:{binding:{boundary:'advertiser',principal:${principal},lifecycle:1,context:'test-session',credential:1}}};export const onClose=()=>{};`);
+        return moduleUrl(compile(await readFile('resources/js/sources/businessReturn.ts','utf8')).replace("'../spa/transport'",JSON.stringify(transport)).replace("'./providerDestination'",JSON.stringify(providerDestinationUrl)));
+    }
+    const initialReturn=await returnModule();
+    const inventory=await component('resources/js/business-foundation/BusinessSources.vue',{'../sources/businessReturn':initialReturn,'./api':moduleUrl(`export const businessSources=async business=>({business_public_id:business,inventory_kind:'manageable_sources',establishes_business_data_use:false,next_cursor:null,sources:[{source_id:'source-a',label:'Shared account',family:'meta',workspace_public_id:'${organization}',workspace_slug:'Organization W',status:'UNVERIFIED'}]});`)});
+    const selected=ref({...businessSurface(businessA),authority_selection:{requirements:[{requirement_kind:'business',leaf_grant_id:51}]},collaboration:{relationships:[{state:'active',link_ref:'link-a',workspace_public_id:organization,workspace_slug:'Organization W'}]}});
+    const root=element('root'), app=renderer.createApp({render:()=>h(inventory.value,{surface:selected.value,active:true})});
+    app.use(await routerAt('/businesses/'+businessA));app.mount(root);
+    const clickEntry=async label=>{
+        const link=all(root).find(node=>node.tag==='a'&&text(node)===label);assert.ok(link);
+        const event={button:0,preventDefault(){},defaultPrevented:false};
+        for(const handler of [link.props.onClick].flat()) handler(event);
+        await nextTick();
+    };
+    async function sourceDocument(workspace,principal=1) {
+        const returning=await returnModule(principal);
+        const state=moduleUrl(`import {shallowRef} from ${JSON.stringify(vue)};export const current=shallowRef({data:{workspace:{public_id:'${workspace}',name:'Organization W'}}});`);
+        const view=await component('resources/js/sources/SourceView.vue',{'./businessReturn':returning,'./state':state,'./Sources.vue':sourcesChildUrl,'./commands':sourceCommandsUrl,'../spa/presentation':sourcePresentationUrl,'../workspaces/OrganizationTeam.vue':plainUrl,'../workspaces/team':moduleUrl('export const hasPendingTeamCommand=()=>false;'),'../business-foundation/AdvertiserWorkspaceLayout.vue':layout.url});
+        const router=createRouter({history:createMemoryHistory(),routes:routes.map(route=>route.path==='/workspaces/:workspace'?{...route,component:view.value}:route)});
+        await router.push('/workspaces/'+workspace);await router.isReady();
+        const viewApp=createSSRApp({render:()=>h(RouterView)});viewApp.use(router);return renderToString(viewApp);
+    }
+    try {
+        await nextTick();await nextTick();
+        await clickEntry('إدارة المصدر');
+        assert.equal(saved.size,1,'The actual source link must save the return context');
+        assert.deepEqual(Object.keys(JSON.parse([...saved.values()][0])).sort(),['access','business','workspace']);
+        assert.match(await sourceDocument(organization),new RegExp(`href="/businesses/${businessA}\\?access=51&amp;section=sources"`));
+        assert.doesNotMatch(await sourceDocument(otherOrganization),/data-business-return/);
+        selected.value={...selected.value,business:{...selected.value.business,business_public_id:businessB},authority_selection:{requirements:[{requirement_kind:'business',leaf_grant_id:52}]}};
+        await nextTick();await nextTick();await clickEntry('فتح الجهة');
+        const afterSwitch=await sourceDocument(organization);
+        assert.match(afterSwitch,new RegExp(`href="/businesses/${businessB}\\?access=52&amp;section=sources"`));
+        assert.doesNotMatch(afterSwitch,new RegExp(businessA));
+        assert.doesNotMatch(await sourceDocument(organization,2),/data-business-return/);
+        assert.equal(saved.size,0,'Another principal discards the stored context');
+    } finally {app.unmount();globalThis.window=previousWindow;globalThis.sessionStorage=previousStorage;}
+});
+
+test('Business always shows all five brands and opens account controls directly without an organization chooser', async () => {
+    const previousWindow = globalThis.window;
+    globalThis.window = { location: { hash: '' }, addEventListener() {}, removeEventListener() {} };
+    const workspaceApi = moduleUrl('export const calls=[];export const readWorkspaces=async()=>{calls.push("forbidden");throw Error("Unexpected organization dependency")};');
+    const panel = moduleUrl(`import {h,onMounted} from ${JSON.stringify(vue)};export default {props:['businessId','workspaceId','canManage'],emits:['summary'],setup(p,{emit}){onMounted(()=>emit('summary',{state:'restricted',canConnect:false,hasConnections:false}));return()=>h('section',{'data-native-business':p.businessId,'data-native-workspace':p.workspaceId,'data-can-manage':p.canManage})}};`);
+    const Accounts = await component('resources/js/sources/AdvertisingAccounts.vue', {'../Components/ProviderBrand.vue':providerBrandUrl,'./providerDestination':providerDestinationUrl,...Object.fromEntries(['Meta','Google','TikTok','Snapchat','X'].map(name=>['./'+name+'ConnectionPanel.vue',panel]))});
+    const Inventory = await component('resources/js/business-foundation/BusinessSources.vue', {'./api':moduleUrl('export const businessSources=async(business)=>({business_public_id:business,sources:[],next_cursor:null,inventory_kind:"manageable_sources",establishes_business_data_use:false});'),'../sources/AdvertisingAccounts.vue':Accounts.url,'../workspaces/api':workspaceApi});
+    const selected = ref({...businessSurface('native-a'),collaboration:{relationships:[]},authority_selection:{requirements:[{requirement_kind:'business',leaf_grant_id:51}]}});
+    const root=element('root'), app=renderer.createApp({render:()=>h(Inventory.value,{surface:selected.value,active:true})});
+    app.use(await routerAt('/businesses/native-a'));app.mount(root);await nextTick();await nextTick();
+    try {
+        const platforms=all(root).filter(node=>'data-provider' in node.props);
+        assert.deepEqual(platforms.map(node=>node.props['data-provider']),['google','meta','snapchat','tiktok','x']);
+        assert.equal(all(root).filter(node=>'data-provider-brand' in node.props).length,5);
+        assert.equal(find(root,'data-account-administration-choice'),undefined);
+        assert.equal(all(root).filter(node=>'data-native-business' in node.props).length,5);
+        assert.ok(all(root).filter(node=>'data-native-business' in node.props).every(node=>node.props['data-native-business']==='native-a' && node.props['data-native-workspace']===undefined));
+        for(const platform of platforms){assert.doesNotMatch(text(platform),/اختيار إدارة الحساب|بيانات جاهزة/);}
+        const trigger=all(find(root,'data-provider','x')).find(node=>node.tag==='button');
+        trigger.props.onClick({currentTarget:trigger});await nextTick();await nextTick();
+        const dialog=all(root).find(node=>node.tag==='dialog'&&node.props.class==='advertising-dialog');
+        assert.equal(dialog.open,true);assert.equal(dialog.props['aria-label'],'X Ads');
+        const before=trigger.focusCount;dialog.props.onCancel({preventDefault(){}});await nextTick();
+        assert.equal(dialog.open,false);assert.equal(trigger.focusCount,before+1);
+        selected.value={...selected.value,business:{...selected.value.business,business_public_id:'native-b'}};await nextTick();await nextTick();
+        assert.ok(all(root).filter(node=>'data-native-business' in node.props).every(node=>node.props['data-native-business']==='native-b'));
+        assert.deepEqual((await import(workspaceApi)).calls,[],'No organizational read or hidden entity is required');
+        locale.value='en';await nextTick();assert.match(text(root),/Advertising accounts|Sources shared/);locale.value='ar';
+    } finally { app.unmount();globalThis.window=previousWindow;locale.value='ar'; }
+});
+
+test('Business setup retains committed identity and retries only the exact markets command after an unknown outcome', async()=>{
+    const restore=withFactDom();Object.assign(drafts.creation,{name:'New independent business',type:null,codes:['SA'],pending:undefined,receipt:undefined,marketPending:undefined,marketsSaved:false});
+    creationApi.calls.length=0;creationApi.pending.length=0;creationApi.factCalls.length=0;creationApi.factPending.length=0;
+    const root=element('root'),app=renderer.createApp(creation.value,{catalog:{business_types:[],countries:[{code:'SA',name_ar:'السعودية',name_en:'Saudi Arabia'}]}});app.use(await routerAt('/businesses/new'));app.mount(root);
+    const submit=()=>all(root).find(node=>node.tag==='form').props.onSubmit({preventDefault(){}});
+    try{
+        const initial=submit();await nextTick();assert.equal(creationApi.factCalls.length,0);
+        creationApi.pending.shift().resolve({business_public_id:'setup-business',name:'New independent business',grant_refs:{'business.context.read':51,'business.markets.declare':52},versions:{context:0}});await nextTick();await nextTick();
+        assert.equal(creationApi.calls.length,1);assert.equal(creationApi.factCalls.length,1);const original=structuredClone(creationApi.factCalls[0]);
+        creationApi.factPending.shift().reject(Error('Market ACK lost'));await initial;await nextTick();
+        assert.ok(drafts.creation.receipt);assert.ok(drafts.creation.marketPending);assert.ok(find(root,'data-business-unknown'));
+        const retry=submit();await nextTick();assert.equal(creationApi.calls.length,1,'A market retry must not create a second business');assert.deepEqual(creationApi.factCalls[1],original);
+        creationApi.factPending.shift().resolve({versions:{context:1}});await retry;await nextTick();assert.equal(drafts.creation.marketPending,undefined);
+    }finally{app.unmount();restore();Object.assign(drafts.creation,{name:'',type:null,codes:[],pending:undefined,receipt:undefined,marketPending:undefined,marketsSaved:false});}
+});
+
+test('a newly rejected markets write after creation reconciliation keeps the created identity and releases only that rejected command',async()=>{
+    const restore=withFactDom();Object.assign(drafts.creation,{name:'Recovered creation',type:null,codes:['SA'],pending:undefined,receipt:undefined,marketPending:undefined,marketsSaved:false});
+    creationApi.calls.length=0;creationApi.pending.length=0;creationApi.factCalls.length=0;creationApi.factPending.length=0;
+    const root=element('root'),app=renderer.createApp(creation.value,{catalog:{business_types:[],countries:[]}});app.use(await routerAt('/businesses/new'));app.mount(root);
+    const submit=()=>all(root).find(node=>node.tag==='form').props.onSubmit({preventDefault(){}});
+    try{
+        const first=submit();await nextTick();creationApi.pending.shift().reject(Error('Creation ACK lost'));await first;await nextTick();const original=structuredClone(creationApi.calls[0]);
+        const retry=submit();await nextTick();assert.deepEqual(creationApi.calls[1],original);
+        creationApi.pending.shift().resolve({business_public_id:'retained-created-identity',name:'Recovered creation',grant_refs:{'business.context.read':51,'business.markets.declare':52},versions:{context:0}});await nextTick();await nextTick();
+        const {TransportError}=await import(transportUrl),denied=new TransportError('Market request rejected');denied.status=403;creationApi.factPending.shift().reject(denied);await retry;await nextTick();
+        assert.equal(drafts.creation.receipt.business_public_id,'retained-created-identity');assert.equal(drafts.creation.pending,undefined);assert.equal(drafts.creation.marketPending,undefined,'The new markets request was definitely rejected; it is not the reconciled creation');
+        assert.equal(creationApi.calls.length,2);assert.equal(creationApi.factCalls.length,1);assert.equal(all(root).some(node=>node.props['data-business-unknown']!==undefined),false,'No unknown-outcome attribute is rendered after a definite rejection');assert.match(text(root),/لم يعد الحفظ متاحًا/);
+    }finally{app.unmount();restore();Object.assign(drafts.creation,{name:'',type:null,codes:[],pending:undefined,receipt:undefined,marketPending:undefined,marketsSaved:false});}
 });
 
 test('independent Business team opt-in preserves an unknown enrollment, exact target and explicit retry', async () => {
@@ -594,7 +715,7 @@ test('own Purpose surrender uses the existing grant command and retains an unkno
     } finally { app.unmount(); drafts.delegationDrafts.clear(); }
 });
 
-test('mobile previous-record disclosure does not close the outer sidebar while destination clicks still do', async () => {
+test('mobile organization and previous-record disclosures stay open while destination activations close the sidebar', async () => {
     const previousWindow = globalThis.window;
     globalThis.window = { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) };
     const root = element('root'), app = renderer.createApp({ render: () => h(layout.value, { workspaceId: 'workspace-mobile', context: 'Workspace M', workspaceContext: true }) });
@@ -605,13 +726,60 @@ test('mobile previous-record disclosure does not close the outer sidebar while d
         const group = find(root, 'data-workspace-previous-navigation');
         const summary = group.children.find(node => node.tag === 'summary');
         const body = all(root).find(node => node.props.class === 'advertiser-sidebar-body');
-        const event = { stopped: false, stopPropagation() { this.stopped = true; } };
+        const event = { target: summary, stopped: false, stopPropagation() { this.stopped = true; } };
         summary.props.onClick?.(event);
         if (!event.stopped) body.props.onClick(event);
         assert.equal(event.stopped, true, 'Disclosure click must not reach the close-on-destination ancestor');
         assert.equal(outer.open, true, 'Opening previous records leaves mobile navigation accessible');
-        body.props.onClick({}); assert.equal(outer.open, false, 'A destination click retains existing mobile close behavior');
+        const organization = all(root).find(node => node.tag === 'details' && node.props.class === 'advertiser-organization-tools');
+        const organizationSummary = organization.children.find(node => node.tag === 'summary');
+        body.props.onClick({ target: organizationSummary }); organization.open = true;
+        assert.equal(outer.open, true, 'Opening organization tools leaves its destinations reachable');
+        body.props.onClick({ target: organization.children.find(node => node.tag === 'p') });
+        assert.equal(outer.open, true, 'Reading disclosure help does not dismiss the sidebar');
+        const organizationLink = all(organization).find(node => node.tag === 'a');
+        body.props.onClick({ target: organizationLink }); assert.equal(outer.open, false, 'An actual destination link closes mobile navigation');
     } finally { app.unmount(); globalThis.window = previousWindow; }
+});
+
+test('mobile Business navigation closes on a destination button including its nested content', async () => {
+    const previousWindow = globalThis.window;
+    globalThis.window = { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) };
+    const root = element('root'), app = renderer.createApp({ render: () => h(layout.value, {}, { navigation: () => h('nav', [h('button', { type: 'button' }, [h('span', 'Markets')])]) }) });
+    app.use(await routerAt('/businesses/mobile')); app.mount(root);
+    try {
+        const outer = all(root).find(node => node.tag === 'details' && node.props.class === 'advertiser-sidebar'); outer.open = true;
+        const label = all(root).find(node => node.tag === 'span' && text(node) === 'Markets');
+        all(root).find(node => node.props.class === 'advertiser-sidebar-body').props.onClick({ target: label });
+        assert.equal(outer.open, false, 'Nested button content resolves to the navigation activation');
+    } finally { app.unmount(); globalThis.window = previousWindow; }
+});
+
+test('Business creation clears a localized country search without discarding selected markets or sending commands', async () => {
+    const restore = withFactDom(); locale.value = 'ar';
+    Object.assign(drafts.creation, { name: '', type: null, codes: [], pending: undefined, receipt: undefined, marketPending: undefined, marketsSaved: false });
+    const catalog = { business_types: [], countries: [{ code: 'SA', name_ar: 'السعودية', name_en: 'Saudi Arabia' }, { code: 'JO', name_ar: 'الأردن', name_en: 'Jordan' }] };
+    const initialWrites = creationApi.calls.length + creationApi.factCalls.length;
+    const root = element('root'), app = renderer.createApp(creation.value, { catalog }); app.use(await routerAt('/businesses/new')); app.mount(root);
+    const country = code => all(root).find(node => node.tag === 'input' && node._value === code);
+    try {
+        country('SA').checked = true; country('SA').dispatchEvent({ type: 'change' }); await flushFacts();
+        await inputFact(root, 'bf-create-market-search', 'Jordan');
+        assert.equal(country('SA'), undefined); country('JO').checked = true; country('JO').dispatchEvent({ type: 'change' }); await flushFacts();
+        await inputFact(root, 'bf-create-market-search', 'no-matching-country');
+        assert.match(text(find(root, 'data-create-market-search-empty')), /لا توجد دول مطابقة/);
+        assert.equal(text(find(root, 'data-create-market-search-clear')), 'مسح البحث');
+        locale.value = 'en'; await nextTick();
+        assert.equal(text(find(root, 'data-create-market-search-empty')), 'No countries match your search.');
+        assert.equal(text(find(root, 'data-create-market-search-clear')), 'Clear search');
+        find(root, 'data-create-market-search-clear').props.onClick(); await flushFacts();
+        assert.equal(find(root, 'id', 'bf-create-market-search').value, '');
+        assert.equal(find(root, 'id', 'bf-create-market-search').focusCount, 1, 'Clear returns keyboard focus to the retained search input');
+        assert.equal(find(root, 'data-create-market-search-empty'), undefined); assert.equal(find(root, 'data-create-market-search-clear'), undefined);
+        assert.equal(country('SA').checked, true); assert.equal(country('JO').checked, true);
+        assert.deepEqual([...drafts.creation.codes].sort(), ['JO', 'SA']);
+        assert.equal(creationApi.calls.length + creationApi.factCalls.length, initialWrites, 'Search and clear are local presentation only');
+    } finally { app.unmount(); restore(); locale.value = 'ar'; Object.assign(drafts.creation, { name: '', type: null, codes: [], pending: undefined, receipt: undefined, marketPending: undefined, marketsSaved: false }); }
 });
 
 
@@ -649,10 +817,38 @@ test('admitted Sources consumes the selected platform and lets OAuth callback id
             const root=element('root'), app=renderer.createApp({render:()=>h(operationalSources.value,{workspace:{public_id:'admitted-one',name:'Admitted',slug:'a'},business:{type:null,version:0,canManage:false,targetMarketsDeclared:false,targetMarkets:[]},guidance:{sources:[],priors:[]},canRequestSourceAuthority:false,canManageServices:false,sourceCandidateId:'candidate',sources:[],services:[],commercial:{state:'UNAVAILABLE',context:null,agreement_state:'UNKNOWN',amount_state:'UNKNOWN'}})});
             app.use(await routerAt('/workspaces/admitted-one?provider='+query+hash)); app.mount(root); await nextTick();
             const dialog=all(root).find(node=>node.tag==='dialog');
+            locale.value='en';await nextTick();assert.match(text(root),/Organization resources/);assert.doesNotMatch(text(root),/Workspace resources/);locale.value='ar';await nextTick();
             assert.equal(dialog.open,true); assert.equal(dialog.modalCount,1); assert.equal(dialog.props['aria-label'],expected);
             app.unmount();
         }
     } finally {globalThis.window=previousWindow;globalThis.location=previousLocation;}
+});
+
+test('dismissing a provider result clears only its acknowledged return marker and retains qualified routing and opaque flows', async () => {
+    const previousWindow = globalThis.window;
+    try {
+        for (const [hash, remaining] of [
+            ['#google-result=AUTHORIZATION_NOT_COMPLETED', ''],
+            ['#google-result=AUTHORIZATION_NOT_COMPLETED&x-flow=original-opaque-flow', '#x-flow=original-opaque-flow'],
+            ['#google-flow=original-unknown-selection', '#google-flow=original-unknown-selection'],
+        ]) {
+            globalThis.window = { location: { hash } };
+            const root = element('root'), router = await routerAt('/businesses/native-one?access=51&section=sources'+hash);
+            const app = renderer.createApp({ render: () => h(actualAccounts.value, { businessId: 'native-one', canManage: true }) });
+            app.use(router); app.mount(root); await nextTick(); await nextTick();
+            try {
+                const dialog = all(root).find(node => node.tag === 'dialog');
+                assert.equal(dialog.open, true); assert.equal(dialog.props['aria-label'], 'Google Ads');
+                all(dialog).find(node => node.tag === 'button').props.onClick();
+                await new Promise(resolve => setImmediate(resolve)); await nextTick();
+                assert.equal(dialog.open, false);
+                assert.equal(router.currentRoute.value.path, '/businesses/native-one');
+                assert.deepEqual(router.currentRoute.value.query, { access: '51', section: 'sources' });
+                assert.equal(router.currentRoute.value.hash, remaining);
+                assert.equal(dialog.modalCount, 1, 'Dismissing a result must not open a different provider during URL requalification');
+            } finally { app.unmount(); }
+        }
+    } finally { globalThis.window = previousWindow; }
 });
 
 
@@ -711,6 +907,51 @@ test('internal file team opt-in retains an unknown command and checks the same o
     } finally {app.unmount();drafts.internalTeamDrafts.delete(cacheKey);}
 });
 
+test('internal file custody distinguishes initial rejection from an unknown original replay after loss or remount', async t => {
+    for (const mode of ['initial', 'unknown', 'remount']) for (const status of [422, 409]) await t.test(`${mode} ${status}`, async () => {
+        const restoreDom = withFactDom();
+        const custodyApi = moduleUrl(`export const scenario=${JSON.stringify(mode + status)},writes=[],pending=[],reads=[];export const internalTeamSurface=async(business)=>{reads.push(business);return {business_public_id:business,creator_basis:true,can_admin:true,teams:[]};};export const writeInternalTeam=(business,body)=>{writes.push({business,body:structuredClone(body)});return new Promise((resolve,reject)=>pending.push({resolve,reject}));};`);
+        const custody = await component('resources/js/business-foundation/InternalClientFileTeam.vue', { './api': custodyApi });
+        const api = await import(custodyApi), { TransportError } = await import(transportUrl);
+        const business = '01a1a326-5588-75c2-b5b3-392a12242d37', team = '01a1a326-5588-75c2-b5b3-392a12242d38', actor = '01a1a326-5588-75c2-b5b3-392a12242d39';
+        const selected = { ...businessSurface(business), authority_selection: { realm_kind: 'direct', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: 51 }] }, delegation: { actor_public_id: actor }, collaboration: { workspaces: [{ public_id: team, slug: 'Qualified team' }] } };
+        const cacheKey = drafts.key(business, selected.authority_selection) + ':internal-team:1'; drafts.internalTeamDrafts.delete(cacheKey);
+        let root, app, departedRequest;
+        const mount = async () => { root = element('root'); app = renderer.createApp({ render: () => h(custody.value, { surface: selected, active: true }) }); app.use(await routerAt(`/businesses/${business}`)); app.mount(root); await flushFacts(); };
+        try {
+            await mount(); const draft = drafts.internalTeamDrafts.get(cacheKey); draft.workspace = team; await nextTick(); draft.confirmed = true; await nextTick();
+            all(root).find(node => node.tag === 'button' && text(node) === 'تفعيل إدارة الفريق لهذا الملف').props.onClick(); await nextTick();
+            const original = structuredClone(api.writes[0]);
+            if (mode === 'unknown') { api.pending.shift().reject(Error('ACK lost')); await flushFacts(); }
+            if (mode === 'remount') { departedRequest = api.pending.shift(); app.unmount(); await mount(); }
+            if (mode !== 'initial') {
+                assert.equal(api.writes.length, 1, 'Loss or remount never automatically sends a command');
+                all(root).find(node => node.tag === 'button' && text(node) === 'التحقق بالطلب الأصلي').props.onClick(); await nextTick(); assert.deepEqual(api.writes[1], original);
+            }
+            const rejection = new TransportError('Rejected'); rejection.status = status; rejection.body = { error: status === 409 ? 'business_relation_revision_rejected' : 'validation_rejected' };
+            api.pending.shift().reject(rejection); await flushFacts();
+            if (mode === 'initial' || status === 409) {
+                assert.equal(draft.pending, undefined, 'A definitive first rejection releases only the rejected command'); assert.equal(draft.confirmed, false);
+                assert.equal(draft.uncertain, false);
+                assert.equal(api.reads.length, mode === 'remount' ? 3 : 2, 'Definitive rejection refreshes qualified state; canonical typed CAS follows receipt lookup'); assert.equal(all(root).find(node => node.tag === 'fieldset').props.disabled, false);
+                draft.confirmed = true; await nextTick(); all(root).find(node => node.tag === 'button' && text(node) === 'تفعيل إدارة الفريق لهذا الملف').props.onClick(); await nextTick();
+                assert.equal(api.writes.length, mode === 'initial' ? 2 : 3); assert.notEqual(api.writes.at(-1).body.command_id, original.body.command_id, 'A newly reviewed definitive rejection permits a new identity');
+            } else {
+                assert.deepEqual(draft.pending && JSON.parse(JSON.stringify(draft.pending)), original.body, 'A replay rejection cannot discard an earlier possibly committed original');
+                assert.equal(draft.uncertain, true);
+                assert.equal(all(root).find(node => node.tag === 'fieldset').props.disabled, true); assert.ok(find(root, 'data-internal-team-pending'));
+                assert.equal(api.writes.length, 2); assert.equal(api.reads.length, mode === 'remount' ? 2 : 1, 'Replay failure never replaces the immutable original with a refreshed revision');
+                if (departedRequest) { departedRequest.resolve({ business_public_id: business, workspace_public_id: team, recipient_public_id: actor, grant_refs: { 'business.context.read': '99' } }); await flushFacts(); assert.deepEqual(JSON.parse(JSON.stringify(draft.pending)), original.body, 'Departed receipt cannot settle current presentation'); }
+                draft.workspace = '01a1a326-5588-75c2-b5b3-392a12242d40'; await nextTick();
+                all(root).find(node => node.tag === 'button' && text(node) === 'التحقق بالطلب الأصلي').props.onClick(); await nextTick(); assert.deepEqual(api.writes[2], original);
+                api.pending.shift().resolve({ business_public_id: business, workspace_public_id: team, recipient_public_id: actor, grant_refs: { 'business.context.read': '99' } }); await flushFacts();
+                assert.equal(draft.pending, undefined); assert.ok(find(root, 'data-open-internal-team'));
+                assert.equal(draft.uncertain, false, 'A matching current receipt alone settles the original unknown outcome');
+            }
+        } finally { app?.unmount(); drafts.internalTeamDrafts.delete(cacheKey); restoreDom(); }
+    });
+});
+
 test('internal team workspace does not mount creator-only inquiries or historical readers', async () => {
     const oldWindow=globalThis.window;globalThis.window={scrollY:0,scrollTo(){},matchMedia:()=>({matches:true,addEventListener(){},removeEventListener(){}})};
     presentation.workspacePresentation.clear();events.length=0;
@@ -738,10 +979,12 @@ const organizationTeam = await component('resources/js/workspaces/OrganizationTe
 const teamAdapter = await import(teamModuleUrl), teamHttp = await import(teamHttpUrl), teamTransport = await import(teamTransportUrl);
 const settleTeam = async () => { await new Promise(resolve => setImmediate(resolve)); await nextTick(); };
 const teamSurface = (changes = {}) => ({ workspace_public_id: 'organization-one', actor_public_id: 'owner-one', revision: 4, can_manage: true, can_leave: false, members: [{ public_id: 'owner-one', role: 'owner', state: 'active' }, { public_id: 'employee-one', role: 'member', state: 'active' }], ...changes });
-async function mountTeam() {
+async function mountTeam(reset = true) {
     const restoreDom = withFactDom();
-    teamAdapter.teamDrafts.clear();
-    for (const entries of [teamHttp.reads, teamHttp.writes, teamHttp.readPending, teamHttp.writePending]) entries.length = 0;
+    if (reset) {
+        teamAdapter.teamDrafts.clear();
+        for (const entries of [teamHttp.reads, teamHttp.writes, teamHttp.readPending, teamHttp.writePending]) entries.length = 0;
+    }
     const root = element('root'), app = renderer.createApp({ render: () => h(organizationTeam.value, { workspace: 'organization-one' }) });
     app.use(await routerAt('/workspaces/organization-one')); app.mount(root);
     const unmount = app.unmount.bind(app); app.unmount = () => { unmount(); restoreDom(); };
@@ -762,6 +1005,7 @@ test('organization Team 422 releases the rejected command for correction and req
         const original = structuredClone(teamHttp.writes[0].options.body);
         teamHttp.writePending.shift().reject(new teamTransport.TransportError(422)); await settleTeam();
         assert.equal(view.draft.pending, undefined, 'A definitive rejection has no unknown command to replay');
+        assert.equal(view.draft.uncertain, false);
         assert.equal(view.draft.confirmed, false); assert.equal(view.draft.blocked, false);
         assert.equal(all(view.root).find(node => node.tag === 'fieldset').props.disabled, false);
         assert.equal(find(view.root, 'data-organization-retry'), undefined);
@@ -787,6 +1031,7 @@ test('organization Team 409 refreshes membership and revision before allowing a 
         assert.equal(teamHttp.writes.length, 1); assert.equal(find(view.root, 'data-organization-recipient'), undefined);
         teamHttp.readPending.shift().resolve({ data: { data: teamSurface({ revision: 8, members: [] }) } }); await settleTeam();
         assert.equal(view.draft.pending, undefined); assert.equal(view.draft.confirmed, false); assert.equal(view.draft.blocked, false);
+        assert.equal(view.draft.uncertain, false);
         assert.equal(all(view.root).find(node => node.tag === 'fieldset').props.disabled, false);
         assert.doesNotMatch(text(find(view.root, 'data-organization-members')), /employee-one/);
         assert.equal(teamHttp.writes.length, 1, 'A refresh never resends or creates a command');
@@ -868,4 +1113,193 @@ test('organization Team 403 cannot replay or start an alternate command under de
         retry.props.onClick(); await settleTeam(); assert.equal(teamHttp.writes.length, 1);
         assert.equal(teamHttp.reads.length, 1, 'Denial does not infer renewed authority');
     } finally { view.app.unmount(); teamAdapter.teamDrafts.clear(); }
+});
+
+test('organization Team replay rejection preserves an earlier unknown original through 403, 409 and 422', async t => {
+    for (const status of [403, 409, 422]) await t.test(String(status), async () => {
+        const view = await mountTeam();
+        try {
+            view.recipient('registered-employee'); view.confirm(); await nextTick(); view.submit();
+            const original = structuredClone(teamHttp.writes[0].options.body);
+            teamHttp.writePending.shift().reject(Error('Original acknowledgement lost')); await settleTeam();
+            find(view.root, 'data-organization-retry').props.onClick();
+            assert.deepEqual(teamHttp.writes[1].options.body, original);
+            teamHttp.writePending.shift().reject(new teamTransport.TransportError(status)); await settleTeam();
+            assert.deepEqual(view.draft.pending && JSON.parse(JSON.stringify(view.draft.pending)), original, 'A replay rejection cannot prove the earlier request did not commit');
+            assert.equal(view.draft.uncertain, true);
+            assert.equal(teamAdapter.hasPendingTeamCommand(), true);
+            assert.equal(teamHttp.writes.length, 2); assert.equal(teamHttp.reads.length, 1, 'No read can replace unresolved command identity');
+            assert.equal(all(view.root).find(node => node.tag === 'fieldset').props.disabled, true);
+            assert.equal(find(view.root, 'data-organization-confirm').props.disabled, true);
+            const retry = find(view.root, 'data-organization-retry');
+            assert.equal(retry.props.disabled, status === 403, 'Denied authority still blocks explicit replay');
+            view.draft.recipient = 'alternate-employee'; view.draft.confirmed = true;
+            retry.props.onClick(); await settleTeam();
+            if (status === 403) assert.equal(teamHttp.writes.length, 2);
+            else {
+                assert.deepEqual(teamHttp.writes[2].options.body, original, 'Another explicit check uses only the immutable original');
+                teamHttp.writePending.shift().resolve({ data: { data: { workspace_public_id: 'organization-one', recipient_public_id: 'registered-employee', state: 'active' } } }); await settleTeam();
+                assert.equal(view.draft.pending, undefined); assert.equal(teamAdapter.hasPendingTeamCommand(), false);
+                assert.equal(view.draft.uncertain, false, 'Only a matching acknowledged receipt settles an uncertain operation');
+                teamHttp.readPending.shift().resolve({ data: { data: teamSurface({ revision: 5 }) } }); await settleTeam();
+            }
+        } finally { view.app.unmount(); teamAdapter.teamDrafts.clear(); }
+    });
+});
+
+test('organization Team in-flight unmount preserves uncertainty through remount and ignores its stale receipt', async () => {
+    let view = await mountTeam();
+    try {
+        view.recipient('registered-employee'); view.confirm(); await nextTick(); view.submit();
+        const original = structuredClone(teamHttp.writes[0].options.body), departedRequest = teamHttp.writePending.shift();
+        view.app.unmount(); view = await mountTeam(false);
+        assert.equal(teamHttp.writes.length, 1, 'Remount never automatically resends an in-flight command');
+        find(view.root, 'data-organization-retry').props.onClick();
+        assert.deepEqual(teamHttp.writes[1].options.body, original);
+        teamHttp.writePending.shift().reject(new teamTransport.TransportError(422)); await settleTeam();
+        assert.deepEqual(view.draft.pending && JSON.parse(JSON.stringify(view.draft.pending)), original, 'A replay rejection after remount leaves original unresolved');
+        departedRequest.resolve({ data: { data: { workspace_public_id: 'organization-one', recipient_public_id: 'registered-employee', state: 'active' } } }); await settleTeam();
+        assert.deepEqual(JSON.parse(JSON.stringify(view.draft.pending)), original, 'A departed component receipt cannot settle the retained current view');
+        find(view.root, 'data-organization-retry').props.onClick();
+        assert.deepEqual(teamHttp.writes[2].options.body, original);
+        teamHttp.writePending.shift().resolve({ data: { data: { workspace_public_id: 'organization-one', recipient_public_id: 'registered-employee', state: 'active' } } }); await settleTeam();
+        assert.equal(view.draft.pending, undefined); assert.equal(teamAdapter.hasPendingTeamCommand(), false);
+        assert.equal(view.draft.uncertain, false);
+        teamHttp.readPending.shift().resolve({ data: { data: teamSurface({ revision: 5 }) } }); await settleTeam();
+    } finally { view.app.unmount(); teamAdapter.teamDrafts.clear(); }
+});
+
+test('organization Team retained outcomes render in the current locale without changing command recovery', async t => {
+    for (const outcome of [
+        { status: 200, key: 'updated', ar: /تم تحديث عضوية الفريق/, en: /Team membership updated/ },
+        { status: 422, key: 'invalid', ar: /رُفض الطلب دون تنفيذ/, en: /The request was rejected without execution/ },
+        { status: 409, key: 'conflict', ar: /تغيّرت حالة الفريق/, en: /The team state changed/ },
+        { status: 403, key: 'denied', ar: /تعذر اعتماد الطلب/, en: /The request could not be admitted/ },
+        { status: 0, key: 'unknown', ar: /لم نتأكد من النتيجة/, en: /The outcome is unknown/ },
+    ]) {
+        await t.test(outcome.key, async () => {
+            locale.value = 'ar'; const view = await mountTeam();
+            try {
+                view.recipient('registered-employee'); view.confirm(); await nextTick(); view.submit();
+                const original = structuredClone(teamHttp.writes[0].options.body), request = teamHttp.writePending.shift();
+                if (outcome.status === 200) request.resolve({ data: { data: { workspace_public_id: 'organization-one', recipient_public_id: 'registered-employee', state: 'active' } } });
+                else request.reject(outcome.status ? new teamTransport.TransportError(outcome.status) : Error('Acknowledgement lost'));
+                await settleTeam();
+                if ([200, 409].includes(outcome.status)) { teamHttp.readPending.shift().resolve({ data: { data: teamSurface({ revision: 5 }) } }); await settleTeam(); }
+                assert.equal(view.draft.notice, outcome.key); assert.match(text(view.root), outcome.ar);
+                const pending = JSON.stringify(view.draft.pending), blocked = view.draft.blocked;
+                locale.value = 'en'; await nextTick();
+                assert.match(text(view.root), outcome.en); assert.doesNotMatch(text(view.root), outcome.ar);
+                assert.equal(JSON.stringify(view.draft.pending), pending); assert.equal(view.draft.blocked, blocked);
+                assert.equal(teamHttp.writes.length, 1, 'Locale changes never resend or replace commands');
+                if ([403, 0].includes(outcome.status)) assert.deepEqual(JSON.parse(pending), original);
+                else assert.equal(view.draft.pending, undefined);
+                locale.value = 'ar'; await nextTick(); assert.match(text(view.root), outcome.ar);
+            } finally { view.app.unmount(); teamAdapter.teamDrafts.clear(); locale.value = 'ar'; }
+        });
+    }
+});
+
+const recoveryConsumers = ['BusinessEditor', 'BusinessFacts', 'BusinessCollaboration', 'BusinessDelegation', 'BusinessDataUse', 'BoundaryEditor', 'SourceRightsEditor'];
+async function recoveryView(name, scenario) {
+    const business = '01a1a326-5588-75c2-b5b3-392a12242d37', workspace = '01a1a326-5588-75c2-b5b3-392a12242d38';
+    const selection = { realm_kind: 'direct', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: 17 }] };
+    const surface = { ...factSurface(business), authority_selection: selection, context_write_options: [{ grant_id: '17' }],
+        collaboration: { options: [{ grant_id: '17', allows_agency: false }], workspaces: [{ public_id: workspace, slug: 'Qualified organization' }], relationships: [{ workspace_public_id: workspace, workspace_slug: 'Qualified organization', kind: 'collaboration', state: 'active', revision: 2, link_ref: 'link-one' }] },
+        delegation: { actor_public_id: '01a1a326-5588-75c2-b5b3-392a12242d39', options: [{ grant_id: '17', action: 'business.context.read', can_issue: true }], issued: [{ grant_id: '20', parent_grant_id: '17', recipient_public_id: workspace, action: 'business.context.read', recorded_status: 'active', revision: 2, realm_kind: 'direct', realm_workspace_public_id: null }], issued_more: false },
+        data_use: { bindings: [{ binding_id: 'binding-one', scope_id: 'scope-one', state: 'active', revision: 2 }], bindings_more: false },
+        boundary: { boundary_id: 'boundary-one', state: 'active', revision: 1 }, memberships: [{ membership_id: 'membership-one', business_public_id: business, branch_public_id: null, state: 'active', revision: 2 }], memberships_more: false,
+        source: { source_id: 'source-one', label: 'Saved source name', revision: 2, family: 'meta', namespace: 'account', resource: 'resource-one', operation: 'read', purpose: 'review', adopted: true, scope_declared: true, status: 'ACTIVE' }, rights: [], rights_more: false, can_command: true };
+    Object.assign(surface.business, { name: 'Saved business name', business_type_id: 1 }); surface.catalog.business_types = [{ id: 1, active: true, name_ar: 'خدمات', name_en: 'Services' }];
+    const apiUrl = moduleUrl(`export const scenario=${JSON.stringify(name + scenario)},writes=[],pending=[];const send=(kind,args)=>{writes.push({kind,args:structuredClone(args)});return new Promise((resolve,reject)=>pending.push({resolve,reject}));};export const write=(...args)=>send('write',args),writeFact=(...args)=>send('fact',args),writeLink=(...args)=>send('link',args),writeGrant=(...args)=>send('grant',args),writeBinding=(...args)=>send('binding',args),writeResourceRight=(...args)=>send('resource',args);export const dataUseChoices=async()=>({scopes:[],next_cursor:null});export const businessChoices=async()=>({items:[],next_cursor:null});export const businessSurface=async()=>{throw Error('No target selected')};`);
+    const Component = await component(`resources/js/business-foundation/${name}.vue`, { './api': apiUrl, '../Components/Business/goalSelection': goalSelectionUrl });
+    const api = await import(apiUrl);
+    const store = ({ BusinessEditor: drafts.drafts, BusinessFacts: drafts.factDrafts, BusinessCollaboration: drafts.linkDrafts, BusinessDelegation: drafts.delegationDrafts, BusinessDataUse: drafts.dataUseDrafts, BoundaryEditor: drafts.boundaryDrafts, SourceRightsEditor: drafts.sourceDrafts })[name]; store.clear();
+    let root, app;
+    const mount = async () => { root = element('root'); app = renderer.createApp(Component.value, { surface, refreshing: false }); await app.use(await routerAt('/businesses/' + business)); app.mount(root); await flushFacts(); };
+    await mount();
+    const getDraft = () => name === 'BusinessFacts' ? [...store.values()].find(row => row.kind === 'markets') : [...store.values()][0];
+    const submit = form => form.props.onSubmit({ preventDefault() {} });
+    const button = label => all(root).find(node => node.tag === 'button' && text(node) === label);
+    async function start() {
+        if (name === 'BusinessEditor') { await inputFact(root, 'bf-name', 'Unsent private name'); submit(all(root).find(node => node.tag === 'form')); }
+        if (name === 'BusinessFacts') { await checkFact(root, 'data-fact-country', 'JO'); submit(find(root, 'data-business-fact-form', 'markets')); }
+        if (name === 'BusinessCollaboration') button('End relationship').props.onClick();
+        if (name === 'BusinessDelegation') button('Withdraw this right').props.onClick();
+        if (name === 'BusinessDataUse') { find(root, 'data-data-use-confirm').props['onUpdate:modelValue'](true); await nextTick(); button('End use binding').props.onClick(); }
+        if (name === 'BoundaryEditor') button('End this coverage').props.onClick();
+        if (name === 'SourceRightsEditor') { find(root, 'data-source-confirm').props['onUpdate:modelValue'](true); await nextTick(); find(root, 'data-source-retire').props.onClick(); }
+        await flushFacts();
+    }
+    function replay() {
+        if (name === 'BusinessEditor') { const form = all(root).find(node => node.tag === 'form'); if (form) submit(form); }
+        if (name === 'BusinessFacts') { const form = find(root, 'data-business-fact-form', 'markets'); if (form) submit(form); }
+        if (name === 'BusinessCollaboration') { const form = find(root, 'data-collaboration-form'); if (form) submit(form); }
+        if (name === 'BusinessDelegation') { const form = find(root, 'data-delegation-form'); if (form) submit(form); }
+        if (name === 'BusinessDataUse') find(root, 'data-data-use-reconcile')?.props.onClick();
+        if (name === 'BoundaryEditor') { const form = find(root, 'data-boundary-attach'); if (form) submit(form); }
+        if (name === 'SourceRightsEditor') find(root, 'data-source-reconcile')?.props.onClick();
+    }
+    const receipt = () => ({ business_public_id: business, name: 'Unsent private name', business_type_id: 1, codes: ['SA', 'JO'], versions: { context: 4, binding: 3 }, workspace_public_id: workspace, kind: 'collaboration', status: 'ended', grant_id: 20, membership_id: 'membership-one', source_id: 'source-one' });
+    return { api, store, get draft() { return getDraft(); }, get root() { return root; }, start, replay, receipt, remount: async () => { app.unmount(); await mount(); }, unmount: () => app.unmount() };
+}
+
+test('material Business writers retain unknown originals through validation rejection, remount and authority denial', async t => {
+    for (const name of recoveryConsumers) for (const scenario of ['initial422', 'unknown422', 'remount422', 'unknown403', 'unknown409', 'mismatch']) await t.test(`${name} ${scenario}`, async () => {
+        const restore = withFactDom(); locale.value = 'en'; const view = await recoveryView(name, scenario);
+        try {
+            await view.start(); assert.equal(view.api.writes.length, 1, 'Actual initial UI action sends one command');
+            const original = structuredClone(view.api.writes[0]), first = view.api.pending.shift(), pending = JSON.parse(JSON.stringify(view.draft.pending));
+            if (!['initial422', 'remount422'].includes(scenario)) { first.reject(Error('Committed ACK lost')); await flushFacts(); }
+            if (scenario === 'remount422') await view.remount();
+            if (scenario !== 'initial422') { assert.equal(view.api.writes.length, 1, 'Loss or remount never automatically sends'); view.replay(); await flushFacts(); assert.deepEqual(view.api.writes[1], original); }
+            const { TransportError } = await import(transportUrl), rejection = new TransportError('Rejected'); rejection.status = scenario === 'unknown403' ? 403 : scenario === 'unknown409' ? 409 : 422; rejection.body = { error: scenario === 'unknown409' ? 'business_conflict' : 'invalid_business_command' };
+            const replay = scenario === 'initial422' ? first : view.api.pending.shift();
+            if (scenario === 'mismatch') {
+                const mismatch = view.receipt();
+                if (name === 'BusinessEditor' || name === 'BusinessFacts') mismatch.business_public_id = 'foreign-business';
+                if (name === 'BusinessCollaboration') mismatch.workspace_public_id = 'foreign-organization';
+                if (name === 'BusinessDelegation') { mismatch.status = 'revoked'; mismatch.grant_id = 21; }
+                if (name === 'BusinessDataUse') mismatch.status = 'active';
+                if (name === 'BoundaryEditor') mismatch.membership_id = 'foreign-membership';
+                if (name === 'SourceRightsEditor') mismatch.source_id = 'foreign-source';
+                replay.resolve(mismatch);
+            } else replay.reject(rejection);
+            await flushFacts();
+            if (scenario === 'initial422') { assert.equal(view.draft.pending, undefined, 'A definitive first rejection releases the rejected command'); assert.equal(view.api.writes.length, 1); await view.start(); assert.equal(view.api.writes.length, 2, 'A newly reviewed initial rejection remains editable'); assert.notEqual(view.api.writes[1].args.at(-1).command_id, original.args.at(-1).command_id); }
+            else {
+                assert.deepEqual(view.draft?.pending && JSON.parse(JSON.stringify(view.draft.pending)), pending, 'Earlier possibly committed original must survive replay rejection');
+                assert.equal(view.store.size > 0, true, 'Identity-scoped opaque original survives for the same document'); assert.equal(view.api.writes.length, 2);
+                if (scenario === 'unknown403') {
+                    assert.equal(view.draft.blocked, true);
+                    if (name === 'BusinessEditor') { assert.equal(find(view.root, 'id', 'bf-name') !== undefined, false); assert.equal(view.draft.name, ''); assert.equal(view.draft.selected, ''); }
+                    if (name === 'BusinessFacts') { assert.equal(find(view.root, 'data-business-fact-form', 'markets') !== undefined, false); assert.deepEqual([...view.draft.fields.codes], []); assert.equal(view.draft.selected, ''); }
+                    if (name === 'BusinessCollaboration') { assert.equal(find(view.root, 'data-collaboration-form') !== undefined, false); assert.equal(view.draft.workspace, ''); assert.equal(view.draft.selected, ''); }
+                    if (name === 'BusinessDelegation') { assert.equal(find(view.root, 'data-delegation-form') !== undefined, false); assert.equal(view.draft.recipient, ''); assert.equal(view.draft.selected, ''); }
+                    if (name === 'BusinessDataUse') { assert.equal(find(view.root, 'data-data-use-details') !== undefined, false); assert.equal(find(view.root, 'id', 'bf-data-scope') !== undefined, false); assert.equal(view.draft.selected, ''); assert.equal(view.draft.manager, ''); }
+                    if (name === 'BoundaryEditor') { assert.equal(find(view.root, 'data-boundary-attach') !== undefined, false); assert.equal(view.draft.choice, ''); assert.equal(view.draft.selected, ''); }
+                    if (name === 'SourceRightsEditor') { assert.equal(find(view.root, 'id', 'bf-source-label') !== undefined, false); assert.equal(view.draft.label, ''); }
+                    const before = view.api.writes.length; view.replay(); await flushFacts(); assert.equal(view.api.writes.length, before, 'Denied authority cannot replay or send an alternate'); await view.remount(); assert.deepEqual(JSON.parse(JSON.stringify(view.draft.pending)), pending); view.replay(); await flushFacts(); assert.equal(view.api.writes.length, before, 'Remount must not unblock denied original');
+                }
+                else {
+                    if (scenario === 'remount422') { first.resolve(view.receipt()); await flushFacts(); assert.deepEqual(JSON.parse(JSON.stringify(view.draft.pending)), pending, 'Departed receipt cannot settle current presentation'); }
+                    view.replay(); await flushFacts(); assert.deepEqual(view.api.writes[2], original); const receipt = view.receipt(); if (name === 'BusinessDelegation') receipt.status = 'revoked'; view.api.pending.shift().resolve(receipt); await flushFacts(); assert.equal(view.draft.pending, undefined, 'Matching current receipt settles original');
+                }
+            }
+        } finally { view.unmount(); view.store.clear(); locale.value = 'ar'; restore(); }
+    });
+});
+
+test('canonical typed relation CAS rejection remains definitive after receipt lookup for affected writers', async t => {
+    for (const name of ['BusinessCollaboration', 'BusinessDataUse', 'BoundaryEditor']) for (const priorLoss of [false, true]) await t.test(`${name} priorLoss=${priorLoss}`, async () => {
+        const restore = withFactDom(); locale.value = 'en'; const view = await recoveryView(name, 'typed409' + priorLoss);
+        try {
+            await view.start(); let request = view.api.pending.shift();
+            if (priorLoss) { request.reject(Error('Transport failed without commitment')); await flushFacts(); view.replay(); await flushFacts(); request = view.api.pending.shift(); }
+            const { TransportError } = await import(transportUrl), rejection = new TransportError('Canonical pre-effect CAS rejection'); rejection.status = 409; rejection.body = { error: 'business_relation_revision_rejected' };
+            request.reject(rejection); await flushFacts();
+            assert.equal(view.draft.pending, undefined, 'Canonical typed CAS is emitted only after exact receipt lookup found no committed original'); assert.equal(view.draft.uncertain, false);
+            const previous = view.api.writes.length; await view.start(); assert.equal(view.api.writes.length, previous + 1, 'Explicit newly reviewed command remains available after authoritative no-effect proof');
+        } finally { view.unmount(); view.store.clear(); locale.value = 'ar'; restore(); }
+    });
 });

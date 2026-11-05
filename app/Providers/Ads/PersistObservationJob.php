@@ -6,7 +6,6 @@ use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
 use App\Security\SessionAuthority;
 use DateTimeImmutable;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -30,6 +29,7 @@ final class PersistObservationJob implements ShouldBeEncrypted, ShouldQueue
         private int $actorId,
         private int $actorGeneration,
         #[\SensitiveParameter] private string $sessionId,
+        /* Serialized field retained for existing queued organizational work; holds the exact native owner public ID. */
         private string $workspacePublicId,
         private ObservationBatch $batch,
         private string $stream,
@@ -52,6 +52,7 @@ final class PersistObservationJob implements ShouldBeEncrypted, ShouldQueue
             throw new LogicException('Provider work must be captured inside its authorized Workspace transaction.');
         }
         $s = $batch->scope;
+        app(ProviderRequestGuard::class)->requireCustody($request, $s, 'provider.read');
         DB::scalar('SELECT builderad_provider_credential(?, ?, ?::uuid, ?, ?, ?, ?)', [
             $s->workspaceId, SessionAuthority::sessionKey($request), $s->sourceId, $s->provider->value,
             $s->accountId, $s->operation, $s->purpose]);
@@ -63,7 +64,7 @@ final class PersistObservationJob implements ShouldBeEncrypted, ShouldQueue
         }
 
         return new self($request->user()->getAuthIdentifier(), (int) $request->session()->get('a001_generation', 0),
-            $request->session()->getId(), DB::table('organization_workspaces')->where('id', $s->workspaceId)->value('public_id'),
+            $request->session()->getId(), NativeSourceQueueContext::capture($request, $s),
             $batch, $stream, $command, $generation, $accessVersion, $provenance, $progress?->envelope(),
             new DateTimeImmutable('+5 minutes'));
     }
@@ -89,7 +90,7 @@ final class PersistObservationJob implements ShouldBeEncrypted, ShouldQueue
             throw new ReadBudgetExhausted('deadline_exhausted');
         }
         $actor = User::findOrFail($this->actorId);
-        $request = Request::create('/workspaces/'.$this->workspacePublicId);
+        $request = Request::create(($this->batch->scope->businessId === null ? '/workspaces/' : '/businesses/').$this->workspacePublicId);
         $request->setUserResolver(fn () => $actor);
         $session = new Store('bb2-worker', new ArraySessionHandler(120));
         $session->setId($this->sessionId);
@@ -102,11 +103,7 @@ final class PersistObservationJob implements ShouldBeEncrypted, ShouldQueue
         // Background acceptance must not touch/extend the human session's idle lifetime.
         DB::transaction(function () use ($request, $journal, $principals, $actor): void {
             $principals->activate($actor);
-            DB::selectOne('SELECT builderad_select_workspace_context(?)', [$this->batch->scope->workspaceId]);
-            if ((int) DB::table('principal_lifecycles')->where('user_id', $this->actorId)->value('generation') !== $this->actorGeneration
-                || DB::table('organization_workspaces')->where('id', $this->batch->scope->workspaceId)->value('public_id') !== $this->workspacePublicId) {
-                throw new AuthorizationException('Queued provider authority changed.');
-            }
+            NativeSourceQueueContext::restore($request, $this->batch->scope, $this->workspacePublicId, $this->actorGeneration);
             $progress = $this->nativeProgress === null ? null : new NativeProgress(
                 $this->nativeProgress['kind'], $this->nativeProgress['basis'], $this->nativeProgress['payload']);
             $journal->accept($request, $this->batch, $this->stream, $this->command, $this->generation,

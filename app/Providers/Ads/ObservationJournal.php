@@ -22,10 +22,13 @@ final class ObservationJournal
         if ($scope->operation !== 'report.read' || ($generation !== null && $generation < 1) || $limit < 1 || $limit > 200) {
             throw new InvalidArgumentException('A bounded advertising report generation is required.');
         }
-        $authorize = static fn () => DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [
-            $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId,
-            $scope->accountId, $scope->operation, $scope->purpose,
-        ]);
+        $authorize = static function () use ($request, $scope): void {
+            app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'source.read');
+            DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [
+                $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId,
+                $scope->accountId, $scope->operation, $scope->purpose,
+            ]);
+        };
         $authorize();
         // One read point pins the pointer, immutable run and bounded membership together, including entryless runs.
         $record = DB::selectOne(<<<'SQL'
@@ -33,7 +36,7 @@ final class ObservationJournal
                    r.generation, r.coverage, r.failure, r.recorded_at, r.provenance::text,
                    coalesce(e.entries, '[]'::jsonb)::text AS entries
             FROM source_registry sr
-            LEFT JOIN provider_observation_streams s ON s.workspace_id=sr.workspace_id AND s.source_id=sr.id
+            LEFT JOIN provider_observation_streams s ON s.workspace_id IS NOT DISTINCT FROM sr.workspace_id AND s.source_id=sr.id
                 AND s.provider=? AND s.resource=? AND s.operation=? AND s.purpose=? AND s.stream=?
             LEFT JOIN provider_observation_runs r ON r.namespace=s.namespace AND r.generation=coalesce(?::bigint,s.generation)
             LEFT JOIN LATERAL (
@@ -42,7 +45,7 @@ final class ObservationJournal
                       FROM provider_observation_entries WHERE namespace=r.namespace AND generation=r.generation
                       ORDER BY identity LIMIT ?) bounded
             ) e ON true
-            WHERE sr.workspace_id=? AND sr.id=?::uuid AND sr.namespace='ad_account'
+            WHERE sr.workspace_id IS NOT DISTINCT FROM ?::bigint AND sr.id=?::uuid AND sr.namespace='ad_account'
             SQL, [$scope->provider->value, $scope->accountId, $scope->operation, $scope->purpose, $stream,
             $generation, $limit + 1, $scope->workspaceId, $scope->sourceId]);
         if ($record === null || $record->family !== $scope->provider->value || $record->declared_external_id !== $scope->accountId) {
@@ -78,6 +81,7 @@ final class ObservationJournal
                 throw new InvalidArgumentException('Read provenance is required even for an empty report.');
             }
         }
+        app(ProviderRequestGuard::class)->requireCustody($request, $batch->scope, 'provider.read');
         $envelope = $progress === null ? null : json_encode(['scope' => $batch->scope->jsonSerialize(),
             'stream' => $stream, 'access_version' => $accessVersion, 'native' => $progress->envelope()], JSON_THROW_ON_ERROR);
         $payload = ['coverage' => $batch->coverage, 'failure' => $batch->failure, 'provenance' => $readProvenance,
@@ -98,6 +102,7 @@ final class ObservationJournal
     {
         $this->requireTransaction();
         $this->validateStream($stream);
+        app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'provider.read');
         $cipher = DB::scalar('SELECT builderad_observation_progress(?, ?, ?::uuid, ?, ?, ?, ?, ?, ?)', [
             $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->provider->value,
             $scope->accountId, $scope->operation, $scope->purpose, $stream, $accessVersion]);
@@ -125,6 +130,7 @@ final class ObservationJournal
         if ($limit < 1 || $limit > 200) {
             throw new InvalidArgumentException('Bounded history projection is required.');
         }
+        app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'source.read');
         DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [
             $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId,
             $scope->accountId, $scope->operation, $scope->purpose]);

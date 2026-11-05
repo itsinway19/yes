@@ -3,8 +3,17 @@
 namespace Tests\Feature;
 
 use App\Foundation\Tenancy\PrincipalContext;
+use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\User;
+use App\Providers\Ads\ObservationBatch;
+use App\Providers\Ads\ObservationJournal;
+use App\Providers\Ads\Provider;
+use App\Providers\Ads\ProviderAccessStore;
+use App\Providers\Ads\ProviderCredentials;
+use App\Providers\Ads\ProviderScope;
+use App\Sources\EffectiveCapability;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -19,6 +28,123 @@ final class FinalSchemaCompositionTest extends TestCase
 {
     use MarketKnowledgeFixture;
     use NativeMaterialFixture;
+
+    public function test_populated630_custody_upgrade_preserves_old_ciphertext_observations_receipts_and_market_authority(): void
+    {
+        $this->usePersistentTestSessions();
+        $reset = app(DisposableDatabaseReset::class);
+        $reset->clear();
+        try {
+            $this->installThrough630();
+            $native = $this->original(adoptViaCommand: true);
+            $nativeResult = $this->nativeRead($native)->assertOk()->json();
+            $legacy = $this->legacyProviderFixture($native);
+            $shared = $this->publishedKnowledge();
+            $dependency = $this->assertNativeDependencyDigest($native);
+            $owner = DB::connection('pgsql_migrations');
+            $tables = ['source_registry', 'source_capabilities', 'source_command_receipts', 'source_versions', 'source_audit_obligations',
+                'source_audit_delivery', 'security_source_audit_custody', 'security_action_grants', 'authority_qualification_receipts',
+                'business_command_receipts', 'provider_access', 'provider_access_receipts', 'provider_access_events',
+                'provider_observation_streams', 'provider_observation_runs', 'provider_observation_entries', 'market_evidence_revisions', 'material_lineage_manifests'];
+            $before = [];
+            foreach ($tables as $table) {
+                $before[$table] = json_decode($owner->scalar("SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]')::text FROM {$table} r"), true, flags: JSON_THROW_ON_ERROR);
+            }
+            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
+            foreach ($before as $table => $rows) {
+                $after = json_decode($owner->scalar("SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]')::text FROM {$table} r"), true, flags: JSON_THROW_ON_ERROR);
+                // The new nullable registry column is metadata, never a rewrite of old custody.
+                if ($table === 'source_registry') {
+                    foreach ($after as &$row) {
+                        $this->assertNull($row['business_id']);
+                        unset($row['business_id']);
+                    }
+                    unset($row);
+                }
+                $this->assertSame($rows, $after, $table.' historical rows survive630→640 unchanged');
+            }
+            $this->assertSame($dependency, $this->assertNativeDependencyDigest($native));
+            $this->assertFinalBehavior($native, $nativeResult, $shared);
+            $this->actingAs($native['user']);
+            $legacy['within'](function (Request $request) use ($legacy): void {
+                $this->assertSame('synthetic630-secret', app(ProviderAccessStore::class)->credentials($request, $legacy['scope'])->value('access_token'));
+                $this->assertSame($legacy['receipt'], app(ProviderAccessStore::class)->store($request, $legacy['scope'], $legacy['command'], 0,
+                    new ProviderCredentials(['access_token' => 'synthetic630-secret']), null, 'SYNTHETIC_AUTHORIZED', $legacy['verification']));
+                $this->assertSame($legacy['snapshot'], app(ObservationJournal::class)->snapshot($request, $legacy['scope'], 'synthetic630-history'));
+                $this->assertSame('REVOKED', app(ProviderAccessStore::class)->revoke($request, $legacy['scope'], (string) Str::uuid(), 1)['local_state']);
+            });
+            $this->assertFinalFunctionOwners();
+        } finally {
+            DB::disconnect('pgsql');
+            $reset->install();
+        }
+    }
+
+    public function test_custody_upgrade_rejects_unknown630_catalog_drift_before_any_schema_or_history_mutation(): void
+    {
+        $reset = app(DisposableDatabaseReset::class);
+        $reset->clear();
+        try {
+            $this->installThrough630();
+            $owner = DB::connection('pgsql_migrations');
+            $owner->unprepared('CREATE OR REPLACE FUNCTION public.builderad_source_registration_available(p_workspace bigint,p_source uuid,p_resource text,p_operation text,p_purpose text) RETURNS boolean LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=public,pg_temp AS $$ SELECT false $$');
+            try {
+                Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]);
+                $this->fail('An unknown baseline was silently resealed.');
+            } catch (QueryException $error) {
+                $this->assertSame('42501', $error->getCode());
+                $this->assertStringContainsString('BUSINESS_SOURCE_CUSTODY_BASELINE_REQUIRED', $error->getMessage());
+            }
+            $this->assertFalse($owner->getSchemaBuilder()->hasColumn('source_registry', 'business_id'));
+            $this->assertFalse($owner->table('migrations')->where('migration', '0001_01_01_000640_add_business_native_source_custody')->exists());
+        } finally {
+            DB::disconnect('pgsql');
+            $reset->install();
+        }
+    }
+
+    private function installThrough630(): void
+    {
+        $paths = array_values(array_filter(glob(database_path('migrations/*.php')),
+            fn ($path) => strcmp(basename($path), '0001_01_01_000640_add_business_native_source_custody.php') < 0));
+        $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $paths, '--realpath' => true, '--force' => true]));
+    }
+
+    /** Synthetic legacy custody, exercising the actual original Source/provider writers. */
+    private function legacyProviderFixture(array $native): array
+    {
+        $this->actingAs($native['user']);
+        $owner = DB::connection('pgsql_migrations');
+        $workspace = $owner->table('workspaces')->sole();
+        $scope = new ProviderScope($workspace->id, (string) Str::uuid7(), Provider::Meta, 'synthetic630-account', 'report.read', 'advertising_analysis');
+        foreach (['source.register', 'source.read', 'source.manage', 'source.audit.recover', 'provider.connect', 'provider.read', 'provider.revoke'] as $action) {
+            $owner->table('security_action_grants')->insert(['subject_user_id' => $native['user']->id, 'granted_by' => $native['user']->id,
+                'source' => 'source_owner_request', 'scope_kind' => 'source', 'workspace_id' => $workspace->id, 'source_target_id' => $scope->sourceId,
+                'source_resource' => $scope->accountId, 'source_operation' => $scope->operation, 'source_purpose' => $scope->purpose,
+                'action' => $action, 'subject_generation' => 1, 'status' => 'active', 'reason' => 'SYNTHETIC630 fixture', 'created_at' => now(), 'updated_at' => now()]);
+        }
+        $this->postJson('/workspaces/'.$workspace->public_id.'/sources', ['source_id' => $scope->sourceId, 'command_id' => (string) Str::uuid(),
+            'effect' => 'register', 'family' => 'meta', 'namespace' => 'ad_account', 'external_id' => $scope->accountId, 'label' => 'Synthetic630 source',
+            'resource' => $scope->accountId, 'operation' => $scope->operation, 'purpose' => $scope->purpose, 'expected_version' => 0, 'reason' => 'synthetic630_registration'])->assertOk();
+        $within = function (callable $callback) use ($native, $workspace): mixed {
+            $request = Request::create('/workspaces/'.$workspace->public_id);
+            $request->setUserResolver(fn () => $native['user']);
+            $request->setLaravelSession(app('session')->driver());
+
+            return app(WorkspaceContext::class)->run($native['user'], $workspace->public_id, fn () => $callback($request), $request);
+        };
+        $verification = array_fill_keys(EffectiveCapability::AXES, ['state' => 'VERIFIED', 'provenance' => 'synthetic630:verifier',
+            'verified_at' => '2026-01-01T00:00:00Z', 'valid_until' => '2099-01-01T00:00:00Z']);
+        $command = (string) Str::uuid();
+        $receipt = $within(fn (Request $request) => app(ProviderAccessStore::class)->store($request, $scope, $command, 0,
+            new ProviderCredentials(['access_token' => 'synthetic630-secret']), null, 'SYNTHETIC_AUTHORIZED', $verification));
+        $within(fn (Request $request) => app(ObservationJournal::class)->accept($request, new ObservationBatch($scope, [], 'COMPLETE', null, null),
+            'synthetic630-history', (string) Str::uuid(), 0, 1,
+            ['api_version' => 'synthetic630', 'report' => 'campaign-period', 'documentation_basis' => 'synthetic630:contract']));
+        $snapshot = $within(fn (Request $request) => app(ObservationJournal::class)->snapshot($request, $scope, 'synthetic630-history'));
+
+        return compact('scope', 'within', 'verification', 'command', 'receipt', 'snapshot');
+    }
 
     public function test_fresh_final_schema_composes_business_native_source_market_staff_and_purpose_authority(): void
     {
@@ -69,7 +195,8 @@ final class FinalSchemaCompositionTest extends TestCase
                 $before[$table] = $owner->scalar("SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]')::text FROM {$table} r");
             }
 
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
+            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations',
+                '--path' => database_path('migrations/'.$repair.'.php'), '--realpath' => true, '--force' => true]));
             $this->assertSame([$repair], array_values(array_diff($owner->table('migrations')->pluck('migration')->all(), $installed)), 'Only additive630 may repair the initialized620 catalog');
             foreach ($before as $table => $rows) {
                 $this->assertSame($rows, $owner->scalar("SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]')::text FROM {$table} r"), $table.' historical rows must survive final-schema installation unchanged');
@@ -283,15 +410,44 @@ final class FinalSchemaCompositionTest extends TestCase
             ['builderad_private', 'guard_effect', 'purpose_retirement'],
             ['builderad_private', 'require_scope', 'scope_authority'],
             ['public', 'builderad_v2_business_purpose_snapshot', 'purpose_snapshot'],
+            ['builderad_private', 'require_native_source_grant', 'source_rights'],
+            ['builderad_private', 'source_grant_issue', 'source_adoption'],
+            ['builderad_private', 'source_fact_command', 'source_facts'],
+            ['builderad_private', 'native_source_read_lock', 'surfaces'],
+            ['public', 'builderad_v2_source_choices', 'surfaces'],
+            ['public', 'builderad_v2_source_surface', 'surfaces'],
+            ['public', 'builderad_source_actor', '../business_native_sources/authority'],
+            ['public', 'builderad_source_has', '../business_native_sources/authority'],
+            ['public', 'builderad_source_require', '../business_native_sources/authority'],
+            ['public', 'builderad_v2_business_source_bootstrap', '../business_native_sources/bootstrap'],
+            ['public', 'builderad_v2_business_source_owner', '../business_native_sources/bootstrap'],
+            ['public', 'builderad_source_record_delivery', '../business_native_sources/audit'],
+            ['public', 'builderad_source_begin_recovery', '../business_native_sources/audit'],
+            ['public', 'builderad_provider_require', '../provider_runtime/provider_access'],
+            ['public', 'builderad_provider_access_command', '../provider_runtime/provider_access'],
+            ['public', 'builderad_provider_credential', '../provider_runtime/snapchat_renewal_failures'],
+            ['public', 'builderad_observation_namespace', '../provider_runtime/provider_observation'],
+            ['public', 'builderad_observation_accept', '../provider_runtime/provider_observation'],
+            ['public', 'builderad_observation_progress', '../provider_runtime/provider_observation'],
+            ['public', 'builderad_meta_attempt_begin', '../provider_runtime/meta_read_attempts'],
+            ['public', 'builderad_google_attempt_begin', '../provider_runtime/google_read_attempts'],
+            ['public', 'builderad_tiktok_attempt_begin', '../provider_runtime/tiktok_read_attempts'],
+            ['public', 'builderad_snapchat_attempt_begin', '../provider_runtime/snapchat_read_attempts'],
+            ['public', 'builderad_snapchat_renewal_failure', '../provider_runtime/snapchat_renewal_failures'],
+            ['public', 'builderad_x_attempt_begin', '../provider_runtime/x_read_attempts'],
         ] as [$schema, $function, $owner]) {
             $source = file_get_contents(database_path('sql/business_scope/'.$owner.'.sql'));
             $name = ($schema === 'public' ? '(?:public\.)?' : preg_quote($schema, '/').'\.').preg_quote($function, '/');
             $pattern = '/CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+'.$name.'\s*\([\s\S]*?\bAS\s+\$\$(.*?)\$\$;/si';
             $this->assertSame(1, preg_match($pattern, $source, $match), 'Exactly one authoritative literal function body must be available for '.$function);
-            $installed = DB::connection('pgsql_migrations')->select('SELECT p.prosrc FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname=?', [$schema, $function]);
+            $installed = DB::connection('pgsql_migrations')->select('SELECT p.prosrc,pg_get_userbyid(p.proowner) AS owner FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=? AND p.proname=?', [$schema, $function]);
             $this->assertCount(1, $installed, 'One final installed definition for '.$function);
             $normalize = fn ($body) => trim(str_replace("\r\n", "\n", $body));
             $this->assertSame(hash('sha256', $normalize($match[1])), hash('sha256', $normalize($installed[0]->prosrc)), 'Final '.$function.' must retain its canonical owner after every migration');
+            $this->assertSame($schema === 'builderad_private' || str_starts_with($function, 'builderad_v2_') ? 'builderad_scope_executor' : 'builderad_owner', $installed[0]->owner, 'Actual database role for '.$function);
         }
+        $owner = DB::connection('pgsql_migrations');
+        $this->assertFalse((bool) $owner->scalar("SELECT has_schema_privilege('builderad_scope_executor','public','CREATE') OR has_schema_privilege('builderad_scope_executor','builderad_private','CREATE') OR has_table_privilege('builderad_scope_executor','public.source_audit_delivery','TRIGGER')"), 'Installation-only privileges are closed');
+        $this->assertTrue((bool) $this->executor(fn ($db) => $db->scalar('SELECT builderad_private.legacy_catalog_digest()=builderad_private.legacy_installation_digest()')), 'The final catalog matches its installation seal');
     }
 }

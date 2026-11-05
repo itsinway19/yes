@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Foundation\Tenancy\WorkspaceContext;
-use App\Models\Workspace;
+use App\Providers\Ads\NativeSourceContext;
+use App\Providers\Ads\NativeSourceOwner;
 use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderAccessStore;
 use App\Providers\Ads\ProviderRequestGuard;
-use App\Providers\Ads\ProviderScope;
 use App\Providers\Ads\ReportWindow;
 use App\Providers\Ads\X\XAccessStatus;
 use App\Providers\Ads\X\XCampaignChoices;
@@ -31,21 +30,21 @@ use LogicException;
 /** Explicit bounded X report requests; no implicit grants, secrets or inline native HTTP. */
 final class XReportController extends Controller
 {
-    public function campaigns(Request $request, string $workspace, string $source, WorkspaceContext $context, Factory $http): JsonResponse
+    public function campaigns(Request $request, string $workspace, string $source, NativeSourceContext $context, Factory $http): JsonResponse
     {
         if (array_diff(array_keys($request->query()), ['continuation'])) {
             throw ValidationException::withMessages(['campaigns' => 'Unknown campaign discovery fields.']);
         }
         $input = $request->validate(['continuation' => ['sometimes', 'string', 'regex:/^[A-Za-z0-9_-]{43}$/D']]);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $source, $http, $input): array {
-            DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->id, SessionAuthority::sessionKey($request)]);
-            $id = DB::table('source_registry')->where('workspace_id', $w->id)->where('id', $source)->where('family', 'x')
+        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $source, $http, $input): array {
+            DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->workspaceId, SessionAuthority::sessionKey($request)]);
+            $id = $w->sources()->where('id', $source)->where('family', 'x')
                 ->where('namespace', 'ad_account')->value('declared_external_id');
             if ($id === null) {
                 abort(404);
             }
-            $scope = new ProviderScope($w->id, $source, Provider::X, $id, 'report.read', 'advertising_analysis');
+            $scope = $w->scope($source, Provider::X, $id, 'report.read', 'advertising_analysis');
             $status = (new XAccessStatus)->snapshot($request, $scope);
 
             try {
@@ -59,13 +58,13 @@ final class XReportController extends Controller
         }, $request));
     }
 
-    public function status(Request $request, string $workspace, string $source, WorkspaceContext $context): JsonResponse
+    public function status(Request $request, string $workspace, string $source, NativeSourceContext $context): JsonResponse
     {
         $input = $this->input($request);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $source, $input): array {
+        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $source, $input): array {
             [$scope, $report, $stream] = $this->reportContext($request, $w, $source, $input);
-            $record = DB::table('provider_observation_streams')->where('workspace_id', $w->id)->where('source_id', $source)
+            $record = DB::table('provider_observation_streams')->where('workspace_id', $w->workspaceId)->where('source_id', $source)
                 ->where('provider', 'x')->where('resource', $scope->accountId)->where('operation', 'report.read')
                 ->where('purpose', 'advertising_analysis')->where('stream', $stream)->first(['namespace', 'generation']);
             $run = $record === null ? null : DB::table('provider_observation_runs')->where('namespace', $record->namespace)
@@ -77,11 +76,11 @@ final class XReportController extends Controller
         }, $request));
     }
 
-    public function store(Request $request, string $workspace, string $source, WorkspaceContext $context): JsonResponse
+    public function store(Request $request, string $workspace, string $source, NativeSourceContext $context): JsonResponse
     {
         $input = $this->input($request, true);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $source, $input): array {
+        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $source, $input): array {
             [$scope, $report, $stream] = $this->reportContext($request, $w, $source, $input, (int) $input['expected_version']);
             try {
                 XReadSettings::configured();
@@ -97,15 +96,15 @@ final class XReportController extends Controller
         }, $request), 202);
     }
 
-    private function reportContext(Request $request, Workspace $workspace, string $source, array $input, ?int $version = null): array
+    private function reportContext(Request $request, NativeSourceOwner $workspace, string $source, array $input, ?int $version = null): array
     {
-        DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$workspace->id, SessionAuthority::sessionKey($request)]);
-        $identity = DB::table('source_registry')->where('workspace_id', $workspace->id)->where('id', $source)
+        DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$workspace->workspaceId, SessionAuthority::sessionKey($request)]);
+        $identity = $workspace->sources()->where('id', $source)
             ->where('family', 'x')->where('namespace', 'ad_account')->first(['declared_external_id']);
         if ($identity === null) {
             abort(404);
         }
-        $scope = new ProviderScope($workspace->id, $source, Provider::X, $identity->declared_external_id, 'report.read', 'advertising_analysis');
+        $scope = $workspace->scope($source, Provider::X, $identity->declared_external_id, 'report.read', 'advertising_analysis');
         $status = (new XAccessStatus)->snapshot($request, $scope);
         (new XAccessStatus)->requireReport($request, $scope);
         app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', $version ?? (int) $status['version']);

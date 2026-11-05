@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Foundation\Tenancy\WorkspaceContext;
-use App\Models\Workspace;
+use App\Providers\Ads\NativeSourceContext;
+use App\Providers\Ads\NativeSourceOwner;
 use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderAccessStore;
 use App\Providers\Ads\ProviderRequestGuard;
@@ -36,17 +36,17 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 /** Explicit fresh-owner connection and selection; discovery alone never creates sources or grants. */
 final class XConnectionController extends Controller
 {
-    public function index(Request $request, string $workspace, WorkspaceContext $context, Factory $http): JsonResponse
+    public function index(Request $request, string $workspace, NativeSourceContext $context, Factory $http): JsonResponse
     {
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $http): array {
-            DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->id, SessionAuthority::sessionKey($request)]);
-            $connections = DB::table('source_registry as s')->join('source_capabilities as c', 'c.source_id', '=', 's.id')
-                ->where('s.workspace_id', $w->id)->where('s.family', 'x')->where('s.namespace', 'ad_account')
+        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $http): array {
+            DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->workspaceId, SessionAuthority::sessionKey($request)]);
+            $connections = $w->sources('s')->join('source_capabilities as c', 'c.source_id', '=', 's.id')
+                ->where('s.family', 'x')->where('s.namespace', 'ad_account')
                 ->where('c.operation', 'report.read')->where('c.purpose', 'advertising_analysis')
                 ->get(['s.id', 's.label', 's.status', 'c.resource'])->map(fn ($s) => [
                     'source_id' => $s->id, 'label' => $s->label, 'declared_account_id' => $s->resource, 'registration' => $s->status,
                     'access' => (new XAccessStatus)->snapshot($request,
-                        new ProviderScope($w->id, $s->id, Provider::X, $s->resource, 'report.read', 'advertising_analysis'))])->all();
+                        $w->scope($s->id, Provider::X, $s->resource, 'report.read', 'advertising_analysis'))])->all();
             try {
                 [$coordinator, , $flows] = $this->configured($http);
             } catch (HttpException $error) {
@@ -56,18 +56,17 @@ final class XConnectionController extends Controller
 
                 return ['connections' => $connections, 'availability' => 'CONFIGURATION_REQUIRED', 'connect_intent' => null, 'notice' => null];
             }
-            $owner = DB::table('workspace_ownerships')->where('workspace_id', $w->id)
-                ->where('responsible_owner_user_id', $request->user()->id)->exists();
+            $owner = $w->canManage($request);
             $fresh = app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user());
             $intent = null;
             if ($owner && $fresh) {
-                DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->id, SessionAuthority::sessionKey($request)]);
-                $existing = DB::table('source_registry')->where('workspace_id', $w->id)->where('family', 'x')
+                DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->workspaceId, SessionAuthority::sessionKey($request)]);
+                $existing = $w->sources()->where('family', 'x')
                     ->where('namespace', 'developer_app')->where('declared_external_id', config('services.x_ads.consumer_key'))->value('id');
-                $scope = new ProviderScope($w->id, $existing ?? (string) Str::uuid7(), Provider::X,
+                $scope = $w->scope($existing ?? (string) Str::uuid7(), Provider::X,
                     (string) config('services.x_ads.consumer_key'), 'discovery.read', 'advertising_analysis');
                 $intent = $flows->issueConnectIntent($request, $scope, $coordinator->configurationBinding(),
-                    ['workspace' => $w->public_id, 'command' => (string) Str::uuid(), 'register' => $existing === null]);
+                    [...$w->reference(), 'command' => (string) Str::uuid(), 'register' => $existing === null]);
             }
 
             return ['connections' => $connections, 'availability' => ! $owner ? 'OWNER_REQUIRED' : (! $fresh ? 'FRESH_AUTHENTICATION_REQUIRED' : 'CONNECT_AVAILABLE'),
@@ -76,7 +75,7 @@ final class XConnectionController extends Controller
         }, $request));
     }
 
-    public function connect(Request $request, string $workspace, WorkspaceContext $context, Factory $http): JsonResponse
+    public function connect(Request $request, string $workspace, NativeSourceContext $context, Factory $http): JsonResponse
     {
         if ($request->has('intent') && ($request->has('source_id') || $request->has('expected_version'))) {
             throw ValidationException::withMessages(['connection' => 'Choose one connection request format.']);
@@ -85,12 +84,12 @@ final class XConnectionController extends Controller
             'source_id' => ['required_without:intent', 'uuid'],
             'expected_version' => ['required_without:intent', 'integer', 'min:0']]);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $http, $input): array {
+        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $http, $input): array {
             [$coordinator, , $flows] = $this->configured($http);
             $version = $input['expected_version'] ?? 0;
             if (isset($input['intent'])) {
                 $intent = $flows->loadConnectIntent($request, $coordinator->configurationBinding(), $input['intent']);
-                $this->sameWorkspace($w, $intent);
+                $this->sameOwner($w, $intent);
                 $scope = $intent['scope'];
                 if ($scope->accountId !== config('services.x_ads.consumer_key') || $scope->operation !== 'discovery.read') {
                     abort(403);
@@ -104,7 +103,7 @@ final class XConnectionController extends Controller
         }, $request));
     }
 
-    public function callback(Request $request, WorkspaceContext $context, Factory $http): JsonResponse|RedirectResponse
+    public function callback(Request $request, NativeSourceContext $context, Factory $http): JsonResponse|RedirectResponse
     {
         $callbackInput = $request->attributes->get('bb2.callback_input');
         $request->attributes->remove('bb2.callback_input');
@@ -124,32 +123,30 @@ final class XConnectionController extends Controller
             || (! $cancelled && (! is_string($code) || $code === '' || strlen($code) > 8192 || preg_match('/[\x00-\x20\x7f]/', $code)))) {
             abort(400, 'Invalid X callback.');
         }
-        $returnWorkspace = null;
-        $response = $this->respond(function () use ($request, $context, $http, $code, $state, $cancelled, &$returnWorkspace): array {
+        $returnOwner = null;
+        $response = $this->respond(function () use ($request, $context, $http, $code, $state, $cancelled, &$returnOwner): array {
             [$coordinator, $states, $flows] = $this->configured($http);
             $route = $states->locate($request, $coordinator->configurationBinding(), $state);
-            $returnWorkspace = $route['workspace'];
+            $returnOwner = $route;
 
-            return $context->run($request->user(), $route['workspace'], function (Workspace $w) use ($request, $coordinator, $states, $flows, $route, $code, $state, $cancelled): array {
-                if ($route['scope']->workspaceId !== $w->id) {
-                    abort(403);
-                }
+            return $context->runForReference($request, $route, function (NativeSourceOwner $w) use ($request, $coordinator, $states, $flows, $route, $code, $state, $cancelled): array {
+                $w->assertBound($route);
                 if ($cancelled) {
                     $states->consume($request, $route['scope'], $route['access_version'], $coordinator->configurationBinding(), $state);
 
-                    return ['workspace' => $w->public_id, 'status' => 'AUTHORIZATION_NOT_COMPLETED'];
+                    return [...$w->reference(), 'status' => 'AUTHORIZATION_NOT_COMPLETED'];
                 }
                 $pending = $coordinator->callback($request, $route['scope'], $route['access_version'], $state, $code);
                 $handle = $flows->issue($request, $route['scope'], $route['access_version'], $coordinator->configurationBinding(), 'discovery',
-                    ['workspace' => $w->public_id, 'pending' => $pending, 'continuation' => null]);
+                    [...$w->reference(), 'pending' => $pending, 'continuation' => null]);
 
-                return ['workspace' => $w->public_id, 'status' => 'ACCOUNT_SELECTION_REQUIRED', 'discovery_handle' => $handle];
-            }, $request);
+                return [...$w->reference(), 'status' => 'ACCOUNT_SELECTION_REQUIRED', 'discovery_handle' => $handle];
+            });
         });
-        if (! $request->expectsJson() && $response->getStatusCode() === 502 && $returnWorkspace !== null) {
+        if (! $request->expectsJson() && $response->getStatusCode() === 502 && $returnOwner !== null) {
             $status = 'PROVIDER_ACTION_REQUIRED';
 
-            return redirect()->to(route('workspaces.show', $returnWorkspace).'#x-result='.$status)
+            return redirect()->to(NativeSourceOwner::landingUrl($returnOwner).'#x-result='.$status)
                 ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
         }
         if ($request->expectsJson() || $response->getStatusCode() !== 200) {
@@ -158,21 +155,21 @@ final class XConnectionController extends Controller
         $data = $response->getData(true);
         $fragment = isset($data['discovery_handle']) ? 'x-flow='.$data['discovery_handle'] : 'x-result=AUTHORIZATION_NOT_COMPLETED';
 
-        return redirect()->to(route('workspaces.show', $data['workspace']).'#'.$fragment)
+        return redirect()->to(NativeSourceOwner::landingUrl($data).'#'.$fragment)
             ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
     }
 
-    public function discovery(Request $request, string $workspace, string $flow, WorkspaceContext $context, Factory $http): JsonResponse
+    public function discovery(Request $request, string $workspace, string $flow, NativeSourceContext $context, Factory $http): JsonResponse
     {
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $flow, $http): array {
+        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $flow, $http): array {
             [$coordinator, , $flows] = $this->configured($http);
             $record = $flows->load($request, $coordinator->configurationBinding(), 'discovery', $flow);
-            $this->sameWorkspace($w, $record);
+            $this->sameOwner($w, $record);
             $page = $coordinator->discoverPage($request, $record['scope'], $record['access_version'],
                 $record['data']['pending'], $record['data']['continuation']);
             $choices = $this->choices($request, $w, $record, $coordinator, $flows, $page['accounts']);
             $next = $page['continuation'] === null ? null : $flows->issue($request, $record['scope'], $record['access_version'],
-                $coordinator->configurationBinding(), 'discovery', ['workspace' => $w->public_id, 'pending' => $record['data']['pending'],
+                $coordinator->configurationBinding(), 'discovery', [...$w->reference(), 'pending' => $record['data']['pending'],
                     'continuation' => $page['continuation']]);
 
             return ['coverage' => $page['coverage'], 'accounts' => $choices, 'continuation' => $next,
@@ -180,16 +177,16 @@ final class XConnectionController extends Controller
         }, $request));
     }
 
-    public function select(Request $request, string $workspace, WorkspaceContext $context, Factory $http): JsonResponse
+    public function select(Request $request, string $workspace, NativeSourceContext $context, Factory $http): JsonResponse
     {
         $input = $this->input($request, ['selection' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{43}$/D']]);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $input, $http): array {
+        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $input, $http): array {
             [$coordinator, , $flows] = $this->configured($http);
             $record = $flows->load($request, $coordinator->configurationBinding(), 'selection', $input['selection']);
-            $this->sameWorkspace($w, $record);
+            $this->sameOwner($w, $record);
             $d = $record['data'];
-            $candidate = new ProviderScope($w->id, $d['source_id'], Provider::X, $d['account_id'], 'report.read', 'advertising_analysis');
+            $candidate = $w->scope($d['source_id'], Provider::X, $d['account_id'], 'report.read', 'advertising_analysis');
             $this->authorizeSource($request, $w, $candidate, $d['register'], $d['command'], 'ad_account');
             $selected = $this->declared($request, $w, $d['source_id'], 'ad_account', 'report.read');
             if ($selected->accountId !== $d['account_id']) {
@@ -203,16 +200,18 @@ final class XConnectionController extends Controller
         }, $request));
     }
 
-    public function disconnect(Request $request, string $workspace, string $source, WorkspaceContext $context): JsonResponse
+    public function disconnect(Request $request, string $workspace, string $source, NativeSourceContext $context): JsonResponse
     {
         $input = $this->input($request, ['command_id' => ['required', 'uuid'], 'expected_version' => ['required', 'integer', 'min:1']]);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $source, $input): array {
+        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $source, $input): array {
             // Local removal must remain available without working OAuth configuration or provider transport.
             $scope = $this->declared($request, $w, $source, 'ad_account', 'report.read');
-            app(GrantAuthority::class)->requestSourceGrant($request, $w->id, ['source_id' => $scope->sourceId,
-                'resource' => $scope->accountId, 'operation' => $scope->operation, 'purpose' => $scope->purpose,
-                'action' => 'provider.revoke', 'decision' => 'authorize', 'expires_at' => null, 'reason' => 'explicit_x_local_disconnect']);
+            if ($w->businessId === null) {
+                app(GrantAuthority::class)->requestSourceGrant($request, $w->workspaceId, ['source_id' => $scope->sourceId,
+                    'resource' => $scope->accountId, 'operation' => $scope->operation, 'purpose' => $scope->purpose,
+                    'action' => 'provider.revoke', 'decision' => 'authorize', 'expires_at' => null, 'reason' => 'explicit_x_local_disconnect']);
+            }
             $receipt = app(ProviderAccessStore::class)->revoke($request, $scope, $input['command_id'], (int) $input['expected_version']);
 
             return ['source_id' => $source, 'receipt' => $receipt, 'access' => (new XAccessStatus)->snapshot($request, $scope),
@@ -220,29 +219,29 @@ final class XConnectionController extends Controller
         }, $request));
     }
 
-    private function choices(Request $request, Workspace $w, array $record, XAuthorizationCoordinator $coordinator,
+    private function choices(Request $request, NativeSourceOwner $w, array $record, XAuthorizationCoordinator $coordinator,
         XFlowState $flows, array $accounts): array
     {
         $choices = [];
         foreach ($accounts as $account) {
             // RLS-visible existing declared sources only; native discovery cannot manufacture access.
-            $targets = DB::table('source_registry as s')->join('source_capabilities as c', 'c.source_id', '=', 's.id')
-                ->where('s.workspace_id', $w->id)->where('s.family', 'x')->where('s.namespace', 'ad_account')
+            $targets = $w->sources('s')->join('source_capabilities as c', 'c.source_id', '=', 's.id')
+                ->where('s.family', 'x')->where('s.namespace', 'ad_account')
                 ->where('s.declared_external_id', $account['id'])->where('c.resource', $account['id'])
                 ->where('c.operation', 'report.read')->where('c.purpose', 'advertising_analysis')->get(['s.id', 's.label']);
             foreach ($targets as $target) {
-                $version = (int) (DB::table('provider_access')->where('workspace_id', $w->id)->where('source_id', $target->id)
+                $version = (int) (DB::table('provider_access')->where('workspace_id', $w->workspaceId)->where('source_id', $target->id)
                     ->where('provider', 'x')->where('resource', $account['id'])->where('operation', 'report.read')
                     ->where('purpose', 'advertising_analysis')->value('version') ?? 0);
                 $handle = $flows->issue($request, $record['scope'], $record['access_version'], $coordinator->configurationBinding(), 'selection',
-                    ['workspace' => $w->public_id, 'pending' => $record['data']['pending'], 'source_id' => $target->id,
+                    [...$w->reference(), 'pending' => $record['data']['pending'], 'source_id' => $target->id,
                         'account_id' => $account['id'], 'access_version' => $version, 'command' => (string) Str::uuid(), 'register' => false]);
                 $choices[] = ['account_id' => $account['id'], 'label' => $account['label'],
                     'existing_source_label' => $target->label, 'selection_handle' => $handle];
             }
             if ($targets->isEmpty()) {
                 $handle = $flows->issue($request, $record['scope'], $record['access_version'], $coordinator->configurationBinding(), 'selection',
-                    ['workspace' => $w->public_id, 'pending' => $record['data']['pending'], 'source_id' => (string) Str::uuid7(),
+                    [...$w->reference(), 'pending' => $record['data']['pending'], 'source_id' => (string) Str::uuid7(),
                         'account_id' => $account['id'], 'access_version' => 0, 'command' => (string) Str::uuid(), 'register' => true]);
                 $choices[] = ['account_id' => $account['id'], 'label' => $account['label'], 'existing_source_label' => null, 'selection_handle' => $handle];
             }
@@ -251,18 +250,23 @@ final class XConnectionController extends Controller
         return $choices;
     }
 
-    private function authorizeSource(Request $request, Workspace $workspace, ProviderScope $scope, bool $register,
+    private function authorizeSource(Request $request, NativeSourceOwner $workspace, ProviderScope $scope, bool $register,
         string $command, string $namespace): void
     {
-        DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$workspace->id, SessionAuthority::sessionKey($request)]);
-        $exists = DB::table('source_registry')->where('workspace_id', $workspace->id)->where('id', $scope->sourceId)
+        if ($workspace->businessId !== null) {
+            $workspace->bootstrap($request, $scope, $command, $namespace, 'X '.$scope->accountId);
+
+            return;
+        }
+        DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$workspace->workspaceId, SessionAuthority::sessionKey($request)]);
+        $exists = $workspace->sources()->where('id', $scope->sourceId)
             ->where('family', 'x')->where('namespace', $namespace)->where('declared_external_id', $scope->accountId)->exists();
         if ($register && ! $exists) {
             $bootstrap = app(XSourceBootstrap::class);
             if ($namespace === 'developer_app') {
-                $bootstrap->requestConnection($request, $workspace, $scope->accountId, $scope->sourceId, $command);
+                $bootstrap->requestConnection($request, $workspace->workspace(), $scope->accountId, $scope->sourceId, $command);
             } else {
-                $bootstrap->requestAccount($request, $workspace, $scope, $command);
+                $bootstrap->requestAccount($request, $workspace->workspace(), $scope, $command);
             }
 
             return;
@@ -272,7 +276,7 @@ final class XConnectionController extends Controller
             $actions[] = 'provider.read';
         }
         foreach ($actions as $action) {
-            app(GrantAuthority::class)->requestSourceGrant($request, $workspace->id, ['source_id' => $scope->sourceId,
+            app(GrantAuthority::class)->requestSourceGrant($request, $workspace->workspaceId, ['source_id' => $scope->sourceId,
                 'resource' => $scope->accountId, 'operation' => $scope->operation, 'purpose' => $scope->purpose,
                 'action' => $action, 'decision' => 'authorize', 'expires_at' => null, 'reason' => 'explicit_x_connection']);
         }
@@ -312,23 +316,21 @@ final class XConnectionController extends Controller
         }
     }
 
-    private function declared(Request $request, Workspace $workspace, string $source, string $namespace, string $operation): ProviderScope
+    private function declared(Request $request, NativeSourceOwner $workspace, string $source, string $namespace, string $operation): ProviderScope
     {
-        DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$workspace->id, SessionAuthority::sessionKey($request)]);
-        $identity = DB::table('source_registry')->where('workspace_id', $workspace->id)->where('id', $source)
+        DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$workspace->workspaceId, SessionAuthority::sessionKey($request)]);
+        $identity = $workspace->sources()->where('id', $source)
             ->where('family', 'x')->where('namespace', $namespace)->first();
         if (! $identity) {
             abort(404);
         }
 
-        return new ProviderScope($workspace->id, $source, Provider::X, $identity->declared_external_id, $operation, 'advertising_analysis');
+        return $workspace->scope($source, Provider::X, $identity->declared_external_id, $operation, 'advertising_analysis');
     }
 
-    private function sameWorkspace(Workspace $workspace, array $record): void
+    private function sameOwner(NativeSourceOwner $workspace, array $record): void
     {
-        if ($record['scope']->workspaceId !== $workspace->id || $record['data']['workspace'] !== $workspace->public_id) {
-            abort(403);
-        }
+        $workspace->assertBound($record);
     }
 
     private function input(Request $request, array $rules): array

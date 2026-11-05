@@ -80,7 +80,7 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
         $user = User::factory()->create();
-        $this->actingAs($user)->get('/dashboard')->assertRedirect(route('business-foundation.index-page'));
+        $this->actingAs($user)->get('/dashboard')->assertRedirect(route('business-foundation.index-page', ['entry' => 1]));
         $this->app['auth']->logout();
         $this->flushSession();
         // The reset requester is another browser, not a reload of the old

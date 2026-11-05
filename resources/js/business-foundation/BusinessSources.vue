@@ -2,6 +2,9 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { Link2 } from '@lucide/vue';
+import AdvertisingAccounts from '../sources/AdvertisingAccounts.vue';
+import { pending } from '../sources/commands';
+import { rememberBusinessReturn } from '../sources/businessReturn';
 import { businessSources, type BusinessSources as BusinessSourcesResult, type Surface } from './api';
 import { locale } from '../spa/locale';
 import { owned, stamp } from '../spa/transport';
@@ -16,6 +19,11 @@ let generation = 0;
 const business = computed(() => props.surface.business.business_public_id);
 const access = computed(() => Number(props.surface.authority_selection.requirements.find(item => item.requirement_kind === 'business')?.leaf_grant_id ?? 0));
 const workspaces = computed(() => props.surface.collaboration.relationships.filter(item => item.state === 'active'));
+function rememberReturn(workspace: string) {
+    rememberBusinessReturn({ business: business.value, access: String(access.value), workspace });
+}
+const beforeUnload = (event: BeforeUnloadEvent) => { if (pending.size) { event.preventDefault(); event.returnValue = ''; } };
+window.addEventListener('beforeunload', beforeUnload);
 
 async function load(after?: number) {
     const attempt = ++generation, captured = stamp(), target = business.value;
@@ -38,14 +46,18 @@ watch(() => [props.active, props.surface], () => {
     generation++;
     result.value = undefined;
     if (props.active) void load();
-}, { immediate: true });
-onBeforeUnmount(() => { generation++; });
+}, { immediate: true, flush: 'sync' });
+onBeforeUnmount(() => { generation++; window.removeEventListener('beforeunload', beforeUnload); });
 </script>
 
 <template>
     <section class="business-sources" data-business-source-inventory>
-        <h3>{{ t('مصادر يمكنك إدارتها', 'Sources you can manage') }}</h3>
-        <p class="workspace-intro">{{ t('هذا جرد إداري، وليس قائمة مصادر مسموح للنشاط باستخدام بياناتها. تُدار الاتصالات لدى الجهة المرتبطة؛ استعمال البيانات يحتاج صلاحية مستقلة للغرض والعملية والمورد.', 'This is an administrative inventory, not a list of sources whose data this business may use. Connections belong to the linked organization; data use needs independent purpose, operation and resource rights.') }}</p>
+        <p class="workspace-intro">{{ t('راجع مصادر نشاطك والحسابات المتاحة لك. لكل مصدر اتصاله وصلاحية استعمال بياناته؛ ويمكنك العمل على معلومات النشاط وأسواقه دون ربط مصدر.', 'Review your business sources and available accounts. Each source has its own connection and data-use permission; business details and markets work without connecting a source.') }}</p>
+        <h3>{{ t('الحسابات الإعلانية', 'Advertising accounts') }}</h3>
+        <AdvertisingAccounts :key="business" :business-id="business" :can-manage="true" />
+        <details class="workspace-disclosure" data-business-source-inventory-details>
+        <summary>{{ t('المصادر المشتركة مع جهة أو فريق', 'Sources shared through an organization or team') }}</summary>
+        <p class="workspace-intro">{{ t('المصادر المتاحة لإدارتك. استعمال بياناتها في هذا النشاط يحتاج صلاحية مستقلة.', 'Sources available for you to administer. Using their data in this business needs separate permission.') }}</p>
         <p v-if="loading && !result" role="status">{{ t('جارٍ فحص المصادر المتاحة…', 'Checking available sources…') }}</p>
         <div v-if="unavailable" role="alert" class="workspace-source-status">
             <p>{{ t('تعذر التحقق من المصادر الآن. لا يعني هذا عدم وجودها.', 'Sources could not be checked. This does not mean none exist.') }}</p>
@@ -56,20 +68,21 @@ onBeforeUnmount(() => { generation++; });
                 <li v-for="source in result.sources" :key="`${source.source_id}:${source.resource}:${source.operation}:${source.purpose}`" class="business-source-item">
                     <div><strong>{{ source.label }}</strong><span>{{ source.family }} · {{ source.workspace_slug }}</span></div>
                     <span class="business-source-state">{{ source.status === 'REVOKED' ? t('مصدر مسحوب', 'Source revoked') : t('الاتصال غير متحقق هنا', 'Connection not verified here') }}</span>
-                    <RouterLink :to="`/workspaces/${encodeURIComponent(source.workspace_public_id)}`" class="workspace-button">{{ t('إدارة المصدر', 'Manage source') }}</RouterLink>
+                    <RouterLink :to="`/workspaces/${encodeURIComponent(source.workspace_public_id)}`" class="workspace-button" @click="rememberReturn(source.workspace_public_id)">{{ t('إدارة المصدر', 'Manage source') }}</RouterLink>
                 </li>
             </ul>
             <p v-else data-business-sources-empty>{{ result.next_cursor
                 ? t('لم تظهر مصادر مؤهلة في هذه الصفحة. قد توجد مصادر في الصفحات التالية.', 'No qualified sources appeared on this page. More pages may contain sources.')
                 : workspaces.length
-                ? t('لا تظهر لك مصادر مؤهلة للإدارة في المساحات المرتبطة. يمكنك مراجعة اتصالات المساحة؛ غيابها هنا لا يثبت خلوها من الحسابات.', 'No manageable sources are visible in linked workspaces. Review workspace connections; this does not prove there are no accounts.')
-                : t('لا توجد مساحة عمل مرتبطة ومتاحة لك لهذا النشاط. يمكنك إدارة النشاط دون مصدر، أو ربط مساحة تملك إدارتها من إعدادات النشاط.', 'No linked, accessible workspace is available for this business. You can use the business without a source or link a workspace you manage in business settings.') }}</p>
+                ? t('لا تظهر لك مصادر مؤهلة للإدارة لدى الجهات المرتبطة. يمكنك مراجعة حسابات الجهة؛ غيابها هنا لا يثبت خلوها من الحسابات.', 'No manageable sources are visible in linked organizations. Review the organization’s accounts; this does not prove there are no accounts.')
+                : t('لا توجد مصادر مشتركة ظاهرة لهذا النشاط. يمكنك ربط حساباته الإعلانية مباشرة من الأعلى.', 'No shared sources are visible for this business. Connect its advertising accounts directly above.') }}</p>
             <button v-if="result.next_cursor && Number.isSafeInteger(Number(result.next_cursor))" type="button" class="workspace-button" :disabled="loading" @click="load(Number(result.next_cursor))">{{ t('عرض المزيد من المصادر', 'Show more sources') }}</button>
         </template>
         <div v-if="workspaces.length" class="business-source-workspaces">
-            <h3>{{ t('إدارة اتصالات المساحات المرتبطة', 'Manage linked workspace connections') }}</h3>
-            <ul><li v-for="item in workspaces" :key="item.link_ref"><Link2 aria-hidden="true" /><span>{{ item.workspace_slug }}</span><RouterLink :to="`/workspaces/${encodeURIComponent(item.workspace_public_id)}`">{{ t('فتح المساحة', 'Open workspace') }}</RouterLink></li></ul>
+            <h3>{{ t('حسابات الجهات المرتبطة', 'Linked organizations’ accounts') }}</h3>
+            <ul><li v-for="item in workspaces" :key="item.link_ref"><Link2 aria-hidden="true" /><span>{{ item.workspace_slug }}</span><RouterLink :to="`/workspaces/${encodeURIComponent(item.workspace_public_id)}`" @click="rememberReturn(item.workspace_public_id)">{{ t('فتح الجهة', 'Open organization') }}</RouterLink></li></ul>
         </div>
-        <button v-if="!workspaces.length" type="button" class="workspace-button" @click="$emit('openAccess')">{{ t('مراجعة ربط مساحات العمل', 'Review workspace links') }}</button>
+        <button v-if="!workspaces.length" type="button" class="workspace-button" @click="$emit('openAccess')">{{ t('مراجعة مشاركة المصادر مع جهة', 'Review organization source sharing') }}</button>
+        </details>
     </section>
 </template>

@@ -14,14 +14,20 @@ BEGIN
    SELECT * INTO g FROM public.security_action_grants WHERE id=cursor_id;
    IF NOT FOUND OR g.scope_kind<>(CASE WHEN req->>'requirement_kind'='native_source' THEN 'source' ELSE req->>'requirement_kind' END) OR(cardinality(path)=0 AND(g.subject_user_id<>p_actor OR g.status<>'active' OR g.revoked_at IS NOT NULL)) THEN RAISE EXCEPTION 'Own selected authority metadata required' USING ERRCODE='42501'; END IF;
    IF req->>'requirement_kind'='native_source' THEN
-    IF g.parent_grant_id IS NOT NULL OR g.workspace_id IS NULL THEN RAISE EXCEPTION 'Native source provenance required' USING ERRCODE='42501'; END IF;
-    workspace_ids:=array_append(workspace_ids,g.workspace_id);
+    IF g.parent_grant_id IS NOT NULL THEN RAISE EXCEPTION 'Native source provenance required' USING ERRCODE='42501'; END IF;
+    IF g.workspace_id IS NULL THEN
+     IF g.business_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.authority_qualification_receipts q
+      WHERE q.qualification_id=g.qualification_id AND q.policy_id='business_native_source_custody_v1'
+      AND q.target_kind='source' AND q.target_ref=g.source_target_id AND q.issuer_grant_id IS NOT NULL)
+     THEN RAISE EXCEPTION 'Explicit Business-native Source provenance required' USING ERRCODE='42501'; END IF;
+    ELSE workspace_ids:=array_append(workspace_ids,g.workspace_id); END IF;
    END IF;
    path:=array_append(path,g.id);grant_ids:=array_append(grant_ids,g.id);user_ids:=array_append(user_ids,g.subject_user_id);
    IF g.qualification_id IS NOT NULL THEN qualification_ids:=array_append(qualification_ids,g.qualification_id); END IF;
    -- The approved own-statement policy depends on the original creator read
    -- basis. Freeze it into the same sorted K4 footprint before any row lock.
-   SELECT issuer_grant_id INTO basis_id FROM public.authority_qualification_receipts WHERE qualification_id=g.qualification_id AND policy_id='business_purpose_statement_v1';
+   SELECT issuer_grant_id INTO basis_id FROM public.authority_qualification_receipts WHERE qualification_id=g.qualification_id
+    AND policy_id IN('business_purpose_statement_v1','business_native_source_custody_v1');
    IF basis_id IS NOT NULL THEN
     SELECT * INTO STRICT basis_g FROM public.security_action_grants WHERE id=basis_id;
     grant_ids:=array_append(grant_ids,basis_g.id);user_ids:=array_append(user_ids,basis_g.subject_user_id);

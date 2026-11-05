@@ -68,7 +68,7 @@ final readonly class MetaAuthorizationCoordinator
         #[\SensitiveParameter] string $handle, ProviderScope $selected, string $command, int $selectedAccessVersion): array
     {
         $this->installation($request, $installation);
-        if ($selected->provider !== Provider::Meta || $selected->workspaceId !== $installation->workspaceId
+        if ($selected->provider !== Provider::Meta || ! $selected->sameCustodyAs($installation)
             || $selected->sourceId === $installation->sourceId || $selected->operation !== 'report.read'
             || $selected->purpose !== $installation->purpose) {
             throw new InvalidArgumentException('Selected Meta account requires its own exact Workspace/source/report scope.');

@@ -50,7 +50,7 @@ class LifecycleActivationTest extends TestCase
         // Verification advances the lifecycle. Enter the new native document
         // instead of submitting the old pending document's signed receipt.
         $this->useIdentityDocument('/profile');
-        $this->get('/dashboard')->assertRedirect(route('business-foundation.index-page'));
+        $this->get('/dashboard')->assertRedirect(route('business-foundation.index-page', ['entry' => 1]));
         $this->get('/organizations/new')->assertOk();
 
         $this->get($url)->assertRedirect();

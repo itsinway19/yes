@@ -71,29 +71,49 @@ DECLARE s public.source_registry;before_s public.source_registry;cap public.sour
 BEGIN
  p_payload:=builderad_private.native_source_payload(p_effect,p_payload);r:=p_payload->>'resource';op:=p_payload->>'operation';purpose_name:=p_payload->>'purpose';
  fp:=encode(sha256(convert_to(jsonb_build_object('effect',p_effect,'source',p_source,'payload',p_payload)::text,'UTF8')),'hex');
- SELECT * INTO prior FROM public.source_command_receipts WHERE workspace_id=p_workspace AND command_id=p_command;
+ SELECT * INTO prior FROM public.source_command_receipts WHERE command_id=p_command AND
+  ((p_workspace IS NOT NULL AND workspace_id=p_workspace) OR(p_workspace IS NULL AND workspace_id IS NULL AND source_id=p_source));
  IF FOUND THEN
   IF prior.fingerprint<>fp OR prior.actor_user_id<>p_actor OR prior.actor_generation<>p_generation THEN RAISE EXCEPTION 'Source command identity conflict' USING ERRCODE='23505'; END IF;
   RETURN prior.result;
  END IF;
- SELECT EXISTS(SELECT 1 FROM public.resource_right_fences WHERE kind='source' AND source_id=p_source AND adoption_state='v2_adopted') INTO adopted;
- SELECT * INTO before_s FROM public.source_registry WHERE id=p_source AND workspace_id=p_workspace FOR UPDATE;
+ SELECT EXISTS(SELECT 1 FROM public.resource_right_fences WHERE kind='source' AND source_id=p_source AND adoption_state='v2_adopted')
+  OR EXISTS(SELECT 1 FROM public.source_registry source WHERE source.id=p_source AND to_jsonb(source)->>'custody_kind'='business_native') INTO adopted;
+ SELECT * INTO before_s FROM public.source_registry WHERE id=p_source AND workspace_id IS NOT DISTINCT FROM p_workspace FOR UPDATE;
  IF p_effect='register' THEN
   IF FOUND THEN RAISE EXCEPTION 'Source already registered' USING ERRCODE='23505'; END IF;
   IF adopted OR (p_payload->>'expected_version')::bigint<>0 THEN RAISE EXCEPTION 'Initial native source version required' USING ERRCODE='22023'; END IF;
-  INSERT INTO public.source_registry(id,workspace_id,family,namespace,declared_external_id,label,version,status)
-  VALUES(p_source,p_workspace,p_payload->>'family',p_payload->>'namespace',p_payload->>'external_id',p_payload->>'label',1,'UNVERIFIED') RETURNING * INTO s;
+  IF p_workspace IS NULL THEN
+   -- Only the approved protected bootstrap can establish new Business custody.
+   -- The actor and target come from its owned invocation, never a label or NULL Workspace.
+   IF NOT EXISTS(SELECT 1 FROM builderad_private.invocations i WHERE i.backend_pid=pg_backend_pid() AND i.transaction_id=pg_current_xact_id()
+    AND i.phase='authorized' AND i.action='source.business.bootstrap' AND i.actor_user_id=p_actor
+    AND i.target_tuple->>'source_id'=p_source::text AND i.target_tuple->>'business_id' IS NOT NULL)
+   THEN RAISE EXCEPTION 'Explicit protected Business Source bootstrap required' USING ERRCODE='42501'; END IF;
+   SELECT native.* INTO s FROM builderad_private.invocations i CROSS JOIN LATERAL
+    jsonb_populate_record(NULL::public.source_registry,jsonb_build_object('id',p_source,'workspace_id',NULL,
+    'custody_kind','business_native','business_id',(i.target_tuple->>'business_id')::bigint,
+    'family',p_payload->>'family','namespace',p_payload->>'namespace','declared_external_id',p_payload->>'external_id',
+    'label',p_payload->>'label','version',1,'status','UNVERIFIED','created_at',clock_timestamp(),'scope_lock_marker',false)) native
+   WHERE i.backend_pid=pg_backend_pid() AND i.transaction_id=pg_current_xact_id() AND i.phase='authorized';
+   adopted:=true;
+   PERFORM builderad_private.permit('public.source_registry','insert',NULL,to_jsonb(s));
+   INSERT INTO public.source_registry SELECT(s).*;
+  ELSE
+   INSERT INTO public.source_registry(id,workspace_id,family,namespace,declared_external_id,label,version,status)
+   VALUES(p_source,p_workspace,p_payload->>'family',p_payload->>'namespace',p_payload->>'external_id',p_payload->>'label',1,'UNVERIFIED') RETURNING * INTO s;
+  END IF;
  ELSE
   IF NOT FOUND THEN RAISE EXCEPTION 'Source unavailable' USING ERRCODE='42501'; END IF;
   IF before_s.version<>(p_payload->>'expected_version')::bigint THEN RAISE EXCEPTION 'Source version conflict' USING ERRCODE='23505'; END IF;
   IF before_s.status='REVOKED' THEN RAISE EXCEPTION 'Source revoked' USING ERRCODE='22023'; END IF;
-  IF p_effect<>'declare_scope' AND NOT EXISTS(SELECT 1 FROM public.source_capabilities WHERE workspace_id=p_workspace AND source_id=p_source AND resource=r AND operation=op AND purpose=purpose_name)
+  IF p_effect<>'declare_scope' AND NOT EXISTS(SELECT 1 FROM public.source_capabilities WHERE workspace_id IS NOT DISTINCT FROM p_workspace AND source_id=p_source AND resource=r AND operation=op AND purpose=purpose_name)
   THEN RAISE EXCEPTION 'Exact declared native scope required' USING ERRCODE='42501'; END IF;
   s:=before_s;s.version:=s.version+1;
   IF p_effect='rename' THEN s.label:=p_payload->>'label'; END IF;
   IF p_effect='revoke' THEN s.status:='REVOKED'; END IF;
   IF adopted THEN PERFORM builderad_private.permit('public.source_registry','update',to_jsonb(before_s),to_jsonb(s)); END IF;
-  UPDATE public.source_registry SET version=s.version,label=s.label,status=s.status WHERE id=s.id AND workspace_id=s.workspace_id;
+  UPDATE public.source_registry SET version=s.version,label=s.label,status=s.status WHERE id=s.id AND workspace_id IS NOT DISTINCT FROM s.workspace_id;
  END IF;
  IF p_effect IN('register','declare_scope') THEN
   cap.workspace_id:=p_workspace;cap.source_id:=p_source;cap.resource:=r;cap.operation:=op;cap.purpose:=purpose_name;cap.declared_at:=clock_timestamp();
@@ -108,6 +128,9 @@ BEGIN
   'snapshot',jsonb_build_object('label',s.label,'status',s.status,'resource',r,'operation',op,'purpose',purpose_name)),adopted);
  env:=jsonb_build_object('policy','BB1-V1','workspace_id',p_workspace,'source_id',p_source,'command_id',p_command,'effect',p_effect,'resource',r,'operation',op,'purpose',purpose_name,
   'actor_user_id',p_actor,'actor_generation',p_generation,'fingerprint',fp,'prior_version',nullif(s.version-1,0),'result_version',s.version,'reason',p_payload->>'reason','decided_at',decision);
+ IF p_workspace IS NULL THEN
+  env:=(env-'workspace_id')||jsonb_build_object('policy','BB1-BUSINESS-V1','business_id',to_jsonb(s)->'business_id','custody_kind','business_native');
+ END IF;
  PERFORM builderad_private.native_source_append('public.source_audit_obligations',jsonb_build_object('id',obligation,'workspace_id',p_workspace,'command_id',p_command,'source_id',p_source,'envelope',env,
   'fingerprint',encode(sha256(convert_to(env::text,'UTF8')),'hex'),'recorded_at',decision),adopted);
  PERFORM builderad_private.native_source_append('public.source_audit_delivery',jsonb_build_object('obligation_id',obligation,'workspace_id',p_workspace,'state','PENDING','acknowledgment_id',NULL,'attempts',0,'updated_at',decision),adopted);
@@ -115,6 +138,7 @@ BEGIN
 END $$;
 
 -- Preserve the original public native entry, with one shared mutation/audit implementation.
+RESET ROLE;
 CREATE OR REPLACE FUNCTION public.builderad_source_command(p_workspace bigint,p_session text,p_command uuid,p_source uuid,p_effect text,p_payload jsonb) RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
 DECLARE actor bigint;generation bigint;act text;result jsonb;

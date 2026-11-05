@@ -11,6 +11,7 @@ export function sourceContracts({ ref, text, uuid, object, list, nullable, versi
             '/workspaces/{workspace}/source-grants': { post: command('requestSourceAuthority', ref('SourceAuthorityCommand'), object({ decision: { enum: ['authorize', 'revoke'] } })) },
             '/workspaces/{workspace}/sources': { post: command('applySourceCommand', ref('SourceCommand'), ref('SourceReceipt')) },
             '/workspaces/{workspace}/source-audit/{obligation}/recover': { post: command('recoverSourceAudit', undefined, object({ obligation_id: uuid, delivery_state: text }), [workspaceParameter, { in: 'path', name: 'obligation', required: true, schema: uuid }]) },
+            '/businesses/{business}/source-audit/{obligation}/recover': { post: command('recoverBusinessSourceAudit', undefined, object({ obligation_id: uuid, delivery_state: text }), [{ in: 'path', name: 'business', required: true, schema: uuid }, { in: 'path', name: 'obligation', required: true, schema: uuid }]) },
             '/workspaces/{workspace}/services': { post: command('authorizeServiceScope', object({ service: uuid, purpose: { type: 'string', minLength: 10, maxLength: 128 } }), ref('ApplicationDestination')) },
             '/workspaces/{workspace}/services/{service}': { delete: command('revokeServiceScope', undefined, ref('ApplicationDestination'), [workspaceParameter, { in: 'path', name: 'service', required: true, schema: uuid }]) },
         },

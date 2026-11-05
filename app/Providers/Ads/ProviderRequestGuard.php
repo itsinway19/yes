@@ -15,6 +15,7 @@ final class ProviderRequestGuard
         if (DB::connection()->transactionLevel() !== 1) {
             throw new LogicException('A native request requires one owned signed Workspace transaction.');
         }
+        $this->requireCustody($request, $scope, $action);
         DB::selectOne('SELECT builderad_provider_request_gate(?, ?, ?::uuid, ?, ?, ?, ?, ?, ?)', [
             $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->provider->value,
             $scope->accountId, $scope->operation, $scope->purpose, $action, $accessVersion,
@@ -24,6 +25,20 @@ final class ProviderRequestGuard
                 ->where('provider', $scope->provider->value)->where('resource', $scope->accountId)->where('operation', $scope->operation)->where('purpose', $scope->purpose)->value('verification');
             app(ProviderReportingEvidence::class)->requireApplicable($scope, json_decode($verification, true, flags: JSON_THROW_ON_ERROR));
         }
+    }
+
+    public function requireCustody(Request $request, ProviderScope $scope, string $action): void
+    {
+        if ($scope->businessId === null) {
+            return;
+        }
+        if (DB::connection()->transactionLevel() !== 1) {
+            throw new LogicException('Business-native custody requires one owned signed transaction.');
+        }
+        DB::selectOne('SELECT builderad_provider_custody_scope(?, ?, ?, ?::uuid, ?, ?, ?, ?, ?)', [
+            $scope->workspaceId, $scope->businessId, SessionAuthority::sessionKey($request), $scope->sourceId,
+            $scope->provider->value, $scope->accountId, $scope->operation, $scope->purpose, $action,
+        ]);
     }
 
     public function bind(Request $request, ProviderScope $scope, string $action, int $accessVersion): \Closure

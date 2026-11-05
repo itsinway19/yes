@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { locale } from '../spa/locale';
 import { owned, stamp, TransportError } from '../spa/transport';
-import { delegationDrafts, key, type DelegationDraft } from './drafts';
+import { beginDelivery, definitiveRejection, delegationDrafts, key, type DelegationDraft } from './drafts';
 import { writeGrant, type GrantCommand, type Surface } from './api';
 
 const props = defineProps<{ surface: Surface; refreshing?: boolean }>();
@@ -28,11 +28,13 @@ const ownStatement = computed(() => props.surface.purpose_statement?.current_gra
 const ownConfirmed = ref(false);
 const ownsSelection = (id: string) => ownStatement.value?.id === id || options.value.some(o => o.grant_id === id);
 const resourceKey = `${key(props.surface.business.business_public_id, props.surface.authority_selection)}:delegations:1`;
+function concealDraft(value: DelegationDraft) { Object.assign(value, { selected: '', recipient: '', agency: '', expires: '', delegable: false, confirmed: false, blocked: true }); }
 const retained = delegationDrafts.get(resourceKey);
-if (retained && !retained.pending && !ownsSelection(retained.selected)) delegationDrafts.delete(resourceKey);
+if (retained && !ownsSelection(retained.selected)) { if (retained.pending) concealDraft(retained); else delegationDrafts.delete(resourceKey); }
 const draft = reactive<DelegationDraft>(delegationDrafts.get(resourceKey) ?? { selected: options.value.length === 1 ? options.value[0].grant_id : '',
     recipient: '', agency: '', expires: '', delegable: false, notice: '', confirmed: false, blocked: false });
 delegationDrafts.set(resourceKey, draft);
+draft.uncertain ??= !!draft.pending;
 const busy = ref(false);
 let disposed = false;
 onBeforeUnmount(() => { disposed = true; });
@@ -48,8 +50,7 @@ const valid = computed(() => enabled.value && !!selected.value?.can_issue && uui
     && (!expiry.value || Date.parse(expiry.value) > Date.now()));
 watch(() => props.surface, () => {
     if (draft.selected && !ownsSelection(draft.selected)) {
-        draft.blocked = true;
-        if (!draft.pending) delegationDrafts.delete(resourceKey);
+        if (!draft.pending) delegationDrafts.delete(resourceKey); concealDraft(draft);
         draft.notice = t('لم يعد السند المختار مؤهلًا. لم نستبدله بسند آخر أو نفترض نتيجة الطلب.', 'The selected path is no longer qualified. No replacement authority or command outcome was inferred.');
     }
 });
@@ -61,6 +62,7 @@ async function execute(command: GrantCommand) {
     draft.pending ??= JSON.parse(JSON.stringify(command));
     const frozen = JSON.parse(JSON.stringify(draft.pending)) as GrantCommand;
     const business = props.surface.business.business_public_id, captured = stamp();
+    const uncertain = beginDelivery(draft);
     busy.value = true; draft.notice = ''; draft.confirmed = false;
     try {
         const result = await writeGrant(business, frozen);
@@ -69,19 +71,14 @@ async function execute(command: GrantCommand) {
             || frozen.effect === 'revoke' && result.grant_id !== frozen.grant_id) throw Error('Delegation acknowledgement target mismatch');
         if (frozen.effect === 'revoke' && frozen.action === 'business.purpose.declare' && frozen.grantee_public_id === metadata.value.actor_public_id
             && frozen.grant_id === frozen.authority_selection.requirements[0]?.leaf_grant_id) draft.selected = '';
-        draft.pending = undefined; draft.confirmed = true; emit('refresh');
+        draft.pending = undefined; draft.uncertain = false; draft.confirmed = true; emit('refresh');
     } catch (error) {
         if (disposed || !owned(captured)) return;
         if (error instanceof TransportError && error.status === 403) {
-            draft.blocked = true;
-            // A self-surrender may already have committed before a lost ACK.
-            // Its withdrawn authority cannot reconcile a receipt; retain the
-            // exact unresolved request rather than infer its outcome.
-            if (!(frozen.effect === 'revoke' && frozen.action === 'business.purpose.declare'
-                && frozen.grantee_public_id === metadata.value.actor_public_id)) delegationDrafts.delete(resourceKey);
+            concealDraft(draft);
             draft.notice = t('لم يعد هذا الطلب مخولًا. لم ننشئ حقًا بديلًا ولم نفترض نجاحه.', 'This command is no longer authorized. No replacement right or success was inferred.'); emit('refresh');
-        } else if (error instanceof TransportError && error.status === 422) {
-            draft.pending = undefined; draft.notice = t('لم يقبل الخادم بيانات الطلب. راجع الحساب والسند والمدة والنطاق.', 'The server rejected the command fields. Review account, authority, expiry and realm.');
+        } else if (definitiveRejection(error, uncertain)) {
+            draft.pending = undefined; draft.uncertain = false; draft.notice = t('لم يقبل الخادم بيانات الطلب. راجع الحساب والسند والمدة والنطاق.', 'The server rejected the command fields. Review account, authority, expiry and realm.');
         } else {
             draft.notice = t('نتيجة الطلب غير محسومة. احتفظنا بالأمر الأصلي للتحقق دون تكرار تلقائي.', 'The outcome is unresolved. Its original command is retained without automatic retry.');
         }

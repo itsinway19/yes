@@ -11,9 +11,13 @@ globalThis.__registrySpa = runtime;
 globalThis.Document = class {};
 globalThis.ShadowRoot = class {};
 const moduleUrl = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
+const languageUrl = moduleUrl(`import {ref} from ${JSON.stringify(import.meta.resolve('vue'))};export const locale=ref('ar');`);
+const { locale } = await import(languageUrl);
+const copyUrl = moduleUrl(ts.transpileModule(await readFile('resources/js/sources/providerCopy.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText.replace("'../spa/locale'", JSON.stringify(languageUrl)));
 const emptyComponent = moduleUrl('export default { render: () => null };');
 const ports = {
     vue: import.meta.resolve('vue'),
+    './providerCopy': copyUrl,
     '@/Components/ProviderBrand.vue': emptyComponent,
     '../Components/Sources/SourceCapabilityStatus.vue': emptyComponent,
     './DeclareSourceScope.vue': emptyComponent,
@@ -39,6 +43,23 @@ const renderer = createRenderer({
     insert(node, parent, anchor) { const index = anchor ? parent.children.indexOf(anchor) : -1; parent.children.splice(index < 0 ? parent.children.length : index, 0, node); node.parent = parent; },
     remove(node) { node.parent?.children.splice(node.parent.children.indexOf(node), 1); },
     patchProp(node, key, _old, value) { node.props[key] = value; },
+});
+
+test('registry retained unknown outcome and rename prompt follow locale without translating source data or changing commands', async () => {
+    const item = { id: 'source-localization', label: 'اسم المصدر الحقيقي', family: 'meta', namespace: 'account', declared_external_id: 'declared', version: 2, status: 'UNVERIFIED', ...scope, capability: { state: 'UNKNOWN', reason: 'provider_unverified', last_verified_at: null }, axes: { provider_permission: 'UNKNOWN' }, can_manage: true, scope_choices: [], next_repair: 'provider_verification_needed', audit_delivery: [] };
+    const previousWindow = globalThis.window, prompts = []; globalThis.window = { prompt(question, initial) { prompts.push({ question, initial }); return 'Corrected native label'; } };
+    runtime.calls = []; runtime.reads = []; runtime.send = async () => { throw Error('ACK lost'); }; locale.value = 'en';
+    const root = element('root'), app = renderer.createApp({ render: () => h(component, { workspaceId: 'workspace', candidateId: 'candidate', canRequestAuthority: false, sources: { state: 'SCOPED_SOURCES', items: [item], registration_authorities: [] } }) }); app.mount(root);
+    try {
+        assert.match(text(root), /Sources and current permissions/); assert.match(text(root), /اسم المصدر الحقيقي/);
+        nodes(root, node => node.tag === 'button' && text(node) === 'Correct label')[0].props.onClick(); await nextTick(); await nextTick();
+        assert.deepEqual(prompts, [{ question: 'New declared label', initial: item.label }]);
+        const original = structuredClone(runtime.calls[0]); assert.equal(original.body.label, 'Corrected native label');
+        assert.match(text(root), /The command outcome is unknown/);
+        locale.value = 'ar'; await nextTick(); assert.match(text(root), /نتيجة الأمر غير مؤكدة/);
+        locale.value = 'en'; await nextTick(); assert.match(text(root), /The command outcome is unknown/);
+        assert.deepEqual(runtime.calls, [original]); assert.deepEqual(runtime.reads, []);
+    } finally { app.unmount(); locale.value = 'ar'; globalThis.window = previousWindow; }
 });
 const nodes = (root, predicate) => [root, ...root.children.flatMap(child => nodes(child, () => true))].filter(predicate);
 const text = root => root.text + root.children.map(text).join('');

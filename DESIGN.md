@@ -1,5 +1,13 @@
 # BuilderAd visual context
 
+## Advertiser task shell — Owner implementation mandate 2026-11-04
+
+The current mandate supersedes the earlier prototype freeze for the bounded implemented advertiser surfaces. One quiet, compact Vue shell keeps Business as the selected work context; organizational team/resource administration is secondary. Existing markets, declared goals, information, qualified team, Purpose, history and data owners remain intact. All five supported advertising-platform entries and existing brands appear inside the Business even before a connection exists. Their status and operational actions require a current server-qualified account-administration resource; a platform logo is never evidence of connection, data-use permission, readiness, or results.
+
+Use the existing14px body and22–24px headings, restrained dividers and brand tokens; no new display font, decorative imagery, metric cards or color system. The signature is the clear Business identity and recognizable platform entries alongside actual available work. `GlobalAppearance → public/brand/theme.css → advertiser.css/workspace.css → shared controls` remains the runtime token path (runtime ownership model B). Arabic RTL and English LTR share behavior, including focus, failure and recovery. Mobile navigation collapses; content keeps natural document scrolling. Primary touch actions retain44px targets.
+
+The former seven-section product map remains a capability-direction reference, not a claim that all destinations have been delivered. Current navigation names implemented work. Organization/platform navigation retains an explicit return to the re-qualified Business. Durable behavior is in UX-CONTRACT.md; actual evidence is in the execution progress record.
+
 ## Canonical Business and previous Workspace records — 2026-11-03
 
 Current Business Sources reads only source metadata the operator can manage in a Workspace explicitly linked to the selected Business. Connection custody and provider actions stay in that Workspace; customer-data use still needs its independent qualified scope. A Business-only agency client sees no private agency source metadata. Advanced scope administration and unresolved-command reopening remain available. Connection readiness is never inferred from source registration.

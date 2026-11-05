@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, onMounted, onBeforeUnmount } from 'vue';
-import { RouterLink, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
+import { RouterLink, onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router';
 import { ArrowLeft, Building2, FileText, House, Link2, Settings2, Target, Users } from '@lucide/vue';
 import AdvertiserWorkspaceLayout from './AdvertiserWorkspaceLayout.vue';
 import BusinessSources from './BusinessSources.vue';
@@ -8,6 +8,7 @@ import { locale } from '../spa/locale';
 import { key, purposeEnrollmentDrafts } from './drafts';
 import type { Surface } from './api';
 import { workspacePresentation, workspacePresentationKey, workspaceLocation, type WorkspaceSection, type WorkspaceSettingsView } from './workspacePresentation';
+import { pending as accountPending } from '../sources/commands';
 import BusinessEditor from './BusinessEditor.vue';
 import BusinessFacts from './BusinessFacts.vue';
 import BusinessCollaboration from './BusinessCollaboration.vue';
@@ -26,14 +27,15 @@ const emit = defineEmits<{ refresh: [] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const resource = key(props.surface.business.business_public_id, props.surface.authority_selection);
 const hasPendingPurposeEnrollment = () => !!purposeEnrollmentDrafts.get(`${resource}:purpose-enrollment:1`)?.pending;
-const canDepartPurposeEnrollment = () => !hasPendingPurposeEnrollment() || confirm(t('نتيجة تفعيل التصريحات غير محسومة. هل تريد المغادرة مع الاحتفاظ بالطلب داخل هذا المستند؟', 'Statement enrollment has an unknown outcome. Leave while retaining its exact request in this document?'));
+const canDepartPurposeEnrollment = () => (!hasPendingPurposeEnrollment() && !accountPending.size) || confirm(t('توجد عملية غير محسومة. هل تريد المغادرة مع الاحتفاظ بالطلب الأصلي؟', 'An operation has an unknown outcome. Leave while retaining its original request?'));
 onBeforeRouteLeave(canDepartPurposeEnrollment); onBeforeRouteUpdate(canDepartPurposeEnrollment);
-const guardPurposeUnload = (event: BeforeUnloadEvent) => { if (hasPendingPurposeEnrollment()) { event.preventDefault(); event.returnValue = ''; } };
+const guardPurposeUnload = (event: BeforeUnloadEvent) => { if (hasPendingPurposeEnrollment() || accountPending.size) { event.preventDefault(); event.returnValue = ''; } };
 onMounted(() => window.addEventListener?.('beforeunload', guardPurposeUnload));
 onBeforeUnmount(() => window.removeEventListener?.('beforeunload', guardPurposeUnload));
 const presentationKey = workspacePresentationKey(resource);
 const retained = workspacePresentation.get(presentationKey) ?? { section: 'overview' as WorkspaceSection, settingsView: 'details' as WorkspaceSettingsView, positions: {} as Partial<Record<WorkspaceSection, number>> };
-const initial = workspaceLocation(retained.section, retained.settingsView);
+const route = useRoute();
+const initial = workspaceLocation(route.query.section === 'sources' ? 'sources' : retained.section, retained.settingsView);
 retained.section = initial.section; retained.settingsView = initial.settingsView;
 workspacePresentation.set(presentationKey, retained);
 const active = ref(initial.section), settingsView = ref<WorkspaceSettingsView>(initial.settingsView);
@@ -46,9 +48,9 @@ const businessType = computed(() => props.surface.catalog.business_types.find(ty
 const inquiryActive = computed(() => active.value === 'settings' && settingsView.value === 'data');
 const destinations = computed(() => [
     { id: 'overview' as const, label: t('الرئيسية', 'Overview'), description: t('نظرة على معلومات نشاطك وأعماله المتاحة.', 'Your business details and available tasks.'), icon: House },
-    { id: 'direction' as const, label: t('العروض والخطة', 'Offers and plan'), description: t('الأسواق والأهداف المعلنة', 'Declared markets and goals'), icon: Target },
-    { id: 'sources' as const, label: t('المصادر والحسابات الإعلانية', 'Sources and ad accounts'), description: t('مصادر مساحات العمل المرتبطة التي يمكنك إدارتها', 'Sources you can manage in linked workspaces'), icon: Link2 },
-    { id: 'settings' as const, label: t('النشاط والفريق والإعدادات', 'Business, team and settings'), description: t('المعلومات والبيانات والوصول', 'Details, data and access'), icon: Settings2 },
+    { id: 'direction' as const, label: t('الأسواق والأهداف', 'Markets and goals'), description: t('الأسواق والأهداف المعلنة', 'Declared markets and goals'), icon: Target },
+    { id: 'sources' as const, label: t('المصادر', 'Sources'), description: t('حسابات الإعلان والمصادر المتاحة وحدود استعمال بياناتها', 'Ad accounts, available sources and their data-use boundaries'), icon: Link2 },
+    { id: 'settings' as const, label: t('إدارة النشاط', 'Business management'), description: t('المعلومات والبيانات والوصول', 'Details, data and access'), icon: Settings2 },
 ]);
 const localSettings = computed(() => [
     { id: 'details' as const, label: t('معلومات النشاط', 'Business details') },
@@ -57,6 +59,7 @@ const localSettings = computed(() => [
     { id: 'access' as const, label: t('الفريق والوصول', 'Team and access') },
 ]);
 async function navigate(section: WorkspaceSection, subview?: WorkspaceSettingsView) {
+    if (active.value === 'sources' && section !== 'sources' && accountPending.size && !canDepartPurposeEnrollment()) return;
     const next = workspaceLocation(section, subview ?? (section === 'settings' ? settingsView.value : 'details'));
     if (active.value === next.section && (next.section !== 'settings' || settingsView.value === next.settingsView)) return;
     retained.positions[active.value] = window.scrollY;
@@ -76,7 +79,7 @@ async function navigate(section: WorkspaceSection, subview?: WorkspaceSettingsVi
             <p class="advertiser-nav-label">{{ t('النشاط التجاري', 'Business') }}</p>
             <button v-for="destination in destinations.filter(d => d.id !== 'settings')" :key="destination.id" type="button" :data-workspace-section="destination.id" :aria-current="active === destination.id ? 'page' : undefined" @click="navigate(destination.id)"><component :is="destination.icon" aria-hidden="true" />{{ destination.label }}</button>
             <p class="advertiser-nav-label">{{ t('إدارة النشاط', 'Business management') }}</p>
-            <button type="button" data-workspace-section="settings" :aria-current="active === 'settings' ? 'page' : undefined" @click="navigate('settings')"><Settings2 aria-hidden="true" />{{ t('النشاط والفريق والإعدادات', 'Business, team and settings') }}</button>
+            <button type="button" data-workspace-section="settings" :aria-current="active === 'settings' ? 'page' : undefined" @click="navigate('settings')"><Settings2 aria-hidden="true" />{{ t('إدارة النشاط', 'Business management') }}</button>
         </nav>
     </template>
     <section class="business-workspace" data-business-workspace :data-business-public="surface.business.business_public_id" :aria-busy="refreshing">
@@ -87,10 +90,11 @@ async function navigate(section: WorkspaceSection, subview?: WorkspaceSettingsVi
         <div class="workspace-content">
             <h2 ref="heading" class="workspace-section-title" tabindex="-1" data-workspace-heading>{{ destinations.find(d => d.id === active)?.label }}<span v-if="active === 'settings'" class="workspace-location"> / {{ localSettings.find(d => d.id === settingsView)?.label }}</span></h2>
             <section v-show="active === 'overview'" data-workspace-panel="overview">
-                <p class="workspace-intro">{{ t('ماذا تريد أن تنجز؟ اختر مهمة، ويمكنك العودة إلى غيرها في أي وقت.', 'What would you like to do? Choose a task and return to the others whenever you need.') }}</p>
+                <dl class="business-overview-facts" data-business-overview-facts><div><dt>{{ t('مجال النشاط', 'Business field') }}</dt><dd>{{ businessType ? (locale === 'ar' ? businessType.name_ar : businessType.name_en) : t('لم يُحدد بعد', 'Not specified yet') }}</dd></div><div><dt>{{ t('الأسواق التي تخدمها', 'Markets you serve') }}</dt><dd>{{ surface.business.declared_markets.length ? surface.business.declared_markets.map(code => { const country = surface.catalog.countries.find(row => row.code === code); return country ? (locale === 'ar' ? country.name_ar : country.name_en) : code; }).join(t('، ', ', ')) : t('لم تُحدد بعد', 'Not specified yet') }}</dd></div></dl>
+                <p class="workspace-intro">{{ t('معلومات نشاطك وأعمالك المتاحة. اختر ما تحتاجه الآن.', 'Your business details and available tasks. Choose what you need now.') }}</p>
                 <ul class="workspace-task-list">
                     <li><button type="button" @click="navigate('direction')"><Target aria-hidden="true" /><span><strong>{{ t('حدّد اتجاه نشاطك', 'Set your business direction') }}</strong><span>{{ t('راجع الأسواق والأهداف والأولويات التي أعلنتها.', 'Review your declared markets, goals and priorities.') }}</span></span><ArrowLeft aria-hidden="true" class="workspace-task-arrow" /></button></li>
-                    <li><button type="button" @click="navigate('sources')" data-business-source-task><Link2 aria-hidden="true" /><span><strong>{{ t('راجع مصادرك وحساباتك الإعلانية', 'Review your sources and ad accounts') }}</strong><span>{{ t('اعرض المصادر المتاحة في مساحات العمل المرتبطة بهذا النشاط.', 'View available sources in workspaces linked to this business.') }}</span></span><ArrowLeft aria-hidden="true" class="workspace-task-arrow" /></button></li>
+                    <li><button type="button" @click="navigate('sources')" data-business-source-task><Link2 aria-hidden="true" /><span><strong>{{ t('أدر مصادر نشاطك', 'Manage your business sources') }}</strong><span>{{ t('راجع حسابات الإعلان والمصادر المتاحة وحقوق استعمال بياناتها.', 'Review ad accounts, available sources and permission to use their data.') }}</span></span><ArrowLeft aria-hidden="true" class="workspace-task-arrow" /></button></li>
                     <li><button type="button" @click="navigate('settings', 'details')"><Building2 aria-hidden="true" /><span><strong>{{ t('أكمل معلومات النشاط', 'Complete business details') }}</strong><span>{{ t('عدّل الاسم والمجال وراجع سجل التغييرات.', 'Edit the name and field, and review changes.') }}</span></span><ArrowLeft aria-hidden="true" class="workspace-task-arrow" /></button></li>
                     <li><button type="button" @click="navigate('settings', 'access')"><Users aria-hidden="true" /><span><strong>{{ t('أدر الفريق والوصول', 'Manage team and access') }}</strong><span>{{ t('راجع علاقات التعاون والتفويضات لهذا النشاط.', 'Review collaboration and delegations for this business.') }}</span></span><ArrowLeft aria-hidden="true" class="workspace-task-arrow" /></button></li>
                 </ul>

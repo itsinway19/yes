@@ -38,6 +38,17 @@ export function providerContracts({ ref, text, uuid, object, list, nullable, ver
         }
     }
     paths['/workspaces/{workspace}/providers/x/{source}/campaigns'] = { get: read('xCampaignChoices', object({ campaigns: list(object({ id: text, label: text })), continuation: nullable(ref('ProviderFlowHandle')) }), [workspaceParameter, sourceParameter, { in: 'query', name: 'continuation', schema: ref('ProviderFlowHandle') }]) };
+    // Identical provider operations, distinct typed custody and fresh admission.
+    // Keep their contracts composed so one side cannot silently lose a field.
+    for (const [path, operations] of Object.entries(paths)) {
+        const businessOperations = structuredClone(operations);
+        for (const operation of Object.values(businessOperations)) {
+            operation.operationId = 'business' + operation.operationId[0].toUpperCase() + operation.operationId.slice(1);
+            operation.parameters = operation.parameters.map(parameter => parameter.in === 'path' && parameter.name === 'workspace'
+                ? { ...parameter, name: 'business' } : parameter);
+        }
+        paths[path.replace('/workspaces/{workspace}', '/businesses/{business}')] = businessOperations;
+    }
     return { paths, schemas: {
         GoogleConnectCommand: { oneOf: [object({ intent: ref('ProviderFlowHandle'), recover_offline_grant: { type: 'boolean' } }, ['intent']), object({ source_id: uuid, expected_version: version, recover_offline_grant: { type: 'boolean' } }, ['source_id', 'expected_version'])] },
         SnapchatRenewalSuccess: snapchatSuccess,

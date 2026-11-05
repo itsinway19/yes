@@ -16,6 +16,21 @@ final class GrantAuthority
 {
     public function __construct(private readonly PrincipalContext $principals) {}
 
+    /** Approved exact Business Source enrollment, atomic with canonical Source custody. */
+    public function bootstrapBusinessSource(Request $request, string $business, string $source, string $command,
+        array $payload, array $selection): array
+    {
+        if (DB::connection()->transactionLevel() !== 1 || ! $request->user() || ! $request->hasSession()
+            || ! Str::isUuid($business) || ! Str::isUuid($source) || ! Str::isUuid($command)) {
+            throw new LogicException('Business Source enrollment requires its owned signed transaction and exact command.');
+        }
+
+        return json_decode(DB::scalar('SELECT builderad_v2_business_source_bootstrap(?,?::uuid,?::uuid,?::uuid,?::jsonb,?::jsonb)', [
+            SessionAuthority::sessionKey($request), $business, $command, $source,
+            json_encode($payload, JSON_THROW_ON_ERROR), json_encode($selection, JSON_THROW_ON_ERROR),
+        ]), true, flags: JSON_THROW_ON_ERROR);
+    }
+
     public const STAFF_ACTIONS = [
         'staff.view', 'staff.invite', 'staff.attest', 'staff.activate', 'staff.revoke',
         'grant.manage', 'service.manage', 'business.manage', 'platform.maintenance.manage', 'market.knowledge.observe', 'market.knowledge.capture', 'market.knowledge.publish',

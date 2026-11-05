@@ -20,7 +20,12 @@ globalThis.ShadowRoot = class {};
 globalThis.__scopeStatus = ref('ready');
 globalThis.__scopeError = class extends Error { constructor(status, body) { super('HTTP ' + status); this.status = status; this.body = body; } };
 const moduleUrl = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
+const languageUrl = moduleUrl(`import {ref} from ${JSON.stringify(import.meta.resolve('vue'))};export const locale=ref('ar');`);
+const { locale } = await import(languageUrl);
+const copyUrl = moduleUrl(ts.transpileModule(await readFile('resources/js/sources/providerCopy.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText.replace("'../spa/locale'", JSON.stringify(languageUrl)));
 const ports = {
+    './providerCopy': copyUrl,
+    '../spa/locale': languageUrl,
     './api': moduleUrl(`export const sources = { command: async (workspace, command, signal) => {
         const args = ['/workspaces/' + workspace + '/sources', command, { signal, headers: { Accept: 'application/json' } }];
         globalThis.__bb1Transport.requests.push(args);
@@ -76,6 +81,48 @@ async function select(root, index = 1) {
 }
 function submit(root) { return nodes(root, n => n.tag === 'form')[0].props.onSubmit({ preventDefault() {} }); }
 const error = (status, errors) => new globalThis.__scopeError(status, { errors });
+
+test('scope unknown outcome follows EN and AR while retaining exact original payload and session storage', async () => {
+    locale.value = 'en'; const view = mount();
+    try {
+        assert.match(text(view.root), /Declare an additional source scope/); assert.equal(nodes(view.root, node => node.tag === 'form')[0].props.dir, 'ltr');
+        await select(view.root); transport.send = async () => { throw Error('ACK lost'); }; await submit(view.root); await nextTick();
+        const original = structuredClone(transport.requests[0][1]), saved = [...stored.entries()];
+        assert.match(text(view.root), /Execution was not acknowledged/); assert.match(text(view.root), /server-account/);
+        locale.value = 'ar'; await nextTick(); assert.match(text(view.root), /لم يصل تأكيد التنفيذ/); assert.equal(nodes(view.root, node => node.tag === 'form')[0].props.dir, 'rtl');
+        locale.value = 'en'; await nextTick(); assert.match(text(view.root), /Execution was not acknowledged/);
+        assert.deepEqual([...stored.entries()], saved); assert.equal(transport.requests.length, 1);
+        nodes(view.root, node => node.tag === 'button' && text(node) === 'Resend the original request')[0].props.onClick(); await nextTick(); await nextTick();
+        assert.deepEqual(transport.requests[1][1], original); assert.deepEqual([...stored.entries()], saved);
+    } finally { view.unmount(); locale.value = 'ar'; }
+});
+
+test('scope English rendering preserves server validation text even when it matches finite UI copy', async () => {
+    locale.value = 'en'; const view = mount();
+    try {
+        await select(view.root); transport.send = async () => { throw error(422, { resource: ['المورد'] }); };
+        await submit(view.root); await nextTick();
+        assert.equal(text(nodes(view.root, node => node.props.role === 'alert')[0]), 'المورد');
+        assert.equal(transport.requests.length, 1);
+    } finally { view.unmount(); locale.value = 'ar'; }
+});
+
+for (const status of [422, 403, 409]) test(`unknown native scope request survives replay ${status} without deleting its original session envelope`, async () => {
+    let view = mount();
+    try {
+        await select(view.root); transport.send = async () => { throw Error('Committed acknowledgement lost'); }; await submit(view.root); await nextTick();
+        const original = structuredClone(transport.requests[0][1]), saved = [...stored.entries()];
+        transport.send = async () => { throw error(status); };
+        nodes(view.root, node => node.tag === 'button' && /إعادة إرسال الطلب الأصلي/.test(text(node)))[0].props.onClick(); await new Promise(resolve => setImmediate(resolve)); await nextTick();
+        assert.deepEqual(transport.requests[1][1], original); assert.deepEqual([...stored.entries()], saved, 'A generic replay rejection does not prove the original never committed');
+        assert.equal(nodes(view.root, node => node.tag === 'select').length, 0, 'No editable replacement appears while original is unresolved');
+        view.unmount(); view = mount(declaration.component, {}, true); await nextTick();
+        assert.equal(transport.requests.length, 0, 'Remount never automatically sends'); assert.deepEqual([...stored.entries()], saved);
+        transport.send = async () => ({ data: { command_id: original.command_id, source_id: original.source_id, version: 8 } });
+        nodes(view.root, node => node.tag === 'button' && /إعادة إرسال الطلب الأصلي/.test(text(node)))[0].props.onClick(); await new Promise(resolve => setImmediate(resolve)); await nextTick();
+        assert.deepEqual(transport.requests[0][1], original); assert.equal(stored.size, 0, 'Acknowledged original clears the stored envelope');
+    } finally { view.unmount(); }
+});
 
 test('server choices only, native selection/submission, bounded payload, loading and repeated submit', async () => {
     const view = mount();

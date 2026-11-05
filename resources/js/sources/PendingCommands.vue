@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { nativeSourceReference, commandOwner, ownerKey } from './nativeOwner';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import type { Provider } from './providers';
 import { commandsFor, retry, type PendingCommand } from './commands';
 import { TransportError } from '../spa/transport';
-const props = defineProps<{ workspaceId: string; provider?: Provider }>();
+const props = defineProps<{ workspaceId?: string; businessId?: string; provider?: Provider }>();
+const owner = nativeSourceReference(props);
 const emit = defineEmits<{ settled: [] }>();
-const items = computed(() => commandsFor(props.workspaceId, props.provider));
+const items = computed(() => commandsFor(owner, props.provider));
 const error = ref('');
 const cancellation = new AbortController();
 let active = true;

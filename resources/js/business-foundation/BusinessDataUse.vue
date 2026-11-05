@@ -3,13 +3,14 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { locale } from '../spa/locale';
 import { owned, stamp, TransportError } from '../spa/transport';
 import { dataUseChoices, writeBinding, writeResourceRight, type Surface, type DataUseChoices, type ResourceCommand } from './api';
-import { key, dataUseDrafts, type DataUseDraft } from './drafts';
+import { beginDelivery, definitiveRejection, key, dataUseDrafts, type DataUseDraft } from './drafts';
 const props = defineProps<{ surface: Surface; refreshing: boolean }>();
 const emit = defineEmits<{ refresh: []; pendingChange: [pending: boolean] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const cacheKey = `${key(props.surface.business.business_public_id, props.surface.authority_selection)}:data-use:1`;
 const draft = reactive<DataUseDraft>(dataUseDrafts.get(cacheKey) ?? { selected: '', manager: '', baselineScope: '', baselineRevision: 0, confirmed: false, notice: '', acknowledged: false, blocked: false });
 dataUseDrafts.set(cacheKey, draft);
+draft.uncertain ??= !!draft.pending;
 watch(() => Boolean(draft.pending), pending => emit('pendingChange', pending), { immediate: true, flush: 'sync' });
 const choices = ref<DataUseChoices['scopes']>([]), next = ref<string | null>(null), loading = ref(false), busy = ref(false);
 let serial = 0, disposed = false;
@@ -21,6 +22,7 @@ const stale = computed(() => chosen.value && (draft.baselineScope !== chosen.val
 const enabled = computed(() => !busy.value && !props.refreshing && !draft.blocked && managers.value.some(row => row.grant_id === draft.manager));
 const safeChoice = computed(() => chosen.value && Number.isSafeInteger(chosen.value.grant_revision) && chosen.value.authority_selection.requirements.every(row => Number.isSafeInteger(row.leaf_grant_id) && row.leaf_grant_id > 0));
 async function fetchScopes(after?: number) {
+    if (draft.blocked) return;
     const attempt = ++serial, captured = stamp(); loading.value = true;
     try {
         const value = await dataUseChoices(after);
@@ -35,7 +37,7 @@ function review() {
     if (draft.pending || busy.value) return;
     draft.baselineScope = chosen.value?.scope_id ?? ''; draft.baselineRevision = latest.value?.revision ?? 0; draft.confirmed = false;
 }
-onMounted(() => { if (!draft.manager && managers.value.length === 1) draft.manager = managers.value[0].grant_id; void fetchScopes(); });
+onMounted(() => { if (draft.blocked) return; if (!draft.manager && managers.value.length === 1) draft.manager = managers.value[0].grant_id; void fetchScopes(); });
 watch(() => props.surface, () => {
     // Parent Business admission does not renew independent data-use metadata.
     serial++; choices.value = []; next.value = null; void fetchScopes();
@@ -50,6 +52,7 @@ async function execute(command: DataUseDraft['pending']) {
     if (!enabled.value || !command) return;
     draft.pending ??= JSON.parse(JSON.stringify(command));
     const frozen = JSON.parse(JSON.stringify(draft.pending)) as NonNullable<DataUseDraft['pending']>, captured = stamp();
+    const uncertain = beginDelivery(draft);
     let acknowledgedRevision: number | undefined;
     busy.value = true; draft.notice = ''; draft.acknowledged = false;
     try {
@@ -68,15 +71,17 @@ async function execute(command: DataUseDraft['pending']) {
             // a later independently read revision still requires explicit review.
             draft.baselineRevision = acknowledgedRevision;
         }
-        draft.pending = undefined; draft.confirmed = false; draft.acknowledged = true; emit('refresh');
+        draft.pending = undefined; draft.uncertain = false; draft.confirmed = false; draft.acknowledged = true; emit('refresh');
     } catch (error) {
         if (disposed || !owned(captured)) return;
         if (error instanceof TransportError && error.status === 403) {
-            draft.blocked = true; dataUseDrafts.delete(cacheKey); draft.notice = t('لم يعد الأمر مؤهلًا. لم نفترض نجاحه أو نستبدل سنده.', 'The command is no longer qualified. No success or replacement authority was inferred.'); emit('refresh');
-        } else if (error instanceof TransportError && error.status === 422) {
-            draft.pending = undefined; draft.notice = t('رُفضت حقول الأمر. راجع النطاق والفعل قبل طلب جديد.', 'Command fields were rejected. Review scope and action before a new request.');
+            serial++; choices.value = []; next.value = null;
+            Object.assign(draft, { selected: '', manager: '', baselineScope: '', baselineRevision: 0, confirmed: false, acknowledged: false, blocked: true });
+            draft.notice = t('لم يعد الأمر مؤهلًا. لم نفترض نجاحه أو نستبدل سنده.', 'The command is no longer qualified. No success or replacement authority was inferred.'); emit('refresh');
+        } else if (definitiveRejection(error, uncertain) && error instanceof TransportError && error.status === 422) {
+            draft.pending = undefined; draft.uncertain = false; draft.notice = t('رُفضت حقول الأمر. راجع النطاق والفعل قبل طلب جديد.', 'Command fields were rejected. Review scope and action before a new request.');
         } else if (error instanceof TransportError && error.status === 409 && 'error' in error.body && error.body.error === 'business_relation_revision_rejected') {
-            draft.pending = undefined; draft.notice = t('تغير إصدار الربط قبل الأثر. راجع الحالة دون إعادة تلقائية.', 'The binding revision changed before effect. Review without automatic retry.'); emit('refresh');
+            draft.pending = undefined; draft.uncertain = false; draft.notice = t('تغير إصدار الربط قبل الأثر. راجع الحالة دون إعادة تلقائية.', 'The binding revision changed before effect. Review without automatic retry.'); emit('refresh');
         } else draft.notice = t('النتيجة غير محسومة. احتُفظ بالأمر الأصلي للتحقق الصريح دون تكرار تلقائي.', 'The outcome is unresolved. Its original command is retained for explicit reconciliation without automatic retry.');
     } finally { if (!disposed && owned(captured)) busy.value = false; }
 }
@@ -94,9 +99,9 @@ function operation(value: string) { return ({ retained_read: t('قراءة مح�
     <section v-if="managers.length" class="bf-card bf-data-use" data-business-data-use>
         <h2>{{ t('استعمال بيانات العملاء', 'Client-data use') }}</h2>
         <p>{{ t('يربط النشاط بنطاق استعمال مؤهل قائم، ولا يمنحه حقًا جديدًا على المصدر أو العميل. يستلزم الربط تغطية العميل وسند النشاط وسند الاستعمال، وتُفحص حقوق المصدر والأدلة عند الاستعمال الفعلي.', 'Bind this business to an existing qualified use scope. This creates no source or client-data right. Attachment needs client coverage, Business authority and use authority; source and evidence rights are checked at actual use.') }}</p>
-        <label for="bf-data-manager">{{ t('سند إدارة ربط النشاط', 'Business binding authority') }}</label><select id="bf-data-manager" v-model="draft.manager" :disabled="busy || refreshing || !!draft.pending"><option value="">{{ t('اختر سندًا مؤهلًا', 'Select a qualified authority') }}</option><option v-for="row in managers" :key="row.grant_id" :value="row.grant_id">{{ row.grant_id }}</option></select>
+        <template v-if="!draft.blocked"><label for="bf-data-manager">{{ t('سند إدارة ربط النشاط', 'Business binding authority') }}</label><select id="bf-data-manager" v-model="draft.manager" :disabled="busy || refreshing || !!draft.pending"><option value="">{{ t('اختر سندًا مؤهلًا', 'Select a qualified authority') }}</option><option v-for="row in managers" :key="row.grant_id" :value="row.grant_id">{{ row.grant_id }}</option></select></template>
         <p v-if="surface.data_use.bindings_more" role="status">{{ t('أحدث 64 ربطًا فقط؛ السجل المعروض جزئي.', 'Latest 64 bindings only; displayed history is partial.') }}</p>
-        <template v-if="!refreshing">
+        <template v-if="!refreshing && !draft.blocked">
             <label class="bf-check"><input v-model="draft.confirmed" type="checkbox" data-data-use-confirm :disabled="!enabled || !!draft.pending">{{ t('أؤكد إنهاء الربط أو التنازل عن الحق المحدد فقط، مع حفظ التاريخ.', 'I confirm ending only the selected binding or surrendering only the selected right, retaining history.') }}</label>
             <p v-if="!surface.data_use.bindings.length" data-data-bindings-empty>{{ t('لا روابط استعمال مسجلة معروضة.', 'No recorded use bindings displayed.') }}</p>
             <article v-for="row in surface.data_use.bindings" :key="row.binding_id" class="bf-issued" :data-data-binding="row.binding_id" :data-binding-scope="row.scope_id" :data-binding-state="row.state"><strong>{{ row.state === 'active' ? t('ربط قائم — ليس إثباتًا لاستمرار حق الاستعمال', 'Current binding — continued use authority is not established') : t('ربط منتهٍ — التاريخ محفوظ', 'Ended binding — history retained') }}</strong><code>{{ row.scope_id }}</code><button v-if="row.state === 'active'" type="button" :disabled="!enabled || !!draft.pending || !draft.confirmed || !Number.isSafeInteger(row.revision)" @click="end(row)">{{ t('إنهاء ربط الاستعمال', 'End use binding') }}</button></article>

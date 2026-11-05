@@ -2,7 +2,7 @@
 
 namespace App\Providers\Ads\Snapchat;
 
-use App\Providers\Ads\Provider;
+use App\Providers\Ads\NativeSourceOwner;
 use App\Providers\Ads\ProviderRequestGuard;
 use App\Providers\Ads\ProviderScope;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -10,7 +10,6 @@ use Illuminate\Cache\Repository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use LogicException;
 
 /** Snapchat callback CSRF correlation only. A state token never grants source or provider authority. */
@@ -24,8 +23,8 @@ final readonly class SnapchatOAuthState
         $this->requests->requireCurrent($request, $scope, 'provider.connect', $accessVersion);
         $state = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $key = $this->key($state);
-        $workspace = DB::table('organization_workspaces')->where('id', $scope->workspaceId)->value('public_id');
-        $envelope = Crypt::encryptString(json_encode(['binding' => $binding, 'workspace' => $workspace, 'expires_at' => now()->timestamp + 300], JSON_THROW_ON_ERROR));
+        $reference = NativeSourceOwner::referenceFor($request, $scope);
+        $envelope = Crypt::encryptString(json_encode(['binding' => $binding, ...$reference, 'expires_at' => now()->timestamp + 300], JSON_THROW_ON_ERROR));
         // Do not publish correlation for a source operation that later rolls back.
         DB::afterCommit(function () use ($key, $envelope): void {
             if (! $this->cache->add($key, $envelope, 300)) {
@@ -43,11 +42,11 @@ final readonly class SnapchatOAuthState
         try {
             $record = is_string($cipher) ? json_decode(Crypt::decryptString($cipher), true, 16, JSON_THROW_ON_ERROR) : null;
             $s = $record['binding']['scope'] ?? [];
-            if (($s['provider'] ?? null) !== 'snapchat' || ! Str::isUuid($record['workspace'] ?? '')) {
+            if (($s['provider'] ?? null) !== 'snapchat') {
                 throw new AuthorizationException;
             }
-            $scope = new ProviderScope($s['workspace_id'], $s['source_id'], Provider::Snapchat,
-                $s['account_id'], $s['operation'], $s['purpose']);
+            $scope = ProviderScope::fromArray($s);
+            $reference = NativeSourceOwner::referenceFrom($record, $scope);
             $binding = $this->binding($request, $scope, $record['binding']['access_version'], $configuration);
             if ($record['binding'] !== $binding || ! is_int($record['expires_at'] ?? null) || $record['expires_at'] <= now()->timestamp) {
                 throw new AuthorizationException;
@@ -56,7 +55,7 @@ final readonly class SnapchatOAuthState
             throw new AuthorizationException('Snapchat callback routing state expired or changed.');
         }
 
-        return ['workspace' => $record['workspace'], 'scope' => $scope, 'access_version' => $record['binding']['access_version']];
+        return [...$reference, 'scope' => $scope, 'access_version' => $record['binding']['access_version']];
     }
 
     /** Consume before exchanging the code; cache consumption survives a later database/provider rollback. */

@@ -2,7 +2,7 @@
 
 namespace App\Providers\Ads\X;
 
-use App\Providers\Ads\Provider;
+use App\Providers\Ads\NativeSourceOwner;
 use App\Providers\Ads\ProviderCredentials;
 use App\Providers\Ads\ProviderRequestGuard;
 use App\Providers\Ads\ProviderScope;
@@ -11,7 +11,6 @@ use Illuminate\Cache\Repository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use LogicException;
 
 /** Ephemeral three-legged token correlation, not durable access or provider authority. */
@@ -30,8 +29,8 @@ final readonly class XOAuthState
             || preg_match('/[\x00-\x20\x7f]/', $temporary->value('oauth_token_secret'))) {
             throw new LogicException('Exact X temporary token pair required.');
         }
-        $workspace = DB::table('organization_workspaces')->where('id', $scope->workspaceId)->value('public_id');
-        $cipher = Crypt::encryptString(json_encode(['binding' => $binding, 'workspace' => $workspace,
+        $reference = NativeSourceOwner::referenceFor($request, $scope);
+        $cipher = Crypt::encryptString(json_encode(['binding' => $binding, ...$reference,
             'credentials' => $credentials, 'expires_at' => now()->timestamp + 300], JSON_THROW_ON_ERROR));
         // A local five-minute correlation lease is not a native token expiry or legal retention policy.
         DB::afterCommit(function () use ($key, $cipher): void {
@@ -46,7 +45,7 @@ final readonly class XOAuthState
     {
         $record = $this->restore($request, $configuration, $token);
 
-        return ['workspace' => $record['workspace'], 'scope' => $record['scope'], 'access_version' => $record['binding']['access_version']];
+        return [...NativeSourceOwner::referenceFrom($record, $record['scope']), 'scope' => $record['scope'], 'access_version' => $record['binding']['access_version']];
     }
 
     /** Consumption survives a later provider/database failure. Caller must exchange only after this returns. */
@@ -76,10 +75,11 @@ final readonly class XOAuthState
         try {
             $record = is_string($cipher) ? json_decode(Crypt::decryptString($cipher), true, 16, JSON_THROW_ON_ERROR) : null;
             $s = $record['binding']['scope'] ?? [];
-            if (($s['provider'] ?? null) !== 'x' || ! Str::isUuid($record['workspace'] ?? '')) {
+            if (($s['provider'] ?? null) !== 'x') {
                 throw new AuthorizationException;
             }
-            $scope = new ProviderScope($s['workspace_id'], $s['source_id'], Provider::X, $s['account_id'], $s['operation'], $s['purpose']);
+            $scope = ProviderScope::fromArray($s);
+            $reference = NativeSourceOwner::referenceFrom($record, $scope);
             $binding = $this->binding($request, $scope, $record['binding']['access_version'], $configuration);
             $credentials = new ProviderCredentials($record['credentials']);
             if ($record['binding'] !== $binding || ! is_int($record['expires_at'] ?? null) || $record['expires_at'] <= now()->timestamp
@@ -91,7 +91,7 @@ final readonly class XOAuthState
             throw new AuthorizationException('X callback token expired or changed.');
         }
 
-        return ['workspace' => $record['workspace'], 'scope' => $scope, 'binding' => $binding, 'credentials' => $credentials];
+        return [...$reference, 'scope' => $scope, 'binding' => $binding, 'credentials' => $credentials];
     }
 
     private function binding(Request $request, ProviderScope $scope, int $version, string $configuration): array

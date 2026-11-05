@@ -6,6 +6,7 @@ use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderEvidenceValidity;
 use App\Providers\Ads\ProviderReportingEvidence;
 use App\Providers\Ads\ProviderReportPrerequisites;
+use App\Providers\Ads\ProviderRequestGuard;
 use App\Providers\Ads\ProviderScope;
 use App\Security\SessionAuthority;
 use App\Sources\EffectiveCapability;
@@ -23,6 +24,7 @@ final class XAccessStatus
         if (DB::connection()->transactionLevel() !== 1 || $scope->provider !== Provider::X) {
             throw new LogicException('X status requires a signed current Workspace transaction.');
         }
+        app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'source.read');
         DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$scope->workspaceId,
             SessionAuthority::sessionKey($request), $scope->sourceId, $scope->accountId, $scope->operation, $scope->purpose]);
         $access = DB::table('provider_access')->where('workspace_id', $scope->workspaceId)->where('source_id', $scope->sourceId)

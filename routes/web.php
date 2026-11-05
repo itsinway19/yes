@@ -70,7 +70,7 @@ Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->group(funct
 Route::post('/locale', LocaleController::class)->name('locale.update');
 Route::post('/internal/locale', LocaleController::class)->name('internal.locale.update');
 
-Route::redirect('/dashboard', '/businesses')
+Route::redirect('/dashboard', '/businesses?entry=1')
     ->middleware(['auth', EnsureCurrentPrincipal::class])->name('dashboard');
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
     Route::get('/workspaces/{workspace}/commercial-history', WorkspaceCommercialHistoryController::class)->whereUuid('workspace')->name('workspaces.commercial-history');
@@ -146,6 +146,89 @@ Route::middleware(['auth', EnsurePendingStaffEnrollment::class.':true'])->group(
 });
 
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
+    // Business-native custody uses the same qualified provider controllers.
+    Route::post('/businesses/{business}/source-audit/{obligation}/recover', [WorkspaceSourceController::class, 'recoverBusiness'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->whereUuid('obligation')->name('businesses.providers.audit.recover');
+    Route::get('/businesses/{business}/providers/x/{source}/campaigns', [XReportController::class, 'campaigns'])
+        ->whereUuid('business')->whereUuid('source')->name('businesses.providers.x.campaigns');
+    Route::get('/businesses/{business}/providers/x/{source}/report', [XReportController::class, 'status'])
+        ->whereUuid('business')->whereUuid('source')->name('businesses.providers.x.report.status');
+    Route::post('/businesses/{business}/providers/x/{source}/report', [XReportController::class, 'store'])
+        ->whereUuid('business')->whereUuid('source')->name('businesses.providers.x.report.store');
+    Route::get('/businesses/{business}/providers/x', [XConnectionController::class, 'index'])
+        ->whereUuid('business')->name('businesses.providers.x.index');
+    Route::get('/businesses/{business}/providers/x/discovery/{flow}', [XConnectionController::class, 'discovery'])
+        ->whereUuid('business')->where('flow', '[A-Za-z0-9_-]{43}')->name('businesses.providers.x.discovery');
+    Route::post('/businesses/{business}/providers/x/connect', [XConnectionController::class, 'connect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('businesses.providers.x.connect');
+    Route::post('/businesses/{business}/providers/x/select', [XConnectionController::class, 'select'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('businesses.providers.x.select');
+    Route::post('/businesses/{business}/providers/x/{source}/disconnect', [XConnectionController::class, 'disconnect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->whereUuid('source')->name('businesses.providers.x.disconnect');
+    Route::get('/businesses/{business}/providers/snapchat/{source}/report', [SnapchatReportController::class, 'status'])
+        ->whereUuid('business')->whereUuid('source')->name('businesses.providers.snapchat.report.status');
+    Route::post('/businesses/{business}/providers/snapchat/{source}/report', [SnapchatReportController::class, 'store'])
+        ->whereUuid('business')->whereUuid('source')->name('businesses.providers.snapchat.report.store');
+    Route::get('/businesses/{business}/providers/snapchat', [SnapchatConnectionController::class, 'index'])
+        ->whereUuid('business')->name('businesses.providers.snapchat.index');
+    Route::get('/businesses/{business}/providers/snapchat/discovery/{flow}', [SnapchatConnectionController::class, 'discovery'])
+        ->whereUuid('business')->where('flow', '[A-Za-z0-9_-]{43}')->name('businesses.providers.snapchat.discovery');
+    Route::post('/businesses/{business}/providers/snapchat/connect', [SnapchatConnectionController::class, 'connect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('businesses.providers.snapchat.connect');
+    Route::post('/businesses/{business}/providers/snapchat/select', [SnapchatConnectionController::class, 'select'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('businesses.providers.snapchat.select');
+    Route::post('/businesses/{business}/providers/snapchat/{source}/disconnect', [SnapchatConnectionController::class, 'disconnect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->whereUuid('source')->name('businesses.providers.snapchat.disconnect');
+    Route::post('/businesses/{business}/providers/snapchat/{source}/renew', [SnapchatConnectionController::class, 'renew'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->whereUuid('source')->name('businesses.providers.snapchat.renew');
+    Route::get('/businesses/{business}/providers/tiktok/{source}/report', [TikTokReportController::class, 'status'])
+        ->whereUuid('business')->whereUuid('source')->name('businesses.providers.tiktok.report.status');
+    Route::post('/businesses/{business}/providers/tiktok/{source}/report', [TikTokReportController::class, 'store'])
+        ->whereUuid('business')->whereUuid('source')->name('businesses.providers.tiktok.report.store');
+    Route::get('/businesses/{business}/providers/tiktok', [TikTokConnectionController::class, 'index'])
+        ->whereUuid('business')->name('businesses.providers.tiktok.index');
+    Route::get('/businesses/{business}/providers/tiktok/discovery/{flow}', [TikTokConnectionController::class, 'discovery'])
+        ->whereUuid('business')->where('flow', '[A-Za-z0-9_-]{43}')->name('businesses.providers.tiktok.discovery');
+    Route::post('/businesses/{business}/providers/tiktok/connect', [TikTokConnectionController::class, 'connect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('businesses.providers.tiktok.connect');
+    Route::post('/businesses/{business}/providers/tiktok/select', [TikTokConnectionController::class, 'select'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('businesses.providers.tiktok.select');
+    Route::post('/businesses/{business}/providers/tiktok/{source}/disconnect', [TikTokConnectionController::class, 'disconnect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->whereUuid('source')->name('businesses.providers.tiktok.disconnect');
+    Route::get('/businesses/{business}/providers/google/{source}/report', [GoogleReportController::class, 'status'])
+        ->whereUuid('business')->whereUuid('source')->name('businesses.providers.google.report.status');
+    Route::get('/businesses/{business}/providers/meta/{source}/report', [MetaReportController::class, 'status'])
+        ->whereUuid('business')->whereUuid('source')->name('businesses.providers.meta.report.status');
+    Route::post('/businesses/{business}/providers/meta/{source}/report', [MetaReportController::class, 'store'])
+        ->whereUuid('business')->whereUuid('source')->name('businesses.providers.meta.report.store');
+    Route::get('/businesses/{business}/providers/google/{source}/report/{generation}/download', [GoogleReportController::class, 'download'])
+        ->whereUuid('business')->whereUuid('source')->where('generation', '[1-9][0-9]{0,17}')->name('businesses.providers.google.report.download');
+    Route::post('/businesses/{business}/providers/google/{source}/report', [GoogleReportController::class, 'store'])
+        ->whereUuid('business')->whereUuid('source')->name('businesses.providers.google.report.store');
+    Route::get('/businesses/{business}/providers/google', [GoogleConnectionController::class, 'index'])
+        ->whereUuid('business')->name('businesses.providers.google.index');
+    Route::get('/businesses/{business}/providers/google/discovery/{flow}', [GoogleConnectionController::class, 'discovery'])
+        ->whereUuid('business')->where('flow', '[A-Za-z0-9_-]{43}')->name('businesses.providers.google.discovery');
+    Route::get('/businesses/{business}/providers/google/hierarchy/{flow}', [GoogleConnectionController::class, 'hierarchy'])
+        ->whereUuid('business')->where('flow', '[A-Za-z0-9_-]{43}')->name('businesses.providers.google.hierarchy');
+    Route::post('/businesses/{business}/providers/google/connect', [GoogleConnectionController::class, 'connect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('businesses.providers.google.connect');
+    Route::post('/businesses/{business}/providers/google/select', [GoogleConnectionController::class, 'select'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('businesses.providers.google.select');
+    Route::post('/businesses/{business}/providers/google/{source}/disconnect', [GoogleConnectionController::class, 'disconnect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->whereUuid('source')->name('businesses.providers.google.disconnect');
+    Route::post('/businesses/{business}/providers/google/{source}/renew', [GoogleConnectionController::class, 'renew'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->whereUuid('source')->name('businesses.providers.google.renew');
+    Route::get('/businesses/{business}/providers/meta', [MetaConnectionController::class, 'index'])
+        ->whereUuid('business')->name('businesses.providers.meta.index');
+    Route::get('/businesses/{business}/providers/meta/discovery/{flow}', [MetaConnectionController::class, 'discovery'])
+        ->whereUuid('business')->where('flow', '[A-Za-z0-9_-]{43}')->name('businesses.providers.meta.discovery');
+    Route::post('/businesses/{business}/providers/meta/connect', [MetaConnectionController::class, 'connect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('businesses.providers.meta.connect');
+    Route::post('/businesses/{business}/providers/meta/select', [MetaConnectionController::class, 'select'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('businesses.providers.meta.select');
+    Route::post('/businesses/{business}/providers/meta/{source}/disconnect', [MetaConnectionController::class, 'disconnect'])
+        ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->whereUuid('source')->name('businesses.providers.meta.disconnect');
     Route::get('/providers/x/callback', [XConnectionController::class, 'callback'])->name('providers.x.callback');
     Route::get('/workspaces/{workspace}/providers/x/{source}/campaigns', [XReportController::class, 'campaigns'])
         ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.x.campaigns');

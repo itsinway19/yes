@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { locale } from '../spa/locale';
 import { owned, stamp, TransportError } from '../spa/transport';
-import { boundaryDrafts, key, type BoundaryDraft } from './drafts';
+import { beginDelivery, definitiveRejection, boundaryDrafts, key, type BoundaryDraft } from './drafts';
 import { businessChoices, businessSurface, writeResourceRight, type BoundarySurface, type Choices, type Surface, type ResourceCommand } from './api';
 
 const props = defineProps<{ surface: BoundarySurface; refreshing?: boolean }>();
@@ -11,6 +11,7 @@ const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const cacheKey = `${key(props.surface.boundary.boundary_id, props.surface.authority_selection)}:boundary-editor:1`;
 const draft = reactive<BoundaryDraft>(boundaryDrafts.get(cacheKey) ?? { choice: '', selected: '', revision: 0, membership: null, confirmed: false, notice: '', blocked: false });
 boundaryDrafts.set(cacheKey, draft);
+draft.uncertain ??= !!draft.pending;
 const choices = ref<Choices['items']>([]), next = ref<string | null>(null), target = ref<Surface>(), loading = ref(false), busy = ref(false);
 let disposed = false, targetSerial = 0, choiceSerial = 0;
 onBeforeUnmount(() => { disposed = true; });
@@ -23,6 +24,7 @@ const enabled = computed(() => !busy.value && !props.refreshing && !draft.blocke
 const canAttach = computed(() => enabled.value && !loading.value && !stale.value && Number.isSafeInteger(draft.revision) && props.surface.boundary.state === 'active' && latest.value?.state !== 'active'
     && !!chosen.value && !!target.value && target.value.business.business_public_id === chosen.value.business_public_id && options.value.some(o => o.grant_id === draft.selected));
 async function fetchChoices(after?: number) {
+    if (draft.blocked) return;
     const captured = stamp(), serial = ++choiceSerial; loading.value = true;
     try {
         const result = await businessChoices(after);
@@ -71,21 +73,24 @@ async function execute(body: ResourceCommand) {
     if (!enabled.value) return;
     draft.pending ??= JSON.parse(JSON.stringify(body));
     const frozen = JSON.parse(JSON.stringify(draft.pending)) as ResourceCommand, captured = stamp();
+    const uncertain = beginDelivery(draft);
     busy.value = true; draft.confirmed = false; draft.notice = '';
     try {
         const result = await writeResourceRight(frozen);
         if (disposed || !owned(captured)) return;
         if (!('membership_id' in result) || result.status !== (frozen.effect === 'attach_subject' ? 'active' : 'ended')
             || frozen.effect === 'detach_subject' && result.membership_id !== frozen.target_ref) throw Error('Boundary acknowledgement target mismatch');
-        draft.pending = undefined; draft.choice = ''; draft.selected = ''; target.value = undefined; draft.confirmed = true; emit('refresh');
+        draft.pending = undefined; draft.uncertain = false; draft.choice = ''; draft.selected = ''; target.value = undefined; draft.confirmed = true; emit('refresh');
     } catch (error) {
         if (disposed || !owned(captured)) return;
         if (error instanceof TransportError && error.status === 403) {
-            draft.blocked = true; boundaryDrafts.delete(cacheKey); draft.notice = t('لم يعد الطلب مؤهلًا. لم نستنتج نجاحه أو نبدّل سنده.', 'The command is no longer qualified. No success or replacement authority was inferred.'); emit('refresh');
-        } else if (error instanceof TransportError && error.status === 422) {
-            draft.pending = undefined; draft.notice = t('لم تقبل بيانات الطلب. راجع النطاق والنشاط والسند.', 'The command fields were rejected. Review boundary, business and authority.');
+            choiceSerial++; targetSerial++; choices.value = []; next.value = null; target.value = undefined;
+            Object.assign(draft, { choice: '', selected: '', revision: 0, membership: null, confirmed: false, blocked: true });
+            draft.notice = t('لم يعد الطلب مؤهلًا. لم نستنتج نجاحه أو نبدّل سنده.', 'The command is no longer qualified. No success or replacement authority was inferred.'); emit('refresh');
+        } else if (definitiveRejection(error, uncertain) && error instanceof TransportError && error.status === 422) {
+            draft.pending = undefined; draft.uncertain = false; draft.notice = t('لم تقبل بيانات الطلب. راجع النطاق والنشاط والسند.', 'The command fields were rejected. Review boundary, business and authority.');
         } else if (error instanceof TransportError && error.status === 409 && 'error' in error.body && error.body.error === 'business_relation_revision_rejected') {
-            draft.pending = undefined; draft.notice = t('رُفض إصدار التغطية قبل الأثر. راجع الحالة قبل طلب جديد.', 'Coverage revision was rejected before effect. Review current state before a new command.'); emit('refresh');
+            draft.pending = undefined; draft.uncertain = false; draft.notice = t('رُفض إصدار التغطية قبل الأثر. راجع الحالة قبل طلب جديد.', 'Coverage revision was rejected before effect. Review current state before a new command.'); emit('refresh');
         } else draft.notice = t('نتيجة الطلب غير محسومة. الأمر الأصلي محفوظ للتحقق دون تكرار تلقائي.', 'The command outcome is unresolved. Its original command is retained without automatic retry.');
     } finally { if (!disposed && owned(captured)) busy.value = false; }
 }
@@ -108,7 +113,8 @@ function detach(row: BoundarySurface['memberships'][number]) { if (enabled.value
                 <button v-if="row.state === 'active'" type="button" :disabled="!enabled || !!draft.pending || !Number.isSafeInteger(row.revision)" @click="detach(row)">{{ t('إنهاء هذه التغطية', 'End this coverage') }}</button>
             </article>
         </template>
-        <form class="bf-form" data-boundary-attach @submit.prevent="attach">
+        <p v-if="draft.blocked && draft.pending" role="status">{{ t('الطلب الأصلي محفوظ وغير محسوم. راجع وصولك الحالي قبل المتابعة.', 'The unresolved original request is retained. Review current access before continuing.') }}</p>
+        <form v-if="!draft.blocked" class="bf-form" data-boundary-attach @submit.prevent="attach">
             <h3>{{ t('ربط نطاق العميل بنشاط', 'Attach client boundary to a business') }}</h3>
             <p>{{ t('يحتاج الربط حق إدارة هذا النطاق وحق إدارة علاقات النشاط معًا. تعرض أسماء الأنشطة التي تملك حق قراءتها في نطاق التفويض نفسه فقط.', 'Attachment requires both boundary management and business relationship authority. Names are shown only for businesses you may read in the same realm.') }}</p>
             <fieldset :disabled="!enabled || !!draft.pending || loading">

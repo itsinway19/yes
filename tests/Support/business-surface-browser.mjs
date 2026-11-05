@@ -25,7 +25,7 @@ async function check(name, fn) {
     catch (e) {
         row.result = 'FAIL'; row.error = e.stack;
         if (activePage && !activePage.isClosed()) {
-            row.presentation = await activePage.evaluate(() => ({ path: location.pathname, state: document.querySelector('[data-application-spa]')?.getAttribute('data-state'),
+            row.presentation = await activePage.evaluate(() => ({ path: location.pathname, href: location.href, hash: location.hash, state: document.querySelector('[data-application-spa]')?.getAttribute('data-state'),
                 text: document.body.innerText.slice(0, 2500), resources: performance.getEntriesByType('resource').slice(-16).map(r => ({ name: new URL(r.name).pathname, duration: r.duration })) })).catch(error => ({ captureError: error.message }));
             await activePage.screenshot({ path: path.join(run, 'business-failure.png'), fullPage: true }).catch(() => {});
         }
@@ -70,21 +70,232 @@ try {
     await check('actual login, independent creation, list and opening without a Workspace identity', async () => {
         await page.goto(origin+'/login');
         const logged = await send('/login', 'POST', { email: 'goals-b@example.test', password: 'DisposableGoalsProof42!' }); assert.equal(logged.status, 200);
-        assert.equal(logged.body.redirect, '/dashboard'); await page.goto(origin+logged.body.redirect); await page.waitForURL(origin+'/businesses'); await ready('[data-business-list]');
+        assert.equal(logged.body.redirect, '/dashboard'); await page.goto(origin+logged.body.redirect); await ready('[data-business-public]');
+        assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'),delegated.business,'A single qualified existing business opens after login without creating another');
         assert.equal((await send('/api/businesses')).body.data.items.length, 1);
+        await index();
         await page.getByRole('link', { name: 'إضافة نشاط', exact: true }).click(); await ready('#bf-create-name');
         await page.getByLabel('اسم النشاط', { exact: true }).fill('نشاط مستقل للمتصفح');
         await page.locator('#bf-create-type').selectOption({ index: 1 });
         const selectedType = await page.locator('#bf-create-type').inputValue();
-        await page.getByRole('button', { name: 'إنشاء النشاط', exact: true }).click();
-        await page.locator('[data-business-created]').waitFor(); await page.getByRole('link', { name: 'فتح النشاط', exact: true }).click(); await ready('[data-business-public]');
+        await page.locator('#bf-create-market-search').fill('SA');
+        await page.locator('.setup-countries input[value="SA"]').check();
+        await page.locator('#bf-create-market-search').fill('no-country-matches-this-query');
+        await page.locator('[data-create-market-search-empty]').waitFor();
+        await page.locator('[data-create-market-search-clear]').click();
+        assert.equal(await page.locator('#bf-create-market-search').evaluate(input=>document.activeElement===input),true);
+        assert.equal(await page.locator('.setup-countries input[value="SA"]').isChecked(),true,'Clearing search must not clear the selected target market');
+        await page.getByRole('button', { name: 'إنشاء النشاط والمتابعة', exact: true }).click();
+        await ready('[data-business-public]');
         assert.equal(await page.locator('[data-business-name]').textContent(), 'نشاط مستقل للمتصفح');
         await ensureWorkspaceNavigation();
         await page.locator('[data-workspace-section="settings"]').click();
         assert.equal(await page.locator('#bf-type').inputValue(), selectedType);
         result.createdBusiness = await page.locator('[data-business-public]').getAttribute('data-business-public');
+        assert.deepEqual((await send(`/api/businesses/${result.createdBusiness}/surface?access=${new URL(page.url()).searchParams.get('access')}`)).body.data.business.declared_markets,['SA']);
         assert.notEqual(result.createdBusiness, delegated.business);
         return { createdBusiness: result.createdBusiness, sharedWorkspaceInference: false };
+    });
+    async function sharedSourceReturnCheck() {
+    await check('shared-source return survives actual OAuth success and cancel, fresh documents and revoked Business authority', async () => {
+        fixture('source-setup'); fixture('shared-return-setup');
+        const target = JSON.parse(await readFile(path.join(run, 'shared-return-fixture.json'), 'utf8'));
+        const businessPath = `/businesses/${target.business}?access=${target.access}&section=sources`;
+        const organizationPath = `/workspaces/${target.workspace}`;
+        const returnLink = page.locator('[data-business-return]');
+        const assertReturn = async () => {
+            await ready('[data-sources-workspace]');
+            await returnLink.waitFor();
+            assert.equal(await returnLink.getAttribute('href'), businessPath);
+            const hints = await page.evaluate(() => Object.entries(sessionStorage).filter(([key]) => key.startsWith('builderad.account-return.v1:')).map(([, value]) => JSON.parse(value)));
+            assert.equal(hints.length, 1);
+            assert.deepEqual(Object.keys(hints[0]).sort(), ['access', 'business', 'workspace']);
+            assert.equal(hints[0].business, target.business);
+        };
+        const enter = async (label) => {
+            await page.goto(origin + businessPath); await ready('[data-business-source-inventory]');
+            await page.locator('[data-business-source-inventory-details] > summary').click();
+            await page.getByRole('link', { name: label, exact: true }).first().click();
+            await page.waitForURL(origin + organizationPath); await assertReturn();
+        };
+        await enter('إدارة المصدر');
+        await page.reload(); await assertReturn();
+        await page.goto(origin + `/workspaces/${target.other_workspace}`); await ready('[data-sources-workspace]');
+        assert.equal(await returnLink.count(), 0, 'A different organization cannot consume this return hint');
+        await page.goto(origin + organizationPath); await assertReturn();
+        assert.equal((await send(`/workspaces/${target.other_identity_workspace}/providers/google`)).status, 403,
+            'A Business return hint cannot grant source authority in another organization');
+        const external = url => url.hostname === 'accounts.google.com';
+        await page.route(external, async route => {
+            const state = new URL(route.request().url()).searchParams.get('state'); assert.ok(state);
+            const callback = origin + '/providers/google/callback?state=' + encodeURIComponent(state);
+            await route.fulfill({ contentType: 'text/html', body: `<main data-synthetic-oauth><a href="${callback}&error=access_denied">Cancel synthetic OAuth</a><a href="${callback}&code=synthetic-code">Authorize synthetic OAuth</a></main>` });
+        });
+        const outcomes = [];
+        try {
+            for (const outcome of ['Cancel', 'Authorize']) {
+                const snapshot = await send(organizationPath + '/providers/google');
+                assert.equal(snapshot.status, 200);
+                assert.equal(snapshot.body.availability, 'CONNECT_AVAILABLE');
+                await page.locator('[data-provider="google"] button').click();
+                await page.locator('[data-source-connect="google"]:visible').click();
+                await page.locator('[data-synthetic-oauth]').waitFor();
+                await page.getByRole('link', { name: outcome + ' synthetic OAuth', exact: true }).click();
+                await page.waitForURL(url => url.origin === origin && url.pathname === organizationPath);
+                await assertReturn();
+                await page.reload(); await assertReturn();
+                const dialog = page.locator('dialog[open]');
+                if (await dialog.count()) await dialog.getByRole('button', { name: /^إغلاق/ }).click();
+                await returnLink.click(); await ready('[data-business-public]');
+                assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'), target.business);
+                await page.locator('[data-business-source-inventory]').waitFor();
+                assert.equal((await send(`/api/businesses/${result.createdBusiness}/surface?access=${target.access}`)).status, 403,
+                    'The original grant cannot admit a different Business');
+                outcomes.push(outcome);
+                await enter('فتح الجهة');
+            }
+        } finally { await page.unroute(external); }
+        fixture('shared-return-revoke');
+        await page.reload(); await assertReturn();
+        const denied = page.waitForResponse(response => new URL(response.url()).pathname === `/businesses/${target.business}`);
+        await returnLink.click(); assert.equal((await denied).status(), 403);
+        await page.waitForFunction(() => document.querySelector('[data-application-spa]')?.dataset.state === 'ready');
+        assert.equal(await page.locator('[data-business-public]').count(), 0, 'The hint cannot restore revoked Business access');
+        assert.equal(new URL(page.url()).pathname, organizationPath, 'A denied destination keeps the qualified source page');
+        await page.goto(origin + organizationPath); await assertReturn();
+        assert.equal((await send('/logout', 'POST')).status, 200);
+        await page.goto(origin + '/login');
+        assert.equal((await send('/login', 'POST', { email: 'goals-a@example.test', password: 'DisposableGoalsProof42!' })).status, 200);
+        await page.goto(origin + `/workspaces/${target.other_identity_workspace}`); await ready('[data-sources-workspace]');
+        assert.equal(await returnLink.count(), 0);
+        assert.equal(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('builderad.account-return.v1:')).length), 0);
+        fixture('shared-return-finish');
+        return { outcomes, newDocuments: true, wrongOrganizationRejected: true, wrongBusinessGrantRejected: true,
+            revokedBusinessDenied: true, changedIdentityCleared: true, authority: 'real server; synthetic provider responses only' };
+    });
+    }
+    await check('Business advertising accounts open directly in the activity with five brands and preserve a simulated cancellation return', async()=>{
+        await workspaceSection('sources');
+        assert.equal((await page.locator('[data-workspace-heading]').textContent()).trim(),'المصادر');
+        const accounts=page.locator('[data-business-source-inventory] [data-advertising-accounts]');await accounts.waitFor();
+        const platformIds=await accounts.locator('[data-provider]').evaluateAll(nodes=>nodes.map(node=>node.dataset.provider));assert.deepEqual(platformIds,['google','meta','snapchat','tiktok','x']);
+        await page.waitForFunction(()=>[...document.querySelectorAll('[data-business-source-inventory] .provider-brand img')].every(image=>image.complete&&image.naturalWidth>0));
+        await page.waitForFunction(()=>document.querySelectorAll('[data-business-source-inventory] [data-state="loading"]').length===0);
+        assert.equal(await accounts.locator('[data-state="unselected"]').count(),0,'The Business is already the source context');
+        assert.equal(await page.locator('#business-account-administration,[data-account-administration-heading]').count(),0);
+        const businessUrl=page.url();
+        for(const provider of platformIds){
+            const snapshot=await send('/businesses/'+result.createdBusiness+'/providers/'+provider);
+            assert.equal(snapshot.status,200);assert.deepEqual(snapshot.body.connections,[],'Brand visibility cannot invent an account or data permission');
+        }
+        await page.setViewportSize({width:390,height:844});
+        const xTrigger=accounts.locator('[data-provider="x"] button');await xTrigger.click();
+        const dialog=accounts.locator('dialog');await dialog.waitFor({state:'visible'});assert.equal(await dialog.getAttribute('aria-label'),'X Ads');
+        assert.equal(await page.locator('#business-account-administration').count(),0);
+        await page.screenshot({path:path.join(run,'source-x-dialog-ar-390.png'),fullPage:true});
+        await dialog.locator('.advertising-dialog-heading button').focus();await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
+        assert.equal(await xTrigger.evaluate(button=>document.activeElement===button),true);
+        // The PHP acceptance exercises actual callback ingress. This browser case
+        // verifies only rendering a session-bound cancellation return fragment.
+        const returned=new URL(businessUrl);returned.searchParams.set('section','sources');returned.hash='google-result=AUTHORIZATION_NOT_COMPLETED';
+        // OAuth leaves this document. A hash-only navigation inside the mounted
+        // activity does not simulate the callback's new-document return.
+        await page.goto('about:blank');assert.ok(await page.goto(returned.href));await ready('[data-business-public]');
+        const callbackDialog=page.getByRole('dialog',{name:'Google Ads',exact:true});await callbackDialog.waitFor({state:'visible'});
+        await callbackDialog.getByText('لم يكتمل تفويض Google. يمكنك بدء الربط من جديد.',{exact:true}).waitFor();
+        await callbackDialog.getByRole('button',{name:'إغلاق',exact:true}).click();await callbackDialog.waitFor({state:'hidden'});
+        await page.waitForFunction(()=>!location.hash.includes('google-result='));
+        assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'),result.createdBusiness);
+        assert.equal(await page.locator('[data-workspace-panel="sources"]').isVisible(),true);
+        await page.reload();await ready('[data-business-public]');assert.equal(await page.locator('[data-workspace-panel="sources"]').isVisible(),true);
+        await index();assert.equal(await page.locator('[data-business-public]').count(),0);
+        await page.goBack();await ready('[data-business-public]');assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'),result.createdBusiness);
+        await page.goForward();await ready('[data-business-list]');assert.equal(await page.locator('[data-business-public]').count(),0);
+        await page.goBack();await ready('[data-business-public]');
+        await page.waitForFunction(()=>document.querySelectorAll('[data-business-source-inventory] [data-state="loading"]').length===0);
+        assert.equal(await accounts.locator('[data-state="unselected"]').count(),0,'Reload/history preserve the qualified Business owner without another setup step');
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+        await page.screenshot({path:path.join(run,'business-advertising-accounts-ar-390.png'),fullPage:true});
+        await page.setViewportSize({width:1280,height:900});await page.screenshot({path:path.join(run,'business-sources-ar-1280.png'),fullPage:true});
+        await page.setViewportSize({width:768,height:1024});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+        await page.screenshot({path:path.join(run,'business-sources-ar-768.png'),fullPage:true});
+        if(await page.locator('html').getAttribute('data-theme')!=='dark')await page.locator('[data-theme-toggle]').first().click();await page.waitForFunction(()=>document.documentElement.dataset.theme==='dark');
+        await page.screenshot({path:path.join(run,'business-sources-dark-ar-768.png'),fullPage:true});
+        await page.locator('[data-theme-toggle]').first().click();await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');await page.setViewportSize({width:1280,height:900});
+        return{platformIds,brandedEntries:5,directBusinessCustody:true,mandatoryWorkspaceChooser:false,realSnapshots:true,simulatedCancelledFragment:true,sameBusinessReturned:true,reloadAndBackForward:true,returnFocus:true,tabletAndDark:true,mobileOverflow:false};
+    });
+    await check('brand-new verified advertiser identity reaches first Business setup without a Workspace or advertising prerequisite',async()=>{
+        fixture('new-advertiser-identity');const identity=JSON.parse(await readFile(path.join(run,'new-advertiser-identity.json'),'utf8'));
+        const freshContext=await browser.newContext({viewport:{width:390,height:844},locale:'ar-JO'}),tab=await freshContext.newPage();tab.setDefaultTimeout(20000);activePage=tab;
+        const freshReady=async selector=>tab.waitForFunction(selector=>document.querySelector('[data-application-spa]')?.dataset.state==='ready'&&!!document.querySelector(selector),selector);
+        try{
+            await tab.goto(origin+'/login');assert.equal((await sendFrom(tab,'/login','POST',{email:identity.email,password:'DisposableGoalsProof42!'})).status,200);
+            await tab.goto(origin+'/dashboard');await freshReady('#bf-create-name');assert.equal(new URL(tab.url()).pathname,'/businesses/new');
+            assert.equal((await sendFrom(tab,'/api/businesses')).body.data.items.length,0);const organizations=await sendFrom(tab,'/workspaces');assert.equal(organizations.status,200);assert.deepEqual(organizations.body.data.workspaces,[]);
+            await tab.locator('#bf-create-name').fill('نشاط المعلن الأول');await tab.locator('#bf-create-type').selectOption({index:1});await tab.locator('#bf-create-market-search').fill('SA');await tab.locator('.setup-countries input[value="SA"]').check();
+            await tab.getByRole('button',{name:'إنشاء النشاط والمتابعة',exact:true}).click();await freshReady('[data-business-public]');const business=await tab.locator('[data-business-public]').getAttribute('data-business-public');
+            assert.equal((await sendFrom(tab,'/api/businesses')).body.data.items.length,1);assert.deepEqual((await sendFrom(tab,'/workspaces')).body.data.workspaces,[]);
+            const sidebar=tab.locator('.advertiser-sidebar');if(await sidebar.getAttribute('open')===null)await sidebar.locator(':scope > summary').click();await tab.locator('[data-workspace-section="sources"]').click();
+            assert.equal(await tab.locator('[data-business-source-inventory] .advertising-platforms > [data-provider] .provider-brand').count(),5);assert.equal(await tab.locator('[data-advertising-accounts] dialog').isVisible(),false);assert.equal(await tab.locator('[data-state="unselected"]').count(),0);await tab.locator('[data-provider="meta"] button').click();await tab.getByRole('dialog',{name:'Meta Ads',exact:true}).waitFor({state:'visible'});assert.equal(await tab.locator('#business-account-administration').count(),0);assert.deepEqual((await sendFrom(tab,'/workspaces')).body.data.workspaces,[]);assert.equal(await tab.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+            return{identityFixture:'verified before browser; registration email transport not exercised',firstEntrySetup:true,business,workspacesBeforeAndAfter:0,brandedPlatforms:5,mobileOverflow:false};
+        }finally{await freshContext.close();activePage=page;}
+    });
+    await check('direct Business team recovers initial422 and409 and reconciles a committed unknown result without a replacement command',async()=>{
+        const evidence=[];
+        for(const scenario of [422,409,'unknown']){
+            const created=await send('/api/businesses','POST',{command_id:crypto.randomUUID(),name:'Browser team recovery '+scenario});assert.equal(created.status,201);const business=created.body.data;
+            await page.goto(`${origin}/businesses/${business.business_public_id}?access=${business.grant_refs['business.context.read']}`);await ready('[data-business-public]');await workspaceSection('access');
+            const team=page.locator('[data-business-direct-team]'),target=`**/api/businesses/${business.business_public_id}/direct-team`,commands=[];let first=true,committedReceipt;
+            await page.route(target,async route=>{
+                if(route.request().method()!=='POST')return route.continue();commands.push(route.request().postDataJSON());
+                if(first){first=false;if(scenario==='unknown'){const response=await route.fetch();assert.equal(response.status(),200);committedReceipt=(await response.json()).data;return route.abort('failed');}return route.fulfill({status:scenario,contentType:'application/json',body:JSON.stringify({error:scenario===422?'invalid_business_command':'business_conflict'})});}
+                return route.continue();
+            });
+            try{
+                const rejected=scenario==='unknown'?undefined:page.waitForResponse(response=>new URL(response.url()).pathname===`/api/businesses/${business.business_public_id}/direct-team`&&response.request().method()==='POST');
+                await team.locator('[data-direct-team-confirm]').check();await team.locator('[data-direct-team-submit]').click();
+                if(scenario==='unknown')await team.getByText('لم نتأكد من النتيجة. تحقّق بإرسال الطلب الأصلي نفسه.',{exact:true}).waitFor();
+                else {
+                    assert.equal((await rejected).status(),scenario);
+                    await team.getByText(scenario===422?'رُفض التفعيل دون تنفيذ. راجع الاختيار وأكّده قبل إرسال طلب جديد.':'تم تحديث الحالة. راجع تفعيل الفريق وأكّده من جديد.',{exact:true}).waitFor();
+                    await team.locator('[data-direct-team-confirm]:not([disabled])').waitFor();
+                }
+                assert.equal(commands.length,1,'No automatic alternative command');const original=structuredClone(commands[0]);
+                if(scenario!=='unknown'){await team.locator('[data-direct-team-confirm]').check();}
+                const acknowledged=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/businesses/${business.business_public_id}/direct-team`&&response.request().method()==='POST');
+                await team.locator('[data-direct-team-submit]').click();const receipt=await acknowledged;assert.equal(receipt.status(),200);if(committedReceipt)assert.deepEqual((await receipt.json()).data,committedReceipt,'Exact replay returns the original operating enrollment, not newly issued roots');
+                await team.getByText('تم تفعيل إدارة فريق النشاط. اختر الصلاحية والموظف أدناه.',{exact:true}).waitFor();
+                assert.equal(commands.length,2);if(scenario==='unknown')assert.deepEqual(commands[1],original,'Committed unknown result reuses the exact original command');else assert.notEqual(commands[1].command_id,original.command_id,'Confirmed rejection requires a fresh reviewed command');
+                const surface=await send(`/api/businesses/${business.business_public_id}/surface?access=${business.grant_refs['business.context.read']}`);assert.equal(surface.status,200);assert.equal(surface.body.data.direct_team_enrollment_available,false);
+                evidence.push({scenario,transportInjection:scenario==='unknown'?'real200effect then droppedACK':'rejected before server effect',requests:commands.length,command:scenario==='unknown'?'same':'new',operatingEnrollment:true});
+            }finally{await page.unroute(target);}
+        }
+        await page.goto(`${origin}/businesses/${result.createdBusiness}?access=${(await send('/api/businesses')).body.data.items.find(item=>item.business_public_id===result.createdBusiness).read_grant_id}`);await ready('[data-business-public]');
+        return{cases:evidence,noDuplicateEffects:true};
+    });
+    await check('an acknowledged-lost Business edit survives a later validation rejection and exact explicit reconciliation changes one version only',async()=>{
+        const created=await send('/api/businesses','POST',{command_id:crypto.randomUUID(),name:'Business validation reconciliation'});assert.equal(created.status,201);
+        const business=created.body.data,businessId=business.business_public_id;
+        await page.goto(`${origin}/businesses/${businessId}?access=${business.grant_refs['business.context.read']}`);await ready('[data-business-public]');await workspaceSection('settings');
+        const target=`**/api/businesses/${businessId}/context`,commands=[];let committedReceipt;
+        await page.route(target,async route=>{
+            if(route.request().method()!=='PUT')return route.continue();commands.push(route.request().postDataJSON());
+            if(commands.length===1){const response=await route.fetch();assert.equal(response.status(),200);committedReceipt=(await response.json()).data;return route.abort('failed');}
+            if(commands.length===2)return route.fulfill({status:422,contentType:'application/json',body:JSON.stringify({error:'simulated_validation_rejection'})});
+            return route.continue();
+        });
+        try{
+            await page.locator('#bf-name').fill('Business effect committed once');await page.getByRole('button',{name:'حفظ المعلومات',exact:true}).click();await page.locator('[data-business-unknown]').waitFor();
+            assert.equal(commands.length,1);const original=structuredClone(commands[0]);
+            const denied=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/businesses/${businessId}/context`&&response.request().method()==='PUT');
+            await page.getByRole('button',{name:'تحقق بالطلب الأصلي',exact:true}).click();assert.equal((await denied).status(),422);await page.waitForFunction(()=>!document.querySelector('[data-business-public]')?.matches('[aria-busy="true"]'));
+            await page.locator('[data-business-unknown]').waitFor();assert.equal(await page.locator('#bf-name').isDisabled(),true);assert.equal(commands.length,2);assert.deepEqual(commands[1],original);
+            const settled=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/businesses/${businessId}/context`&&response.request().method()==='PUT');
+            await page.getByRole('button',{name:'تحقق بالطلب الأصلي',exact:true}).click();const response=await settled;assert.equal(response.status(),200);assert.deepEqual((await response.json()).data,committedReceipt);
+            await page.locator('[data-business-saved]').waitFor();assert.equal(commands.length,3);assert.deepEqual(commands[2],original);
+            const current=await send(`/api/businesses/${businessId}/surface?access=${business.grant_refs['business.context.read']}`);assert.equal(current.status,200);assert.equal(current.body.data.business.versions.context,business.versions.context+1);
+            return{realCommitThenLostAcknowledgement:true,simulatedLater422:true,deliveries:3,versionDelta:1,retainedExactOriginal:true};
+        }finally{await page.unroute(target);}
     });
     async function ensureWorkspaceNavigation(targetPage=page){const sidebar=targetPage.locator('[data-advertiser-shell] > .advertiser-sidebar');if(await sidebar.getAttribute('open')===null)await sidebar.locator(':scope > summary').click();}
     async function workspaceSection(section,targetPage=page){await ensureWorkspaceNavigation(targetPage);if(["inquiries","access","settings"].includes(section)){await targetPage.locator('[data-workspace-section="settings"]').click();await targetPage.locator(`[data-workspace-settings="${section==="inquiries"?"data":section==="access"?"access":"details"}"]`).click();}else await targetPage.locator(`[data-workspace-section="${section}"]`).click();await targetPage.locator(`[data-workspace-panel="${section}"]`).waitFor({state:'visible'});}
@@ -121,6 +332,8 @@ try {
         await page.locator('[data-workspaces="name"]').fill('وكالة الفريق المتصفحي');
         await page.locator('[data-workspaces="save"]').click();await ready('[data-sources-workspace]');
         const organization=new URL(page.url()).pathname.split('/')[2],team=page.locator('[data-organization-team]');
+        result.operatingOrganization=organization;result.organizationStaff=identities.staff;
+        await page.getByRole('button',{name:'الفريق',exact:true}).click();
         await team.locator('[data-organization-recipient]').fill(identities.staff);
         await team.locator('[data-organization-confirm]').check();
         const [added]=await Promise.all([
@@ -134,7 +347,15 @@ try {
         await page.screenshot({path:path.join(run,'organization-team-ar-390.png'),fullPage:true});
         const language=async target=>{const menu=page.locator('.advertiser-account-menu');if(await menu.getAttribute('open')===null)await menu.locator(':scope > summary').click();await page.locator('[data-application="locale"]').click();await page.waitForFunction(lang=>document.documentElement.lang===lang,target);await ready('[data-sources-workspace]');await team.locator('[data-organization-members]').waitFor();if(await menu.getAttribute('open')!==null)await menu.locator(':scope > summary').click();};
         await language('en');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-        await page.screenshot({path:path.join(run,'organization-team-en-390.png'),fullPage:true});await language('ar');
+        await team.getByText('Team membership updated. Business rights remain explicit per file.',{exact:true}).waitFor();
+        assert.equal(await team.getByText('تم تحديث عضوية الفريق. صلاحيات الأنشطة تُحدد لكل ملف بصورة مستقلة.',{exact:true}).count(),0);
+        await page.screenshot({path:path.join(run,'organization-team-en-390.png'),fullPage:true});
+        await page.getByRole('button',{name:'Accounts and sources',exact:true}).click();
+        await page.locator('.sources-page > div > details.biz-divider > summary').click();
+        const registryHeading=page.locator('#sources-heading');await registryHeading.waitFor();assert.equal(await registryHeading.textContent(),'Sources and current permissions');
+        await page.getByText('No sources are visible under the current source permission. Workspace view permission alone is insufficient.',{exact:true}).waitFor();
+        await page.screenshot({path:path.join(run,'organization-sources-en-390-advanced.png'),fullPage:true});
+        await page.getByRole('button',{name:'Team',exact:true}).click();await team.locator('[data-organization-members]').waitFor();await language('ar');
         await page.setViewportSize({width:1280,height:900});
         const employee=await browser.newContext({viewport:{width:390,height:844},locale:'ar-JO'});
         try{
@@ -147,6 +368,7 @@ try {
             await tab.locator('#bf-name').fill('نشاط عدّله الموظف المباشر');
             await tab.getByRole('button',{name:'حفظ المعلومات',exact:true}).click();await tab.locator('[data-business-saved]').waitFor();
             await tab.goto(`${origin}/workspaces/${organization}`);
+            await tab.getByRole('button',{name:'الفريق',exact:true}).click();
             const ownTeam=tab.locator('[data-organization-team]');await ownTeam.getByRole('button',{name:'مغادرة الجهة',exact:true}).waitFor();
             assert.equal(await ownTeam.locator('form').count(),0);
             await ownTeam.locator('[data-organization-confirm]').check();await ownTeam.getByRole('button',{name:'مغادرة الجهة',exact:true}).click();
@@ -155,6 +377,43 @@ try {
             assert.equal((await sendFrom(tab,`/api/businesses/${teamBusiness}/surface?access=${rights['business.context.read']}`)).status,200,'Independent Business rights are not organizational membership');
         }finally{await employee.close();}
         return {independentBusiness:teamBusiness,locales:['ar','en'],operatingIssuers:true,workspaceInferredForIndependentBusiness:false,organizationRegisteredWithoutCommercialType:true,employeeMembershipAndSelfDeparture:true,directBusinessPreservedAfterOrganizationalDeparture:true,width:390,horizontalOverflow:0};
+    });
+    await check('organization membership keeps a committed unknown command through later409 and422 and reconciles one effect', async()=>{
+        const organization=result.operatingOrganization,recipient=result.organizationStaff;
+        assert.ok(organization&&recipient,'The operating organization journey is a required prerequisite');
+        await page.goto(`${origin}/workspaces/${organization}`);await ready('[data-sources-workspace]');
+        await page.getByRole('button',{name:'الفريق',exact:true}).click();
+        const team=page.locator('[data-organization-team]'),target=`**/api/organizations/${organization}/team`,evidence=[];
+        for(const [rejection,effect] of [[409,'add'],[422,'remove']]){
+            const before=await send(`/api/organizations/${organization}/team`);assert.equal(before.status,200);
+            const commands=[];let committedReceipt;
+            await page.route(target,async route=>{
+                if(route.request().method()!=='POST')return route.continue();
+                commands.push(route.request().postDataJSON());
+                if(commands.length===1){const response=await route.fetch();assert.equal(response.status(),200);committedReceipt=(await response.json()).data;return route.abort('failed');}
+                if(commands.length===2)return route.fulfill({status:rejection,contentType:'application/json',body:JSON.stringify({error:'simulated_reconciliation_rejection'})});
+                return route.continue();
+            });
+            try{
+                if(effect==='add')await team.locator('[data-organization-recipient]').fill(recipient);
+                await team.locator('[data-organization-confirm]').check();
+                if(effect==='add')await team.getByRole('button',{name:'إضافة الموظف',exact:true}).click();
+                else await team.locator('[data-organization-members] li').filter({hasText:recipient}).getByRole('button',{name:'سحب العضوية',exact:true}).click();
+                const unknown=team.getByText('لم نتأكد من النتيجة. تحقّق بالطلب الأصلي نفسه؛ لن يُرسل تلقائيًا.',{exact:true});await unknown.waitFor();
+                assert.equal(commands.length,1);const original=structuredClone(commands[0]);assert.equal(original.expected_revision,before.body.data.revision);
+                const rejected=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/organizations/${organization}/team`&&response.request().method()==='POST');
+                await team.locator('[data-organization-retry]').click();assert.equal((await rejected).status(),rejection);await unknown.waitFor();
+                assert.equal(await team.locator('fieldset').evaluate(fieldset=>fieldset.disabled),true);
+                assert.equal(await team.locator('[data-organization-recipient]').isDisabled(),true,'The retained unknown command keeps editable membership input disabled');
+                assert.equal(commands.length,2);assert.deepEqual(commands[1],original);
+                const settled=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/organizations/${organization}/team`&&response.request().method()==='POST');
+                await team.locator('[data-organization-retry]').click();const receipt=await settled;assert.equal(receipt.status(),200);assert.deepEqual((await receipt.json()).data,committedReceipt);
+                await team.locator('[data-organization-retry]').waitFor({state:'hidden'});assert.equal(commands.length,3);assert.deepEqual(commands[2],original);
+                const after=await send(`/api/organizations/${organization}/team`);assert.equal(after.status,200);assert.equal(after.body.data.revision,before.body.data.revision+1,'Three deliveries must produce only one membership change');
+                evidence.push({rejection,effect,requests:3,revisionDelta:1,exactOriginal:true,transport:'real committed effect then dropped ACK; simulated later rejection'});
+            }finally{await page.unroute(target);}
+        }
+        return{cases:evidence};
     });
     await check('internal client file team opt-in, real staff assignment and staff edit preserve private boundaries', async () => {
         fixture('internal-team-setup');
@@ -232,6 +491,11 @@ try {
         await panel.locator('[data-inquiry-cutoff]').fill('2020-01-03T00:00:00Z');
     };
     await check('BF03 explicit creator opt-in, invalid inputs editable, assertion readback and historical meaning',async()=>{
+        // The preceding operating internal-team journey deliberately leaves an
+        // internal client file open. Private declarations belong to the actual
+        // independently created Business, never to that staff-selected path.
+        await index();await openCreated();
+        assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'),result.createdBusiness);
         await workspaceSection('inquiries');const panel=inquiryPanel();await panel.locator('[data-inquiry-optin]').waitFor();
         inquiryAccess=new URL(page.url()).searchParams.get('access');assert.ok(inquiryAccess);
         const before=await inquirySend('GET',`/eligibility?access=${inquiryAccess}`);assert.equal(before.status,200);assert.deepEqual(before.body.data.grants,{});
@@ -361,7 +625,11 @@ try {
         assert.equal(await panel.locator('[data-inquiry-list] [data-inquiry-semantics]').count(),0);
         const matrix=[];
         for(const language of ['ar','en']){
-            if(await page.locator('html').getAttribute('lang')!==language){await page.locator('[data-application="locale"]').click();await page.waitForFunction(lang=>document.documentElement.lang===lang,language);}
+            if(await page.locator('html').getAttribute('lang')!==language){
+                const accountMenu=page.locator('.advertiser-account-menu');if(await accountMenu.getAttribute('open')===null)await accountMenu.locator(':scope > summary').click();
+                await page.locator('[data-application="locale"]').click();await page.waitForFunction(lang=>document.documentElement.lang===lang,language);
+                if(await accountMenu.getAttribute('open')!==null)await accountMenu.locator(':scope > summary').click();
+            }
             const savedMessage=panel.locator('[data-inquiry-message]');if(await savedMessage.count())assert.ok((await savedMessage.innerText()).includes(language==='ar'?'تم الحفظ':'Saved'));
             for(const theme of ['light','dark']){
                 if(await page.locator('html').getAttribute('data-theme')!==theme){await page.locator('[data-theme-toggle]').first().click();await page.waitForFunction(wanted=>document.documentElement.dataset.theme===wanted,theme);}
@@ -380,7 +648,11 @@ try {
                 await panel.locator('[data-inquiry-back]').click();await panel.locator('.inquiry-item:has(.inquiry-record-preview) [data-inquiry-open]').first().waitFor();assert.equal(await page.locator(':focus').getAttribute('data-inquiry-open')!==null,true);
             }
         }
-        if(await page.locator('html').getAttribute('lang')!=='ar'){await page.locator('[data-application="locale"]').click();await page.waitForFunction(()=>document.documentElement.lang==='ar');}
+        if(await page.locator('html').getAttribute('lang')!=='ar'){
+            const accountMenu=page.locator('.advertiser-account-menu');if(await accountMenu.getAttribute('open')===null)await accountMenu.locator(':scope > summary').click();
+            await page.locator('[data-application="locale"]').click();await page.waitForFunction(()=>document.documentElement.lang==='ar');
+            if(await accountMenu.getAttribute('open')!==null)await accountMenu.locator(':scope > summary').click();
+        }
         await page.setViewportSize({width:1280,height:900});
         return {matrix,compactCollection:true,completeDetails:true,backRestoresFocus:true,formalUsabilityStudy:false};
     });
@@ -497,6 +769,7 @@ try {
         return { read: 200, editingChoices: 0, noWorkspaceAuthorityFallback: true };
     });
     await check('withdrawing reading blocks the exact URL and excludes A while leaving B available', async () => {
+        const before=(await send('/api/businesses')).body.data.items.map(item=>item.business_public_id).sort();assert.ok(before.includes(delegated.business));
         fixture('revoke-read');
         const denied = await send(`/api/businesses/${delegated.business}/surface?access=${delegated.read.leaf}`); assert.equal(denied.status, 403);
         const exactPage = await send(aUrl.replace(origin,'')); assert.equal(exactPage.status, 403);
@@ -506,9 +779,10 @@ try {
         await page.waitForFunction(() => ['unavailable','closed'].includes(document.querySelector('[data-application-spa]')?.dataset.state));
         assert.equal(await page.locator('[data-business-name]').isVisible(), false);
         await index();
-        assert.equal(await page.locator('[data-business-list] li').count(), 1);
+        const remaining=await page.locator('[data-business-list] a[href^="/businesses/"]').evaluateAll(links=>links.map(link=>new URL(link.href).pathname.split('/')[2]).sort());
+        assert.deepEqual(remaining,before.filter(id=>id!==delegated.business),'Only the withdrawn Business leaves qualified choices; every independent Business remains');
         await open('نشاط مستقل للمتصفح'); assert.equal(await page.locator('#bf-name').inputValue(), 'مسودة النشاط الثاني');
-        return { deniedExactPath: 403, remainingIndependentBusinesses: 1, restoration: 'actual listener exercised by dispatched visibilitychange', nativeTabHide: 'UNPROVEN in headless Chromium 145' };
+        return { deniedExactPath: 403, remainingIndependentBusinesses: remaining.length, restoration: 'actual listener exercised by dispatched visibilitychange', nativeTabHide: 'UNPROVEN in headless Chromium 145' };
     });
     await check('an independently updated context never acquires a dirty draft until the user explicitly adopts it', async () => {
         const url = `/api/businesses/${result.createdBusiness}`;
@@ -964,7 +1238,11 @@ try {
         return { exactApiAndPageDenied: 403, currentPresentationConcealed: true, otherBusinessRead: 200, remainingBoundaryChoices: 1 };
     });
     let sourceFixture;
-    const sourceIndex = async () => { await ensureWorkspaceNavigation(); await page.locator('[data-advertiser-shell] a[href="/source-rights"]').first().click(); await page.waitForURL(origin+'/source-rights'); await ready('[data-source-rights-surface]'); };
+    const sourceIndex = async () => {
+        await index();await openCreated('sources');
+        const advanced=page.locator('[data-business-source-advanced]');if(await advanced.getAttribute('open')===null)await advanced.locator(':scope > summary').click();
+        await advanced.getByRole('link',{name:'إدارة حقوق المصادر',exact:true}).click();await page.waitForURL(origin+'/source-rights');await ready('[data-source-rights-surface]');
+    };
     const openSource = async key => { await page.locator('[data-source-rights-list] li').filter({ has: page.getByRole('heading', { name: sourceFixture[key].name, exact: true }) }).getByRole('link', { name: 'فتح إدارة المصدر', exact: true }).click(); await ready('[data-source-rights-editor]'); };
     const sourceState = async key => { const s = sourceFixture[key]; const response = await send(`/api/source-rights/${s.source}?access=${s.grants['source.manage']}`); assert.equal(response.status, 200); return response.body.data; };
     await check('qualified source discovery and adoption expose no foreign source or inferred business/client-data right', async () => {
@@ -1067,7 +1345,7 @@ try {
         const b = dataFixture[key].business; const response = await send(`/api/businesses/${b.business_public_id}/surface?access=${b.grant_refs['business.context.read']}`);
         assert.equal(response.status, 200); return response.body.data;
     };
-    const openData = async key => { await index(); await open(dataFixture[key].name,'access'); await dataPanel.waitFor(); await page.waitForFunction(() => !document.querySelector('[data-business-rechecking]') && (!!document.querySelector('[data-data-use-reconcile]') || !document.querySelector('#bf-data-scope')?.matches(':disabled'))); };
+    const openData = async key => { await index(); await open(dataFixture[key].name,'sources');const advanced=page.locator('[data-business-source-advanced]');if(await advanced.getAttribute('open')===null)await advanced.locator(':scope > summary').click();await dataPanel.waitFor(); await page.waitForFunction(() => !document.querySelector('[data-business-rechecking]') && (!!document.querySelector('[data-data-use-reconcile]') || !document.querySelector('#bf-data-scope')?.matches(':disabled'))); };
     const selectData = async key => { await dataPanel.locator('#bf-data-scope').selectOption(String(dataFixture[key].data.grant_id)); await dataPanel.locator('[data-data-use-details]').waitFor(); };
     const bindData = async key => {
         await selectData(key); await dataPanel.getByRole('button', { name: 'طلب ربط النطاق بالنشاط', exact: true }).click();
@@ -1375,6 +1653,7 @@ try {
         assert.equal(await page.getByText('غرض مصحح مؤهل',{exact:true}).count(),0);
         return {operatingUISurrender:true,explicitRequalification:true,writeRevokedReadRetained:true,lateCompletedReplyDiscarded:true,revokedBusinessNotDisplayed:true};
     });
+    await sharedSourceReturnCheck();
     assert.deepEqual(result.errors, []); result.result = 'PASS'; await context.close();
 } catch (error) { result.result = 'FAIL'; result.failure = error.stack; console.error(error); process.exitCode = 1; }
 finally { release?.(); await browser.close(); await writeFile(path.join(run, 'browser-results.json'), JSON.stringify(result, null, 2)); }

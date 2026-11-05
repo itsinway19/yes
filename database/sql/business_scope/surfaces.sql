@@ -260,13 +260,17 @@ $$;
 
 CREATE FUNCTION builderad_private.native_source_read_lock(p_sources uuid[]) RETURNS void
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
-DECLARE source_ref uuid;
+DECLARE source_ref uuid;business_ref uuid;
 BEGIN
  -- Adoption's admission gate precedes K1/K4. Take the complete sorted union first.
  FOR source_ref IN SELECT DISTINCT unnest(p_sources) ORDER BY 1 LOOP
   PERFORM pg_advisory_xact_lock_shared(hashtextextended('builderad.source.admission.'||source_ref,0));
  END LOOP;
  PERFORM 1 FROM public.resource_right_fences WHERE kind='source' AND source_id=ANY(p_sources) ORDER BY source_id FOR SHARE;
+ FOR business_ref IN SELECT DISTINCT b.public_id FROM public.source_registry s JOIN public.businesses b ON b.id=(to_jsonb(s)->>'business_id')::bigint
+  WHERE s.id=ANY(p_sources) AND to_jsonb(s)->>'custody_kind'='business_native' ORDER BY b.public_id LOOP
+  PERFORM builderad_private.lock_business(business_ref,false);
+ END LOOP;
 END $$;
 
 CREATE FUNCTION builderad_v2_source_choices(p_session text,p_after bigint DEFAULT 0) RETURNS jsonb
@@ -289,7 +293,7 @@ BEGIN
   BEGIN
    PERFORM builderad_private.require_native_source_grant(g.id,actor,p_session,selection,true,false);
    IF g.action<>'source.manage' THEN CONTINUE; END IF;
-   IF NOT EXISTS(SELECT 1 FROM public.source_registry s WHERE s.id=g.source_target_id AND s.workspace_id=g.workspace_id) THEN CONTINUE; END IF;
+   IF NOT EXISTS(SELECT 1 FROM public.source_registry s WHERE s.id=g.source_target_id AND s.workspace_id IS NOT DISTINCT FROM g.workspace_id) THEN CONTINUE; END IF;
    items:=items||jsonb_build_array((SELECT jsonb_build_object('source_id',s.id,'label',s.label,'status',s.status,'access_grant_id',g.id::text,
     'resource',g.source_resource,'operation',g.source_operation,'purpose',g.source_purpose) FROM public.source_registry s WHERE s.id=g.source_target_id));
    accepted:=array_append(accepted,g.id);
@@ -313,14 +317,14 @@ BEGIN
  PERFORM builderad_private.require_native_source_grant(p_access,actor,p_session,selection,true,false);
  SELECT * INTO STRICT g FROM public.security_action_grants WHERE id=p_access;
  IF g.action<>'source.manage' OR g.source_target_id IS DISTINCT FROM p_source THEN RAISE EXCEPTION 'Source manager target changed' USING ERRCODE='42501'; END IF;
- SELECT * INTO s FROM public.source_registry WHERE id=p_source AND workspace_id=g.workspace_id;
+ SELECT * INTO s FROM public.source_registry WHERE id=p_source AND workspace_id IS NOT DISTINCT FROM g.workspace_id;
  IF NOT FOUND THEN RAISE EXCEPTION 'Exact native source required' USING ERRCODE='42501'; END IF;
- SELECT EXISTS(SELECT 1 FROM public.source_capabilities WHERE source_id=p_source AND workspace_id=g.workspace_id AND resource=g.source_resource AND operation=g.source_operation AND purpose=g.source_purpose) INTO declared;
+ SELECT EXISTS(SELECT 1 FROM public.source_capabilities WHERE source_id=p_source AND workspace_id IS NOT DISTINCT FROM g.workspace_id AND resource=g.source_resource AND operation=g.source_operation AND purpose=g.source_purpose) INTO declared;
  SELECT * INTO f FROM public.resource_right_fences WHERE kind='source' AND source_id=p_source;
- SELECT count(*)>64 INTO more FROM(SELECT 1 FROM public.security_action_grants WHERE subject_user_id=actor AND scope_kind='source' AND source_target_id=p_source AND workspace_id=g.workspace_id
+ SELECT count(*)>64 INTO more FROM(SELECT 1 FROM public.security_action_grants WHERE subject_user_id=actor AND scope_kind='source' AND source_target_id=p_source AND workspace_id IS NOT DISTINCT FROM g.workspace_id
   AND source='source_owner_request' AND source_resource=g.source_resource AND source_operation=g.source_operation AND source_purpose=g.source_purpose LIMIT 65) bounded;
  SELECT coalesce(jsonb_agg(jsonb_build_object('grant_id',id::text,'action',action,'recorded_status',status,'revision',version,'expires_at',expires_at) ORDER BY id DESC),'[]') INTO rights
- FROM(SELECT * FROM public.security_action_grants WHERE subject_user_id=actor AND scope_kind='source' AND source_target_id=p_source AND workspace_id=g.workspace_id
+ FROM(SELECT * FROM public.security_action_grants WHERE subject_user_id=actor AND scope_kind='source' AND source_target_id=p_source AND workspace_id IS NOT DISTINCT FROM g.workspace_id
   AND source='source_owner_request' AND source_resource=g.source_resource AND source_operation=g.source_operation AND source_purpose=g.source_purpose ORDER BY id DESC LIMIT 64) bounded;
  fresh:=EXISTS(SELECT 1 FROM public.security_sessions WHERE user_id=actor AND session_key_hash=p_session AND authenticated_at BETWEEN clock_timestamp()-interval '15 minutes' AND clock_timestamp());
  PERFORM builderad_private.require_native_source_grant(p_access,actor,p_session,selection,true,false);

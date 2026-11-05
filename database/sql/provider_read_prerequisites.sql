@@ -7,7 +7,7 @@ RETURNS text LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=public,p
 DECLARE c provider_access%ROWTYPE; axis text; f jsonb;
 BEGIN
  PERFORM builderad_provider_require(p_workspace,p_session,p_source,p_provider,p_resource,p_operation,p_purpose,'provider.read');
- SELECT * INTO c FROM provider_access WHERE workspace_id=p_workspace AND source_id=p_source AND provider=p_provider
+ SELECT * INTO c FROM provider_access WHERE workspace_id IS NOT DISTINCT FROM p_workspace AND source_id=p_source AND provider=p_provider
   AND resource=p_resource AND operation=p_operation AND purpose=p_purpose FOR SHARE;
  PERFORM builderad_provider_require(p_workspace,p_session,p_source,p_provider,p_resource,p_operation,p_purpose,'provider.read');
  IF c.local_state IS DISTINCT FROM 'CREDENTIAL_STORED' OR

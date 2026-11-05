@@ -206,18 +206,11 @@ class SharedRealityInterpretation
 
     private function scope(mixed $value): ProviderScope
     {
-        $this->fields($value, ['workspace_id', 'source_id', 'provider', 'account_id', 'operation', 'purpose']);
-        if (! is_int($value['workspace_id'])) {
-            throw new InvalidArgumentException('Typed Workspace identity required.');
-        }
-        foreach (['source_id', 'provider', 'account_id', 'operation', 'purpose'] as $key) {
-            if (! is_string($value[$key])) {
-                throw new InvalidArgumentException('Typed source scope required.');
-            }
+        if (! is_array($value)) {
+            throw new InvalidArgumentException('Typed source scope required.');
         }
 
-        return new ProviderScope($value['workspace_id'], $value['source_id'], Provider::from($value['provider']),
-            $value['account_id'], $value['operation'], $value['purpose']);
+        return ProviderScope::fromArray($value);
     }
 
     private function amount(mixed $value): NativeAmount

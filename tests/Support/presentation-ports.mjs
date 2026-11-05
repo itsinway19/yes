@@ -1,7 +1,12 @@
+import { readFile } from 'node:fs/promises';
+import ts from 'typescript';
 // Feature tests inject document evidence and presentation independently. They do
 // not start a real document, router, lease timer or browser restoration runtime.
 const moduleUrl = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
+export const nativeOwnerUrl = moduleUrl(ts.transpileModule(await readFile(new URL('../../resources/js/sources/nativeOwner.ts', import.meta.url), 'utf8'),
+    { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText);
 export function withPresentationPorts(ports) {
+    ports = { './nativeOwner': nativeOwnerUrl, '../sources/nativeOwner': nativeOwnerUrl, ...ports };
     const document = ports['../spa/transport'] ?? ports['./transport'] ?? ports['@/spa/transport'];
     if (!document) return ports;
     const previous = ports['../spa/presentation'] ?? ports['@/spa/presentation'];

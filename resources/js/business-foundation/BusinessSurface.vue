@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
-import { RouterLink, useRoute } from 'vue-router';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { current, clear, load } from './state';
 import { status } from '../spa/presentation';
 import { owned, stamp } from '../spa/transport';
@@ -13,6 +13,13 @@ import { ArrowLeft, Building2, Plus } from '@lucide/vue';
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const data = computed(() => current.value?.data);
 const route = useRoute();
+const router = useRouter();
+watch(() => [route.fullPath, data.value], () => {
+    const value = data.value;
+    if (route.query.entry !== '1' || !value || !('items' in value)) return;
+    if (!value.items.length && !value.next_cursor) void router.replace('/businesses/new');
+    else if (value.items.length === 1 && !value.next_cursor) void router.replace(`/businesses/${value.items[0].business_public_id}?access=${value.items[0].read_grant_id}`);
+}, { immediate: true });
 let disposed = false;
 let refreshAttempt = 0;
 const refreshing = ref(false);
