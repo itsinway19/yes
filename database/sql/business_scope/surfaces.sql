@@ -145,7 +145,7 @@ DECLARE actor bigint; b bigint; read_selection jsonb; selection jsonb; proof jso
  g record; footprint jsonb; result jsonb;fact_options jsonb:='{"markets":[],"intent":[],"preferences":[],"purpose":[]}';fact_key text;write_action text;
  workspace_ids bigint[]:='{}';workspace_candidates bigint[]:='{}';link_options jsonb:='[]';workspace_choices jsonb:='[]';relationships jsonb:='[]';
  delegation_options jsonb:='[]';issued_grants jsonb:='[]';expiry timestamptz;parent_row public.security_action_grants;more_grants boolean:=false;
- bindings jsonb:='[]';bindings_more boolean:=false;
+ bindings jsonb:='[]';bindings_more boolean:=false;archive_options jsonb:='[]';
 BEGIN
  b:=builderad_private.lock_business(p_business);actor:=builderad_private.principal(p_session,false);
  read_selection:=builderad_private.business_selection(p_read);
@@ -178,7 +178,10 @@ BEGIN
   BEGIN
    SELECT action INTO write_action FROM public.security_action_grants WHERE id=g.id;
    proof:=builderad_private.require_business(b,actor,write_action,builderad_private.business_selection(g.id),p_session);
-   IF write_action='business.context.manage' THEN options:=options||jsonb_build_array(jsonb_build_object('grant_id',g.id::text));
+   IF write_action='business.draft.archive' AND EXISTS(SELECT 1 FROM public.businesses WHERE id=b AND origin_kind='self_declared_draft' AND lifecycle='declared_draft') THEN
+    -- Discover the existing exact action, never infer archive from context editing.
+    archive_options:=archive_options||jsonb_build_array(jsonb_build_object('grant_id',g.id::text));
+   ELSIF write_action='business.context.manage' THEN options:=options||jsonb_build_array(jsonb_build_object('grant_id',g.id::text));
    ELSIF write_action='business.link.manage' THEN
     link_options:=link_options||jsonb_build_array(jsonb_build_object('grant_id',g.id::text,'allows_agency',proof#>>'{qualification,issuer_kind}'<>'self_declared_draft'));
    ELSIF write_action IN('business.markets.declare','business.intent.declare','business.preferences.manage','business.purpose.declare') THEN
@@ -232,13 +235,15 @@ BEGIN
   'current_grant',(SELECT jsonb_build_object('id',x.id::text,'version',x.version) FROM public.security_action_grants x JOIN public.authority_qualification_receipts qualified ON qualified.qualification_id=x.qualification_id
    WHERE x.business_id=b AND x.subject_user_id=actor AND qualified.policy_id='business_purpose_statement_v1'
     AND EXISTS(SELECT 1 FROM jsonb_array_elements(fact_options->'purpose') admitted WHERE admitted->>'grant_id'=x.id::text) ORDER BY x.id DESC LIMIT 1)),
- 'context_write_options',options,'fact_write_options',fact_options,'data_use',jsonb_build_object('bindings',bindings,'bindings_limit',64,'bindings_more',bindings_more),
+ 'context_write_options',options,'fact_write_options',fact_options,
+ 'lifecycle',jsonb_build_object('revision',(SELECT lifecycle_revision FROM public.businesses WHERE id=b),'archive_options',archive_options),
+ 'data_use',jsonb_build_object('bindings',bindings,'bindings_limit',64,'bindings_more',bindings_more),
  'collaboration',jsonb_build_object('options',link_options,'workspaces',workspace_choices,'relationships',relationships,
   'workspace_limit',32,'workspace_more',cardinality(workspace_candidates)>32,'relationship_limit',64),
  'delegation',jsonb_build_object('actor_public_id',(SELECT public_id FROM public.users WHERE id=actor),'options',delegation_options,'issued',issued_grants,'issued_limit',64,'issued_more',more_grants,
   'option_limit',32,'options_may_be_partial',jsonb_array_length(requirements)=32),'catalog',public.builderad_v2_business_catalog(p_session));
  FOR g IN SELECT (value->>'leaf_grant_id')::bigint id FROM jsonb_array_elements(requirements) LOOP
-  IF EXISTS(SELECT 1 FROM jsonb_array_elements(options||(fact_options->'markets')||(fact_options->'intent')||(fact_options->'preferences')||(fact_options->'purpose')||link_options||delegation_options) x WHERE(x->>'grant_id')::bigint=g.id) THEN
+  IF EXISTS(SELECT 1 FROM jsonb_array_elements(options||(fact_options->'markets')||(fact_options->'intent')||(fact_options->'preferences')||(fact_options->'purpose')||link_options||delegation_options||archive_options) x WHERE(x->>'grant_id')::bigint=g.id) THEN
    SELECT action INTO write_action FROM public.security_action_grants WHERE id=g.id;
    PERFORM builderad_private.require_business(b,actor,write_action,builderad_private.business_selection(g.id),p_session);
   END IF;

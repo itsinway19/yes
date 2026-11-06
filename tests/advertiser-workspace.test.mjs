@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { parse, compileScript } from '@vue/compiler-sfc';
+import { parse, compileScript, compileTemplate } from '@vue/compiler-sfc';
 import ts from 'typescript';
 import { createRenderer, createSSRApp, h, markRaw, nextTick, ref } from 'vue';
 import { renderToString } from '@vue/server-renderer';
@@ -12,17 +12,24 @@ const compile = source => ts.transpileModule(source, { compilerOptions: { module
 const vue = import.meta.resolve('vue'), vueRouter = import.meta.resolve('vue-router');
 const languageUrl = moduleUrl(`import {ref} from ${JSON.stringify(vue)};export const locale=ref('ar');`);
 const { locale } = await import(languageUrl);
-const transportUrl = moduleUrl(`export const scope='document-one';export const callbacks=[];export const onClose=f=>callbacks.push(f);export const stamp=()=>scope;export const owned=()=>true;export class TransportError extends Error{}`);
+const transportUrl = moduleUrl(`import {ref} from ${JSON.stringify(vue)};export const scope='document-one';export const documentStatus=ref('ready');export let generation=0;export const advance=()=>generation++;export const callbacks=[];export const onClose=f=>callbacks.push(f);export const stamp=()=>generation;export const owned=captured=>captured===generation;export class TransportError extends Error{}`);
+let headerHost;
+globalThis.HTMLElement ??= class HTMLElement {};
+globalThis.document = { getElementById: id => id === 'advertiser-header-context' ? headerHost : null, body: {style:{}}, addEventListener() {}, removeEventListener() {} };
+const transport = await import(transportUrl);
 const presentationUrl = moduleUrl(`import {ref} from ${JSON.stringify(vue)};export const status=ref('ready');export let concealCalls=0;export const conceal=()=>{concealCalls++;};`);
 const stateUrl = moduleUrl(`import {shallowRef} from ${JSON.stringify(vue)};export const current=shallowRef();export const load=async()=>{};export const clear=()=>{current.value=undefined;};`);
 const { current } = await import(stateUrl);
-const iconsUrl = moduleUrl(`export const Building2={render:()=>null};export const ChevronLeft=Building2,Layers3=Building2,Link2=Building2,ShieldCheck=Building2,ArrowLeft=Building2,Plus=Building2,FileText=Building2,House=Building2,Megaphone=Building2,Settings2=Building2,Target=Building2,Users=Building2;`);
+const iconsUrl = moduleUrl(`export const Building2={render:()=>null};export const ChevronLeft=Building2,Layers3=Building2,Link2=Building2,ShieldCheck=Building2,ArrowLeft=Building2,Plus=Building2,FileText=Building2,House=Building2,Megaphone=Building2,Settings2=Building2,Target=Building2,Users=Building2,Menu=Building2,X=Building2;`);
 const plainUrl = moduleUrl(`import {h} from ${JSON.stringify(vue)};export default {render(){return h('div',{'data-existing-editor':true})}};`);
-const apiUrl = moduleUrl('export const businessSurface=async()=>{throw Error("Unexpected surface read")};export const calls=[];export const pending=[];export const create=command=>{calls.push(JSON.parse(JSON.stringify(command)));return new Promise((resolve,reject)=>pending.push({resolve,reject}));};export const factCalls=[];export const factPending=[];export const writeFact=(business,command)=>{factCalls.push({business,command:JSON.parse(JSON.stringify(command))});return new Promise((resolve,reject)=>factPending.push({resolve,reject}));};');
+const apiUrl = moduleUrl('export const businessSurface=async()=>{throw Error("Unexpected surface read")};export const businessChoices=async()=>({items:[],next_cursor:null,scope:{principal_generation:1,authority_fingerprint:"qualified"}});export const calls=[];export const pending=[];export const create=command=>{calls.push(JSON.parse(JSON.stringify(command)));return new Promise((resolve,reject)=>pending.push({resolve,reject}));};export const factCalls=[];export const factPending=[];export const writeFact=(business,command)=>{factCalls.push({business,command:JSON.parse(JSON.stringify(command))});return new Promise((resolve,reject)=>factPending.push({resolve,reject}));};');
 const creationApi = await import(apiUrl);
-async function scriptModule(file) {
-    return moduleUrl(compile(await readFile(file, 'utf8')).replaceAll("'../spa/transport'", JSON.stringify(transportUrl)));
+async function scriptModule(file, ports = {}) {
+    let source = compile(await readFile(file, 'utf8'));
+    for (const [name, target] of Object.entries({vue, '../spa/transport':transportUrl, './api':apiUrl, ...ports})) source = source.replaceAll(`from '${name}'`, `from ${JSON.stringify(target)}`).replaceAll(`from "${name}"`, `from ${JSON.stringify(target)}`);
+    return moduleUrl(source);
 }
+const choicesUrl = await scriptModule('resources/js/business-foundation/businessChoices.ts');
 const providerDestinationUrl = await scriptModule('resources/js/sources/providerDestination.ts');
 const providerBrandUrl = moduleUrl(`import {h} from ${JSON.stringify(vue)};export default {props:['provider'],setup(p){return()=>h('span',{'data-provider-brand':p.provider})}};`);
 const navigationUrl = await scriptModule('resources/js/business-foundation/advertiserNavigation.ts');
@@ -30,17 +37,32 @@ const workspacePresentationUrl = await scriptModule('resources/js/business-found
 const draftsUrl = await scriptModule('resources/js/business-foundation/drafts.ts');
 const presentation = await import(workspacePresentationUrl);
 const drafts = await import(draftsUrl);
+const purposeCommandsUrl = await scriptModule('resources/js/object-purpose/commands.ts', { '../spa/presentation': presentationUrl, './api': moduleUrl('export const writePurpose=async()=>{throw Error("Use explicit test writer")};'), './state': moduleUrl('export const read=async()=>({});') });
+const purposeCommands = await import(purposeCommandsUrl);
+const inquiryEditorUrl = await scriptModule('resources/js/inquiry-evidence/editor.ts');
+const inquiryEditor = await import(inquiryEditorUrl);
+const nativePendingUrl = moduleUrl(`import {shallowReactive} from ${JSON.stringify(vue)};export const pending=shallowReactive(new Map());export const commandsFor=owner=>[...pending.values()].filter(item=>item.command.business===owner.publicId&&owner.kind==='business');`);
+const nativePending = await import(nativePendingUrl);
+const businessPendingUrl = await scriptModule('resources/js/business-foundation/businessPending.ts', { './drafts': draftsUrl, '../object-purpose/commands': purposeCommandsUrl, '../inquiry-evidence/editor': inquiryEditorUrl, '../sources/commands': nativePendingUrl });
+const businessPending = await import(businessPendingUrl);
 async function component(file, ports = {}) {
-    const { descriptor } = parse(await readFile(file, 'utf8'));
+    const { descriptor, errors } = parse(await readFile(file, 'utf8'), { filename: file });
+    assert.deepEqual(errors.map(String), [], `${file}: SFC parsing must succeed`);
+    if (descriptor.template) {
+        const template = compileTemplate({ source: descriptor.template.content, filename: file, id: file, compilerOptions: { expressionPlugins: ['typescript'] } });
+        assert.deepEqual(template.errors.map(String), [], `${file}: template compilation must succeed`);
+    }
     let source = compile(compileScript(descriptor, { id: file, inlineTemplate: true }).content).replace(/import ['"][^'"]+\.css['"];?/g, '');
-    const imports = { '../sources/AdvertisingAccounts.vue': plainUrl, '../workspaces/api': moduleUrl('export const readWorkspaces=async()=>({data:{workspaces:[],reassessableWorkspaces:[],canCreateWorkspace:false}});'), '../sources/api':moduleUrl('export const sources={read:async()=>{throw Error("Unexpected source read")}};'), '../sources/businessReturn':moduleUrl('export const rememberBusinessReturn=()=>{};'), '../sources/commands':moduleUrl('export const pending=new Map();'), vue, 'vue-router': vueRouter, '@lucide/vue': iconsUrl, '../spa/locale': languageUrl, '../spa/transport': transportUrl, '../spa/presentation': presentationUrl, './state': stateUrl, './api': apiUrl, './drafts': draftsUrl, './advertiserNavigation': navigationUrl, './workspacePresentation': workspacePresentationUrl, '../sources/providerDestination': providerDestinationUrl, './providerDestination': providerDestinationUrl, '../Components/ProviderBrand.vue': providerBrandUrl, ...ports };
+    const imports = { '../sources/AdvertisingAccounts.vue': plainUrl, '../workspaces/api': moduleUrl('export const readWorkspaces=async()=>({data:{workspaces:[],reassessableWorkspaces:[],canCreateWorkspace:false}});'), '../sources/api':moduleUrl('export const sources={read:async()=>{throw Error("Unexpected source read")}};'), '../sources/businessReturn':moduleUrl('export const rememberBusinessReturn=()=>{};'), '../sources/commands':nativePendingUrl, vue, 'vue-router': vueRouter, '@lucide/vue': iconsUrl, '../spa/locale': languageUrl, '../spa/transport': transportUrl, '../spa/presentation': presentationUrl, './state': stateUrl, './api': apiUrl, './drafts': draftsUrl, './advertiserNavigation': navigationUrl, './businessChoices': choicesUrl, './businessPending':businessPendingUrl, './workspacePresentation': workspacePresentationUrl, '../sources/providerDestination': providerDestinationUrl, './providerDestination': providerDestinationUrl, '../Components/ProviderBrand.vue': providerBrandUrl, ...ports };
     for (const [name, target] of Object.entries(imports)) source = source.replaceAll(`from '${name}'`, `from ${JSON.stringify(target)}`).replaceAll(`from "${name}"`, `from ${JSON.stringify(target)}`);
     const url = moduleUrl(source); return { url, value: (await import(url)).default };
 }
-const layout = await component('resources/js/business-foundation/AdvertiserWorkspaceLayout.vue');
+const brandLogo = await component('resources/js/Components/BrandLogo.vue');
+const switcher = await component('resources/js/business-foundation/BusinessSwitcher.vue');
+const layout = await component('resources/js/business-foundation/AdvertiserWorkspaceLayout.vue', { '../Components/BrandLogo.vue': brandLogo.url, './BusinessSwitcher.vue': switcher.url });
 const inquiryUrl = moduleUrl(`import {defineComponent,h,ref,onMounted,onBeforeUnmount} from ${JSON.stringify(vue)};export const events=[];export default defineComponent({props:['active','business'],setup(p){const draft=ref('');onMounted(()=>events.push(['mount',p.business]));onBeforeUnmount(()=>events.push(['unmount',p.business]));return()=>h('section',{'data-test-inquiry':p.business,'data-active':p.active},[h('input',{'data-draft':true,value:draft.value,onInput:e=>draft.value=e.target.value})]);}});`);
 const { events } = await import(inquiryUrl);
-const childPorts = Object.fromEntries(['BusinessEditor', 'BusinessFacts', 'BusinessCollaboration', 'BusinessDelegation', 'BusinessDataUse', 'BusinessPurposes', 'BusinessHistory', 'BusinessLegacyHistory'].map(name => [`./${name}.vue`, plainUrl]));
+const childPorts = Object.fromEntries(['BusinessEditor', 'BusinessLifecycle', 'BusinessFacts', 'BusinessCollaboration', 'BusinessDelegation', 'BusinessDataUse', 'BusinessPurposes', 'BusinessHistory', 'BusinessLegacyHistory'].map(name => [`./${name}.vue`, plainUrl]));
 childPorts['./InternalClientFileTeam.vue'] = plainUrl;
 const businessSourcesPanelUrl = moduleUrl(`import {h} from ${JSON.stringify(vue)};export default {props:['surface'],setup(p){return()=>h('section',{'data-test-business-sources':p.surface.business.business_public_id},'Current scoped sources')}};`);
 childPorts['./BusinessSources.vue'] = businessSourcesPanelUrl;
@@ -71,10 +93,10 @@ const operationalSources = await component('resources/js/sources/Sources.vue', {
 
 const historyStateUrl = moduleUrl(`import {shallowRef} from ${JSON.stringify(vue)};export const commercialHistory=shallowRef();`);
 const historyPage = await component('resources/js/workspaces/CommercialHistory.vue', { './commercialHistory': historyStateUrl, '../business-foundation/AdvertiserWorkspaceLayout.vue': layout.url });
-const routes = ['/businesses', '/businesses/new', '/businesses/:business', '/organizations/new', '/source-rights', '/source-rights/:source', '/data-rights', '/data-rights/:boundary', '/workspaces', '/workspaces/:workspace', '/workspaces/:workspace/commercial-history', '/workspaces/:workspace/purpose-history', '/workspaces/:workspace/purpose-history/:purpose'].map(path => ({ path, component: { render: () => null } }));
+const routes = ['/profile', '/businesses', '/businesses/new', '/businesses/:business', '/organizations/new', '/source-rights', '/source-rights/:source', '/data-rights', '/data-rights/:boundary', '/workspaces', '/workspaces/:workspace', '/workspaces/:workspace/commercial-history', '/workspaces/:workspace/purpose-history', '/workspaces/:workspace/purpose-history/:purpose'].map(path => ({ path, component: { render: () => null } }));
 async function routerAt(path) { const router = createRouter({ history: createMemoryHistory(), routes }); await router.push(path); await router.isReady(); return router; }
 async function render(component, path, data) { current.value = { data }; const app = createSSRApp(component); app.use(await routerAt(path)); return renderToString(app); }
-const businessSurface = name => ({ private_history_available:true,direct_team_enrollment_available:false,business: { business_public_id: name, name, business_type_id: 1, declared_markets:[] }, catalog: { countries: [], business_types: [{ id: 1, name_ar: 'خدمات', name_en: 'Services' }] }, authority_selection: { requirements: [{ leaf_grant_id: 'read-one' }] } });
+const businessSurface = name => ({ lifecycle:{revision:0,archive_options:[]},fact_write_options:{markets:[],intent:[],preferences:[],purpose:[]},private_history_available:true,direct_team_enrollment_available:false,business: { business_public_id: name, name, business_type_id: 1, declared_markets:[] }, catalog: { countries: [], business_types: [{ id: 1, name_ar: 'خدمات', name_en: 'Services' }] }, authority_selection: { realm_kind:'business',realm_workspace_public_id:null,requirements: [{ requirement_kind:'business',leaf_grant_id: 'read-one' }] } });
 
 test('real business list and empty state prioritize opening or creating a business inside one private shell', async () => {
     const empty = await render(surface.value, '/businesses', { items: [], actor_public_id: 'actor-one', next_cursor: null });
@@ -107,7 +129,7 @@ test('workspace chooser shares the advertiser shell and keeps resource context d
     const empty = await renderToString(emptyApp);
     assert.match(empty, /data-spa-private/); assert.match(empty, /data-advertiser-shell/); assert.match(empty, /data-workspaces-empty/);
     assert.equal((empty.match(/<main /g) ?? []).length, 1); assert.match(empty, /الفريق والموارد المشتركة/); assert.match(empty, /جهات العمل والفريق/); assert.doesNotMatch(empty, /تسجيل وكالة أو شركة|مساحات التعاون/);
-    assert.match(empty, /href="\/businesses"/); assert.match(empty, /ليست النشاط التجاري نفسه/);
+    assert.match(empty, /href="\/businesses"/); assert.match(empty, /يمكنك متابعة العمل على أنشطتك مباشرة/);
     assert.match(empty, /data-workspaces-creation-unavailable/); assert.doesNotMatch(empty, /data-workspaces-add|href="\/business\/start/); assert.match(empty, /لا تحتاج إلى تسجيل جهة للعمل منفردًا/);
     workspaceState.current.value = { data: { workspaces: [{ public_id: 'workspace-one', name: 'Shared resources A' }], reassessableWorkspaces: [], canCreateWorkspace: true } };
     const listApp = createSSRApp(chooser.value); listApp.use(router); const list = await renderToString(listApp);
@@ -141,10 +163,10 @@ test('workspace source root keeps one private shell, parent navigation and resou
         assert.deepEqual(all(breadcrumb).filter(node => node.tag === 'a').map(node => node.props.href), ['/businesses', '/workspaces']);
         const workspacePageLink = all(root).find(node => node.tag === 'a' && node.props.href === '/workspaces/workspace-one' && node.props['aria-current'] === 'page'); assert.ok(workspacePageLink);
         const teamTab = all(root).find(node => node.tag === 'button' && text(node) === 'الفريق'); assert.ok(teamTab); teamTab.props.onClick(); await nextTick();
-        assert.match(text(root), /فتح الأنشطة المتاحة/); assert.match(text(root), /جميع الأنشطة المتاحة لك/); assert.doesNotMatch(text(root), /الفريق والعملاء|فتح أنشطة العملاء/);
+        assert.match(text(root), /فتح الأنشطة المتاحة/); assert.match(text(root), /قائمة الأنشطة المتاحة لك/); assert.doesNotMatch(text(root), /الفريق والعملاء|فتح أنشطة العملاء/);
         locale.value = 'en'; await nextTick();
         const globalBusinesses = all(root).find(node => node.tag === 'a' && text(node) === 'Open available businesses'); assert.ok(globalBusinesses); assert.equal(globalBusinesses.props.href, '/businesses');
-        assert.match(text(root), /all businesses available to you/); assert.doesNotMatch(text(root), /Team and clients|Open available client businesses/); locale.value = 'ar'; await nextTick();
+        assert.match(text(root), /open it from your available businesses/); assert.doesNotMatch(text(root), /Team and clients|Open available client businesses/); locale.value = 'ar'; await nextTick();
         sourceCommands.pending.set('uncertain-source-command', {});
         assert.equal(sourcePresentation.confirmDeparture.value(), false, 'Unresolved source commands still govern leaving');
         const event = { prevented: false, preventDefault() { this.prevented = true; }, returnValue: undefined }; listeners.get('beforeunload')(event); assert.equal(event.prevented, true); assert.equal(event.returnValue, '');
@@ -191,11 +213,12 @@ function element(tag, text = '') {
         removeEventListener(name, handler) { listeners.get(name)?.delete(handler); },
         dispatchEvent(event) { if (!event.target) Object.defineProperty(event, 'target', { value: this }); for (const handler of listeners.get(event.type) ?? []) handler(event); const handler = this.props['on' + event.type[0].toUpperCase() + event.type.slice(1)]; if (typeof handler === 'function') handler(event); return !event.defaultPrevented; },
         closest(selectors) { for (let node = this; node; node = node.parent) { if (selectors.split(',').some(selector => { const match = /^(\w+)(?:\[([^\]]+)\])?$/.exec(selector.trim()); return match && node.tag === match[1] && (!match[2] || match[2] in node.props); })) return node; } return null; },
-        getRootNode() { return {}; }, querySelectorAll() { return []; }, showModal() { this.open = true; this.modalCount = (this.modalCount ?? 0) + 1; }, close() { this.open = false; },
-        focus() { this.focusCount++; }, getBoundingClientRect() { return { top: 0 }; }, setAttribute(name, value) { this.props[name] = value; }, removeAttribute(name) { delete this.props[name]; },
+        getRootNode() { return {}; }, querySelectorAll() { return []; }, showModal() { this.open = true; this.modalCount = (this.modalCount ?? 0) + 1; }, close() { const wasOpen = this.open; this.open = false; if (wasOpen) this.dispatchEvent({ type: 'close' }); },
+        focus() { this.focusCount++; }, getBoundingClientRect() { return { top: 0, left: 0, right: 320, bottom: 800 }; }, setAttribute(name, value) { this.props[name] = value; }, removeAttribute(name) { delete this.props[name]; },
     });
 }
 const renderer = createRenderer({
+    querySelector: () => headerHost,
     createElement: tag => element(tag), createText: text => element('#text', text), createComment: text => element('#comment', text),
     setText(node, text) { node.text = text; }, setElementText(node, text) { node.text = text; node.children = []; },
     parentNode: node => node.parent, nextSibling: node => node.parent?.children[node.parent.children.indexOf(node) + 1] ?? null,
@@ -213,22 +236,23 @@ test('settings data navigation activates BF03 only while visible and retains its
     presentation.workspacePresentation.clear(); events.length = 0;
     const selected = ref(businessSurface('Business A'));
     const root = element('root'), app = renderer.createApp({ render: () => h(workspace.value, { key: selected.value.business.business_public_id, surface: selected.value }) });
-    app.use(await routerAt('/businesses/Business-A')); app.mount(root);
+    const router = await routerAt('/businesses/Business-A'); app.use(router); app.mount(root);
     try {
         assert.equal(find(root, 'data-test-inquiry'), undefined);
-        assert.equal(all(root).find(node => node.tag === 'details').open, true, 'Desktop navigation is genuinely open');
-        find(root, 'data-workspace-section', 'settings').props.onClick(); await nextTick();
+        assert.ok(find(root, 'data-advertiser-sidebar'), 'Desktop navigation is a persistent sidebar');
+        assert.equal(all(root).filter(node => 'data-workspace-section' in node.props && node.props['data-workspace-section'] === 'settings').length, 1, 'Only one breakpoint navigation is rendered');
+        await find(root, 'data-workspace-section', 'settings').props.onClick(); await nextTick();
         assert.equal(find(root, 'data-test-inquiry'), undefined, 'Opening settings alone must not activate inquiry reading');
-        find(root, 'data-workspace-settings', 'data').props.onClick(); await nextTick();
+        await find(root, 'data-workspace-settings', 'data').props.onClick(); await nextTick();
         const panel = find(root, 'data-test-inquiry'), input = find(root, 'data-draft');
         assert.equal(panel.props['data-active'], true); input.props.onInput({ target: { value: 'Unsent aggregate draft' } }); await nextTick();
-        find(root, 'data-workspace-settings', 'details').props.onClick(); await nextTick();
+        await find(root, 'data-workspace-settings', 'details').props.onClick(); await nextTick();
         assert.equal(panel.props['data-active'], false); assert.equal(find(root, 'data-test-inquiry'), panel); assert.equal(input.props.value, 'Unsent aggregate draft');
-        find(root, 'data-workspace-section', 'direction').props.onClick(); await nextTick(); assert.equal(panel.props['data-active'], false);
-        find(root, 'data-workspace-section', 'settings').props.onClick(); await nextTick(); find(root, 'data-workspace-settings', 'data').props.onClick(); await nextTick();
+        await find(root, 'data-workspace-section', 'direction').props.onClick(); await nextTick(); assert.equal(panel.props['data-active'], false);
+        await find(root, 'data-workspace-section', 'settings').props.onClick(); await nextTick(); await find(root, 'data-workspace-settings', 'data').props.onClick(); await nextTick();
         assert.equal(find(root, 'data-test-inquiry'), panel); assert.equal(panel.props['data-active'], true); assert.equal(events.filter(e => e[0] === 'mount').length, 1);
         locale.value = 'en'; await nextTick(); assert.match(text(root), /Data and declarations/); assert.match(text(root), /Business management/);
-        selected.value = businessSurface('Business B'); await nextTick(); assert.equal(find(root, 'data-test-inquiry'), undefined, 'Another Business must not inherit the previous local data location');
+        await router.push('/businesses/Business-B'); selected.value = businessSurface('Business B'); await nextTick(); assert.equal(find(root, 'data-test-inquiry'), undefined, 'Another Business must not inherit the previous local data location');
         assert.deepEqual(events, [['mount', 'Business A'], ['unmount', 'Business A']]);
     } finally { app.unmount(); locale.value = 'ar'; delete globalThis.window; }
     assert.equal(mediaRemoved, true);
@@ -264,7 +288,7 @@ test('workspace creation keeps its separate labels, exact unknown-command replay
         assert.ok(find(root, 'data-workspaces', 'create')); assert.ok(find(root, 'data-advertiser-shell'));
         assert.equal(all(root).filter(node => node.tag === 'main').length, 1);
         assert.equal(text(all(root).find(node => node.tag === 'h1')), 'إعداد جهة للفريق والموارد');
-        assert.match(text(root), /اسم جهة العمل/); assert.match(text(root), /فريقها ومواردها المشتركة/); assert.doesNotMatch(text(root), /حساب الجهة التنظيمي|تسجيل وكالة أو شركة/); assert.match(text(root), /لا ينشئ التسجيل نشاطًا تجاريًا/);
+        assert.match(text(root), /اسم جهة العمل/); assert.match(text(root), /فريقها ومواردها المشتركة/); assert.doesNotMatch(text(root), /حساب الجهة التنظيمي|تسجيل وكالة أو شركة/); assert.match(text(root), /إضافته مباشرة من أنشطتك/);
         assert.equal(find(root, 'data-workspaces', 'type'), undefined, 'Organization registration requires no commercial type');
         assert.ok(all(root).some(node => node.tag === 'a' && node.props.href === '/businesses/new'));
         assert.ok(all(root).some(node => node.tag === 'a' && node.props.href === '/workspaces' && /العودة/.test(text(node))));
@@ -419,7 +443,7 @@ test('original commercial history is read-only, has no inferred Business and con
     const app = createSSRApp(historyPage.value); app.use(await routerAt('/workspaces/workspace-one/commercial-history'));
     const html = await renderToString(app);
     assert.match(html, /Original historical record|Historic commercial name/); assert.match(html, /للقراءة/);
-    assert.doesNotMatch(html, /<(?:form|input|textarea|select)\b/); assert.doesNotMatch(html, /href="\/businesses\/workspace-one/);
+    const history = html.match(/<section[^>]*data-commercial-history[\s\S]*?<\/section>/)?.[0]; assert.ok(history); assert.doesNotMatch(history, /<(?:form|input|textarea|select)\b/, 'The historical resource stays read-only; its shared shell may select another Business'); assert.doesNotMatch(html, /href="\/businesses\/workspace-one/);
     state.commercialHistory.value = undefined;
     const cleared = createSSRApp(historyPage.value); cleared.use(await routerAt('/workspaces/workspace-one/commercial-history'));
     assert.doesNotMatch(await renderToString(cleared), /Historic commercial name|data-commercial-history/);
@@ -430,12 +454,12 @@ test('canonical Business sources and purposes are discoverable without inferring
     presentation.workspacePresentation.clear(); locale.value = 'ar';
     const root = element('root'), selected = ref(businessSurface('Business-source-A'));
     const app = renderer.createApp({ render: () => h(workspace.value, { key: selected.value.business.business_public_id, surface: selected.value }) });
-    app.use(await routerAt('/businesses/Business-source-A')); app.mount(root);
+    const router = await routerAt('/businesses/Business-source-A'); app.use(router); app.mount(root);
     try {
         assert.doesNotMatch(text(root), /إدارة المساحة/);
         assert.equal(find(root, 'data-test-data-use'), undefined);
         const sourceNavigation = find(root, 'data-workspace-section', 'sources'); assert.ok(sourceNavigation); assert.equal(text(sourceNavigation), 'المصادر');
-        find(root, 'data-business-source-task').props.onClick(); await nextTick();
+        await find(root, 'data-workspace-section', 'sources').props.onClick(); await nextTick();
         assert.notEqual(find(root, 'data-workspace-panel', 'sources').style.display, 'none');
         const panel = find(root, 'data-test-data-use'), input = find(root, 'data-use-draft');
         assert.equal(panel.props['data-test-data-use'], 'Business-source-A');
@@ -446,14 +470,14 @@ test('canonical Business sources and purposes are discoverable without inferring
         assert.equal(all(root).filter(node => 'data-business-platform-open' in node.props).length, 0);
         assert.equal(find(root, 'data-business-source-advanced').props.open, undefined, 'Advanced rights are collapsed by default');
         assert.equal(all(root).filter(node => node.tag === 'a' && /\/workspaces\//.test(node.props.href ?? '')).length, 0, 'No workspace inferred from Business identity');
-        find(root, 'data-workspace-section', 'settings').props.onClick(); await nextTick();
+        await find(root, 'data-workspace-section', 'settings').props.onClick(); await nextTick();
         assert.equal(find(root, 'data-test-data-use'), panel, 'Existing data-use editor remains mounted');
-        find(root, 'data-workspace-settings', 'purposes').props.onClick(); await nextTick();
+        await find(root, 'data-workspace-settings', 'purposes').props.onClick(); await nextTick();
         assert.equal(find(root, 'data-test-business-purpose').props['data-test-business-purpose'], 'Business-source-A');
-        find(root, 'data-workspace-section', 'sources').props.onClick(); await nextTick();
+        await find(root, 'data-workspace-section', 'sources').props.onClick(); await nextTick();
         assert.equal(find(root, 'data-use-draft'), input); assert.equal(input.props.value, 'Unsent exact scope selection');
         locale.value = 'en'; await nextTick(); assert.equal(text(find(root, 'data-workspace-section', 'sources')), 'Sources');
-        selected.value = businessSurface('Business-source-B'); await nextTick();
+        await router.push('/businesses/Business-source-B'); selected.value = businessSurface('Business-source-B'); await nextTick();
         assert.equal(find(root, 'data-test-data-use'), undefined); assert.equal(find(root, 'data-test-business-purpose'), undefined);
     } finally { app.unmount(); globalThis.window = previousWindow; locale.value = 'ar'; presentation.workspacePresentation.clear(); }
 });
@@ -715,44 +739,370 @@ test('own Purpose surrender uses the existing grant command and retains an unkno
     } finally { app.unmount(); drafts.delegationDrafts.clear(); }
 });
 
-test('mobile organization and previous-record disclosures stay open while destination activations close the sidebar', async () => {
-    const previousWindow = globalThis.window;
-    globalThis.window = { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) };
-    const root = element('root'), app = renderer.createApp({ render: () => h(layout.value, { workspaceId: 'workspace-mobile', context: 'Workspace M', workspaceContext: true }) });
-    app.use(await routerAt('/workspaces/workspace-mobile')); app.mount(root);
-    try {
-        const outer = all(root).find(node => node.tag === 'details' && node.props.class === 'advertiser-sidebar');
-        outer.open = true;
-        const group = find(root, 'data-workspace-previous-navigation');
-        const summary = group.children.find(node => node.tag === 'summary');
-        const body = all(root).find(node => node.props.class === 'advertiser-sidebar-body');
-        const event = { target: summary, stopped: false, stopPropagation() { this.stopped = true; } };
-        summary.props.onClick?.(event);
-        if (!event.stopped) body.props.onClick(event);
-        assert.equal(event.stopped, true, 'Disclosure click must not reach the close-on-destination ancestor');
-        assert.equal(outer.open, true, 'Opening previous records leaves mobile navigation accessible');
-        const organization = all(root).find(node => node.tag === 'details' && node.props.class === 'advertiser-organization-tools');
-        const organizationSummary = organization.children.find(node => node.tag === 'summary');
-        body.props.onClick({ target: organizationSummary }); organization.open = true;
-        assert.equal(outer.open, true, 'Opening organization tools leaves its destinations reachable');
-        body.props.onClick({ target: organization.children.find(node => node.tag === 'p') });
-        assert.equal(outer.open, true, 'Reading disclosure help does not dismiss the sidebar');
-        const organizationLink = all(organization).find(node => node.tag === 'a');
-        body.props.onClick({ target: organizationLink }); assert.equal(outer.open, false, 'An actual destination link closes mobile navigation');
-    } finally { app.unmount(); globalThis.window = previousWindow; }
+test('Business lifecycle API adapter sends the exact existing HTTP contract and requires an acknowledgement', async () => {
+    const httpUrl = moduleUrl(`export const calls=[];export let response={data:{data:{business_public_id:'adapter-business',state:'archived',versions:{lifecycle:8}}}};export const respond=value=>response=value;export const api={POST:async(path,options)=>{calls.push({path,options:structuredClone(options)});return response;}};`);
+    const http = await import(httpUrl), adapter = await import(await scriptModule('resources/js/business-foundation/api.ts', { '../spa/api': httpUrl }));
+    const original = { command_id: 'existing-command', effect: 'archive', target_ref: null, payload: {}, expected_revision: 7, authority_selection: { realm_kind: 'business', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: 81 }] } };
+    assert.deepEqual(await adapter.writeLifecycle('adapter-business', original), { business_public_id: 'adapter-business', state: 'archived', versions: { lifecycle: 8 } });
+    assert.deepEqual(http.calls[0], { path: '/api/businesses/{business}/lifecycle', options: { params: { path: { business: 'adapter-business' } }, body: original } });
+    http.respond({}); await assert.rejects(adapter.writeLifecycle('adapter-business', original), /acknowledgement unavailable/);
 });
 
-test('mobile Business navigation closes on a destination button including its nested content', async () => {
+const lifecycleApiUrl = moduleUrl(`export const writes=[],pending=[];export const writeLifecycle=(business,body)=>{writes.push({business,body:structuredClone(body)});return new Promise((resolve,reject)=>pending.push({resolve,reject}));};`);
+const lifecycleApi = await import(lifecycleApiUrl);
+const modalVueUrl = moduleUrl(`export * from ${JSON.stringify(vue)};export const Transition={setup(_props,{slots}){return()=>slots.default?.();}};`);
+const canonicalModal = await component('resources/js/Components/Modal.vue', { vue: modalVueUrl });
+const lifecycleComponent = await component('resources/js/business-foundation/BusinessLifecycle.vue', { './api': lifecycleApiUrl, '../Components/Modal.vue':canonicalModal.url });
+const lifecycleSurface = (name = 'lifecycle-business') => ({ ...businessSurface(name), lifecycle: { revision: 7, archive_options: [{ grant_id: '81' }] } });
+async function mountLifecycle({ selected = lifecycleSurface(), reset = true } = {}) {
+    if (reset) { drafts.lifecycleDrafts.clear(); lifecycleApi.writes.length = 0; lifecycleApi.pending.length = 0; }
+    const subject = ref(selected), router = await routerAt(`/businesses/${selected.business.business_public_id}?access=read-one`), root = element('root');
+    let refreshed = 0;
+    const app = renderer.createApp({ render: () => h(lifecycleComponent.value, { surface: subject.value, onRefresh: () => refreshed++ }) }); app.use(router); app.mount(root);
+    return { app, root, subject, router, get refreshed() { return refreshed; }, get draft() { return drafts.lifecycleDrafts.get(drafts.key(subject.value.business.business_public_id, subject.value.authority_selection) + ':lifecycle:1'); } };
+}
+const lifecycleReceipt = (business = 'lifecycle-business', version = 8) => ({ business_public_id: business, state: 'archived', versions: { lifecycle: version } });
+function lifecycleError(status, code = '') { const error = new transport.TransportError('Rejected'); error.status = status; error.body = { error: code }; return error; }
+
+async function beginArchive(view) {
+    find(view.root, 'data-business-archive').props.onClick(); await nextTick(); await nextTick();
+    return { request: find(view.root, 'data-business-archive-confirm').props.onClick() };
+}
+
+test('qualified draft lifecycle uses the canonical confirmation and acknowledges only the exact archive before opening the qualified list', async () => {
+    const previousConfirm = globalThis.confirm; let confirmed = false, prompts = 0;
+    globalThis.confirm = () => { prompts++; return confirmed; };
+    const view = await mountLifecycle();
+    try {
+        const archive = find(view.root, 'data-business-archive'); assert.ok(archive);
+        archive.props.onClick(); await nextTick(); await nextTick();
+        const cancel = find(view.root, 'data-business-archive-cancel'), confirm = find(view.root, 'data-business-archive-confirm');
+        assert.equal(cancel.props.autofocus, ''); assert.match(text(find(view.root, 'data-business-archive-confirmation')), /lifecycle-business/);
+        assert.equal(all(view.root).find(node=>node.tag==='dialog').open, true);
+        cancel.props.onClick(); await nextTick(); assert.equal(lifecycleApi.writes.length, 0, 'Cancel sends nothing');
+        const { request: first } = await beginArchive(view); find(view.root, 'data-business-archive-confirm').props.onClick(); await nextTick();
+        assert.equal(lifecycleApi.writes.length, 1, 'Concurrent confirms cannot create another command');
+        assert.ok(find(view.root, 'data-business-archive-processing'));
+        assert.equal(find(view.root, 'data-business-archive-unknown'), undefined, 'In-flight delivery has no reported outcome yet');
+        const original = lifecycleApi.writes[0];
+        assert.equal(original.business, 'lifecycle-business'); assert.equal(original.body.effect, 'archive'); assert.equal(original.body.target_ref, null); assert.deepEqual(original.body.payload, {}); assert.equal(original.body.expected_revision, 7);
+        assert.deepEqual(original.body.authority_selection, { realm_kind: 'business', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: 81 }] });
+        assert.match(original.body.command_id, /^[0-9a-f-]{36}$/i);
+        lifecycleApi.pending.shift().resolve(lifecycleReceipt()); await first; await nextTick();
+        assert.equal(view.router.currentRoute.value.path, '/businesses'); assert.equal(view.draft.pending, undefined); assert.equal(view.draft.uncertain, false); assert.ok(find(view.root, 'data-business-archive-saved'));
+        assert.equal(find(view.root, 'data-business-archive'), undefined); assert.equal(all(view.root).some(node => node.tag === 'button' && /^(استعادة|Restore)/.test(text(node))), false, 'No restore action is offered');
+    } finally { view.app.unmount(); drafts.lifecycleDrafts.clear(); globalThis.confirm = previousConfirm; }
+});
+
+test('qualified draft lifecycle retains the immutable original through unknown outcomes and replay rejections without inferred success', async t => {
+    const previousConfirm = globalThis.confirm; globalThis.confirm = () => true;
+    try {
+        for (const status of [422, 409, 403]) await t.test(String(status), async () => {
+            const view = await mountLifecycle();
+            try {
+                const { request: first } = await beginArchive(view), original = structuredClone(lifecycleApi.writes[0]);
+                lifecycleApi.pending.shift().reject(Error('Archive acknowledgement lost')); await first; await nextTick();
+                assert.equal(view.refreshed, 0, 'A read cannot settle an unknown archive'); assert.ok(find(view.root, 'data-business-archive-unknown')); assert.equal(find(view.root, 'data-business-archive'), undefined);
+                view.draft.selected = 'different-grant'; view.draft.revision = 999;
+                const retry = find(view.root, 'data-business-archive-reconcile').props.onClick(); await nextTick(); assert.deepEqual(lifecycleApi.writes[1], original);
+                lifecycleApi.pending.shift().reject(lifecycleError(status, status === 409 ? 'business_conflict' : '')); await retry; await nextTick();
+                assert.deepEqual(JSON.parse(JSON.stringify(view.draft.pending)), original.body); assert.equal(view.draft.uncertain, true); assert.equal(view.router.currentRoute.value.path, '/businesses/lifecycle-business');
+                assert.equal(find(view.root, 'data-business-archive-reconcile').props.disabled, status === 403);
+                locale.value = 'en'; await nextTick(); assert.match(text(view.root), /archive outcome is unconfirmed/); locale.value = 'ar';
+                if (status === 403) {
+                    assert.ok(find(view.root, 'data-business-archive-denied')); assert.equal(view.refreshed, 1);
+                    await find(view.root, 'data-business-archive-reconcile').props.onClick(); assert.equal(lifecycleApi.writes.length, 2, 'Denied authority blocks replay and alternate commands');
+                } else {
+                    const success = find(view.root, 'data-business-archive-reconcile').props.onClick(); assert.deepEqual(lifecycleApi.writes[2], original);
+                    lifecycleApi.pending.shift().resolve(lifecycleReceipt()); await success; assert.equal(view.draft.pending, undefined); assert.equal(view.router.currentRoute.value.path, '/businesses');
+                }
+            } finally { view.app.unmount(); drafts.lifecycleDrafts.clear(); locale.value = 'ar'; }
+        });
+    } finally { globalThis.confirm = previousConfirm; }
+});
+
+test('qualified draft lifecycle first validation rejection allows only a newly confirmed command and version adoption is explicit', async () => {
+    const previousConfirm = globalThis.confirm; let prompts = 0; globalThis.confirm = () => { prompts++; return true; };
+    const view = await mountLifecycle();
+    try {
+        const { request: first } = await beginArchive(view), original = structuredClone(lifecycleApi.writes[0]);
+        lifecycleApi.pending.shift().reject(lifecycleError(422)); await first; await nextTick();
+        assert.equal(view.draft.pending, undefined); assert.equal(view.draft.uncertain, false); assert.ok(find(view.root, 'data-business-archive-rejected'));
+        view.subject.value = { ...view.subject.value, lifecycle: { ...view.subject.value.lifecycle, revision: 8 } }; await nextTick();
+        assert.equal(find(view.root, 'data-business-archive').props.disabled, true); assert.equal(view.draft.revision, 7);
+        find(view.root, 'data-business-lifecycle-adopt').props.onClick(); await nextTick(); assert.equal(view.draft.revision, 8);
+        const { request: next } = await beginArchive(view); assert.equal(lifecycleApi.writes.length, 2); assert.notEqual(lifecycleApi.writes[1].body.command_id, original.body.command_id); assert.equal(lifecycleApi.writes[1].body.expected_revision, 8);
+        lifecycleApi.pending.shift().resolve(lifecycleReceipt('lifecycle-business', 9)); await next;
+    } finally { view.app.unmount(); drafts.lifecycleDrafts.clear(); globalThis.confirm = previousConfirm; }
+});
+
+test('qualified draft lifecycle never substitutes a changed grant and retains an in-flight original through remount', async () => {
+    const previousConfirm = globalThis.confirm; globalThis.confirm = () => true;
+    let view = await mountLifecycle();
+    try {
+        const { request: first } = await beginArchive(view), original = structuredClone(lifecycleApi.writes[0]), late = lifecycleApi.pending.shift();
+        view.app.unmount(); view = await mountLifecycle({ reset: false });
+        assert.equal(lifecycleApi.writes.length, 1); assert.ok(find(view.root, 'data-business-archive-unknown'));
+        late.resolve(lifecycleReceipt()); await first; assert.ok(view.draft.pending, 'A receipt from the unmounted owner cannot settle the current view');
+        view.subject.value = { ...view.subject.value, lifecycle: { revision: 7, archive_options: [{ grant_id: '82' }] } }; await nextTick();
+        assert.ok(find(view.root, 'data-business-archive-denied')); assert.equal(find(view.root, 'data-business-archive-reconcile').props.disabled, true);
+        assert.deepEqual(JSON.parse(JSON.stringify(view.draft.pending)), original.body); await find(view.root, 'data-business-archive-reconcile').props.onClick(); assert.equal(lifecycleApi.writes.length, 1);
+        assert.equal(view.router.currentRoute.value.path, '/businesses/lifecycle-business');
+    } finally { view.app.unmount(); drafts.lifecycleDrafts.clear(); globalThis.confirm = previousConfirm; }
+});
+
+test('qualified draft lifecycle rejects mismatched acknowledgements and unsafe grant projection without creating fallback authority', async t => {
+    const previousConfirm = globalThis.confirm; globalThis.confirm = () => true;
+    try {
+        for (const receipt of [lifecycleReceipt('sibling-business'), lifecycleReceipt('lifecycle-business', 9), { business_public_id: 'lifecycle-business', branch_public_id: 'branch', status: 'archived', versions: { branch: 8 } }]) await t.test(JSON.stringify(receipt), async () => {
+            const view = await mountLifecycle();
+            try {
+                const { request: first } = await beginArchive(view), original = structuredClone(lifecycleApi.writes[0]);
+                lifecycleApi.pending.shift().resolve(receipt); await first; await nextTick();
+                assert.deepEqual(JSON.parse(JSON.stringify(view.draft.pending)), original.body); assert.ok(find(view.root, 'data-business-archive-unknown')); assert.equal(view.router.currentRoute.value.path, '/businesses/lifecycle-business');
+            } finally { view.app.unmount(); drafts.lifecycleDrafts.clear(); }
+        });
+        const selected = lifecycleSurface(); selected.lifecycle.archive_options = [{ grant_id: '9007199254740993' }];
+        const view = await mountLifecycle({ selected });
+        try { assert.equal(find(view.root, 'data-business-archive'), undefined); assert.equal(lifecycleApi.writes.length, 0); } finally { view.app.unmount(); drafts.lifecycleDrafts.clear(); }
+    } finally { globalThis.confirm = previousConfirm; }
+});
+
+test('archive safety recognizes every same-Business draft owner across admitted paths and ignores sibling and other-document scopes', async () => {
+    const business = 'pending-business', selection = { realm_kind: 'agency', realm_workspace_public_id: 'other-path', requirements: [] };
+    drafts.creation.receipt = { business_public_id: business };
+    drafts.creation.marketPending = { kind: 'markets', command_id: 'setup-markets-original' };
+    try {
+        assert.equal(businessPending.hasPendingBusinessOperation(business), true);
+        assert.equal(businessPending.hasPendingBusinessOperation('sibling'), false);
+    } finally {
+        drafts.creation.receipt = undefined;
+        drafts.creation.marketPending = undefined;
+    }
+    const stores = ['drafts', 'factDrafts', 'linkDrafts', 'delegationDrafts', 'internalTeamDrafts', 'directTeamDrafts', 'purposeEnrollmentDrafts', 'dataUseDrafts', 'lifecycleDrafts'];
+    for (const name of stores) {
+        const store = drafts[name], resource = drafts.key(business, selection) + ':existing-owner:1', original = { pending: { command_id: 'exact-original' } };
+        store.set(resource, original);
+        try { assert.equal(businessPending.hasPendingBusinessOperation(business), true, name); assert.equal(businessPending.hasPendingBusinessOperation('pending-business-sibling'), false, name); assert.equal(store.get(resource), original); } finally { store.delete(resource); }
+    }
+    const wrongDocument = JSON.stringify(['another-document', business, selection, 'business.context:1']);
+    drafts.drafts.set(wrongDocument, { pending: { command_id: 'foreign-document' } });
+    try { assert.equal(businessPending.hasPendingBusinessOperation(business), false); } finally { drafts.drafts.delete(wrongDocument); }
+    inquiryEditor.pendingCommands.set(`${transport.stamp()}:${business}:another-basis`, { kind: 'record', body: { command_id: 'inquiry-original' } });
+    try { assert.equal(businessPending.hasPendingBusinessOperation(business), true); assert.equal(businessPending.hasPendingBusinessOperation('sibling'), false); } finally { inquiryEditor.pendingCommands.clear(); }
+    nativePending.pending.set('workspace-owned', { command: { workspace: business, effect: 'disconnect' } });
+    assert.equal(businessPending.hasPendingBusinessOperation(business), false, 'A Workspace with the same identifier is a different owner');
+    nativePending.pending.set('business-owned', { command: { business, effect: 'disconnect' } });
+    try { assert.equal(businessPending.hasPendingBusinessOperation(business), true); assert.equal(businessPending.hasPendingBusinessOperation('sibling'), false); } finally { nativePending.pending.clear(); }
+    const scope = drafts.key(business, selection) + ':purpose'; let acknowledged = false;
+    await purposeCommands.submitPurpose(scope, { command_id: 'purpose-original', purpose_id: 'purpose-one' }, {}, async () => { if (!acknowledged) throw Error('Lost purpose ACK'); return { purpose_id: 'purpose-one', revision_id: 'revision-one', version: 1 }; });
+    assert.equal(businessPending.hasPendingBusinessOperation(business), true); assert.equal(businessPending.hasPendingBusinessOperation('sibling'), false);
+    acknowledged = true; await purposeCommands.retryPurpose(scope, 'purpose-one', {}); assert.equal(businessPending.hasPendingBusinessOperation(business), false);
+});
+
+test('fresh archive checks live pending work again at final confirmation while preserving its own exact reconciliation', async () => {
+    const view = await mountLifecycle(), resource = drafts.key('lifecycle-business', { realm_kind: 'other-admitted-path' }) + ':markets:1';
+    try {
+        find(view.root, 'data-business-archive').props.onClick(); await nextTick(); await nextTick();
+        const original = { command_id: 'late-other-write' }; drafts.factDrafts.set(resource, { pending: original });
+        await find(view.root, 'data-business-archive-confirm').props.onClick(); await nextTick();
+        assert.equal(lifecycleApi.writes.length, 0); assert.equal(drafts.factDrafts.get(resource).pending, original); assert.ok(find(view.root, 'data-business-archive-pending-work')); assert.equal(find(view.root, 'data-business-archive').props.disabled, true);
+        drafts.factDrafts.delete(resource);
+        const sibling = drafts.key('unrelated-business', {}) + ':markets:1'; drafts.factDrafts.set(sibling, { pending: { command_id: 'sibling-request' } });
+        const { request } = await beginArchive(view); lifecycleApi.pending.shift().reject(Error('Archive ACK lost')); await request; await nextTick();
+        assert.ok(view.draft.pending); drafts.factDrafts.set(resource, { pending: original });
+        const reconcile = find(view.root, 'data-business-archive-reconcile'); assert.equal(reconcile.props.disabled, false, 'Other work cannot prevent checking an already-issued archive');
+        const replay = reconcile.props.onClick(); assert.deepEqual(lifecycleApi.writes[1], lifecycleApi.writes[0]); lifecycleApi.pending.shift().resolve(lifecycleReceipt()); await replay;
+        drafts.factDrafts.delete(sibling);
+    } finally { view.app.unmount(); drafts.factDrafts.delete(resource); drafts.lifecycleDrafts.clear(); }
+});
+
+test('actual Business route guards permit local reconciliation navigation and still guard read-path and Business departures', async () => {
+    const previousWindow = globalThis.window, previousConfirm = globalThis.confirm; let prompts = 0;
+    globalThis.window = { scrollY: 0, scrollTo() {}, matchMedia: () => ({ matches: true, addEventListener() {}, removeEventListener() {} }) };
+    globalThis.confirm = () => { prompts++; return false; };
+    const selected = businessSurface('guard-business'), root = element('root'), app = renderer.createApp({ render: () => h(RouterView) });
+    const router = createRouter({ history: createMemoryHistory(), routes: routes.map(route => route.path === '/businesses/:business' ? { ...route, component: workspace.value, props: () => ({ surface: selected }) } : route) });
+    await router.push('/businesses/guard-business?access=17'); await router.isReady(); app.use(router); app.mount(root);
+    const pending = { command: { business: 'guard-business', effect: 'disconnect' } }; nativePending.pending.set('guard-original', pending);
+    const enrollmentKey = drafts.key(selected.business.business_public_id, selected.authority_selection) + ':purpose-enrollment:1'; drafts.purposeEnrollmentDrafts.set(enrollmentKey, { pending: { command_id: 'purpose-enrollment-original' } });
+    try {
+        await router.push('/businesses/guard-business?access=17&section=settings&settings=purposes'); await nextTick();
+        assert.equal(prompts, 0); assert.equal(router.currentRoute.value.query.settings, 'purposes'); assert.equal(nativePending.pending.get('guard-original'), pending);
+        await router.push('/businesses/guard-business?access=17&section=sources'); await nextTick(); assert.equal(prompts, 0); assert.equal(router.currentRoute.value.query.section, 'sources');
+        await router.push('/businesses/guard-business?access=18&section=settings'); assert.equal(prompts, 1); assert.equal(router.currentRoute.value.query.access, '17');
+        await router.push('/businesses/another-business?access=17'); assert.equal(prompts, 2); assert.equal(router.currentRoute.value.params.business, 'guard-business');
+        assert.equal(drafts.purposeEnrollmentDrafts.get(enrollmentKey).pending.command_id, 'purpose-enrollment-original');
+    } finally { app.unmount(); nativePending.pending.clear(); drafts.purposeEnrollmentDrafts.delete(enrollmentKey); globalThis.window = previousWindow; globalThis.confirm = previousConfirm; }
+});
+
+test('Business lifecycle settings require an archive projection or the same scoped unresolved original', async () => {
+    const selected = businessSurface('lifecycle-placement'); selected.context_write_options = [{ grant_id: '999' }];
+    async function html(subject) { const app = createSSRApp(workspace.value, { surface: subject }); app.use(await routerAt(`/businesses/${subject.business.business_public_id}?section=settings&settings=lifecycle`)); return renderToString(app); }
+    const hidden = await html(selected); assert.doesNotMatch(hidden, /data-workspace-settings="lifecycle"/); assert.match(hidden, /data-workspace-settings-panel="details"/);
+    const qualified = await html({ ...selected, lifecycle: { revision: 7, archive_options: [{ grant_id: '81' }] } }); assert.match(qualified, /data-workspace-settings="lifecycle"/); assert.match(qualified, /data-workspace-settings-panel="lifecycle"/);
+    const resource = drafts.key(selected.business.business_public_id, selected.authority_selection) + ':lifecycle:1';
+    drafts.lifecycleDrafts.set(resource, { selected: '81', revision: 7, blocked: true, outcome: 'unknown', pending: { effect: 'archive', command_id: 'retained', expected_revision: 7, payload: {}, target_ref: null, authority_selection: selected.authority_selection } });
+    try {
+        assert.match(await html(selected), /data-workspace-settings="lifecycle"/, 'The same scoped unresolved request remains discoverable without granting an action');
+        assert.doesNotMatch(await html(businessSurface('sibling-placement')), /data-workspace-settings="lifecycle"/);
+    } finally { drafts.lifecycleDrafts.clear(); }
+});
+
+test('Business lifecycle retained requests remain document scoped and current work offers one declaration review rather than technical cards', async () => {
+    const selected = businessSurface('work-review-current');
+    const app = createSSRApp(workspace.value, { surface: selected }); app.use(await routerAt('/businesses/work-review-current'));
+    const html = await renderToString(app), overview = html.match(/<section[^>]*data-workspace-panel="overview"[\s\S]*?<section[^>]*data-workspace-panel="direction"|<section[^>]*data-workspace-panel="overview"[\s\S]*/)?.[0];
+    assert.ok(overview); assert.equal((overview.match(/data-business-review-task/g) ?? []).length, 1); assert.match(overview, /data-current-work/); assert.match(overview, /ليست نتيجة أداء مقاسة/); assert.doesNotMatch(overview, /workspace-task-list|data-business-source-task/);
+    const resource = drafts.key(selected.business.business_public_id, selected.authority_selection) + ':lifecycle:1';
+    drafts.lifecycleDrafts.set(resource, { revision: 7, selected: '81', blocked: false, outcome: 'unknown', pending: { command_id: 'scoped-original' } });
+    for (const close of transport.callbacks) close();
+    assert.equal(drafts.lifecycleDrafts.size, 0, 'Closing the document clears its lifecycle command store');
+});
+
+const choice = (business, grant = '17', name = business) => ({ business_public_id: business, read_grant_id: grant, name, state: 'declared_draft', realm_kind: 'business', realm_workspace_public_id: null });
+const choicePage = (items, next_cursor = null, fingerprint = 'authority-one') => ({ items, next_cursor, scope: { principal_generation: 1, authority_fingerprint: fingerprint } });
+let choicesScenario = 0;
+async function controlledChoices() {
+    const api = moduleUrl(`export const scenario=${++choicesScenario},calls=[],pending=[];export const businessChoices=after=>{calls.push(after);return new Promise((resolve,reject)=>pending.push({resolve,reject}));};`);
+    const url = await scriptModule('resources/js/business-foundation/businessChoices.ts', { './api': api });
+    return { url, module: await import(url), api: await import(api) };
+}
+
+test('accepted Vue shell choices paginate exact qualified paths and reject changed authority scope and unsafe cursors', async () => {
+    const scenario = await controlledChoices(), model = scenario.module.createBusinessChoices();
+    try {
+        const first = model.load(); assert.equal(model.phase.value, 'loading');
+        scenario.api.pending.shift().resolve(choicePage([choice('same', '17'), choice('same', '18')], '25')); await first;
+        assert.equal(model.items.value.length, 2, 'Two grants for the same Business remain distinct choices');
+        const more = model.load(true); assert.deepEqual(scenario.api.calls, [undefined, 25]);
+        scenario.api.pending.shift().resolve(choicePage([choice('same', '17'), choice('other')], '26')); await more;
+        assert.equal(model.items.value.length, 3, 'Pagination deduplicates only an identical qualified path');
+        const changed = model.load(true); scenario.api.pending.shift().resolve(choicePage([choice('unrelated')], null, 'new-authority')); await changed;
+        assert.equal(model.phase.value, 'error'); assert.deepEqual(model.items.value, []); assert.equal(model.nextCursor.value, null);
+        const reload = model.load(); scenario.api.pending.shift().resolve(choicePage([choice('valid')], '9007199254740993')); await reload;
+        const count = scenario.api.calls.length; await model.load(true);
+        assert.equal(scenario.api.calls.length, count, 'An unsafe integer cursor never reaches the API'); assert.equal(model.phase.value, 'error');
+    } finally { model.dispose(); }
+});
+
+test('accepted Vue shell choices discard superseded, departed and closed asynchronous reads and distinguish empty from failed', async () => {
+    const scenario = await controlledChoices(), model = scenario.module.createBusinessChoices();
+    try {
+        const stale = model.load(), current = model.load();
+        scenario.api.pending[1].resolve(choicePage([choice('current')])); await current;
+        scenario.api.pending[0].resolve(choicePage([choice('late-secret')])); await stale; scenario.api.pending.length = 0;
+        assert.deepEqual(model.items.value.map(item => item.name), ['current']);
+        const departed = model.load(); transport.advance(); scenario.api.pending.shift().resolve(choicePage([choice('old-principal')])); await departed;
+        assert.deepEqual(model.items.value, [], 'A departed ownership stamp cannot publish its metadata');
+        const empty = model.load(); scenario.api.pending.shift().resolve(choicePage([])); await empty;
+        assert.equal(model.phase.value, 'ready'); assert.equal(model.items.value.length, 0);
+        const failed = model.load(); scenario.api.pending.shift().reject(Error('Unavailable')); await failed;
+        assert.equal(model.phase.value, 'error');
+        const closed = model.load(); model.clear(); scenario.api.pending.shift().resolve(choicePage([choice('closed-secret')])); await closed;
+        assert.equal(model.phase.value, 'closed'); assert.deepEqual(model.items.value, []);
+        const calls = scenario.api.calls.length; await model.load(); assert.equal(scenario.api.calls.length, calls);
+    } finally { model.dispose(); }
+});
+
+test('accepted Vue shell switcher retains admitted selection outside the page, refreshes its name and emits an exact opaque path', async () => {
+    const selected = ref(choice('current', '9007199254740993', 'Admitted current name'));
+    const items = ref([choice('duplicate-A', '21', 'Shared name'), choice('duplicate-B', '22', 'Shared name')]);
+    const selections = [], root = element('root'), app = renderer.createApp({ render: () => h(switcher.value, { id: 'choice-test', selected: selected.value, items: items.value, phase: 'ready', more: true, onSelect: item => selections.push(item) }) });
+    app.use(await routerAt('/businesses/current')); app.mount(root);
+    try {
+        const select = find(root, 'data-business-switch'), options = () => all(select).filter(node => node.tag === 'option');
+        assert.equal(options().length, 3); assert.match(text(options()[0]), /Admitted current name/);
+        assert.notEqual(text(options()[1]), text(options()[2]), 'Same-name businesses remain distinguishable');
+        items.value = [choice('current', '9007199254740993', 'Stale catalog name'), ...items.value]; await nextTick();
+        assert.doesNotMatch(text(select), /Stale catalog name/); assert.match(text(select), /Admitted current name/);
+        selected.value = { ...selected.value, name: 'New admitted name' }; await nextTick(); assert.match(text(select), /New admitted name/);
+        const { businessChoiceKey, businessChoiceDestination } = await import(choicesUrl);
+        select.value = businessChoiceKey(items.value[1]); select.props.onChange({ target: select });
+        assert.equal(select.value, businessChoiceKey(selected.value), 'The control resets until destination admission succeeds');
+        assert.deepEqual(selections, [items.value[1]]);
+        assert.deepEqual(businessChoiceDestination(selected.value), { path: '/businesses/current', query: { access: '9007199254740993' } });
+        assert.ok(find(root, 'data-business-choices-more')); assert.ok(find(root, 'data-business-create-entry'), 'The creation link delegates its qualification to the existing creation route');
+    } finally { app.unmount(); }
+});
+
+test('Business picker distinguishes colliding exact access paths and organization scopes without decorating unambiguous labels', async () => {
+    const items = [choice('same-business', '17', 'Shared business'), choice('same-business', '18', 'Shared business'),
+        { ...choice('agency-business', '21', 'Agency client'), realm_kind: 'agency', realm_workspace_public_id: 'agency-one' },
+        { ...choice('agency-business', '22', 'Agency client'), realm_kind: 'agency', realm_workspace_public_id: 'agency-two' }, choice('unique-business', '31', 'Unique business')];
+    const root = element('root'), app = renderer.createApp(switcher.value, { id: 'collision-picker', items, selected: items[0], phase: 'ready', more: false }); app.use(await routerAt('/businesses/same-business')); app.mount(root);
+    try {
+        const options = all(find(root, 'data-business-switch')).filter(node => node.tag === 'option'); assert.equal(options.length, 5); assert.equal(new Set(options.map(text)).size, 5);
+        assert.match(text(options[0]), /مسار وصول 1/); assert.match(text(options[1]), /مسار وصول 2/); assert.doesNotMatch(text(options[4]), /مسار وصول/);
+        locale.value = 'en'; await nextTick(); assert.match(text(options[2]), /Access path 1/); assert.match(text(options[3]), /Access path 2/); assert.doesNotMatch(text(options[4]), /Access path/);
+        const keys = items.map((item) => JSON.stringify([item.business_public_id, item.read_grant_id, item.realm_kind, item.realm_workspace_public_id])); assert.deepEqual(options.map(node => node.props.value), keys);
+    } finally { app.unmount(); locale.value = 'ar'; }
+});
+
+test('accepted Vue shell selection and sidebar brand use existing router guards without optimistic identity changes', async () => {
+    const scenario = await controlledChoices();
+    const guardedLayout = await component('resources/js/business-foundation/AdvertiserWorkspaceLayout.vue', { './businessChoices': scenario.url, '../Components/BrandLogo.vue': brandLogo.url, './BusinessSwitcher.vue': switcher.url });
+    const previousWindow = globalThis.window; globalThis.window = { matchMedia: () => ({ matches: true, addEventListener() {}, removeEventListener() {} }) };
+    const router = await routerAt('/businesses/current?access=17'), attempted = [];
+    router.beforeEach(to => { attempted.push(to.fullPath); return false; });
+    const selected = choice('current'), root = element('root'), app = renderer.createApp(guardedLayout.value, { selection: selected, businessSelected: true }); app.use(router); app.mount(root);
+    try {
+        scenario.api.pending.shift().resolve(choicePage([choice('destination', '25')])); await nextTick(); await nextTick();
+        const select = find(root, 'data-business-switch'), { businessChoiceKey } = scenario.module;
+        select.value = businessChoiceKey(choice('destination', '25')); select.props.onChange({ target: select }); await flushFacts();
+        assert.equal(router.currentRoute.value.fullPath, '/businesses/current?access=17'); assert.equal(select.value, businessChoiceKey(selected));
+        const brand = all(root).find(node => node.tag === 'a' && node.props.class === 'ba-logo'); assert.equal(brand.props.href, '/businesses');
+        await brand.props.onClick({ button: 0, preventDefault() {}, currentTarget: { getAttribute() { return null; } } }); await nextTick();
+        assert.equal(router.currentRoute.value.fullPath, '/businesses/current?access=17');
+        assert.deepEqual(attempted, ['/businesses/destination?access=25', '/businesses']);
+        transport.documentStatus.value = 'closed'; await nextTick(); assert.equal(select.props.disabled, true); assert.doesNotMatch(text(select), /destination/);
+    } finally { app.unmount(); transport.documentStatus.value = 'ready'; globalThis.window = previousWindow; }
+});
+
+test('mobile organization disclosures remain open and destinations dismiss the native modal with focus restoration', async () => {
     const previousWindow = globalThis.window;
     globalThis.window = { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) };
-    const root = element('root'), app = renderer.createApp({ render: () => h(layout.value, {}, { navigation: () => h('nav', [h('button', { type: 'button' }, [h('span', 'Markets')])]) }) });
-    app.use(await routerAt('/businesses/mobile')); app.mount(root);
+    headerHost = element('header');
+    const root = element('root'), app = renderer.createApp({ render: () => h(layout.value, { workspaceId: 'workspace-mobile', context: 'Workspace M', workspaceContext: true }) });
+    app.use(await routerAt('/workspaces/workspace-mobile')); app.mount(root); await nextTick();
     try {
-        const outer = all(root).find(node => node.tag === 'details' && node.props.class === 'advertiser-sidebar'); outer.open = true;
+        const modal = find(root, 'data-advertiser-drawer'), toggle = find(headerHost, 'data-advertiser-menu-toggle');
+        toggle.props.onClick(); assert.equal(modal.open, true); assert.equal(modal.modalCount, 1);
+        assert.equal(all(root).filter(node => 'data-business-switch' in node.props).length, 1, 'Only the mobile selector is mounted');
+        const body = all(root).find(node => node.props.class === 'advertiser-drawer-body');
+        const previous = find(root, 'data-workspace-previous-navigation');
+        body.props.onClick({ target: previous.children.find(node => node.tag === 'summary') }); previous.open = true;
+        assert.equal(modal.open, true, 'Disclosure summaries are not destinations');
+        const organization = all(root).find(node => node.props.class === 'advertiser-organization-tools');
+        body.props.onClick({ target: organization.children.find(node => node.tag === 'summary') }); organization.open = true;
+        body.props.onClick({ target: organization.children.find(node => node.tag === 'p') });
+        assert.equal(modal.open, true, 'Reading help keeps the destinations reachable');
+        body.props.onClick({ target: all(organization).find(node => node.tag === 'a') });
+        assert.equal(modal.open, false); assert.equal(toggle.focusCount, 1, 'Closing restores focus to the menu trigger');
+        toggle.props.onClick(); modal.props.onClick({ target: modal, clientX: 350, clientY: 50 });
+        assert.equal(modal.open, false, 'Only backdrop clicks outside the dialog bounds dismiss it');
+    } finally { app.unmount(); headerHost = undefined; globalThis.window = previousWindow; }
+});
+
+test('mobile destination buttons dismiss the drawer and resizing closes only the navigation dialog', async () => {
+    const previousWindow = globalThis.window; let mediaChanged;
+    const media = { matches: false, addEventListener(_name, fn) { mediaChanged = fn; }, removeEventListener() {} };
+    globalThis.window = { matchMedia: () => media }; headerHost = element('header');
+    const root = element('root'), app = renderer.createApp({ render: () => h(layout.value, {}, { navigation: () => h('nav', [h('button', { type: 'button', 'data-workspace-section': 'direction' }, [h('span', 'Markets')])]) }) });
+    app.use(await routerAt('/businesses/mobile')); app.mount(root); await nextTick();
+    try {
+        const modal = find(root, 'data-advertiser-drawer'), toggle = find(headerHost, 'data-advertiser-menu-toggle');
+        toggle.props.onClick();
         const label = all(root).find(node => node.tag === 'span' && text(node) === 'Markets');
-        all(root).find(node => node.props.class === 'advertiser-sidebar-body').props.onClick({ target: label });
-        assert.equal(outer.open, false, 'Nested button content resolves to the navigation activation');
-    } finally { app.unmount(); globalThis.window = previousWindow; }
+        all(root).find(node => node.props.class === 'advertiser-drawer-body').props.onClick({ target: label });
+        assert.equal(modal.open, false, 'Nested button content resolves to its destination');
+        toggle.props.onClick(); const confirmation = element('dialog'); confirmation.showModal();
+        media.matches = true; mediaChanged(); await nextTick();
+        assert.equal(modal.open, false); assert.equal(confirmation.open, true, 'Resize leaves unrelated confirmation dialogs alone');
+        assert.equal(all(root).filter(node => 'data-workspace-section' in node.props).length, 1);
+        assert.equal(all(root).filter(node => 'data-business-switch' in node.props).length, 1);
+        assert.ok(find(root, 'id', 'businessSelect'));
+    } finally { app.unmount(); headerHost = undefined; globalThis.window = previousWindow; }
 });
 
 test('Business creation clears a localized country search without discarding selected markets or sending commands', async () => {
@@ -799,7 +1149,7 @@ test('platform card journey retains only a scalar allowlisted provider through a
         assert.ok(html.includes('href="/workspaces/allowed-one?provider='+platform.id+'"'));
         assert.ok(html.includes('href="/workspaces/allowed-two?provider='+platform.id+'"'));
         assert.doesNotMatch(html, /href="\/workspaces\/foreign|data-workspaces-add/);
-        assert.match(html, /لا تُختار مساحة تلقائيًا/);
+        assert.match(html, /اختر الجهة التي تدير حساب/);
     }
     for (const query of ['?provider=unknown','?provider=meta&provider=google']) {
         const app = createSSRApp(chooser.value); app.use(await routerAt('/workspaces'+query));
@@ -865,7 +1215,7 @@ test('fresh actual data-use draft publishes pending true and false to the collap
     const root=element('root'),app=renderer.createApp({render:()=>h(actualWorkspace.value,{surface:selected,refreshing:false})});
     app.use(await routerAt('/businesses/fresh-pending-business'));app.mount(root);
     try {
-        find(root,'data-business-source-task').props.onClick();await nextTick();await nextTick();
+        await find(root,'data-workspace-section','sources').props.onClick();await nextTick();
         const advanced=find(root,'data-business-source-advanced');
         assert.equal(advanced.open,false);assert.equal(find(root,'data-business-source-pending'),undefined);
         const freshDraft=drafts.dataUseDrafts.get(cacheKey);assert.ok(freshDraft);assert.equal(freshDraft.pending,undefined);
@@ -961,11 +1311,11 @@ test('internal team workspace does not mount creator-only inquiries or historica
     const selected={...businessSurface('internal-private-boundary'),private_history_available:false,authority_selection:{realm_kind:'internal_team',realm_workspace_public_id:'team-one',requirements:[{requirement_kind:'business',leaf_grant_id:51}]}};
     const root=element('root'),app=renderer.createApp({render:()=>h(internalWorkspace.value,{surface:selected})});app.use(await routerAt('/businesses/internal-private-boundary'));app.mount(root);
     try {
-        find(root,'data-workspace-section','settings').props.onClick();await nextTick();
+        await find(root,'data-workspace-section','settings').props.onClick();await nextTick();
         assert.equal(find(root,'data-private-history-reader'),undefined);
-        find(root,'data-workspace-settings','data').props.onClick();await nextTick();
+        await find(root,'data-workspace-settings','data').props.onClick();await nextTick();
         assert.equal(find(root,'data-test-inquiry'),undefined);assert.equal(events.length,0);assert.match(text(root),/صلاحية مستقلة/);
-        find(root,'data-workspace-settings','access').props.onClick();await nextTick();
+        await find(root,'data-workspace-settings','access').props.onClick();await nextTick();
         assert.equal(find(root,'data-own-membership').props['data-own-membership'],'team-one','Internal-file employees can find self-membership without opening a Workspace profile');
     } finally {app.unmount();globalThis.window=oldWindow;presentation.workspacePresentation.clear();}
 });

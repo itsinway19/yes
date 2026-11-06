@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
-import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
+import { RouterLink, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import ProviderBrand from '@/Components/ProviderBrand.vue';
 import OperationsShell from './OperationsShell.vue';
@@ -95,7 +95,7 @@ const xEnvironmentNames = ['BB2_X_CONSUMER_KEY', 'BB2_X_CONSUMER_SECRET', 'BB2_X
             <button type="button" data-operation-review :disabled="!!busy" @click="review">{{ copy('مراجعة الحالة دون إعادة الأمر', 'Review state without replay') }}</button>
         </div>
         <fieldset :disabled="locked" class="admin-administration" data-administration>
-            <a v-if="props.canManageCommercialPreparation" href="/internal/administration/commercial-markets" class="admin-action">{{ locale === 'en' ? 'Add a commercial market' : 'إضافة سوق تجاري' }}</a>
+            <RouterLink v-if="props.canManageCommercialPreparation" to="/internal/administration/commercial-markets" class="admin-action">{{ locale === 'en' ? 'Add a commercial market' : 'إضافة سوق تجاري' }}</RouterLink>
             <p v-if="actionError" role="alert" class="admin-error admin-action-error">{{ t(`admin.${actionError}`) }}</p>
             <section class="admin-section" aria-labelledby="staff-title">
                 <header class="admin-section-heading"><div><h2 id="staff-title">{{ t('admin.staffTitle') }}</h2><p class="admin-description">{{ t('admin.staffContext') }}</p></div></header>
@@ -142,7 +142,7 @@ const xEnvironmentNames = ['BB2_X_CONSUMER_KEY', 'BB2_X_CONSUMER_SECRET', 'BB2_X
             </section>
             <section v-if="providers.length" class="admin-section admin-providers" aria-labelledby="providers-title">
                 <header class="admin-section-heading"><div><h2 id="providers-title">{{ t('admin.providersTitle') }}</h2><p class="admin-description">{{ t('admin.providersContext') }}</p></div></header>
-                <a v-if="props.permissions['service.manage']" href="/internal/services" class="admin-text-link">{{ t('admin.manageServices') }} <span aria-hidden="true">↗</span></a>
+                <RouterLink v-if="props.permissions['service.manage']" to="/internal/services" class="admin-text-link">{{ t('admin.manageServices') }}</RouterLink>
                 <div class="admin-provider-head" aria-hidden="true"><span>{{ t('admin.provider') }}</span><span>{{ t('admin.localApplication') }}</span><span>{{ t('admin.localNotices') }}</span></div>
                 <details v-for="provider in providers" :key="provider.key" class="admin-provider-row admin-provider-details" :aria-labelledby="`${provider.key}-operator-title`">
                     <summary class="admin-provider-summary">
@@ -154,7 +154,7 @@ const xEnvironmentNames = ['BB2_X_CONSUMER_KEY', 'BB2_X_CONSUMER_SECRET', 'BB2_X
                     <div class="admin-provider-detail-body"><p class="admin-provider-disclaimer">{{ t(`admin.providers.${provider.key}.disclaimer`) }}</p><dl class="admin-provider-definitions"><div><dt>{{ t(`admin.providers.${provider.key}.application`) }}</dt><dd>{{ t(provider.status!.application_configured ? (['meta', 'google'].includes(provider.key) ? 'admin.technicallyConfigured' : 'admin.locallyComplete') : 'admin.incomplete') }}</dd></div><div><dt>{{ t(`admin.providers.${provider.key}.notice`) }}</dt><dd>{{ t(provider.status!.notice_links_configured ? (['meta', 'google'].includes(provider.key) ? 'admin.technicalNotice' : 'admin.locallyComplete') : 'admin.incomplete') }}</dd></div></dl><p v-if="provider.key !== 'meta'" class="admin-description">{{ t(`admin.providers.${provider.key}.environment`) }}</p><ul v-if="provider.key === 'x'" class="admin-environment-names"><li v-for="name in xEnvironmentNames" :key="name"><code dir="ltr">{{ name }}</code></li></ul><p v-if="provider.key === 'x'" class="admin-description">{{ t('admin.providers.x.deferred') }}</p></div>
                 </details>
             </section>
-            <a v-else-if="props.permissions['service.manage']" href="/internal/services" class="admin-text-link">{{ t('admin.manageServices') }}</a>
+            <RouterLink v-else-if="props.permissions['service.manage']" to="/internal/services" class="admin-text-link">{{ t('admin.manageServices') }}</RouterLink>
         </fieldset>
     </OperationsShell>
 </template>

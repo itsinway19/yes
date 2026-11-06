@@ -1,3 +1,4 @@
+import { shallowReactive } from 'vue';
 import type { DeclarationValue, Pending } from './api';
 export const clone = <T>(value:T):T => JSON.parse(JSON.stringify(value));
 export function freezeCommand<T extends Pending>(command:T):T {
@@ -19,4 +20,4 @@ export function countValue(raw:string):number|null {
 }
 
 // Memory only, scoped to this document/actor generation; never localStorage or cross-session export.
-export const pendingCommands = new Map<string,Pending>();
+export const pendingCommands = shallowReactive(new Map<string,Pending>());

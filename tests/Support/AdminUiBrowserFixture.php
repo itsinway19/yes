@@ -32,7 +32,7 @@ foreach (($argv[1] ?? '') === 'employee' ? ['employee'] : ['founder', 'advertise
             $db->table('passkeys')->insert(['user_id' => $user->id, 'name' => 'Synthetic eligibility '.$factor,
                 'credential_id' => 'appearance-'.$user->id.'-'.$factor, 'credential' => '{}', 'created_at' => now(), 'updated_at' => now()]);
         }
-        foreach ($kind === 'founder' ? ['staff.view', 'staff.invite', 'staff.attest', 'staff.activate', 'staff.revoke', 'grant.manage', 'service.manage', 'business.manage'] : ['staff.view'] as $action) {
+        foreach ($kind === 'founder' ? ['staff.view', 'staff.invite', 'staff.attest', 'staff.activate', 'staff.revoke', 'grant.manage', 'service.manage', 'business.manage', 'platform.maintenance.manage'] : ['staff.view'] as $action) {
             $db->table('security_action_grants')->insert(['subject_user_id' => $user->id, 'source' => 'founder_bootstrap',
                 'action' => $action, 'scope_kind' => 'platform', 'subject_generation' => 1,
                 'reason' => 'synthetic appearance browser fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

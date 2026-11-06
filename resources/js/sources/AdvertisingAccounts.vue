@@ -42,6 +42,13 @@ const labels: Record<string, [string, string]> = {
     connected: ['متصل؛ جاهزية البيانات غير مؤكدة', 'Connected; data readiness unconfirmed'],
 };
 function label(provider: AdvertisingPlatform) { const copy = labels[state(provider)] ?? labels.unknown; return copy[locale.value === 'ar' ? 0 : 1]; }
+function accountAction(provider: AdvertisingPlatform) {
+    if (!hasOwner.value) return t('اختيار جهة الحساب', 'Choose the account owner');
+    const summary = summaries.value[provider];
+    if (summary?.canConnect && !summary.hasConnections && props.canManage) return t('ربط حساب', 'Connect an account');
+    if (summary?.hasConnections) return t('عرض الحسابات', 'View accounts');
+    return t('عرض التفاصيل', 'View details');
+}
 async function open(provider: AdvertisingPlatform, event?: MouseEvent) {
     activeButton.value = event?.currentTarget as HTMLElement | undefined ?? platformButtons.get(provider) ?? activeButton.value;
     emit('selected', provider);
@@ -80,7 +87,7 @@ onBeforeUnmount(() => { mounted.value = false; });
             <li v-for="platform in advertisingPlatforms" :key="platform.id" class="advertising-platform" :data-provider="platform.id">
                 <div class="advertising-platform-brand"><ProviderBrand :provider="platform.id" :size="40" /><h3 dir="ltr">{{ platform.label }}</h3></div>
                 <p class="advertising-platform-status" role="status" :data-state="state(platform.id)">{{ label(platform.id) }}</p>
-                <button :ref="element => retainButton(platform.id, element)" type="button" class="workspace-button" :aria-haspopup="hasOwner ? 'dialog' : undefined" @click="open(platform.id, $event)">{{ !hasOwner ? t('اختيار إدارة الحساب', 'Choose account administration') : summaries[platform.id]?.canConnect && !summaries[platform.id]?.hasConnections && canManage ? t('ربط حساب', 'Connect an account') : t('فتح الحسابات', 'Open accounts') }}</button>
+                <button :ref="element => retainButton(platform.id, element)" type="button" class="workspace-button" :aria-haspopup="hasOwner ? 'dialog' : undefined" :aria-label="`${accountAction(platform.id)} · ${platform.label}`" @click="open(platform.id, $event)">{{ accountAction(platform.id) }}</button>
             </li>
         </ul>
         <p class="advertising-account-note">{{ t('ظهور المنصة لا يعني وجود حساب متصل أو إتاحة بياناته لهذا النشاط.', 'A listed platform does not mean an account is connected or its data is available to this business.') }}</p>
@@ -96,5 +103,40 @@ onBeforeUnmount(() => { mounted.value = false; });
 </template>
 
 <style scoped>
-.advertising-platforms{list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:18px 0 0;padding:0;border-block-start:1px solid var(--ad-line,#dce5e0)}.advertising-platform{display:flex;flex-direction:column;align-items:flex-start;gap:12px;min-width:0;padding:22px 18px;border-block-end:1px solid var(--ad-line,#dce5e0)}.advertising-platform-brand{display:flex;align-items:center;gap:12px}.advertising-platform h3{font-size:15px;font-weight:650;margin:0}.advertising-platform-status{font-size:12px;line-height:1.8;color:var(--ad-muted,#52665f);margin:0;flex:1}.advertising-platform .workspace-button{min-height:44px}.advertising-account-note{font-size:12px;color:var(--ad-muted,#52665f);line-height:1.8;margin-top:16px}.advertising-dialog{inset:0;margin:auto;width:min(880px,calc(100% - 28px));max-height:88dvh;border:1px solid var(--ad-line,#dce5e0);border-radius:10px;padding:0;background:var(--ad-paper,#fff);color:var(--ad-ink,#182f39);overflow:auto}.advertising-dialog::backdrop{background:#122b3570}.advertising-dialog-heading{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 20px;border-bottom:1px solid var(--ad-line,#dce5e0);background:var(--ad-paper,#fff);font-size:14px}.advertising-dialog-heading button{min-height:44px;padding:7px 12px;font:inherit;background:none;border:0;color:inherit;cursor:pointer}.advertising-dialog-heading span{font-size:22px;margin-inline-start:12px}.advertising-dialog :deep(section){border:0;border-radius:0;box-shadow:none;margin:0}.advertising-dialog :deep(section>header){background:var(--ad-paper,#fff)}.advertising-accounts :focus-visible{outline:3px solid var(--ad-accent,#155f53);outline-offset:3px}@media(min-width:1200px){.advertising-platforms{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:480px){.advertising-platforms{grid-template-columns:1fr}.advertising-platform{padding:18px 4px}.advertising-platform .workspace-button{width:100%}.advertising-dialog{width:calc(100% - 16px);max-height:94dvh}}
+.advertising-platforms {
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 0;
+    border: 1px solid var(--ad-line, #dce5e0);
+    border-radius: 9px;
+    background: var(--ad-paper, #fff);
+}
+.advertising-platform {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+}
+.advertising-platform + .advertising-platform { border-block-start: 1px solid var(--ad-line, #dce5e0); }
+.advertising-platform-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.advertising-platform h3 { font-size: 14px; font-weight: 650; margin: 0; }
+.advertising-platform-status, .advertising-account-note { font-size: 12px; line-height: 1.8; color: var(--ad-muted, #52665f); }
+.advertising-platform-status { margin: 0; }
+.advertising-platform .workspace-button { min-height: 44px; }
+.advertising-account-note { margin-block: 12px 0; }
+.advertising-dialog { inset: 0; margin: auto; width: min(880px, calc(100% - 28px)); max-height: 88dvh; border: 1px solid var(--ad-line, #dce5e0); border-radius: 10px; padding: 0; background: var(--ad-paper, #fff); color: var(--ad-ink, #182f39); overflow: auto; }
+.advertising-dialog::backdrop { background: #122b3570; }
+.advertising-dialog-heading { position: sticky; inset-block-start: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 20px; border-block-end: 1px solid var(--ad-line, #dce5e0); background: var(--ad-paper, #fff); font-size: 14px; }
+.advertising-dialog-heading button { min-height: 44px; padding: 7px 12px; font: inherit; background: none; border: 0; color: inherit; cursor: pointer; }
+.advertising-dialog-heading span { font-size: 22px; margin-inline-start: 12px; }
+.advertising-dialog :deep(section) { border: 0; border-radius: 0; box-shadow: none; margin: 0; }
+.advertising-dialog :deep(section > header) { background: var(--ad-paper, #fff); }
+.advertising-accounts :focus-visible { outline: 3px solid var(--ad-accent, #155f53); outline-offset: 3px; }
+@media (max-width: 560px) {
+    .advertising-platform { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 12px; }
+    .advertising-platform-status { grid-row: 2; grid-column: 1; }
+    .advertising-platform .workspace-button { grid-row: 1 / 3; grid-column: 2; }
+    .advertising-dialog { width: calc(100% - 16px); max-height: 94dvh; }
+}
 </style>

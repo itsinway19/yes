@@ -56,7 +56,7 @@ class BaselineContractTest extends TestCase
             config_path('session.php') => "env('APP_NAME', 'Builderad')).'-session'",
             config_path('mail.php') => "env('APP_NAME', 'Builderad')",
             config_path('logging.php') => "env('APP_NAME', 'Builderad')",
-            resource_path('js/spa/main.ts') => 'h(BrandLogo)',
+            resource_path('js/spa/main.ts') => 'h(BrandLogo, { to: administrationHome })',
             resource_path('js/Components/BrandLogo.vue') => 'aria-label="BuilderAd"',
             resource_path('views/spa.blade.php') => '<title>BuilderAd</title>',
         ];

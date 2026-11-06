@@ -55,7 +55,14 @@ class CommercialMarketPreparationTest extends TestCase
 
     public function test_spa_preparation_empty_projection_and_witness_use_existing_visibility_contract(): void
     {
-        $this->actingAsInternal($this->staff('founder'))->withCredentials();
+        $founder = $this->staff('founder');
+        $db = DB::connection('pgsql_migrations');
+        $grant = $db->table('security_action_grants')->insertGetId([
+            'subject_user_id' => $founder->id, 'subject_generation' => 1, 'source' => 'founder_bootstrap',
+            'action' => 'staff.view', 'scope_kind' => 'platform', 'status' => 'active',
+            'reason' => 'Synthetic preparation visibility proof', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->actingAsInternal($founder)->withCredentials();
         $path = '/internal/administration/commercial-markets';
         $resource = $this->getJson($path)->assertOk()->assertJsonPath('data.approvals', [])
             ->assertJsonPath('data.recordedMarkets', [])->assertJsonPath('data.directRecorded', false)->json();
@@ -64,6 +71,10 @@ class CommercialMarketPreparationTest extends TestCase
         $this->assertSame($resource['visibility'], $witness['visibility']);
         $this->assertArrayNotHasKey('data', $witness);
         $this->assertArrayNotHasKey('intentBinding', $witness);
+        $db->table('security_action_grants')->where('id', $grant)->update(['status' => 'revoked', 'revoked_at' => now(), 'version' => 2]);
+        $changed = $this->getJson($path)->assertOk()->json();
+        $this->assertNotSame($resource['visibility'], $changed['visibility']);
+        $this->assertArrayNotHasKey('data', $changed);
     }
 
     public function test_country_command_replays_after_new_login_with_same_generated_identities(): void

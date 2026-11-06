@@ -52,8 +52,8 @@ onBeforeUnmount(() => { generation++; window.removeEventListener('beforeunload',
 
 <template>
     <section class="business-sources" data-business-source-inventory>
-        <p class="workspace-intro">{{ t('راجع مصادر نشاطك والحسابات المتاحة لك. لكل مصدر اتصاله وصلاحية استعمال بياناته؛ ويمكنك العمل على معلومات النشاط وأسواقه دون ربط مصدر.', 'Review your business sources and available accounts. Each source has its own connection and data-use permission; business details and markets work without connecting a source.') }}</p>
-        <h3>{{ t('الحسابات الإعلانية', 'Advertising accounts') }}</h3>
+        <p class="workspace-intro">{{ t('اربط الحساب الذي تحتاج إليه، ثم راجع ما يُسمح باستعماله من بياناته في هذا النشاط. يمكنك إعداد نشاطك وأسواقه قبل ربط أي حساب.', 'Connect the account you need, then review which of its data this business may use. You can set up your business and markets before connecting an account.') }}</p>
+        <h2 class="workspace-subheading">{{ t('الحسابات الإعلانية للنشاط', 'Business advertising accounts') }}</h2>
         <AdvertisingAccounts :key="business" :business-id="business" :can-manage="true" />
         <details class="workspace-disclosure" data-business-source-inventory-details>
         <summary>{{ t('المصادر المشتركة مع جهة أو فريق', 'Sources shared through an organization or team') }}</summary>

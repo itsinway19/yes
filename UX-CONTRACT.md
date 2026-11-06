@@ -1,5 +1,13 @@
 # BuilderAd affected-surface interaction contract
 
+## Accepted Vue integration — 2026-11-05
+
+The sidebar/mobile drawer uses exact server-qualified Business/read-path/realm choices. It must not merge distinct paths or display ambiguous duplicate choices; no creation eligibility or source authority is inferred from the picker. Same-document Router navigation retains existing operation owners and drafts, while a changed Business, principal or read qualification re-admits protected content. Local section/settings navigation is presentation, not a new authority source.
+
+The existing lifecycle writer owns draft archiving. The SQL surface exposes only its current qualified archive options and revision. Explicit confirmation reuses Components/Modal.vue, identifies the Business and consequence, and starts with cancellation focused. A fresh archive must not strand an existing pending operation for the same Business, including another currently retained read path; unrelated Business and organizational operations stay independent. Lifecycle reconciliation retains its exact original command, grant and revision, and accepts only a matching archive receipt before returning to the qualified list. Disappearance from choices is not a commit acknowledgement. Unknown commands are never replaced automatically.
+
+Business-native and shared organizational source management coexist. Current native source administration is not conditional on Workspace creation; shared source authority remains with its actual owner. Independent source/data-use rights remain authoritative. The dated earlier sections below retain history and do not override these current boundaries. Validation and outstanding stage gates are recorded in `docs/execution/structural-foundation/VUE_UI_INTEGRATION.md`.
+
 ## Advertiser closure variant — 2026-11-04
 
 Login/verified entry resolves currently qualified Business choices; an employee is never required to create a new Business. Name/type and target-market setup reuse their independent canonical commands. Acknowledged creation survives a later market failure; unknown creation/market requests retain immutable identities and are never replaced automatically. Target markets do not declare country of establishment. Normal switch/list entry remains a chooser, while a dedicated initial entry may open its sole qualified item; pagination and multiple authority paths must not be mistaken for a single complete choice.

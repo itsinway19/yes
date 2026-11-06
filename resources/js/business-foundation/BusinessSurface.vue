@@ -50,7 +50,7 @@ async function refresh() {
                 <li v-for="item in data.items" :key="item.read_grant_id" class="bf-card">
                     <p class="bf-badge">{{ item.realm_kind === 'internal_team' ? t('إدارة ملف ضمن فريق', 'File administration within a team') : item.realm_kind === 'agency' ? t('عبر تفويض وكالة', 'Through an agency delegation') : t('وصول مباشر', 'Direct access') }}</p>
                     <h2>{{ item.name }}</h2>
-                    <p>{{ item.state === 'declared_draft' ? t('معلومات أضافها النشاط', 'Business-provided details') : t('جاهز لفتح مساحة العمل', 'Open its workspace') }}</p>
+                    <p>{{ item.state === 'declared_draft' ? t('معلومات أضافها النشاط', 'Business-provided details') : t('نشاط قائم', 'Existing business') }}</p>
                     <RouterLink :to="`/businesses/${item.business_public_id}?access=${item.read_grant_id}`" class="bf-link bf-open"><span>{{ t('فتح النشاط', 'Open business') }}</span><ArrowLeft aria-hidden="true" /></RouterLink>
                 </li>
             </ul>
