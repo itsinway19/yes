@@ -25605,6 +25605,36 @@
                                 "additionalProperties": false
                               }
                             },
+                            "lifecycle": {
+                              "type": "object",
+                              "properties": {
+                                "revision": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "archive_options": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "grant_id": {
+                                        "type": "string",
+                                        "pattern": "^[1-9][0-9]{0,18}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "grant_id"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "revision",
+                                "archive_options"
+                              ],
+                              "additionalProperties": false
+                            },
                             "private_history_available": {
                               "type": "boolean"
                             },
@@ -26311,6 +26341,7 @@
                             "business",
                             "authority_selection",
                             "context_write_options",
+                            "lifecycle",
                             "private_history_available",
                             "direct_team_enrollment_available",
                             "purpose_statement",
@@ -26867,6 +26898,36 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "lifecycle": {
+                          "type": "object",
+                          "properties": {
+                            "revision": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "archive_options": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "grant_id": {
+                                    "type": "string",
+                                    "pattern": "^[1-9][0-9]{0,18}$"
+                                  }
+                                },
+                                "required": [
+                                  "grant_id"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "revision",
+                            "archive_options"
+                          ],
+                          "additionalProperties": false
                         },
                         "private_history_available": {
                           "type": "boolean"
@@ -27574,6 +27635,7 @@
                         "business",
                         "authority_selection",
                         "context_write_options",
+                        "lifecycle",
                         "private_history_available",
                         "direct_team_enrollment_available",
                         "purpose_statement",
@@ -50608,6 +50670,36 @@
               "additionalProperties": false
             }
           },
+          "lifecycle": {
+            "type": "object",
+            "properties": {
+              "revision": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "archive_options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "grant_id": {
+                      "type": "string",
+                      "pattern": "^[1-9][0-9]{0,18}$"
+                    }
+                  },
+                  "required": [
+                    "grant_id"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "revision",
+              "archive_options"
+            ],
+            "additionalProperties": false
+          },
           "private_history_available": {
             "type": "boolean"
           },
@@ -51314,6 +51406,7 @@
           "business",
           "authority_selection",
           "context_write_options",
+          "lifecycle",
           "private_history_available",
           "direct_team_enrollment_available",
           "purpose_statement",
@@ -52868,6 +52961,36 @@
                   "additionalProperties": false
                 }
               },
+              "lifecycle": {
+                "type": "object",
+                "properties": {
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "archive_options": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "grant_id": {
+                          "type": "string",
+                          "pattern": "^[1-9][0-9]{0,18}$"
+                        }
+                      },
+                      "required": [
+                        "grant_id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "revision",
+                  "archive_options"
+                ],
+                "additionalProperties": false
+              },
               "private_history_available": {
                 "type": "boolean"
               },
@@ -53574,6 +53697,7 @@
               "business",
               "authority_selection",
               "context_write_options",
+              "lifecycle",
               "private_history_available",
               "direct_team_enrollment_available",
               "purpose_statement",

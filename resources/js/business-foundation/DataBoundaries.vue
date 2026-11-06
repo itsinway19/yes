@@ -27,10 +27,20 @@ async function refresh() {
 <template>
     <div data-spa-private data-boundary-surface>
         <AdvertiserWorkspaceLayout>
-        <header class="bf-heading"><div><p class="bf-eyebrow">{{ t('المصادر والتكاملات / حقوق البيانات', 'Sources and integrations / Data rights') }}</p><h1>{{ t('نطاقات بيانات العملاء', 'Client data boundaries') }}</h1><p>{{ t('راجع النشاط المرتبط بكل نطاق بيانات، وأدر تغطيته حيث يسمح لك.', 'Review the business attached to each data boundary and manage its coverage where permitted.') }}</p></div></header>
+        <header class="bf-heading">
+            <div><p class="bf-eyebrow">{{ t('حقوق البيانات', 'Data permissions') }}</p><h1>{{ t('نطاقات بيانات العملاء', 'Client data boundaries') }}</h1><p>{{ t('حدد النشاط الذي تخصه بيانات العميل عندما تكون مسؤولًا عن النطاق. تُراجع أذونات قراءة البيانات أو استعمالها بصورة مستقلة.', 'Identify which business a client’s data belongs to when you manage its boundary. Review permission to read or use the data separately.') }}</p></div>
+            <RouterLink v-if="data && 'boundary' in data" class="bf-link" to="/data-rights">{{ t('نطاقات بيانات العملاء', 'Client data boundaries') }}</RouterLink>
+        </header>
         <template v-if="data && 'boundaries' in data">
             <section v-if="!data.boundaries.length" class="bf-card advertiser-empty" data-boundary-empty><ShieldCheck aria-hidden="true" /><h2>{{ t('لا توجد نطاقات بيانات متاحة لك هنا', 'No data boundaries are available to you here') }}</h2><p>{{ t('ستجد هنا النطاقات التي يمكنك مراجعة تغطيتها. يمكنك العودة إلى نشاطك لمتابعة العمل عليه.', 'Boundaries whose coverage you can review appear here. Return to your business to continue working.') }}</p><RouterLink class="bf-primary" to="/businesses">{{ t('العودة إلى أنشطتي', 'Back to my businesses') }}</RouterLink></section>
-            <ul v-else class="bf-grid" data-boundary-list><li v-for="item in data.boundaries" :key="item.read_grant_id" class="bf-card"><h2>{{ t('نطاق بيانات عميل', 'Client data boundary') }}</h2><code>{{ item.boundary_id }}</code><p>{{ item.state === 'active' ? t('نشط', 'Active') : item.state === 'restricted' ? t('مقيّد', 'Restricted') : t('مؤرشف', 'Archived') }}</p><RouterLink class="bf-link" :to="`/data-rights/${item.boundary_id}?access=${item.read_grant_id}`">{{ t('إدارة التغطية', 'Manage coverage') }}</RouterLink></li></ul>
+            <ul v-else class="bf-grid" data-boundary-list>
+                <li v-for="item in data.boundaries" :key="item.read_grant_id" class="bf-card">
+                    <h2>{{ t('نطاق بيانات عميل', 'Client data boundary') }} · <bdi>{{ item.boundary_id.slice(-8) }}</bdi></h2>
+                    <p>{{ item.state === 'active' ? t('نشط', 'Active') : item.state === 'restricted' ? t('مقيّد', 'Restricted') : t('مؤرشف', 'Archived') }}</p>
+                    <RouterLink class="bf-link" :to="`/data-rights/${item.boundary_id}?access=${item.read_grant_id}`">{{ t('مراجعة الأنشطة المرتبطة', 'Review linked businesses') }}</RouterLink>
+                    <details class="advertiser-context-note"><summary>{{ t('معرّف النطاق', 'Boundary ID') }}</summary><code class="bf-wrap">{{ item.boundary_id }}</code></details>
+                </li>
+            </ul>
             <RouterLink v-if="data.next_cursor" class="bf-link" :to="`/data-rights?after=${data.next_cursor}`">{{ t('الصفحة التالية', 'Next page') }}</RouterLink>
         </template>
         <BoundaryEditor v-else-if="data && 'boundary' in data" :key="`${key(data.boundary.boundary_id, data.authority_selection)}:boundary`" :surface="data" :refreshing="refreshing" @refresh="refresh" />

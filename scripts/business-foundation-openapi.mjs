@@ -64,6 +64,7 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
             realm_kind: realm, realm_workspace_public_id: nullable(uuid) })),
         issued_limit: { const: 64 }, issued_more: { type: 'boolean' }, option_limit: { const: 32 }, options_may_be_partial: { type: 'boolean' } });
     const surface = object({ business: projection, authority_selection: authority, context_write_options: writeOptions,
+        lifecycle: object({ revision: version, archive_options: writeOptions }),
         private_history_available: { type: 'boolean' }, direct_team_enrollment_available: { type: 'boolean' },
         purpose_statement: object({ authority_scope: { const: 'own_business_statement_only' }, establishes_external_authority: { const: false }, enrollment_available: { type: 'boolean' }, previous_grant: { type: 'string', pattern: '^(0|[1-9][0-9]{0,18})$' }, current_grant: nullable(object({ id: decimalId, version })) }),
         fact_write_options: object({ markets: writeOptions, intent: writeOptions, preferences: writeOptions, purpose: writeOptions }), collaboration, delegation, catalog, scope,

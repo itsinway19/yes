@@ -39,7 +39,9 @@ watch(locale, value => { i18n.global.locale.value = value; });
 const app = createApp(defineComponent({ setup: () => () => {
     const administrationLayout = internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0;
     const advertiserHeader = !internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 && isAdvertiserWorkspacePath(router.currentRoute.value.path);
-    const headerItems = [h(BrandLogo), h(ThemeToggle),
+    const administrativePaths = administrationLayout ? bootstrap.navigation ?? [] : [];
+    const administrationHome = administrativePaths.includes('/internal/administration') ? '/internal/administration' : administrativePaths[0];
+    const headerItems = [h(BrandLogo, { to: administrationHome }), h(ThemeToggle),
         administrationLayout ? h('span', { 'data-admin-context': true }, copy('الإدارة المركزية', 'Central administration')) : null,
         !internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 && !advertiserHeader ? h(RouterLink, { to: '/businesses' }, () => copy('أنشطتي', 'My businesses')) : null,
         !advertiserHeader && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/business` }, () => copy('سياق النشاط', 'Business context')) : null,
@@ -49,11 +51,10 @@ const app = createApp(defineComponent({ setup: () => () => {
         !advertiserHeader && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}` }, () => copy('المصادر', 'Sources')) : null,
         !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: internalBoundary ? '/internal/security/devices' : '/security/devices' }, () => copy('الأمان', 'Security')) : null,
         internalBoundary && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: '/internal/identity/switch', ...(administrationLayout ? { class: 'ba-admin-identity-switch', 'aria-label': copy('تبديل الهوية الداخلية', 'Switch internal identity') } : {}) }, () => administrationLayout ? copy('تبديل الهوية', 'Switch identity') : copy('تبديل الهوية الداخلية', 'Switch internal identity')) : null,
-        internalBoundary && bootstrap.identity.binding.principal > 0 ? h('a', { href: '/internal/administration' }, copy('الإدارة', 'Administration')) : null,
         h('button', { disabled: localeBusy.value || status.value !== 'ready', 'data-application': 'locale', onClick: async () => { localeError.value = false; try { await switchLocale(); } catch { localeError.value = true; } } }, locale.value === 'ar' ? 'English' : 'العربية'),
         bootstrap.identity.binding.principal > 0 ? h('button', { onClick: () => { if(confirmDeparture.value())void logout(); }, disabled: status.value !== 'ready', 'data-spa': 'logout' }, copy('تسجيل الخروج', 'Sign out')) : null];
     const header = h(administrationLayout ? 'div' : 'header', administrationLayout ? { class: 'ba-admin-header-controls' } : advertiserHeader ? { class: 'advertiser-appbar' } : { style: 'display:flex;gap:20px;padding:18px;flex-wrap:wrap;align-items:center' }, advertiserHeader
-        ? [h('div', { class: 'advertiser-brand' }, [headerItems[0]]), headerItems[1], h('details', { class: 'advertiser-account-menu' }, [h('summary', {}, copy('حسابي', 'My account')), h('div', { class: 'advertiser-account-actions' }, headerItems.slice(2))])]
+        ? [h('div', { id: 'advertiser-header-context', class: 'advertiser-header-context' }), headerItems[1], h('details', { class: 'advertiser-account-menu' }, [h('summary', {}, copy('حسابي', 'My account')), h('div', { class: 'advertiser-account-actions' }, headerItems.slice(2))])]
         : headerItems);
     const content = [
     localeError.value ? h('p', { role: 'alert' }, copy('تعذّر حفظ اللغة. حاول مجددًا.', 'The language change could not be confirmed. Try again.')) : null,
@@ -72,7 +73,7 @@ const app = createApp(defineComponent({ setup: () => () => {
         ]) : null,
 ];
     return h('div', { dir: locale.value === 'ar' ? 'rtl' : 'ltr' }, administrationLayout
-        ? [h(AdministrationLayout, {allowedPaths:bootstrap.navigation ?? []}, { header: () => header, default: () => content })]
+        ? [h(AdministrationLayout, { allowedPaths: administrativePaths }, { header: () => header, default: () => content })]
         : [header, ...content]);
 } }));
 app.config.errorHandler = error => { console.error(error); renderFailure.value = true; conceal(); router.cancelCandidate(); status.value = 'unavailable'; };

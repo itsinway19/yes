@@ -38,7 +38,7 @@ const proxy = http.createServer((req, res) => {
     outgoing.on('error', error => { res.writeHead(502); res.end(error.message); }); req.pipe(outgoing);
 });
 await new Promise(resolve => proxy.listen(8138, 'localhost', resolve));
-let browser;
+let browser, page, destination;
 const contexts = [], results = [], errors = [], screenshots = [], assets = new Map(), requests = [], responses = [];
 const base = 'http://localhost:8138';
 async function session(kind='founder') {
@@ -46,9 +46,17 @@ async function session(kind='founder') {
     const page = await context.newPage(); page.setDefaultTimeout(20000); page.on('dialog', dialog => dialog.accept());
     page.on('pageerror', error => errors.push(error.stack ?? error.message));
     page.on('request', request => requests.push({ method: request.method(), path: new URL(request.url()).pathname }));
-    page.on('response', response => {
+    page.on('response', async response => {
         const asset = new URL(response.url()).pathname;
-        if (response.request().headers().accept?.includes('json')) responses.push({ path:asset, status:response.status(), witness:response.request().headers()['x-builderad-witness']==='1' });
+        if (response.request().headers().accept?.includes('json')) {
+            const record={path:asset,status:response.status(),witness:response.request().headers()['x-builderad-witness']==='1'};
+            responses.push(record);
+            if(asset==='/internal/administration/commercial-markets'){
+                const payload=await response.json().catch(()=>null);
+                record.visibility=payload?.visibility;
+                record.resource=Object.hasOwn(payload??{},'data');
+            }
+        }
     }); return page;
 }
 const ready = page => page.waitForFunction(() => document.querySelector('#application-spa')?.dataset.state === 'ready');
@@ -71,17 +79,19 @@ if (delta) pages.push(
     { key:'commercial',route:'/internal/commercial',selector:'[data-commercial-operations]' },
     { key:'preparation',route:'/internal/administration/commercial-markets',selector:'[data-commercial-preparation]' },
     { key:'security',route:'/internal/security/devices',selector:'[data-account-page]' },
+    { key:'maintenance',route:'/internal/administration/maintenance',selector:'[data-maintenance-settings]' },
 );
 const check = async (name, action) => { await action(); results.push({name,status:'PASS'}); console.log('PASS '+name); };
 try {
     browser = await chromium.launch({ headless:true, executablePath:'C:/Users/stoma/AppData/Local/ms-playwright/chromium-1208/chrome-win64/chrome.exe' });
-    let page = await session();
-    if (delta && process.env.ADMIN_UI_VERIFY_ASSETS_ONLY!=='1') await check('All eight authorized Vue Router destinations and history in Arabic and English', async () => {
+    page = await session();
+    if (delta && process.env.ADMIN_UI_VERIFY_ASSETS_ONLY!=='1') await check('Authorized Vue Router destinations and history in Arabic and English', async () => {
         for (const dir of ['rtl','ltr']) {
             await visit(page,pages[0].route,pages[0].selector); await direction(page,dir);
             const marker=await page.evaluate(()=>window.__administrationDelta=crypto.randomUUID());
             const before=requests.length;
             const assertDestination=async target=>{
+                destination=target.route;
                 await page.waitForURL(url=>url.pathname===target.route); await ready(page); await page.locator(target.selector).waitFor();
                 assert.equal(await page.locator('[data-spa="navigation-error"]').count(),0);
                 assert.equal(await page.locator('[data-admin-sidebar] a[aria-current="page"]').getAttribute('href'),target.route);
@@ -108,14 +118,14 @@ try {
         await writeFile(path.join(output,'retained-functional-results.json'),JSON.stringify(retained,null,2));
         screenshots.push(...retained.screenshots);results.push(...retained.results.map(result=>({...result,status:'RETAINED'})));
         for(const target of pages) await visit(page,target.route,target.selector);
-        const advertiser=await session('advertiser');await visit(advertiser,'/workspaces','[data-spa-private]');
+        const advertiser=await session('advertiser');await visit(advertiser,'/workspaces','[data-workspaces="index"]');
     } else {
     if(process.env.ADMIN_UI_SKIP_MATRIX==='1') {
         const retained=JSON.parse(await readFile(path.join(output,'results.json'),'utf8'));
         assert.equal(retained.screenshots.length,20); screenshots.push(...retained.screenshots);
         await writeFile(path.join(output,'retained-matrix-attempt.json'),JSON.stringify(retained,null,2));
         results.push({name:'Comparable real-page screenshot matrix',status:'RETAINED',reason:'Visual markup/CSS unchanged. Final focus handling is verified separately on rebuilt production assets.'});
-    } else if (delta) await check('All eight pages at four widths in both directions', async () => {
+    } else if (delta) await check('Authorized pages at four widths in both directions', async () => {
         for (const width of [1440,1280,768,390]) for (const dir of ['rtl','ltr']) {
             const matrixPage=await freshMatrixSession();
             await matrixPage.setViewportSize({width,height:1000});
@@ -159,13 +169,37 @@ try {
         await check('Administration has one header and scoped advertiser regression', async () => {
             await page.setViewportSize({width:1440,height:1000}); await visit(page,pages[0].route,pages[0].selector); await direction(page,'rtl');
             assert.equal(await page.locator('[data-admin-header]').count(),1);
-            const advertiser=await session('advertiser'); await visit(advertiser,'/workspaces','[data-spa-private]');
+            assert.equal(await page.locator('[data-business-switcher],[data-business-public]').count(),0);
+            assert.equal(await page.locator('[data-admin-header] .ba-logo').getAttribute('href'),'/internal/administration');
+            assert.equal(await page.locator('[data-admin-header] a[href="/internal/administration"]').count(),1);
+            assert.equal(await page.locator('[data-admin-sidebar] a[href="/internal/administration/market-knowledge"]').count(),0);
+            if(delta){
+                if(await page.locator('html').getAttribute('data-theme')!=='dark')await page.locator('[data-theme-toggle]').click();
+                await page.waitForFunction(()=>document.documentElement.dataset.theme==='dark');
+                const marketShortcut=page.locator('[data-administration] .admin-action[href="/internal/administration/commercial-markets"]');
+                await marketShortcut.evaluate(async element => {
+                    // Read the settled palette rather than an intermediate CSS transition frame.
+                    await Promise.all(element.getAnimations().map(animation => animation.finished));
+                });
+                const surfaces=await page.evaluate(()=>['[data-admin-header]','[data-administration] .admin-section','[data-administration] .admin-action[href="/internal/administration/commercial-markets"]'].map(selector=>getComputedStyle(document.querySelector(selector)).backgroundColor));
+                assert.equal(surfaces[0],surfaces[1]);assert.notEqual(surfaces[1],'rgb(255, 255, 255)');
+                assert.equal(surfaces[2],surfaces[1],'The market shortcut must use the same dark surface as its panel');
+                await page.screenshot({path:path.join(output,'administration-dark-1440-rtl.png'),fullPage:true});
+                await page.locator('[data-theme-toggle]').click();
+                await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');
+            }
+            const advertiser=await session('advertiser'); await visit(advertiser,'/workspaces','[data-workspaces="index"]');
             assert.equal(await advertiser.locator('[data-admin-shell]').count(),0); await advertiser.screenshot({path:path.join(output,'advertiser-1440-rtl.png'),fullPage:true});
         });
         const navigation = page => page.locator('[data-admin-sidebar] [data-admin-nav]');
         await check('Grouped active navigation preserves routes and Back/Forward', async () => {
-            assert.equal(await navigation(page).locator('a').count(),8);
+            assert.equal(await navigation(page).locator('a').count(),9);
             assert.equal(await navigation(page).locator('a[aria-current="page"]').count(),1);
+            const documentTime=await page.evaluate(()=>performance.timeOrigin);
+            await page.locator('[data-administration] a[href="/internal/administration/commercial-markets"]').click();
+            await page.locator('[data-commercial-preparation]').waitFor();
+            assert.equal(await page.evaluate(()=>performance.timeOrigin),documentTime);
+            await page.goBack();await ready(page);await page.locator('[data-administration]').waitFor();
             const initial = requests.length;
             await navigation(page).locator('a[href="/internal/services"]').click(); await ready(page); await page.locator('[data-services]').waitFor();
             assert.equal(await navigation(page).locator('a[aria-current="page"]').getAttribute('href'),'/internal/services');
@@ -236,9 +270,13 @@ try {
             const employee=await session('employee');await visit(employee,'/internal/administration','[data-administration]');
             assert.equal(await employee.locator('#staff-name').count(),0);assert.equal(await employee.locator('#grant-reason').count(),0);
             if(delta) {
-                const refused=employee.waitForResponse(r=>new URL(r.url()).pathname==='/internal/business-types'&&r.request().headers().accept?.includes('json'));
-                await employee.locator('[data-admin-sidebar] a[href="/internal/business-types"]').click(); assert.equal((await refused).status(),403);
-                await employee.locator('[data-spa="navigation-error"]').waitFor(); await ready(employee);
+                assert.equal(await employee.locator('[data-admin-sidebar] a[href="/internal/business-types"], [data-admin-sidebar] a[href="/internal/administration/maintenance"]').count(),0);
+                const identity=await employee.evaluate(()=>JSON.parse(document.getElementById('application-bootstrap').textContent).identity);
+                const refused=await employee.request.get(base+'/internal/business-types',{maxRedirects:0,headers:{
+                    Accept:'application/json','X-CSRF-TOKEN':identity.csrf,
+                    'X-Builderad-Document':identity.receipt,'X-Builderad-Transition':identity.transition,
+                }});
+                assert.equal(refused.status(),403);
                 assert.equal(new URL(employee.url()).pathname,'/internal/administration');
                 assert.equal(await employee.locator('[data-administration]').isVisible(),true);
                 assert.equal(await employee.locator('[data-business-types]').count(),0);
@@ -255,7 +293,8 @@ try {
     assert.equal(errors.length,0,errors.join('\n'));
     await writeFile(path.join(output,'results.json'),JSON.stringify({mode,delta,results,errors,screenshots,responses,assets:[...assets.keys()],productionAssets:true,syntheticSessions:true},null,2));
 } catch(error) {
-    await writeFile(path.join(output,'results.json'),JSON.stringify({mode,results,errors,screenshots,responses,requests,failure:error.stack},null,2)); throw error;
+    const presentation=await page?.evaluate(()=>({path:location.pathname,state:document.querySelector('#application-spa')?.dataset.state,navigationError:document.querySelector('[data-spa="navigation-error"]')?.textContent,heading:document.querySelector('h1')?.textContent})).catch(()=>null);
+    await writeFile(path.join(output,'results.json'),JSON.stringify({mode,results,errors,screenshots,responses,requests,destination,presentation,failure:error.stack},null,2)); throw error;
 } finally {
     await Promise.all(contexts.map(context=>context.close())); if(browser)await browser.close(); await new Promise(resolve=>proxy.close(resolve));
 }

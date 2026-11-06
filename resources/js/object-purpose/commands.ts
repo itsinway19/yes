@@ -12,6 +12,9 @@ const pending = shallowReactive(new Map<string, Pending>());
 const drafts = new Map<string, unknown>();
 const key = (workspace: string, purpose: string | null) => JSON.stringify([workspace, purpose]);
 export const unresolved = (workspace: string, purpose: string | null) => pending.get(key(workspace, purpose));
+/** Read-only owner query; a pending command never establishes authority. */
+export const hasPendingPurposeScope = (scopePrefix: string) => [...pending.keys()]
+    .some(commandKey => (JSON.parse(commandKey)[0] as string).startsWith(scopePrefix));
 export function remember(workspace: string, purpose: string | null, value: unknown) {
     if (status.value !== 'closed') drafts.set(key(workspace, purpose), JSON.parse(JSON.stringify(value)));
 }

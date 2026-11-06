@@ -6138,6 +6138,12 @@ export interface components {
             context_write_options: {
                 grant_id: string;
             }[];
+            lifecycle: {
+                revision: number;
+                archive_options: {
+                    grant_id: string;
+                }[];
+            };
             private_history_available: boolean;
             direct_team_enrollment_available: boolean;
             purpose_statement: {
@@ -6627,6 +6633,12 @@ export interface components {
                 context_write_options: {
                     grant_id: string;
                 }[];
+                lifecycle: {
+                    revision: number;
+                    archive_options: {
+                        grant_id: string;
+                    }[];
+                };
                 private_history_available: boolean;
                 direct_team_enrollment_available: boolean;
                 purpose_statement: {
@@ -25471,6 +25483,12 @@ export interface operations {
                             context_write_options: {
                                 grant_id: string;
                             }[];
+                            lifecycle: {
+                                revision: number;
+                                archive_options: {
+                                    grant_id: string;
+                                }[];
+                            };
                             private_history_available: boolean;
                             direct_team_enrollment_available: boolean;
                             purpose_statement: {
@@ -25867,6 +25885,12 @@ export interface operations {
                             context_write_options: {
                                 grant_id: string;
                             }[];
+                            lifecycle: {
+                                revision: number;
+                                archive_options: {
+                                    grant_id: string;
+                                }[];
+                            };
                             private_history_available: boolean;
                             direct_team_enrollment_available: boolean;
                             purpose_statement: {

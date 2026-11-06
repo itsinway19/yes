@@ -1,5 +1,11 @@
 # BuilderAd visual context
 
+## Accepted Vue integration — 2026-11-05
+
+The Owner accepted `builderad-ui-concept-20261105` as the visual/navigation reference; actual implemented capabilities and server authority govern content. The Business switcher belongs directly beneath the sidebar brand; mobile shows the selected name and opens the qualified picker in the navigation drawer. The overview presents available work and review without repeating the Business profile. Internal administration retains independent navigation and no Business switcher. Keep the existing theme/token path, compact14px body,22–24px headings, natural page scrolling, RTL/LTR and44px primary mobile targets.
+
+Current source ownership supersedes earlier organizational-only descriptions below: qualified Business-native administration works without creating a Workspace; shared organizational sources retain their Workspace owner and separately qualified return path. Provider connection, source administration/read rights and Business data-use remain separate. A logo, shared membership or successful connection grants no other right. No prototype personas, fabricated metrics or future integrations enter production. Stage evidence lives in `docs/execution/structural-foundation/VUE_UI_INTEGRATION.md`.
+
 ## Advertiser task shell — Owner implementation mandate 2026-11-04
 
 The current mandate supersedes the earlier prototype freeze for the bounded implemented advertiser surfaces. One quiet, compact Vue shell keeps Business as the selected work context; organizational team/resource administration is secondary. Existing markets, declared goals, information, qualified team, Purpose, history and data owners remain intact. All five supported advertising-platform entries and existing brands appear inside the Business even before a connection exists. Their status and operational actions require a current server-qualified account-administration resource; a platform logo is never evidence of connection, data-use permission, readiness, or results.

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Commercial\CommercialContext;
 use App\Commercial\MarketRegistry;
 use App\Http\Responses\SpaPage;
 use App\Models\User;
@@ -16,7 +17,7 @@ use Illuminate\Validation\Rule;
 
 final class CommercialMarketPreparationController
 {
-    public function index(Request $request, GrantAuthority $grants, MarketRegistry $markets)
+    public function index(Request $request, GrantAuthority $grants, MarketRegistry $markets, CommercialContext $context)
     {
         $db = DB::connection('pgsql_authority');
         $canPrepare = $grants->canPrepareCommercialMarket($request);
@@ -27,6 +28,12 @@ final class CommercialMarketPreparationController
             ->pluck('commercial_target_id')->all();
         abort_unless($canPrepare || count($administration), 403);
         if (! SpaPage::needsData($request)) {
+            if ($canPrepare && $request->expectsJson()) {
+                // The Founder resource reads the registry in this signed runtime context.
+                // Bind its witness the same way without reading records or allocating an intent.
+                return $context->run($request, static fn () => new SpaPage([]));
+            }
+
             return new SpaPage([]);
         }
         if ($canPrepare && ! $request->session()->has('commercial_market_preparation_intent')) {

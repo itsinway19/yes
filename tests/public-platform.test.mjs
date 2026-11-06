@@ -26,7 +26,7 @@ test('theme rejects unsupported stored values and still operates with storage de
 test('theme synchronizes windows, changes labels with locale and reserves a visible logo in both shells',async()=>{
  const p=page({preference:'light'});p.storage('dark');assert.equal(p.root.dataset.theme,'dark');p.button.dataset.lightLabel='Light mode';p.storage('dark');assert.equal(p.label.textContent,'Light mode');
  const logo=await readFile('resources/js/Components/BrandLogo.vue','utf8');assert.match(logo,/aria-label="BuilderAd"/);assert.match(logo,/width="36" height="36"/);
- const main=await readFile('resources/js/spa/main.ts','utf8');assert.match(main,/h\(BrandLogo\)/);assert.match(main,/h\(ThemeToggle\)/);
+ const main=await readFile('resources/js/spa/main.ts','utf8');assert.match(main,/h\(BrandLogo,\s*\{\s*to:\s*administrationHome\s*\}\)/);assert.match(main,/h\(ThemeToggle\)/);
  for(const path of ['resources/views/spa.blade.php','resources/views/welcome.blade.php','resources/views/maintenance.blade.php']){
   const html=await readFile(path,'utf8');assert.ok(html.indexOf('/brand/theme.js')<html.indexOf('</head>'));assert.match(html,/brand\/theme.css/);
  }

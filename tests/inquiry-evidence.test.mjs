@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises';
 import ts from 'typescript';
 const url=code=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
 const source=await readFile('resources/js/inquiry-evidence/editor.ts','utf8');
-const editor=await import(url(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText));
+const editorCode=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const editor=await import(url(editorCode.replace("from 'vue'",`from ${JSON.stringify(import.meta.resolve('vue'))}`)));
 test('unknown remains null while declared zero remains zero; invalid counts fail',()=>{
  assert.equal(editor.countValue(''),null);assert.equal(editor.countValue('0'),0);assert.equal(editor.countValue('1000000000000'),1e12);
  for(const value of ['-1','1.2','1e3','1000000000001','01','phone'])assert.throws(()=>editor.countValue(value));

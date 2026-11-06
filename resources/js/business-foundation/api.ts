@@ -75,6 +75,12 @@ export async function writeBusinessPurpose(business: string, body: operations['w
     if (!result.data) throw Error('Purpose acknowledgement unavailable'); return result.data.data;
 }
 export type Surface = components['schemas']['BusinessSurface'];
+export type LifecycleCommand = operations['writeIndependentBusinessLifecycle']['requestBody']['content']['application/json'];
+export async function writeLifecycle(business: string, body: LifecycleCommand) {
+    const result = await api.POST('/api/businesses/{business}/lifecycle', { params: { path: { business } }, body });
+    if (!result.data) throw Error('Business lifecycle acknowledgement unavailable');
+    return result.data.data;
+}
 export type BusinessHistory = components['schemas']['BusinessHistory'];
 export type LegacyHistory = components['schemas']['BusinessLegacyHistory'];
 export async function legacyHistory(business: string, access: number, kind: LegacyHistory['kind'], after?: string): Promise<LegacyHistory> {
