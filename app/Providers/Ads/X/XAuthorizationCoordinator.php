@@ -96,7 +96,7 @@ final readonly class XAuthorizationCoordinator
         #[\SensitiveParameter] string $handle, ProviderScope $selected, string $command, int $selectedVersion): array
     {
         $this->client($request, $installation, $installationVersion);
-        if ($selected->provider !== Provider::X || $selected->workspaceId !== $installation->workspaceId
+        if ($selected->provider !== Provider::X || ! $selected->sameCustodyAs($installation)
             || $selected->sourceId === $installation->sourceId || $selected->operation !== 'report.read'
             || $selected->purpose !== $installation->purpose) {
             throw new InvalidArgumentException('Selected X account requires its own exact Workspace/source/report scope.');

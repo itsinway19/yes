@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { nativeSourceReference, commandOwner, ownerKey } from './nativeOwner';
+import { providerCopy } from './providerCopy';
+import { locale } from '../spa/locale';
 import { providers } from './api';
 import { submit, commandsFor } from './commands';
 import { TransportError } from '../spa/transport';
@@ -14,7 +17,8 @@ type Connection = { source_id: string; label: string; declared_account_id: strin
 type Snapshot = ProviderSnapshot;
 type Account = { account_id: string; label: string; existing_source_label: string | null; selection_handle: string | null; hierarchy_handle: string | null; manager: boolean | null };
 type Page = { accounts: Account[]; continuation: string | null; coverage: string };
-const props = defineProps<{ workspaceId: string; canManage: boolean }>();
+const props = defineProps<{ workspaceId?: string; businessId?: string; canManage: boolean }>();
+const owner = nativeSourceReference(props);
 const emit = defineEmits<{ summary: [summary: ProviderSummary] }>();
 const snapshot = ref<Snapshot | null>(null);
 const accounts = ref<Account[]>([]);
@@ -40,7 +44,7 @@ function connectionLabel(state: string) {
 }
 
 async function refreshSnapshot(passive = true) {
-    const response = await providers.snapshot('google', props.workspaceId, cancellation.signal, passive);
+    const response = await providers.snapshot('google', owner, cancellation.signal, passive);
     if (active) snapshot.value = response;
 }
 
@@ -57,7 +61,7 @@ async function disconnect(connection: Connection) {
     busy.value = true;
     error.value = '';
     try {
-        await submit({ workspace: props.workspaceId, effect: 'disconnect', provider: 'google', source: connection.source_id, body: { command_id: crypto.randomUUID(), expected_version: connection.access.version } }, cancellation.signal);
+        await submit({ ...commandOwner(owner), effect: 'disconnect', provider: 'google', source: connection.source_id, body: { command_id: crypto.randomUUID(), expected_version: connection.access.version } }, cancellation.signal);
         if (!active) return;
         await refreshSnapshot(true);
         disconnectTarget.value = null;
@@ -71,7 +75,7 @@ async function renew(connection: Connection) {
     busy.value = true;
     error.value = '';
     try {
-        await submit({ workspace: props.workspaceId, effect: 'renew', provider: 'google', source: connection.source_id, body: { command_id: crypto.randomUUID(), expected_version: connection.access.version } }, cancellation.signal);
+        await submit({ ...commandOwner(owner), effect: 'renew', provider: 'google', source: connection.source_id, body: { command_id: crypto.randomUUID(), expected_version: connection.access.version } }, cancellation.signal);
         if (!active) return;
         await refreshSnapshot(true);
         result.value = 'تم تجديد الربط والتحقق من حساب Google نفسه. جاهزية التحليل تحتاج تحققًا مستقلًا.';
@@ -105,7 +109,7 @@ async function loadAccounts(handle: string, kind: PageKind = 'discovery', rememb
     busy.value = true;
     error.value = '';
     try {
-        const response = await providers.googlePage(props.workspaceId, kind, handle, cancellation.signal);
+        const response = await providers.googlePage(owner, kind, handle, cancellation.signal);
         if (!active) return;
         if (remember && currentPage.value) history.value.push({ handle: currentPage.value, kind: pageKind.value });
         currentPage.value = handle;
@@ -128,7 +132,7 @@ async function connect(recover = false) {
     busy.value = true;
     error.value = '';
     try {
-        const response = await providers.connectGoogle(props.workspaceId, { intent: snapshot.value.connect_intent, recover_offline_grant: recover }, cancellation.signal);
+        const response = await providers.connectGoogle(owner, { intent: snapshot.value.connect_intent, recover_offline_grant: recover }, cancellation.signal);
         if (!active) return;
         const url = new URL(response.authorization_url);
         if (url.origin !== 'https://accounts.google.com' || url.pathname !== '/o/oauth2/v2/auth') throw new Error('Invalid redirect');
@@ -141,9 +145,9 @@ async function select(account: Account) {
     busy.value = true;
     error.value = '';
     try {
-        await submit({ workspace: props.workspaceId, effect: 'select', provider: 'google', body: { selection: account.selection_handle } }, cancellation.signal);
+        await submit({ ...commandOwner(owner), effect: 'select', provider: 'google', body: { selection: account.selection_handle } }, cancellation.signal);
         if (!active) return;
-        result.value = `تم حفظ ربط الحساب ${account.account_id}. جاهزية بياناته للتحليل تحتاج تحققًا مستقلًا.`;
+        result.value = `${providerCopy('تم حفظ ربط الحساب')} ${account.account_id}${providerCopy('. جاهزية بياناته للتحليل تحتاج تحققًا مستقلًا.')}`;
         accounts.value = [];
         next.value = null;
         currentPage.value = null;
@@ -180,65 +184,65 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
 </script>
 
 <template>
-    <section dir="rtl" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="google-connection-heading" :aria-busy="busy">
-        <PendingCommands :workspace-id="workspaceId" provider="google" @settled="refresh()" />
-        <fieldset class="min-w-0 border-0 p-0" :disabled="commandsFor(workspaceId, 'google').length > 0">
+    <section :dir="locale === 'ar' ? 'rtl' : 'ltr'" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="google-connection-heading" :aria-busy="busy">
+        <PendingCommands :workspace-id="workspaceId" :business-id="businessId" provider="google" @settled="refresh()" />
+        <fieldset class="min-w-0 border-0 p-0" :disabled="commandsFor(owner, 'google').length > 0">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
-                <h2 id="google-connection-heading" class="text-xl font-semibold text-slate-900 flex items-center gap-3"><ProviderBrand provider="google" :size="40" />ربط Google Ads</h2>
-                <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-600">اربط عبر صفحة Google الرسمية، ثم اختر الحساب الذي تريد استخدام بياناته في هذه المساحة.</p>
+                <h2 id="google-connection-heading" class="text-xl font-semibold text-slate-900 flex items-center gap-3"><ProviderBrand provider="google" :size="40" />{{ providerCopy("ربط Google Ads") }}</h2>
+                <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-600">{{ providerCopy("اربط عبر صفحة Google الرسمية، ثم اختر الحساب الذي تريد استخدام بياناته هنا.") }}</p>
             </div>
             <button v-if="snapshot?.availability === 'CONNECT_AVAILABLE' && canManage" type="button" :disabled="busy" data-source-connect="google" @click="connect()"
                 class="rounded-lg ba-brand-button px-5 py-3 text-sm font-semibold  disabled:opacity-50">
-                {{ busy ? 'جارٍ إكمال الخطوة…' : 'ربط حساب Google Ads' }}
+                {{ providerCopy(busy ? 'جارٍ إكمال الخطوة…' : 'ربط حساب Google Ads') }}
             </button>
         </div>
-        <p v-if="snapshot?.availability === 'CONFIGURATION_REQUIRED'" class="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-700">إعداد ربط Google غير مكتمل. يتطلب إعداد التطبيق وعنوان العودة وإشعار الخصوصية قبل إتاحة الربط.</p>
-        <p v-else-if="snapshot?.availability === 'OWNER_REQUIRED' || (snapshot && !canManage)" class="mt-4 text-sm text-slate-600">بدء الربط واختيار الحساب متاحان للمسؤول الحالي عن مساحة العمل.</p>
-        <p v-else-if="snapshot?.availability === 'FRESH_AUTHENTICATION_REQUIRED'" class="mt-4 text-sm text-slate-600">أكّد تسجيل دخولك ثم حدّث الصفحة لإتاحة الربط.</p>
+        <p v-if="snapshot?.availability === 'CONFIGURATION_REQUIRED'" class="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-700">{{ providerCopy("إعداد ربط Google غير مكتمل. يتطلب إعداد التطبيق وعنوان العودة وإشعار الخصوصية قبل إتاحة الربط.") }}</p>
+        <p v-else-if="snapshot?.availability === 'OWNER_REQUIRED' || (snapshot && !canManage)" class="mt-4 text-sm text-slate-600">{{ providerCopy("بدء الربط واختيار الحساب متاحان للمسؤول الحالي عن هذا الربط.") }}</p>
+        <p v-else-if="snapshot?.availability === 'FRESH_AUTHENTICATION_REQUIRED'" class="mt-4 text-sm text-slate-600">{{ providerCopy("أكّد تسجيل دخولك ثم حدّث الصفحة لإتاحة الربط.") }}</p>
         <div v-if="snapshot?.notice" class="mt-4 text-sm leading-7 text-slate-600">
-            <a :href="snapshot.notice.privacy_url" target="_blank" rel="noopener noreferrer" class="font-medium text-[var(--ba-primary-ink)] underline">اطّلع على سياسة الخصوصية قبل الربط</a>
-            <p>يطلب Google تفويض Ads الذي يشمل قدرات أوسع من القراءة. يستخدم Builderad هنا طلبات قراءة التقارير فقط. نجاح التفويض لا يثبت موافقة المنصة أو جاهزية بياناتك للتحليل.</p>
+            <a :href="snapshot.notice.privacy_url" target="_blank" rel="noopener noreferrer" class="font-medium text-[var(--ba-primary-ink)] underline">{{ providerCopy("اطّلع على سياسة الخصوصية قبل الربط") }}</a>
+            <p>{{ providerCopy("يطلب Google تفويض Ads الذي يشمل قدرات أوسع من القراءة. يستخدم Builderad هنا طلبات قراءة التقارير فقط. نجاح التفويض لا يثبت موافقة المنصة أو جاهزية بياناتك للتحليل.") }}</p>
         </div>
-        <p v-if="error" role="alert" class="mt-4 text-sm leading-7 text-red-700">{{ error }}</p>
-        <button v-if="offlineGrantMissing && snapshot?.connect_intent && canManage" type="button" :disabled="busy" data-source-connect="recover" @click="connect(true)" class="mt-3 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">إعادة طلب تفويض الربط المستمر</button>
-        <p v-if="result" role="status" class="mt-4 rounded-lg bg-slate-50 p-4 text-sm leading-7 text-slate-700">{{ result }}</p>
+        <p v-if="error" role="alert" class="mt-4 text-sm leading-7 text-red-700">{{ providerCopy(error) }}</p>
+        <button v-if="offlineGrantMissing && snapshot?.connect_intent && canManage" type="button" :disabled="busy" data-source-connect="recover" @click="connect(true)" class="mt-3 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">{{ providerCopy("إعادة طلب تفويض الربط المستمر") }}</button>
+        <p v-if="result" role="status" class="mt-4 rounded-lg bg-slate-50 p-4 text-sm leading-7 text-slate-700">{{ providerCopy(result) }}</p>
         <div v-if="snapshot?.connections.length" class="mt-6 border-t border-slate-100 pt-5">
-            <h3 class="font-semibold text-slate-900">الحسابات المسجلة في هذه المساحة</h3>
-            <button type="button" :disabled="busy" @click="refresh()" class="mt-3 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">تحديث حالة الربط</button>
+            <h3 class="font-semibold text-slate-900">{{ providerCopy("الحسابات المسجلة هنا") }}</h3>
+            <button type="button" :disabled="busy" @click="refresh()" class="mt-3 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">{{ providerCopy("تحديث حالة الربط") }}</button>
             <ul class="mt-3 divide-y divide-slate-100">
                 <li v-for="connection in snapshot.connections" :key="connection.source_id" class="py-4">
                     <p class="font-medium text-slate-900">{{ connection.label }}</p>
                     <p dir="ltr" class="mt-1 text-xs text-slate-500">{{ connection.declared_account_id }}</p>
-                    <p class="mt-2 text-sm text-slate-600">{{ connectionLabel(connection.access.connection) }}</p>
-                    <ProviderReportRequest provider="google" :workspace-id="workspaceId" :source-id="connection.source_id" :version="connection.access.version"
+                    <p class="mt-2 text-sm text-slate-600">{{ providerCopy(connectionLabel(connection.access.connection)) }}</p>
+                    <ProviderReportRequest provider="google" :workspace-id="workspaceId" :business-id="businessId" :source-id="connection.source_id" :version="connection.access.version"
                         :allowed="canManage && connection.access.reporting?.can_report === true" />
-                    <button v-if="canManage && snapshot.availability === 'CONNECT_AVAILABLE' && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED'" type="button" :disabled="busy" data-source-renew @click="renew(connection)" class="mt-3 me-4 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">تجديد الربط والتحقق من الحساب</button>
-                    <button v-if="canManage && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED' && disconnectTarget !== connection.source_id" type="button" :disabled="busy" data-source-disconnect @click="disconnectTarget = connection.source_id" class="mt-3 text-sm font-medium text-red-700 underline disabled:opacity-50">فصل الحساب محليًا</button>
+                    <button v-if="canManage && snapshot.availability === 'CONNECT_AVAILABLE' && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED'" type="button" :disabled="busy" data-source-renew @click="renew(connection)" class="mt-3 me-4 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">{{ providerCopy("تجديد الربط والتحقق من الحساب") }}</button>
+                    <button v-if="canManage && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED' && disconnectTarget !== connection.source_id" type="button" :disabled="busy" data-source-disconnect @click="disconnectTarget = connection.source_id" class="mt-3 text-sm font-medium text-red-700 underline disabled:opacity-50">{{ providerCopy("فصل الحساب محليًا") }}</button>
                     <div v-if="disconnectTarget === connection.source_id" class="mt-3 rounded-lg bg-slate-50 p-4 text-sm leading-7 text-slate-700">
-                        <p>سيُفصل هذا المصدر وتُزال بيانات تفويضه المحلية. يبقى تفويض Google والربط بحسابات أخرى كما هما.</p>
-                        <button type="button" :disabled="busy" data-source-confirm-disconnect @click="disconnect(connection)" class="mt-3 me-4 font-semibold text-red-700 underline disabled:opacity-50">تأكيد الفصل المحلي</button>
-                        <button type="button" :disabled="busy" @click="disconnectTarget = null" class="mt-3 font-medium text-slate-600 underline disabled:opacity-50">إلغاء</button>
+                        <p>{{ providerCopy("سيُفصل هذا المصدر وتُزال بيانات تفويضه المحلية. يبقى تفويض Google والربط بحسابات أخرى كما هما.") }}</p>
+                        <button type="button" :disabled="busy" data-source-confirm-disconnect @click="disconnect(connection)" class="mt-3 me-4 font-semibold text-red-700 underline disabled:opacity-50">{{ providerCopy("تأكيد الفصل المحلي") }}</button>
+                        <button type="button" :disabled="busy" @click="disconnectTarget = null" class="mt-3 font-medium text-slate-600 underline disabled:opacity-50">{{ providerCopy("إلغاء") }}</button>
                     </div>
                 </li>
             </ul>
         </div>
         <div v-if="currentPage" class="mt-6 border-t border-slate-100 pt-5">
-            <h3 class="font-semibold text-slate-900">اختر الحساب لهذه المساحة</h3>
-            <button v-if="history.length" type="button" :disabled="busy" @click="back()" class="mt-3 me-4 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">الرجوع إلى الحسابات السابقة</button>
-            <button v-if="error" type="button" :disabled="busy" @click="loadAccounts(currentPage, pageKind)" class="mt-3 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">إعادة تحميل الحسابات</button>
-            <p v-if="!busy && !accounts.length && !error" class="mt-3 text-sm text-slate-600">لا توجد حسابات متاحة في هذه الصفحة.</p>
+            <h3 class="font-semibold text-slate-900">{{ providerCopy("اختر الحساب لهذا الربط") }}</h3>
+            <button v-if="history.length" type="button" :disabled="busy" @click="back()" class="mt-3 me-4 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">{{ providerCopy("الرجوع إلى الحسابات السابقة") }}</button>
+            <button v-if="error" type="button" :disabled="busy" @click="loadAccounts(currentPage, pageKind)" class="mt-3 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">{{ providerCopy("إعادة تحميل الحسابات") }}</button>
+            <p v-if="!busy && !accounts.length && !error" class="mt-3 text-sm text-slate-600">{{ providerCopy("لا توجد حسابات متاحة في هذه الصفحة.") }}</p>
             <ul class="mt-3 divide-y divide-slate-100">
                 <li v-for="account in accounts" :key="account.selection_handle ?? account.hierarchy_handle ?? account.account_id" class="flex flex-wrap items-center justify-between gap-4 py-4">
-                    <div><p class="font-medium text-slate-900">{{ account.label }}</p><p dir="ltr" class="mt-1 text-xs text-slate-500">{{ account.account_id }}</p><p v-if="account.existing_source_label" class="mt-1 text-sm text-slate-600">مصدر موجود: {{ account.existing_source_label }}</p></div>
+                    <div><p class="font-medium text-slate-900">{{ account.label }}</p><p dir="ltr" class="mt-1 text-xs text-slate-500">{{ account.account_id }}</p><p v-if="account.existing_source_label" class="mt-1 text-sm text-slate-600">{{ providerCopy("مصدر موجود:") }} {{ account.existing_source_label }}</p></div>
                     <div class="flex flex-wrap gap-3">
-                        <button v-if="account.hierarchy_handle" type="button" :disabled="busy || !canManage" data-source-hierarchy @click="loadAccounts(account.hierarchy_handle, 'hierarchy', true)" class="rounded-lg border border-[var(--ba-primary-ink)] px-4 py-2 text-sm font-semibold text-[var(--ba-primary-ink)] hover:bg-slate-50 disabled:opacity-50">{{ account.manager === true ? 'عرض الحسابات التابعة' : 'عرض الحسابات التابعة إن كان مديرًا' }}</button>
-                        <button v-if="account.selection_handle" type="button" :disabled="busy || !canManage" data-source-select @click="select(account)" class="rounded-lg border border-[var(--ba-primary-ink)] px-4 py-2 text-sm font-semibold text-[var(--ba-primary-ink)] hover:bg-slate-50 disabled:opacity-50">اختيار الحساب</button>
-                        <p v-if="account.manager === true && !account.hierarchy_handle" class="text-sm text-slate-600">تعذّر متابعة هذا المسار. ابدأ من حساب مدير أقرب إلى حساب المعلن.</p>
+                        <button v-if="account.hierarchy_handle" type="button" :disabled="busy || !canManage" data-source-hierarchy @click="loadAccounts(account.hierarchy_handle, 'hierarchy', true)" class="rounded-lg border border-[var(--ba-primary-ink)] px-4 py-2 text-sm font-semibold text-[var(--ba-primary-ink)] hover:bg-slate-50 disabled:opacity-50">{{ providerCopy(account.manager === true ? 'عرض الحسابات التابعة' : 'عرض الحسابات التابعة إن كان مديرًا') }}</button>
+                        <button v-if="account.selection_handle" type="button" :disabled="busy || !canManage" data-source-select @click="select(account)" class="rounded-lg border border-[var(--ba-primary-ink)] px-4 py-2 text-sm font-semibold text-[var(--ba-primary-ink)] hover:bg-slate-50 disabled:opacity-50">{{ providerCopy("اختيار الحساب") }}</button>
+                        <p v-if="account.manager === true && !account.hierarchy_handle" class="text-sm text-slate-600">{{ providerCopy("تعذّر متابعة هذا المسار. ابدأ من حساب مدير أقرب إلى حساب المعلن.") }}</p>
                     </div>
                 </li>
             </ul>
-            <button v-if="next" type="button" :disabled="busy" @click="loadAccounts(next, pageKind, true)" class="mt-3 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">الحسابات التالية</button>
+            <button v-if="next" type="button" :disabled="busy" @click="loadAccounts(next, pageKind, true)" class="mt-3 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">{{ providerCopy("الحسابات التالية") }}</button>
         </div>
     </fieldset>
     </section>

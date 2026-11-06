@@ -21,6 +21,25 @@ const fake = () => {
     return { client, requests, result };
 };
 
+test('Business provider operations route directly and preserve the original effect envelope without any Workspace parameter', async () => {
+    const { client, requests } = fake();
+    const business = { kind: 'business', publicId: 'business-a' };
+    for (const provider of providers) {
+        await client.snapshot(provider, business);
+        await client.connect(provider, business, handle);
+        if (provider === 'meta') await client.selectMeta(business, handle);
+        else await client.select(provider, business, handle);
+        await client.disconnect(provider, business, 'source-a', version);
+    }
+    assert.equal(requests.length, 20);
+    for (const request of requests) {
+        assert.match(request.url.pathname, /^\/businesses\/business-a\/providers\//);
+        assert.equal(request.url.search, '');
+        assert.doesNotMatch(JSON.stringify(request.body), /workspace|business/);
+    }
+    assert.deepEqual(requests[3].body, version);
+});
+
 test('Google offline recovery forwards true without changing the existing Laravel request format', async () => {
     const { client, requests } = fake();
     await client.connectGoogle('workspace', { intent: handle, recover_offline_grant: true });

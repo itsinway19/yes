@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { locale } from '../spa/locale';
 import { owned, stamp, TransportError } from '../spa/transport';
 import { goalSignature, setPriority, toggleGoal, toggleResult } from '../Components/Business/goalSelection';
-import { factDrafts, key, type FactDraft, type FactFields } from './drafts';
+import { beginDelivery, definitiveRejection, factDrafts, key, type FactDraft, type FactFields } from './drafts';
 import { writeFact, type FactCommand, type FactKind, type Intent, type Surface } from './api';
 
 const props = defineProps<{ surface: Surface; refreshing?: boolean }>();
@@ -33,10 +33,10 @@ function fresh(kind: FactKind): FactDraft {
 }
 for (const kind of kinds) {
     const saved = factDrafts.get(draftKey(kind));
-    if (saved && !options(kind).some(option => option.grant_id === saved.selected)) factDrafts.delete(draftKey(kind));
+    if (saved && !options(kind).some(option => option.grant_id === saved.selected)) { if (saved.pending) concealDraft(saved); else factDrafts.delete(draftKey(kind)); }
 }
 const editors = reactive(Object.fromEntries(kinds.map(kind => [kind, factDrafts.get(draftKey(kind)) ?? fresh(kind)])) as Record<FactKind, FactDraft>);
-for (const kind of kinds) factDrafts.set(draftKey(kind), editors[kind]);
+for (const kind of kinds) { editors[kind].uncertain ??= !!editors[kind].pending; factDrafts.set(draftKey(kind), editors[kind]); }
 const active = ref<FactKind>('markets'), busy = ref(false);
 const marketSearch = ref('');
 const filteredCountries = computed(() => {
@@ -69,6 +69,9 @@ const dirty = (d: FactDraft) => signature(d.kind, value(d)) !== d.baseline;
 const changed = (d: FactDraft) => d.kind === 'preferences' ? d.preferences !== props.surface.business.versions.preferences
     : d.context !== props.surface.business.versions.context || d.kind === 'intent' && d.intent !== props.surface.business.versions.intent;
 const canEdit = (d: FactDraft) => !props.refreshing && !d.blocked && options(d.kind).some(option => option.grant_id === d.selected);
+function concealDraft(d: FactDraft) {
+    Object.assign(d, { fields: { codes: [], goals: { goals: [], priority: null, results: {} }, clearing: false, direction: '', description: '', meaning: '', clarification: '', countUnit: '', quantity: '', date: '', timezone: '' }, baseline: '', context: 0, intent: 0, preferences: 0, selected: '', confirmed: false, flags: flags(), blocked: true });
+}
 function adopt(kind: FactKind) {
     if (busy.value || editors[kind].pending) return;
     Object.assign(editors[kind], fresh(kind));
@@ -77,7 +80,7 @@ watch(() => props.surface, () => {
     for (const kind of kinds) {
         const d = editors[kind];
         if (d.selected && !options(kind).some(option => option.grant_id === d.selected)) {
-            factDrafts.delete(draftKey(kind)); Object.assign(d, fresh(kind));
+            if (d.pending) concealDraft(d); else { factDrafts.delete(draftKey(kind)); Object.assign(d, fresh(kind)); }
         } else if (!dirty(d) && !d.pending) { const confirmed = d.confirmed; Object.assign(d, fresh(kind)); d.confirmed = confirmed; }
     }
 });
@@ -103,6 +106,7 @@ async function save() {
                 : { ...base, kind, value: value(d) as Intent | null, confirmations: clone(d.flags), expected_context: d.context, expected_intent: d.intent };
     }
     const captured = stamp(), business = props.surface.business.business_public_id, command = clone(d.pending) as FactCommand;
+    const uncertain = beginDelivery(d);
     busy.value = true; d.confirmed = false; d.notice = '';
     try {
         const result = await writeFact(business, command);
@@ -117,15 +121,15 @@ async function save() {
             d.context = result.versions.context; d.intent = result.versions.intent;
         } else throw Error('Fact acknowledgement shape mismatch');
         d.baseline = signature(kind, value(d));
-        d.pending = undefined; d.confirmed = true;
+        d.pending = undefined; d.uncertain = false; d.confirmed = true;
         emit('refresh');
     } catch (error) {
         if (disposed || !owned(captured)) return;
         if (error instanceof TransportError && error.status === 403) {
-            d.blocked = true; factDrafts.delete(draftKey(kind)); d.fields = fields(); d.pending = undefined;
+            concealDraft(d);
             d.notice = t('لم يعد هذا التفويض يسمح بالفعل. تحقّق من الوصول الحالي.', 'This delegation no longer permits this action. Check current access.'); emit('refresh');
-        } else if (error instanceof TransportError && error.status === 422) {
-            d.pending = undefined; d.notice = t('لم يُقبل الإدخال. راجع الحقول والتأكيدات؛ لم تُحفظ نتيجة.', 'Input was rejected. Review the fields and confirmations; no result was saved.');
+        } else if (definitiveRejection(error, uncertain)) {
+            d.pending = undefined; d.uncertain = false; d.notice = t('لم يُقبل الإدخال. راجع الحقول والتأكيدات؛ لم تُحفظ نتيجة.', 'Input was rejected. Review the fields and confirmations; no result was saved.');
         } else {
             d.notice = t('نتيجة الطلب غير مثبتة. نحتفظ بالطلب الأصلي؛ تحقّق به قبل أي طلب جديد.', 'The outcome is unconfirmed. The original command is retained; reconcile it before any new command.');
         }
@@ -155,7 +159,8 @@ const directions = computed(() => [
             <template v-else><p v-if="!surface.business.preferences">{{ t('لم تُحفظ أولويات بعد.', 'No preferences have been saved.') }}</p><ul v-else><li v-for="goal in surface.catalog.goals.filter(g => surface.business.preferences?.goals.includes(g.id))" :key="goal.id">{{ localized(goal) }}<strong v-if="surface.business.preferences.priority === goal.id"> — {{ t('الأولوية', 'Priority') }}</strong><ul><li v-for="result in goal.results.filter(r => surface.business.preferences?.results[goal.id]?.includes(r.id))" :key="result.id">{{ localized(result) }}</li></ul></li></ul></template>
         </details>
         <p v-if="!options(active).length || draft.blocked" class="bf-fact-readonly" role="status">{{ t('يمكنك الاطلاع على المحفوظ. التعديل غير متاح لك هنا.', 'You can view the saved information. Editing is not available to you here.') }}</p>
-        <form v-else class="bf-form bf-fact-form" :data-business-fact-form="active" @submit.prevent="save" @invalid.capture="($event.target as HTMLElement).closest('details')?.setAttribute('open', '')">
+        <p v-if="draft.blocked && draft.pending" role="status">{{ t('الطلب الأصلي محفوظ وغير محسوم. راجع وصولك الحالي قبل المتابعة.', 'The unresolved original request is retained. Review current access before continuing.') }}</p>
+        <form v-if="options(active).length && !draft.blocked" class="bf-form bf-fact-form" :data-business-fact-form="active" @submit.prevent="save" @invalid.capture="($event.target as HTMLElement).closest('details')?.setAttribute('open', '')">
             <div v-if="options(active).length > 1" class="bf-fact-field bf-fact-authority"><label :for="`bf-${active}-grant`">{{ t('الصلاحية التي تستخدمها للحفظ', 'Permission to use for saving') }}</label><select :id="`bf-${active}-grant`" v-model="draft.selected" :disabled="busy || !!draft.pending"><option value="">{{ t('اختر التفويض', 'Choose a delegation') }}</option><option v-for="(option, index) in options(active)" :key="option.grant_id" :value="option.grant_id">{{ t('تفويض', 'Delegation') }} {{ index + 1 }}</option></select></div>
             <fieldset :disabled="busy || !!draft.pending || !canEdit(draft)">
                 <template v-if="active === 'markets'">

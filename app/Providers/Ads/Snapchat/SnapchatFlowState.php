@@ -2,7 +2,6 @@
 
 namespace App\Providers\Ads\Snapchat;
 
-use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderRequestGuard;
 use App\Providers\Ads\ProviderScope;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -81,7 +80,7 @@ final readonly class SnapchatFlowState
             if (($s['provider'] ?? null) !== 'snapchat') {
                 throw new AuthorizationException;
             }
-            $scope = new ProviderScope($s['workspace_id'], $s['source_id'], Provider::Snapchat, $s['account_id'], $s['operation'], $s['purpose']);
+            $scope = ProviderScope::fromArray($s);
             $expected = SnapchatCacheBinding::context($this->cache, $request, $scope, $record['binding']['access_version'], $configuration);
             if ($record['binding'] !== $expected || ! is_int($record['expires_at'] ?? null)
                 || $record['expires_at'] <= now()->timestamp || ! is_array($record['data'] ?? null)) {

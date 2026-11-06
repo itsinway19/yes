@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Foundation\Tenancy\WorkspaceContext;
-use App\Models\Workspace;
+use App\Providers\Ads\NativeSourceContext;
+use App\Providers\Ads\NativeSourceOwner;
 use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderAccessStore;
 use App\Providers\Ads\ProviderRequestGuard;
-use App\Providers\Ads\ProviderScope;
 use App\Providers\Ads\ReportWindow;
 use App\Providers\Ads\TikTok\TikTokAccessStatus;
 use App\Providers\Ads\TikTok\TikTokReadJob;
@@ -26,13 +25,13 @@ use LogicException;
 /** Explicit bounded TikTok report requests; no implicit grants, secrets or inline native HTTP. */
 final class TikTokReportController extends Controller
 {
-    public function status(Request $request, string $workspace, string $source, WorkspaceContext $context): JsonResponse
+    public function status(Request $request, string $workspace, string $source, NativeSourceContext $context): JsonResponse
     {
         $input = $this->input($request);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $source, $input): array {
+        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $source, $input): array {
             [$scope, $window, $stream] = $this->reportContext($request, $w, $source, $input);
-            $record = DB::table('provider_observation_streams')->where('workspace_id', $w->id)->where('source_id', $source)
+            $record = DB::table('provider_observation_streams')->where('workspace_id', $w->workspaceId)->where('source_id', $source)
                 ->where('provider', 'tiktok')->where('resource', $scope->accountId)->where('operation', 'report.read')
                 ->where('purpose', 'advertising_analysis')->where('stream', $stream)->first(['namespace', 'generation']);
             $run = $record === null ? null : DB::table('provider_observation_runs')->where('namespace', $record->namespace)
@@ -44,11 +43,11 @@ final class TikTokReportController extends Controller
         }, $request));
     }
 
-    public function store(Request $request, string $workspace, string $source, WorkspaceContext $context): JsonResponse
+    public function store(Request $request, string $workspace, string $source, NativeSourceContext $context): JsonResponse
     {
         $input = $this->input($request, true);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (Workspace $w) use ($request, $source, $input): array {
+        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $source, $input): array {
             [$scope, $window, $stream] = $this->reportContext($request, $w, $source, $input, (int) $input['expected_version']);
             try {
                 TikTokReadSettings::configured();
@@ -64,15 +63,15 @@ final class TikTokReportController extends Controller
         }, $request), 202);
     }
 
-    private function reportContext(Request $request, Workspace $workspace, string $source, array $input, ?int $version = null): array
+    private function reportContext(Request $request, NativeSourceOwner $workspace, string $source, array $input, ?int $version = null): array
     {
-        DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$workspace->id, SessionAuthority::sessionKey($request)]);
-        $identity = DB::table('source_registry')->where('workspace_id', $workspace->id)->where('id', $source)
+        DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$workspace->workspaceId, SessionAuthority::sessionKey($request)]);
+        $identity = $workspace->sources()->where('id', $source)
             ->where('family', 'tiktok')->where('namespace', 'ad_account')->first(['declared_external_id']);
         if ($identity === null) {
             abort(404);
         }
-        $scope = new ProviderScope($workspace->id, $source, Provider::TikTok, $identity->declared_external_id, 'report.read', 'advertising_analysis');
+        $scope = $workspace->scope($source, Provider::TikTok, $identity->declared_external_id, 'report.read', 'advertising_analysis');
         $status = (new TikTokAccessStatus)->snapshot($request, $scope);
         (new TikTokAccessStatus)->requireReport($request, $scope);
         app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', $version ?? (int) $status['version']);

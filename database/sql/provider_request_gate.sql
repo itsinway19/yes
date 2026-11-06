@@ -10,6 +10,9 @@ BEGIN
   RAISE EXCEPTION 'Provider request gate denied' USING ERRCODE='42501';
  END IF;
  -- Same exact namespace as custody commands: also fence the initial absent-row epoch.
+ IF p_workspace IS NULL THEN
+  PERFORM builderad_provider_require(p_workspace,p_session,p_source,p_provider,p_resource,p_operation,p_purpose,p_action);
+ END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('bb2.access.'||encode(sha256(convert_to(
   jsonb_build_array(p_workspace,p_source,p_provider,p_resource,p_operation,p_purpose)::text,'UTF8')),'hex'),0));
  PERFORM builderad_provider_require(p_workspace,p_session,p_source,p_provider,p_resource,p_operation,p_purpose,p_action);
@@ -17,7 +20,7 @@ BEGIN
   -- Invoke, but never return, encrypted custody after current fetch-prerequisite checks.
   PERFORM builderad_provider_credential(p_workspace,p_session,p_source,p_provider,p_resource,p_operation,p_purpose);
  END IF;
- SELECT version INTO v FROM provider_access WHERE workspace_id=p_workspace AND source_id=p_source AND provider=p_provider
+ SELECT version INTO v FROM provider_access WHERE workspace_id IS NOT DISTINCT FROM p_workspace AND source_id=p_source AND provider=p_provider
   AND resource=p_resource AND operation=p_operation AND purpose=p_purpose FOR SHARE;
  -- The row lock may wait. Recheck time-sensitive authority after that wait.
  PERFORM builderad_provider_require(p_workspace,p_session,p_source,p_provider,p_resource,p_operation,p_purpose,p_action);

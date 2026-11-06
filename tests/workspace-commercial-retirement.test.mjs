@@ -35,10 +35,18 @@ test('retired commercial contracts and editors cannot return alongside Business 
 });
 
 test('source background work and organizational consumers use metadata rather than commercial legacy entry', async () => {
+    const [context, owner] = await Promise.all([read('app/Providers/Ads/NativeSourceQueueContext.php'), read('app/Providers/Ads/NativeSourceOwner.php')]);
+    for (const source of [context, owner]) assert.doesNotMatch(source, /builderad_v2_legacy_enter|table\('workspaces'\)/);
+    assert.match(owner, /organization_workspaces/);
+    assert.match(context, /organization_workspaces/);
+    assert.match(context, /builderad_select_workspace_context/);
+    assert.match(context, /builderad_v2_business_source_owner/);
+    assert.match(context, /\$owner\['business_id'\] !== \$scope->businessId/);
     for (const path of ['app/Providers/Ads/PersistObservationJob.php', ...['Meta', 'Google', 'TikTok', 'Snapchat', 'X'].map(provider => `app/Providers/Ads/${provider}/${provider}ReadJob.php`)]) {
         const source = await read(path);
         assert.doesNotMatch(source, /builderad_v2_legacy_enter|table\('workspaces'\)/);
-        assert.match(source, /organization_workspaces/);
+        assert.match(source, /NativeSourceQueueContext::capture\(/);
+        assert.match(source, /NativeSourceQueueContext::restore\(/);
     }
     assert.doesNotMatch(await read('database/sql/business_scope/organization_resources.sql'), /business_type_id|business_context_version|current_intent|LEGACY_ACTIVE|legacy_admitted/);
 });

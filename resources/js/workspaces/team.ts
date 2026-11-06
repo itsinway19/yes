@@ -3,7 +3,7 @@ import { api } from '../spa/api';
 import { onClose, scope } from '../spa/transport';
 export type Team = components['schemas']['OrganizationTeam'];
 export type TeamCommand = components['schemas']['OrganizationTeamCommand'];
-export type TeamDraft = { recipient: string; confirmed: boolean; pending?: TeamCommand; blocked: boolean; notice: string };
+export type TeamDraft = { recipient: string; confirmed: boolean; pending?: TeamCommand; uncertain?: boolean; blocked: boolean; notice: '' | 'updated' | 'invalid' | 'conflict' | 'denied' | 'unknown' };
 export const teamDrafts = new Map<string, TeamDraft>();
 export const teamKey = (organization: string) => JSON.stringify([scope, organization, 'organization-team:1']);
 export const hasPendingTeamCommand = () => [...teamDrafts.values()].some(draft => !!draft.pending);

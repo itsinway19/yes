@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { locale } from '../spa/locale';
 import { owned, stamp, TransportError } from '../spa/transport';
-import { key, linkDrafts, type LinkDraft } from './drafts';
+import { beginDelivery, definitiveRejection, key, linkDrafts, type LinkDraft } from './drafts';
 import { writeLink, type LinkCommand, type Surface } from './api';
 
 const props = defineProps<{ surface: Surface; refreshing?: boolean }>();
@@ -11,11 +11,13 @@ const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const metadata = computed(() => props.surface.collaboration);
 const options = computed(() => metadata.value.options.filter(option => Number.isSafeInteger(Number(option.grant_id))));
 const resourceKey = `${key(props.surface.business.business_public_id, props.surface.authority_selection)}:relationships:1`;
+function concealDraft(value: LinkDraft) { Object.assign(value, { workspace: '', kind: 'collaboration', selected: '', version: 0, linkRef: null, confirmed: false, blocked: true }); }
 const retained = linkDrafts.get(resourceKey);
-if (retained && !options.value.some(option => option.grant_id === retained.selected)) linkDrafts.delete(resourceKey);
+if (retained && !options.value.some(option => option.grant_id === retained.selected)) { if (retained.pending) concealDraft(retained); else linkDrafts.delete(resourceKey); }
 const draft = reactive<LinkDraft>(linkDrafts.get(resourceKey) ?? { workspace: '', kind: 'collaboration', selected: options.value.length === 1 ? options.value[0].grant_id : '',
     version: 0, linkRef: null, notice: '', confirmed: false, blocked: false });
 linkDrafts.set(resourceKey, draft);
+draft.uncertain ??= !!draft.pending;
 const busy = ref(false);
 let disposed = false;
 onBeforeUnmount(() => { disposed = true; });
@@ -33,7 +35,7 @@ function review() {
 watch(() => [draft.workspace, draft.kind], review, { flush: 'sync' });
 watch(() => props.surface, () => {
     if (draft.selected && !options.value.some(option => option.grant_id === draft.selected)) {
-        draft.blocked = true; linkDrafts.delete(resourceKey);
+        if (!draft.pending) linkDrafts.delete(resourceKey); concealDraft(draft);
         draft.notice = t('لم يعد التفويض المختار مؤهلًا. لم نستنتج نتيجة لطلب سابق ولم نبدّل سنده.', 'The selected delegation is no longer qualified. No prior outcome or replacement authority has been inferred.');
     }
 });
@@ -45,24 +47,25 @@ async function execute(body: LinkCommand) {
     if (!canManage.value) return;
     draft.pending ??= JSON.parse(JSON.stringify(body));
     const frozen = JSON.parse(JSON.stringify(draft.pending)) as LinkCommand, business = props.surface.business.business_public_id, captured = stamp();
+    const uncertain = beginDelivery(draft);
     busy.value = true; draft.notice = ''; draft.confirmed = false;
     try {
         const result = await writeLink(business, frozen);
         if (disposed || !owned(captured)) return;
         if (result.business_public_id !== business || result.workspace_public_id !== frozen.workspace_public_id || result.kind !== (frozen.kind ?? 'collaboration')) throw Error('Relationship acknowledgement target mismatch');
-        draft.pending = undefined; draft.workspace = ''; draft.confirmed = true;
+        draft.pending = undefined; draft.uncertain = false; draft.workspace = ''; draft.confirmed = true;
         emit('refresh');
     } catch (error) {
         if (disposed || !owned(captured)) return;
         if (error instanceof TransportError && error.status === 403) {
-            draft.blocked = true; linkDrafts.delete(resourceKey);
+            concealDraft(draft);
             draft.notice = t('لم يعد هذا السياق يسمح بإدارة العلاقة. لم نمنح حقًا بديلًا أو نفترض نجاح الطلب.', 'This context no longer permits managing the relationship. No alternative right or successful outcome was inferred.'); emit('refresh');
-        } else if (error instanceof TransportError && error.status === 422) {
-            draft.pending = undefined; draft.notice = t('لم يُقبل الطلب. راجع نوع العلاقة والمساحة والتفويض.', 'The request was rejected. Review the relationship, workspace and delegation.');
+        } else if (definitiveRejection(error, uncertain) && error instanceof TransportError && error.status === 422) {
+            draft.pending = undefined; draft.uncertain = false; draft.notice = t('لم يُقبل الطلب. راجع نوع العلاقة والمساحة والتفويض.', 'The request was rejected. Review the relationship, workspace and delegation.');
         } else if (error instanceof TransportError && error.status === 409 && 'error' in error.body && error.body.error === 'business_relation_revision_rejected') {
             // Only the typed pre-effect CAS rejection ends this request. Generic 409/identity conflict
             // is not proof of the original command's outcome and retains the exact pending command.
-            draft.pending = undefined; draft.notice = t('رفض الخادم إصدار العلاقة قبل إحداث أثر لهذا الطلب. راجع الحالة الحالية قبل طلب جديد.', 'The server rejected the relationship revision before effect. Review current state before a new command.'); emit('refresh');
+            draft.pending = undefined; draft.uncertain = false; draft.notice = t('رفض الخادم إصدار العلاقة قبل إحداث أثر لهذا الطلب. راجع الحالة الحالية قبل طلب جديد.', 'The server rejected the relationship revision before effect. Review current state before a new command.'); emit('refresh');
         } else {
             draft.notice = t('نتيجة الطلب غير مؤكدة. الطلب الأصلي محفوظ ولا يُعاد تلقائيًا.', 'The outcome is unconfirmed. The original command is retained and never automatically retried.');
         }
@@ -84,7 +87,8 @@ function end(row: Surface['collaboration']['relationships'][number]) {
         <h2>{{ t('الفريق والتعاون', 'Team and collaboration') }}</h2>
         <p>{{ t('اربط هذا النشاط بمساحة تديرها، أو أنهِ العلاقة القائمة. الربط لا يمنح أعضاء المساحة حق قراءة بيانات النشاط أو العميل؛ التفويض وحقوق البيانات مستقلان.', 'Link this business to a workspace you manage, or end its current relationship. Linking does not grant members access to business or client data; delegation and data rights remain independent.') }}</p>
         <p v-if="!options.length || draft.blocked" role="status" data-collaboration-readonly>{{ t('لا يوجد تفويض مؤهل معروض لإدارة علاقات هذا النشاط في السياق الحالي.', 'No qualified delegation for managing these relationships is available in this context.') }}</p>
-        <template v-else>
+        <p v-if="draft.blocked && draft.pending" role="status">{{ t('الطلب الأصلي محفوظ وغير محسوم. راجع وصولك الحالي قبل المتابعة.', 'The unresolved original request is retained. Review current access before continuing.') }}</p>
+        <template v-if="options.length && !draft.blocked">
             <p v-if="refreshing" role="status">{{ t('جارٍ التحقق من الحالة الحالية للعلاقات…', 'Checking current relationship state…') }}</p>
             <template v-else>
                 <p v-if="!metadata.workspaces.length" role="status">{{ t('لا توجد مساحة مؤهلة معروضة للإدارة هنا. تحتاج صلاحية مستقلة على النشاط والمساحة.', 'No qualified workspace is shown here. Independent business and workspace authority is required.') }}</p>

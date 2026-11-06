@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\Workspace;
+use App\Providers\Ads\NativeSourceContext;
+use App\Providers\Ads\NativeSourceOwner;
 use App\Security\GrantAuthority;
 use App\Sources\SourceRegistry;
 use Illuminate\Database\QueryException;
@@ -63,6 +65,14 @@ final class WorkspaceSourceController extends Controller
 
         return $request->expectsJson() ? response()->json($result)
             : redirect()->route('workspaces.show', $workspace);
+    }
+
+    public function recoverBusiness(Request $request, string $business, string $obligation, NativeSourceContext $context, SourceRegistry $registry): JsonResponse
+    {
+        $result = $this->guarded(fn () => $context->run($request->user(), $business,
+            fn (NativeSourceOwner $owner) => $registry->recoverBusiness($request, $owner->businessId, $obligation), $request));
+
+        return response()->json($result);
     }
 
     private function guarded(callable $effect): mixed

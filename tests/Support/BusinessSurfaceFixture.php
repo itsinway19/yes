@@ -8,6 +8,7 @@ use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Session\ArraySessionHandler;
 use Illuminate\Session\Store;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -36,7 +37,13 @@ $scope = app(BusinessScope::class);
 $path = $run.'/business-surface-fixture.json';
 $mode = $argv[1] ?? 'setup';
 $select = fn (int $grant) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
-if ($mode === 'team-identities') {
+if ($mode === 'new-advertiser-identity') {
+    // Verified identity fixture only. No Workspace, Business or resource grant
+    // is inserted; the browser exercises first entry and the operating writers.
+    $newAdvertiser = User::factory()->create(['name' => 'New advertiser browser', 'email' => 'new-advertiser-browser@example.test', 'password' => Hash::make('DisposableGoalsProof42!')]);
+    file_put_contents($run.'/new-advertiser-identity.json', json_encode(['email' => $newAdvertiser->email,
+        'qualification' => 'VERIFIED IDENTITY FIXTURE ONLY; NO BUSINESS OR WORKSPACE CREATED'], JSON_THROW_ON_ERROR));
+} elseif ($mode === 'team-identities') {
     file_put_contents($run.'/team-identities.json', json_encode(['manager' => $recipient->public_id, 'staff' => $owner->public_id,
         'qualification' => 'IDENTITY FIXTURES ONLY; NO MEMBERSHIP OR BUSINESS GRANT INSERTED'], JSON_THROW_ON_ERROR));
 } elseif ($mode === 'internal-team-setup') {
@@ -122,6 +129,35 @@ if ($mode === 'team-identities') {
         }
     }
     file_put_contents($run.'/business-source-fixture.json', json_encode($out, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+} elseif ($mode === 'shared-return-setup') {
+    $sources = json_decode(file_get_contents($run.'/business-source-fixture.json'), true, flags: JSON_THROW_ON_ERROR);
+    $db = DB::connection('pgsql_migrations');
+    $draft = $scope->create($request, (string) Str::uuid(), 'نشاط العودة المستقلة', null);
+    $out = ['business' => $draft['business_public_id']];
+    $id = $db->table('businesses')->where('public_id', $out['business'])->value('id');
+    $readRoot = BusinessAuthorityFixture::root($id, $owner->id, 'business.context.read');
+    $read = $scope->grant($request, $out['business'], (string) Str::uuid(), 'issue', $recipient->public_id,
+        'business.context.read', $readRoot->id, null, 0, null, false, null, $select($readRoot->id));
+    $root = BusinessAuthorityFixture::root($id, $owner->id, 'business.link.manage');
+    $issued = $scope->grant($request, $out['business'], (string) Str::uuid(), 'issue', $recipient->public_id,
+        'business.link.manage', $root->id, null, 0, null, false, null, $select($root->id));
+    $request->setUserResolver(fn () => $recipient);
+    $session->regenerate();
+    app(SessionAuthority::class)->issue($request, $recipient);
+    $session->save();
+    $workspace = $db->table('workspaces')->where('id', $sources['a']['workspace'])->value('public_id');
+    $scope->link($request, $out['business'], $workspace, (string) Str::uuid(), 'add', 0, $select($issued['grant_id']));
+    file_put_contents($run.'/shared-return-fixture.json', json_encode(['business' => $out['business'],
+        'access' => $read['grant_id'], 'read_issuer' => $readRoot->id, 'workspace' => $workspace, 'other_workspace' => $base['b']['workspaces'][0]['public_id'],
+        'other_identity_workspace' => $base['a']['workspaces'][0]['public_id'],
+        'qualification' => 'ISOLATED SYNTHETIC RIGHTS; OPERATING LINK WRITER; NO LIVE PROVIDER'], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+    Cache::store('redis')->put('shared-source-return-runtime', true, 600);
+} elseif ($mode === 'shared-return-revoke') {
+    $out = json_decode(file_get_contents($run.'/shared-return-fixture.json'), true, flags: JSON_THROW_ON_ERROR);
+    $scope->grant($request, $out['business'], (string) Str::uuid(), 'revoke', $recipient->public_id,
+        'business.context.read', null, $out['access'], 1, null, false, null, $select($out['read_issuer']));
+} elseif ($mode === 'shared-return-finish') {
+    Cache::store('redis')->forget('shared-source-return-runtime');
 } elseif ($mode === 'source-add-scope') {
     $out = json_decode(file_get_contents($run.'/business-source-fixture.json'), true, flags: JSON_THROW_ON_ERROR);
     $db = DB::connection('pgsql_migrations');

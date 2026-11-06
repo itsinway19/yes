@@ -8,6 +8,7 @@ return new class extends Migration
     public function up(): void
     {
         DB::unprepared(file_get_contents(database_path('sql/provider_observation.sql')));
+        DB::unprepared(file_get_contents(database_path('sql/provider_runtime/provider_observation.sql')));
     }
 
     public function down(): void

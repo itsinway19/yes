@@ -3,6 +3,7 @@
 namespace App\Providers\Ads\Google;
 
 use App\Providers\Ads\Provider;
+use App\Providers\Ads\ProviderRequestGuard;
 use App\Providers\Ads\ProviderScope;
 use App\Security\SessionAuthority;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -21,6 +22,7 @@ final class GoogleReadExecution
             || DB::connection()->transactionLevel() !== 1) {
             throw new LogicException('Google execution must own a signed exact report transaction.');
         }
+        app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'provider.read');
         $context = [$scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->accountId,
             $scope->purpose, $stream, $command, $accessVersion, $generation, $fingerprint];
         $ciphertext = DB::scalar('SELECT builderad_google_attempt_begin(?, ?, ?::uuid, ?, ?, ?, ?::uuid, ?, ?, ?)', $context);

@@ -36,6 +36,24 @@ async function fixture(send, { retain = false, principal = 7, context = 'a'.repe
 }
 const original = () => ({ workspace: 'workspace-a', provider: 'google', source: 'source-a', effect: 'disconnect', body: { command_id: 'original-command', expected_version: 3 } });
 
+test('Business unknown delivery survives reload with its exact owner and cannot collide with organizational or sibling commands', async () => {
+    const view = await fixture(async () => { throw Error('lost acknowledgement'); });
+    const command = { business: 'business-a', provider: 'google', source: 'source-a', effect: 'disconnect', body: { command_id: 'original-business-command', expected_version: 3 } };
+    await assert.rejects(view.commands.submit(command));
+    assert.equal(view.runtime.calls.length, 1);
+    assert.deepEqual(view.runtime.calls[0].args[1], { kind: 'business', publicId: 'business-a' });
+    assert.equal(view.commands.commandsFor('business-a', 'google').length, 0);
+    assert.equal(view.commands.commandsFor({ kind: 'business', publicId: 'business-b' }, 'google').length, 0);
+    const reloaded = await fixture(async () => ({ receipt: { version: 4 } }), { retain: true });
+    assert.equal(reloaded.runtime.calls.length, 0, 'Reload never sends work automatically');
+    const pending = reloaded.commands.commandsFor({ kind: 'business', publicId: 'business-a' }, 'google');
+    assert.equal(pending.length, 1);
+    assert.deepEqual(pending[0].command, command);
+    await reloaded.commands.retry(pending[0]);
+    assert.deepEqual(reloaded.runtime.calls[0].args.slice(1, 4), [{ kind: 'business', publicId: 'business-a' }, 'source-a', command.body]);
+    assert.equal(reloaded.commands.pending.size, 0);
+});
+
 test('unknown delivery freezes the exact original workspace/source/version and never replays on restore', async () => {
     const view = await fixture(async () => { throw Error('lost acknowledgement'); });
     const command = original(); await assert.rejects(view.commands.submit(command));

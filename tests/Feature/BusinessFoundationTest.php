@@ -70,7 +70,7 @@ class BusinessFoundationTest extends TestCase
     {
         $user = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
-        $this->actingAs($user)->get('/dashboard')->assertRedirect(route('business-foundation.index-page'));
+        $this->actingAs($user)->get('/dashboard')->assertRedirect(route('business-foundation.index-page', ['entry' => 1]));
         $this->get('/organizations/new')->assertOk()->assertViewIs('spa');
         $this->assertNull(session('organization.creation_key'));
         $key = $this->getJson('/organizations/new')->assertOk()->json('data.creationKey');
@@ -86,7 +86,7 @@ class BusinessFoundationTest extends TestCase
         $this->assertSame(0, $db->table('business_context_events')->count());
         $workspace = $db->table('workspaces')->first();
         $this->assertNull($workspace->business_type_id);
-        $this->get('/dashboard')->assertRedirect(route('business-foundation.index-page'));
+        $this->get('/dashboard')->assertRedirect(route('business-foundation.index-page', ['entry' => 1]));
         $this->getJson('/workspaces/'.$workspace->public_id)->assertJson(fn (Assert $page) => $page
             ->missing('data.business')->missing('data.guidance')->etc());
     }
@@ -138,7 +138,7 @@ class BusinessFoundationTest extends TestCase
         $this->actingAs($user);
         $this->getJson('/workspaces/'.$a->public_id)->assertJsonMissingPath('data.guidance');
         $this->getJson('/workspaces/'.$b->public_id)->assertJsonMissingPath('data.guidance');
-        $this->get('/dashboard')->assertRedirect(route('business-foundation.index-page'));
+        $this->get('/dashboard')->assertRedirect(route('business-foundation.index-page', ['entry' => 1]));
     }
 
     public function test_approval_activation_materiality_and_provider_product_integrity(): void

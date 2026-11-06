@@ -39,6 +39,7 @@ final class ProviderAccessStore
     public function credentials(Request $request, ProviderScope $scope): ProviderCredentials
     {
         $this->requireTransaction();
+        app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'provider.read');
         $cipher = DB::scalar('SELECT builderad_provider_credential(?, ?, ?::uuid, ?, ?, ?, ?)', [
             $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->provider->value,
             $scope->accountId, $scope->operation, $scope->purpose,
@@ -58,6 +59,7 @@ final class ProviderAccessStore
         if ($scope->provider !== Provider::Google) {
             throw new AuthorizationException('Google connection custody requires a Google source.');
         }
+        app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'provider.connect');
         $cipher = DB::scalar('SELECT builderad_google_connection_credential(?, ?, ?::uuid, ?, ?, ?, ?)', [
             $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId,
             $scope->accountId, $scope->operation, $scope->purpose, $version,
@@ -73,6 +75,7 @@ final class ProviderAccessStore
         if ($scope->provider !== Provider::Snapchat) {
             throw new AuthorizationException('Snapchat connection custody requires a Snapchat source.');
         }
+        app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'provider.connect');
         $cipher = DB::scalar('SELECT builderad_snapchat_connection_credential(?, ?, ?::uuid, ?, ?, ?, ?)', [
             $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId,
             $scope->accountId, $scope->operation, $scope->purpose, $version,
@@ -99,6 +102,7 @@ final class ProviderAccessStore
 
     private function command(Request $request, ProviderScope $scope, string $command, int $version, string $effect, array|object $payload): array
     {
+        app(ProviderRequestGuard::class)->requireCustody($request, $scope, $effect === 'revoke' ? 'provider.revoke' : 'provider.connect');
         $result = DB::scalar('SELECT builderad_provider_access_command(?, ?, ?::uuid, ?, ?, ?, ?, ?::uuid, ?, ?, ?::jsonb)', [
             $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->provider->value,
             $scope->accountId, $scope->operation, $scope->purpose, $command, $version, $effect,

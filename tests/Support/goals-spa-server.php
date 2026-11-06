@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Redis\Events\CommandExecuted;
 use Illuminate\Routing\Events\RouteMatched;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
@@ -63,6 +64,9 @@ try {
     $proofMark('isolation_guard_end');
     if (getenv('GOALS_SPA_ONLY') === 'sources') {
         require __DIR__.'/sources-spa-runtime.php';
+    }
+    if (getenv('GOALS_SPA_ONLY') === 'businesses' && Cache::store('redis')->get('shared-source-return-runtime') === true) {
+        require __DIR__.'/shared-source-return-runtime.php';
     }
     if (in_array(getenv('GOALS_SPA_ONLY'), ['account', 'auth'], true)) {
         Http::preventStrayRequests();

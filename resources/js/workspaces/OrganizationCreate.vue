@@ -61,12 +61,12 @@ async function save(retry = false) {
 <template>
     <div data-spa-private data-workspaces="create">
         <AdvertiserWorkspaceLayout workspace-context>
-        <nav class="advertiser-breadcrumb" :aria-label="copy('مسار الصفحة', 'Breadcrumb')"><RouterLink to="/businesses">{{ copy('أنشطتي', 'My businesses') }}</RouterLink><span aria-hidden="true">/</span><RouterLink to="/workspaces">{{ copy('الوكالات والشركات', 'Agencies and companies') }}</RouterLink><span aria-hidden="true">/</span><span aria-current="page">{{ copy('تسجيل جهة', 'Register organization') }}</span></nav>
-        <header class="bf-heading"><div><h1>{{ copy('تسجيل وكالة أو شركة', 'Register an agency or company') }}</h1><p>{{ copy('أدخل اسم جهتك لتأسيس فريقها وإدارة مواردها. هذا هو حساب الجهة التنظيمي؛ لا تحتاج إلى إنشاء حاوية أخرى.', 'Enter your organization’s name to establish its team and manage resources. This is its organizational account; no additional container is needed.') }}</p></div></header>
+        <nav class="advertiser-breadcrumb" :aria-label="copy('مسار الصفحة', 'Breadcrumb')"><RouterLink to="/businesses">{{ copy('أنشطتي', 'My businesses') }}</RouterLink><span aria-hidden="true">/</span><RouterLink to="/workspaces">{{ copy('جهات العمل والفريق', 'Organizations and team') }}</RouterLink><span aria-hidden="true">/</span><span aria-current="page">{{ copy('إعداد جهة', 'Set up organization') }}</span></nav>
+        <header class="bf-heading"><div><h1>{{ copy('إعداد جهة للفريق والموارد', 'Set up team and resource administration') }}</h1><p>{{ copy('أدخل اسم جهتك لإعداد إدارة فريقها ومواردها المشتركة.', 'Enter your organization’s name to set up administration for its team and shared resources.') }}</p></div></header>
         <p class="workspace-create-note">{{ copy('لا ينشئ التسجيل نشاطًا تجاريًا أو تفويضًا من العملاء. ملفات الأنشطة مستقلة ولها حقوقها الخاصة.', 'Registration creates neither a commercial business nor a client mandate. Business files remain independent with their own rights.') }} <RouterLink to="/businesses/new">{{ copy('إضافة نشاط تجاري', 'Add a business') }}</RouterLink></p>
         <form class="workspace-create" @submit.prevent="save()">
             <fieldset :disabled="busy || !!unresolvedCreation || keyChanged">
-                <label>{{ copy('اسم الوكالة أو الشركة', 'Agency or company name') }}<input v-model="draft.name" data-workspaces="name" required minlength="2" maxlength="120" autocomplete="organization" /></label>
+                <label>{{ copy('اسم جهة العمل', 'Organization name') }}<input v-model="draft.name" data-workspaces="name" required minlength="2" maxlength="120" autocomplete="organization" /></label>
                 <p v-for="(messages, field) in errors" :key="field" role="alert">{{ messages.join(' ') }}</p>
                 <p v-if="error" role="alert">{{ error }}</p>
                 <button type="submit" class="workspace-action" data-workspaces="save">{{ busy ? copy('جارٍ الحفظ…', 'Saving…') : copy('تسجيل الجهة', 'Register organization') }}</button>

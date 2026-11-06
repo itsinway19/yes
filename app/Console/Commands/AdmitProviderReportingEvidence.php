@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderReportingEvidence;
 use App\Providers\Ads\ProviderScope;
 use Illuminate\Console\Command;
@@ -27,8 +26,7 @@ final class AdmitProviderReportingEvidence extends Command
                 throw new \InvalidArgumentException;
             }
             $record = json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
-            $s = $record['scope'];
-            $scope = new ProviderScope($s['workspace_id'], $s['source_id'], Provider::from($s['provider']), $s['account_id'], $s['operation'], $s['purpose']);
+            $scope = ProviderScope::fromArray($record['scope']);
             if ($this->option('show-configuration')) {
                 $this->line($evidence->configuration($scope));
 

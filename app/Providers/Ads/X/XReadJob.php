@@ -4,6 +4,7 @@ namespace App\Providers\Ads\X;
 
 use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
+use App\Providers\Ads\NativeSourceQueueContext;
 use App\Providers\Ads\ObservationBatch;
 use App\Providers\Ads\ObservationJournal;
 use App\Providers\Ads\ProviderAccessStore;
@@ -47,7 +48,8 @@ final class XReadJob implements ShouldBeEncrypted, ShouldQueue
     public int $timeout = 60;
 
     private function __construct(private int $actorId, private int $actorGeneration,
-        #[\SensitiveParameter] private string $sessionId, private string $workspacePublicId,
+        #[\SensitiveParameter] private string $sessionId, /* Serialized field retained for existing queued organizational work; holds the exact native owner public ID. */
+        private string $workspacePublicId,
         private XCampaignReport $report, private string $stream, private string $command,
         private int $generation, private int $accessVersion, private DateTimeImmutable $deadline, private string $configuration)
     {
@@ -72,7 +74,7 @@ final class XReadJob implements ShouldBeEncrypted, ShouldQueue
         app(ProviderRequestGuard::class)->requireCurrent($request, $report->scope, 'provider.read', $accessVersion);
 
         return new self($request->user()->getAuthIdentifier(), (int) $request->session()->get('a001_generation', 0),
-            $request->session()->getId(), DB::table('organization_workspaces')->where('id', $report->scope->workspaceId)->value('public_id'),
+            $request->session()->getId(), NativeSourceQueueContext::capture($request, $report->scope),
             $report, $stream, $command, $generation, $accessVersion, $deadline, $settings->binding());
     }
 
@@ -111,7 +113,7 @@ final class XReadJob implements ShouldBeEncrypted, ShouldQueue
             throw new AuthorizationException('X queued signing configuration changed.');
         }
         $actor = User::findOrFail($this->actorId);
-        $request = Request::create('/workspaces/'.$this->workspacePublicId);
+        $request = Request::create(($this->report->scope->businessId === null ? '/workspaces/' : '/businesses/').$this->workspacePublicId);
         $request->setUserResolver(fn () => $actor);
         $session = new Store('bb2-x-worker', new ArraySessionHandler(120));
         $session->setId($this->sessionId);
@@ -119,11 +121,7 @@ final class XReadJob implements ShouldBeEncrypted, ShouldQueue
         $request->setLaravelSession($session);
         DB::transaction(function () use ($request, $actor, $principals, $http, $execution, $journal, $custody, $requests, $settings): void {
             $principals->activate($actor);
-            DB::selectOne('SELECT builderad_select_workspace_context(?)', [$this->report->scope->workspaceId]);
-            if ((int) DB::table('principal_lifecycles')->where('user_id', $this->actorId)->value('generation') !== $this->actorGeneration
-                || DB::table('organization_workspaces')->where('id', $this->report->scope->workspaceId)->value('public_id') !== $this->workspacePublicId) {
-                throw new AuthorizationException('X queued actor or Workspace changed.');
-            }
+            NativeSourceQueueContext::restore($request, $this->report->scope, $this->workspacePublicId, $this->actorGeneration);
             $fingerprint = hash('sha256', json_encode([$this->report->binding(), $this->configuration,
                 $this->deadline->format(DATE_ATOM), $this->rootCommand, $this->number, $this->ticket], JSON_THROW_ON_ERROR));
             $result = $execution->execute($request, $this->report->scope, $this->stream, $this->command,

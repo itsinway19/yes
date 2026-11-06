@@ -4,17 +4,20 @@ import { bootstrap, onClose, TransportError } from '../spa/transport';
 import { sources, providers } from './api';
 import type { SourceCommand, SourceAuthorityCommand } from './client';
 import type { Provider, VersionCommand } from './providers';
+import { ownerKey, type NativeSourceReference } from './nativeOwner';
 
-type Command = { workspace: string } & (
+type ProviderCommand = ({ workspace: string; business?: never } | { business: string; workspace?: never }) & (
     { effect: 'select'; provider: Provider; body: { selection: string } }
     | { effect: 'disconnect'; provider: Provider; source: string; body: VersionCommand }
     | { effect: 'renew'; provider: 'google' | 'snapchat'; source: string; body: VersionCommand }
-    | { effect: 'registry'; body: SourceCommand }
+);
+type Command = ProviderCommand | ({ workspace: string; business?: never } & (
+    { effect: 'registry'; body: SourceCommand }
     | { effect: 'grant'; body: SourceAuthorityCommand }
     | { effect: 'service'; body: { service: string; purpose: string } }
     | { effect: 'revoke-service'; source: string }
     | { effect: 'audit'; source: string }
-);
+));
 export type PendingCommand = { key: string; command: Command; busy: boolean; uncertain: boolean; message: string };
 export const pending = shallowReactive(new Map<string, PendingCommand>());
 const drafts = new Map<string, unknown>();
@@ -30,33 +33,39 @@ try {
     }
     const saved = JSON.parse(sessionStorage.getItem(storageKey) ?? 'null');
     for (const item of saved?.pending ?? []) {
-        if (item.command && typeof item.command.workspace === 'string' && item.key === keyFor(item.command)) {
+        if (item.command && (typeof item.command.workspace === 'string') !== (typeof item.command.business === 'string')
+            && (typeof item.command.business !== 'string' || ['select', 'disconnect', 'renew'].includes(item.command.effect))
+            && item.key === keyFor(item.command)) {
             pending.set(item.key, { ...item, busy: false, uncertain: true });
         }
     }
     for (const [key, value] of saved?.drafts ?? []) drafts.set(key, value);
 } catch { pending.clear(); drafts.clear(); }
-export const draftKey = (workspace: string, feature: string) => JSON.stringify([workspace, feature]);
-export function remember(workspace: string, feature: string, value: unknown) {
+export const draftKey = (workspace: NativeSourceReference, feature: string) => JSON.stringify([ownerKey(workspace), feature]);
+export function remember(workspace: NativeSourceReference, feature: string, value: unknown) {
     if (status.value === 'closed') return false;
     drafts.set(draftKey(workspace, feature), JSON.parse(JSON.stringify(value)));
     try { persist(); return true; } catch { return false; }
 }
-export function restore<Value>(workspace: string, feature: string): Value | undefined {
+export function restore<Value>(workspace: NativeSourceReference, feature: string): Value | undefined {
     const value = drafts.get(draftKey(workspace, feature)); return value === undefined ? undefined : structuredClone(value) as Value;
 }
-export const commandsFor = (workspace: string, provider?: Provider) => [...pending.values()].filter(value => value.command.workspace === workspace
+function reference(command: Command): NativeSourceReference {
+    return command.business !== undefined ? { kind: 'business', publicId: command.business } : command.workspace;
+}
+export const commandsFor = (workspace: NativeSourceReference, provider?: Provider) => [...pending.values()].filter(value => ownerKey(reference(value.command)) === ownerKey(workspace)
     && (provider === undefined ? !('provider' in value.command) : 'provider' in value.command && value.command.provider === provider));
 function keyFor(command: Command) {
-    return JSON.stringify([command.workspace, 'provider' in command ? command.provider : 'registry', command.effect,
+    return JSON.stringify([ownerKey(reference(command)), 'provider' in command ? command.provider : 'registry', command.effect,
         'source' in command ? command.source : command.effect === 'registry' ? command.body.source_id : 'form']);
 }
 async function send(command: Command, signal?: AbortSignal) {
+    const owner = reference(command);
     if (command.effect === 'select') return command.provider === 'meta'
-        ? providers.selectMeta(command.workspace, command.body.selection, signal)
-        : providers.select(command.provider, command.workspace, command.body.selection, signal);
-    if (command.effect === 'disconnect') return providers.disconnect(command.provider, command.workspace, command.source, command.body, signal);
-    if (command.effect === 'renew') return providers.renew(command.provider, command.workspace, command.source, command.body, signal);
+        ? providers.selectMeta(owner, command.body.selection, signal)
+        : providers.select(command.provider, owner, command.body.selection, signal);
+    if (command.effect === 'disconnect') return providers.disconnect(command.provider, owner, command.source, command.body, signal);
+    if (command.effect === 'renew') return providers.renew(command.provider, owner, command.source, command.body, signal);
     if (command.effect === 'registry') return sources.command(command.workspace, command.body, signal);
     if (command.effect === 'grant') return sources.grant(command.workspace, command.body, signal);
     if (command.effect === 'service') return sources.authorizeService(command.workspace, command.body, signal);

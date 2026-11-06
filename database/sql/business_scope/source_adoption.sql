@@ -57,8 +57,8 @@ BEGIN
  SELECT * INTO STRICT manager FROM public.security_action_grants WHERE id=selected_id;
  IF manager.source_target_id IS DISTINCT FROM p_source OR manager.action IS DISTINCT FROM 'source.manage'
  THEN RAISE EXCEPTION 'Exact current native source manager required after admission wait' USING ERRCODE='42501'; END IF;
- IF NOT EXISTS(SELECT 1 FROM public.source_registry s JOIN public.source_capabilities c ON c.source_id=s.id AND c.workspace_id=s.workspace_id
-  WHERE s.id=p_source AND s.workspace_id=manager.workspace_id AND c.resource=manager.source_resource AND c.operation=manager.source_operation AND c.purpose=manager.source_purpose)
+ IF NOT EXISTS(SELECT 1 FROM public.source_registry s JOIN public.source_capabilities c ON c.source_id=s.id AND c.workspace_id IS NOT DISTINCT FROM s.workspace_id
+  WHERE s.id=p_source AND s.workspace_id IS NOT DISTINCT FROM manager.workspace_id AND c.resource=manager.source_resource AND c.operation=manager.source_operation AND c.purpose=manager.source_purpose)
  THEN RAISE EXCEPTION 'Current exact native capability required' USING ERRCODE='42501'; END IF;
  -- The selected grant is authority; its exact capability is part of the command's
  -- meaning. An existing receipt must not acknowledge a different capability.
@@ -68,12 +68,18 @@ BEGIN
  IF FOUND THEN RETURN result; END IF;
  IF EXISTS(SELECT 1 FROM public.business_command_receipts WHERE command_id=p_command) THEN RAISE EXCEPTION 'Command identity conflict' USING ERRCODE='40001'; END IF;
  IF EXISTS(SELECT 1 FROM public.security_action_grants WHERE scope_kind='source' AND subject_user_id=actor AND subject_generation=manager.subject_generation
-  AND workspace_id=manager.workspace_id AND source_target_id=p_source AND source_resource=manager.source_resource AND source_operation=manager.source_operation AND source_purpose=manager.source_purpose AND action=p_payload->>'action' AND status='active')
+  AND workspace_id IS NOT DISTINCT FROM manager.workspace_id AND source_target_id=p_source AND source_resource=manager.source_resource AND source_operation=manager.source_operation AND source_purpose=manager.source_purpose AND action=p_payload->>'action' AND status='active')
  THEN RAISE EXCEPTION 'Existing native right must be explicitly selected or revoked' USING ERRCODE='40001'; END IF;
  proof:=proof||jsonb_build_object('dependencies',jsonb_build_array(to_jsonb(f)));
  PERFORM builderad_private.start_command(actor,p_session,p_command,'resource.qualify_issue',jsonb_build_object('source_id',p_source),proof);
  g.id:=nextval('public.security_action_grants_id_seq');g.subject_user_id:=actor;g.subject_generation:=manager.subject_generation;g.granted_by:=actor;
  g.source:='source_owner_request';g.scope_kind:='source';g.workspace_id:=manager.workspace_id;g.source_target_id:=p_source;
+ IF manager.workspace_id IS NULL THEN
+  IF NOT EXISTS(SELECT 1 FROM public.authority_qualification_receipts q WHERE q.qualification_id=manager.qualification_id AND (p_payload->>'action')=ANY(q.allowed_actions))
+   OR(manager.expires_at IS NOT NULL AND(expiry IS NULL OR expiry>manager.expires_at))
+  THEN RAISE EXCEPTION 'Reissued Source right cannot exceed its qualified issuer' USING ERRCODE='42501'; END IF;
+  g.business_id:=manager.business_id;g.qualification_id:=manager.qualification_id;
+ END IF;
  g.source_resource:=manager.source_resource;g.source_operation:=manager.source_operation;g.source_purpose:=manager.source_purpose;g.action:=p_payload->>'action';
  g.reason:=reason;g.status:='active';g.version:=1;g.expires_at:=expiry;g.delegable:=false;g.runtime_lock_marker:=false;g.created_at:=clock_timestamp();g.updated_at:=g.created_at;
  PERFORM builderad_private.permit('public.security_action_grants','insert',NULL,to_jsonb(g));INSERT INTO public.security_action_grants SELECT(g).*;

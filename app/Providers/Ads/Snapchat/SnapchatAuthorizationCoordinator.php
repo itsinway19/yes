@@ -68,7 +68,7 @@ final readonly class SnapchatAuthorizationCoordinator
         #[\SensitiveParameter] string $handle, ProviderScope $selected, string $command, int $selectedAccessVersion): array
     {
         $this->installation($request, $installation);
-        if ($selected->provider !== Provider::Snapchat || $selected->workspaceId !== $installation->workspaceId
+        if ($selected->provider !== Provider::Snapchat || ! $selected->sameCustodyAs($installation)
             || $selected->sourceId === $installation->sourceId || $selected->operation !== 'report.read'
             || $selected->purpose !== $installation->purpose) {
             throw new InvalidArgumentException('Selected Snapchat account requires its own exact Workspace/source/report scope.');

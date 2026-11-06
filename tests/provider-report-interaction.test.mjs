@@ -15,6 +15,8 @@ globalThis.window = { addEventListener() {}, removeEventListener() {} };
 globalThis.confirm = () => true;
 const moduleUrl = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
 const ports = {
+    './providerCopy': moduleUrl('export const providerCopy=value=>value;'),
+    '../spa/locale': moduleUrl(`import {ref} from ${JSON.stringify(import.meta.resolve('vue'))};export const locale=ref('ar');`),
     './api': moduleUrl(`const runtime = globalThis.__bb2ReportTransport;
         const url = (target, provider) => '/workspaces/' + target.workspace + '/providers/' + provider + '/' + target.source + '/report';
         export const providers = {
@@ -117,6 +119,11 @@ test('explicit new periods archive every unknown command without replaying or ov
     for (const index of [0, 1]) {
         await submit(view.root); await nextTick(); originals.push(JSON.parse(JSON.stringify(transport.posts[index][1])));
         await nodes(view.root, node => node.tag === 'button' && /مراجعة فترة أو طلب جديد/.test(text(node)))[0].props.onClick(); await nextTick();
+        assert.equal(drafts.get('workspacereport:google:source:previous')?.length ?? 0, index, 'Opening review does not abandon the original command');
+        await nodes(view.root, node => node.tag === 'button' && 'data-report-period-cancel' in node.props)[0].props.onClick();
+        assert.equal(transport.posts.length, index + 1, 'Cancel neither resends nor replaces the command');
+        await nodes(view.root, node => node.tag === 'button' && /مراجعة فترة أو طلب جديد/.test(text(node)))[0].props.onClick();
+        await nodes(view.root, node => node.tag === 'button' && 'data-report-period-confirm' in node.props)[0].props.onClick(); await nextTick();
         assert.equal(transport.posts.length, index + 1);
     }
     assert.deepEqual(drafts.get('workspacereport:google:source:previous').map(value => value.command), originals);

@@ -114,17 +114,35 @@ final class SourceRegistry
     /** Called in a new Workspace transaction, after the original source effect has committed. */
     public function recover(Request $request, Workspace $workspace, string $obligation): array
     {
+        return $this->recoverOwned($request, $workspace->id, null, $obligation);
+    }
+
+    public function recoverBusiness(Request $request, int $business, string $obligation): array
+    {
+        if ($business < 1) {
+            throw new LogicException('An exact Business Source locator is required.');
+        }
+
+        return $this->recoverOwned($request, null, $business, $obligation);
+    }
+
+    private function recoverOwned(Request $request, ?int $workspaceId, ?int $businessId, string $obligation): array
+    {
         $this->requireTransaction();
         DB::selectOne('SELECT builderad_source_begin_recovery(?, ?, ?::uuid)', [
-            $workspace->id, SessionAuthority::sessionKey($request), $obligation,
+            $workspaceId, SessionAuthority::sessionKey($request), $obligation,
         ]);
-        $o = DB::table('source_audit_obligations')->where('workspace_id', $workspace->id)->where('id', $obligation)->first();
-        if (! $o) {
+        $o = DB::table('source_audit_obligations')->where('workspace_id', $workspaceId)->where('id', $obligation)->first();
+        $source = DB::table('source_registry')->where('id', $o?->source_id)->where('workspace_id', $workspaceId);
+        if ($businessId !== null) {
+            $source->where('business_id', $businessId)->where('custody_kind', 'business_native');
+        }
+        if (! $o || ! $source->exists()) {
             abort(403);
         }
-        $receipt = DB::table('source_command_receipts')->where('workspace_id', $workspace->id)->where('command_id', $o->command_id)->first();
+        $receipt = DB::table('source_command_receipts')->where('workspace_id', $workspaceId)->where('source_id', $o->source_id)->where('command_id', $o->command_id)->first();
         if (! $receipt || ! DB::scalar('SELECT builderad_source_has(?, ?::uuid, ?, ?, ?, ?)', [
-            'source.audit.recover', $o->source_id, $workspace->id, $receipt->resource, $receipt->operation, $receipt->purpose,
+            'source.audit.recover', $o->source_id, $workspaceId, $receipt->resource, $receipt->operation, $receipt->purpose,
         ])) {
             abort(403);
         }
@@ -136,7 +154,7 @@ final class SourceRegistry
             report($error);
         }
         $state = DB::scalar('SELECT builderad_source_record_delivery(?, ?, ?::uuid, ?::uuid)', [
-            $workspace->id, SessionAuthority::sessionKey($request), $obligation, $ack,
+            $workspaceId, SessionAuthority::sessionKey($request), $obligation, $ack,
         ]);
 
         return ['obligation_id' => $obligation, 'delivery_state' => $state];

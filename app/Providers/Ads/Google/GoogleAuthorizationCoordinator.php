@@ -81,7 +81,7 @@ final readonly class GoogleAuthorizationCoordinator
         ?string $loginCustomer = null): array
     {
         $this->installation($request, $installation);
-        if ($selected->provider !== Provider::Google || $selected->workspaceId !== $installation->workspaceId
+        if ($selected->provider !== Provider::Google || ! $selected->sameCustodyAs($installation)
             || $selected->sourceId === $installation->sourceId || $selected->operation !== 'report.read'
             || $selected->purpose !== $installation->purpose) {
             throw new InvalidArgumentException('Selected Google account requires its own exact Workspace/source/report scope.');

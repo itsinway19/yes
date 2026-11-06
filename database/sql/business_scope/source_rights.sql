@@ -1,7 +1,7 @@
 -- Native source rights retain their native Workspace/capability contract. They never become Business grants.
 CREATE FUNCTION builderad_private.require_native_source_grant(p_grant bigint,p_actor bigint,p_session text,p_selection jsonb,p_owner boolean,p_fresh boolean) RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
-DECLARE g public.security_action_grants;selected_count integer;workspace_public uuid;
+DECLARE g public.security_action_grants;selected_count integer;workspace_public uuid;business_public uuid;
 BEGIN
  IF session_user<>'builderad_app' OR p_actor IS NULL OR p_grant IS NULL OR p_session IS NULL OR p_owner IS NULL OR p_fresh IS NULL
  OR NOT EXISTS(SELECT 1 FROM public.builderad_signed_context() WHERE actor_user_id=p_actor AND phase='principal' AND workspace_id IS NULL)
@@ -15,6 +15,17 @@ BEGIN
  THEN RAISE EXCEPTION 'Explicit processing and native source selection required' USING ERRCODE='42501'; END IF;
  SELECT count(*) INTO selected_count FROM jsonb_array_elements(p_selection->'requirements') x(v) WHERE v->>'requirement_kind'='native_source' AND v->>'leaf_grant_id'=p_grant::text;
  IF selected_count<>1 THEN RAISE EXCEPTION 'Exact native source grant selection required' USING ERRCODE='42501'; END IF;
+ SELECT * INTO g FROM public.security_action_grants WHERE id=p_grant AND subject_user_id=p_actor AND scope_kind='source';
+ IF FOUND AND g.workspace_id IS NULL AND g.business_id IS NOT NULL THEN
+  -- Callers hold Source K1 before this Business fence and the complete K4 union.
+  -- A nullable Workspace never supplies authority; the canonical Source proof does.
+  SELECT b.public_id INTO business_public FROM public.source_registry s JOIN public.businesses b ON b.id=(to_jsonb(s)->>'business_id')::bigint
+   WHERE s.id=g.source_target_id AND to_jsonb(s)->>'custody_kind'='business_native' AND b.id=g.business_id;
+  IF business_public IS NULL THEN RAISE EXCEPTION 'Exact Business Source custody required' USING ERRCODE='42501'; END IF;
+  PERFORM builderad_private.lock_business(business_public,false);
+  PERFORM builderad_private.lock_authority_footprint(p_actor,p_selection,p_session);
+  RETURN builderad_private.business_source_proof(p_grant,p_actor,p_session,p_fresh)||jsonb_build_object('realm',p_selection-'requirements');
+ END IF;
  PERFORM builderad_private.lock_authority_footprint(p_actor,p_selection,p_session);
  PERFORM builderad_private.principal(p_session);
  SELECT * INTO g FROM public.security_action_grants WHERE id=p_grant;
@@ -92,7 +103,11 @@ BEGIN
  UPDATE public.security_action_grants SET status=g.status,version=g.version,revoked_at=g.revoked_at,updated_at=g.updated_at WHERE id=g.id;
  PERFORM builderad_private.advance_right_epoch(fence.fence_id);PERFORM builderad_private.principal(p_session);
  -- Surrender uses the locked before-image; the native responsible-owner/session contract still holds at effect.
- IF NOT builderad_private.workspace_allowed(old_g.workspace_id,actor,true) OR NOT EXISTS(SELECT 1 FROM public.security_sessions WHERE user_id=actor AND session_key_hash=p_session AND authenticated_at BETWEEN clock_timestamp()-interval '15 minutes' AND clock_timestamp())
+ IF old_g.workspace_id IS NULL THEN
+  PERFORM builderad_private.require_business_source_creator(old_g.business_id,actor,p_session,
+   builderad_private.business_selection((SELECT issuer_grant_id FROM public.authority_qualification_receipts WHERE qualification_id=old_g.qualification_id)),true);
+ END IF;
+ IF (old_g.workspace_id IS NOT NULL AND NOT builderad_private.workspace_allowed(old_g.workspace_id,actor,true)) OR NOT EXISTS(SELECT 1 FROM public.security_sessions WHERE user_id=actor AND session_key_hash=p_session AND authenticated_at BETWEEN clock_timestamp()-interval '15 minutes' AND clock_timestamp())
  THEN RAISE EXCEPTION 'Native source owner evidence expired before effect' USING ERRCODE='42501'; END IF;
  result:=jsonb_build_object('grant_id',g.id,'status',g.status,'versions',jsonb_build_object('grant',g.version));
  IF admission.id<>old_g.id THEN PERFORM builderad_private.require_native_source_grant(admission.id,actor,p_session,p_selection,true,true); END IF;
@@ -100,8 +115,12 @@ BEGIN
  -- The receipt insert can wait after the mutation. Eligibility must still hold at this final local release boundary.
  -- Own surrender deliberately uses the locked, previously qualified before-image, never a resurrected revoked grant.
  PERFORM builderad_private.principal(p_session);
+ IF old_g.workspace_id IS NULL THEN
+  PERFORM builderad_private.require_business_source_creator(old_g.business_id,actor,p_session,
+   builderad_private.business_selection((SELECT issuer_grant_id FROM public.authority_qualification_receipts WHERE qualification_id=old_g.qualification_id)),true);
+ END IF;
  IF (admission.expires_at IS NOT NULL AND admission.expires_at<=clock_timestamp())
- OR NOT builderad_private.workspace_allowed(old_g.workspace_id,actor,true)
+ OR (old_g.workspace_id IS NOT NULL AND NOT builderad_private.workspace_allowed(old_g.workspace_id,actor,true))
  OR NOT EXISTS(SELECT 1 FROM public.security_sessions WHERE user_id=actor AND session_key_hash=p_session AND authenticated_at BETWEEN clock_timestamp()-interval '15 minutes' AND clock_timestamp())
  THEN RAISE EXCEPTION 'Native source eligibility expired after receipt wait' USING ERRCODE='42501'; END IF;
  IF admission.id<>old_g.id THEN PERFORM builderad_private.require_native_source_grant(admission.id,actor,p_session,p_selection,true,true); END IF;
