@@ -320,6 +320,52 @@ final class BusinessFoundationController
             $raw->effect, $raw->expected_relation, $this->selection($raw)));
     }
 
+    public function dataUseLicense(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $raw = $this->commandBody($request, ['license_id', 'effect', 'expected_revision', 'declaration'], 140000);
+        abort_unless(is_string($raw->license_id) && Str::isUuid($raw->license_id)
+            && in_array($raw->effect, ['issue', 'withdraw'], true) && is_object($raw->declaration), 422);
+
+        return $this->respond(fn () => $scope->dataUseLicense($request, $business, $raw->command_id, $raw->license_id,
+            $raw->effect, $raw->expected_revision, $raw->declaration, $this->selection($raw)));
+    }
+
+    public function dataLicenseJourney(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $input = $request->validate(['access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX]]);
+
+        return $this->respond(fn () => $scope->dataLicenseJourney($request, $business, (int) $input['access']));
+    }
+
+    public function operatingMandate(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $raw = $this->commandBody($request, ['confirmed', 'capacity', 'authority_reference', 'valid_until', 'previous_grant'], 70000);
+        abort_unless($raw->confirmed === true && is_string($raw->capacity) && is_string($raw->authority_reference) && is_string($raw->valid_until)
+            && is_string($raw->previous_grant) && preg_match('/^(0|[1-9][0-9]{0,17})$/D', $raw->previous_grant), 422);
+
+        return $this->respond(fn () => $scope->operatingMandate($request, $business, $raw, $this->selection($raw)));
+    }
+
+    public function dataUseBeneficiary(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $raw = $this->commandBody($request, ['license_id', 'effect', 'recipient_public_id', 'valid_until', 'expected_revision'], 80000);
+        abort_unless(is_string($raw->license_id) && Str::isUuid($raw->license_id) && is_string($raw->recipient_public_id) && Str::isUuid($raw->recipient_public_id)
+            && in_array($raw->effect, ['assign', 'revoke'], true) && is_string($raw->valid_until), 422);
+
+        return $this->respond(fn () => $scope->dataUseBeneficiary($request, $business, $raw, $this->selection($raw)));
+    }
+
+    public function expenditureSummary(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $raw = $this->commandBody($request, ['summary_id', 'input_ref', 'input_license_id', 'read_command_id', 'confirmed', 'valid_until', 'consent'], 80000);
+        abort_unless(is_string($raw->summary_id) && Str::isUuid($raw->summary_id)
+            && is_string($raw->input_license_id) && Str::isUuid($raw->input_license_id)
+            && is_string($raw->read_command_id) && Str::isUuid($raw->read_command_id)
+            && is_object($raw->input_ref) && is_object($raw->consent) && $raw->confirmed === true && is_string($raw->valid_until), 422);
+
+        return $this->respond(fn () => $scope->expenditureSummary($request, $business, $raw, $this->selection($raw)));
+    }
+
     public function marketEvidence(Request $request, string $evidence, MarketEvidence $owner): JsonResponse
     {
         $raw = $this->commandBody($request, ['data_use_scope_id', 'expected_revision', 'payload'], 280000);

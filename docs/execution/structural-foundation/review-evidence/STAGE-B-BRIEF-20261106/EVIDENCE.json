@@ -1,0 +1,233 @@
+{
+  "task": "Compare four Stage B briefs and preserve research continuity",
+  "date": "2026-11-06",
+  "head": "e2fd972985be3c1bb7c9d6a80b73b23a45281096",
+  "recommendation": "Candidate4 skeleton plus Candidate3 neutral selection plus explicit research reuse",
+  "ranking": [
+    4,
+    3,
+    1,
+    2
+  ],
+  "candidate1_source": "Inline numbered draft in current Owner message; read as comparison candidate, not activated execution instruction",
+  "file_candidates": [
+    {
+      "candidate": 2,
+      "path": "C:/Users/stoma/.codex/attachments/8364b75a-60b0-443e-bfa8-b44b994cdf75/Pasted text.txt",
+      "sha256": "2716480e59684cf3b87cf91b8747d3a2e11888060edf2963fc2cb032b9658536",
+      "read": "Full supplied text"
+    },
+    {
+      "candidate": 3,
+      "path": "C:/Users/stoma/.codex/attachments/d9484293-bc86-4311-8493-8e8d9e5ffb44/Pasted text.txt",
+      "sha256": "6dfcbd4be2df6b5c9d863c2512449636608a7ac35156a9f8bd876602387dd5ff",
+      "read": "Full supplied text"
+    },
+    {
+      "candidate": 4,
+      "path": "C:/Users/stoma/.codex/attachments/9f85a8bc-ccd7-4337-a8a1-e36d3df0dbb4/Pasted text.txt",
+      "sha256": "1bd251342f77e65ce2a8f082ac6f13bbf196558ca3650a155d88b95b05c41b67",
+      "read": "Full supplied text"
+    }
+  ],
+  "checks": [
+    {
+      "check": "188_archive_files_exist_and_match_recorded_hashes",
+      "pass": true
+    },
+    {
+      "check": "17_aligned_research_sources_match_recorded_hashes",
+      "pass": true
+    },
+    {
+      "check": "17_selected_and171_inventoried_review_limits_retained",
+      "pass": true
+    },
+    {
+      "check": "draft_status_not_execution_or_protected_authorization",
+      "pass": true
+    },
+    {
+      "check": "research_to_contract_method_test_effect_required",
+      "pass": true
+    },
+    {
+      "check": "package_selection_neutral_and_implementation_required_when_qualified",
+      "pass": true
+    },
+    {
+      "check": "outside_inventory_research_references_recorded",
+      "pass": true
+    },
+    {
+      "check": "preexisting_tracked_edits_preserved_no_new_tracked_edits",
+      "pass": true
+    },
+    {
+      "check": "prior_program_linkage_and_evidence_unchanged",
+      "pass": true
+    },
+    {
+      "check": "git_diff_check",
+      "pass": true
+    }
+  ],
+  "additional_research_references": [
+    {
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\REPORT.md",
+      "sha256": "2139ce37c027f613d501cb73047c9adffeb3a7285897d86239e14675720bee71",
+      "scope": "Reference existence and fingerprint; prior relevant readings reused, no new whole-corpus validation"
+    },
+    {
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\CONSOLIDATED_DECISION.md",
+      "sha256": "74617d43a5dd635e96fe72d14b7caded4f63365c7738b5b62f91e0bf5a85850b",
+      "scope": "Reference existence and fingerprint; prior relevant readings reused, no new whole-corpus validation"
+    },
+    {
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\SOURCES.csv",
+      "sha256": "ee0b8e5a4cc5197cdafa91c46f913b3893e786777b72f7e6ea2b73e2641486e4",
+      "scope": "Reference existence and fingerprint; prior relevant readings reused, no new whole-corpus validation"
+    },
+    {
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\EVIDENCE.json",
+      "sha256": "b965227173678dcf8603c0a41fd84f100eb3c0c55ef2f438552aef286a09d542",
+      "scope": "Reference existence and fingerprint; prior relevant readings reused, no new whole-corpus validation"
+    },
+    {
+      "path": "C:/dev/10_G1_G2_COMPETITIVE_VALIDATION.zip",
+      "sha256": "f94294f32440dc4116438c566528a83aa317de4c0e86fab1abdd26e22d0b0ea6",
+      "scope": "Reference existence and fingerprint; prior relevant readings reused, no new whole-corpus validation"
+    },
+    {
+      "path": "C:/dev/builderad sections/00_START_HERE/README_FIRST_AR.md",
+      "sha256": "f8d5e82c5043e596b3889f04d0bb5e26898150990f2a6ef17f76df9348f2d008",
+      "scope": "Reference existence and fingerprint; prior relevant readings reused, no new whole-corpus validation"
+    },
+    {
+      "path": "C:/dev/builderad sections/09_PRODUCT_BLUEPRINT/COMMERCIAL_ADVERTISING_EXPERTISE/README.md",
+      "sha256": "cc18c75896b83c5139367e8f658bbf62cbf51819f97d2737a122c48ecfe4ad3f",
+      "scope": "Reference existence and fingerprint; prior relevant readings reused, no new whole-corpus validation"
+    },
+    {
+      "path": "C:/dev/builderad sections/09_PRODUCT_BLUEPRINT/COMMERCIAL_ADVERTISING_EXPERTISE/BUILDERAD_GOVERNING_COMMERCIAL_ADVERTISING_EXPERTISE_ARCHITECTURE_V1_1_2026-11-01.md",
+      "sha256": "3bb7250a4cf7636282e78cdbbd0c95040f5455a160743698a54d4bc301eed00f",
+      "scope": "Reference existence and fingerprint; prior relevant readings reused, no new whole-corpus validation"
+    },
+    {
+      "path": "C:/dev/builderad sections/09_PRODUCT_BLUEPRINT/BuilderAd_Competitive_Product_Blueprint_Decisive_AR_v1.1_2026-10-26.md",
+      "sha256": "8fbb67baf83c042a72d04ea8e42a3a45346164be4febd05bce438b9e8eb4c25b",
+      "scope": "Reference existence and fingerprint; prior relevant readings reused, no new whole-corpus validation"
+    },
+    {
+      "path": "C:/dev/builderad sections/09_PRODUCT_BLUEPRINT/BuilderAd_Cross_Section_Integration_Plan_AR_2026-10-30.md",
+      "sha256": "b2f47a110b829a4b117c436aeab3b3fbaa60f1533eb3b05c088a065fa4e0ad28",
+      "scope": "Reference existence and fingerprint; prior relevant readings reused, no new whole-corpus validation"
+    },
+    {
+      "path": "C:/dev/builderad sections/09_PRODUCT_BLUEPRINT/COMPETITIVE_ADVANTAGE/BuilderAd_Competitive_Mechanisms_By_Activity_AR_v1.0_2026-10-29.md",
+      "sha256": "9d9af5db61f741672bff58dc4775ed21b226b50efd1b18164b4a636cfac8fc5d",
+      "scope": "Reference existence and fingerprint; prior relevant readings reused, no new whole-corpus validation"
+    },
+    {
+      "path": "C:/dev/builderad sections/06_V06_Paid_Advertising/P07/BuilderAd_V06_P07_Integrated_Product_System_Service_Architecture_Decision_Blueprint_AR_v1.3.4_Owner_Ready_2026-10-26.md",
+      "sha256": "1007af58b8b5c38579c321eafd5838bafcd5c5280f3fc66b485281c7e728a5d2",
+      "scope": "Reference existence and fingerprint; prior relevant readings reused, no new whole-corpus validation"
+    }
+  ],
+  "aligned_research_source_checks": [
+    {
+      "research_id": "BF01",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\قسم 1 النشاط والأهداف\\BuilderAd_BF01_Final_Consolidated_Foundation_AR_v1.1_2026-10-22.md",
+      "pass": true
+    },
+    {
+      "research_id": "BF02",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\قسم 2 السوق والطلب واكتشاف الفرص والعملاء\\BuilderAd_BF02_OP01_Final_Unified_Reference_AR_v1.1_2026-10-22.md",
+      "pass": true
+    },
+    {
+      "research_id": "BF03",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\قسم 3 التفاعل وتحويل الاهتمام إلى استفسار مؤهل\\BuilderAd_BF03_Final_Arbitrated_Reference_AR_v1.1_2026-10-22.md",
+      "pass": true
+    },
+    {
+      "research_id": "BF04",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\القسم 4 العلاقة التجارية، الصفقات، الطلبات، الوفاء، الفوترة، المدفوعات، التسوية، والنتائج\\BuilderAd_BF04_Final_Unified_Arbitrated_Reference_AR_v1.1_2026-10-22.md",
+      "pass": true
+    },
+    {
+      "research_id": "AD01",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_Advertising_06-01_Goal_Optimization_Research_Reference_AR_2026-10-21.md",
+      "pass": true
+    },
+    {
+      "research_id": "AD02",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-02_Consolidated_Research_Decision_AR_2026-10-21.md",
+      "pass": true
+    },
+    {
+      "research_id": "AD03",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-03_Consolidated_Research_Decision_AR_2026-10-22.md",
+      "pass": true
+    },
+    {
+      "research_id": "AD04",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-04_Consolidated_Research_Engineering_Decision_AR_v1.1_2026-10-22.md",
+      "pass": true
+    },
+    {
+      "research_id": "AD05",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-05_Consolidated_Research_Engineering_Decision_AR_v1.1_2026-10-22.md",
+      "pass": true
+    },
+    {
+      "research_id": "AD06",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-06_Consolidated_Research_Engineering_Decision_AR_v1.1_2026-10-22.md",
+      "pass": true
+    },
+    {
+      "research_id": "AD07",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-07_Consolidated_Functional_Engineering_Research_Decision_AR_v1.1_2026-10-22.md",
+      "pass": true
+    },
+    {
+      "research_id": "AD08",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-08_Unified_Research_Engineering_Reference_AR_v1.1_2026-10-22.md",
+      "pass": true
+    },
+    {
+      "research_id": "AD09",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-09_Final_Research_Functional_Engineering_Reference_AR_v1.1_2026-10-22.md",
+      "pass": true
+    },
+    {
+      "research_id": "ADX",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_X_Ads_Final_Trusted_Research_Reference_AR_v1.1_2026-10-22.md",
+      "pass": true
+    },
+    {
+      "research_id": "SRC",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\SRC-INTEL-01\\BuilderAd_SRC_INTEL_01_Canonical_Integrated_Research_AR_v1.0_2026-10-24.md",
+      "pass": true
+    },
+    {
+      "research_id": "F",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\قسم F الظهور والاكتشاف غير الإعلاني\\BuilderAd_F_Canonical_Final_Deep_Research_and_ARCH00B_Handoff_AR_v2.0_2026-10-23.md",
+      "pass": true
+    },
+    {
+      "research_id": "H",
+      "path": "C:\\dev\\builderad sections\\الأقسام\\قسم H الاحتفاظ واقتصاد النمو\\BuilderAd_H_Research_Final_Synthesis_F_Dependencies_ARCH00B_AR_v1.0_2026-10-23.md",
+      "pass": true
+    }
+  ],
+  "corpus_status": "188 inventoried files preserved;17 selected-passage reviews and171 inventoried-only in previous pass; not188 approved studies",
+  "code_execution_started": false,
+  "product_tests_run": false,
+  "foundation_run": false,
+  "github_refreshed": false,
+  "research_content_edited": false,
+  "accounts_or_paid_resources_used": false,
+  "task_started_services": [],
+  "limitations": "Brief authoring and file-integrity checks only; Stage B starts when Owner adopts the brief; protected decisions retain their own authority; no blanket whole-archive validity claim"
+}

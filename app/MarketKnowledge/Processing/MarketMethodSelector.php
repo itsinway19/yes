@@ -20,11 +20,11 @@ final class MarketMethodSelector
         }
     }
 
-    public function select(string $question): ?MarketMethod
+    public function select(string $question, string $reference): ?MarketMethod
     {
         foreach ($this->methods[$question] ?? [] as $method) {
             try {
-                if ($method->available()) {
+                if ($method->reference() === $reference && $method->available()) {
                     return $method;
                 }
             } catch (Throwable) {

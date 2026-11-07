@@ -45,9 +45,12 @@ final class Findings
                     throw new DomainException('Independent arithmetic validation failed.');
                 }
             }
+            // Compare the declared rounded result, not an unrounded difference
+            // with a tolerance that can accept a false direction near zero.
+            $expectedDelta = round((float) $after - $before, 8);
             if ($before <= 0 || ! isset($values['delta']) || (! is_int($values['delta']) && ! is_float($values['delta']))
                 || ! is_finite((float) $values['delta'])
-                || abs($values['delta'] - ($after - $before)) > 0.00001) {
+                || (float) $values['delta'] !== $expectedDelta) {
                 throw new DomainException('Independent arithmetic validation failed.');
             }
             $ratio = $task->materials[0]['fields']['comparison_basis']['ratio_scale'];

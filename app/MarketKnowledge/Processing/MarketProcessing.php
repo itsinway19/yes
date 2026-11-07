@@ -36,7 +36,7 @@ final class MarketProcessing
         $outcome = ['state' => 'cancelled', 'finding' => null, 'reason_code' => 'REQUEST_CANCELLED'];
         $elapsed = 0;
         if ($body['effect'] === 'complete' && $input['run']['state'] === 'prepared') {
-            $method = $this->methods->select($input['run']['question']);
+            $method = $this->methods->select($input['run']['question'], $input['run']['method_ref']);
             if ($method === null) {
                 $outcome = ['state' => 'unavailable', 'finding' => null, 'reason_code' => 'METHOD_UNAVAILABLE'];
             } else {

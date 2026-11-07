@@ -9,6 +9,19 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
     const versions = fields => object(Object.fromEntries(fields.map(name => [name, version])));
     const body = fields => object({ ...command, ...fields });
     const data = schema => object({ data: schema });
+    const licenseSelection = object({ native_namespaces: { ...list(text), minItems: 1, maxItems: 50 }, native_keys: { ...list(text), minItems: 1, maxItems: 1000 },
+        field_keys: { ...list(text), minItems: 1, maxItems: 100 }, partition_ref: { type: 'null' } });
+    const licenseDeclaration = object({ source_id: uuid, resource: { ...text, minLength: 1, maxLength: 180 },
+        operation: { enum: ['retained_read', 'display', 'process', 'reuse', 'combine', 'export'] }, purpose: { ...text, minLength: 1, maxLength: 128 },
+        selection: ref('DataLicenseSelection'),
+        recipient_public_id: uuid, valid_until: { type: 'string', format: 'date-time' }, capacity: { enum: ['data_holder', 'authorized_representative'] },
+        holder_name: { ...text, minLength: 2, maxLength: 160 }, authority_reference: { ...text, minLength: 8, maxLength: 512 },
+        confirmed: { const: true }, requires_review: { const: false } });
+    const licenseCommand = { oneOf: [body({ license_id: uuid, effect: { const: 'issue' }, expected_revision: { const: 0 }, declaration: licenseDeclaration }),
+        body({ license_id: uuid, effect: { const: 'withdraw' }, expected_revision: { const: 1 }, declaration: object({}) })] };
+    const licenseResult = object({ license_id: uuid, boundary_id: uuid, boundary_grant_id: { ...text, pattern: '^[1-9][0-9]{0,18}$' },
+        use_grant_id: { ...text, pattern: '^[1-9][0-9]{0,18}$' }, status: { enum: ['active', 'withdrawn'] },
+        assurance: { const: 'DECLARED_AUTHORITY' }, versions: object({ license: { enum: [1, 2] } }) });
     const business = { in: 'path', name: 'business', required: true, schema: uuid };
     const endpoint = (operationId, request, result, status = 200, selected = true) => ({ operationId, security, parameters: selected ? [business] : [],
         description: 'This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response.',
@@ -152,6 +165,31 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
         authority_selection: authority, can_command: { type: 'boolean' },
         rights: list(object({ grant_id: decimalId, action: text, recorded_status: { enum: ['active', 'revoked'] }, revision: id, expires_at: nullable({ type: 'string', format: 'date-time' }) })),
         rights_limit: { const: 64 }, rights_more: { type: 'boolean' } });
+    const listCompleteness = { enum: ['COMPLETE', 'PARTIAL', 'UNKNOWN'] };
+    const recordMetadata = object({ ref: materialRef, campaign_id: nullable(text), start: nullable(text), end: nullable(text),
+        boundary: nullable({ enum: ['INCLUSIVE_DATES', 'HALF_OPEN_INSTANTS'] }), grain: nullable({ enum: ['TOTAL', 'DAY', 'HOUR'] }), timezone: nullable(text) });
+    const licenseDataset = object({ dataset_id: text, coverage: { ...text, description: 'Acquisition coverage reported by the observation run; independent of visible selection completeness.' },
+        records_completeness: listCompleteness, record_count: { ...id, description: 'Number of displayed selectable records, not the total report size.' },
+        record_metadata: list(recordMetadata), selection: ref('DataLicenseSelection'), material_refs: list(materialRef) });
+    const licenseJourney = object({ business_public_id: uuid, actor_public_id: uuid,
+        sources: list(object({ source_id: uuid, label: text, family: text, resource: text, manager_grant_id: nullable(decimalId), read_grant_id: nullable(decimalId), datasets_completeness: listCompleteness, datasets: list(licenseDataset) })),
+        sources_more: { type: 'boolean' }, licenses_more: { type: 'boolean' },
+        licenses: list(object({ license_id: uuid, boundary_id: uuid, boundary_grant_id: nullable(decimalId), use_grant_id: nullable(decimalId), source_id: uuid,
+            resource: text, operation: text, purpose: text, valid_until: { type: 'string', format: 'date-time' }, status: { enum: ['active', 'expired', 'withdrawn'] },
+            selection: ref('DataLicenseSelection'), recipient_public_id: uuid, material_refs: list(materialRef), record_metadata: list(recordMetadata), covered: { type: 'boolean' }, bound: { type: 'boolean' },
+            coverage_revision: version, binding_revision: version, is_declarant: { type: 'boolean' }, summary: nullable(object({state:{enum:['prepared','published']},input_license_id:uuid,process_grant_id:decimalId,dependencies:list(object({input:materialRef,data_use_scope_id:uuid,policy_id:text,policy_version:id}))})) })),
+        business_use_options: list(object({ grant_id: decimalId })), binding_options: list(object({ grant_id: decimalId })),
+        beneficiaries: list(object({ public_id: uuid, name: text, realm_kind: { enum: ['direct', 'agency'] }, realm_workspace_public_id: nullable(uuid) })),
+        assignments: list(object({ license_id: uuid, recipient_public_id: uuid, grant_id: decimalId, status: { enum: ['active', 'revoked'] }, revision: id, valid_until: { type: 'string', format: 'date-time' } })),
+        assigned_licenses: list(object({ license_id: uuid, operation: text, purpose: text, valid_until: { type: 'string', format: 'date-time' },artifact_ref:materialRef,use_grant_id:decimalId },['license_id','operation','purpose','valid_until'])),
+        operating_mandate: object({ available: { type: 'boolean' }, previous_grant: { type: 'string', pattern: '^(0|[1-9][0-9]{0,18})$' } }) });
+    const mandateCommand = body({ confirmed: { const: true }, capacity: { enum: ['responsible_business', 'client_mandate'] },
+        authority_reference: { ...text, minLength: 8, maxLength: 512 }, valid_until: { type: 'string', format: 'date-time' }, previous_grant: { ...text, pattern: '^(0|[1-9][0-9]{0,17})$' } });
+    const mandateResult = object({ business_public_id: uuid, grant_refs: object({ 'business.data.use': decimalId, 'business.link.manage': decimalId }),
+        qualification_ref: uuid, assurance: { const: 'DECLARED_AUTHORITY' }, versions: object({ qualification: { const: 1 } }) });
+    const beneficiaryCommand = body({ license_id: uuid, effect: { enum: ['assign', 'revoke'] }, recipient_public_id: uuid,
+        valid_until: { type: 'string', format: 'date-time' }, expected_revision: version });
+    const beneficiaryResult = object({ license_id: uuid, recipient_public_id: uuid, grant_id: decimalId, status: { enum: ['active', 'revoked'] }, versions: versions(['grant']) });
     return {
         schemas: {
             InternalTeamCommand: internalTeamCommand, InternalTeamReceipt: internalTeamReceipt, InternalTeamSurface: internalTeamSurface,
@@ -171,6 +209,9 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
             MarketProcessingPrepareCommand:processingPrepare,MarketProcessingCompleteCommand:processingComplete,MarketProcessingRunResult:data(processingRun),
             BusinessMaterialReference: materialRef, BusinessMaterialReadResult: data(materialResult),
             BusinessAuthoritySelection: authority,
+            BusinessDataUseLicenseCommand: licenseCommand, BusinessDataUseLicenseResult: data(licenseResult),
+            DataLicenseSelection: licenseSelection, DataLicenseJourney: licenseJourney, DataLicenseJourneyResult: data(ref('DataLicenseJourney')), BusinessOperatingMandateCommand: mandateCommand, BusinessOperatingMandateResult: data(mandateResult),
+            BusinessDataUseBeneficiaryCommand: beneficiaryCommand, BusinessDataUseBeneficiaryResult: data(beneficiaryResult),
             BusinessFoundationError: object({ error: { enum: ['business_authority_denied', 'business_conflict', 'business_relation_revision_rejected', 'invalid_business_command'] } }),
             BusinessDraftResult: data(draft), BusinessFoundationProjection: data(projection), BusinessContextWriteResult: data(contextResult),
             BusinessMarketWriteResult: data(marketsResult), BusinessPreferenceWriteResult: data(preferenceResult), BusinessIntentWriteResult: data(intentResult),
@@ -178,6 +219,11 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
             BusinessResourceRightResult: data({ oneOf: [boundaryResult, revokeResult, sourceGrantResult, sourceAdoptionResult, sourceRetirementResult] }), BusinessLifecycleWriteResult: data(lifecycleResult),
         },
         paths: {
+            '/api/businesses/{business}/data-use-journey': { get: read('readDataLicenseJourney', ref('DataLicenseJourneyResult'), [business, query('access', true)]) },
+            '/api/businesses/{business}/operating-mandate': { post: endpoint('declareBusinessOperatingMandate', ref('BusinessOperatingMandateCommand'), mandateResult) },
+            '/api/businesses/{business}/data-use-beneficiaries': { post: endpoint('assignDataUseBeneficiary', ref('BusinessDataUseBeneficiaryCommand'), beneficiaryResult) },
+            '/api/businesses/{business}/expenditure-summaries': { post: endpoint('prepareExpenditureSummary', body({summary_id:uuid,input_ref:materialRef,input_license_id:uuid,read_command_id:uuid,confirmed:{const:true},valid_until:{type:'string',format:'date-time'},consent:object({derive:{const:true},deliver_summary:{const:true},retain_payload:{const:false}})}),fact({artifact_ref:materialRef,dependencies:list(object({input:materialRef,data_use_scope_id:uuid,policy_id:text,policy_version:id})),license_id:uuid,use_grant_id:decimalId,status:{const:'prepared'},versions:object({summary:{const:1}})})) },
+            '/api/businesses/{business}/data-use-licenses': { post: endpoint('declareBoundedDataUseLicense', ref('BusinessDataUseLicenseCommand'), licenseResult) },
             '/api/data-rights/use-scopes': { get: read('qualifiedDataUseChoices', data(dataUseChoices), [query('after')]) },
             '/api/source-rights': { get: read('qualifiedNativeSourceChoices', data(sourceChoices), [query('after')]) },
             '/api/source-rights/{source}': { get: read('qualifiedNativeSourceSurface', data(sourceSurface), [sourceParam, query('access', true)]) },

@@ -2621,6 +2621,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/businesses/{business}/data-use-journey": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readDataLicenseJourney"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/operating-mandate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response. */
+        post: operations["declareBusinessOperatingMandate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/data-use-beneficiaries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response. */
+        post: operations["assignDataUseBeneficiary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/expenditure-summaries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response. */
+        post: operations["prepareExpenditureSummary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/data-use-licenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response. */
+        post: operations["declareBoundedDataUseLicense"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/data-rights/use-scopes": {
         parameters: {
             query?: never;
@@ -7165,6 +7249,293 @@ export interface components {
                 requirement_kind: "business" | "client_data" | "data_use" | "native_source";
                 leaf_grant_id: number;
             }[];
+        };
+        BusinessDataUseLicenseCommand: {
+            /** Format: uuid */
+            command_id: string;
+            authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+            /** Format: uuid */
+            license_id: string;
+            /** @constant */
+            effect: "issue";
+            /** @constant */
+            expected_revision: 0;
+            declaration: {
+                /** Format: uuid */
+                source_id: string;
+                resource: string;
+                /** @enum {unknown} */
+                operation: "retained_read" | "display" | "process" | "reuse" | "combine" | "export";
+                purpose: string;
+                selection: components["schemas"]["DataLicenseSelection"];
+                /** Format: uuid */
+                recipient_public_id: string;
+                /** Format: date-time */
+                valid_until: string;
+                /** @enum {unknown} */
+                capacity: "data_holder" | "authorized_representative";
+                holder_name: string;
+                authority_reference: string;
+                /** @constant */
+                confirmed: true;
+                /** @constant */
+                requires_review: false;
+            };
+        } | {
+            /** Format: uuid */
+            command_id: string;
+            authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+            /** Format: uuid */
+            license_id: string;
+            /** @constant */
+            effect: "withdraw";
+            /** @constant */
+            expected_revision: 1;
+            declaration: Record<string, never>;
+        };
+        BusinessDataUseLicenseResult: {
+            data: {
+                /** Format: uuid */
+                license_id: string;
+                /** Format: uuid */
+                boundary_id: string;
+                boundary_grant_id: string;
+                use_grant_id: string;
+                /** @enum {unknown} */
+                status: "active" | "withdrawn";
+                /** @constant */
+                assurance: "DECLARED_AUTHORITY";
+                versions: {
+                    /** @enum {unknown} */
+                    license: 1 | 2;
+                };
+            };
+        };
+        DataLicenseSelection: {
+            native_namespaces: string[];
+            native_keys: string[];
+            field_keys: string[];
+            partition_ref: null;
+        };
+        DataLicenseJourney: {
+            /** Format: uuid */
+            business_public_id: string;
+            /** Format: uuid */
+            actor_public_id: string;
+            sources: {
+                /** Format: uuid */
+                source_id: string;
+                label: string;
+                family: string;
+                resource: string;
+                manager_grant_id: string | null;
+                read_grant_id: string | null;
+                /** @enum {unknown} */
+                datasets_completeness: "COMPLETE" | "PARTIAL" | "UNKNOWN";
+                datasets: {
+                    dataset_id: string;
+                    /** @description Acquisition coverage reported by the observation run; independent of visible selection completeness. */
+                    coverage: string;
+                    /** @enum {unknown} */
+                    records_completeness: "COMPLETE" | "PARTIAL" | "UNKNOWN";
+                    /** @description Number of displayed selectable records, not the total report size. */
+                    record_count: number;
+                    record_metadata: {
+                        ref: {
+                            /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                            namespace: string;
+                            key: string;
+                            version: string;
+                        };
+                        campaign_id: string | null;
+                        start: string | null;
+                        end: string | null;
+                        boundary: ("INCLUSIVE_DATES" | "HALF_OPEN_INSTANTS") | null;
+                        grain: ("TOTAL" | "DAY" | "HOUR") | null;
+                        timezone: string | null;
+                    }[];
+                    selection: components["schemas"]["DataLicenseSelection"];
+                    material_refs: {
+                        /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                        namespace: string;
+                        key: string;
+                        version: string;
+                    }[];
+                }[];
+            }[];
+            sources_more: boolean;
+            licenses_more: boolean;
+            licenses: {
+                /** Format: uuid */
+                license_id: string;
+                /** Format: uuid */
+                boundary_id: string;
+                boundary_grant_id: string | null;
+                use_grant_id: string | null;
+                /** Format: uuid */
+                source_id: string;
+                resource: string;
+                operation: string;
+                purpose: string;
+                /** Format: date-time */
+                valid_until: string;
+                /** @enum {unknown} */
+                status: "active" | "expired" | "withdrawn";
+                selection: components["schemas"]["DataLicenseSelection"];
+                /** Format: uuid */
+                recipient_public_id: string;
+                material_refs: {
+                    /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                    namespace: string;
+                    key: string;
+                    version: string;
+                }[];
+                record_metadata: {
+                    ref: {
+                        /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                        namespace: string;
+                        key: string;
+                        version: string;
+                    };
+                    campaign_id: string | null;
+                    start: string | null;
+                    end: string | null;
+                    boundary: ("INCLUSIVE_DATES" | "HALF_OPEN_INSTANTS") | null;
+                    grain: ("TOTAL" | "DAY" | "HOUR") | null;
+                    timezone: string | null;
+                }[];
+                covered: boolean;
+                bound: boolean;
+                coverage_revision: number;
+                binding_revision: number;
+                is_declarant: boolean;
+                summary: {
+                    /** @enum {unknown} */
+                    state: "prepared" | "published";
+                    /** Format: uuid */
+                    input_license_id: string;
+                    process_grant_id: string;
+                    dependencies: {
+                        input: {
+                            /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                            namespace: string;
+                            key: string;
+                            version: string;
+                        };
+                        /** Format: uuid */
+                        data_use_scope_id: string;
+                        policy_id: string;
+                        policy_version: number;
+                    }[];
+                } | null;
+            }[];
+            business_use_options: {
+                grant_id: string;
+            }[];
+            binding_options: {
+                grant_id: string;
+            }[];
+            beneficiaries: {
+                /** Format: uuid */
+                public_id: string;
+                name: string;
+                /** @enum {unknown} */
+                realm_kind: "direct" | "agency";
+                realm_workspace_public_id: string | null;
+            }[];
+            assignments: {
+                /** Format: uuid */
+                license_id: string;
+                /** Format: uuid */
+                recipient_public_id: string;
+                grant_id: string;
+                /** @enum {unknown} */
+                status: "active" | "revoked";
+                revision: number;
+                /** Format: date-time */
+                valid_until: string;
+            }[];
+            assigned_licenses: {
+                /** Format: uuid */
+                license_id: string;
+                operation: string;
+                purpose: string;
+                /** Format: date-time */
+                valid_until: string;
+                artifact_ref?: {
+                    /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                    namespace: string;
+                    key: string;
+                    version: string;
+                };
+                use_grant_id?: string;
+            }[];
+            operating_mandate: {
+                available: boolean;
+                previous_grant: string;
+            };
+        };
+        DataLicenseJourneyResult: {
+            data: components["schemas"]["DataLicenseJourney"];
+        };
+        BusinessOperatingMandateCommand: {
+            /** Format: uuid */
+            command_id: string;
+            authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+            /** @constant */
+            confirmed: true;
+            /** @enum {unknown} */
+            capacity: "responsible_business" | "client_mandate";
+            authority_reference: string;
+            /** Format: date-time */
+            valid_until: string;
+            previous_grant: string;
+        };
+        BusinessOperatingMandateResult: {
+            data: {
+                /** Format: uuid */
+                business_public_id: string;
+                grant_refs: {
+                    "business.data.use": string;
+                    "business.link.manage": string;
+                };
+                /** Format: uuid */
+                qualification_ref: string;
+                /** @constant */
+                assurance: "DECLARED_AUTHORITY";
+                versions: {
+                    /** @constant */
+                    qualification: 1;
+                };
+            };
+        };
+        BusinessDataUseBeneficiaryCommand: {
+            /** Format: uuid */
+            command_id: string;
+            authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+            /** Format: uuid */
+            license_id: string;
+            /** @enum {unknown} */
+            effect: "assign" | "revoke";
+            /** Format: uuid */
+            recipient_public_id: string;
+            /** Format: date-time */
+            valid_until: string;
+            expected_revision: number;
+        };
+        BusinessDataUseBeneficiaryResult: {
+            data: {
+                /** Format: uuid */
+                license_id: string;
+                /** Format: uuid */
+                recipient_public_id: string;
+                grant_id: string;
+                /** @enum {unknown} */
+                status: "active" | "revoked";
+                versions: {
+                    grant: number;
+                };
+            };
         };
         BusinessFoundationError: {
             /** @enum {unknown} */
@@ -24267,6 +24638,511 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readDataLicenseJourney: {
+        parameters: {
+            query: {
+                access: number;
+            };
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataLicenseJourneyResult"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Identity context conflict; close the document when identityConflict is true. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    declareBusinessOperatingMandate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessOperatingMandateCommand"];
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            grant_refs: {
+                                "business.data.use": string;
+                                "business.link.manage": string;
+                            };
+                            /** Format: uuid */
+                            qualification_ref: string;
+                            /** @constant */
+                            assurance: "DECLARED_AUTHORITY";
+                            versions: {
+                                /** @constant */
+                                qualification: 1;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Current scoped authority denied; no authority inferred from Workspace membership. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Typed command, shape or semantic validation rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["ValidationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    assignDataUseBeneficiary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessDataUseBeneficiaryCommand"];
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            license_id: string;
+                            /** Format: uuid */
+                            recipient_public_id: string;
+                            grant_id: string;
+                            /** @enum {unknown} */
+                            status: "active" | "revoked";
+                            versions: {
+                                grant: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Current scoped authority denied; no authority inferred from Workspace membership. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Typed command, shape or semantic validation rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["ValidationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    prepareExpenditureSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                    /** Format: uuid */
+                    summary_id: string;
+                    input_ref: {
+                        /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                        namespace: string;
+                        key: string;
+                        version: string;
+                    };
+                    /** Format: uuid */
+                    input_license_id: string;
+                    /** Format: uuid */
+                    read_command_id: string;
+                    /** @constant */
+                    confirmed: true;
+                    /** Format: date-time */
+                    valid_until: string;
+                    consent: {
+                        /** @constant */
+                        derive: true;
+                        /** @constant */
+                        deliver_summary: true;
+                        /** @constant */
+                        retain_payload: false;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            artifact_ref: {
+                                /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                                namespace: string;
+                                key: string;
+                                version: string;
+                            };
+                            dependencies: {
+                                input: {
+                                    /** @description Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer. */
+                                    namespace: string;
+                                    key: string;
+                                    version: string;
+                                };
+                                /** Format: uuid */
+                                data_use_scope_id: string;
+                                policy_id: string;
+                                policy_version: number;
+                            }[];
+                            /** Format: uuid */
+                            license_id: string;
+                            use_grant_id: string;
+                            /** @constant */
+                            status: "prepared";
+                            versions: {
+                                /** @constant */
+                                summary: 1;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Current scoped authority denied; no authority inferred from Workspace membership. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Typed command, shape or semantic validation rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["ValidationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    declareBoundedDataUseLicense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessDataUseLicenseCommand"];
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            license_id: string;
+                            /** Format: uuid */
+                            boundary_id: string;
+                            boundary_grant_id: string;
+                            use_grant_id: string;
+                            /** @enum {unknown} */
+                            status: "active" | "withdrawn";
+                            /** @constant */
+                            assurance: "DECLARED_AUTHORITY";
+                            versions: {
+                                /** @enum {unknown} */
+                                license: 1 | 2;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Current scoped authority denied; no authority inferred from Workspace membership. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["Error"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Typed command, shape or semantic validation rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessFoundationError"] | components["schemas"]["ValidationError"] | components["schemas"]["Error"];
                 };
             };
             /** @description Original Laravel authorization, CSRF, validation or service failure. */

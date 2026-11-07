@@ -1,4 +1,5 @@
 import { onClose, scope, TransportError } from '../spa/transport';
+import { hasPendingDataLicense } from './dataLicenseJourney';
 import type { ContextCommand, CreateCommand, DraftResult, FactCommand, FactKind, Goals, LinkCommand, GrantCommand, ResourceCommand, BindingCommand, InternalTeamCommand, LifecycleCommand } from './api';
 type DeliveryState = { uncertain?: boolean; blocked?: boolean };
 // Delivery uncertainty is document state, not authority. A first validation
@@ -42,6 +43,7 @@ export const creation: { name: string; type: number | null; codes: string[]; pen
 export function key(business: string, realm: unknown) { return JSON.stringify([scope, business, realm, 'business.context:1']); }
 export const businessDraftPrefix = (business: string) => `${JSON.stringify([scope, business]).slice(0, -1)},`;
 export function hasPendingBusinessDraft(business: string) {
+    if (hasPendingDataLicense(business)) return true;
     if (creation.receipt?.business_public_id === business && creation.marketPending) return true;
     const prefix = businessDraftPrefix(business);
     return [drafts, factDrafts, linkDrafts, delegationDrafts, internalTeamDrafts, directTeamDrafts, purposeEnrollmentDrafts, dataUseDrafts, lifecycleDrafts]

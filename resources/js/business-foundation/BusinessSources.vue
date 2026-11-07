@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { Link2 } from '@lucide/vue';
 import AdvertisingAccounts from '../sources/AdvertisingAccounts.vue';
+import BusinessDataLicenses from './BusinessDataLicenses.vue';
 import { pending } from '../sources/commands';
 import { rememberBusinessReturn } from '../sources/businessReturn';
 import { businessSources, type BusinessSources as BusinessSourcesResult, type Surface } from './api';
@@ -10,7 +11,7 @@ import { locale } from '../spa/locale';
 import { owned, stamp } from '../spa/transport';
 
 const props = defineProps<{ surface: Surface; active: boolean }>();
-defineEmits<{ openAccess: [] }>();
+defineEmits<{ openAccess: []; refresh: [] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const result = ref<BusinessSourcesResult>();
 const loading = ref(false);
@@ -55,6 +56,7 @@ onBeforeUnmount(() => { generation++; window.removeEventListener('beforeunload',
         <p class="workspace-intro">{{ t('اربط الحساب الذي تحتاج إليه، ثم راجع ما يُسمح باستعماله من بياناته في هذا النشاط. يمكنك إعداد نشاطك وأسواقه قبل ربط أي حساب.', 'Connect the account you need, then review which of its data this business may use. You can set up your business and markets before connecting an account.') }}</p>
         <h2 class="workspace-subheading">{{ t('الحسابات الإعلانية للنشاط', 'Business advertising accounts') }}</h2>
         <AdvertisingAccounts :key="business" :business-id="business" :can-manage="true" />
+        <BusinessDataLicenses :surface="surface" :active="active" @refresh="$emit('refresh')" />
         <details class="workspace-disclosure" data-business-source-inventory-details>
         <summary>{{ t('المصادر المشتركة مع جهة أو فريق', 'Sources shared through an organization or team') }}</summary>
         <p class="workspace-intro">{{ t('المصادر المتاحة لإدارتك. استعمال بياناتها في هذا النشاط يحتاج صلاحية مستقلة.', 'Sources available for you to administer. Using their data in this business needs separate permission.') }}</p>

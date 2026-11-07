@@ -16,7 +16,7 @@ return new class extends Migration
         foreach (['integrity', 'authority'] as $part) {
             DB::unprepared(file_get_contents(database_path("sql/business_native_sources/{$part}.sql")));
         }
-        foreach (['source_custody_integrity()', 'require_business_source_creator(bigint,bigint,text,jsonb,boolean)', 'business_source_grant_current(bigint,bigint,text,boolean)',
+        foreach (['source_custody_integrity()', 'require_business_source_creator(bigint,bigint,text,jsonb,boolean)', 'business_source_basis_current(bigint,bigint)', 'business_source_grant_current(bigint,bigint,text,boolean)',
             'business_source_proof(bigint,bigint,text,boolean)', 'business_source_require(text,uuid,text,text,text,text)'] as $function) {
             DB::statement("ALTER FUNCTION builderad_private.{$function} OWNER TO builderad_scope_executor");
         }

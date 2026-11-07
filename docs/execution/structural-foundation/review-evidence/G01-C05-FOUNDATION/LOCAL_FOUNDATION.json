@@ -1,0 +1,28 @@
+{
+  "processes": "STOPPED",
+  "php_errors": 0,
+  "source_unchanged": true,
+  "candidate_sha256": "0cdf35da14d44a8580f3b2a8a856084be9d66caf2db25f1cfb08d2cfe5555c9d",
+  "php_skipped": 0,
+  "php_tests": 1442,
+  "run": "storage/framework/testing/goals-spa-469bc503-b156-4909-8002-5b9fb18a670b",
+  "php_failures": 0,
+  "head": "e2fd972985be3c1bb7c9d6a80b73b23a45281096",
+  "verdict": "LOCAL_FOUNDATION_PASS",
+  "php_assertions": 31400,
+  "js_pass": 505,
+  "source_differences": [],
+  "asset_inventory": "58 full assets separately matched by the C05 verifier; runner records production manifests",
+  "verified_at": "2026-11-07T15:15:52.5225165+03:00",
+  "gate_logs": {
+    "gate-npm-run-api-check.log": "2C71BA663C22B2AD2262D2700F1450730424444FEA56AC773F1557722B0C8132",
+    "gate-php-vendor-bin-pint---test.log": "061783573621DEAF890165A9E89C421109C8B4A436061B436E32EC1A413B661C",
+    "gate-npm-test.log": "8DC27DA4609553A41F86045658CED955E73C806A76BB22DADFD263686FF47C2B",
+    "gate-npm-run-build.log": "E76367FB6476F8B680A7E2B50D82AA8D392C7FA95F3F65D4EACF48B92628C013",
+    "gate-composer-validate---strict.log": "617D39E3B4752168F63039991B7E1EFACA11E54A1F5A9153D93B0D4EFE91FE05",
+    "gate-composer-audit.log": "A2CAF0F7C741E62640C2DA83B829C15D0373825ABC85618AD482156A2B00C508",
+    "gate-npm-audit---audit-level=high.log": "4B02D4A3C23D969C46BD2041360F80BFCB1FE760D9DB864009ACDD710F9DE601",
+    "gate-runtime-assets.log": "FD85BD93A295017263A6532DDE8C83EE1A21A702C54868F46FEB022C7A09743C",
+    "gate-npm-run-inertia-check.log": "2B2F2F721E66D8B5C9856BD80B9322C3CC7B9E7ACC07E8D6BD07867233B35457"
+  }
+}

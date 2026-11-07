@@ -15,6 +15,21 @@ class InquiryEvidenceAdmissionTest extends TestCase
 {
     use InquiryEvidenceFixture;
 
+    public function test_new_verified_payment_type_cannot_reinterpret_or_replace_existing_inquiry_assertions(): void
+    {
+        $f = $this->fixture();
+        $record = $this->selection($f['enrolled']['grants']['business.inquiry_evidence.record']);
+        $read = $this->selection($f['enrolled']['grants']['business.inquiry_evidence.read']);
+        $first = $f['evidence']->write($f['request'], $f['business'], (string) Str::uuid(), null, 0, 'record', $this->value(), $record);
+        $before = $f['evidence']->read($f['request'], $f['business'], $read);
+        $value = $this->value();
+        $value['verified_payment'] = ['transaction_ref' => 'synthetic-payment', 'amount' => '100.00', 'currency' => 'SAR', 'status' => 'settled'];
+        $this->denied(fn () => $f['evidence']->write($f['request'], $f['business'], (string) Str::uuid(), null, 0, 'record', $value, $record), '22023');
+        $this->assertSame($before, $f['evidence']->read($f['request'], $f['business'], $read));
+        $this->assertFalse($before['independently_verified']);
+        $this->assertSame($first['declaration_id'], $before['items'][0]['declaration_id']);
+    }
+
     public function test_criterion_definitions_survive_exact_replay_correction_history_and_withdrawal(): void
     {
         $f = $this->fixture();

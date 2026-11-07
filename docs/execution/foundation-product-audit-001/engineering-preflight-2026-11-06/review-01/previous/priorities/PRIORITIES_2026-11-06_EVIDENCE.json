@@ -1,0 +1,262 @@
+{
+  "task": "Four-opinion review and bounded document revision",
+  "date": "2026-11-06",
+  "revision": "1.1",
+  "head": "e2fd972985be3c1bb7c9d6a80b73b23a45281096",
+  "status": "DOCUMENT_CHECKS_ONLY",
+  "scope": "Two planning/research documents revised; review disposition added",
+  "checks": [
+    {
+      "check": "preserved_original_or_prior_version",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\ASSESSMENT.md",
+      "pass": true
+    },
+    {
+      "check": "preserved_original_or_prior_version",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\PLAN_TRACEABILITY.csv",
+      "pass": true
+    },
+    {
+      "check": "preserved_original_or_prior_version",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "preserved_original_or_prior_version",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\CI_BASELINE.json",
+      "pass": true
+    },
+    {
+      "check": "preserved_original_or_prior_version",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\CI_BASELINE.log",
+      "pass": true
+    },
+    {
+      "check": "preserved_original_or_prior_version",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\REPORT.md",
+      "pass": true
+    },
+    {
+      "check": "preserved_original_or_prior_version",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\SOURCES.csv",
+      "pass": true
+    },
+    {
+      "check": "preserved_original_or_prior_version",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "preserved_original_or_prior_version",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\priority-review-2026-11-06\\previous\\PRIORITIES_AND_PARALLEL_RESEARCH_2026-11-06.md",
+      "pass": true
+    },
+    {
+      "check": "preserved_original_or_prior_version",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\priority-review-2026-11-06\\previous\\NEXT-01_ADVERTISING_DECISION_RESEARCH.md",
+      "pass": true
+    },
+    {
+      "check": "preserved_original_or_prior_version",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\priority-review-2026-11-06\\previous\\PRIORITIES_2026-11-06_EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "AGENTS.md",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "docs/execution/foundation-product-audit-001/ASSESSMENT.md",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "docs/execution/foundation-product-audit-001/PLAN_TRACEABILITY.csv",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "docs/execution/structural-foundation/PROGRAM.md",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "docs/execution/structural-foundation/EXPERTISE_INTEGRATION.md",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "database/sql/business_scope/schema.sql",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "app/Foundation/Business/BusinessScope.php",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "app/Business/AdvertiserGoalPreferences.php",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "resources/js/business-foundation/BusinessCreate.vue",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "resources/js/business-foundation/BusinessWorkspace.vue",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "resources/js/business-foundation/advertiserNavigation.ts",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "app/MarketKnowledge/Processing/MarketMethodSelector.php",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "app/MarketKnowledge/CustomerDiscoveryConsumer.php",
+      "pass": true
+    },
+    {
+      "check": "prior_local_source_state_unchanged",
+      "path": "app/Commercial/RegisterCommercialScope.php",
+      "pass": true
+    },
+    {
+      "check": "opinion_disposition_covers_four_sources",
+      "pass": true
+    },
+    {
+      "check": "connected_value_and_progressive_entry_and_market_meanings",
+      "pass": true
+    },
+    {
+      "check": "reach_bridge_and_semantic_stability_and_no_blanket_research",
+      "pass": true
+    },
+    {
+      "check": "new_local_document_links_resolve",
+      "pass": true
+    },
+    {
+      "check": "baseline_unchanged_no_tracked_or_staged_edits",
+      "pass": true
+    }
+  ],
+  "opinions": [
+    {
+      "opinion": 1,
+      "path": "C:/Users/stoma/.codex/attachments/e3327750-ce28-4c0c-9f61-a91ce889db32/Pasted text.txt",
+      "sha256": "00955569f600950488235e806d23a7abba3d3a9f31a7dbc8f46f6d1759a55227",
+      "review": "Full supplied text; no independent verification of every external assertion"
+    },
+    {
+      "opinion": 2,
+      "path": "C:/Users/stoma/.codex/attachments/2ea982ef-b436-4f7e-a944-0b684f0f31d5/Pasted text.txt",
+      "sha256": "0b8090505bd8b01246e6d40fc246311cf8838487a1d041e4662777f47e94dd78",
+      "review": "Full supplied text; no independent verification of every external assertion"
+    },
+    {
+      "opinion": 3,
+      "path": "C:/Users/stoma/.codex/attachments/6c566b7e-c3f6-4b6d-a0f1-5fe59a3df36b/Pasted text.txt",
+      "sha256": "2492584aa9143db80ee2037ad76d8f0d929fc97319ea18347b4709d24f7c0bfe",
+      "review": "Full supplied text; no independent verification of every external assertion"
+    },
+    {
+      "opinion": 4,
+      "path": "C:/Users/stoma/.codex/attachments/0bdf4af7-69c7-4d3d-897d-20542a85ea9e/Pasted text.txt",
+      "sha256": "93bc05364fa951c5a3b92c7561e542f7beb49bbe6ddba5f269130aa4d5d6dea1",
+      "review": "Full supplied text; no independent verification of every external assertion"
+    }
+  ],
+  "prior_version": "priority-review-2026-11-06/previous/",
+  "prior_evidence_checks": 15,
+  "prior_tests_reclassified": false,
+  "sources": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "6193381ed4df5f15aa1fb0e00f4d9e73f808e0e46a801df5887b6a1e01b73c7d",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    },
+    {
+      "path": "docs/execution/foundation-product-audit-001/ASSESSMENT.md",
+      "sha256": "c3644e0e102ed1c4a2cf80f2654f9692c0cafd5b1642db54dd689a1851b66fba",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    },
+    {
+      "path": "docs/execution/foundation-product-audit-001/PLAN_TRACEABILITY.csv",
+      "sha256": "e4559a26bd4532e057cf62d35bef2d5cac23024fa5ff530c3cddb2616b161ffa",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    },
+    {
+      "path": "docs/execution/structural-foundation/PROGRAM.md",
+      "sha256": "5bbdd8277e8352429212d9bcf3ca2dd7a52fa9c266733fafe8694cab742dabdb",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    },
+    {
+      "path": "docs/execution/structural-foundation/EXPERTISE_INTEGRATION.md",
+      "sha256": "b479b008323075ec8b8a32c54131ee6fc3905ab89214e3ce6fa0ad97948bd9b4",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    },
+    {
+      "path": "database/sql/business_scope/schema.sql",
+      "sha256": "5571c836e6e261756f04888d20db2f1cee18cc7cd6f96fa015dce462867f0e0e",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    },
+    {
+      "path": "app/Foundation/Business/BusinessScope.php",
+      "sha256": "a031ed437a35c978820cc9828e8eb2dd7965478484122847f3b4e244facbe870",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    },
+    {
+      "path": "app/Business/AdvertiserGoalPreferences.php",
+      "sha256": "8637c89a00202881131fbdb01182566c91d25c75214a6659b4cd7ac0742f8d01",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    },
+    {
+      "path": "resources/js/business-foundation/BusinessCreate.vue",
+      "sha256": "ecf07174e880282752e3fc862ba3d7fabdeeefebe32d533a20b37d8e8750623b",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    },
+    {
+      "path": "resources/js/business-foundation/BusinessWorkspace.vue",
+      "sha256": "4f88c901274490b2973df64de02872666d5dda156d98462745a0e909d393479d",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    },
+    {
+      "path": "resources/js/business-foundation/advertiserNavigation.ts",
+      "sha256": "79cc0e51b54f065dee6fd8040ad1cff3844cf07fc6d1ae9a14ccd29d0b0a58cd",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    },
+    {
+      "path": "app/MarketKnowledge/Processing/MarketMethodSelector.php",
+      "sha256": "f41a849116de2f36e7d0078c5df8735679447d308bc1020dacce84769ae1b8f3",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    },
+    {
+      "path": "app/MarketKnowledge/CustomerDiscoveryConsumer.php",
+      "sha256": "5afc52aa1830d630585e691d8fb77aebf20dd2f1736a6ec862fd796fc11be893",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    },
+    {
+      "path": "app/Commercial/RegisterCommercialScope.php",
+      "sha256": "d98762a18d11a6e944d68a6497434ab4e614c3674600f4ce803cbdfa45ace68a",
+      "review": "Selected relevant passages; hash identifies source state, not whole-file validation"
+    }
+  ],
+  "product_implementation_started": false,
+  "product_tests_run": false,
+  "foundation_rerun": false,
+  "github_refreshed_this_task": false,
+  "task_started_services": [],
+  "limits": "No product acceptance or new implementation authority; no market or provider runtime or commercial-effect proof"
+}

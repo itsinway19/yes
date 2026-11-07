@@ -6,6 +6,7 @@ import AdvertiserWorkspaceLayout from './AdvertiserWorkspaceLayout.vue';
 import BusinessSources from './BusinessSources.vue';
 import { locale } from '../spa/locale';
 import { key, lifecycleDrafts, purposeEnrollmentDrafts } from './drafts';
+import { hasPendingDataLicense } from './dataLicenseJourney';
 import type { Surface } from './api';
 import type { BusinessChoice } from './businessChoices';
 import { workspacePresentation, workspacePresentationKey, workspaceLocation, type WorkspaceSection, type WorkspaceSettingsView } from './workspacePresentation';
@@ -28,7 +29,7 @@ const props = withDefaults(defineProps<{ surface: Surface; refreshing?: boolean 
 const emit = defineEmits<{ refresh: [] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const resource = key(props.surface.business.business_public_id, props.surface.authority_selection);
-const hasPendingOperation = () => !!purposeEnrollmentDrafts.get(`${resource}:purpose-enrollment:1`)?.pending || !!lifecycleDrafts.get(`${resource}:lifecycle:1`)?.pending;
+const hasPendingOperation = () => hasPendingDataLicense(props.surface.business.business_public_id) || !!purposeEnrollmentDrafts.get(`${resource}:purpose-enrollment:1`)?.pending || !!lifecycleDrafts.get(`${resource}:lifecycle:1`)?.pending;
 const canDepartPurposeEnrollment = () => (!hasPendingOperation() && !accountPending.size) || confirm(t('توجد عملية غير محسومة. هل تريد المغادرة مع الاحتفاظ بالطلب الأصلي؟', 'An operation has an unknown outcome. Leave while retaining its original request?'));
 onBeforeRouteLeave(canDepartPurposeEnrollment);
 onBeforeRouteUpdate((to, from) => {
@@ -133,7 +134,7 @@ async function navigate(section: WorkspaceSection, subview?: WorkspaceSettingsVi
                 <BusinessFacts :surface="surface" :refreshing="refreshing" @refresh="emit('refresh')" />
             </section>
             <section v-if="visited.has('sources')" v-show="active === 'sources'" data-workspace-panel="sources">
-                <BusinessSources :surface="surface" :active="active === 'sources'" @open-access="navigate('settings', 'access')" />
+                <BusinessSources :surface="surface" :active="active === 'sources'" @open-access="navigate('settings', 'access')" @refresh="emit('refresh')" />
                 <p v-if="dataUsePending" role="status" data-business-source-pending>{{ t('يوجد أمر استعمال بيانات غير محسوم.', 'A data-use command has an unresolved outcome.') }} <button type="button" class="workspace-button" @click="advancedSources && (advancedSources.open = true)">{{ t('فتح الإعدادات للتحقق من الأمر', 'Open settings to reconcile the command') }}</button></p>
                 <details ref="advancedSources" class="workspace-disclosure" data-business-source-advanced>
                     <summary>{{ t('استعمال البيانات في هذا النشاط', 'Data use in this business') }}</summary>

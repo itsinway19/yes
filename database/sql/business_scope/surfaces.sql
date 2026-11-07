@@ -182,7 +182,7 @@ BEGIN
     -- Discover the existing exact action, never infer archive from context editing.
     archive_options:=archive_options||jsonb_build_array(jsonb_build_object('grant_id',g.id::text));
    ELSIF write_action='business.context.manage' THEN options:=options||jsonb_build_array(jsonb_build_object('grant_id',g.id::text));
-   ELSIF write_action='business.link.manage' THEN
+   ELSIF write_action='business.link.manage' AND proof#>>'{qualification,policy_id}'<>'business_operating_mandate_v1' THEN
     link_options:=link_options||jsonb_build_array(jsonb_build_object('grant_id',g.id::text,'allows_agency',proof#>>'{qualification,issuer_kind}'<>'self_declared_draft'));
    ELSIF write_action IN('business.markets.declare','business.intent.declare','business.preferences.manage','business.purpose.declare') THEN
     fact_key:=CASE write_action WHEN 'business.markets.declare' THEN 'markets' WHEN 'business.intent.declare' THEN 'intent' WHEN 'business.preferences.manage' THEN 'preferences' WHEN 'business.purpose.declare' THEN 'purpose' END;
@@ -198,7 +198,7 @@ BEGIN
     ) limits WHERE value IS NOT NULL;
     delegation_options:=delegation_options||jsonb_build_array(jsonb_build_object('grant_id',g.id::text,'action',write_action,
      'can_issue',parent_row.delegable AND jsonb_array_length(proof->'grants')<16,
-     'can_delegate_onward',proof#>>'{qualification,policy_id}' NOT IN('internal_client_file_admin_v1','business_declaration_team_admin_v1'),
+     'can_delegate_onward',proof#>>'{qualification,policy_id}' NOT IN('internal_client_file_admin_v1','business_declaration_team_admin_v1','business_operating_mandate_v1'),
      'can_choose_agency',read_selection->>'realm_kind'='direct' AND proof#>>'{qualification,policy_id}' NOT IN('internal_client_file_admin_v1','business_declaration_team_admin_v1'),
      'max_expires_at',expiry,'chain_depth',jsonb_array_length(proof->'grants')));
    END IF;
@@ -353,6 +353,9 @@ BEGIN
   last_id:=g.id;scanned:=scanned+1;
   SELECT * INTO s FROM public.data_use_scopes WHERE scope_id=g.data_use_scope_id;
   IF NOT FOUND THEN CONTINUE; END IF;
+  -- Fixed output licences are exposed through their Business journey. The generic
+  -- source-rights picker would disclose their internal Source/boundary pointers.
+  IF s.resource='business.expenditure_summary' THEN CONTINUE; END IF;
   prepared:=prepared||jsonb_build_array(jsonb_build_object('grant_id',g.id,'scope',to_jsonb(s)));
   sources:=array_append(sources,s.source_id);boundaries:=array_append(boundaries,s.boundary_id);
   requirements:=requirements||jsonb_build_array(jsonb_build_object('requirement_kind','data_use','leaf_grant_id',g.id));

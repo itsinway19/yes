@@ -98,6 +98,29 @@ class SourceRegistryTest extends TestCase
         $this->command([...$this->input, 'token' => 'never_store'])->assertUnprocessable();
     }
 
+    public function test_new_non_advertising_family_reuses_registry_without_advertising_or_data_use_authority(): void
+    {
+        $this->input = [...$this->input, 'family' => 'synthetic_store', 'namespace' => 'orders', 'label' => 'Synthetic commerce source',
+            'resource' => 'synthetic-order-stream', 'operation' => 'orders.read', 'purpose' => 'commerce_measurement'];
+        foreach (['source.register', 'source.read', 'source.manage', 'source.audit.recover'] as $action) {
+            $this->grantFixture($action);
+        }
+        $input = $this->input;
+        $this->command($input)->assertOk()->assertJsonPath('registration_state', 'UNVERIFIED');
+        $response = $this->getJson('/workspaces/'.$this->workspace)->assertOk()
+            ->assertJsonPath('data.sources.items.0.family', 'synthetic_store')
+            ->assertJsonPath('data.sources.items.0.namespace', 'orders')
+            ->assertJsonPath('data.sources.items.0.capability.state', 'UNKNOWN')
+            ->assertJsonPath('data.sources.items.0.axes.provider_permission', 'UNKNOWN');
+        $this->assertStringNotContainsString('VERIFIED_AVAILABLE', $response->getContent());
+        $this->assertSame(0, $this->owner()->table('provider_access')->count());
+        $this->assertSame(0, $this->owner()->table('data_use_scopes')->count());
+        $this->assertSame(0, $this->owner()->table('business_data_use_bindings')->count());
+        $this->command($input)->assertOk();
+        $this->assertSame(1, $this->owner()->table('source_registry')->count());
+        $this->assertSame(1, $this->owner()->table('source_command_receipts')->count());
+    }
+
     public function test_application_source_resource_preserves_exact_scope_truth_and_passive_deadlines(): void
     {
         $path = '/workspaces/'.$this->workspace;

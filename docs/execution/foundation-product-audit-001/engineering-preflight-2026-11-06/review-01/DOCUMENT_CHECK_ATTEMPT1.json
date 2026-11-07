@@ -1,0 +1,126 @@
+{
+  "kind": "DOCUMENT_CHECK_ATTEMPT",
+  "attempt": 1,
+  "checks": [
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\previous\\priorities\\PRIORITIES_AND_PARALLEL_RESEARCH_2026-11-06.md",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\previous\\priorities\\NEXT-01_ADVERTISING_DECISION_RESEARCH.md",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\previous\\priorities\\PRIORITIES_2026-11-06_EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\previous\\priorities\\priority-review-2026-11-06\\REVIEW_DISPOSITION.md",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\previous\\engineering\\ASSESSMENT.md",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\previous\\engineering\\RISK_REGISTER.csv",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\previous\\engineering\\SOURCES.csv",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\previous\\engineering\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\ASSESSMENT.md",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\PLAN_TRACEABILITY.csv",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\CI_BASELINE.json",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\CI_BASELINE.log",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\REPORT.md",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\SOURCES.csv",
+      "pass": true
+    },
+    {
+      "check": "historical_manifest_preserved",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "26_unique_risks_classified_six_sixteen_four",
+      "pass": true
+    },
+    {
+      "check": "use_case_precedes_contract_all_active_documents",
+      "pass": true
+    },
+    {
+      "check": "per_capability_sufficiency_and_current_method_constraints",
+      "pass": true
+    },
+    {
+      "check": "single_question_with_revalidation_not_permanent_stale_reuse",
+      "pass": false
+    },
+    {
+      "check": "hosting_does_not_dictate_architecture_and_cloud_is_option",
+      "pass": true
+    },
+    {
+      "check": "all_four_opinions_and_direct_owner_notes_disposed",
+      "pass": true
+    },
+    {
+      "check": "concurrency_runtime_and_human_understanding_scoped",
+      "pass": true
+    },
+    {
+      "check": "new_active_document_links_exist",
+      "pass": true
+    },
+    {
+      "check": "head_tracked_and_staged_code_preserved",
+      "pass": true
+    }
+  ],
+  "reason": "The check searched for an exact phrase absent from the sufficiency document; its no-repeat and reasoned-reconfirmation rules are present under section4",
+  "is_product_failure": false,
+  "source": "CAPABILITY_CONTEXT_REQUIREMENTS.md",
+  "original_expression": "Contains('مرة للسياق الحالي') AND Contains('طلب تأكيد مع السبب') AND Contains('لا يتطلب هذا وحده مخزن محادثات')"
+}

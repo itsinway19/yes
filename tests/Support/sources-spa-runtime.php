@@ -6,7 +6,7 @@ use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Cache;
 
-if (getenv('GOALS_SPA_PROOF') !== 'enabled' || getenv('GOALS_SPA_ONLY') !== 'sources') {
+if (getenv('GOALS_SPA_PROOF') !== 'enabled' || ! in_array(getenv('GOALS_SPA_ONLY'), ['sources', 'data-licenses'], true)) {
     throw new RuntimeException('Explicit isolated Source proof required');
 }
 app(DisposableTestDatabaseGuard::class)->assertSafe();
@@ -41,6 +41,13 @@ $http->fake(function (ClientRequest $request) use ($http) {
             return $http->response(['id' => 'act_123', 'account_id' => '123', 'name' => 'Synthetic Meta advertiser', 'currency' => 'USD', 'timezone_name' => 'UTC']);
         }
         if (str_ends_with($path, '/insights')) {
+            if (getenv('GOALS_SPA_ONLY') === 'data-licenses' && isset($fields['time_range'])) {
+                $range = is_string($fields['time_range']) ? json_decode($fields['time_range'], true, flags: JSON_THROW_ON_ERROR) : $fields['time_range'];
+
+                return $http->response(['data' => [['account_id' => '123', 'account_currency' => 'USD', 'campaign_id' => '101',
+                    'date_start' => $range['since'], 'date_stop' => $range['until'], 'spend' => '12.50', 'impressions' => '100', 'clicks' => '5']]]);
+            }
+
             return $http->response(['data' => []]);
         }
     }
