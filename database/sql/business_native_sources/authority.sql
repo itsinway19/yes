@@ -19,13 +19,11 @@ BEGIN
  RETURN proof;
 END $$;
 
-CREATE FUNCTION builderad_private.business_source_grant_current(p_grant bigint,p_actor bigint,p_session text,p_fresh boolean) RETURNS boolean
+CREATE FUNCTION builderad_private.business_source_basis_current(p_grant bigint,p_actor bigint) RETURNS boolean
 LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
  SELECT EXISTS(
-  SELECT 1 FROM public.builderad_signed_context() c
-  JOIN public.principal_lifecycles l ON l.user_id=c.actor_user_id AND l.user_id=p_actor AND l.status='current' AND l.principal_class='advertiser'
+  SELECT 1 FROM public.principal_lifecycles l
   JOIN public.users u ON u.id=l.user_id AND u.email_verified_at IS NOT NULL
-  JOIN public.security_sessions ss ON ss.user_id=l.user_id AND ss.lifecycle_generation=l.generation AND ss.session_key_hash=p_session
   JOIN public.security_action_grants g ON g.id=p_grant AND g.subject_user_id=l.user_id AND g.subject_generation=l.generation
   JOIN public.source_registry s ON s.id=g.source_target_id AND s.custody_kind='business_native' AND s.workspace_id IS NULL AND s.business_id=g.business_id
   JOIN public.businesses b ON b.id=s.business_id AND b.created_by=p_actor AND b.origin_kind='self_declared_draft' AND b.lifecycle IN('declared_draft','active')
@@ -34,7 +32,7 @@ LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_priv
   JOIN public.authority_qualification_receipts q ON q.qualification_id=g.qualification_id
   JOIN public.security_action_grants basis ON basis.id=q.issuer_grant_id AND basis.subject_user_id=l.user_id AND basis.subject_generation=l.generation
   JOIN public.authority_qualification_receipts basis_q ON basis_q.qualification_id=basis.qualification_id
-  WHERE c.phase='principal' AND c.workspace_id IS NULL AND g.scope_kind='source' AND g.workspace_id IS NULL
+  WHERE l.user_id=p_actor AND l.status='current' AND l.principal_class='advertiser' AND g.scope_kind='source' AND g.workspace_id IS NULL
    AND g.source='source_owner_request' AND g.granted_by=p_actor AND g.parent_grant_id IS NULL AND NOT g.delegable
    AND g.boundary_id IS NULL AND g.data_use_scope_id IS NULL AND g.delegation_realm_kind IS NULL AND g.delegation_workspace_id IS NULL
    AND g.status='active' AND g.revoked_at IS NULL AND(g.expires_at IS NULL OR g.expires_at>clock_timestamp())
@@ -49,7 +47,19 @@ LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_priv
    AND basis_q.subject_user_id=p_actor AND basis_q.target_kind='business' AND basis_q.target_ref=b.public_id
    AND basis.action=ANY(basis_q.allowed_actions) AND basis_q.status='active' AND basis_q.valid_from<=clock_timestamp()
    AND(basis_q.valid_until IS NULL OR basis_q.valid_until>clock_timestamp())
-   AND ss.revoked_at IS NULL AND ss.auth_method<>'internal_passkey' AND ss.idle_expires_at>clock_timestamp() AND ss.absolute_expires_at>clock_timestamp()
+ );
+$$;
+
+REVOKE ALL ON FUNCTION builderad_private.business_source_basis_current(bigint,bigint) FROM PUBLIC,builderad_app,builderad_authority;
+
+CREATE FUNCTION builderad_private.business_source_grant_current(p_grant bigint,p_actor bigint,p_session text,p_fresh boolean) RETURNS boolean
+LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
+ SELECT builderad_private.business_source_basis_current(p_grant,p_actor) AND EXISTS(
+  SELECT 1 FROM public.builderad_signed_context() c
+  JOIN public.principal_lifecycles l ON l.user_id=c.actor_user_id AND l.user_id=p_actor AND l.status='current' AND l.principal_class='advertiser'
+  JOIN public.security_sessions ss ON ss.user_id=l.user_id AND ss.lifecycle_generation=l.generation AND ss.session_key_hash=p_session
+  WHERE c.phase='principal' AND c.workspace_id IS NULL AND ss.revoked_at IS NULL AND ss.auth_method<>'internal_passkey'
+   AND ss.idle_expires_at>clock_timestamp() AND ss.absolute_expires_at>clock_timestamp()
    AND(NOT p_fresh OR ss.authenticated_at BETWEEN clock_timestamp()-interval '15 minutes' AND clock_timestamp())
  );
 $$;

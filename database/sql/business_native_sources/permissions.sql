@@ -31,6 +31,7 @@ REVOKE ALL ON FUNCTION builderad_private.business_source_audit_delivery(text,uui
 GRANT EXECUTE ON FUNCTION builderad_private.business_source_audit_delivery(text,uuid,uuid) TO builderad_owner;
 REVOKE ALL ON FUNCTION builderad_private.source_custody_integrity(),
  builderad_private.require_business_source_creator(bigint,bigint,text,jsonb,boolean),
+ builderad_private.business_source_basis_current(bigint,bigint),
  builderad_private.business_source_grant_current(bigint,bigint,text,boolean),
  builderad_private.business_source_proof(bigint,bigint,text,boolean),
  builderad_private.business_source_require(text,uuid,text,text,text,text)

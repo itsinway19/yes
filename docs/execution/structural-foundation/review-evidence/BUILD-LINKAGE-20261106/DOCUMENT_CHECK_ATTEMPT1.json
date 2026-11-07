@@ -1,0 +1,161 @@
+{
+  "attempt": 1,
+  "kind": "DOCUMENT_CHECKS",
+  "checks": [
+    {
+      "check": "existing_program_is_primary_and_correction_scoped",
+      "pass": true
+    },
+    {
+      "check": "learning_recommendation_and_extended_landscape_explicit",
+      "pass": false
+    },
+    {
+      "check": "per_function_owners_inputs_outputs_affected_consumers_and_failure_contract",
+      "pass": true
+    },
+    {
+      "check": "scoped_dependency_readiness_and_nonclosed_capabilities",
+      "pass": false
+    },
+    {
+      "check": "no_false_87_feature_runtime_acceptance",
+      "pass": true
+    },
+    {
+      "check": "progress_records_documentary_continuation",
+      "pass": true
+    },
+    {
+      "check": "current_program_link_resolves",
+      "pass": true
+    },
+    {
+      "check": "historical_lines_preserved_in_order",
+      "path": "PROGRAM.md",
+      "pass": true
+    },
+    {
+      "check": "historical_lines_preserved_in_order",
+      "path": "IMPLEMENTATION_PROGRESS.md",
+      "pass": true
+    },
+    {
+      "check": "program_snapshot_matches_prior_evidence_hash",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\ASSESSMENT.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\PLAN_TRACEABILITY.csv",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\CI_BASELINE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\CI_BASELINE.log",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\PRIORITIES_AND_PARALLEL_RESEARCH_2026-11-06.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\NEXT-01_ADVERTISING_DECISION_RESEARCH.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\PRIORITIES_2026-11-06_EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\priority-review-2026-11-06\\REVIEW_DISPOSITION.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\ASSESSMENT.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\RISK_REGISTER.csv",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\SOURCES.csv",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\CAPABILITY_CONTEXT_REQUIREMENTS.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\REVIEW_DISPOSITION.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\DOCUMENT_CHECK_ATTEMPT1.json",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\REPORT.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\SOURCES.csv",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "only_two_intended_existing_document_edits",
+      "pass": true
+    },
+    {
+      "check": "git_diff_whitespace_check",
+      "pass": true
+    },
+    {
+      "check": "head_unchanged",
+      "pass": true
+    }
+  ],
+  "interpretation": "Two text checks failed; inspect missing explicit coverage versus unnecessary exact-phrase matching; not product tests"
+}

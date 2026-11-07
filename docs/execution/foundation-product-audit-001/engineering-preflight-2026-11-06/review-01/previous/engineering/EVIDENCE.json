@@ -1,0 +1,452 @@
+{
+  "task": "Preimplementation engineering risk and technology selection study",
+  "date": "2026-11-06",
+  "head": "e2fd972985be3c1bb7c9d6a80b73b23a45281096",
+  "tree": "f0d6a1eda6481d82e01d740ef6df3de7f54c3e72",
+  "verdict": "PATH_RECOMMENDED_WITH_PACKAGE_GATES",
+  "performance": "UNMEASURED",
+  "checks": [
+    {
+      "check": "risk_count_and_unique_ids",
+      "pass": true
+    },
+    {
+      "check": "risk_classifications_and_complete_verification_fields",
+      "pass": true
+    },
+    {
+      "check": "six_gaps_fifteen_risks_three_measurement_areas",
+      "pass": true
+    },
+    {
+      "check": "fifteen_unique_official_reference_records",
+      "pass": true
+    },
+    {
+      "check": "report_and_risk_source_ids_resolve",
+      "pass": true
+    },
+    {
+      "check": "seven_sections_admin_ai_and_independent_authority_present",
+      "pass": true
+    },
+    {
+      "check": "performance_not_claimed_measured_and_baseline_specified",
+      "pass": true
+    },
+    {
+      "check": "no_unsupported_readiness_claim",
+      "pass": true
+    },
+    {
+      "check": "prior_report_or_evidence_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\ASSESSMENT.md",
+      "pass": true
+    },
+    {
+      "check": "prior_report_or_evidence_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\PLAN_TRACEABILITY.csv",
+      "pass": true
+    },
+    {
+      "check": "prior_report_or_evidence_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_report_or_evidence_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\CI_BASELINE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_report_or_evidence_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\CI_BASELINE.log",
+      "pass": true
+    },
+    {
+      "check": "prior_report_or_evidence_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\PRIORITIES_AND_PARALLEL_RESEARCH_2026-11-06.md",
+      "pass": true
+    },
+    {
+      "check": "prior_report_or_evidence_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\NEXT-01_ADVERTISING_DECISION_RESEARCH.md",
+      "pass": true
+    },
+    {
+      "check": "prior_report_or_evidence_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\PRIORITIES_2026-11-06_EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_report_or_evidence_preserved",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\priority-review-2026-11-06\\REVIEW_DISPOSITION.md",
+      "pass": true
+    },
+    {
+      "check": "prior_report_or_evidence_preserved",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\REPORT.md",
+      "pass": true
+    },
+    {
+      "check": "prior_report_or_evidence_preserved",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\SOURCES.csv",
+      "pass": true
+    },
+    {
+      "check": "prior_report_or_evidence_preserved",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "local_source_paths_resolve",
+      "pass": true
+    },
+    {
+      "check": "head_and_tracked_staged_state_preserved",
+      "pass": true
+    }
+  ],
+  "risk_counts": [
+    {
+      "classification": "CONFIRMED_GAP",
+      "count": 6
+    },
+    {
+      "classification": "DESIGN_RISK",
+      "count": 15
+    },
+    {
+      "classification": "MEASUREMENT_REQUIRED",
+      "count": 3
+    }
+  ],
+  "local_sources": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "6193381ed4df5f15aa1fb0e00f4d9e73f808e0e46a801df5887b6a1e01b73c7d",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "composer.json",
+      "sha256": "d840b82827ded5a649ac7be7bb6947e215195839aefca0202bb7aecf0f140343",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "composer.lock",
+      "sha256": "356b1522fdac9171178350afa5c53156e6083c0f0e0ad082b832b19a26bec2ba",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "package.json",
+      "sha256": "9ca3141074b5495d1bd61afceaf9f4673adce3f7f401bf61f486c28935fbe00f",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "5f9f109004b7018509355ad00af7c7a87ddd9477fc429ac296475354aa56370e",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": ".github/workflows/foundation.yml",
+      "sha256": "098f2a15543bbf3e104847532b9a72744e39c04ffa08ef6d6a640679dfee19ac",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md",
+      "sha256": "c7e68308165752c0d8742a6cc9b3063780f32b4ae1d4b6ae3e410213db9f81d3",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "docs/execution/structural-foundation/PROGRAM.md",
+      "sha256": "5bbdd8277e8352429212d9bcf3ca2dd7a52fa9c266733fafe8694cab742dabdb",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "docs/execution/structural-foundation/EXPERTISE_INTEGRATION.md",
+      "sha256": "b479b008323075ec8b8a32c54131ee6fc3905ab89214e3ce6fa0ad97948bd9b4",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "docs/execution/structural-foundation/OWNER_MANDATE.md",
+      "sha256": "7740d5639459b9bcce5a9649a2ac0e23816bd72f09b0abea1325dcda600dcbb6",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "docs/execution/foundation-product-audit-001/ASSESSMENT.md",
+      "sha256": "c3644e0e102ed1c4a2cf80f2654f9692c0cafd5b1642db54dd689a1851b66fba",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "docs/execution/foundation-product-audit-001/PLAN_TRACEABILITY.csv",
+      "sha256": "e4559a26bd4532e057cf62d35bef2d5cac23024fa5ff530c3cddb2616b161ffa",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "app/Foundation/Business/BusinessScope.php",
+      "sha256": "a031ed437a35c978820cc9828e8eb2dd7965478484122847f3b4e244facbe870",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "app/Foundation/Tenancy/PrincipalContext.php",
+      "sha256": "60bdd692f72ce7507fcf09cd409e67985152b8be0cb77c7f5eb61cd25483375c",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "app/Security/SessionAuthority.php",
+      "sha256": "9eac0828c568746026ebf8e9461e78c4c65635f31a952a6a86fde0bffa9e4675",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "app/Providers/Ads/ProviderQueuePolicy.php",
+      "sha256": "a4f9093217847a2c33c1a08751786afdf3af1d1c69dd10eff0c920ba4c15afa5",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "app/Providers/Ads/Meta/MetaReadJob.php",
+      "sha256": "3d3ec03a0f3f2dd93c80fb4971a17148d0a8c541fb62c2271860305676269697",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "app/Providers/Ads/Snapchat/SnapchatReadJob.php",
+      "sha256": "b2f952aa2b3a72b25ab68117a0a7f201258531e802e8c966146ecbca4f0a7fc4",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "config/database.php",
+      "sha256": "d79b393e57e65144e810e42414db66f62c92f3812f02d9bc2568453b1f4f44d0",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "config/queue.php",
+      "sha256": "fe8e3c8b2d3d26b5b41a447ebbbad44f562f6a18c97800fae8a2e76d180a0f81",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "database/sql/business_scope/schema.sql",
+      "sha256": "5571c836e6e261756f04888d20db2f1cee18cc7cd6f96fa015dce462867f0e0e",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "database/sql/business_scope/surfaces.sql",
+      "sha256": "31210cc6a40fac1e0fbd6eefdceecdcbf2ef8bd9293844c12c386348e68de196",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "database/sql/business_scope/authority.sql",
+      "sha256": "af0a1b2580c96b1083e482247f9cbe98c07a1c0309b15571aa4c55964df1af29",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "database/migrations/0001_01_01_000100_create_authority_context.php",
+      "sha256": "aa7312fa463b24bddbdeff18ae8a49033ed45f862dcedbc62a2129845796d2aa",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "resources/js/spa/query.ts",
+      "sha256": "c7f3f1c7e65e4c12771f55ccd40fb72569a3d507cf8a83887c90a4c202109428",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "resources/js/spa/transport.ts",
+      "sha256": "4d3c9a54d8f2908a0cb855c87a8bec9b42cb68853ee927c0d538242aef77de45",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "resources/js/spa/router.ts",
+      "sha256": "6eaaf4eac0e5ea0e4fdb7c79c6b31c8371f8885aed498e8cb56e83d76a6d250a",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "resources/js/business-foundation/advertiserNavigation.ts",
+      "sha256": "79cc0e51b54f065dee6fd8040ad1cff3844cf07fc6d1ae9a14ccd29d0b0a58cd",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "app/MarketKnowledge/Processing/MarketProcessingTask.php",
+      "sha256": "44d727f03d6f729a292f8fc45cff89d93610c16a242564f7b5c4665d40eb2e63",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "app/MarketKnowledge/Processing/MarketMethodSelector.php",
+      "sha256": "f41a849116de2f36e7d0078c5df8735679447d308bc1020dacce84769ae1b8f3",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "app/MarketKnowledge/CustomerDiscoveryConsumer.php",
+      "sha256": "5afc52aa1830d630585e691d8fb77aebf20dd2f1736a6ec862fd796fc11be893",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "app/Commercial/RegisterCommercialScope.php",
+      "sha256": "d98762a18d11a6e944d68a6497434ab4e614c3674600f4ce803cbdfa45ace68a",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "tests/Feature/FinalSchemaCompositionTest.php",
+      "sha256": "73847b68901118076484d13d948221ebb4e2f16a26bd2132509cb1347bd304ea",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    },
+    {
+      "path": "tests/Unit/CoreDependencyBoundaryTest.php",
+      "sha256": "95918536ebb22487a372d1c672056f7947024a9ddca66c262d9290301633059d",
+      "scope": "Selected relevant passages; lock versions and CI configuration directly inspected; not whole-file correctness certification"
+    }
+  ],
+  "external_sources": [
+    {
+      "id": "S01",
+      "publisher": "Laravel",
+      "url": "https://laravel.com/framework/docs/13.x/releases",
+      "accessed": "2026-11-06",
+      "read_scope": "Selected release and support table passages",
+      "supported_claim": "Laravel13 PHP range and maintenance policy",
+      "not_established": "BuilderAd newest patch or live upgrade compatibility"
+    },
+    {
+      "id": "S02",
+      "publisher": "PHP",
+      "url": "https://www.php.net/supported-versions.php",
+      "accessed": "2026-11-06",
+      "read_scope": "Support policy and8.5 row",
+      "supported_claim": "PHP8.5 active/security support dates",
+      "not_established": "Installed server minor extensions or absence of vulnerabilities"
+    },
+    {
+      "id": "S03",
+      "publisher": "Node.js Release Working Group",
+      "url": "https://github.com/nodejs/Release",
+      "accessed": "2026-11-06",
+      "read_scope": "Release schedule table24/26",
+      "supported_claim": "Node24 Maintenance LTS and Node26 Active LTS with support windows",
+      "not_established": "BuilderAd Node26 dependency/build compatibility"
+    },
+    {
+      "id": "S04",
+      "publisher": "PostgreSQL Global Development Group",
+      "url": "https://www.postgresql.org/support/versioning/",
+      "accessed": "2026-11-06",
+      "read_scope": "Versioning policy and releases table",
+      "supported_claim": "PostgreSQL18 supported through2030 and minor policy; page lists18.6",
+      "not_established": "Actual deployed PostgreSQL minor image or upgrade performance"
+    },
+    {
+      "id": "S05",
+      "publisher": "PostgreSQL Global Development Group",
+      "url": "https://www.postgresql.org/docs/18/ddl-rowsecurity.html",
+      "accessed": "2026-11-06",
+      "read_scope": "Policy and role/owner behavior passages",
+      "supported_claim": "Role owner and SECURITY DEFINER affect actual RLS behavior",
+      "not_established": "Complete BuilderAd security or any proven bypass"
+    },
+    {
+      "id": "S06",
+      "publisher": "PostgreSQL Global Development Group",
+      "url": "https://www.postgresql.org/docs/18/runtime-config-resource.html",
+      "accessed": "2026-11-06",
+      "read_scope": "Memory work_mem hash and concurrent operation passages",
+      "supported_claim": "Memory budget multiplies across operations and sessions; hash multiplier matters",
+      "not_established": "Reason for historical failure or optimal production configuration"
+    },
+    {
+      "id": "S07",
+      "publisher": "PostgreSQL Global Development Group",
+      "url": "https://www.postgresql.org/docs/18/datatype-json.html",
+      "accessed": "2026-11-06",
+      "read_scope": "JSON type design and indexing overview",
+      "supported_claim": "JSONB supports appropriate indexing but query/document design still matters",
+      "not_established": "Need for universal JSON schema or any measured BuilderAd index bottleneck"
+    },
+    {
+      "id": "S08",
+      "publisher": "Vue.js",
+      "url": "https://vuejs.org/guide/best-practices/performance.html",
+      "accessed": "2026-11-06",
+      "read_scope": "Profiling architecture bundle splitting lists and reactivity passages",
+      "supported_claim": "Measure actual build; lazy-load and list/reactivity optimization are context-dependent",
+      "not_established": "Current BuilderAd slowness or need to replace SPA"
+    },
+    {
+      "id": "S09",
+      "publisher": "TanStack",
+      "url": "https://tanstack.com/query/latest/docs/framework/vue/guides/query-cancellation",
+      "accessed": "2026-11-06",
+      "read_scope": "Vue query cancellation and default behavior passages",
+      "supported_claim": "Cancellation needs signal consumption; unused query may otherwise populate cache",
+      "not_established": "Server mutation rollback or tenant authorization from cancellation"
+    },
+    {
+      "id": "S10",
+      "publisher": "Laravel",
+      "url": "https://laravel.com/framework/docs/13.x/queues",
+      "accessed": "2026-11-06",
+      "read_scope": "Queue transaction and timeout/retry_after passages",
+      "supported_claim": "Queue timeout must leave safety margin before retry visibility; after-commit dispatch timing",
+      "not_established": "Exactly-once provider effects or actual live worker configuration"
+    },
+    {
+      "id": "S11",
+      "publisher": "Laravel",
+      "url": "https://laravel.com/framework/docs/13.x/octane",
+      "accessed": "2026-11-06",
+      "read_scope": "Persistent request/container injection and memory leak passages",
+      "supported_claim": "Long-lived workers require request-state and memory discipline",
+      "not_established": "Octane is deployed or improves BuilderAd latency"
+    },
+    {
+      "id": "S12",
+      "publisher": "PgBouncer",
+      "url": "https://www.pgbouncer.org/features.html",
+      "accessed": "2026-11-06",
+      "read_scope": "Pooling modes and SQL feature support table",
+      "supported_claim": "Session/transaction/statement modes differ; protocol prepared plans need max_prepared_statements support",
+      "not_established": "Automatic PID/XID and authority-role compatibility for BuilderAd"
+    },
+    {
+      "id": "S13",
+      "publisher": "Laravel",
+      "url": "https://laravel.com/framework/docs/13.x/ai-sdk",
+      "accessed": "2026-11-06",
+      "read_scope": "Selected introduction structured output tools and fake-testing passages",
+      "supported_claim": "First-party multi-provider tools and structured-output SDK is a candidate; fakes can generate schema-shaped data",
+      "not_established": "SDK installed or semantic model quality privacy entitlement and current source rights"
+    },
+    {
+      "id": "S14",
+      "publisher": "OWASP Gen AI Security Project",
+      "url": "https://genai.owasp.org/llmrisk/llm062025-excessive-agency/",
+      "accessed": "2026-11-06",
+      "read_scope": "Excessive agency overview and mitigation direction",
+      "supported_claim": "Limit model tool agency and keep consequential effect authority controlled",
+      "not_established": "Validated BuilderAd vulnerability or proof defenses already implemented"
+    },
+    {
+      "id": "S15",
+      "publisher": "Google web.dev",
+      "url": "https://web.dev/articles/vitals",
+      "accessed": "2026-11-06",
+      "read_scope": "Core Web Vitals definitions thresholds and p75 passages",
+      "supported_claim": "LCP2.5s INP200ms CLS0.1 thresholds assessed at p75 with device segmentation",
+      "not_established": "Measured BuilderAd performance or field traffic distribution"
+    }
+  ],
+  "locked_or_declared_versions": {
+    "vue": "3.5.43",
+    "vite": "8.3.3",
+    "typescript": "5.9.3",
+    "laravel": "v13.32.0",
+    "php_requirement": ">=8.5.0 <8.6.0",
+    "node_requirement": ">=24 <25",
+    "ci_postgresql_major": "18",
+    "live_runtime_versions": "NOT_INSPECTED"
+  },
+  "historical_foundation": "Reused ../EVIDENCE.json run42162995488; no new GitHub query",
+  "new_foundation_run": false,
+  "product_tests_run": false,
+  "load_or_benchmark_run": false,
+  "live_database_or_provider_access": false,
+  "dependency_updates": false,
+  "product_or_sql_edits": false,
+  "task_started_services": [],
+  "limitations": "Selected source/static engineering study; not full security scan or runtime/provider/model/commercial acceptance; future probes are proposed not executed"
+}

@@ -108,6 +108,34 @@ final class OrganizationTeamTest extends TestCase
         $this->assertSame(0, $db->table('business_data_use_bindings')->count());
     }
 
+    public function test_same_second_departure_and_rejoin_cannot_restore_the_old_business_grant(): void
+    {
+        $owner = User::factory()->create();
+        $employee = User::factory()->create();
+        $organization = $this->organization($owner);
+        $this->membership($organization, $employee, 'add', 0);
+        $file = $this->file($owner, 'Same second membership boundary');
+        $base = '/api/businesses/'.$file['business_public_id'];
+        $roots = $this->postJson($base.'/internal-team', ['command_id' => (string) Str::uuid(), 'workspace_public_id' => $organization,
+            'effect' => 'enroll', 'recipient_public_id' => $owner->public_id, 'expected_revision' => 0,
+            'authority_selection' => $this->selection($file['grant_refs']['business.context.read'])])->assertOk()->json('data.grant_refs');
+        $db = DB::connection('pgsql_migrations');
+        // Align the three real commands near a second boundary. The invariant
+        // concerns command order even when their old timestamp columns rounded alike.
+        $db->scalar("SELECT pg_sleep(greatest(0,extract(epoch FROM (date_trunc('second',clock_timestamp())+interval '1.01 seconds'-clock_timestamp()))))");
+        $read = $this->delegate($organization, $file, $roots, $employee, 'business.context.read');
+        $team = '/api/organizations/'.$organization.'/team';
+        $this->postJson($team, ['command_id' => (string) Str::uuid(), 'effect' => 'remove',
+            'recipient_public_id' => $employee->public_id, 'expected_revision' => 1])->assertOk();
+        $this->postJson($team, ['command_id' => (string) Str::uuid(), 'effect' => 'add',
+            'recipient_public_id' => $employee->public_id, 'expected_revision' => 2])->assertOk();
+        $this->assertTrue((bool) $db->scalar("SELECT date_trunc('second',g.created_at)=date_trunc('second',m.created_at)
+            FROM security_action_grants g JOIN workspaces w ON w.public_id=?::uuid
+            JOIN workspace_memberships m ON m.workspace_id=w.id AND m.user_id=g.subject_user_id WHERE g.id=?", [$organization, $read]),
+            'The fixture must exercise the same-second boundary.');
+        $this->actingAs($employee)->getJson($base.'/surface?access='.$read)->assertForbidden();
+    }
+
     public function test_membership_is_not_business_authority_and_cannot_be_managed_by_nonowners_or_stale_commands(): void
     {
         $owner = User::factory()->create();

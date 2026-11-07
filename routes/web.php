@@ -498,6 +498,11 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->prefix('api/business
     Route::put('/{business}/preferences', [BusinessFoundationController::class, 'preferences'])->whereUuid('business')->name('business-foundation.preferences');
     Route::put('/{business}/intent', [BusinessFoundationController::class, 'intent'])->whereUuid('business')->name('business-foundation.intent');
     Route::post('/{business}/data-use-bindings', [BusinessFoundationController::class, 'bindDataUse'])->whereUuid('business')->name('business-foundation.data-use-binding');
+    Route::post('/{business}/data-use-licenses', [BusinessFoundationController::class, 'dataUseLicense'])->whereUuid('business')->name('business-foundation.data-use-license');
+    Route::get('/{business}/data-use-journey', [BusinessFoundationController::class, 'dataLicenseJourney'])->whereUuid('business')->name('business-foundation.data-use-journey');
+    Route::post('/{business}/operating-mandate', [BusinessFoundationController::class, 'operatingMandate'])->whereUuid('business')->name('business-foundation.operating-mandate');
+    Route::post('/{business}/data-use-beneficiaries', [BusinessFoundationController::class, 'dataUseBeneficiary'])->whereUuid('business')->name('business-foundation.data-use-beneficiary');
+    Route::post('/{business}/expenditure-summaries', [BusinessFoundationController::class, 'expenditureSummary'])->whereUuid('business')->name('business-foundation.expenditure-summary');
     Route::post('/{business}/materials/publish', [BusinessFoundationController::class, 'publish'])->whereUuid('business')->name('business-foundation.publish');
     Route::post('/{business}/materials/read', [BusinessFoundationController::class, 'material'])->whereUuid('business')->name('business-foundation.material');
     Route::post('/{business}/lifecycle', [BusinessFoundationController::class, 'lifecycle'])->whereUuid('business')->name('business-foundation.lifecycle');

@@ -425,7 +425,7 @@ END $$;
 
 CREATE OR REPLACE FUNCTION builderad_private.lock_material_resources(p_plan jsonb,p_output_scope jsonb DEFAULT NULL) RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
-DECLARE scopes jsonb;sources uuid[];boundaries uuid[];market_scopes uuid[];gates uuid[];gate record;
+DECLARE scopes jsonb;sources uuid[];boundaries uuid[];market_scopes uuid[];gates uuid[];gate record;write_boundary uuid;adoption text;
 BEGIN
  SELECT coalesce(jsonb_agg(value->'scope'),'[]') INTO scopes FROM jsonb_array_elements(p_plan->'items');
  scopes:=scopes||(p_plan->'lineage_scopes')||CASE WHEN p_output_scope IS NULL THEN '[]'::jsonb ELSE jsonb_build_array(p_output_scope) END;
@@ -434,18 +434,24 @@ BEGIN
  ARRAY(SELECT DISTINCT(value->>'scope_id')::uuid FROM jsonb_array_elements(scopes) WHERE value->>'rights_domain'='market') INTO sources,boundaries,market_scopes;
  SELECT array_agg(fence_id ORDER BY fence_id) INTO gates FROM public.resource_right_fences WHERE(kind='source' AND source_id=ANY(sources)) OR(kind='client_boundary' AND boundary_id=ANY(boundaries)) OR(kind='data_use' AND data_use_scope_id=ANY(market_scopes));
  IF coalesce(cardinality(gates),0)<>cardinality(sources)+cardinality(boundaries)+cardinality(market_scopes) THEN RAISE EXCEPTION 'SOURCE_ADOPTION_REQUIRED' USING ERRCODE='42501'; END IF;
- FOR gate IN SELECT * FROM public.resource_right_fences WHERE fence_id=ANY(gates) ORDER BY fence_id FOR SHARE LOOP
-  IF gate.adoption_state<>'v2_adopted' THEN RAISE EXCEPTION 'SOURCE_ADOPTION_REQUIRED' USING ERRCODE='42501'; END IF;
+ write_boundary:=(p_plan->>'write_boundary_id')::uuid;
+ IF write_boundary IS NOT NULL AND NOT(write_boundary=ANY(boundaries)) THEN RAISE EXCEPTION 'Write intent must belong to the material boundary set' USING ERRCODE='42501'; END IF;
+ FOR gate IN SELECT * FROM public.resource_right_fences WHERE fence_id=ANY(gates) ORDER BY fence_id LOOP
+  IF gate.kind='client_boundary' AND gate.boundary_id=write_boundary THEN
+   SELECT adoption_state INTO adoption FROM public.resource_right_fences WHERE fence_id=gate.fence_id FOR UPDATE;
+  ELSE SELECT adoption_state INTO adoption FROM public.resource_right_fences WHERE fence_id=gate.fence_id FOR SHARE;END IF;
+  IF adoption IS DISTINCT FROM 'v2_adopted' THEN RAISE EXCEPTION 'SOURCE_ADOPTION_REQUIRED' USING ERRCODE='42501'; END IF;
  END LOOP;
  RETURN(SELECT jsonb_agg(to_jsonb(f) ORDER BY fence_id) FROM public.resource_right_fences f WHERE fence_id=ANY(gates));
 END $$;
 
 CREATE OR REPLACE FUNCTION builderad_private.require_material_use(p_actor bigint,p_business bigint,p_session text,p_operation text,p_plan jsonb,p_selection jsonb) RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
-DECLARE item jsonb;node jsonb;s public.data_use_scopes;proof jsonb;proofs jsonb:='[]';uses jsonb:='[]';
+DECLARE item jsonb;node jsonb;s public.data_use_scopes;proof jsonb;proofs jsonb:='[]';uses jsonb:='[]';business_leaf bigint;
 BEGIN
  proof:=builderad_private.require_scope('business',p_business::text,p_actor,'business.data.use',p_selection,p_session);
  IF proof#>>'{qualification,issuer_kind}'='self_declared_draft' OR(SELECT lifecycle FROM public.businesses WHERE id=p_business) IN('archived','suspended') THEN RAISE EXCEPTION 'Qualified Business use required' USING ERRCODE='42501'; END IF;
+ business_leaf:=(proof#>>'{grants,0,id}')::bigint;
  proofs:=jsonb_build_array(proof);
  FOR item IN SELECT value FROM jsonb_array_elements(p_plan->'items') LOOP
   SELECT * INTO STRICT s FROM public.data_use_scopes WHERE scope_id=(item#>>'{scope,scope_id}')::uuid;
@@ -462,6 +468,9 @@ BEGIN
    END IF;
   END IF;
   proof:=builderad_private.require_scope('data_use',s.scope_id::text,p_actor,'data_use.'||p_operation,p_selection,p_session);
+  IF proof#>>'{qualification,policy_id}'='declared_data_beneficiary_v1'
+   AND (proof#>>'{qualification,issuer_grant_id}')::bigint IS DISTINCT FROM business_leaf
+  THEN RAISE EXCEPTION 'Beneficiary licence requires its original current Business assignment' USING ERRCODE='42501'; END IF;
   proofs:=proofs||jsonb_build_array(proof);
   uses:=uses||jsonb_build_array(jsonb_build_object('ref',item->'ref','data_use_scope_id',s.scope_id,'policy_id',proof#>'{qualification,policy_id}','policy_version',proof#>'{qualification,policy_version}'));
   IF item->>'kind'='original' AND item#>>'{ref,namespace}'='provider_observation_entry' THEN proofs:=proofs||jsonb_build_array(builderad_private.require_native_source_grant((item->>'native_grant')::bigint,p_actor,p_session,p_selection,false,false)); END IF;

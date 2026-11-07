@@ -37,7 +37,7 @@ final class BusinessAuthorityFixture
         });
     }
 
-    public static function root(int|string $business, int $actor, string $action, bool $delegable = true, string $kind = 'business', ?string $validUntil = null): object
+    public static function root(int|string $business, int $actor, string $action, bool $delegable = true, string $kind = 'business', ?string $validUntil = null, ?int $agencyWorkspace = null): object
     {
         $owner = DB::connection('pgsql_migrations');
         $q = self::insert('authority_qualification_receipts', [
@@ -46,7 +46,8 @@ final class BusinessAuthorityFixture
             'target_kind' => $kind, 'target_ref' => $kind === 'business' ? $owner->table('businesses')->where('id', $business)->value('public_id') : $business,
             'allowed_actions' => '{'.$action.'}', 'evidence_ref' => 'test:synthetic-qualified-root',
             'evidence_digest' => '\\x'.hash('sha256', 'synthetic-qualified-root'), 'status' => 'active', 'revision' => 1,
-            'valid_from' => now()->subSecond()->toIso8601String(), 'valid_until' => $validUntil,
+            'valid_from' => $agencyWorkspace === null ? now()->subSecond()->toIso8601String() : $owner->scalar('SELECT clock_timestamp()::text'),
+            'valid_until' => $validUntil,
             'provenance' => 'SYNTHETIC TEST ONLY; not evidence of an authorized production issuer',
         ], $actor);
 
@@ -58,9 +59,10 @@ final class BusinessAuthorityFixture
             } => $business,
             'subject_generation' => $owner->table('principal_lifecycles')->where('user_id', $actor)->value('generation'),
             'reason' => 'SYNTHETIC TEST ROOT', 'status' => 'active', 'version' => 1,
-            'created_at' => now()->toIso8601String(), 'updated_at' => now()->toIso8601String(), 'runtime_lock_marker' => false,
+            'created_at' => $agencyWorkspace === null ? now()->toIso8601String() : $owner->scalar('SELECT clock_timestamp()::text'),
+            'updated_at' => now()->toIso8601String(), 'runtime_lock_marker' => false,
             'qualification_id' => $q->qualification_id, 'parent_grant_id' => null, 'delegable' => $delegable,
-            'delegation_realm_kind' => 'direct', 'delegation_workspace_id' => null,
+            'delegation_realm_kind' => $agencyWorkspace === null ? 'direct' : 'agency', 'delegation_workspace_id' => $agencyWorkspace,
         ], $actor);
     }
 

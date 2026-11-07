@@ -11,11 +11,37 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Tests\Support\MarketKnowledgeFixture;
+use Tests\Support\OfferMethodRevisionFixture;
 use Tests\TestCase;
 
 final class MarketKnowledgePublicationTest extends TestCase
 {
     use MarketKnowledgeFixture;
+
+    public function test_shared_capture_uses_its_exact_method_revision_among_coexisting_versions(): void
+    {
+        $originals = $this->knowledgeOriginals();
+        $operator = $this->operator(['market.knowledge.capture', 'market.knowledge.publish']);
+        $capture = $this->captureBody($operator, $originals);
+        $publish = $this->knowledgePublication($operator, $originals, $capture);
+        $future = new OfferMethodRevisionFixture('2');
+        $captured = new OfferMethodRevisionFixture('1');
+        $this->app->instance(MarketMethodSelector::class, new MarketMethodSelector([$future, $captured]));
+        $this->actingAsInternal($operator);
+        $this->postJson('/internal/market-knowledge/capture', $capture)->assertOk()->assertJsonPath('data.method_ref', 'offer_equivalence:1');
+        $response = $this->postJson('/internal/market-knowledge/publish', $publish)->assertOk()->assertJsonPath('data.state', 'published');
+        $this->assertSame(1, $captured->executions);
+        $this->assertSame(0, $future->executions);
+        $this->assertSame(0, $future->probes);
+        $this->app->instance(MarketMethodSelector::class, new MarketMethodSelector([$future]));
+        DB::disconnect();
+        $this->assertSame($response->json(), $this->postJson('/internal/market-knowledge/publish', $publish)->assertOk()->json());
+        $this->assertSame(1, $captured->executions);
+        $this->assertSame(0, $future->probes);
+        $owner = DB::connection('pgsql_migrations');
+        $this->assertSame('offer_equivalence:1', $owner->table('market_knowledge_captures')->value('method_ref'));
+        $this->assertSame(1, $owner->table('material_lineage_manifests')->count());
+    }
 
     public function test_qualified_http_capture_computation_atomic_publication_and_replay_use_the_canonical_lineage(): void
     {

@@ -10,15 +10,57 @@ use App\MarketKnowledge\Processing\QualifiedInterestChange;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\ApplicationContractAssertions;
 use Tests\Support\BusinessAuthorityFixture as Fixture;
 use Tests\Support\MarketProcessingFixture;
+use Tests\Support\OfferMethodRevisionFixture;
 use Tests\TestCase;
 
 final class MarketProcessingTest extends TestCase
 {
     use ApplicationContractAssertions;
     use MarketProcessingFixture;
+
+    public function test_captured_method_revision_survives_coexisting_newer_code_and_replays_without_reexecution(): void
+    {
+        $f = $this->processingOriginals();
+        $c = $this->processingConsumer($f);
+        $body = $this->processingBody($f, $c);
+        $this->prepareProcessing($c, $body)->assertOk()->assertJsonPath('data.method_ref', 'offer_equivalence:1');
+        $future = new OfferMethodRevisionFixture('2');
+        $captured = new OfferMethodRevisionFixture('1');
+        $this->app->instance(MarketMethodSelector::class, new MarketMethodSelector([$future, $captured]));
+        $complete = ['command_id' => (string) Str::uuid(), 'effect' => 'complete', 'authority_selection' => $c['selection'], 'context_selection' => null];
+        $response = $this->completeProcessing($c, $body['command_id'], $complete)->assertOk()
+            ->assertJsonPath('data.state', 'validated')->assertJsonPath('data.finding.method_ref', 'offer_equivalence:1')
+            ->assertJsonPath('data.finding.status', 'equivalent')->assertJsonPath('data.usage.executions', 1);
+        $this->assertSame(1, $captured->executions);
+        $this->assertSame(0, $future->executions);
+        $this->assertSame(0, $future->probes);
+        $this->app->instance(MarketMethodSelector::class, new MarketMethodSelector([$future]));
+        DB::disconnect();
+        $this->assertSame($response->json(), $this->completeProcessing($c, $body['command_id'], $complete)->assertOk()->json());
+        $this->assertSame(1, $captured->executions);
+        $this->assertSame(0, $future->probes);
+        $owner = DB::connection('pgsql_migrations');
+        $this->assertSame('offer_equivalence:1', $owner->table('market_processing_runs')->where('run_id', $body['command_id'])->value('method_ref'));
+        $this->assertSame(1, (int) $owner->table('market_processing_runs')->where('run_id', $body['command_id'])->value('execution_count'));
+    }
+
+    public function test_missing_captured_method_revision_is_unavailable_without_executing_another_version(): void
+    {
+        $f = $this->processingOriginals();
+        $c = $this->processingConsumer($f);
+        $body = $this->processingBody($f, $c);
+        $this->prepareProcessing($c, $body)->assertOk();
+        $future = new OfferMethodRevisionFixture('2');
+        $this->app->instance(MarketMethodSelector::class, new MarketMethodSelector([$future]));
+        $this->completeProcessing($c, $body['command_id'])->assertOk()->assertJsonPath('data.state', 'unavailable')
+            ->assertJsonPath('data.finding', null)->assertJsonPath('data.reason_code', 'METHOD_UNAVAILABLE')->assertJsonPath('data.usage.executions', 0);
+        $this->assertSame(0, $future->probes);
+        $this->assertSame(0, $future->executions);
+    }
 
     private function decorateMethod(\Closure $callback): void
     {
@@ -111,6 +153,89 @@ final class MarketProcessingTest extends TestCase
         $response = $this->completeProcessing($c, $body['command_id'])->assertOk()->assertJsonPath('data.state', 'validated')
             ->assertJsonPath('data.finding.status', 'comparable')->assertJsonPath('data.finding.values.delta', 10)->assertJsonPath('data.finding.values.percent_change', 25);
         $this->assertStringNotContainsString('DO_NOT_DISCLOSE_SOURCE_TOKEN', $response->getContent());
+    }
+
+    public static function smallDeltaCompletionCases(): array
+    {
+        return [
+            'qualified ratio legitimate decline' => [true, false],
+            'qualified ratio reversed sign' => [true, true],
+            'non-ratio legitimate decline' => [false, false],
+            'non-ratio reversed sign' => [false, true],
+        ];
+    }
+
+    #[DataProvider('smallDeltaCompletionCases')]
+    public function test_small_delta_is_independently_validated_before_trusted_completion_and_durable_replay(bool $ratio, bool $alter): void
+    {
+        $f = $this->processingOriginals('signal');
+        foreach ([0.000002, 0.000001] as $index => $value) {
+            $record = $f['records'][$index];
+            $payload = $record['payload'];
+            $payload['fields']['value'] = $value;
+            $payload['fields']['comparison_basis']['ratio_scale'] = $ratio;
+            $right = $this->marketRight($f['writer'], $record['source'], $record['evidence'], 'correct', array_keys($payload['fields']));
+            $f['records'][$index]['ref'] = $this->writeEvidence($record['evidence'], $right, $payload, 1)->assertOk()->json('data.material_ref');
+            $f['records'][$index]['payload'] = $payload;
+        }
+        $c = $this->processingConsumer($f);
+        $body = $this->processingBody($f, $c, 'compare_interest');
+        $this->prepareProcessing($c, $body)->assertOk()->assertJsonPath('data.state', 'prepared');
+        $counter = (object) ['executions' => 0];
+        $method = new class($counter, $alter) implements MarketMethod
+        {
+            public function __construct(private object $counter, private bool $alter) {}
+
+            public function question(): string
+            {
+                return 'compare_interest';
+            }
+
+            public function reference(): string
+            {
+                return 'qualified_interest_change:1';
+            }
+
+            public function available(): bool
+            {
+                return true;
+            }
+
+            public function execute(MarketProcessingTask $task): array
+            {
+                $this->counter->executions++;
+                $finding = (new QualifiedInterestChange)->execute($task);
+                if ($this->alter) {
+                    $finding['values']->delta = -$finding['values']->delta;
+                }
+
+                return $finding;
+            }
+        };
+        $this->app->instance(MarketMethodSelector::class, new MarketMethodSelector([$method]));
+        $complete = ['command_id' => (string) Str::uuid(), 'effect' => 'complete', 'authority_selection' => $c['selection'], 'context_selection' => null];
+        $state = $alter ? 'failed' : 'validated';
+        $response = $this->completeProcessing($c, $body['command_id'], $complete)->assertOk()
+            ->assertJsonPath('data.state', $state)->assertJsonPath('data.published', false)
+            ->assertJsonPath('data.usage.executions', 1);
+        $this->assertApplicationContract('MarketProcessingRunResult', (array) json_decode($response->getContent(), flags: JSON_THROW_ON_ERROR));
+        $row = DB::connection('pgsql_migrations')->table('market_processing_runs')->where('run_id', $body['command_id'])->sole();
+        $this->assertSame($state, $row->state);
+        $this->assertNotNull($row->completion_attestation_digest);
+        if ($alter) {
+            $response->assertJsonPath('data.finding', null);
+            $this->assertNull($row->finding);
+            $this->assertSame('METHOD_OR_VALIDATION_FAILED', $row->reason_code);
+        } else {
+            $response->assertJsonPath('data.finding.values.delta', -0.000001)
+                ->assertJsonPath('data.finding.values.percent_change', $ratio ? -50 : null);
+        }
+        $this->assertStringNotContainsString('DO_NOT_DISCLOSE_SOURCE_TOKEN', $response->getContent());
+        $this->assertSame(0, DB::connection('pgsql_migrations')->table('material_lineage_manifests')->count());
+        DB::disconnect();
+        $this->assertSame($response->json(), $this->completeProcessing($c, $body['command_id'], $complete)->assertOk()->json());
+        $this->assertSame($response->json(), $this->completeProcessing($c, $body['command_id'])->assertOk()->json());
+        $this->assertSame(1, $counter->executions);
     }
 
     public function test_rounded_large_drop_completes_trusted_http_processing_and_replays_durably_without_execution(): void

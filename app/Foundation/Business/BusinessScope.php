@@ -62,6 +62,36 @@ final class BusinessScope
         )));
     }
 
+    public function dataLicenseJourney(Request $request, string $business, int $access): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar('SELECT builderad_v2_data_license_journey(?,?::uuid,?)',
+            [SessionAuthority::sessionKey($request), $business, $access])));
+    }
+
+    public function operatingMandate(Request $request, string $business, object $body, array $selection): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar('SELECT builderad_v2_business_operating_mandate(?,?::uuid,?::uuid,?::boolean,?,?,?::timestamptz,?,?::jsonb)',
+            [SessionAuthority::sessionKey($request), $business, $body->command_id, $body->confirmed, $body->capacity, $body->authority_reference, $body->valid_until,
+                $body->previous_grant, json_encode($selection, JSON_THROW_ON_ERROR)])));
+    }
+
+    public function dataUseBeneficiary(Request $request, string $business, object $body, array $selection): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar('SELECT builderad_v2_data_use_beneficiary(?,?::uuid,?::uuid,?::uuid,?,?::uuid,?::timestamptz,?,?::jsonb)',
+            [SessionAuthority::sessionKey($request), $business, $body->command_id, $body->license_id, $body->effect, $body->recipient_public_id,
+                $body->valid_until, $body->expected_revision, json_encode($selection, JSON_THROW_ON_ERROR)])));
+    }
+
+    public function expenditureSummary(Request $request, string $business, object $body, array $selection): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar(
+            'SELECT builderad_v2_expenditure_summary(?,?::uuid,?::uuid,?::uuid,?::jsonb,?::uuid,?::uuid,?::boolean,?::timestamptz,?::jsonb,?::jsonb)',
+            [SessionAuthority::sessionKey($request), $business, $body->command_id, $body->summary_id,
+                json_encode($body->input_ref, JSON_THROW_ON_ERROR), $body->input_license_id, $body->read_command_id, $body->confirmed, $body->valid_until,
+                json_encode($body->consent, JSON_THROW_ON_ERROR), json_encode($selection, JSON_THROW_ON_ERROR)]
+        )));
+    }
+
     public function source(Request $request, string $source, int $access): array
     {
         return $this->run($request, fn () => $this->decode(DB::scalar(
@@ -245,6 +275,15 @@ final class BusinessScope
             'SELECT builderad_v2_resource_right_command(?,?::uuid,?,?::uuid,?,?::jsonb,?,?::jsonb)',
             [SessionAuthority::sessionKey($request), $command, $kind, $target, $effect,
                 json_encode($payload, JSON_THROW_ON_ERROR), $expected, json_encode($selection, JSON_THROW_ON_ERROR)],
+        )));
+    }
+
+    public function dataUseLicense(Request $request, string $business, string $command, string $license, string $effect, int $expected, \stdClass $declaration, array $selection): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar(
+            'SELECT builderad_v2_data_use_license(?,?::uuid,?::uuid,?::uuid,?,?,?::jsonb,?::jsonb)',
+            [SessionAuthority::sessionKey($request), $business, $command, $license, $effect, $expected,
+                json_encode($declaration, JSON_THROW_ON_ERROR), json_encode($selection, JSON_THROW_ON_ERROR)],
         )));
     }
 

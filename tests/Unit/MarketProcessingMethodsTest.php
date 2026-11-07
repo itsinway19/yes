@@ -125,6 +125,69 @@ final class MarketProcessingMethodsTest extends TestCase
         ];
     }
 
+    public static function alteredDeltaCases(): array
+    {
+        return [
+            'small decline reported as growth' => [0.000002, 0.000001, 0.000001],
+            'small growth reported as decline' => [0.000001, 0.000002, -0.000001],
+            'unchanged reported as growth' => [1, 1, 0.00000001],
+            'zero reported as minimum-normal growth' => [1, 1, PHP_FLOAT_MIN],
+            'rounded zero reported as sub-quantum growth' => [0.000000000003, 0.000000000004, 0.00000000000000001],
+            'last decimal increase removed' => [1, 1.00000001, 0.0],
+            'positive last decimal altered' => [3, 4, 1.00000001],
+            'negative last decimal altered' => [3, 2, -1.00000001],
+            'sub-quantum increase rounded incorrectly' => [0.000000000003, 0.000000000004, 0.00000001],
+            'large delta altered at representable precision' => [1000000000000, 0, -999999999999.9999],
+        ];
+    }
+
+    #[DataProvider('alteredDeltaCases')]
+    public function test_altered_delta_is_rejected_with_or_without_a_ratio_scale(int|float $before, int|float $after, float $delta): void
+    {
+        $method = new QualifiedInterestChange;
+        foreach ([true, false] as $ratio) {
+            $task = $this->interestTask($before, $after, $ratio);
+            $finding = $method->execute($task);
+            Findings::validate($task, $method, $finding);
+            $finding['values']->delta = $delta;
+            try {
+                Findings::validate($task, $method, $finding);
+                $this->fail('An altered delta must not validate, regardless of ratio-scale qualification.');
+            } catch (DomainException $exception) {
+                $this->assertSame('Independent arithmetic validation failed.', $exception->getMessage());
+            }
+        }
+    }
+
+    public static function roundedDeltaCases(): array
+    {
+        return [
+            'small decline' => [0.000002, 0.000001, -0.000001],
+            'small increase' => [0.000001, 0.000002, 0.000001],
+            'eighth decimal retained' => [1, 1.00000001, 0.00000001],
+            'ninth decimal rounded up' => [1, 1.123456789, 0.12345679],
+            'negative ninth decimal rounded' => [1.123456789, 1, -0.12345679],
+            'sub-quantum increase' => [0.000000000003, 0.000000000004, 0.0],
+        ];
+    }
+
+    #[DataProvider('roundedDeltaCases')]
+    public function test_legitimate_delta_rounding_preserves_ratio_and_non_ratio_outputs(int|float $before, int|float $after, float $delta): void
+    {
+        $method = new QualifiedInterestChange;
+        foreach ([true, false] as $ratio) {
+            $task = $this->interestTask($before, $after, $ratio);
+            $finding = $method->execute($task);
+            $this->assertSame('comparable', $finding['status']);
+            $this->assertSame($delta, $finding['values']->delta);
+            $this->assertSame($ratio ? round(((float) $after - $before) / $before * 100, 8) : null, $finding['values']->percent_change);
+            Findings::validate($task, $method, $finding);
+            $roundTrip = json_decode(json_encode($finding, JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
+            $roundTrip['values'] = (object) $roundTrip['values'];
+            Findings::validate($task, $method, $roundTrip);
+        }
+    }
+
     #[DataProvider('alteredPercentageCases')]
     public function test_one_declared_decimal_unit_of_percentage_tampering_is_rejected(int|float $before, int|float $after, float $percent): void
     {
@@ -192,12 +255,14 @@ final class MarketProcessingMethodsTest extends TestCase
         }
     }
 
-    private function interestTask(int|float $before, int|float $after): MarketProcessingTask
+    private function interestTask(int|float $before, int|float $after, bool $ratio = true): MarketProcessingTask
     {
         $a = E::signal();
         $b = E::signal(true);
         $a['value'] = $before;
         $b['value'] = $after;
+        $a['comparison_basis']['ratio_scale'] = $ratio;
+        $b['comparison_basis']['ratio_scale'] = $ratio;
 
         return new MarketProcessingTask('compare_interest', [E::material($a, 'market.interest_signal:2'), E::material($b, 'market.interest_signal:2', 2)]);
     }
@@ -276,8 +341,8 @@ final class MarketProcessingMethodsTest extends TestCase
                 }
             };
             $selector = new MarketMethodSelector([$optional, new OfferEquivalence]);
-            $this->assertInstanceOf(OfferEquivalence::class, $selector->select('compare_offers'));
-            $this->assertNull((new MarketMethodSelector([$optional]))->select('compare_offers'));
+            $this->assertInstanceOf(OfferEquivalence::class, $selector->select('compare_offers', 'offer_equivalence:1'));
+            $this->assertNull((new MarketMethodSelector([$optional]))->select('compare_offers', 'offer_equivalence:1'));
         }
     }
 
@@ -322,8 +387,8 @@ final class MarketProcessingMethodsTest extends TestCase
             }
         };
         $selector = new MarketMethodSelector([$optional, new OfferEquivalence, new QualifiedInterestChange, new BusinessFeasibility]);
-        $this->assertNull($selector->select('optional_identity_enrichment'));
-        $this->assertNull($selector->select('arbitrary\\ClassName'));
+        $this->assertNull($selector->select('optional_identity_enrichment', 'test_optional:1'));
+        $this->assertNull($selector->select('arbitrary\\ClassName', 'offer_equivalence:1'));
         $unavailableEquivalent = new class implements MarketMethod
         {
             public function question(): string
@@ -347,14 +412,14 @@ final class MarketProcessingMethodsTest extends TestCase
             }
         };
         $fallback = new MarketMethodSelector([$unavailableEquivalent, new OfferEquivalence]);
-        $local = $fallback->select('compare_offers');
+        $local = $fallback->select('compare_offers', 'offer_equivalence:1');
         $this->assertInstanceOf(OfferEquivalence::class, $local);
         $task = new MarketProcessingTask('compare_offers', [E::material(E::offer(), 'market.offer:2'), E::material(E::offer(), 'market.offer:2', 2)]);
         $this->assertSame('equivalent', $local->execute($task)['status']);
-        $this->assertNull((new MarketMethodSelector([$unavailableEquivalent]))->select('compare_offers'));
+        $this->assertNull((new MarketMethodSelector([$unavailableEquivalent]))->select('compare_offers', 'offer_equivalence:1'));
 
         foreach (['compare_offers' => 'offer_equivalence:1', 'compare_interest' => 'qualified_interest_change:1', 'assess_business_feasibility' => 'business_feasibility:1'] as $question => $ref) {
-            $this->assertSame($ref, $selector->select($question)->reference());
+            $this->assertSame($ref, $selector->select($question, $ref)->reference());
         }
     }
 }

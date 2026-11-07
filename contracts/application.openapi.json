@@ -22824,6 +22824,1005 @@
         }
       }
     },
+    "/api/businesses/{business}/data-use-journey": {
+      "get": {
+        "operationId": "readDataLicenseJourney",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "access",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataLicenseJourneyResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/operating-mandate": {
+      "post": {
+        "operationId": "declareBusinessOperatingMandate",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessOperatingMandateCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "grant_refs": {
+                          "type": "object",
+                          "properties": {
+                            "business.data.use": {
+                              "type": "string",
+                              "pattern": "^[1-9][0-9]{0,18}$"
+                            },
+                            "business.link.manage": {
+                              "type": "string",
+                              "pattern": "^[1-9][0-9]{0,18}$"
+                            }
+                          },
+                          "required": [
+                            "business.data.use",
+                            "business.link.manage"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "qualification_ref": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "assurance": {
+                          "const": "DECLARED_AUTHORITY"
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "qualification": {
+                              "const": 1
+                            }
+                          },
+                          "required": [
+                            "qualification"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "grant_refs",
+                        "qualification_ref",
+                        "assurance",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current scoped authority denied; no authority inferred from Workspace membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed command, shape or semantic validation rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/data-use-beneficiaries": {
+      "post": {
+        "operationId": "assignDataUseBeneficiary",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessDataUseBeneficiaryCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "license_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "recipient_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "grant_id": {
+                          "type": "string",
+                          "pattern": "^[1-9][0-9]{0,18}$"
+                        },
+                        "status": {
+                          "enum": [
+                            "active",
+                            "revoked"
+                          ]
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "grant": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "grant"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "license_id",
+                        "recipient_public_id",
+                        "grant_id",
+                        "status",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current scoped authority denied; no authority inferred from Workspace membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed command, shape or semantic validation rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/expenditure-summaries": {
+      "post": {
+        "operationId": "prepareExpenditureSummary",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  },
+                  "summary_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "input_ref": {
+                    "type": "object",
+                    "properties": {
+                      "namespace": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                        "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                      },
+                      "key": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4096
+                      },
+                      "version": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "namespace",
+                      "key",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "input_license_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "read_command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "confirmed": {
+                    "const": true
+                  },
+                  "valid_until": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "consent": {
+                    "type": "object",
+                    "properties": {
+                      "derive": {
+                        "const": true
+                      },
+                      "deliver_summary": {
+                        "const": true
+                      },
+                      "retain_payload": {
+                        "const": false
+                      }
+                    },
+                    "required": [
+                      "derive",
+                      "deliver_summary",
+                      "retain_payload"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "authority_selection",
+                  "summary_id",
+                  "input_ref",
+                  "input_license_id",
+                  "read_command_id",
+                  "confirmed",
+                  "valid_until",
+                  "consent"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "artifact_ref": {
+                          "type": "object",
+                          "properties": {
+                            "namespace": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                              "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                            },
+                            "key": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 4096
+                            },
+                            "version": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{64}$"
+                            }
+                          },
+                          "required": [
+                            "namespace",
+                            "key",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "dependencies": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "input": {
+                                "type": "object",
+                                "properties": {
+                                  "namespace": {
+                                    "type": "string",
+                                    "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                                    "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                                  },
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 4096
+                                  },
+                                  "version": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "namespace",
+                                  "key",
+                                  "version"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "data_use_scope_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "policy_id": {
+                                "type": "string"
+                              },
+                              "policy_version": {
+                                "type": "integer",
+                                "minimum": 1
+                              }
+                            },
+                            "required": [
+                              "input",
+                              "data_use_scope_id",
+                              "policy_id",
+                              "policy_version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "license_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "use_grant_id": {
+                          "type": "string",
+                          "pattern": "^[1-9][0-9]{0,18}$"
+                        },
+                        "status": {
+                          "const": "prepared"
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "summary": {
+                              "const": 1
+                            }
+                          },
+                          "required": [
+                            "summary"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "artifact_ref",
+                        "dependencies",
+                        "license_id",
+                        "use_grant_id",
+                        "status",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current scoped authority denied; no authority inferred from Workspace membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed command, shape or semantic validation rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/data-use-licenses": {
+      "post": {
+        "operationId": "declareBoundedDataUseLicense",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessDataUseLicenseCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "license_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "boundary_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "boundary_grant_id": {
+                          "type": "string",
+                          "pattern": "^[1-9][0-9]{0,18}$"
+                        },
+                        "use_grant_id": {
+                          "type": "string",
+                          "pattern": "^[1-9][0-9]{0,18}$"
+                        },
+                        "status": {
+                          "enum": [
+                            "active",
+                            "withdrawn"
+                          ]
+                        },
+                        "assurance": {
+                          "const": "DECLARED_AUTHORITY"
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "license": {
+                              "enum": [
+                                1,
+                                2
+                              ]
+                            }
+                          },
+                          "required": [
+                            "license"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "license_id",
+                        "boundary_id",
+                        "boundary_grant_id",
+                        "use_grant_id",
+                        "status",
+                        "assurance",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current scoped authority denied; no authority inferred from Workspace membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed command, shape or semantic validation rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/data-rights/use-scopes": {
       "get": {
         "operationId": "qualifiedDataUseChoices",
@@ -55452,6 +56451,1267 @@
           "realm_kind",
           "realm_workspace_public_id",
           "requirements"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessDataUseLicenseCommand": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "command_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "authority_selection": {
+                "$ref": "#/components/schemas/BusinessAuthoritySelection"
+              },
+              "license_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "effect": {
+                "const": "issue"
+              },
+              "expected_revision": {
+                "const": 0
+              },
+              "declaration": {
+                "type": "object",
+                "properties": {
+                  "source_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "resource": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 180
+                  },
+                  "operation": {
+                    "enum": [
+                      "retained_read",
+                      "display",
+                      "process",
+                      "reuse",
+                      "combine",
+                      "export"
+                    ]
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "selection": {
+                    "$ref": "#/components/schemas/DataLicenseSelection"
+                  },
+                  "recipient_public_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "valid_until": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "capacity": {
+                    "enum": [
+                      "data_holder",
+                      "authorized_representative"
+                    ]
+                  },
+                  "holder_name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160
+                  },
+                  "authority_reference": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 512
+                  },
+                  "confirmed": {
+                    "const": true
+                  },
+                  "requires_review": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "source_id",
+                  "resource",
+                  "operation",
+                  "purpose",
+                  "selection",
+                  "recipient_public_id",
+                  "valid_until",
+                  "capacity",
+                  "holder_name",
+                  "authority_reference",
+                  "confirmed",
+                  "requires_review"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "command_id",
+              "authority_selection",
+              "license_id",
+              "effect",
+              "expected_revision",
+              "declaration"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "command_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "authority_selection": {
+                "$ref": "#/components/schemas/BusinessAuthoritySelection"
+              },
+              "license_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "effect": {
+                "const": "withdraw"
+              },
+              "expected_revision": {
+                "const": 1
+              },
+              "declaration": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "command_id",
+              "authority_selection",
+              "license_id",
+              "effect",
+              "expected_revision",
+              "declaration"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "BusinessDataUseLicenseResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "license_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "boundary_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "boundary_grant_id": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              "use_grant_id": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              "status": {
+                "enum": [
+                  "active",
+                  "withdrawn"
+                ]
+              },
+              "assurance": {
+                "const": "DECLARED_AUTHORITY"
+              },
+              "versions": {
+                "type": "object",
+                "properties": {
+                  "license": {
+                    "enum": [
+                      1,
+                      2
+                    ]
+                  }
+                },
+                "required": [
+                  "license"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "license_id",
+              "boundary_id",
+              "boundary_grant_id",
+              "use_grant_id",
+              "status",
+              "assurance",
+              "versions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "DataLicenseSelection": {
+        "type": "object",
+        "properties": {
+          "native_namespaces": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 50
+          },
+          "native_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 1000
+          },
+          "field_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          },
+          "partition_ref": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "native_namespaces",
+          "native_keys",
+          "field_keys",
+          "partition_ref"
+        ],
+        "additionalProperties": false
+      },
+      "DataLicenseJourney": {
+        "type": "object",
+        "properties": {
+          "business_public_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actor_public_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "family": {
+                  "type": "string"
+                },
+                "resource": {
+                  "type": "string"
+                },
+                "manager_grant_id": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[1-9][0-9]{0,18}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "read_grant_id": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[1-9][0-9]{0,18}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "datasets_completeness": {
+                  "enum": [
+                    "COMPLETE",
+                    "PARTIAL",
+                    "UNKNOWN"
+                  ]
+                },
+                "datasets": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "dataset_id": {
+                        "type": "string"
+                      },
+                      "coverage": {
+                        "type": "string",
+                        "description": "Acquisition coverage reported by the observation run; independent of visible selection completeness."
+                      },
+                      "records_completeness": {
+                        "enum": [
+                          "COMPLETE",
+                          "PARTIAL",
+                          "UNKNOWN"
+                        ]
+                      },
+                      "record_count": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Number of displayed selectable records, not the total report size."
+                      },
+                      "record_metadata": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "ref": {
+                              "type": "object",
+                              "properties": {
+                                "namespace": {
+                                  "type": "string",
+                                  "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                                  "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                                },
+                                "key": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 4096
+                                },
+                                "version": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{64}$"
+                                }
+                              },
+                              "required": [
+                                "namespace",
+                                "key",
+                                "version"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "campaign_id": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "start": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "end": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "boundary": {
+                              "anyOf": [
+                                {
+                                  "enum": [
+                                    "INCLUSIVE_DATES",
+                                    "HALF_OPEN_INSTANTS"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "grain": {
+                              "anyOf": [
+                                {
+                                  "enum": [
+                                    "TOTAL",
+                                    "DAY",
+                                    "HOUR"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "timezone": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "ref",
+                            "campaign_id",
+                            "start",
+                            "end",
+                            "boundary",
+                            "grain",
+                            "timezone"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "selection": {
+                        "$ref": "#/components/schemas/DataLicenseSelection"
+                      },
+                      "material_refs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "namespace": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                              "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                            },
+                            "key": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 4096
+                            },
+                            "version": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{64}$"
+                            }
+                          },
+                          "required": [
+                            "namespace",
+                            "key",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "dataset_id",
+                      "coverage",
+                      "records_completeness",
+                      "record_count",
+                      "record_metadata",
+                      "selection",
+                      "material_refs"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "source_id",
+                "label",
+                "family",
+                "resource",
+                "manager_grant_id",
+                "read_grant_id",
+                "datasets_completeness",
+                "datasets"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "sources_more": {
+            "type": "boolean"
+          },
+          "licenses_more": {
+            "type": "boolean"
+          },
+          "licenses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "license_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "boundary_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "boundary_grant_id": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[1-9][0-9]{0,18}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "use_grant_id": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[1-9][0-9]{0,18}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "source_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "resource": {
+                  "type": "string"
+                },
+                "operation": {
+                  "type": "string"
+                },
+                "purpose": {
+                  "type": "string"
+                },
+                "valid_until": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "status": {
+                  "enum": [
+                    "active",
+                    "expired",
+                    "withdrawn"
+                  ]
+                },
+                "selection": {
+                  "$ref": "#/components/schemas/DataLicenseSelection"
+                },
+                "recipient_public_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "material_refs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "namespace": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                        "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                      },
+                      "key": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4096
+                      },
+                      "version": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "namespace",
+                      "key",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "record_metadata": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "ref": {
+                        "type": "object",
+                        "properties": {
+                          "namespace": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                            "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                          },
+                          "key": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4096
+                          },
+                          "version": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        },
+                        "required": [
+                          "namespace",
+                          "key",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "campaign_id": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "start": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "end": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "boundary": {
+                        "anyOf": [
+                          {
+                            "enum": [
+                              "INCLUSIVE_DATES",
+                              "HALF_OPEN_INSTANTS"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "grain": {
+                        "anyOf": [
+                          {
+                            "enum": [
+                              "TOTAL",
+                              "DAY",
+                              "HOUR"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "timezone": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "ref",
+                      "campaign_id",
+                      "start",
+                      "end",
+                      "boundary",
+                      "grain",
+                      "timezone"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "covered": {
+                  "type": "boolean"
+                },
+                "bound": {
+                  "type": "boolean"
+                },
+                "coverage_revision": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "binding_revision": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "is_declarant": {
+                  "type": "boolean"
+                },
+                "summary": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "enum": [
+                            "prepared",
+                            "published"
+                          ]
+                        },
+                        "input_license_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "process_grant_id": {
+                          "type": "string",
+                          "pattern": "^[1-9][0-9]{0,18}$"
+                        },
+                        "dependencies": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "input": {
+                                "type": "object",
+                                "properties": {
+                                  "namespace": {
+                                    "type": "string",
+                                    "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                                    "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                                  },
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 4096
+                                  },
+                                  "version": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "namespace",
+                                  "key",
+                                  "version"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "data_use_scope_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "policy_id": {
+                                "type": "string"
+                              },
+                              "policy_version": {
+                                "type": "integer",
+                                "minimum": 1
+                              }
+                            },
+                            "required": [
+                              "input",
+                              "data_use_scope_id",
+                              "policy_id",
+                              "policy_version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "input_license_id",
+                        "process_grant_id",
+                        "dependencies"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "license_id",
+                "boundary_id",
+                "boundary_grant_id",
+                "use_grant_id",
+                "source_id",
+                "resource",
+                "operation",
+                "purpose",
+                "valid_until",
+                "status",
+                "selection",
+                "recipient_public_id",
+                "material_refs",
+                "record_metadata",
+                "covered",
+                "bound",
+                "coverage_revision",
+                "binding_revision",
+                "is_declarant",
+                "summary"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "business_use_options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "grant_id": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                }
+              },
+              "required": [
+                "grant_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "binding_options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "grant_id": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                }
+              },
+              "required": [
+                "grant_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "beneficiaries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "public_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "realm_kind": {
+                  "enum": [
+                    "direct",
+                    "agency"
+                  ]
+                },
+                "realm_workspace_public_id": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "public_id",
+                "name",
+                "realm_kind",
+                "realm_workspace_public_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "assignments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "license_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "recipient_public_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "grant_id": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                },
+                "status": {
+                  "enum": [
+                    "active",
+                    "revoked"
+                  ]
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "valid_until": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "license_id",
+                "recipient_public_id",
+                "grant_id",
+                "status",
+                "revision",
+                "valid_until"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "assigned_licenses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "license_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "operation": {
+                  "type": "string"
+                },
+                "purpose": {
+                  "type": "string"
+                },
+                "valid_until": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "artifact_ref": {
+                  "type": "object",
+                  "properties": {
+                    "namespace": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_.]{0,79}$",
+                      "description": "Fixed server-registered native/producer owners only. Test namespaces remain unavailable in production; a string does not register a producer."
+                    },
+                    "key": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "version": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "namespace",
+                    "key",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                },
+                "use_grant_id": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                }
+              },
+              "required": [
+                "license_id",
+                "operation",
+                "purpose",
+                "valid_until"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "operating_mandate": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "previous_grant": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,18})$"
+              }
+            },
+            "required": [
+              "available",
+              "previous_grant"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "business_public_id",
+          "actor_public_id",
+          "sources",
+          "sources_more",
+          "licenses_more",
+          "licenses",
+          "business_use_options",
+          "binding_options",
+          "beneficiaries",
+          "assignments",
+          "assigned_licenses",
+          "operating_mandate"
+        ],
+        "additionalProperties": false
+      },
+      "DataLicenseJourneyResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DataLicenseJourney"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessOperatingMandateCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "authority_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          },
+          "confirmed": {
+            "const": true
+          },
+          "capacity": {
+            "enum": [
+              "responsible_business",
+              "client_mandate"
+            ]
+          },
+          "authority_reference": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 512
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "previous_grant": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,17})$"
+          }
+        },
+        "required": [
+          "command_id",
+          "authority_selection",
+          "confirmed",
+          "capacity",
+          "authority_reference",
+          "valid_until",
+          "previous_grant"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessOperatingMandateResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "business_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "grant_refs": {
+                "type": "object",
+                "properties": {
+                  "business.data.use": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]{0,18}$"
+                  },
+                  "business.link.manage": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]{0,18}$"
+                  }
+                },
+                "required": [
+                  "business.data.use",
+                  "business.link.manage"
+                ],
+                "additionalProperties": false
+              },
+              "qualification_ref": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "assurance": {
+                "const": "DECLARED_AUTHORITY"
+              },
+              "versions": {
+                "type": "object",
+                "properties": {
+                  "qualification": {
+                    "const": 1
+                  }
+                },
+                "required": [
+                  "qualification"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "business_public_id",
+              "grant_refs",
+              "qualification_ref",
+              "assurance",
+              "versions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessDataUseBeneficiaryCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "authority_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          },
+          "license_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "effect": {
+            "enum": [
+              "assign",
+              "revoke"
+            ]
+          },
+          "recipient_public_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "command_id",
+          "authority_selection",
+          "license_id",
+          "effect",
+          "recipient_public_id",
+          "valid_until",
+          "expected_revision"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessDataUseBeneficiaryResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "license_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "recipient_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "grant_id": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              "status": {
+                "enum": [
+                  "active",
+                  "revoked"
+                ]
+              },
+              "versions": {
+                "type": "object",
+                "properties": {
+                  "grant": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "grant"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "license_id",
+              "recipient_public_id",
+              "grant_id",
+              "status",
+              "versions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
         ],
         "additionalProperties": false
       },

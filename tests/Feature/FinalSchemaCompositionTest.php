@@ -220,7 +220,7 @@ final class FinalSchemaCompositionTest extends TestCase
             'resource_dependency_digest(jsonb)' => null,
             'assert_invocation_current()' => ["  IF i.action IN('market.knowledge.capture','market.knowledge.publish') THEN\n   PERFORM builderad_private.market_operator(session_ref,i.action,false);\n  ELSE PERFORM builderad_private.principal(session_ref,false); END IF;", '  PERFORM builderad_private.principal(session_ref,false);'],
             'guard_effect()' => ["IF NOT adopted_source AND NOT(TG_TABLE_NAME='source_registry' AND coalesce(after_row->>'custody_kind',before_row->>'custody_kind','')='platform_market') THEN", 'IF NOT adopted_source THEN'],
-            'require_scope(text,text,bigint,text,jsonb,text,bigint[],bigint[])' => [" OR(f.kind='data_use' AND p_kind='data_use' AND (to_jsonb(f)->>'data_use_scope_id')::uuid=p_target::uuid)", ''],
+            'verify_scope_path(text,text,bigint,text,jsonb,text,bigint[],bigint[],boolean)' => [" OR(f.kind='data_use' AND p_kind='data_use' AND (to_jsonb(f)->>'data_use_scope_id')::uuid=p_target::uuid)", ''],
         ];
         $owner->statement('GRANT CREATE ON SCHEMA public,builderad_private TO builderad_scope_executor');
         try {
@@ -409,6 +409,7 @@ final class FinalSchemaCompositionTest extends TestCase
             ['builderad_private', 'assert_invocation_current', 'authority'],
             ['builderad_private', 'guard_effect', 'purpose_retirement'],
             ['builderad_private', 'require_scope', 'scope_authority'],
+            ['builderad_private', 'verify_scope_path', 'scope_authority'],
             ['public', 'builderad_v2_business_purpose_snapshot', 'purpose_snapshot'],
             ['builderad_private', 'require_native_source_grant', 'source_rights'],
             ['builderad_private', 'source_grant_issue', 'source_adoption'],

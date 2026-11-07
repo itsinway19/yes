@@ -100,6 +100,13 @@ try {
         if ($f['operation'] === 'data-use-choices') {
             return DB::scalar('SELECT builderad_v2_data_use_choices(?)', [$f['session']]);
         }
+        if ($f['operation'] === 'data-use-license') {
+            $body = $f['body'];
+
+            return DB::scalar('SELECT builderad_v2_data_use_license(?,?::uuid,?::uuid,?::uuid,?,?,?::jsonb,?::jsonb)',
+                [$f['session'], $f['business'], $body['command_id'], $body['license_id'], $body['effect'], $body['expected_revision'],
+                    json_encode((object) $body['declaration']), json_encode($body['authority_selection'])]);
+        }
         if ($f['operation'] === 'surface') {
             return DB::scalar('SELECT builderad_v2_business_surface(?,?::uuid,?)', [$f['session'], $f['business'], $f['read_grant']]);
         }
@@ -118,6 +125,17 @@ try {
                 [$f['session'], $f['business'], $f['command'], $f['grant_effect'], $f['recipient'], 'business.context.read',
                     $f['grant_effect'] === 'issue' ? $f['issuer'] : null, $f['grant_id'], $f['grant_effect'] === 'issue' ? 0 : 1,
                     $f['grant_effect'] === 'issue' ? trim($f['release_value'] ?? file_get_contents($f['release'])) : null, json_encode($f['selection'])]);
+        }
+        if ($f['operation'] === 'summary-prepare') {
+            $body = $f['body'];
+
+            return DB::scalar('SELECT builderad_v2_expenditure_summary(?,?::uuid,?::uuid,?::uuid,?::jsonb,?::uuid,?::uuid,?::boolean,?::timestamptz,?::jsonb,?::jsonb)',
+                [$f['session'], $f['business'], $body['command_id'], $body['summary_id'], json_encode($body['input_ref']), $body['input_license_id'],
+                    $body['read_command_id'], $body['confirmed'], $body['valid_until'], json_encode($body['consent']), json_encode($body['authority_selection'])]);
+        }
+        if ($f['operation'] === 'binding') {
+            return DB::scalar('SELECT builderad_v2_business_data_use_binding(?,?::uuid,?::uuid,?::uuid,?,?,?::jsonb)',
+                [$f['session'], $f['business'], $f['command'], $f['scope'], $f['effect'], $f['expected'], json_encode($f['selection'])]);
         }
         if ($f['operation'] === 'publish') {
             return DB::scalar('SELECT builderad_v2_scoped_material_publish(?,?::uuid,?::uuid,?::jsonb,?::jsonb,?,?::uuid,?::jsonb)',

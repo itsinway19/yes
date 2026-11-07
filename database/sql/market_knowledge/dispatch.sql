@@ -1,6 +1,7 @@
 CREATE OR REPLACE FUNCTION builderad_private.registered_producer(p_ref jsonb) RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
 BEGIN
+ IF p_ref->>'namespace'='business.expenditure_summary' THEN RETURN builderad_private.expenditure_summary_descriptor(p_ref); END IF;
  IF p_ref->>'namespace'='market.business_finding' THEN RETURN builderad_private.business_finding_descriptor(p_ref); END IF;
  IF p_ref->>'namespace'='market.knowledge' THEN RETURN builderad_private.knowledge_descriptor(p_ref); END IF;
  RAISE EXCEPTION 'MATERIAL_KIND_UNAVAILABLE: no registered canonical producer' USING ERRCODE='42501';
@@ -8,6 +9,7 @@ END $$;
 CREATE OR REPLACE FUNCTION builderad_private.registered_producer_publish(p_ref jsonb,p_manifest uuid,p_closure bytea) RETURNS void
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
 BEGIN
+ IF p_ref->>'namespace'='business.expenditure_summary' THEN PERFORM builderad_private.expenditure_summary_publish(p_ref,p_manifest,p_closure);RETURN; END IF;
  IF p_ref->>'namespace'='market.business_finding' THEN PERFORM builderad_private.business_finding_publish(p_ref,p_manifest,p_closure);RETURN; END IF;
  RAISE EXCEPTION 'Qualified producer coordinator owns atomic publication' USING ERRCODE='42501';
 END $$;
@@ -15,6 +17,11 @@ CREATE OR REPLACE FUNCTION builderad_private.registered_producer_fields(p_ref js
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
 DECLARE r public.market_knowledge_captures;
 BEGIN
+ IF p_ref->>'namespace'='business.expenditure_summary' THEN
+  PERFORM builderad_private.expenditure_summary_descriptor(p_ref);
+  IF p_fields IS DISTINCT FROM '["spend"]'::jsonb THEN RAISE EXCEPTION 'Exact expenditure-only field licence required' USING ERRCODE='42501'; END IF;
+  RETURN builderad_private.expenditure_summary_value((SELECT input_reads#>'{0,input}' FROM public.business_expenditure_summaries WHERE summary_id=(p_ref->>'key')::uuid));
+ END IF;
  IF p_ref->>'namespace'='market.business_finding' THEN RETURN builderad_private.business_finding_fields(p_ref,p_fields); END IF;
  PERFORM builderad_private.knowledge_descriptor(p_ref);
  IF p_fields IS DISTINCT FROM '["finding"]'::jsonb THEN RAISE EXCEPTION 'Exact registered output fields required' USING ERRCODE='42501'; END IF;
@@ -26,6 +33,7 @@ CREATE OR REPLACE FUNCTION builderad_private.registered_output_constraints(p_ref
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
 DECLARE r public.market_knowledge_captures;entry jsonb;g public.security_action_grants;q public.authority_qualification_receipts;c public.market_source_custody;
 BEGIN
+ IF p_ref->>'namespace'='business.expenditure_summary' THEN PERFORM builderad_private.expenditure_summary_constraints(p_ref,p_operation,p_purpose);RETURN; END IF;
  IF p_ref->>'namespace'='market.business_finding' THEN
   PERFORM builderad_private.business_finding_descriptor(p_ref);
   IF p_purpose IS DISTINCT FROM(SELECT purpose FROM public.market_business_finding_captures WHERE artifact_id=(p_ref->>'key')::uuid) THEN RAISE EXCEPTION 'Exact private finding purpose required' USING ERRCODE='42501'; END IF;

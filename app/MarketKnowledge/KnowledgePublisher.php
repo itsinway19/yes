@@ -26,7 +26,7 @@ final class KnowledgePublisher
             }
             $method = match ($input['run']['question']) {
                 'record_price' => new QualifiedMarketFact('price'), 'record_geography' => new QualifiedMarketFact('geography'),
-                default => app(MarketMethodSelector::class)->select($input['run']['question']),
+                default => app(MarketMethodSelector::class)->select($input['run']['question'], $input['run']['method_ref']),
             };
             if ($method === null || $method->reference() !== $input['run']['method_ref']) {
                 abort(503, 'Qualified market method unavailable.');

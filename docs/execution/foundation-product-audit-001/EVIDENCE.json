@@ -1,0 +1,1040 @@
+{
+  "task": "BA-FOUNDATION-PRODUCT-AUDIT-01 v1.3",
+  "audit_date": "2026-11-06",
+  "authority": "READ_ONLY_AUDIT_AND_BOUNDED_PROPOSAL",
+  "verdict": "BLOCKED_PENDING_ARCHITECTURE_DECISION",
+  "selected_package": "BN-USE-01",
+  "root": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad",
+  "baseline": {
+    "head": "e2fd972985be3c1bb7c9d6a80b73b23a45281096",
+    "tree": "f0d6a1eda6481d82e01d740ef6df3de7f54c3e72",
+    "detached": true,
+    "initial_tracked_and_untracked_changes": [],
+    "runtime_browser_reference": "427f43d2f7430e4386db919beef8f7e096bf427e",
+    "diff_from_browser_reference": [
+      "docs/execution/structural-foundation/VUE_UI_INTEGRATION.md",
+      "tests/Feature/Foundation/BaselineContractTest.php"
+    ],
+    "tracked_changes_during_audit": [],
+    "staged_changes": []
+  },
+  "hosted_foundation": {
+    "url": "https://github.com/42Huss/builderad/actions/runs/42162995488",
+    "headSha": "e2fd972985be3c1bb7c9d6a80b73b23a45281096",
+    "status": "completed",
+    "conclusion": "success",
+    "php_tests": 1354,
+    "php_assertions": 19998,
+    "javascript_tests": 464,
+    "javascript_failures": 0,
+    "new_local_foundation_run": false,
+    "scope": "Exact baseline; not proof of production access or commercial outcome"
+  },
+  "findings": {
+    "G01": "Final material-use native-source matching requires workspace equality; independent Business source has NULL workspace. Static confirmed unsupported path; new runtime reproducer NOT_RUN. Separate operating data-use issuer not proven.",
+    "G02": "Actual knowledge-consumer URI use in resources/js found only in generated types; no corresponding advertiser consumer screen established.",
+    "new_product_security_vulnerability_claimed": false,
+    "G10": "Prior 12-case browser evidence explicitly starts agency/delegation paths from synthetic qualified roots; operating issuer policy NOT_PROVEN. Consumer success does not prove operating root issuance. No claim that all issuers are absent."
+  },
+  "search_scopes": [
+    "Final SQL function definitions and migration reload order",
+    "resources/js exact market-analysis/ market-findings/ knowledge/customer-discovery knowledge/competition references",
+    "app routes config provider native read/write capabilities and AI integration boundaries"
+  ],
+  "search_limits": "Selected boundaries only; no exhaustive security or archive scan; absence findings limited to inspected runtime and exact consumer paths",
+  "output_files": [
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\ASSESSMENT.md",
+      "sha256": "c3644e0e102ed1c4a2cf80f2654f9692c0cafd5b1642db54dd689a1851b66fba",
+      "bytes": 62218,
+      "review_scope": "Audit output or saved original hosted evidence"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\PLAN_TRACEABILITY.csv",
+      "sha256": "e4559a26bd4532e057cf62d35bef2d5cac23024fa5ff530c3cddb2616b161ffa",
+      "bytes": 10935,
+      "review_scope": "Audit output or saved original hosted evidence"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\CI_BASELINE.json",
+      "sha256": "4ab0428a1feb4309de44fa69e2c55817d021610692f7977a2854bf266d7f761a",
+      "bytes": 2939,
+      "review_scope": "Audit output or saved original hosted evidence"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\CI_BASELINE.log",
+      "sha256": "b60a3bab82aabe7a6c7d1efb747d39fc6aec639911661922eb3ff6109bd2bc81",
+      "bytes": 1527802,
+      "review_scope": "Audit output or saved original hosted evidence"
+    }
+  ],
+  "plan_references": [
+    {
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\BA-FOUNDATION-PRODUCT-AUDIT-01-v1.3.md",
+      "sha256": "2774a7c3c60295ce1d0ef3c11b6bd1df5ce43cd99e6b6e877fdd59b236a10bd4",
+      "bytes": 22635,
+      "review_scope": "Governing statement or selected relevant plan passages; status reconciled against current code"
+    },
+    {
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\BA-FOUNDATION-PRODUCT-AUDIT-01-HANDOFF.md",
+      "sha256": "bf0c118ea4a562bde5ec86547fe61acee28556dc3adc7c2cb243ece66efb389c",
+      "bytes": 2849,
+      "review_scope": "Governing statement or selected relevant plan passages; status reconciled against current code"
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\00_START_HERE\\README_FIRST_AR.md",
+      "sha256": "f8d5e82c5043e596b3889f04d0bb5e26898150990f2a6ef17f76df9348f2d008",
+      "bytes": 15045,
+      "review_scope": "Governing statement or selected relevant plan passages; status reconciled against current code"
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\06_V06_Paid_Advertising\\P07\\BuilderAd_V06_P07_Integrated_Product_System_Service_Architecture_Decision_Blueprint_AR_v1.3.4_Owner_Ready_2026-10-26.md",
+      "sha256": "1007af58b8b5c38579c321eafd5838bafcd5c5280f3fc66b485281c7e728a5d2",
+      "bytes": 252124,
+      "review_scope": "Governing statement or selected relevant plan passages; status reconciled against current code"
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\BuilderAd_Competitive_Product_Blueprint_Decisive_AR_v1.1_2026-10-26.md",
+      "sha256": "8fbb67baf83c042a72d04ea8e42a3a45346164be4febd05bce438b9e8eb4c25b",
+      "bytes": 180315,
+      "review_scope": "Governing statement or selected relevant plan passages; status reconciled against current code"
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\BuilderAd_Cross_Section_Integration_Plan_AR_2026-10-30.md",
+      "sha256": "b2f47a110b829a4b117c436aeab3b3fbaa60f1533eb3b05c088a065fa4e0ad28",
+      "bytes": 40621,
+      "review_scope": "Governing statement or selected relevant plan passages; status reconciled against current code"
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\COMMERCIAL_ADVERTISING_EXPERTISE\\README.md",
+      "sha256": "cc18c75896b83c5139367e8f658bbf62cbf51819f97d2737a122c48ecfe4ad3f",
+      "bytes": 6080,
+      "review_scope": "Governing statement or selected relevant plan passages; status reconciled against current code"
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\COMMERCIAL_ADVERTISING_EXPERTISE\\BUILDERAD_GOVERNING_COMMERCIAL_ADVERTISING_EXPERTISE_ARCHITECTURE_V1_1_2026-11-01.md",
+      "sha256": "3bb7250a4cf7636282e78cdbbd0c95040f5455a160743698a54d4bc301eed00f",
+      "bytes": 119937,
+      "review_scope": "Governing statement or selected relevant plan passages; status reconciled against current code"
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\COMPETITIVE_ADVANTAGE\\README.md",
+      "sha256": "acd0d7ebeafc66029d2bf61bffd57c45f3fce60f4f38de0a5ef1330a67411a27",
+      "bytes": 18787,
+      "review_scope": "Governing statement or selected relevant plan passages; status reconciled against current code"
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\09_PRODUCT_BLUEPRINT\\COMPETITIVE_ADVANTAGE\\BuilderAd_Competitive_Mechanisms_By_Activity_AR_v1.0_2026-10-29.md",
+      "sha256": "9d9af5db61f741672bff58dc4775ed21b226b50efd1b18164b4a636cfac8fc5d",
+      "bytes": 61873,
+      "review_scope": "Governing statement or selected relevant plan passages; status reconciled against current code"
+    }
+  ],
+  "research_sources": [
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\قسم 1 النشاط والأهداف\\BuilderAd_BF01_Final_Consolidated_Foundation_AR_v1.1_2026-10-22.md",
+      "sha256": "196b3f249f9426bb6dc0c19532135b994956f3352931dbd4ac66fcf6b9124dea",
+      "bytes": 44126,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "BF01",
+      "inherited_ledger_reviewed_lines": "1-15;21-23;29;45;69-71",
+      "inherited_ledger_sha256": "196b3f249f9426bb6dc0c19532135b994956f3352931dbd4ac66fcf6b9124dea",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\قسم 2 السوق والطلب واكتشاف الفرص والعملاء\\BuilderAd_BF02_OP01_Final_Unified_Reference_AR_v1.1_2026-10-22.md",
+      "sha256": "6d51043dddba1e98c3fcd30d8e42e6de33d7c2613674f22dd462b74ba14c5961",
+      "bytes": 51056,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "BF02",
+      "inherited_ledger_reviewed_lines": "1-11;43-52",
+      "inherited_ledger_sha256": "6d51043dddba1e98c3fcd30d8e42e6de33d7c2613674f22dd462b74ba14c5961",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\قسم 3 التفاعل وتحويل الاهتمام إلى استفسار مؤهل\\BuilderAd_BF03_Final_Arbitrated_Reference_AR_v1.1_2026-10-22.md",
+      "sha256": "08a7f1cee2fbb3c69c35f37ae1538e398f7b706bd76e022a70c197dc68611d9f",
+      "bytes": 46872,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "BF03",
+      "inherited_ledger_reviewed_lines": "1-15;44;50;56-58;70;78;82;84-87;101;109;136;155",
+      "inherited_ledger_sha256": "08a7f1cee2fbb3c69c35f37ae1538e398f7b706bd76e022a70c197dc68611d9f",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\القسم 4 العلاقة التجارية، الصفقات، الطلبات، الوفاء، الفوترة، المدفوعات، التسوية، والنتائج\\BuilderAd_BF04_Final_Unified_Arbitrated_Reference_AR_v1.1_2026-10-22.md",
+      "sha256": "6f9a7a8b5afcfbd3e9801669394aa1c8cb64fd28c26495ae8f221720e719b615",
+      "bytes": 133499,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "BF04",
+      "inherited_ledger_reviewed_lines": "1-16",
+      "inherited_ledger_sha256": "6f9a7a8b5afcfbd3e9801669394aa1c8cb64fd28c26495ae8f221720e719b615",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_Advertising_06-01_Goal_Optimization_Research_Reference_AR_2026-10-21.md",
+      "sha256": "c8ff4b95f6563b04a10fd0ba2c76917d3966f06e0547edc72fd07928b708f3f9",
+      "bytes": 58344,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "AD01",
+      "inherited_ledger_reviewed_lines": "1-11;15;37;47;65;83;89;93;177",
+      "inherited_ledger_sha256": "c8ff4b95f6563b04a10fd0ba2c76917d3966f06e0547edc72fd07928b708f3f9",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-02_Consolidated_Research_Decision_AR_2026-10-21.md",
+      "sha256": "e6139c1f46754a34d7247336feb7b9d361b0a3db667dffd12e3f7dccde372e3d",
+      "bytes": 34230,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "AD02",
+      "inherited_ledger_reviewed_lines": "1-16;20;35;37;39;43;49;55;63;81;103;109;127",
+      "inherited_ledger_sha256": "e6139c1f46754a34d7247336feb7b9d361b0a3db667dffd12e3f7dccde372e3d",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-03_Consolidated_Research_Decision_AR_2026-10-22.md",
+      "sha256": "41e61ba3a40e7c3ce377b5bfc80b1c7f85942335756f1a9403e552c08a67fb10",
+      "bytes": 47772,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "AD03",
+      "inherited_ledger_reviewed_lines": "1-15;23;25;27;35;39;43;67;101;149;180;202",
+      "inherited_ledger_sha256": "41e61ba3a40e7c3ce377b5bfc80b1c7f85942335756f1a9403e552c08a67fb10",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-04_Consolidated_Research_Engineering_Decision_AR_v1.1_2026-10-22.md",
+      "sha256": "8729411136b3f698d54cc82f380d31488fef354b99cf9f949584e69f1a90a1a6",
+      "bytes": 65548,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "AD04",
+      "inherited_ledger_reviewed_lines": "1-17;26;37;50;67;72;100",
+      "inherited_ledger_sha256": "8729411136b3f698d54cc82f380d31488fef354b99cf9f949584e69f1a90a1a6",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-05_Consolidated_Research_Engineering_Decision_AR_v1.1_2026-10-22.md",
+      "sha256": "97cdb828448944161957123415647f3944bbf5eafc93308f2f1bb6e3b3403d13",
+      "bytes": 52638,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "AD05",
+      "inherited_ledger_reviewed_lines": "1-9;13;25;27;29;37;39;47;89",
+      "inherited_ledger_sha256": "97cdb828448944161957123415647f3944bbf5eafc93308f2f1bb6e3b3403d13",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-06_Consolidated_Research_Engineering_Decision_AR_v1.1_2026-10-22.md",
+      "sha256": "3622a766d1440d19f028d3f5f20bf1fe3fc773ecca1ad3878495432133a4dac9",
+      "bytes": 53549,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "AD06",
+      "inherited_ledger_reviewed_lines": "1-15;17;39;57;99",
+      "inherited_ledger_sha256": "3622a766d1440d19f028d3f5f20bf1fe3fc773ecca1ad3878495432133a4dac9",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-07_Consolidated_Functional_Engineering_Research_Decision_AR_v1.1_2026-10-22.md",
+      "sha256": "a41d44ec5ddec2c4295ef8a4a24e8073ace6250a53a370e941c61b41d57ab202",
+      "bytes": 59246,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "AD07",
+      "inherited_ledger_reviewed_lines": "1-9;13;28;38;42;80;91;93-103",
+      "inherited_ledger_sha256": "a41d44ec5ddec2c4295ef8a4a24e8073ace6250a53a370e941c61b41d57ab202",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-08_Unified_Research_Engineering_Reference_AR_v1.1_2026-10-22.md",
+      "sha256": "f944f2c4cb745a95a9757b69716287cf1f32fa631a8ec8e865622263a6006287",
+      "bytes": 63688,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "AD08",
+      "inherited_ledger_reviewed_lines": "1-15;17;23;29;37;39;61",
+      "inherited_ledger_sha256": "f944f2c4cb745a95a9757b69716287cf1f32fa631a8ec8e865622263a6006287",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_06-09_Final_Research_Functional_Engineering_Reference_AR_v1.1_2026-10-22.md",
+      "sha256": "36eaa85218368cbb7511a7ed4684a2bef79fd1d6d42faae9a2897d0e5757fead",
+      "bytes": 59206,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "AD09",
+      "inherited_ledger_reviewed_lines": "1-10;18-20;24;32;36;50;52;66;84",
+      "inherited_ledger_sha256": "36eaa85218368cbb7511a7ed4684a2bef79fd1d6d42faae9a2897d0e5757fead",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\الإعلانات\\BuilderAd_X_Ads_Final_Trusted_Research_Reference_AR_v1.1_2026-10-22.md",
+      "sha256": "c6025f498ef9b3a294433d7ab2a20600fd9a649c51542c3a6dcd76db1499f44d",
+      "bytes": 51199,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "ADX",
+      "inherited_ledger_reviewed_lines": "1-20;26;35;37;51;53;66;72;78;98",
+      "inherited_ledger_sha256": "c6025f498ef9b3a294433d7ab2a20600fd9a649c51542c3a6dcd76db1499f44d",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\SRC-INTEL-01\\BuilderAd_SRC_INTEL_01_Canonical_Integrated_Research_AR_v1.0_2026-10-24.md",
+      "sha256": "3039750561233b96786b94b3d824ce0f913f6dadffe3637054dbedd7c3f36df5",
+      "bytes": 217791,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "SRC",
+      "inherited_ledger_reviewed_lines": "1-15;19-32;46;79;94;133;160;178;199;235",
+      "inherited_ledger_sha256": "3039750561233b96786b94b3d824ce0f913f6dadffe3637054dbedd7c3f36df5",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\قسم F الظهور والاكتشاف غير الإعلاني\\BuilderAd_F_Canonical_Final_Deep_Research_and_ARCH00B_Handoff_AR_v2.0_2026-10-23.md",
+      "sha256": "8d5273b74121fc5fb3332da11c61291648c02f0be8718f55bda851f6627a71d8",
+      "bytes": 139244,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "F",
+      "inherited_ledger_reviewed_lines": "1-11;15;19;36-41;46;63;79;97;131;141;160",
+      "inherited_ledger_sha256": "8d5273b74121fc5fb3332da11c61291648c02f0be8718f55bda851f6627a71d8",
+      "ledger_hash_matches_current": true
+    },
+    {
+      "path": "C:\\dev\\builderad sections\\الأقسام\\قسم H الاحتفاظ واقتصاد النمو\\BuilderAd_H_Research_Final_Synthesis_F_Dependencies_ARCH00B_AR_v1.0_2026-10-23.md",
+      "sha256": "2bafcd8327bf9462d5799dbe33723e7ab86c6bb6c64e40318e0069f5abbbe0f5",
+      "bytes": 54600,
+      "review_scope": "Selected passages; not whole-document or field validation",
+      "research_id": "H",
+      "inherited_ledger_reviewed_lines": "1-19;25;27;32-35;43;71;102;120;145;173;191",
+      "inherited_ledger_sha256": "2bafcd8327bf9462d5799dbe33723e7ab86c6bb6c64e40318e0069f5abbbe0f5",
+      "ledger_hash_matches_current": true
+    }
+  ],
+  "code_and_governance_anchors": [
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\AGENTS.md",
+      "sha256": "6193381ed4df5f15aa1fb0e00f4d9e73f808e0e46a801df5887b6a1e01b73c7d",
+      "bytes": 17725,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\BUILDERAD_EXECUTABLE_ARCHITECTURE.md",
+      "sha256": "c7e68308165752c0d8742a6cc9b3063780f32b4ae1d4b6ae3e410213db9f81d3",
+      "bytes": 27537,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\structural-foundation\\PROGRAM.md",
+      "sha256": "5bbdd8277e8352429212d9bcf3ca2dd7a52fa9c266733fafe8694cab742dabdb",
+      "bytes": 68673,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\structural-foundation\\EXPERTISE_INTEGRATION.md",
+      "sha256": "b479b008323075ec8b8a32c54131ee6fc3905ab89214e3ce6fa0ad97948bd9b4",
+      "bytes": 11645,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\structural-foundation\\RESEARCH_ALIGNMENT.md",
+      "sha256": "6d91d85b01219c6b043701be6b7a13b8aa4d14156acc11323987e3813dca1cc3",
+      "bytes": 12363,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\structural-foundation\\RESEARCH_ALIGNMENT.csv",
+      "sha256": "c91242df1cea487cc89da61344394a924737d711a73e52de897c0f8a45a9d661",
+      "bytes": 17941,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\structural-foundation\\OWNER_MANDATE.md",
+      "sha256": "7740d5639459b9bcce5a9649a2ac0e23816bd72f09b0abea1325dcda600dcbb6",
+      "bytes": 61995,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\structural-foundation\\IMPLEMENTATION_PROGRESS.md",
+      "sha256": "f2b44c5fdb065b2fa818fa7ec9b1f3f9525ee5596ad1518fcb3f57862af47338",
+      "bytes": 99733,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\structural-foundation\\VUE_UI_INTEGRATION.md",
+      "sha256": "ea657010fa20752bcae4fb6652a9c9ec8e085dbedcfa49843197ff7ee22d3d67",
+      "bytes": 20791,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\superpowers\\specs\\2026-10-06-joint-targeting-spend-semantic-design.md",
+      "sha256": "e54e4879c1d4d7ce9cacb464184e4fa308afe7b7a21430cb30c3dab8d1b54ff6",
+      "bytes": 53834,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\database\\sql\\business_native_sources\\schema.sql",
+      "sha256": "8cf64e6e722d1eb331e285ab5238de7def22115c2f922076c784ba4b2956a646",
+      "bytes": 8816,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\database\\sql\\business_scope\\data_use.sql",
+      "sha256": "64df56b08ee3d0dee8fd6889eb2dec91cf41b7bf140d4334af58cc31d0a4037b",
+      "bytes": 16893,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\database\\sql\\business_scope\\material_lineage.sql",
+      "sha256": "f80186590e00f0e69b7de89b7b7e7772ad238a6de4857cb9cf1d53b89b790307",
+      "bytes": 13365,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\database\\sql\\business_scope\\material_use.sql",
+      "sha256": "7f1480ddfa7396305ac9e5d5607e104a5253b7caa013a4bdabc284d67b458577",
+      "bytes": 16380,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\database\\sql\\market_evidence\\integration.sql",
+      "sha256": "ca75542de4d89341a16144234e5ea4dabf8df5e36a85d70652a5e7d3ff7511df",
+      "bytes": 56837,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\database\\sql\\market_knowledge\\private_integration.sql",
+      "sha256": "06d15ca9d5bf6245d5538cf27a26dbce5388c80cab2131649622edc2e6e455a2",
+      "bytes": 11974,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\database\\migrations\\0001_01_01_000520_create_private_market_findings.php",
+      "sha256": "2348da4bfdbc554514718a0fac2a7d357a0a149a3fab0ea1fec92b6a7a48f25b",
+      "bytes": 1747,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\database\\migrations\\0001_01_01_000640_add_business_native_source_custody.php",
+      "sha256": "e0839163e9b794d3d2d8e6a19a3c2acfd5a756e57c4840c2db96714f6bee888e",
+      "bytes": 4032,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\app\\Foundation\\Business\\BusinessScope.php",
+      "sha256": "a031ed437a35c978820cc9828e8eb2dd7965478484122847f3b4e244facbe870",
+      "bytes": 16493,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\app\\Providers\\Ads\\ProviderScope.php",
+      "sha256": "47feeb00cf03a485d22bf7cf026a8bb4c4dae49b471cb8a469c10664a1b5ce38",
+      "bytes": 4898,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\app\\Providers\\Ads\\ObservationJournal.php",
+      "sha256": "c13f1bb1ab8ab303ab6267812a64b6d695d0c5c90c7862ef86084399ce725537",
+      "bytes": 10824,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\app\\Providers\\Ads\\SharedRealityInterpretation.php",
+      "sha256": "bfcf8c70f996ee5c87dacc8d91ba98d164aca183b1e6571da2f51f8717fdd65c",
+      "bytes": 16798,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\app\\MarketKnowledge\\CustomerDiscoveryConsumer.php",
+      "sha256": "5afc52aa1830d630585e691d8fb77aebf20dd2f1736a6ec862fd796fc11be893",
+      "bytes": 2749,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\app\\MarketKnowledge\\CompetitiveIntelligenceConsumer.php",
+      "sha256": "e2985110d3c49e3920cc7146a0df214817cf956f8fc628a49b9cc741deb52cfb",
+      "bytes": 3237,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\app\\MarketKnowledge\\QualifiedKnowledgeReader.php",
+      "sha256": "339fd92cf47cbe466e51c23dcb54fcb46200ff40808badd52d254a9b91d6e22b",
+      "bytes": 766,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\app\\MarketKnowledge\\Processing\\OfferEquivalence.php",
+      "sha256": "573ce77c8a8b2c06322bff24f8dc896b1b8256c8c07f4f575b72faf21ca1ec83",
+      "bytes": 2811,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\app\\MarketKnowledge\\Processing\\QualifiedInterestChange.php",
+      "sha256": "d7a1bff5e5953fd47e861109f4431f4d49a4a12f5a170535072417582f2a6ecf",
+      "bytes": 4015,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\app\\MarketKnowledge\\Processing\\BusinessFeasibility.php",
+      "sha256": "13260f63d52b909f7f7d95353716e7ebbbefe27d9d5fd472903a097a347d172f",
+      "bytes": 1580,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\app\\Commercial\\InquiryEvidence.php",
+      "sha256": "6bca921b00b32e36ebc45a485984f5ed7fe2f8e31044b63c8c4966800efd59f5",
+      "bytes": 2735,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\app\\Commercial\\RegisterCommercialScope.php",
+      "sha256": "d98762a18d11a6e944d68a6497434ab4e614c3674600f4ce803cbdfa45ace68a",
+      "bytes": 4244,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\app\\Platform\\AdministrationNavigation.php",
+      "sha256": "56f9be27a9f36dbe305a0f4ce11dafc2ecaf43f783b96333c826453dd1f16c7e",
+      "bytes": 2032,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\resources\\js\\business-foundation\\BusinessSources.vue",
+      "sha256": "fb81c943e76dec196dfa5b1c6c6e2f8ee6b2c26a07a9751ed1eabdf5c964de12",
+      "bytes": 7622,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\resources\\js\\business-foundation\\BusinessWorkspace.vue",
+      "sha256": "4f88c901274490b2973df64de02872666d5dda156d98462745a0e909d393479d",
+      "bytes": 20443,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\routes\\web.php",
+      "sha256": "e81115845f5168857be678b0dc1f91d7286c0ec783ed330c45b9ee030d96e1e8",
+      "bytes": 53197,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\tests\\Support\\NativeMaterialFixture.php",
+      "sha256": "7e0b09defd8f78e5ced665e28968b580a631f9752c54de77c0710d89509e235d",
+      "bytes": 8795,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\tests\\Feature\\BusinessNativeSourceTest.php",
+      "sha256": "2b00fcf10c0792d14bcf12955fa7b5f8bccff65e94c36deafe7a8e2b7e4839da",
+      "bytes": 34794,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\tests\\Feature\\BusinessMaterialUseTest.php",
+      "sha256": "e49147eb0eba597b41f01895fa1860eeba8812e64d322aa52fc7296d9c0d5984",
+      "bytes": 17505,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\tests\\Feature\\MarketKnowledgeConsumersTest.php",
+      "sha256": "089d332edac189f76d5e7fedc2dc07ffa786d0ebf139eab88460ed23c5bbe83a",
+      "bytes": 4859,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\tests\\Feature\\FinalSchemaCompositionTest.php",
+      "sha256": "73847b68901118076484d13d948221ebb4e2f16a26bd2132509cb1347bd304ea",
+      "bytes": 34103,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    },
+    {
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\.github\\workflows\\foundation.yml",
+      "sha256": "098f2a15543bbf3e104847532b9a72744e39c04ffa08ef6d6a640679dfee19ac",
+      "bytes": 4686,
+      "review_scope": "Selected relevant code or test contracts; existing CI reused; not a repository-wide security scan"
+    }
+  ],
+  "reused_browser": [
+    {
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\review-evidence\\VUE-INTEGRATION-20261105\\stage6-release\\browser-results.json",
+      "sha256": "58f76e6100cd27e604c6f564cbc958d78a7b83fdb65e629e6b47e43dd247eb1b",
+      "bytes": 251207,
+      "review_scope": "Previously recorded synthetic browser execution; not newly run in this audit",
+      "case_count": 5,
+      "cases": [
+        {
+          "name": "actual login, independent creation, list and opening without a Workspace identity",
+          "evidence": {
+            "createdBusiness": "01a1aeee-cd78-7073-aafe-74bc80f10ddf",
+            "sharedWorkspaceInference": false
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "qualified draft archive recovers a real stale-revision conflict and reconciles a lost acknowledgement once",
+          "evidence": {
+            "realArchive": true,
+            "realConflict": true,
+            "explicitRevisionAdoption": true,
+            "lostAckAfterCommit": true,
+            "exactCommandReplay": true,
+            "matchingReceipt": true,
+            "originalBusinessPreserved": true
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "Business advertising accounts open directly in the activity with five brands and preserve a simulated cancellation return",
+          "evidence": {
+            "platformIds": [
+              "google",
+              "meta",
+              "snapchat",
+              "tiktok",
+              "x"
+            ],
+            "brandedEntries": 5,
+            "directBusinessCustody": true,
+            "mandatoryWorkspaceChooser": false,
+            "realSnapshots": true,
+            "simulatedCancelledFragment": true,
+            "sameBusinessReturned": true,
+            "reloadAndBackForward": true,
+            "returnFocus": true,
+            "tabletAndDark": true,
+            "mobileOverflow": false,
+            "locales": [
+              "ar",
+              "en"
+            ],
+            "dataRightsDiscoverable": true
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "operating independent team and organization registration, membership and departure",
+          "evidence": {
+            "independentBusiness": "01a1aeef-b054-78c6-b104-030ba797110e",
+            "locales": [
+              "ar",
+              "en"
+            ],
+            "operatingIssuers": true,
+            "workspaceInferredForIndependentBusiness": false,
+            "organizationRegisteredWithoutCommercialType": true,
+            "employeeMembershipAndSelfDeparture": true,
+            "directBusinessPreservedAfterOrganizationalDeparture": true,
+            "width": 390,
+            "horizontalOverflow": 0
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "shared-source return survives actual OAuth success and cancel, fresh documents and revoked Business authority",
+          "evidence": {
+            "outcomes": [
+              "Cancel",
+              "Authorize"
+            ],
+            "newDocuments": true,
+            "wrongOrganizationRejected": true,
+            "wrongBusinessGrantRejected": true,
+            "revokedBusinessDenied": true,
+            "changedIdentityCleared": true,
+            "authority": "real server; synthetic provider responses only"
+          },
+          "result": "PASS"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\review-evidence\\VUE-INTEGRATION-20261105\\stage6-final\\browser-results.json",
+      "sha256": "c9f44bb36758bc2899255ad201ec88abcfa8b5bcd819e0d1da44bee7df28842f",
+      "bytes": 334702,
+      "review_scope": "Previously recorded synthetic browser execution; not newly run in this audit",
+      "case_count": 12,
+      "cases": [
+        {
+          "name": "actual login, independent creation, list and opening without a Workspace identity",
+          "evidence": {
+            "createdBusiness": "01a1aee8-130f-7384-a79c-5744e0daefc5",
+            "sharedWorkspaceInference": false
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "accepted Vue shell switches only qualified Businesses in sidebar and mobile drawer without a document reload",
+          "evidence": {
+            "qualifiedOptions": 2,
+            "realAPI": true,
+            "mobileDrawer": true,
+            "sameDocument": true,
+            "noWorkspaceCreation": true
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "qualified draft archive recovers a real stale-revision conflict and reconciles a lost acknowledgement once",
+          "evidence": {
+            "realArchive": true,
+            "realConflict": true,
+            "explicitRevisionAdoption": true,
+            "lostAckAfterCommit": true,
+            "exactCommandReplay": true,
+            "matchingReceipt": true,
+            "originalBusinessPreserved": true
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "Business advertising accounts open directly in the activity with five brands and preserve a simulated cancellation return",
+          "evidence": {
+            "platformIds": [
+              "google",
+              "meta",
+              "snapchat",
+              "tiktok",
+              "x"
+            ],
+            "brandedEntries": 5,
+            "directBusinessCustody": true,
+            "mandatoryWorkspaceChooser": false,
+            "realSnapshots": true,
+            "simulatedCancelledFragment": true,
+            "sameBusinessReturned": true,
+            "reloadAndBackForward": true,
+            "returnFocus": true,
+            "tabletAndDark": true,
+            "mobileOverflow": false,
+            "locales": [
+              "ar",
+              "en"
+            ],
+            "dataRightsDiscoverable": true
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "Business-only delegate can see provider brands but cannot read or connect private accounts",
+          "evidence": {
+            "brandsVisible": 5,
+            "privateSnapshotsDenied": 5,
+            "connectActionVisible": false
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "direct Business team recovers initial422 and409 and reconciles a committed unknown result without a replacement command",
+          "evidence": {
+            "cases": [
+              {
+                "scenario": 422,
+                "transportInjection": "rejected before server effect",
+                "requests": 2,
+                "command": "new",
+                "operatingEnrollment": true
+              },
+              {
+                "scenario": 409,
+                "transportInjection": "rejected before server effect",
+                "requests": 2,
+                "command": "new",
+                "operatingEnrollment": true
+              },
+              {
+                "scenario": "unknown",
+                "transportInjection": "real200effect then droppedACK",
+                "requests": 2,
+                "command": "same",
+                "operatingEnrollment": true
+              }
+            ],
+            "noDuplicateEffects": true
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "an acknowledged-lost Business edit survives a later validation rejection and exact explicit reconciliation changes one version only",
+          "evidence": {
+            "realCommitThenLostAcknowledgement": true,
+            "simulatedLater422": true,
+            "deliveries": 3,
+            "versionDelta": 1,
+            "retainedExactOriginal": true,
+            "archiveBlockedUntilReconciled": true
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "operating independent team and organization registration, membership and departure",
+          "evidence": {
+            "independentBusiness": "01a1aeea-3623-7c12-bfa2-916cb7715cbd",
+            "locales": [
+              "ar",
+              "en"
+            ],
+            "operatingIssuers": true,
+            "workspaceInferredForIndependentBusiness": false,
+            "organizationRegisteredWithoutCommercialType": true,
+            "employeeMembershipAndSelfDeparture": true,
+            "directBusinessPreservedAfterOrganizationalDeparture": true,
+            "width": 390,
+            "horizontalOverflow": 0
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "internal client file team opt-in, real staff assignment and staff edit preserve private boundaries",
+          "evidence": {
+            "operatingCreatorEnrollment": true,
+            "staffEdit": true,
+            "selfDepartureWithoutWorkspaceView": true,
+            "departedStaffDenied": true,
+            "qualifiedFilePreserved": true,
+            "privateHistoryDenied": true,
+            "privateInquiryNotMounted": true,
+            "mobileOverflow": false
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "qualified agency relationship is managed through the same resource without granting access to workspace members",
+          "evidence": {
+            "qualification": "SYNTHETIC TEST ROOT; NOT AN OPERATING ISSUER",
+            "agencyRevision": 3,
+            "keyboard": true,
+            "width": 390
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "a qualified issuer can discover a specific delegation, issue it and the recipient opens the actual customer business",
+          "evidence": {
+            "issued": "145",
+            "recipientRealRead": 200,
+            "recipientDelegationOptions": 0,
+            "recipientAccountWithoutBusiness": true,
+            "identifierDiscoveredInUI": true,
+            "operatingIssuerPolicy": "NOT_PROVEN; synthetic qualified parent"
+          },
+          "result": "PASS"
+        },
+        {
+          "name": "shared-source return survives actual OAuth success and cancel, fresh documents and revoked Business authority",
+          "evidence": {
+            "outcomes": [
+              "Cancel",
+              "Authorize"
+            ],
+            "newDocuments": true,
+            "wrongOrganizationRejected": true,
+            "wrongBusinessGrantRejected": true,
+            "revokedBusinessDenied": true,
+            "changedIdentityCleared": true,
+            "authority": "real server; synthetic provider responses only"
+          },
+          "result": "PASS"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\review-evidence\\VUE-INTEGRATION-20261105\\stage5-admin-settled\\admin-ui-after\\results.json",
+      "sha256": "2e58f7450262858b8fee013a8ba1a5524e322afdb996a832f12086936af6f37a",
+      "bytes": 57912,
+      "review_scope": "Previously recorded synthetic browser execution; not newly run in this audit",
+      "case_count": 9,
+      "results": [
+        {
+          "name": "Authorized Vue Router destinations and history in Arabic and English",
+          "status": "PASS"
+        },
+        {
+          "name": "Authorized pages at four widths in both directions",
+          "status": "PASS"
+        },
+        {
+          "name": "Administration has one header and scoped advertiser regression",
+          "status": "PASS"
+        },
+        {
+          "name": "Grouped active navigation preserves routes and Back/Forward",
+          "status": "PASS"
+        },
+        {
+          "name": "Real customer records, query filters and details remain usable",
+          "status": "PASS"
+        },
+        {
+          "name": "Mobile drawer Escape, backdrop, focus confinement and draft preservation",
+          "status": "PASS"
+        },
+        {
+          "name": "Existing staff form retains validation, draft and successful invitation",
+          "status": "PASS"
+        },
+        {
+          "name": "Employee controls keep existing permission visibility and denial",
+          "status": "PASS"
+        },
+        {
+          "name": "Served production assets match final checkout",
+          "status": "PASS"
+        }
+      ],
+      "errors": [],
+      "pageErrors": null
+    },
+    {
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\review-evidence\\VUE-INTEGRATION-20261105\\stage5-market-retry\\browser-results.json",
+      "sha256": "0d116460b499c034a631bedabeceb7fb2cab21db8e329543c388b867ad32a31c",
+      "bytes": 5732,
+      "review_scope": "Previously recorded synthetic browser execution; not newly run in this audit",
+      "case_count": 12,
+      "results": [
+        {
+          "name": "Qualified employee receives only permitted source metadata and real local-method status",
+          "status": "PASS"
+        },
+        {
+          "name": "Unqualified Founder has no knowledge link and direct access is denied",
+          "status": "PASS"
+        },
+        {
+          "name": "An empty source page explains limited evidence without a zero-demand claim",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual shared capture/publication pipeline produces bounded prepared and current operational summaries",
+          "status": "PASS"
+        },
+        {
+          "name": "Real D1 price correction marks dependent shared knowledge for review",
+          "status": "PASS"
+        },
+        {
+          "name": "Real retain withdrawal and payload removal preserve only truthful shared retention status",
+          "status": "PASS"
+        },
+        {
+          "name": "Real forward qualification withdrawal makes only affected shared publication unavailable",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual restriction and expired source rights are shown separately from connectivity",
+          "status": "PASS"
+        },
+        {
+          "name": "Failed readback is a previous snapshot and never triggers a write or a false refresh",
+          "status": "PASS"
+        },
+        {
+          "name": "Keyboard refresh, source details and navigation/back use the real application",
+          "status": "PASS"
+        },
+        {
+          "name": "Arabic/English mobile 320/390 and both themes keep readable nonoverlapping header controls and keyboard drawer",
+          "status": "PASS"
+        },
+        {
+          "name": "Revoked and expired observer authority closes the visible projection and denies direct API requests",
+          "status": "PASS"
+        }
+      ],
+      "errors": null,
+      "pageErrors": []
+    },
+    {
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\review-evidence\\VUE-INTEGRATION-20261105\\stage6-asset-provenance.json",
+      "sha256": "82155a098242a1ee6144c81ccf289785472889d73918746e112735731b915d3e",
+      "bytes": 225,
+      "review_scope": "Previously recorded synthetic browser execution; not newly run in this audit",
+      "summary": {
+        "final_browser_passes": 5,
+        "page_errors": 0,
+        "matching_served_production_files": 57,
+        "source_delta_from_12_case_run": [
+          "resources/js/sources/SourceView.vue",
+          "tests/public-platform.test.mjs"
+        ]
+      }
+    }
+  ],
+  "competitive_archive": {
+    "archive": {
+      "path": "C:\\dev\\10_G1_G2_COMPETITIVE_VALIDATION.zip",
+      "sha256": "f94294f32440dc4116438c566528a83aa317de4c0e86fab1abdd26e22d0b0ea6",
+      "bytes": 7135106,
+      "review_scope": "Original supplied archive; not extracted or modified"
+    },
+    "selected_entries": [
+      {
+        "entry": "10_G1_G2_COMPETITIVE_VALIDATION/01_DESK_PREFLIGHT_RESULTS/01_CANDIDATE_DECISION_MEMO_AR.md",
+        "sha256": "5386e2e584333213da47e7c344f82c9c5cfe2eecb1e36d709f937b0ef0eb7db8",
+        "bytes": 31390,
+        "review_scope": "Selected decision and parity and rights passages; desk research only"
+      },
+      {
+        "entry": "10_G1_G2_COMPETITIVE_VALIDATION/01_DESK_PREFLIGHT_RESULTS/02_PARITY_CASE_PILOT_PROTOCOLS_AR.md",
+        "sha256": "b565384e640fc77a3ef454194d5d9529042d530e049b5d99fa5218aac4ec337b",
+        "bytes": 40736,
+        "review_scope": "Selected decision and parity and rights passages; desk research only"
+      },
+      {
+        "entry": "10_G1_G2_COMPETITIVE_VALIDATION/01_DESK_PREFLIGHT_RESULTS/03_G2_PROVIDER_RIGHTS_AND_ECONOMICS.csv",
+        "sha256": "b89bca980aee7b80d9ce61163156d71e26cbb21600d6d34ab57e56116b86d9d0",
+        "bytes": 24477,
+        "review_scope": "Selected decision and parity and rights passages; desk research only"
+      }
+    ],
+    "field_validation": "NOT_RUN",
+    "pricing_and_rights_live_revalidation": "NOT_RUN"
+  },
+  "execution_limits": {
+    "product_changes": false,
+    "sql_or_migration_changes": false,
+    "test_changes": false,
+    "new_application_tests": "NOT_RUN",
+    "new_browser_tests": "NOT_RUN",
+    "live_provider_access": "NOT_RUN",
+    "owner_database_access": "NOT_RUN",
+    "merge_or_publish": "NOT_RUN",
+    "processes_started": [],
+    "external_plan_modified": false,
+    "whole_research_corpus_read": false
+  },
+  "browser_evidence_reuse_limit": "Final 5-case release run covers final source behavior. SourceView.vue and tests/public-platform.test.mjs changed after older 12-case run; older unaffected evidence is reused only for its actual scope. Agency/delegation synthetic root limitations retained.",
+  "definition_trace": [
+    {
+      "file": "database/sql/market_evidence/integration.sql",
+      "line": 325,
+      "symbol": "builderad_private.resolve_material",
+      "effect": "Native origin projection includes workspace_id but not business_id"
+    },
+    {
+      "file": "database/sql/market_knowledge/private_integration.sql",
+      "line": 44,
+      "symbol": "builderad_private.material_use_plan",
+      "effect": "Final replacement; line94 requires native grant workspace equality"
+    },
+    {
+      "file": "database/migrations/0001_01_01_000520_create_private_market_findings.php",
+      "line": 22,
+      "effect": "Loads private_integration replacement"
+    },
+    {
+      "file": "database/migrations/0001_01_01_000640_add_business_native_source_custody.php",
+      "line": 25,
+      "effect": "Source custody reload does not replace material-use/resolver functions"
+    }
+  ],
+  "document_validation": {
+    "date": "2026-11-06",
+    "checks": {
+      "baseline_head_matches": true,
+      "main_matches": true,
+      "hosted_ci_exact_success": true,
+      "no_product_or_staged_changes": true,
+      "nine_domains_present": true,
+      "crosswalk_24_unique_refs": true,
+      "research_source_hashes_match_ledger": true,
+      "all_hashed_files_unchanged": true,
+      "local_report_links_exist": true,
+      "prior_browser_case_statuses_honestly_reused": true,
+      "no_new_runtime_claim": true
+    },
+    "result": "PASS",
+    "meaning": "Document coverage, links, hashes and baseline consistency only; not new application behavioral validation"
+  }
+}

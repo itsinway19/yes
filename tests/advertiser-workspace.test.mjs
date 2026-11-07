@@ -23,10 +23,11 @@ const { current } = await import(stateUrl);
 const iconsUrl = moduleUrl(`export const Building2={render:()=>null};export const ChevronLeft=Building2,Layers3=Building2,Link2=Building2,ShieldCheck=Building2,ArrowLeft=Building2,Plus=Building2,FileText=Building2,House=Building2,Megaphone=Building2,Settings2=Building2,Target=Building2,Users=Building2,Menu=Building2,X=Building2;`);
 const plainUrl = moduleUrl(`import {h} from ${JSON.stringify(vue)};export default {render(){return h('div',{'data-existing-editor':true})}};`);
 const apiUrl = moduleUrl('export const businessSurface=async()=>{throw Error("Unexpected surface read")};export const businessChoices=async()=>({items:[],next_cursor:null,scope:{principal_generation:1,authority_fingerprint:"qualified"}});export const calls=[];export const pending=[];export const create=command=>{calls.push(JSON.parse(JSON.stringify(command)));return new Promise((resolve,reject)=>pending.push({resolve,reject}));};export const factCalls=[];export const factPending=[];export const writeFact=(business,command)=>{factCalls.push({business,command:JSON.parse(JSON.stringify(command))});return new Promise((resolve,reject)=>factPending.push({resolve,reject}));};');
+const dataLicenseJourneyUrl = moduleUrl('export const hasPendingDataLicense=()=>false;');
 const creationApi = await import(apiUrl);
 async function scriptModule(file, ports = {}) {
     let source = compile(await readFile(file, 'utf8'));
-    for (const [name, target] of Object.entries({vue, '../spa/transport':transportUrl, './api':apiUrl, ...ports})) source = source.replaceAll(`from '${name}'`, `from ${JSON.stringify(target)}`).replaceAll(`from "${name}"`, `from ${JSON.stringify(target)}`);
+    for (const [name, target] of Object.entries({vue, '../spa/transport':transportUrl, './api':apiUrl, './dataLicenseJourney':dataLicenseJourneyUrl, ...ports})) source = source.replaceAll(`from '${name}'`, `from ${JSON.stringify(target)}`).replaceAll(`from "${name}"`, `from ${JSON.stringify(target)}`);
     return moduleUrl(source);
 }
 const choicesUrl = await scriptModule('resources/js/business-foundation/businessChoices.ts');
@@ -54,7 +55,7 @@ async function component(file, ports = {}) {
     }
     let source = compile(compileScript(descriptor, { id: file, inlineTemplate: true }).content).replace(/import ['"][^'"]+\.css['"];?/g, '');
     const imports = { '../sources/AdvertisingAccounts.vue': plainUrl, '../workspaces/api': moduleUrl('export const readWorkspaces=async()=>({data:{workspaces:[],reassessableWorkspaces:[],canCreateWorkspace:false}});'), '../sources/api':moduleUrl('export const sources={read:async()=>{throw Error("Unexpected source read")}};'), '../sources/businessReturn':moduleUrl('export const rememberBusinessReturn=()=>{};'), '../sources/commands':nativePendingUrl, vue, 'vue-router': vueRouter, '@lucide/vue': iconsUrl, '../spa/locale': languageUrl, '../spa/transport': transportUrl, '../spa/presentation': presentationUrl, './state': stateUrl, './api': apiUrl, './drafts': draftsUrl, './advertiserNavigation': navigationUrl, './businessChoices': choicesUrl, './businessPending':businessPendingUrl, './workspacePresentation': workspacePresentationUrl, '../sources/providerDestination': providerDestinationUrl, './providerDestination': providerDestinationUrl, '../Components/ProviderBrand.vue': providerBrandUrl, ...ports };
-    for (const [name, target] of Object.entries(imports)) source = source.replaceAll(`from '${name}'`, `from ${JSON.stringify(target)}`).replaceAll(`from "${name}"`, `from ${JSON.stringify(target)}`);
+    for (const [name, target] of Object.entries({ './BusinessDataLicenses.vue':plainUrl, './dataLicenseJourney':dataLicenseJourneyUrl, ...imports })) source = source.replaceAll(`from '${name}'`, `from ${JSON.stringify(target)}`).replaceAll(`from "${name}"`, `from ${JSON.stringify(target)}`);
     const url = moduleUrl(source); return { url, value: (await import(url)).default };
 }
 const brandLogo = await component('resources/js/Components/BrandLogo.vue');

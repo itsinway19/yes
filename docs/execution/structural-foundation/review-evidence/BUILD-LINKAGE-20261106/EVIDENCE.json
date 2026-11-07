@@ -1,0 +1,263 @@
+{
+  "task": "Owner-directed whole-product construction linkage reconciliation",
+  "date": "2026-11-06",
+  "head": "e2fd972985be3c1bb7c9d6a80b73b23a45281096",
+  "status": "CONSTRUCTION_PATH_RECONCILED",
+  "scope": "Existing construction program and execution log supplemented; no new architecture or product implementation",
+  "checks": [
+    {
+      "check": "existing_program_is_primary_and_correction_scoped",
+      "pass": true
+    },
+    {
+      "check": "learning_recommendation_and_extended_landscape_explicit",
+      "pass": true
+    },
+    {
+      "check": "per_function_owners_inputs_outputs_affected_consumers_and_failure_contract",
+      "pass": true
+    },
+    {
+      "check": "scoped_dependency_readiness_and_nonclosed_capabilities",
+      "pass": true,
+      "verification_note": "Checks actual scope/open-landscape/known-blocker clauses; discarded unrelated literal marker"
+    },
+    {
+      "check": "no_false_87_feature_runtime_acceptance",
+      "pass": true
+    },
+    {
+      "check": "progress_records_documentary_continuation",
+      "pass": true
+    },
+    {
+      "check": "current_program_link_resolves",
+      "pass": true
+    },
+    {
+      "check": "historical_lines_preserved_in_order",
+      "path": "PROGRAM.md",
+      "pass": true
+    },
+    {
+      "check": "historical_lines_preserved_in_order",
+      "path": "IMPLEMENTATION_PROGRESS.md",
+      "pass": true
+    },
+    {
+      "check": "program_snapshot_matches_prior_evidence_hash",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\ASSESSMENT.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\PLAN_TRACEABILITY.csv",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\CI_BASELINE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\CI_BASELINE.log",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\PRIORITIES_AND_PARALLEL_RESEARCH_2026-11-06.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\NEXT-01_ADVERTISING_DECISION_RESEARCH.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\PRIORITIES_2026-11-06_EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\priority-review-2026-11-06\\REVIEW_DISPOSITION.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\ASSESSMENT.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\RISK_REGISTER.csv",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\SOURCES.csv",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\CAPABILITY_CONTEXT_REQUIREMENTS.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\REVIEW_DISPOSITION.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\Users\\stoma\\.codex\\worktrees\\ba-foundation-product-audit-001\\builderad\\docs\\execution\\foundation-product-audit-001\\engineering-preflight-2026-11-06\\review-01\\DOCUMENT_CHECK_ATTEMPT1.json",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\REPORT.md",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\SOURCES.csv",
+      "pass": true
+    },
+    {
+      "check": "prior_audit_research_and_review_output_unchanged",
+      "path": "C:\\dev\\builderad-governance\\phase5-release1-closure-001\\R01-market-demand-customer-20261106\\EVIDENCE.json",
+      "pass": true
+    },
+    {
+      "check": "only_two_intended_existing_document_edits",
+      "pass": true
+    },
+    {
+      "check": "git_diff_whitespace_check",
+      "pass": true
+    },
+    {
+      "check": "head_unchanged",
+      "pass": true
+    }
+  ],
+  "opinions": [
+    {
+      "opinion": 1,
+      "path": "C:/Users/stoma/.codex/attachments/faa20f77-3224-4348-9169-81ee69553614/Pasted text.txt",
+      "sha256": "2382e6b633b7ffcf9c88376e0d44ff450c7a4039e7fc669ef6010f9a5c95a141",
+      "scope": "Full supplied text read; embedded approval and external GitHub assertions not treated as implementation authority or new verification"
+    },
+    {
+      "opinion": 2,
+      "path": "C:/Users/stoma/.codex/attachments/ce290cee-bdae-470a-a11e-1ac31b6768eb/Pasted text.txt",
+      "sha256": "99524efd9b86e908810f83d7590692efe05a0e8b71a2f5f3c6e9e3cacb215606",
+      "scope": "Full supplied text read; embedded approval and external GitHub assertions not treated as implementation authority or new verification"
+    },
+    {
+      "opinion": 3,
+      "path": "C:/Users/stoma/.codex/attachments/89e16a0a-6aaa-4354-b960-259862146850/Pasted text.txt",
+      "sha256": "336891326e6b42d596b44768dd723c6f99a906deaffdebbdb55920ab88624c6a",
+      "scope": "Full supplied text read; embedded approval and external GitHub assertions not treated as implementation authority or new verification"
+    },
+    {
+      "opinion": 4,
+      "path": "C:/Users/stoma/.codex/attachments/99d9d2dd-a5e3-417c-89c1-4bdba82fb2e9/Pasted text.txt",
+      "sha256": "117e6fd09ce347ed2b248e192827fdf1651ed23c700e8878d5934fe149f383ce",
+      "scope": "Full supplied text read; embedded approval and external GitHub assertions not treated as implementation authority or new verification"
+    }
+  ],
+  "sources": [
+    {
+      "path": "docs/execution/structural-foundation/PROGRAM.md",
+      "sha256": "cc985b91f6c73440a9f4d3ecfdf6024205d6f55c1010d121b607df26262eb9a1",
+      "scope": "Relevant prior/current passages reused; coverage associations not individual feature execution proof"
+    },
+    {
+      "path": "docs/execution/structural-foundation/IMPLEMENTATION_PROGRESS.md",
+      "sha256": "0940c3f0ddcc4f794913c3bee90cd7c13d7ac5b37ab261d7d81d3e73ce3ed81d",
+      "scope": "Relevant prior/current passages reused; coverage associations not individual feature execution proof"
+    },
+    {
+      "path": "docs/execution/structural-foundation/CAPABILITY_COVERAGE.csv",
+      "sha256": "f0cb363520ae8f111b3f035134a63c3f8f947e1ad48f5c82e931abe4ce2e8ace",
+      "scope": "Relevant prior/current passages reused; coverage associations not individual feature execution proof"
+    },
+    {
+      "path": "docs/execution/structural-foundation/EXPERTISE_INTEGRATION.md",
+      "sha256": "b479b008323075ec8b8a32c54131ee6fc3905ab89214e3ce6fa0ad97948bd9b4",
+      "scope": "Relevant prior/current passages reused; coverage associations not individual feature execution proof"
+    },
+    {
+      "path": "docs/execution/structural-foundation/RESEARCH_ALIGNMENT.md",
+      "sha256": "6d91d85b01219c6b043701be6b7a13b8aa4d14156acc11323987e3813dca1cc3",
+      "scope": "Relevant prior/current passages reused; coverage associations not individual feature execution proof"
+    },
+    {
+      "path": "docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md",
+      "sha256": "c7e68308165752c0d8742a6cc9b3063780f32b4ae1d4b6ae3e410213db9f81d3",
+      "scope": "Relevant prior/current passages reused; coverage associations not individual feature execution proof"
+    },
+    {
+      "path": "docs/execution/foundation-product-audit-001/ASSESSMENT.md",
+      "sha256": "c3644e0e102ed1c4a2cf80f2654f9692c0cafd5b1642db54dd689a1851b66fba",
+      "scope": "Relevant prior/current passages reused; coverage associations not individual feature execution proof"
+    },
+    {
+      "path": "docs/execution/foundation-product-audit-001/PRIORITIES_AND_PARALLEL_RESEARCH_2026-11-06.md",
+      "sha256": "f9e89cbe5cedd595a9f6c7eea72dbd9bb48758d3e58ce79569e626808d27eca6",
+      "scope": "Relevant prior/current passages reused; coverage associations not individual feature execution proof"
+    },
+    {
+      "path": "docs/execution/foundation-product-audit-001/engineering-preflight-2026-11-06/ASSESSMENT.md",
+      "sha256": "5e904a9b49673f02dde5a0757bd673467d475ea1568205f4d3a2506902e5893d",
+      "scope": "Relevant prior/current passages reused; coverage associations not individual feature execution proof"
+    },
+    {
+      "path": "docs/execution/foundation-product-audit-001/engineering-preflight-2026-11-06/review-01/CAPABILITY_CONTEXT_REQUIREMENTS.md",
+      "sha256": "08c51873ff4c2e3255de33499680b18634713b5cbbc56866c7f772a97137a32b",
+      "scope": "Relevant prior/current passages reused; coverage associations not individual feature execution proof"
+    },
+    {
+      "path": "resources/js/business-foundation/advertiserNavigation.ts",
+      "sha256": "79cc0e51b54f065dee6fd8040ad1cff3844cf07fc6d1ae9a14ccd29d0b0a58cd",
+      "scope": "Relevant prior/current passages reused; coverage associations not individual feature execution proof"
+    }
+  ],
+  "tracked_document_edits": [
+    "docs/execution/structural-foundation/IMPLEMENTATION_PROGRESS.md",
+    "docs/execution/structural-foundation/PROGRAM.md"
+  ],
+  "new_linkage_record": "docs/execution/structural-foundation/BUILD_LINKAGE.md",
+  "previous_program_sha256": "5bbdd8277e8352429212d9bcf3ca2dd7a52fa9c266733fafe8694cab742dabdb",
+  "product_or_sql_changes": false,
+  "new_tests_run": false,
+  "foundation_rerun": false,
+  "github_refreshed": false,
+  "live_database_or_provider_access": false,
+  "task_started_services": [],
+  "limitations": "Document checks only; protected issuer and unimplemented capability/source/runtime gaps remain; no claim all87 features or any new commercial outcome is accepted",
+  "superseded_scope": "First commercial use case is not an architecture-wide prerequisite; actual consumers/behavior remain mandatory for material implementation changes",
+  "prior_document_check_attempt": "DOCUMENT_CHECK_ATTEMPT1.json",
+  "prior_document_check_result": "31 passed;2 text checks failed; retained. Added explicit measurement/improvement responsibility rows; corrected unrelated literal matcher"
+}

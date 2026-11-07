@@ -64,7 +64,7 @@ END $$;
 -- All resource locks are taken once, before Business/cohort and the full K4 authority union.
 CREATE FUNCTION builderad_private.lock_material_resources(p_plan jsonb,p_output_scope jsonb DEFAULT NULL) RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
-DECLARE scopes jsonb;sources uuid[];boundaries uuid[];gates uuid[];gate record;
+DECLARE scopes jsonb;sources uuid[];boundaries uuid[];gates uuid[];gate record;write_boundary uuid;adoption text;
 BEGIN
  SELECT coalesce(jsonb_agg(value->'scope'),'[]') INTO scopes FROM jsonb_array_elements(p_plan->'items');
  scopes:=scopes||(p_plan->'lineage_scopes')||CASE WHEN p_output_scope IS NULL THEN '[]'::jsonb ELSE jsonb_build_array(p_output_scope) END;
@@ -72,8 +72,13 @@ BEGIN
  ARRAY(SELECT DISTINCT(value->>'boundary_id')::uuid FROM jsonb_array_elements(scopes)) INTO sources,boundaries;
  SELECT array_agg(fence_id ORDER BY fence_id) INTO gates FROM public.resource_right_fences WHERE(kind='source' AND source_id=ANY(sources)) OR(kind='client_boundary' AND boundary_id=ANY(boundaries));
  IF coalesce(cardinality(gates),0)<>cardinality(sources)+cardinality(boundaries) THEN RAISE EXCEPTION 'SOURCE_ADOPTION_REQUIRED' USING ERRCODE='42501'; END IF;
- FOR gate IN SELECT * FROM public.resource_right_fences WHERE fence_id=ANY(gates) ORDER BY fence_id FOR SHARE LOOP
-  IF gate.adoption_state<>'v2_adopted' THEN RAISE EXCEPTION 'SOURCE_ADOPTION_REQUIRED' USING ERRCODE='42501'; END IF;
+ write_boundary:=(p_plan->>'write_boundary_id')::uuid;
+ IF write_boundary IS NOT NULL AND NOT(write_boundary=ANY(boundaries)) THEN RAISE EXCEPTION 'Write intent must belong to the material boundary set' USING ERRCODE='42501'; END IF;
+ FOR gate IN SELECT * FROM public.resource_right_fences WHERE fence_id=ANY(gates) ORDER BY fence_id LOOP
+  IF gate.kind='client_boundary' AND gate.boundary_id=write_boundary THEN
+   SELECT adoption_state INTO adoption FROM public.resource_right_fences WHERE fence_id=gate.fence_id FOR UPDATE;
+  ELSE SELECT adoption_state INTO adoption FROM public.resource_right_fences WHERE fence_id=gate.fence_id FOR SHARE;END IF;
+  IF adoption IS DISTINCT FROM 'v2_adopted' THEN RAISE EXCEPTION 'SOURCE_ADOPTION_REQUIRED' USING ERRCODE='42501'; END IF;
  END LOOP;
  RETURN(SELECT jsonb_agg(to_jsonb(f) ORDER BY fence_id) FROM public.resource_right_fences f WHERE fence_id=ANY(gates));
 END $$;

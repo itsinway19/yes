@@ -62,7 +62,7 @@ try {
     $proofMark('isolation_guard_begin');
     app(DisposableTestDatabaseGuard::class)->assertSafe();
     $proofMark('isolation_guard_end');
-    if (getenv('GOALS_SPA_ONLY') === 'sources') {
+    if (in_array(getenv('GOALS_SPA_ONLY'), ['sources', 'data-licenses'], true)) {
         require __DIR__.'/sources-spa-runtime.php';
     }
     if (getenv('GOALS_SPA_ONLY') === 'businesses' && Cache::store('redis')->get('shared-source-return-runtime') === true) {
