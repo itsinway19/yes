@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use Illuminate\Database\QueryException;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\BusinessNativeMaterialFixture;
 use Tests\Support\DisposableDatabaseReset;
 use Tests\TestCase;
@@ -13,6 +15,85 @@ use Tests\TestCase;
 final class ExpenditureCorrectionUpgradeTest extends TestCase
 {
     use BusinessNativeMaterialFixture;
+
+    public static function migrationFailurePaths(): array
+    {
+        return ['success' => ['none'], 'PHP exception cleanup' => ['php'], 'SQL error cleanup' => ['sql']];
+    }
+
+    #[DataProvider('migrationFailurePaths')]
+    public function test710_reads_a_changed_shared_definition_even_with_a_valid_input_seal(string $failure): void
+    {
+        $owner = DB::connection('pgsql_migrations');
+        $lifecycle = app(DisposableDatabaseReset::class);
+        $lifecycle->assertInstalledCatalog();
+        $exception = new \RuntimeException('Synthetic failure after migration710');
+        $caught = false;
+        $files = new Filesystem;
+        $database = database_path();
+        $temporary = storage_path('framework/testing/migration-input-'.Str::uuid());
+        $default = DB::getDefaultConnection();
+        $originalText = 'Fresh explicit summary consent required';
+        $changedText = 'Synthetic changed historical migration input';
+        $definition = static fn () => $owner->scalar("SELECT pg_get_functiondef(oid) FROM pg_proc WHERE proname='builderad_v2_expenditure_summary'");
+        $before = $definition();
+        $this->assertStringContainsString($originalText, $before);
+
+        try {
+            foreach (['sql/market_knowledge/private_integration.sql', 'sql/expenditure_summary.sql',
+                'sql/data_license_journey.sql', 'sql/market_evidence/catalog_seal.sql'] as $path) {
+                $contents = $files->get($database.'/'.$path);
+                if ($path === 'sql/expenditure_summary.sql') {
+                    $contents = str_replace($originalText, $changedText, $contents, $count);
+                    $this->assertSame(1, $count);
+                }
+                $files->ensureDirectoryExists(dirname($temporary.'/'.$path));
+                $files->put($temporary.'/'.$path, $contents);
+            }
+
+            DB::setDefaultConnection('pgsql_migrations');
+            $this->app->useDatabasePath($temporary);
+            $owner->beginTransaction();
+            try {
+                try {
+                    $migration = require $database.'/migrations/0001_01_01_000710_correct_expenditure_preparation_and_selection.php';
+                    $migration->up();
+                    $this->assertStringContainsString($changedText, $definition());
+                    $owner->statement('SET LOCAL ROLE builderad_scope_executor');
+                    $this->assertTrue((bool) $owner->scalar('SELECT builderad_private.legacy_catalog_digest() = builderad_private.legacy_installation_digest()'));
+                    if ($failure === 'php') {
+                        throw $exception;
+                    }
+                    if ($failure === 'sql') {
+                        $owner->select('SELECT 1/0');
+                    }
+                } finally {
+                    $owner->rollBack();
+                }
+            } catch (\Throwable $error) {
+                if ($failure === 'php') {
+                    $this->assertSame($exception, $error);
+                } elseif ($failure === 'sql') {
+                    $this->assertInstanceOf(QueryException::class, $error);
+                    $this->assertSame('22012', $error->errorInfo[0]);
+                } else {
+                    throw $error;
+                }
+                $caught = true;
+            }
+        } finally {
+            $this->app->useDatabasePath($database);
+            DB::setDefaultConnection($default);
+            $files->deleteDirectory($temporary);
+            $lifecycle->assertInstalledCatalog();
+        }
+
+        $this->assertSame($failure !== 'none', $caught);
+        $this->assertDirectoryDoesNotExist($temporary);
+        $this->assertSame($database, database_path());
+        $this->assertSame($default, DB::getDefaultConnection());
+        $this->assertSame($before, $definition());
+    }
 
     public function test710_preserves_populated700_output_receipts_and_history_and_requires_sealed_input(): void
     {

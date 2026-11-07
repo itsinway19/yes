@@ -16,6 +16,21 @@ final class DisposableDatabaseReset
         if (Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]) !== 0) {
             throw new RuntimeException('Disposable installation failed.');
         }
+        $this->assertInstalledCatalog();
+    }
+
+    public function assertInstalledCatalog(): void
+    {
+        app(DisposableTestDatabaseGuard::class)->assertSafe();
+        $owner = DB::connection('pgsql_migrations');
+        $sealed = $owner->transaction(function () use ($owner): bool {
+            $owner->statement('SET LOCAL ROLE builderad_scope_executor');
+
+            return (bool) $owner->scalar('SELECT builderad_private.legacy_catalog_digest() = builderad_private.legacy_installation_digest()');
+        });
+        if (! $sealed) {
+            throw new RuntimeException('Disposable installation catalog seal does not match the actual catalog.');
+        }
     }
 
     public function clear(): void

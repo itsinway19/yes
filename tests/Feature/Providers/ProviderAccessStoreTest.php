@@ -82,8 +82,11 @@ use DateTimeImmutable;
 use Dotenv\Dotenv;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Events\JobQueued;
+use Illuminate\Queue\Events\JobQueueing;
 use Illuminate\Session\ArraySessionHandler;
 use Illuminate\Session\Store;
 use Illuminate\Support\Env;
@@ -3099,6 +3102,210 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame(0, $this->owner()->table('provider_observation_runs')->count());
     }
 
+    public function test_snapchat_observation_lock_is_held_during_transport_and_released_after_commit(): void
+    {
+        $scope = $this->snapchatReaderScope();
+        $owner = $this->owner();
+        $stream = 'snapchat-lock-probe';
+        $namespace = static fn (string $source) => $owner->scalar(
+            'SELECT builderad_observation_namespace(?,?::uuid,?,?,?,?,?)',
+            [$scope->workspaceId, $source, $scope->provider->value, $scope->accountId, $scope->operation, $scope->purpose, $stream],
+        );
+        $key = 'bb2.observation.'.$namespace($scope->sourceId);
+        $independent = 'bb2.observation.'.$namespace((string) Str::uuid7());
+        $tryLock = static fn (string $key) => (bool) $owner->scalar('SELECT pg_try_advisory_xact_lock(hashtextextended(?,0))', [$key]);
+        $observed = null;
+        $contender = null;
+
+        $http = new Factory;
+        $http->preventStrayRequests();
+        $http->fake(['*' => function () use ($http, $owner, $tryLock, $key, $independent, &$observed, &$contender) {
+            $started = hrtime(true);
+            $runtime = DB::selectOne('SELECT pg_backend_pid() AS pid, pg_current_xact_id()::text AS xid');
+            $this->assertSame(1, DB::connection()->transactionLevel());
+            $observerPid = $owner->scalar('SELECT pg_backend_pid()');
+            $this->assertNotSame($observerPid, $runtime->pid);
+            $this->assertNotEmpty($runtime->xid);
+            $this->assertFalse($tryLock($key));
+            $this->assertTrue($tryLock($independent));
+            $name = 'snapchat-probe-'.Str::uuid();
+            $config = $owner->getConfig();
+            $program = <<<'PHP'
+                $db = new PDO(getenv('SNAP_PROBE_DSN'), getenv('SNAP_PROBE_USER'), getenv('SNAP_PROBE_PASSWORD'));
+                $db->beginTransaction();
+                $db->exec("SET LOCAL statement_timeout='10s'");
+                $statement = $db->prepare('SELECT pg_advisory_xact_lock(hashtextextended(?,0))');
+                $statement->execute([$argv[1]]);
+                $db->commit();
+                echo 'LOCK_ACQUIRED';
+                PHP;
+            $contender = new Process([PHP_BINARY, '-r', $program, $key], base_path(), [
+                'SNAP_PROBE_DSN' => sprintf('pgsql:host=%s;port=%s;dbname=%s;application_name=%s', $config['host'], $config['port'], $config['database'], $name),
+                'SNAP_PROBE_USER' => $config['username'],
+                'SNAP_PROBE_PASSWORD' => (string) $config['password'],
+            ], timeout: 12);
+            $contender->start();
+            $deadline = hrtime(true) + 5_000_000_000;
+            do {
+                $waiterPid = $owner->scalar('SELECT pid FROM pg_stat_activity WHERE application_name=? AND ?::integer=ANY(pg_blocking_pids(pid))',
+                    [$name, $runtime->pid]);
+                if ($waiterPid !== null || ! $contender->isRunning()) {
+                    break;
+                }
+                usleep(10000);
+            } while (hrtime(true) < $deadline);
+            $this->assertNotNull($waiterPid, 'Independent PostgreSQL connection did not wait on the transport holder.');
+            $this->assertFalse($tryLock($key));
+            $observed = ['holder_pid' => $runtime->pid, 'holder_xid' => $runtime->xid,
+                'observer_pid' => $observerPid, 'waiter_pid' => $waiterPid, 'transport_probe_ns' => hrtime(true) - $started];
+
+            return $http->response($this->snapchatReportPayload());
+        }]);
+        $this->app->instance(Factory::class, $http);
+        $this->withinWorkspace(fn ($request) => Bus::dispatch(SnapchatReadJob::capture($request, $scope,
+            new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
+            $stream, (string) Str::uuid(), 0, 1)->onConnection('database')));
+
+        try {
+            Queue::connection('database')->pop('bb2.provider.snapchat')->fire();
+            $this->assertNotNull($contender);
+            $this->assertSame(0, $contender->wait(), $contender->getErrorOutput());
+            $this->assertSame('LOCK_ACQUIRED', $contender->getOutput());
+        } finally {
+            $contender?->stop(0);
+        }
+        $http->assertSentCount(1);
+        $this->assertNotNull($observed);
+        $this->assertTrue($tryLock($key));
+        $this->assertSame(1, $owner->table('snapchat_read_attempts')->count());
+        $this->assertSame(1, $owner->table('provider_observation_runs')->count());
+        $this->assertSame(0, $owner->table('jobs')->count());
+        // This is a lower bound at the transport callback, not a production lock SLO.
+        fwrite(STDERR, 'Snapchat transport lock probe '.json_encode($observed, JSON_THROW_ON_ERROR).PHP_EOL);
+    }
+
+    public static function snapchatHolderOutcomes(): array
+    {
+        return ['holder commits' => [false, false], 'holder is killed in transport' => [true, false],
+            'competing command has stale generation after wait' => [false, true]];
+    }
+
+    #[DataProvider('snapchatHolderOutcomes')]
+    public function test_snapchat_competing_execution_waits_then_converges_after_commit_or_worker_death(bool $kill, bool $stale): void
+    {
+        $scope = $this->snapchatReaderScope();
+        $owner = $this->owner();
+        $run = 'snapchat-execution-'.Str::uuid();
+        $release = storage_path('framework/testing/'.$run.'.release');
+        $command = (string) Str::uuid();
+        $deadline = new DateTimeImmutable('+4 minutes');
+        $capture = fn ($request, string $id) => Bus::dispatch(SnapchatReadJob::capture($request, $scope,
+            new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
+            $run, $id, 0, 1, $deadline)->onConnection('database'));
+        $this->withinWorkspace(fn ($request) => $capture($request, $command));
+        $this->withinWorkspace(fn ($request) => $capture($request, $stale ? (string) Str::uuid() : $command));
+        $fixture = ['mode' => 'snapchat-execution', 'report' => $this->snapchatReportPayload()];
+        $holder = $this->runtimeProcess([...$fixture, 'application_name' => $run.'-holder', 'release' => $release]);
+        $waiter = $this->runtimeProcess([...$fixture, 'application_name' => $run.'-waiter']);
+        $evidence = ['killed' => $kill, 'stale' => $stale];
+        try {
+            $holder->start();
+            $until = hrtime(true) + 8_000_000_000;
+            while (! str_contains($holder->getOutput(), 'TRANSPORT=') && $holder->isRunning() && hrtime(true) < $until) {
+                usleep(10000);
+            }
+            $this->assertStringContainsString('TRANSPORT=', $holder->getOutput(), $holder->getErrorOutput());
+            $holderPid = $owner->scalar('SELECT pid FROM pg_stat_activity WHERE application_name=?', [$run.'-holder']);
+            $this->assertNotNull($holderPid);
+            $waiter->start();
+            $started = hrtime(true);
+            $until = $started + 8_000_000_000;
+            do {
+                // The same runtime role can observe its workers' wait metadata; owner is not a stats superuser.
+                $blocked = DB::selectOne('SELECT pid,backend_xid::text AS xid,wait_event_type,wait_event,pg_blocking_pids(pid)::text AS blockers FROM pg_stat_activity WHERE application_name=? AND ?::integer=ANY(pg_blocking_pids(pid))', [$run.'-waiter', $holderPid]);
+                if ($blocked !== null || ! $waiter->isRunning()) {
+                    break;
+                }
+                usleep(10000);
+            } while (hrtime(true) < $until);
+            $this->assertNotNull($blocked, $waiter->getOutput().$waiter->getErrorOutput());
+            $this->assertSame('Lock', $blocked->wait_event_type);
+            $this->assertStringNotContainsString('TRANSPORT=', $waiter->getOutput());
+            $this->assertSame(0, $owner->table('snapchat_read_attempts')->count());
+            $evidence += ['holder_pid' => $holderPid, 'waiter' => $blocked, 'observed_wait_ns' => hrtime(true) - $started];
+            if ($kill) {
+                $holder->stop(0);
+            } else {
+                file_put_contents($release, 'release');
+                $this->assertSame(0, $holder->wait(), $holder->getOutput().$holder->getErrorOutput());
+            }
+            $this->assertSame($stale ? 2 : 0, $waiter->wait(), $waiter->getOutput().$waiter->getErrorOutput());
+            if ($stale) {
+                $this->assertStringContainsString('DENIED_STATE=23505', $waiter->getOutput());
+            }
+            $this->assertStringContainsString('HTTP_REQUESTS='.($kill ? '1' : '0'), $waiter->getOutput());
+            $this->assertSame(1, $owner->table('snapchat_read_attempts')->count());
+            $this->assertSame(1, $owner->table('provider_observation_entries')->count());
+            $this->assertSame($kill || $stale ? 1 : 0, $owner->table('jobs')->count());
+            if ($kill) {
+                $this->travel(config('queue.connections.database.retry_after') + 1)->seconds();
+                $http = new Factory;
+                $http->preventStrayRequests();
+                $this->app->instance(Factory::class, $http);
+                Queue::connection('database')->pop('bb2.provider.snapchat')->fire();
+                $http->assertNothingSent();
+                $this->assertSame(0, $owner->table('jobs')->count());
+                $this->assertSame(1, $owner->table('snapchat_read_attempts')->count());
+            }
+        } finally {
+            foreach ([$holder, $waiter] as $worker) {
+                if ($worker->isRunning()) {
+                    $worker->stop(0);
+                }
+                $evidence['workers'][] = ['exit' => $worker->getExitCode(), 'stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput()];
+            }
+            if (is_file($release)) {
+                unlink($release);
+            }
+            fwrite(STDERR, 'Snapchat competing execution '.json_encode($evidence, JSON_THROW_ON_ERROR).PHP_EOL);
+        }
+    }
+
+    public function test_snapchat_transport_exception_releases_transaction_and_retry_accepts_only_one_observation(): void
+    {
+        $scope = $this->snapchatReaderScope();
+        $http = new Factory;
+        $http->preventStrayRequests();
+        $calls = 0;
+        $http->fake(['*' => function () use ($http, &$calls) {
+            if (++$calls === 1) {
+                $this->assertSame(1, DB::connection()->transactionLevel());
+                usleep(100000);
+                throw new ConnectionException('Synthetic HTTP connection timeout');
+            }
+
+            return $http->response($this->snapchatReportPayload());
+        }]);
+        $this->app->instance(Factory::class, $http);
+        $this->withinWorkspace(fn ($request) => Bus::dispatch(SnapchatReadJob::capture($request, $scope,
+            new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
+            'snapchat-transport-exception', (string) Str::uuid(), 0, 1)->onConnection('database')));
+        $pid = DB::scalar('SELECT pg_backend_pid()');
+        Queue::connection('database')->pop('bb2.provider.snapchat')->fire();
+        $this->assertSame(0, DB::connection()->transactionLevel());
+        $this->assertSame($pid, DB::scalar('SELECT pg_backend_pid()'));
+        $this->assertSame('snapchat_transport_failed', $this->owner()->table('provider_observation_runs')->value('failure'));
+        $this->assertSame(0, $this->owner()->table('provider_observation_entries')->count());
+        $this->assertSame(1, $this->owner()->table('snapchat_read_attempts')->count());
+        $this->assertSame(1, $this->owner()->table('jobs')->count());
+        $this->travel(6)->seconds();
+        Queue::connection('database')->pop('bb2.provider.snapchat')->fire();
+        $this->assertSame(2, $calls);
+        $this->assertSame(2, $this->owner()->table('snapchat_read_attempts')->count());
+        $this->assertSame(1, $this->owner()->table('provider_observation_entries')->count());
+        $this->assertSame(0, $this->owner()->table('jobs')->count());
+    }
+
     public function test_snapchat_report_attempt_receipt_failure_rolls_back_journal_and_keeps_queue_delivery(): void
     {
         $scope = $this->snapchatReaderScope();
@@ -3124,6 +3331,61 @@ class ProviderAccessStoreTest extends TestCase
         }
         $this->assertSame(1, $this->owner()->table('jobs')->count());
         $http->assertSentCount(1);
+    }
+
+    public static function snapchatQueueFaults(): array
+    {
+        return ['before enqueue' => [false], 'after enqueue before ACK' => [true]];
+    }
+
+    #[DataProvider('snapchatQueueFaults')]
+    public function test_snapchat_committed_attempt_redelivery_recovers_the_same_child_after_dispatch_fault(bool $enqueue): void
+    {
+        $scope = $this->snapchatReaderScope();
+        $owner = $this->owner();
+        $http = new Factory;
+        $http->preventStrayRequests();
+        $http->fake(['*' => $http->sequence()->push('synthetic-throttle', 429, ['Retry-After' => '45'])
+            ->push($this->snapchatReportPayload())]);
+        $this->app->instance(Factory::class, $http);
+        $this->withinWorkspace(fn ($request) => Bus::dispatch(SnapchatReadJob::capture($request, $scope,
+            new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
+            'snapchat-handoff-fault', (string) Str::uuid(), 0, 1)->onConnection('database')));
+
+        $fault = new \RuntimeException('Synthetic loss of parent worker before ACK');
+        $injected = false;
+        $event = $enqueue ? JobQueued::class : JobQueueing::class;
+        app('events')->listen($event, function ($event) use ($fault, $owner, &$injected): void {
+            if ($injected || ! $event->job instanceof SnapchatReadJob || $event->queue !== 'bb2.provider.snapchat') {
+                return;
+            }
+            $this->assertSame(1, $owner->table('snapchat_read_attempts')->count());
+            $injected = true;
+
+            throw $fault;
+        });
+        try {
+            Queue::connection('database')->pop('bb2.provider.snapchat')->fire();
+            $this->fail('The synthetic dispatch fault was not observed.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame($fault, $error);
+        }
+
+        $this->assertTrue($injected);
+        $http->assertSentCount(1);
+        $this->assertSame($enqueue ? 2 : 1, $owner->table('jobs')->count());
+        $this->travel(config('queue.connections.database.retry_after') + 1)->seconds();
+        Queue::connection('database')->pop('bb2.provider.snapchat')->fire(); // Original parent is redelivered.
+        $http->assertSentCount(1); // Its committed receipt suppresses a second parent fetch.
+        $this->assertSame($enqueue ? 2 : 1, $owner->table('jobs')->count());
+        for ($i = 0; $i < ($enqueue ? 2 : 1); $i++) {
+            Queue::connection('database')->pop('bb2.provider.snapchat')->fire();
+        }
+        $http->assertSentCount(2);
+        $this->assertSame(2, $owner->table('snapchat_read_attempts')->count());
+        $this->assertSame(2, $owner->table('provider_observation_runs')->count());
+        $this->assertSame(1, $owner->table('provider_observation_entries')->count());
+        $this->assertSame(0, $owner->table('jobs')->count());
     }
 
     public function test_snapchat_report_native_throttle_is_durable_and_retries_only_after_its_delay(): void
@@ -3610,7 +3872,8 @@ class ProviderAccessStoreTest extends TestCase
                 if (is_file($path.'.log')) {
                     $log = file_get_contents($path.'.log');
                     foreach (['synthetic-google-token', 'synthetic-new-access', 'synthetic-new-refresh', 'synthetic-client-secret',
-                        'synthetic-temporary-secret', $fixture['state'] ?? 'synthetic-no-state'] as $secret) {
+                        'synthetic-temporary-secret', 'synthetic-snap-access', 'synthetic-snap-refresh',
+                        $fixture['state'] ?? 'synthetic-no-state'] as $secret) {
                         $this->assertStringNotContainsString($secret, $log, 'Synthetic confidential material appeared in worker logs.');
                     }
                 }
