@@ -248,8 +248,15 @@ final class DataUseLicenseTest extends TestCase
                 return is_array($value) && ($value['run'] ?? null) === $run && is_int($value['pid'] ?? null) && $value['pid'] > 0 ? $value : null;
             });
             if ($freshness) {
-                $owner->table('security_sessions')->where('session_key_hash', SessionAuthority::sessionKey($request))->update(['authenticated_at' => DB::raw("clock_timestamp()-interval '15 minutes'+interval '3 seconds'")]);
-                $evidence['fresh_until'] = $owner->scalar("SELECT (authenticated_at+interval '15 minutes')::text FROM security_sessions WHERE session_key_hash=?", [SessionAuthority::sessionKey($request)]);
+                // Set and capture the committed fixture deadline in one round trip.
+                // The receipt wait must cross it before PostgreSQL's 3s lock timeout.
+                $evidence['fresh_until'] = $owner->scalar(<<<'SQL'
+                    UPDATE security_sessions
+                    SET authenticated_at = date_trunc('second', clock_timestamp()) - interval '15 minutes' + interval '2 seconds'
+                    WHERE session_key_hash = ?
+                    RETURNING (authenticated_at + interval '15 minutes')::text
+                    SQL, [SessionAuthority::sessionKey($request)], false);
+                $this->assertNotNull($evidence['fresh_until']);
             }
             $owner->beginTransaction();
             $blocker = (int) $owner->scalar('SELECT pg_backend_pid()');
