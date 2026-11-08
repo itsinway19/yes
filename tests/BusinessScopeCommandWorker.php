@@ -154,6 +154,15 @@ try {
             return DB::scalar('SELECT builderad_v2_scoped_material_read(?,?::uuid,?::uuid,?::jsonb,?,?,?::uuid,?::jsonb)',
                 [$f['session'], $f['business'], $f['command'], json_encode($f['refs']), $f['material_operation'], $f['purpose'], $f['recipient'], json_encode($f['selection'])]);
         }
+        if ($f['operation'] === 'practice-read') {
+            return DB::scalar('SELECT builderad_v2_business_practices(?,?::uuid,?,NULL)', [$f['session'], $f['business'], $f['access']]);
+        }
+        if ($f['operation'] === 'practice-write') {
+            $body = $f['practice_body'];
+
+            return DB::scalar('SELECT builderad_v2_business_practice_write(?,?::uuid,?::uuid,?::uuid,?,?,?::jsonb,?::jsonb,?::jsonb)',
+                [$f['session'], $f['business'], $body['command_id'], $body['practice_id'], $body['operation'], $body['expected_revision'], json_encode($body['value']), json_encode($body['authority_selection']), json_encode($body['read_selection'])]);
+        }
         if ($f['operation'] === 'resource') {
             return DB::scalar('SELECT builderad_v2_resource_right_command(?,?::uuid,?,?::uuid,?,?::jsonb,?,?::jsonb)',
                 [$f['session'], $f['command'], $f['kind'], $f['target'], $f['effect'], json_encode((object) $f['payload']), $f['expected'], json_encode($f['selection'])]);

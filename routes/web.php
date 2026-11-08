@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\IdentityContextController;
 use App\Http\Controllers\Auth\InternalAuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasskeySessionController;
+use App\Http\Controllers\BusinessActivityController;
 use App\Http\Controllers\BusinessFindingController;
 use App\Http\Controllers\BusinessFoundationController;
 use App\Http\Controllers\BusinessSurfaceController;
@@ -483,6 +484,10 @@ Route::middleware('auth:internal')->group(function () {
 });
 
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->prefix('api/businesses')->group(function () {
+    Route::get('/{business}/practices', [BusinessActivityController::class, 'index'])->whereUuid('business')->name('business-activity.index');
+    Route::post('/{business}/practices', [BusinessActivityController::class, 'store'])->whereUuid('business')->name('business-activity.store');
+    Route::get('/{business}/practices/knowledge', [BusinessActivityController::class, 'knowledgeOptions'])->whereUuid('business')->name('business-activity.knowledge-options');
+    Route::post('/{business}/knowledge/customer-discovery/practice', [BusinessActivityController::class, 'assess'])->whereUuid('business')->name('business-activity.assess');
     Route::get('/', [BusinessFoundationController::class, 'choices'])->name('business-foundation.choices');
     Route::get('/catalog', [BusinessFoundationController::class, 'catalog'])->name('business-foundation.catalog');
     Route::get('/{business}/surface', [BusinessFoundationController::class, 'surface'])->whereUuid('business')->name('business-foundation.surface');

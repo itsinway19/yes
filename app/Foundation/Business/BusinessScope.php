@@ -17,6 +17,43 @@ final class BusinessScope
 {
     public function __construct(private readonly PrincipalContext $principals) {}
 
+    public function practices(Request $request, string $business, int $access, ?string $practice = null): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar(
+            'SELECT builderad_v2_business_practices(?,?::uuid,?,?::uuid)',
+            [SessionAuthority::sessionKey($request), $business, $access, $practice],
+        )));
+    }
+
+    public function writePractice(Request $request, string $business, array $body): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar(
+            'SELECT builderad_v2_business_practice_write(?,?::uuid,?::uuid,?::uuid,?,?,?::jsonb,?::jsonb,?::jsonb,?)',
+            [SessionAuthority::sessionKey($request), $business, $body['command_id'], $body['practice_id'], $body['operation'],
+                $body['expected_revision'], json_encode($body['value'], JSON_THROW_ON_ERROR),
+                json_encode($body['authority_selection'], JSON_THROW_ON_ERROR), json_encode($body['read_selection'], JSON_THROW_ON_ERROR), $body['correction_reason'] ?? null],
+        )));
+    }
+
+    public function practiceKnowledgeOptions(Request $request, string $business, int $access, int $after): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar(
+            'SELECT builderad_v2_practice_knowledge_options(?,?::uuid,?,?)',
+            [SessionAuthority::sessionKey($request), $business, $access, $after],
+        )));
+    }
+
+    public function inspectPracticeKnowledge(Request $request, string $business, array $body): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar(
+            'SELECT builderad_v2_customer_discovery_practice(?,?::uuid,?::uuid,?::uuid,?,?::jsonb,?,?::jsonb,?::jsonb,?::jsonb,?::jsonb)',
+            [SessionAuthority::sessionKey($request), $business, $body['command_id'], $body['practice_id'], $body['expected_revision'],
+                json_encode($body['material_ref'], JSON_THROW_ON_ERROR), $body['purpose'], json_encode($body['relation'], JSON_THROW_ON_ERROR),
+                json_encode($body['question'], JSON_THROW_ON_ERROR), json_encode($body['read_selection'], JSON_THROW_ON_ERROR),
+                json_encode($body['authority_selection'], JSON_THROW_ON_ERROR)],
+        )));
+    }
+
     public function choices(Request $request, int $after = 0): array
     {
         return $this->run($request, fn () => $this->decode(DB::scalar(

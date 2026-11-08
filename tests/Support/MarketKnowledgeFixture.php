@@ -54,7 +54,7 @@ trait MarketKnowledgeFixture
         ]), true, flags: JSON_THROW_ON_ERROR);
     }
 
-    private function knowledgeOriginals(string $type = 'offer'): array
+    private function knowledgeOriginals(string $type = 'offer', array $additionalFields = [], ?array $subject = null): array
     {
         $writer = User::factory()->create();
         $this->actingAs($writer);
@@ -64,7 +64,7 @@ trait MarketKnowledgeFixture
             'policy_id' => 'test.synthetic.knowledge', 'policy_version' => 1, 'evidence_ref' => 'test:synthetic-only', 'evidence_digest' => hash('sha256', 'synthetic'),
             'allowed_operations' => ['ingest', 'correct', 'retained_read', 'process', 'display', 'forward', 'retain', 'reuse'],
             'allowed_purposes' => ['market_research', 'competitive_research'],
-            'allowed_fields' => ['subject', 'geography', 'currency', 'price', 'inclusions', 'product', 'service', 'metric', 'value', 'comparison_basis', 'finding'], 'valid_until' => null,
+            'allowed_fields' => [...['subject', 'geography', 'currency', 'price', 'inclusions', 'product', 'service', 'metric', 'value', 'comparison_basis', 'finding'], ...$additionalFields], 'valid_until' => null,
         ]);
         $records = [];
         foreach ([false, true] as $after) {
@@ -73,6 +73,9 @@ trait MarketKnowledgeFixture
             $payload['record_key'] = $evidence;
             $payload['evidence_type'] = $type === 'offer' ? 'market.offer:2' : 'market.interest_signal:2';
             $payload['fields'] = $type === 'offer' ? MarketProcessingExamples::offer() : MarketProcessingExamples::signal($after);
+            if ($subject !== null) {
+                $payload['fields']['subject'] = $subject;
+            }
             $payload['coverage'] = 'COMPLETE';
             $right = $this->marketRight($writer, $source, $evidence, 'ingest', array_keys($payload['fields']));
             $ref = $this->writeEvidence($evidence, $right, $payload)->assertOk()->json('data.material_ref');

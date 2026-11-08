@@ -4,6 +4,10 @@ Owner-approved scope: G3-F v1.0.1 / G4 E01–E05, isolated implementation and te
 
 ## Governing current status — read before historical checkpoints
 
+### Business activity foundation — Owner execution, 2026-11-08
+
+Local package BA-BUSINESS-ACTIVITY-FOUNDATION-01 starts from bd62d7d on codex/business-activity-foundation-01, excluding PR61. [Current construction, acceptance and actual evidence](ACTIVITY_FOUNDATION.md) covers multi-practice declarations and the existing CustomerDiscoveryConsumer's additive conditional eligibility path. Original package criteria and current-right replay / machine-readable relationship provenance amendments govern. No commit, push, merge, deployment or real-data migration authorized. Backend, UI, browser and Foundation states remain separate; see the current package record rather than historical checkpoints below.
+
 ### PR56 architectural correction — later Owner direction, 2026-11-04
 
 **ARCHITECTURAL_ACCEPTANCE_BLOCKED** above reference `881091bfd1b33dca86e8c6d7187c0d7ded6a8268`. [Current correction/evidence](../structural-foundation/IMPLEMENTATION_PROGRESS.md#pr56-mandatory-correction--2026-11-04) and [retirement matrix](PR56_RETIREMENT_MATRIX.md) supersede any broader interpretation of the bounded candidate acceptance below. Natural organizational registration, independent Business employee opt-in and operating membership/self-departure are implemented and tested in isolation. The local target now retires native commercial writers/editors, separates organizational resources, and implements the Owner-approved finite Purpose statement issuer. Original history and its independently qualified correction/withdrawal remain distinct. Current focused/browser verification and final candidate evidence are recorded in the matrix; no complete architectural acceptance is claimed. Latest Owner reserves comprehensive Foundation execution: **NOT_RUN on this correction**, no new publication or persistent-data migration.

@@ -44,7 +44,8 @@ const inquiryEditorUrl = await scriptModule('resources/js/inquiry-evidence/edito
 const inquiryEditor = await import(inquiryEditorUrl);
 const nativePendingUrl = moduleUrl(`import {shallowReactive} from ${JSON.stringify(vue)};export const pending=shallowReactive(new Map());export const commandsFor=owner=>[...pending.values()].filter(item=>item.command.business===owner.publicId&&owner.kind==='business');`);
 const nativePending = await import(nativePendingUrl);
-const businessPendingUrl = await scriptModule('resources/js/business-foundation/businessPending.ts', { './drafts': draftsUrl, '../object-purpose/commands': purposeCommandsUrl, '../inquiry-evidence/editor': inquiryEditorUrl, '../sources/commands': nativePendingUrl });
+const activityPendingUrl = await scriptModule('resources/js/business-foundation/activityPending.ts');
+const businessPendingUrl = await scriptModule('resources/js/business-foundation/businessPending.ts', { './activityPending':activityPendingUrl, './drafts': draftsUrl, '../object-purpose/commands': purposeCommandsUrl, '../inquiry-evidence/editor': inquiryEditorUrl, '../sources/commands': nativePendingUrl });
 const businessPending = await import(businessPendingUrl);
 async function component(file, ports = {}) {
     const { descriptor, errors } = parse(await readFile(file, 'utf8'), { filename: file });
@@ -55,7 +56,7 @@ async function component(file, ports = {}) {
     }
     let source = compile(compileScript(descriptor, { id: file, inlineTemplate: true }).content).replace(/import ['"][^'"]+\.css['"];?/g, '');
     const imports = { '../sources/AdvertisingAccounts.vue': plainUrl, '../workspaces/api': moduleUrl('export const readWorkspaces=async()=>({data:{workspaces:[],reassessableWorkspaces:[],canCreateWorkspace:false}});'), '../sources/api':moduleUrl('export const sources={read:async()=>{throw Error("Unexpected source read")}};'), '../sources/businessReturn':moduleUrl('export const rememberBusinessReturn=()=>{};'), '../sources/commands':nativePendingUrl, vue, 'vue-router': vueRouter, '@lucide/vue': iconsUrl, '../spa/locale': languageUrl, '../spa/transport': transportUrl, '../spa/presentation': presentationUrl, './state': stateUrl, './api': apiUrl, './drafts': draftsUrl, './advertiserNavigation': navigationUrl, './businessChoices': choicesUrl, './businessPending':businessPendingUrl, './workspacePresentation': workspacePresentationUrl, '../sources/providerDestination': providerDestinationUrl, './providerDestination': providerDestinationUrl, '../Components/ProviderBrand.vue': providerBrandUrl, ...ports };
-    for (const [name, target] of Object.entries({ './BusinessDataLicenses.vue':plainUrl, './dataLicenseJourney':dataLicenseJourneyUrl, ...imports })) source = source.replaceAll(`from '${name}'`, `from ${JSON.stringify(target)}`).replaceAll(`from "${name}"`, `from ${JSON.stringify(target)}`);
+    for (const [name, target] of Object.entries({ './activityPending':activityPendingUrl, './BusinessPractices.vue':plainUrl, './BusinessDataLicenses.vue':plainUrl, './dataLicenseJourney':dataLicenseJourneyUrl, ...imports })) source = source.replaceAll(`from '${name}'`, `from ${JSON.stringify(target)}`).replaceAll(`from "${name}"`, `from ${JSON.stringify(target)}`);
     const url = moduleUrl(source); return { url, value: (await import(url)).default };
 }
 const brandLogo = await component('resources/js/Components/BrandLogo.vue');

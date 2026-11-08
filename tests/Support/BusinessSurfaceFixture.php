@@ -37,7 +37,9 @@ $scope = app(BusinessScope::class);
 $path = $run.'/business-surface-fixture.json';
 $mode = $argv[1] ?? 'setup';
 $select = fn (int $grant) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
-if ($mode === 'new-advertiser-identity') {
+if (in_array($mode, ['activity-knowledge-setup', 'activity-knowledge-withdraw'], true)) {
+    require __DIR__.'/BusinessActivityBrowserFixture.php';
+} elseif ($mode === 'new-advertiser-identity') {
     // Verified identity fixture only. No Workspace, Business or resource grant
     // is inserted; the browser exercises first entry and the operating writers.
     $newAdvertiser = User::factory()->create(['name' => 'New advertiser browser', 'email' => 'new-advertiser-browser@example.test', 'password' => Hash::make('DisposableGoalsProof42!')]);

@@ -31,6 +31,8 @@ Foundation obtains `BUILDERAD_MIGRATION_TRUSTED_SHA` from GitHub's PR target SHA
 
 ## INV-001 — SOURCE_AND_CORE_PROVIDER_INDEPENDENCE
 
+The Owner-authorized business-activity package adds bounded protection through `BusinessActivityTest`, `BusinessActivityConcurrencyTest`, `BusinessActivityUpgradeTest` and `CustomerDiscoveryPracticeTest`: source-independent multi-practice declarations, current read/write qualification before receipt disclosure, immutable revisions, independently licensed subject projection, and machine-readable user-declared relationship provenance. The additive customer-discovery path does not change historical D2 method/consumer meanings. INV-001/002/004/005/007 remain bounded; [actual executed evidence](execution/business-foundation/ACTIVITY_FOUNDATION.md) controls acceptance, not test existence.
+
 - **ACCEPTED_BASIS:** Core governance §2 Product Direction, §7 Provider Semantics and §8 Adapter Ownership; provider supplement §9 No Unnecessary Semantic Lock-in; Shared Reality design §4/SR2 and §3/SR1 (first advertising slice, not universal Source).
 - **NORMATIVE_STATEMENT:** Core meaning does not derive from a specific provider implementation. A source-neutral boundary must not universally assume OAuth, ad accounts or campaigns. SOURCE != ADVERTISING_PROVIDER.
 - **DOES_NOT_MEAN:** No provider evidence can ever be required, every existing Ads class must move, or a universal Source taxonomy should exist.

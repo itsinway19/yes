@@ -335,6 +335,10 @@
       "sql/expenditure_summary.sql",
       "sql/market_evidence/catalog_seal.sql",
       "sql/market_knowledge/private_integration.sql"
+    ],
+    "0001_01_01_000720_business_activity_foundation.php": [
+      "migration-sql/0001_01_01_000720_business_activity_foundation/catalog_seal.sql",
+      "migration-sql/0001_01_01_000720_business_activity_foundation/definition.sql"
     ]
   },
   "historical": {
@@ -408,7 +412,8 @@
     "0001_01_01_000680_complete_data_license_journey.php": "12071c62b4ae7415bf9fc1c80f510a02a86dad03b45a3a05ee73e5c0532b1d6b",
     "0001_01_01_000690_preserve_agency_relationship_incarnation.php": "9fab261341dc3bb0c40b8afcee4ccf07b693d810315665910cf4f7189adac26f",
     "0001_01_01_000700_register_bounded_expenditure_summary.php": "81b13bc5ee095b8cff2e83c12fd8f94d3ad2257344dfc7d974fb377b249691be",
-    "0001_01_01_000710_correct_expenditure_preparation_and_selection.php": "8cf103891b9511aa1af4277d6c75c4b4a23d88429416bdcefdba3044d44a4475"
+    "0001_01_01_000710_correct_expenditure_preparation_and_selection.php": "8cf103891b9511aa1af4277d6c75c4b4a23d88429416bdcefdba3044d44a4475",
+    "0001_01_01_000720_business_activity_foundation.php": "11b6c67cc1ef955721b83e4df79916f34d981745167f35233b8ad3d46d3bfc89"
   },
   "inputs": {
     "reference/countries/labels.json": "264bcc1dfb5267520bc0a423e556e8ed07f976a66a46104905310b353d20557a",
@@ -534,6 +539,8 @@
     "sql/snapchat_renewal_failures.sql": "06f74e98dec2a52223ce51c0af96e4c2d9077588b96d4622126e486ed9a9473c",
     "sql/source_registry.sql": "f67e19eee4cf71835e647b722288b563b2c9e4c54c0fef8ac53243823d7ba829",
     "sql/tiktok_read_attempts.sql": "6f3511cf78c3e7a6acd4f22b82657be0682bf8bc7b844573bd46df993470e7c4",
-    "sql/x_read_attempts.sql": "cc560d69e1235405247457a5c12e9c5868eef3601c3eb8733108b9d57c53cf7b"
+    "sql/x_read_attempts.sql": "cc560d69e1235405247457a5c12e9c5868eef3601c3eb8733108b9d57c53cf7b",
+    "migration-sql/0001_01_01_000720_business_activity_foundation/catalog_seal.sql": "f3df44e6fe8c08404d6262ccedae4fa0d338f7f84aca6e5fcfb4be477389d9df",
+    "migration-sql/0001_01_01_000720_business_activity_foundation/definition.sql": "fe66aa8a8a7ef91c46c618a253bd51710f109afdca8dc49d3c63f06af6667f65"
   }
 }

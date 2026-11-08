@@ -10,6 +10,7 @@ import { internalOperationsContracts } from './internal-operations-openapi.mjs';
 import { commercialContracts } from './commercial-openapi.mjs';
 import { businessFoundationContracts } from './business-foundation-openapi.mjs';
 import { marketKnowledgeContracts } from './market-knowledge-openapi.mjs';
+import { businessActivityContracts } from './business-activity-openapi.mjs';
 import { inquiryEvidenceContracts } from './inquiry-evidence-openapi.mjs';
 
 const ref = name => ({ $ref: `#/components/schemas/${name}` });
@@ -47,6 +48,7 @@ const commercial = commercialContracts({ ref, text, uuid, object, list, nullable
 
 const foundation = businessFoundationContracts({ ref, text, uuid, object, list, nullable, json, response, security, errors });
 const marketKnowledge = marketKnowledgeContracts({ ref, text, uuid, object, list, nullable, json, response, security, errors });
+const activity = businessActivityContracts({ ref, text, uuid, object, list, nullable, json, response, security, errors });
 
 const inquiryEvidence = inquiryEvidenceContracts({ref,text,uuid,object,list,nullable,json,response,security,errors});
 
@@ -102,6 +104,7 @@ export const spec = {
         ...commercial.paths,
         ...foundation.paths,
         ...marketKnowledge.paths,
+        ...activity.paths,
         ...inquiryEvidence.paths,
     },
     components: {
@@ -145,6 +148,7 @@ export const spec = {
             ...commercial.schemas,
             ...foundation.schemas,
             ...marketKnowledge.schemas,
+            ...activity.schemas,
             ...inquiryEvidence.schemas,
         },
     },

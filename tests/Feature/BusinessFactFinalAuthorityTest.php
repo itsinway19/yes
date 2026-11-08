@@ -92,10 +92,11 @@ final class BusinessFactFinalAuthorityTest extends TestCase
         $run = 'fact-final-'.$kind.'-'.Str::uuid();
         $path = storage_path('framework/testing/'.$run.'.json');
         $release = $path.'.release';
+        $ready = $path.'.ready';
         if (! is_dir(dirname($path))) {
             mkdir(dirname($path), 0755, true);
         }
-        $input = ['run' => $run, 'actor' => $user->id, 'business' => $a['business_public_id'], 'session' => SessionAuthority::sessionKey($request), 'command' => (string) Str::uuid(),
+        $input = ['run' => $run, 'ready' => $ready, 'actor' => $user->id, 'business' => $a['business_public_id'], 'session' => SessionAuthority::sessionKey($request), 'command' => (string) Str::uuid(),
             'operation' => $kind, 'name' => 'Changed temporal client', 'expected' => 0, 'selection' => $selection, 'release' => $release, 'require_release_content' => true, 'codes' => ['SA'],
             'value' => $kind === 'preferences' ? ['goals' => ['sales'], 'priority' => 'sales', 'results' => ['sales' => ['actual_sales']]]
                 : ['description' => null, 'direction' => 'increase_value', 'scope' => 'business_wide', 'outcome' => ['meaning' => 'Qualified purchases', 'clarification' => null, 'count_unit' => null], 'quantity' => null, 'horizon' => null],
@@ -131,7 +132,7 @@ final class BusinessFactFinalAuthorityTest extends TestCase
         $barrier->getPdo();
         $worker = new Process([PHP_BINARY, base_path('tests/BusinessScopeCommandWorker.php'), $path], base_path());
         $worker->setTimeout(45);
-        $wait = function (callable $condition) use ($worker) {
+        $wait = function (callable $condition, string $phase = 'final_receipt_contention') use ($worker) {
             $deadline = microtime(true) + 15;
             do {
                 if ($value = $condition()) {
@@ -140,12 +141,26 @@ final class BusinessFactFinalAuthorityTest extends TestCase
                     throw new \RuntimeException($worker->getOutput().$worker->getErrorOutput());
                 } usleep(10000);
             } while (microtime(true) < $deadline);
-            throw new \RuntimeException('Required final fact wait missing: '.$worker->getOutput().$worker->getErrorOutput());
+            throw new \RuntimeException('Required final fact wait missing ['.$phase.']: '.$worker->getOutput().$worker->getErrorOutput());
         };
         try {
+            $evidence['worker_started_at'] = microtime(true);
             $worker->start();
-            $wait(fn () => str_contains($worker->getOutput(), 'READY_PID='));
+            // Use the existing worker's durable post-bootstrap/guard handshake.
+            // Windows pipe delivery is not participant readiness. The bootstrap
+            // deadline, expiry window and required real receipt wait stay intact.
+            $participant = $wait(function () use ($ready, $run) {
+                clearstatcache(true, $ready);
+                if (! is_file($ready)) {
+                    return false;
+                }
+                $value = json_decode(file_get_contents($ready), true);
+
+                return is_array($value) && ($value['run'] ?? null) === $run && ($value['pid'] ?? 0) > 0 ? $value : false;
+            }, 'worker_bootstrap');
             $evidence['ready_at'] = microtime(true);
+            $evidence['participant'] = $participant;
+            $evidence['stdout_ready_at_handshake'] = str_contains($worker->getOutput(), 'READY_PID=');
             $barrier->beginTransaction();
             $blocker = (int) $barrier->scalar('SELECT pg_backend_pid()');
             $barrier->statement('LOCK TABLE business_command_receipts IN SHARE MODE');
@@ -161,6 +176,8 @@ final class BusinessFactFinalAuthorityTest extends TestCase
 
                 return $rows ? (array) $rows[0] : false;
             });
+            $this->assertSame((int) $participant['pid'], (int) $evidence['wait']['pid']);
+            $this->assertNotSame($blocker, (int) $evidence['wait']['pid']);
             $wait(fn () => (bool) $db->scalar('SELECT clock_timestamp()>=?::timestamptz', [$expires]));
             $barrier->commit();
             $worker->wait();
@@ -184,7 +201,7 @@ final class BusinessFactFinalAuthorityTest extends TestCase
             $evidence['worker'] = ['stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput(), 'exit' => $worker->getExitCode()];
             fclose($releaseHandle);
             file_put_contents(storage_path('framework/testing/'.$run.'-evidence.json'), json_encode($evidence, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
-            foreach ([$path, $release] as $file) {
+            foreach ([$path, $release, $ready] as $file) {
                 if (is_file($file)) {
                     unlink($file);
                 }
