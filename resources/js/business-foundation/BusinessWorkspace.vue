@@ -12,6 +12,8 @@ import type { BusinessChoice } from './businessChoices';
 import { workspacePresentation, workspacePresentationKey, workspaceLocation, type WorkspaceSection, type WorkspaceSettingsView } from './workspacePresentation';
 import { pending as accountPending } from '../sources/commands';
 import BusinessEditor from './BusinessEditor.vue';
+import BusinessPractices from './BusinessPractices.vue';
+import { hasPendingActivity } from './activityPending';
 import BusinessLifecycle from './BusinessLifecycle.vue';
 import BusinessFacts from './BusinessFacts.vue';
 import BusinessCollaboration from './BusinessCollaboration.vue';
@@ -29,7 +31,7 @@ const props = withDefaults(defineProps<{ surface: Surface; refreshing?: boolean 
 const emit = defineEmits<{ refresh: [] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const resource = key(props.surface.business.business_public_id, props.surface.authority_selection);
-const hasPendingOperation = () => hasPendingDataLicense(props.surface.business.business_public_id) || !!purposeEnrollmentDrafts.get(`${resource}:purpose-enrollment:1`)?.pending || !!lifecycleDrafts.get(`${resource}:lifecycle:1`)?.pending;
+const hasPendingOperation = () => hasPendingActivity(props.surface.business.business_public_id) || hasPendingDataLicense(props.surface.business.business_public_id) || !!purposeEnrollmentDrafts.get(`${resource}:purpose-enrollment:1`)?.pending || !!lifecycleDrafts.get(`${resource}:lifecycle:1`)?.pending;
 const canDepartPurposeEnrollment = () => (!hasPendingOperation() && !accountPending.size) || confirm(t('توجد عملية غير محسومة. هل تريد المغادرة مع الاحتفاظ بالطلب الأصلي؟', 'An operation has an unknown outcome. Leave while retaining its original request?'));
 onBeforeRouteLeave(canDepartPurposeEnrollment);
 onBeforeRouteUpdate((to, from) => {
@@ -152,6 +154,7 @@ async function navigate(section: WorkspaceSection, subview?: WorkspaceSettingsVi
                 </nav>
                 <section v-if="visitedSettings.has('details')" v-show="settingsView === 'details'" data-workspace-settings-panel="details">
                     <BusinessEditor :surface="surface" :refreshing="refreshing" embedded @refresh="emit('refresh')" />
+                    <BusinessPractices :surface="surface" :refreshing="refreshing" :active="active === 'settings' && settingsView === 'details'" @refresh="emit('refresh')" />
                     <details class="workspace-disclosure" data-business-commercial><summary>{{ t('إتاحة الخدمات والاشتراك', 'Service availability and subscription') }}</summary><p>{{ t('لم تُحدد لهذا النشاط تغطية اشتراك أو حصة خدمة بعد. لا يُنقل اشتراك مساحة التعاون إليه تلقائيًا، وإدارة المصدر أو الدفع لا يفتحان بيانات العملاء.', 'Subscription coverage or a service allowance has not been established for this business. Workspace subscriptions do not transfer automatically, and source management or payment grants no client-data access.') }}</p><p>{{ t('الخدمات المشروطة تحتاج عقد إتاحة وحصة مناسبين. الحصة غير المعروفة لا تعني صفرًا أو استعمالًا غير محدود.', 'Conditioned services need appropriate entitlement and capacity. Unknown capacity means neither zero nor unlimited usage.') }}</p></details>
                     <BusinessHistory v-if="surface.private_history_available" :surface="surface" :refreshing="refreshing" />
                     <BusinessLegacyHistory v-if="surface.private_history_available" :surface="surface" :refreshing="refreshing" />

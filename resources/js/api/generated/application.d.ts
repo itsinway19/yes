@@ -3402,6 +3402,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/businesses/{business}/practices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readBusinessPractices"];
+        put?: never;
+        post: operations["writeBusinessPractice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/practices/knowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["practiceKnowledgeOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/businesses/{business}/knowledge/customer-discovery/practice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["inspectPracticeKnowledge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/businesses/{business}/inquiry-evidence/eligibility": {
         parameters: {
             query?: never;
@@ -7822,6 +7870,439 @@ export interface components {
                 message: string;
                 next_step: string;
                 limits: string;
+            };
+        };
+        BusinessPracticeValue: {
+            name: string;
+            description: string;
+            /** @enum {unknown} */
+            kind: "sale" | "installation" | "maintenance" | "service" | "production" | "brokerage" | "rental" | "other";
+            sectors: string[];
+            specializations: string[];
+            offering: string | null;
+            commercial_model: string | null;
+            channels: string[];
+            target_markets: {
+                /** @enum {unknown} */
+                status: "unspecified" | "declared";
+                areas: {
+                    authority: string;
+                    level: string;
+                    ref: string;
+                }[];
+            };
+            fulfillment: {
+                /** @enum {unknown} */
+                status: "unspecified" | "declared";
+                areas: {
+                    authority: string;
+                    level: string;
+                    ref: string;
+                }[];
+            };
+        };
+        BusinessPractice: {
+            /** Format: uuid */
+            practice_id: string;
+            revision: number;
+            /** @enum {unknown} */
+            operation: "create" | "update" | "correct" | "reclassify" | "deactivate";
+            corrects_revision: number | null;
+            correction_reason: string | null;
+            /** @enum {unknown} */
+            state: "active" | "inactive";
+            value: {
+                name: string;
+                description: string;
+                /** @enum {unknown} */
+                kind: "sale" | "installation" | "maintenance" | "service" | "production" | "brokerage" | "rental" | "other";
+                sectors: string[];
+                specializations: string[];
+                offering: string | null;
+                commercial_model: string | null;
+                channels: string[];
+                target_markets: {
+                    /** @enum {unknown} */
+                    status: "unspecified" | "declared";
+                    areas: {
+                        authority: string;
+                        level: string;
+                        ref: string;
+                    }[];
+                };
+                fulfillment: {
+                    /** @enum {unknown} */
+                    status: "unspecified" | "declared";
+                    areas: {
+                        authority: string;
+                        level: string;
+                        ref: string;
+                    }[];
+                };
+            };
+            recorded_at: string;
+        };
+        /** @description update preserves economic kind and requires a non-classification change; accompanying sector/specialization evolution is permitted. reclassify changes only sector/specialization. correct requires correction_reason and records the prior revision; changing kind requires the same nonempty offering. No-op revisions are rejected. Another economic practice requires create/deactivate. */
+        BusinessPracticeCommand: {
+            /** Format: uuid */
+            command_id: string;
+            /** Format: uuid */
+            practice_id: string;
+            /** @enum {unknown} */
+            operation: "create" | "update" | "correct" | "reclassify" | "deactivate";
+            expected_revision: number;
+            value: {
+                name: string;
+                description: string;
+                /** @enum {unknown} */
+                kind: "sale" | "installation" | "maintenance" | "service" | "production" | "brokerage" | "rental" | "other";
+                sectors: string[];
+                specializations: string[];
+                offering: string | null;
+                commercial_model: string | null;
+                channels: string[];
+                target_markets: {
+                    /** @enum {unknown} */
+                    status: "unspecified" | "declared";
+                    areas: {
+                        authority: string;
+                        level: string;
+                        ref: string;
+                    }[];
+                };
+                fulfillment: {
+                    /** @enum {unknown} */
+                    status: "unspecified" | "declared";
+                    areas: {
+                        authority: string;
+                        level: string;
+                        ref: string;
+                    }[];
+                };
+            } | null;
+            authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+            read_selection: components["schemas"]["BusinessAuthoritySelection"];
+            correction_reason?: string | null;
+        } & unknown;
+        BusinessPracticeReceipt: {
+            data: {
+                /** Format: uuid */
+                business_public_id: string;
+                practice: {
+                    /** Format: uuid */
+                    practice_id: string;
+                    revision: number;
+                    /** @enum {unknown} */
+                    operation: "create" | "update" | "correct" | "reclassify" | "deactivate";
+                    corrects_revision: number | null;
+                    correction_reason: string | null;
+                    /** @enum {unknown} */
+                    state: "active" | "inactive";
+                    value: {
+                        name: string;
+                        description: string;
+                        /** @enum {unknown} */
+                        kind: "sale" | "installation" | "maintenance" | "service" | "production" | "brokerage" | "rental" | "other";
+                        sectors: string[];
+                        specializations: string[];
+                        offering: string | null;
+                        commercial_model: string | null;
+                        channels: string[];
+                        target_markets: {
+                            /** @enum {unknown} */
+                            status: "unspecified" | "declared";
+                            areas: {
+                                authority: string;
+                                level: string;
+                                ref: string;
+                            }[];
+                        };
+                        fulfillment: {
+                            /** @enum {unknown} */
+                            status: "unspecified" | "declared";
+                            areas: {
+                                authority: string;
+                                level: string;
+                                ref: string;
+                            }[];
+                        };
+                    };
+                    recorded_at: string;
+                };
+                historical_receipt: boolean;
+                current_revision: number;
+                versions: {
+                    practice: number;
+                };
+            };
+        };
+        BusinessPracticesResult: {
+            data: {
+                /** Format: uuid */
+                business_public_id: string;
+                practices: {
+                    /** Format: uuid */
+                    practice_id: string;
+                    revision: number;
+                    /** @enum {unknown} */
+                    operation: "create" | "update" | "correct" | "reclassify" | "deactivate";
+                    corrects_revision: number | null;
+                    correction_reason: string | null;
+                    /** @enum {unknown} */
+                    state: "active" | "inactive";
+                    value: {
+                        name: string;
+                        description: string;
+                        /** @enum {unknown} */
+                        kind: "sale" | "installation" | "maintenance" | "service" | "production" | "brokerage" | "rental" | "other";
+                        sectors: string[];
+                        specializations: string[];
+                        offering: string | null;
+                        commercial_model: string | null;
+                        channels: string[];
+                        target_markets: {
+                            /** @enum {unknown} */
+                            status: "unspecified" | "declared";
+                            areas: {
+                                authority: string;
+                                level: string;
+                                ref: string;
+                            }[];
+                        };
+                        fulfillment: {
+                            /** @enum {unknown} */
+                            status: "unspecified" | "declared";
+                            areas: {
+                                authority: string;
+                                level: string;
+                                ref: string;
+                            }[];
+                        };
+                    };
+                    recorded_at: string;
+                }[];
+                history_available: boolean;
+                history?: {
+                    /** Format: uuid */
+                    practice_id: string;
+                    revision: number;
+                    /** @enum {unknown} */
+                    operation: "create" | "update" | "correct" | "reclassify" | "deactivate";
+                    corrects_revision: number | null;
+                    correction_reason: string | null;
+                    /** @enum {unknown} */
+                    state: "active" | "inactive";
+                    value: {
+                        name: string;
+                        description: string;
+                        /** @enum {unknown} */
+                        kind: "sale" | "installation" | "maintenance" | "service" | "production" | "brokerage" | "rental" | "other";
+                        sectors: string[];
+                        specializations: string[];
+                        offering: string | null;
+                        commercial_model: string | null;
+                        channels: string[];
+                        target_markets: {
+                            /** @enum {unknown} */
+                            status: "unspecified" | "declared";
+                            areas: {
+                                authority: string;
+                                level: string;
+                                ref: string;
+                            }[];
+                        };
+                        fulfillment: {
+                            /** @enum {unknown} */
+                            status: "unspecified" | "declared";
+                            areas: {
+                                authority: string;
+                                level: string;
+                                ref: string;
+                            }[];
+                        };
+                    };
+                    recorded_at: string;
+                }[];
+            };
+        };
+        PracticeKnowledgeOptionsResult: {
+            data: {
+                /** Format: uuid */
+                business_public_id: string;
+                options: {
+                    material_ref: components["schemas"]["BusinessMaterialReference"];
+                    purpose: string;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                    finding: {
+                        [key: string]: unknown;
+                    };
+                    practice_basis: {
+                        /** @constant */
+                        schema: "market.practice_basis:1";
+                        signals: {
+                            /** Format: uuid */
+                            source_ref: string;
+                            subject: {
+                                key: string | null;
+                                label: string;
+                                identity_state: string;
+                            };
+                            geography: {
+                                ref: string | null;
+                                level: string;
+                                authority?: string;
+                            };
+                            metric: {
+                                [key: string]: unknown;
+                            };
+                            period: {
+                                from: string;
+                                until: string;
+                            };
+                            measurement: {
+                                [key: string]: unknown;
+                            };
+                            coverage: string;
+                        }[];
+                    };
+                    saved_relations?: {
+                        /** Format: uuid */
+                        practice_id: string;
+                        practice_revision: number;
+                        /** Format: uuid */
+                        assessment_id: string;
+                        relation: {
+                            /** @enum {unknown} */
+                            basis: "business_declared" | "unknown" | "inferred_unverified" | "conflicting";
+                            /** @enum {unknown} */
+                            applicability: "related" | "unrelated" | "unknown";
+                            rationale: string;
+                        };
+                        question: {
+                            geography: {
+                                authority: string;
+                                level: string;
+                                ref: string;
+                            } | null;
+                            period: {
+                                from: string;
+                                until: string;
+                            } | null;
+                            offering: string | null;
+                        };
+                    }[];
+                }[];
+                next_cursor: number | null;
+            };
+        };
+        PracticeKnowledgeCommand: {
+            /** Format: uuid */
+            command_id: string;
+            /** Format: uuid */
+            practice_id: string;
+            expected_revision: number;
+            material_ref: components["schemas"]["BusinessMaterialReference"];
+            purpose: string;
+            relation: {
+                /** @enum {unknown} */
+                basis: "business_declared" | "unknown" | "inferred_unverified" | "conflicting";
+                /** @enum {unknown} */
+                applicability: "related" | "unrelated" | "unknown";
+                rationale: string;
+            };
+            question: {
+                geography: {
+                    authority: string;
+                    level: string;
+                    ref: string;
+                } | null;
+                period: {
+                    from: string;
+                    until: string;
+                } | null;
+                offering: string | null;
+            };
+            read_selection: components["schemas"]["BusinessAuthoritySelection"];
+            authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+        };
+        PracticeKnowledgeResult: {
+            data: {
+                /** Format: uuid */
+                assessment_id: string;
+                /** Format: uuid */
+                business_public_id: string;
+                /** Format: uuid */
+                practice_id: string;
+                practice_revision: number;
+                material_ref: components["schemas"]["BusinessMaterialReference"];
+                /** @constant */
+                method_ref: "practice_interest_eligibility:1";
+                /** @enum {unknown} */
+                assessment: "applicable" | "not_applicable" | "inconclusive" | "review_required";
+                reason_code: string;
+                /** @enum {unknown} */
+                relation_basis: "business_declared" | "unknown" | "inferred_unverified" | "conflicting";
+                /** @constant */
+                relation_independently_verified: false;
+                /** @enum {unknown} */
+                target_market: "unknown" | "within_declared" | "not_listed_in_declaration";
+                /** @enum {unknown} */
+                fulfillment: "unknown" | "within_declared" | "not_listed_in_declaration";
+                supports_investigating_reach: boolean;
+                limitations?: string[];
+                relation: {
+                    /** @enum {unknown} */
+                    basis: "business_declared" | "unknown" | "inferred_unverified" | "conflicting";
+                    /** @enum {unknown} */
+                    applicability: "related" | "unrelated" | "unknown";
+                    rationale: string;
+                    subject_basis: {
+                        /** @constant */
+                        schema: "market.practice_basis:1";
+                        signals: {
+                            /** Format: uuid */
+                            source_ref: string;
+                            subject: {
+                                key: string | null;
+                                label: string;
+                                identity_state: string;
+                            };
+                            geography: {
+                                ref: string | null;
+                                level: string;
+                                authority?: string;
+                            };
+                            metric: {
+                                [key: string]: unknown;
+                            };
+                            period: {
+                                from: string;
+                                until: string;
+                            };
+                            measurement: {
+                                [key: string]: unknown;
+                            };
+                            coverage: string;
+                        }[];
+                    } | null;
+                    subject_binding: string | null;
+                };
+                question: {
+                    geography: {
+                        authority: string;
+                        level: string;
+                        ref: string;
+                    } | null;
+                    period: {
+                        from: string;
+                        until: string;
+                    } | null;
+                    offering: string | null;
+                };
+                historical_receipt: boolean;
+                /** @enum {unknown} */
+                currentness: "current" | "review_required";
+                current_practice_revision: number;
             };
         };
         InquiryAuthoritySelection: {
@@ -30681,6 +31162,704 @@ export interface operations {
                     "application/json": {
                         error: string;
                     } | components["schemas"]["Error"] | components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    readBusinessPractices: {
+        parameters: {
+            query: {
+                access: number;
+                practice?: string;
+            };
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            practices: {
+                                /** Format: uuid */
+                                practice_id: string;
+                                revision: number;
+                                /** @enum {unknown} */
+                                operation: "create" | "update" | "correct" | "reclassify" | "deactivate";
+                                corrects_revision: number | null;
+                                correction_reason: string | null;
+                                /** @enum {unknown} */
+                                state: "active" | "inactive";
+                                value: {
+                                    name: string;
+                                    description: string;
+                                    /** @enum {unknown} */
+                                    kind: "sale" | "installation" | "maintenance" | "service" | "production" | "brokerage" | "rental" | "other";
+                                    sectors: string[];
+                                    specializations: string[];
+                                    offering: string | null;
+                                    commercial_model: string | null;
+                                    channels: string[];
+                                    target_markets: {
+                                        /** @enum {unknown} */
+                                        status: "unspecified" | "declared";
+                                        areas: {
+                                            authority: string;
+                                            level: string;
+                                            ref: string;
+                                        }[];
+                                    };
+                                    fulfillment: {
+                                        /** @enum {unknown} */
+                                        status: "unspecified" | "declared";
+                                        areas: {
+                                            authority: string;
+                                            level: string;
+                                            ref: string;
+                                        }[];
+                                    };
+                                };
+                                recorded_at: string;
+                            }[];
+                            history_available: boolean;
+                            history?: {
+                                /** Format: uuid */
+                                practice_id: string;
+                                revision: number;
+                                /** @enum {unknown} */
+                                operation: "create" | "update" | "correct" | "reclassify" | "deactivate";
+                                corrects_revision: number | null;
+                                correction_reason: string | null;
+                                /** @enum {unknown} */
+                                state: "active" | "inactive";
+                                value: {
+                                    name: string;
+                                    description: string;
+                                    /** @enum {unknown} */
+                                    kind: "sale" | "installation" | "maintenance" | "service" | "production" | "brokerage" | "rental" | "other";
+                                    sectors: string[];
+                                    specializations: string[];
+                                    offering: string | null;
+                                    commercial_model: string | null;
+                                    channels: string[];
+                                    target_markets: {
+                                        /** @enum {unknown} */
+                                        status: "unspecified" | "declared";
+                                        areas: {
+                                            authority: string;
+                                            level: string;
+                                            ref: string;
+                                        }[];
+                                    };
+                                    fulfillment: {
+                                        /** @enum {unknown} */
+                                        status: "unspecified" | "declared";
+                                        areas: {
+                                            authority: string;
+                                            level: string;
+                                            ref: string;
+                                        }[];
+                                    };
+                                };
+                                recorded_at: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    writeBusinessPractice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    /** Format: uuid */
+                    practice_id: string;
+                    /** @enum {unknown} */
+                    operation: "create" | "update" | "correct" | "reclassify" | "deactivate";
+                    expected_revision: number;
+                    value: {
+                        name: string;
+                        description: string;
+                        /** @enum {unknown} */
+                        kind: "sale" | "installation" | "maintenance" | "service" | "production" | "brokerage" | "rental" | "other";
+                        sectors: string[];
+                        specializations: string[];
+                        offering: string | null;
+                        commercial_model: string | null;
+                        channels: string[];
+                        target_markets: {
+                            /** @enum {unknown} */
+                            status: "unspecified" | "declared";
+                            areas: {
+                                authority: string;
+                                level: string;
+                                ref: string;
+                            }[];
+                        };
+                        fulfillment: {
+                            /** @enum {unknown} */
+                            status: "unspecified" | "declared";
+                            areas: {
+                                authority: string;
+                                level: string;
+                                ref: string;
+                            }[];
+                        };
+                    } | null;
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                    read_selection: components["schemas"]["BusinessAuthoritySelection"];
+                    correction_reason?: string | null;
+                } & unknown;
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            practice: {
+                                /** Format: uuid */
+                                practice_id: string;
+                                revision: number;
+                                /** @enum {unknown} */
+                                operation: "create" | "update" | "correct" | "reclassify" | "deactivate";
+                                corrects_revision: number | null;
+                                correction_reason: string | null;
+                                /** @enum {unknown} */
+                                state: "active" | "inactive";
+                                value: {
+                                    name: string;
+                                    description: string;
+                                    /** @enum {unknown} */
+                                    kind: "sale" | "installation" | "maintenance" | "service" | "production" | "brokerage" | "rental" | "other";
+                                    sectors: string[];
+                                    specializations: string[];
+                                    offering: string | null;
+                                    commercial_model: string | null;
+                                    channels: string[];
+                                    target_markets: {
+                                        /** @enum {unknown} */
+                                        status: "unspecified" | "declared";
+                                        areas: {
+                                            authority: string;
+                                            level: string;
+                                            ref: string;
+                                        }[];
+                                    };
+                                    fulfillment: {
+                                        /** @enum {unknown} */
+                                        status: "unspecified" | "declared";
+                                        areas: {
+                                            authority: string;
+                                            level: string;
+                                            ref: string;
+                                        }[];
+                                    };
+                                };
+                                recorded_at: string;
+                            };
+                            historical_receipt: boolean;
+                            current_revision: number;
+                            versions: {
+                                practice: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    practiceKnowledgeOptions: {
+        parameters: {
+            query: {
+                access: number;
+                after?: number;
+            };
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            business_public_id: string;
+                            options: {
+                                material_ref: components["schemas"]["BusinessMaterialReference"];
+                                purpose: string;
+                                authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                                finding: {
+                                    [key: string]: unknown;
+                                };
+                                practice_basis: {
+                                    /** @constant */
+                                    schema: "market.practice_basis:1";
+                                    signals: {
+                                        /** Format: uuid */
+                                        source_ref: string;
+                                        subject: {
+                                            key: string | null;
+                                            label: string;
+                                            identity_state: string;
+                                        };
+                                        geography: {
+                                            ref: string | null;
+                                            level: string;
+                                            authority?: string;
+                                        };
+                                        metric: {
+                                            [key: string]: unknown;
+                                        };
+                                        period: {
+                                            from: string;
+                                            until: string;
+                                        };
+                                        measurement: {
+                                            [key: string]: unknown;
+                                        };
+                                        coverage: string;
+                                    }[];
+                                };
+                                saved_relations?: {
+                                    /** Format: uuid */
+                                    practice_id: string;
+                                    practice_revision: number;
+                                    /** Format: uuid */
+                                    assessment_id: string;
+                                    relation: {
+                                        /** @enum {unknown} */
+                                        basis: "business_declared" | "unknown" | "inferred_unverified" | "conflicting";
+                                        /** @enum {unknown} */
+                                        applicability: "related" | "unrelated" | "unknown";
+                                        rationale: string;
+                                    };
+                                    question: {
+                                        geography: {
+                                            authority: string;
+                                            level: string;
+                                            ref: string;
+                                        } | null;
+                                        period: {
+                                            from: string;
+                                            until: string;
+                                        } | null;
+                                        offering: string | null;
+                                    };
+                                }[];
+                            }[];
+                            next_cursor: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    inspectPracticeKnowledge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    command_id: string;
+                    /** Format: uuid */
+                    practice_id: string;
+                    expected_revision: number;
+                    material_ref: components["schemas"]["BusinessMaterialReference"];
+                    purpose: string;
+                    relation: {
+                        /** @enum {unknown} */
+                        basis: "business_declared" | "unknown" | "inferred_unverified" | "conflicting";
+                        /** @enum {unknown} */
+                        applicability: "related" | "unrelated" | "unknown";
+                        rationale: string;
+                    };
+                    question: {
+                        geography: {
+                            authority: string;
+                            level: string;
+                            ref: string;
+                        } | null;
+                        period: {
+                            from: string;
+                            until: string;
+                        } | null;
+                        offering: string | null;
+                    };
+                    read_selection: components["schemas"]["BusinessAuthoritySelection"];
+                    authority_selection: components["schemas"]["BusinessAuthoritySelection"];
+                };
+            };
+        };
+        responses: {
+            /** @description Authorized existing Laravel owner response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            assessment_id: string;
+                            /** Format: uuid */
+                            business_public_id: string;
+                            /** Format: uuid */
+                            practice_id: string;
+                            practice_revision: number;
+                            material_ref: components["schemas"]["BusinessMaterialReference"];
+                            /** @constant */
+                            method_ref: "practice_interest_eligibility:1";
+                            /** @enum {unknown} */
+                            assessment: "applicable" | "not_applicable" | "inconclusive" | "review_required";
+                            reason_code: string;
+                            /** @enum {unknown} */
+                            relation_basis: "business_declared" | "unknown" | "inferred_unverified" | "conflicting";
+                            /** @constant */
+                            relation_independently_verified: false;
+                            /** @enum {unknown} */
+                            target_market: "unknown" | "within_declared" | "not_listed_in_declaration";
+                            /** @enum {unknown} */
+                            fulfillment: "unknown" | "within_declared" | "not_listed_in_declaration";
+                            supports_investigating_reach: boolean;
+                            limitations?: string[];
+                            relation: {
+                                /** @enum {unknown} */
+                                basis: "business_declared" | "unknown" | "inferred_unverified" | "conflicting";
+                                /** @enum {unknown} */
+                                applicability: "related" | "unrelated" | "unknown";
+                                rationale: string;
+                                subject_basis: {
+                                    /** @constant */
+                                    schema: "market.practice_basis:1";
+                                    signals: {
+                                        /** Format: uuid */
+                                        source_ref: string;
+                                        subject: {
+                                            key: string | null;
+                                            label: string;
+                                            identity_state: string;
+                                        };
+                                        geography: {
+                                            ref: string | null;
+                                            level: string;
+                                            authority?: string;
+                                        };
+                                        metric: {
+                                            [key: string]: unknown;
+                                        };
+                                        period: {
+                                            from: string;
+                                            until: string;
+                                        };
+                                        measurement: {
+                                            [key: string]: unknown;
+                                        };
+                                        coverage: string;
+                                    }[];
+                                } | null;
+                                subject_binding: string | null;
+                            };
+                            question: {
+                                geography: {
+                                    authority: string;
+                                    level: string;
+                                    ref: string;
+                                } | null;
+                                period: {
+                                    from: string;
+                                    until: string;
+                                } | null;
+                                offering: string | null;
+                            };
+                            historical_receipt: boolean;
+                            /** @enum {unknown} */
+                            currentness: "current" | "review_required";
+                            current_practice_revision: number;
+                        };
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Original Laravel authorization, CSRF, validation or service failure. */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authorized existing Laravel owner response. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
                 };
             };
             /** @description Original Laravel authorization, CSRF, validation or service failure. */

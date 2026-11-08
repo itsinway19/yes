@@ -38047,6 +38047,2302 @@
         }
       }
     },
+    "/api/businesses/{business}/practices": {
+      "get": {
+        "operationId": "readBusinessPractices",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "access",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "practice",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "practices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "practice_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "operation": {
+                                "enum": [
+                                  "create",
+                                  "update",
+                                  "correct",
+                                  "reclassify",
+                                  "deactivate"
+                                ]
+                              },
+                              "corrects_revision": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "correction_reason": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "state": {
+                                "enum": [
+                                  "active",
+                                  "inactive"
+                                ]
+                              },
+                              "value": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "enum": [
+                                      "sale",
+                                      "installation",
+                                      "maintenance",
+                                      "service",
+                                      "production",
+                                      "brokerage",
+                                      "rental",
+                                      "other"
+                                    ]
+                                  },
+                                  "sectors": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "specializations": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "offering": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "commercial_model": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "channels": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "target_markets": {
+                                    "type": "object",
+                                    "properties": {
+                                      "status": {
+                                        "enum": [
+                                          "unspecified",
+                                          "declared"
+                                        ]
+                                      },
+                                      "areas": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "authority": {
+                                              "type": "string"
+                                            },
+                                            "level": {
+                                              "type": "string"
+                                            },
+                                            "ref": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "authority",
+                                            "level",
+                                            "ref"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "areas"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "fulfillment": {
+                                    "type": "object",
+                                    "properties": {
+                                      "status": {
+                                        "enum": [
+                                          "unspecified",
+                                          "declared"
+                                        ]
+                                      },
+                                      "areas": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "authority": {
+                                              "type": "string"
+                                            },
+                                            "level": {
+                                              "type": "string"
+                                            },
+                                            "ref": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "authority",
+                                            "level",
+                                            "ref"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "areas"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "description",
+                                  "kind",
+                                  "sectors",
+                                  "specializations",
+                                  "offering",
+                                  "commercial_model",
+                                  "channels",
+                                  "target_markets",
+                                  "fulfillment"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "recorded_at": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "practice_id",
+                              "revision",
+                              "operation",
+                              "corrects_revision",
+                              "correction_reason",
+                              "state",
+                              "value",
+                              "recorded_at"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "history_available": {
+                          "type": "boolean"
+                        },
+                        "history": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "practice_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "operation": {
+                                "enum": [
+                                  "create",
+                                  "update",
+                                  "correct",
+                                  "reclassify",
+                                  "deactivate"
+                                ]
+                              },
+                              "corrects_revision": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "correction_reason": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "state": {
+                                "enum": [
+                                  "active",
+                                  "inactive"
+                                ]
+                              },
+                              "value": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "enum": [
+                                      "sale",
+                                      "installation",
+                                      "maintenance",
+                                      "service",
+                                      "production",
+                                      "brokerage",
+                                      "rental",
+                                      "other"
+                                    ]
+                                  },
+                                  "sectors": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "specializations": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "offering": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "commercial_model": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "channels": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "target_markets": {
+                                    "type": "object",
+                                    "properties": {
+                                      "status": {
+                                        "enum": [
+                                          "unspecified",
+                                          "declared"
+                                        ]
+                                      },
+                                      "areas": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "authority": {
+                                              "type": "string"
+                                            },
+                                            "level": {
+                                              "type": "string"
+                                            },
+                                            "ref": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "authority",
+                                            "level",
+                                            "ref"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "areas"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "fulfillment": {
+                                    "type": "object",
+                                    "properties": {
+                                      "status": {
+                                        "enum": [
+                                          "unspecified",
+                                          "declared"
+                                        ]
+                                      },
+                                      "areas": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "authority": {
+                                              "type": "string"
+                                            },
+                                            "level": {
+                                              "type": "string"
+                                            },
+                                            "ref": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "authority",
+                                            "level",
+                                            "ref"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "areas"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "description",
+                                  "kind",
+                                  "sectors",
+                                  "specializations",
+                                  "offering",
+                                  "commercial_model",
+                                  "channels",
+                                  "target_markets",
+                                  "fulfillment"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "recorded_at": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "practice_id",
+                              "revision",
+                              "operation",
+                              "corrects_revision",
+                              "correction_reason",
+                              "state",
+                              "value",
+                              "recorded_at"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "practices",
+                        "history_available"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "writeBusinessPractice",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "practice_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "operation": {
+                    "enum": [
+                      "create",
+                      "update",
+                      "correct",
+                      "reclassify",
+                      "deactivate"
+                    ]
+                  },
+                  "expected_revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "enum": [
+                              "sale",
+                              "installation",
+                              "maintenance",
+                              "service",
+                              "production",
+                              "brokerage",
+                              "rental",
+                              "other"
+                            ]
+                          },
+                          "sectors": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "specializations": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "offering": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "commercial_model": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "channels": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "target_markets": {
+                            "type": "object",
+                            "properties": {
+                              "status": {
+                                "enum": [
+                                  "unspecified",
+                                  "declared"
+                                ]
+                              },
+                              "areas": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "authority": {
+                                      "type": "string"
+                                    },
+                                    "level": {
+                                      "type": "string"
+                                    },
+                                    "ref": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "authority",
+                                    "level",
+                                    "ref"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "status",
+                              "areas"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "fulfillment": {
+                            "type": "object",
+                            "properties": {
+                              "status": {
+                                "enum": [
+                                  "unspecified",
+                                  "declared"
+                                ]
+                              },
+                              "areas": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "authority": {
+                                      "type": "string"
+                                    },
+                                    "level": {
+                                      "type": "string"
+                                    },
+                                    "ref": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "authority",
+                                    "level",
+                                    "ref"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "status",
+                              "areas"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "description",
+                          "kind",
+                          "sectors",
+                          "specializations",
+                          "offering",
+                          "commercial_model",
+                          "channels",
+                          "target_markets",
+                          "fulfillment"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  },
+                  "read_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  },
+                  "correction_reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "practice_id",
+                  "operation",
+                  "expected_revision",
+                  "value",
+                  "authority_selection",
+                  "read_selection"
+                ],
+                "additionalProperties": false,
+                "description": "update preserves economic kind and requires a non-classification change; accompanying sector/specialization evolution is permitted. reclassify changes only sector/specialization. correct requires correction_reason and records the prior revision; changing kind requires the same nonempty offering. No-op revisions are rejected. Another economic practice requires create/deactivate.",
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "operation": {
+                          "const": "correct"
+                        }
+                      },
+                      "required": [
+                        "operation"
+                      ]
+                    },
+                    "then": {
+                      "required": [
+                        "correction_reason"
+                      ],
+                      "properties": {
+                        "correction_reason": {
+                          "type": "string",
+                          "minLength": 3,
+                          "maxLength": 1000
+                        }
+                      }
+                    },
+                    "else": {
+                      "properties": {
+                        "correction_reason": {
+                          "type": "null"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "practice": {
+                          "type": "object",
+                          "properties": {
+                            "practice_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "revision": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "operation": {
+                              "enum": [
+                                "create",
+                                "update",
+                                "correct",
+                                "reclassify",
+                                "deactivate"
+                              ]
+                            },
+                            "corrects_revision": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "correction_reason": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "state": {
+                              "enum": [
+                                "active",
+                                "inactive"
+                              ]
+                            },
+                            "value": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "description": {
+                                  "type": "string"
+                                },
+                                "kind": {
+                                  "enum": [
+                                    "sale",
+                                    "installation",
+                                    "maintenance",
+                                    "service",
+                                    "production",
+                                    "brokerage",
+                                    "rental",
+                                    "other"
+                                  ]
+                                },
+                                "sectors": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "specializations": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "offering": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "commercial_model": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "channels": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "target_markets": {
+                                  "type": "object",
+                                  "properties": {
+                                    "status": {
+                                      "enum": [
+                                        "unspecified",
+                                        "declared"
+                                      ]
+                                    },
+                                    "areas": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "authority": {
+                                            "type": "string"
+                                          },
+                                          "level": {
+                                            "type": "string"
+                                          },
+                                          "ref": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "authority",
+                                          "level",
+                                          "ref"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "status",
+                                    "areas"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "fulfillment": {
+                                  "type": "object",
+                                  "properties": {
+                                    "status": {
+                                      "enum": [
+                                        "unspecified",
+                                        "declared"
+                                      ]
+                                    },
+                                    "areas": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "authority": {
+                                            "type": "string"
+                                          },
+                                          "level": {
+                                            "type": "string"
+                                          },
+                                          "ref": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "authority",
+                                          "level",
+                                          "ref"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "status",
+                                    "areas"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "description",
+                                "kind",
+                                "sectors",
+                                "specializations",
+                                "offering",
+                                "commercial_model",
+                                "channels",
+                                "target_markets",
+                                "fulfillment"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "recorded_at": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "practice_id",
+                            "revision",
+                            "operation",
+                            "corrects_revision",
+                            "correction_reason",
+                            "state",
+                            "value",
+                            "recorded_at"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "historical_receipt": {
+                          "type": "boolean"
+                        },
+                        "current_revision": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "practice": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "practice"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "practice",
+                        "historical_receipt",
+                        "current_revision",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/practices/knowledge": {
+      "get": {
+        "operationId": "practiceKnowledgeOptions",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "access",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "options": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "material_ref": {
+                                "$ref": "#/components/schemas/BusinessMaterialReference"
+                              },
+                              "purpose": {
+                                "type": "string"
+                              },
+                              "authority_selection": {
+                                "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                              },
+                              "finding": {
+                                "type": "object",
+                                "properties": {},
+                                "required": [],
+                                "additionalProperties": true
+                              },
+                              "practice_basis": {
+                                "type": "object",
+                                "properties": {
+                                  "schema": {
+                                    "const": "market.practice_basis:1"
+                                  },
+                                  "signals": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "source_ref": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "subject": {
+                                          "type": "object",
+                                          "properties": {
+                                            "key": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "label": {
+                                              "type": "string"
+                                            },
+                                            "identity_state": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "key",
+                                            "label",
+                                            "identity_state"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        "geography": {
+                                          "type": "object",
+                                          "properties": {
+                                            "ref": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "level": {
+                                              "type": "string"
+                                            },
+                                            "authority": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "ref",
+                                            "level"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        "metric": {
+                                          "type": "object",
+                                          "properties": {},
+                                          "required": [],
+                                          "additionalProperties": true
+                                        },
+                                        "period": {
+                                          "type": "object",
+                                          "properties": {
+                                            "from": {
+                                              "type": "string"
+                                            },
+                                            "until": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "from",
+                                            "until"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        "measurement": {
+                                          "type": "object",
+                                          "properties": {},
+                                          "required": [],
+                                          "additionalProperties": true
+                                        },
+                                        "coverage": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "source_ref",
+                                        "subject",
+                                        "geography",
+                                        "metric",
+                                        "period",
+                                        "measurement",
+                                        "coverage"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "schema",
+                                  "signals"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "saved_relations": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "practice_id": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    "practice_revision": {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    "assessment_id": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    "relation": {
+                                      "type": "object",
+                                      "properties": {
+                                        "basis": {
+                                          "enum": [
+                                            "business_declared",
+                                            "unknown",
+                                            "inferred_unverified",
+                                            "conflicting"
+                                          ]
+                                        },
+                                        "applicability": {
+                                          "enum": [
+                                            "related",
+                                            "unrelated",
+                                            "unknown"
+                                          ]
+                                        },
+                                        "rationale": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "basis",
+                                        "applicability",
+                                        "rationale"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "question": {
+                                      "type": "object",
+                                      "properties": {
+                                        "geography": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "authority": {
+                                                  "type": "string"
+                                                },
+                                                "level": {
+                                                  "type": "string"
+                                                },
+                                                "ref": {
+                                                  "type": "string"
+                                                }
+                                              },
+                                              "required": [
+                                                "authority",
+                                                "level",
+                                                "ref"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "period": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "from": {
+                                                  "type": "string"
+                                                },
+                                                "until": {
+                                                  "type": "string"
+                                                }
+                                              },
+                                              "required": [
+                                                "from",
+                                                "until"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "offering": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "geography",
+                                        "period",
+                                        "offering"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": [
+                                    "practice_id",
+                                    "practice_revision",
+                                    "assessment_id",
+                                    "relation",
+                                    "question"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "material_ref",
+                              "purpose",
+                              "authority_selection",
+                              "finding",
+                              "practice_basis"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "next_cursor": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "options",
+                        "next_cursor"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/knowledge/customer-discovery/practice": {
+      "post": {
+        "operationId": "inspectPracticeKnowledge",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "practice_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "expected_revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "material_ref": {
+                    "$ref": "#/components/schemas/BusinessMaterialReference"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  },
+                  "relation": {
+                    "type": "object",
+                    "properties": {
+                      "basis": {
+                        "enum": [
+                          "business_declared",
+                          "unknown",
+                          "inferred_unverified",
+                          "conflicting"
+                        ]
+                      },
+                      "applicability": {
+                        "enum": [
+                          "related",
+                          "unrelated",
+                          "unknown"
+                        ]
+                      },
+                      "rationale": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "basis",
+                      "applicability",
+                      "rationale"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "question": {
+                    "type": "object",
+                    "properties": {
+                      "geography": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "authority": {
+                                "type": "string"
+                              },
+                              "level": {
+                                "type": "string"
+                              },
+                              "ref": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "authority",
+                              "level",
+                              "ref"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "period": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string"
+                              },
+                              "until": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "until"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "offering": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "geography",
+                      "period",
+                      "offering"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "read_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  },
+                  "authority_selection": {
+                    "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                  }
+                },
+                "required": [
+                  "command_id",
+                  "practice_id",
+                  "expected_revision",
+                  "material_ref",
+                  "purpose",
+                  "relation",
+                  "question",
+                  "read_selection",
+                  "authority_selection"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "assessment_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "practice_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "practice_revision": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "material_ref": {
+                          "$ref": "#/components/schemas/BusinessMaterialReference"
+                        },
+                        "method_ref": {
+                          "const": "practice_interest_eligibility:1"
+                        },
+                        "assessment": {
+                          "enum": [
+                            "applicable",
+                            "not_applicable",
+                            "inconclusive",
+                            "review_required"
+                          ]
+                        },
+                        "reason_code": {
+                          "type": "string"
+                        },
+                        "relation_basis": {
+                          "enum": [
+                            "business_declared",
+                            "unknown",
+                            "inferred_unverified",
+                            "conflicting"
+                          ]
+                        },
+                        "relation_independently_verified": {
+                          "const": false
+                        },
+                        "target_market": {
+                          "enum": [
+                            "unknown",
+                            "within_declared",
+                            "not_listed_in_declaration"
+                          ]
+                        },
+                        "fulfillment": {
+                          "enum": [
+                            "unknown",
+                            "within_declared",
+                            "not_listed_in_declaration"
+                          ]
+                        },
+                        "supports_investigating_reach": {
+                          "type": "boolean"
+                        },
+                        "limitations": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "relation": {
+                          "type": "object",
+                          "properties": {
+                            "basis": {
+                              "enum": [
+                                "business_declared",
+                                "unknown",
+                                "inferred_unverified",
+                                "conflicting"
+                              ]
+                            },
+                            "applicability": {
+                              "enum": [
+                                "related",
+                                "unrelated",
+                                "unknown"
+                              ]
+                            },
+                            "rationale": {
+                              "type": "string"
+                            },
+                            "subject_basis": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "schema": {
+                                      "const": "market.practice_basis:1"
+                                    },
+                                    "signals": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "source_ref": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                          },
+                                          "subject": {
+                                            "type": "object",
+                                            "properties": {
+                                              "key": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "type": "null"
+                                                  }
+                                                ]
+                                              },
+                                              "label": {
+                                                "type": "string"
+                                              },
+                                              "identity_state": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "required": [
+                                              "key",
+                                              "label",
+                                              "identity_state"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "geography": {
+                                            "type": "object",
+                                            "properties": {
+                                              "ref": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "type": "null"
+                                                  }
+                                                ]
+                                              },
+                                              "level": {
+                                                "type": "string"
+                                              },
+                                              "authority": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "required": [
+                                              "ref",
+                                              "level"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "metric": {
+                                            "type": "object",
+                                            "properties": {},
+                                            "required": [],
+                                            "additionalProperties": true
+                                          },
+                                          "period": {
+                                            "type": "object",
+                                            "properties": {
+                                              "from": {
+                                                "type": "string"
+                                              },
+                                              "until": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "required": [
+                                              "from",
+                                              "until"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "measurement": {
+                                            "type": "object",
+                                            "properties": {},
+                                            "required": [],
+                                            "additionalProperties": true
+                                          },
+                                          "coverage": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "source_ref",
+                                          "subject",
+                                          "geography",
+                                          "metric",
+                                          "period",
+                                          "measurement",
+                                          "coverage"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "schema",
+                                    "signals"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "subject_binding": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "basis",
+                            "applicability",
+                            "rationale",
+                            "subject_basis",
+                            "subject_binding"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "question": {
+                          "type": "object",
+                          "properties": {
+                            "geography": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "authority": {
+                                      "type": "string"
+                                    },
+                                    "level": {
+                                      "type": "string"
+                                    },
+                                    "ref": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "authority",
+                                    "level",
+                                    "ref"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "period": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "string"
+                                    },
+                                    "until": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "until"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "offering": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "geography",
+                            "period",
+                            "offering"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "historical_receipt": {
+                          "type": "boolean"
+                        },
+                        "currentness": {
+                          "enum": [
+                            "current",
+                            "review_required"
+                          ]
+                        },
+                        "current_practice_revision": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "assessment_id",
+                        "business_public_id",
+                        "practice_id",
+                        "practice_revision",
+                        "material_ref",
+                        "method_ref",
+                        "assessment",
+                        "reason_code",
+                        "relation_basis",
+                        "relation_independently_verified",
+                        "target_market",
+                        "fulfillment",
+                        "supports_investigating_reach",
+                        "relation",
+                        "question",
+                        "historical_receipt",
+                        "currentness",
+                        "current_practice_revision"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/businesses/{business}/inquiry-evidence/eligibility": {
       "get": {
         "operationId": "readInquiryEvidenceEligibility",
@@ -58905,6 +61201,2151 @@
               "message",
               "next_step",
               "limits"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessPracticeValue": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "sale",
+              "installation",
+              "maintenance",
+              "service",
+              "production",
+              "brokerage",
+              "rental",
+              "other"
+            ]
+          },
+          "sectors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "specializations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "offering": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "commercial_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "target_markets": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "enum": [
+                  "unspecified",
+                  "declared"
+                ]
+              },
+              "areas": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "authority": {
+                      "type": "string"
+                    },
+                    "level": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "authority",
+                    "level",
+                    "ref"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "status",
+              "areas"
+            ],
+            "additionalProperties": false
+          },
+          "fulfillment": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "enum": [
+                  "unspecified",
+                  "declared"
+                ]
+              },
+              "areas": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "authority": {
+                      "type": "string"
+                    },
+                    "level": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "authority",
+                    "level",
+                    "ref"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "status",
+              "areas"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "kind",
+          "sectors",
+          "specializations",
+          "offering",
+          "commercial_model",
+          "channels",
+          "target_markets",
+          "fulfillment"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessPractice": {
+        "type": "object",
+        "properties": {
+          "practice_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operation": {
+            "enum": [
+              "create",
+              "update",
+              "correct",
+              "reclassify",
+              "deactivate"
+            ]
+          },
+          "corrects_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "correction_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "active",
+              "inactive"
+            ]
+          },
+          "value": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "sale",
+                  "installation",
+                  "maintenance",
+                  "service",
+                  "production",
+                  "brokerage",
+                  "rental",
+                  "other"
+                ]
+              },
+              "sectors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "specializations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "offering": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "commercial_model": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "channels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "target_markets": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "unspecified",
+                      "declared"
+                    ]
+                  },
+                  "areas": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "authority": {
+                          "type": "string"
+                        },
+                        "level": {
+                          "type": "string"
+                        },
+                        "ref": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "authority",
+                        "level",
+                        "ref"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "status",
+                  "areas"
+                ],
+                "additionalProperties": false
+              },
+              "fulfillment": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "unspecified",
+                      "declared"
+                    ]
+                  },
+                  "areas": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "authority": {
+                          "type": "string"
+                        },
+                        "level": {
+                          "type": "string"
+                        },
+                        "ref": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "authority",
+                        "level",
+                        "ref"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "status",
+                  "areas"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "description",
+              "kind",
+              "sectors",
+              "specializations",
+              "offering",
+              "commercial_model",
+              "channels",
+              "target_markets",
+              "fulfillment"
+            ],
+            "additionalProperties": false
+          },
+          "recorded_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "practice_id",
+          "revision",
+          "operation",
+          "corrects_revision",
+          "correction_reason",
+          "state",
+          "value",
+          "recorded_at"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessPracticeCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "practice_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "operation": {
+            "enum": [
+              "create",
+              "update",
+              "correct",
+              "reclassify",
+              "deactivate"
+            ]
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "enum": [
+                      "sale",
+                      "installation",
+                      "maintenance",
+                      "service",
+                      "production",
+                      "brokerage",
+                      "rental",
+                      "other"
+                    ]
+                  },
+                  "sectors": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "specializations": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "offering": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "commercial_model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "channels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "target_markets": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "enum": [
+                          "unspecified",
+                          "declared"
+                        ]
+                      },
+                      "areas": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "authority": {
+                              "type": "string"
+                            },
+                            "level": {
+                              "type": "string"
+                            },
+                            "ref": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "authority",
+                            "level",
+                            "ref"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "areas"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "fulfillment": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "enum": [
+                          "unspecified",
+                          "declared"
+                        ]
+                      },
+                      "areas": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "authority": {
+                              "type": "string"
+                            },
+                            "level": {
+                              "type": "string"
+                            },
+                            "ref": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "authority",
+                            "level",
+                            "ref"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "areas"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name",
+                  "description",
+                  "kind",
+                  "sectors",
+                  "specializations",
+                  "offering",
+                  "commercial_model",
+                  "channels",
+                  "target_markets",
+                  "fulfillment"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "authority_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          },
+          "read_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          },
+          "correction_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "command_id",
+          "practice_id",
+          "operation",
+          "expected_revision",
+          "value",
+          "authority_selection",
+          "read_selection"
+        ],
+        "additionalProperties": false,
+        "description": "update preserves economic kind and requires a non-classification change; accompanying sector/specialization evolution is permitted. reclassify changes only sector/specialization. correct requires correction_reason and records the prior revision; changing kind requires the same nonempty offering. No-op revisions are rejected. Another economic practice requires create/deactivate.",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "operation": {
+                  "const": "correct"
+                }
+              },
+              "required": [
+                "operation"
+              ]
+            },
+            "then": {
+              "required": [
+                "correction_reason"
+              ],
+              "properties": {
+                "correction_reason": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 1000
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "correction_reason": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "BusinessPracticeReceipt": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "business_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "practice": {
+                "type": "object",
+                "properties": {
+                  "practice_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "operation": {
+                    "enum": [
+                      "create",
+                      "update",
+                      "correct",
+                      "reclassify",
+                      "deactivate"
+                    ]
+                  },
+                  "corrects_revision": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "correction_reason": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "state": {
+                    "enum": [
+                      "active",
+                      "inactive"
+                    ]
+                  },
+                  "value": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "enum": [
+                          "sale",
+                          "installation",
+                          "maintenance",
+                          "service",
+                          "production",
+                          "brokerage",
+                          "rental",
+                          "other"
+                        ]
+                      },
+                      "sectors": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "specializations": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "offering": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "commercial_model": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "channels": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "target_markets": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "enum": [
+                              "unspecified",
+                              "declared"
+                            ]
+                          },
+                          "areas": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "authority": {
+                                  "type": "string"
+                                },
+                                "level": {
+                                  "type": "string"
+                                },
+                                "ref": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "authority",
+                                "level",
+                                "ref"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "areas"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "fulfillment": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "enum": [
+                              "unspecified",
+                              "declared"
+                            ]
+                          },
+                          "areas": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "authority": {
+                                  "type": "string"
+                                },
+                                "level": {
+                                  "type": "string"
+                                },
+                                "ref": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "authority",
+                                "level",
+                                "ref"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "areas"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "description",
+                      "kind",
+                      "sectors",
+                      "specializations",
+                      "offering",
+                      "commercial_model",
+                      "channels",
+                      "target_markets",
+                      "fulfillment"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "recorded_at": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "practice_id",
+                  "revision",
+                  "operation",
+                  "corrects_revision",
+                  "correction_reason",
+                  "state",
+                  "value",
+                  "recorded_at"
+                ],
+                "additionalProperties": false
+              },
+              "historical_receipt": {
+                "type": "boolean"
+              },
+              "current_revision": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "versions": {
+                "type": "object",
+                "properties": {
+                  "practice": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "practice"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "business_public_id",
+              "practice",
+              "historical_receipt",
+              "current_revision",
+              "versions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessPracticesResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "business_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "practices": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "practice_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "operation": {
+                      "enum": [
+                        "create",
+                        "update",
+                        "correct",
+                        "reclassify",
+                        "deactivate"
+                      ]
+                    },
+                    "corrects_revision": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "correction_reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "state": {
+                      "enum": [
+                        "active",
+                        "inactive"
+                      ]
+                    },
+                    "value": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "enum": [
+                            "sale",
+                            "installation",
+                            "maintenance",
+                            "service",
+                            "production",
+                            "brokerage",
+                            "rental",
+                            "other"
+                          ]
+                        },
+                        "sectors": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "specializations": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "offering": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "commercial_model": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "channels": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "target_markets": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "enum": [
+                                "unspecified",
+                                "declared"
+                              ]
+                            },
+                            "areas": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "authority": {
+                                    "type": "string"
+                                  },
+                                  "level": {
+                                    "type": "string"
+                                  },
+                                  "ref": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "authority",
+                                  "level",
+                                  "ref"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "areas"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "fulfillment": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "enum": [
+                                "unspecified",
+                                "declared"
+                              ]
+                            },
+                            "areas": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "authority": {
+                                    "type": "string"
+                                  },
+                                  "level": {
+                                    "type": "string"
+                                  },
+                                  "ref": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "authority",
+                                  "level",
+                                  "ref"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "areas"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "description",
+                        "kind",
+                        "sectors",
+                        "specializations",
+                        "offering",
+                        "commercial_model",
+                        "channels",
+                        "target_markets",
+                        "fulfillment"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "recorded_at": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "practice_id",
+                    "revision",
+                    "operation",
+                    "corrects_revision",
+                    "correction_reason",
+                    "state",
+                    "value",
+                    "recorded_at"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "history_available": {
+                "type": "boolean"
+              },
+              "history": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "practice_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "operation": {
+                      "enum": [
+                        "create",
+                        "update",
+                        "correct",
+                        "reclassify",
+                        "deactivate"
+                      ]
+                    },
+                    "corrects_revision": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "correction_reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "state": {
+                      "enum": [
+                        "active",
+                        "inactive"
+                      ]
+                    },
+                    "value": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "enum": [
+                            "sale",
+                            "installation",
+                            "maintenance",
+                            "service",
+                            "production",
+                            "brokerage",
+                            "rental",
+                            "other"
+                          ]
+                        },
+                        "sectors": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "specializations": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "offering": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "commercial_model": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "channels": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "target_markets": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "enum": [
+                                "unspecified",
+                                "declared"
+                              ]
+                            },
+                            "areas": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "authority": {
+                                    "type": "string"
+                                  },
+                                  "level": {
+                                    "type": "string"
+                                  },
+                                  "ref": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "authority",
+                                  "level",
+                                  "ref"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "areas"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "fulfillment": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "enum": [
+                                "unspecified",
+                                "declared"
+                              ]
+                            },
+                            "areas": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "authority": {
+                                    "type": "string"
+                                  },
+                                  "level": {
+                                    "type": "string"
+                                  },
+                                  "ref": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "authority",
+                                  "level",
+                                  "ref"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "areas"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "description",
+                        "kind",
+                        "sectors",
+                        "specializations",
+                        "offering",
+                        "commercial_model",
+                        "channels",
+                        "target_markets",
+                        "fulfillment"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "recorded_at": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "practice_id",
+                    "revision",
+                    "operation",
+                    "corrects_revision",
+                    "correction_reason",
+                    "state",
+                    "value",
+                    "recorded_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "business_public_id",
+              "practices",
+              "history_available"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "PracticeKnowledgeOptionsResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "business_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "material_ref": {
+                      "$ref": "#/components/schemas/BusinessMaterialReference"
+                    },
+                    "purpose": {
+                      "type": "string"
+                    },
+                    "authority_selection": {
+                      "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                    },
+                    "finding": {
+                      "type": "object",
+                      "properties": {},
+                      "required": [],
+                      "additionalProperties": true
+                    },
+                    "practice_basis": {
+                      "type": "object",
+                      "properties": {
+                        "schema": {
+                          "const": "market.practice_basis:1"
+                        },
+                        "signals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "source_ref": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "subject": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "identity_state": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "label",
+                                  "identity_state"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "geography": {
+                                "type": "object",
+                                "properties": {
+                                  "ref": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "level": {
+                                    "type": "string"
+                                  },
+                                  "authority": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "ref",
+                                  "level"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "metric": {
+                                "type": "object",
+                                "properties": {},
+                                "required": [],
+                                "additionalProperties": true
+                              },
+                              "period": {
+                                "type": "object",
+                                "properties": {
+                                  "from": {
+                                    "type": "string"
+                                  },
+                                  "until": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "from",
+                                  "until"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "measurement": {
+                                "type": "object",
+                                "properties": {},
+                                "required": [],
+                                "additionalProperties": true
+                              },
+                              "coverage": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "source_ref",
+                              "subject",
+                              "geography",
+                              "metric",
+                              "period",
+                              "measurement",
+                              "coverage"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "schema",
+                        "signals"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "saved_relations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "practice_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "practice_revision": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "assessment_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "relation": {
+                            "type": "object",
+                            "properties": {
+                              "basis": {
+                                "enum": [
+                                  "business_declared",
+                                  "unknown",
+                                  "inferred_unverified",
+                                  "conflicting"
+                                ]
+                              },
+                              "applicability": {
+                                "enum": [
+                                  "related",
+                                  "unrelated",
+                                  "unknown"
+                                ]
+                              },
+                              "rationale": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "basis",
+                              "applicability",
+                              "rationale"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "question": {
+                            "type": "object",
+                            "properties": {
+                              "geography": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "authority": {
+                                        "type": "string"
+                                      },
+                                      "level": {
+                                        "type": "string"
+                                      },
+                                      "ref": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "authority",
+                                      "level",
+                                      "ref"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "period": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "from": {
+                                        "type": "string"
+                                      },
+                                      "until": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "from",
+                                      "until"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "offering": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "geography",
+                              "period",
+                              "offering"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "practice_id",
+                          "practice_revision",
+                          "assessment_id",
+                          "relation",
+                          "question"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "material_ref",
+                    "purpose",
+                    "authority_selection",
+                    "finding",
+                    "practice_basis"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "next_cursor": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "business_public_id",
+              "options",
+              "next_cursor"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "PracticeKnowledgeCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "practice_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "material_ref": {
+            "$ref": "#/components/schemas/BusinessMaterialReference"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "object",
+            "properties": {
+              "basis": {
+                "enum": [
+                  "business_declared",
+                  "unknown",
+                  "inferred_unverified",
+                  "conflicting"
+                ]
+              },
+              "applicability": {
+                "enum": [
+                  "related",
+                  "unrelated",
+                  "unknown"
+                ]
+              },
+              "rationale": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "basis",
+              "applicability",
+              "rationale"
+            ],
+            "additionalProperties": false
+          },
+          "question": {
+            "type": "object",
+            "properties": {
+              "geography": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "authority": {
+                        "type": "string"
+                      },
+                      "level": {
+                        "type": "string"
+                      },
+                      "ref": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "authority",
+                      "level",
+                      "ref"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "period": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "from": {
+                        "type": "string"
+                      },
+                      "until": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "from",
+                      "until"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "offering": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "geography",
+              "period",
+              "offering"
+            ],
+            "additionalProperties": false
+          },
+          "read_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          },
+          "authority_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          }
+        },
+        "required": [
+          "command_id",
+          "practice_id",
+          "expected_revision",
+          "material_ref",
+          "purpose",
+          "relation",
+          "question",
+          "read_selection",
+          "authority_selection"
+        ],
+        "additionalProperties": false
+      },
+      "PracticeKnowledgeResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "assessment_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "business_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "practice_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "practice_revision": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "material_ref": {
+                "$ref": "#/components/schemas/BusinessMaterialReference"
+              },
+              "method_ref": {
+                "const": "practice_interest_eligibility:1"
+              },
+              "assessment": {
+                "enum": [
+                  "applicable",
+                  "not_applicable",
+                  "inconclusive",
+                  "review_required"
+                ]
+              },
+              "reason_code": {
+                "type": "string"
+              },
+              "relation_basis": {
+                "enum": [
+                  "business_declared",
+                  "unknown",
+                  "inferred_unverified",
+                  "conflicting"
+                ]
+              },
+              "relation_independently_verified": {
+                "const": false
+              },
+              "target_market": {
+                "enum": [
+                  "unknown",
+                  "within_declared",
+                  "not_listed_in_declaration"
+                ]
+              },
+              "fulfillment": {
+                "enum": [
+                  "unknown",
+                  "within_declared",
+                  "not_listed_in_declaration"
+                ]
+              },
+              "supports_investigating_reach": {
+                "type": "boolean"
+              },
+              "limitations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "relation": {
+                "type": "object",
+                "properties": {
+                  "basis": {
+                    "enum": [
+                      "business_declared",
+                      "unknown",
+                      "inferred_unverified",
+                      "conflicting"
+                    ]
+                  },
+                  "applicability": {
+                    "enum": [
+                      "related",
+                      "unrelated",
+                      "unknown"
+                    ]
+                  },
+                  "rationale": {
+                    "type": "string"
+                  },
+                  "subject_basis": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "schema": {
+                            "const": "market.practice_basis:1"
+                          },
+                          "signals": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "source_ref": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "subject": {
+                                  "type": "object",
+                                  "properties": {
+                                    "key": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "label": {
+                                      "type": "string"
+                                    },
+                                    "identity_state": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "key",
+                                    "label",
+                                    "identity_state"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "geography": {
+                                  "type": "object",
+                                  "properties": {
+                                    "ref": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "level": {
+                                      "type": "string"
+                                    },
+                                    "authority": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "ref",
+                                    "level"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "metric": {
+                                  "type": "object",
+                                  "properties": {},
+                                  "required": [],
+                                  "additionalProperties": true
+                                },
+                                "period": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "string"
+                                    },
+                                    "until": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "until"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "measurement": {
+                                  "type": "object",
+                                  "properties": {},
+                                  "required": [],
+                                  "additionalProperties": true
+                                },
+                                "coverage": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "source_ref",
+                                "subject",
+                                "geography",
+                                "metric",
+                                "period",
+                                "measurement",
+                                "coverage"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "schema",
+                          "signals"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "subject_binding": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "basis",
+                  "applicability",
+                  "rationale",
+                  "subject_basis",
+                  "subject_binding"
+                ],
+                "additionalProperties": false
+              },
+              "question": {
+                "type": "object",
+                "properties": {
+                  "geography": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "authority": {
+                            "type": "string"
+                          },
+                          "level": {
+                            "type": "string"
+                          },
+                          "ref": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "authority",
+                          "level",
+                          "ref"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "period": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string"
+                          },
+                          "until": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "from",
+                          "until"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "offering": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "geography",
+                  "period",
+                  "offering"
+                ],
+                "additionalProperties": false
+              },
+              "historical_receipt": {
+                "type": "boolean"
+              },
+              "currentness": {
+                "enum": [
+                  "current",
+                  "review_required"
+                ]
+              },
+              "current_practice_revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "assessment_id",
+              "business_public_id",
+              "practice_id",
+              "practice_revision",
+              "material_ref",
+              "method_ref",
+              "assessment",
+              "reason_code",
+              "relation_basis",
+              "relation_independently_verified",
+              "target_market",
+              "fulfillment",
+              "supports_investigating_reach",
+              "relation",
+              "question",
+              "historical_receipt",
+              "currentness",
+              "current_practice_revision"
             ],
             "additionalProperties": false
           }

@@ -2,10 +2,16 @@
 
 namespace App\MarketKnowledge;
 
+use App\Foundation\Business\BusinessScope;
 use Illuminate\Http\Request;
 
 final class CustomerDiscoveryConsumer
 {
+    public function inspectPractice(Request $request, string $business, array $body): array
+    {
+        return app(BusinessScope::class)->inspectPracticeKnowledge($request, $business, $body);
+    }
+
     public function inspect(Request $request, string $business, array $body): array
     {
 
