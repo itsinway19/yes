@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Foundation\Business\BusinessScope;
+use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
 use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
@@ -10,6 +11,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
@@ -106,6 +108,57 @@ final class BusinessScopeFoundationTest extends TestCase
             DB::statement("SELECT set_config('app.principal_user_id','1',true), set_config('app.signed_context','forged',true)");
             DB::select('SELECT builderad_v2_business_read(?,?,?::jsonb)', ['fake', $a['business_public_id'], json_encode($this->selection($a))]);
         }));
+    }
+
+    public static function principalReuseFailures(): array
+    {
+        return ['exception rollback' => [false], 'statement timeout rollback' => [true]];
+    }
+
+    #[DataProvider('principalReuseFailures')]
+    public function test_same_runtime_backend_requalifies_each_principal_after_commit_and_rollback(bool $timeout): void
+    {
+        $alice = User::factory()->create();
+        $bob = User::factory()->create();
+        $a = $this->draft($alice, 'Alice on reused backend');
+        $b = $this->draft($bob, 'Bob on reused backend');
+        $scope = app(BusinessScope::class);
+        $connection = DB::connection();
+        $pid = $connection->scalar('SELECT pg_backend_pid()');
+        $this->assertSame('Alice on reused backend', $scope->read($this->request($alice), $a['business_public_id'], $this->selection($a))['name']);
+
+        $aliceRequest = $this->request($alice);
+        $rollback = new \RuntimeException('Synthetic exception after a qualified read');
+        try {
+            $connection->transaction(function () use ($connection, $alice, $aliceRequest, $a, $pid, $rollback, $timeout): void {
+                app(PrincipalContext::class)->activate($alice);
+                $this->assertSame($pid, $connection->scalar('SELECT pg_backend_pid()'));
+                $result = $connection->scalar('SELECT builderad_v2_business_read(?,?::uuid,?::jsonb)', [
+                    SessionAuthority::sessionKey($aliceRequest), $a['business_public_id'], json_encode($this->selection($a), JSON_THROW_ON_ERROR),
+                ]);
+                $this->assertSame('Alice on reused backend', json_decode($result, true, flags: JSON_THROW_ON_ERROR)['name']);
+                if ($timeout) {
+                    $connection->statement("SET LOCAL statement_timeout='30ms'");
+                    $connection->select('SELECT pg_sleep(1)');
+                    $this->fail('The controlled statement timeout did not fire.');
+                }
+
+                throw $rollback;
+            });
+        } catch (QueryException $error) {
+            $this->assertTrue($timeout);
+            $this->assertSame('57014', $error->errorInfo[0]);
+        } catch (\RuntimeException $error) {
+            $this->assertFalse($timeout);
+            $this->assertSame($rollback, $error);
+        }
+        $this->assertSame(0, $connection->transactionLevel());
+        $this->assertSame($pid, $connection->scalar('SELECT pg_backend_pid()'));
+        $this->assertSame('builderad_app', $connection->scalar('SELECT current_user'));
+        $this->assertSame(0, $connection->scalar("SELECT count(*) FROM unnest(ARRAY['app.authorization_phase','app.principal_user_id','app.workspace_id','app.signed_context']) AS settings(key) WHERE nullif(current_setting(key,true),'') IS NOT NULL"));
+        $this->denied(fn () => $scope->read($this->request($bob), $a['business_public_id'], $this->selection($a)));
+        $this->assertSame('Bob on reused backend', $scope->read($this->request($bob), $b['business_public_id'], $this->selection($b))['name']);
+        $this->assertSame($pid, $connection->scalar('SELECT pg_backend_pid()'));
     }
 
     public function test_authority_connection_cannot_directly_mutate_or_read_new_business_grants(): void

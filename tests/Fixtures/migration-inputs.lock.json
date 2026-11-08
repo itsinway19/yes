@@ -1,0 +1,539 @@
+{
+  "baseline": "bd62d7d74ddb9d77144d903f47cb4360045a2c79",
+  "readers": {
+    "0001_01_01_000000_create_users_table.php": [],
+    "0001_01_01_000010_create_workspace_foundation.php": [],
+    "0001_01_01_000020_create_principal_lifecycle.php": [],
+    "0001_01_01_000030_create_security_sessions.php": [],
+    "0001_01_01_000040_create_passkeys.php": [],
+    "0001_01_01_000050_create_internal_authority.php": [],
+    "0001_01_01_000060_create_workspace_authority.php": [],
+    "0001_01_01_000070_create_service_authority.php": [],
+    "0001_01_01_000080_create_security_mail_queue_tables.php": [],
+    "0001_01_01_000090_create_owner_grant_reassessment.php": [],
+    "0001_01_01_000100_create_authority_context.php": [],
+    "0001_01_01_000110_restrict_runtime_authority_writes.php": [],
+    "0001_01_01_000120_fix_workspace_membership_context_correlation.php": [],
+    "0001_01_01_000130_create_sa01_commercial_scope.php": [
+      "sql/sa01.sql"
+    ],
+    "0001_01_01_000140_create_source_registry.php": [
+      "sql/source_registry.sql"
+    ],
+    "0001_01_01_000150_create_provider_access.php": [
+      "sql/provider_access.sql",
+      "sql/provider_runtime/provider_access.sql"
+    ],
+    "0001_01_01_000160_create_provider_observation_journal.php": [
+      "sql/provider_observation.sql",
+      "sql/provider_runtime/provider_observation.sql"
+    ],
+    "0001_01_01_000170_create_provider_request_gate.php": [
+      "sql/provider_request_gate.sql"
+    ],
+    "0001_01_01_000180_separate_provider_read_from_product_readiness.php": [
+      "sql/provider_read_prerequisites.sql"
+    ],
+    "0001_01_01_000190_create_meta_read_attempts.php": [
+      "sql/meta_read_attempts.sql",
+      "sql/provider_runtime/meta_read_attempts.sql"
+    ],
+    "0001_01_01_000200_create_google_connection_credential.php": [
+      "sql/google_connection_credential.sql"
+    ],
+    "0001_01_01_000210_create_google_read_attempts.php": [
+      "sql/google_read_attempts.sql",
+      "sql/provider_runtime/google_read_attempts.sql"
+    ],
+    "0001_01_01_000220_create_tiktok_read_attempts.php": [
+      "sql/provider_runtime/tiktok_read_attempts.sql",
+      "sql/tiktok_read_attempts.sql"
+    ],
+    "0001_01_01_000230_create_snapchat_read_attempts.php": [
+      "sql/provider_runtime/snapchat_read_attempts.sql",
+      "sql/snapchat_read_attempts.sql"
+    ],
+    "0001_01_01_000240_create_snapchat_connection_credential.php": [
+      "sql/snapchat_connection_credential.sql"
+    ],
+    "0001_01_01_000250_create_snapchat_renewal_failures.php": [
+      "sql/provider_runtime/snapchat_renewal_failures.sql",
+      "sql/snapchat_renewal_failures.sql"
+    ],
+    "0001_01_01_000260_create_x_read_attempts.php": [
+      "sql/provider_runtime/x_read_attempts.sql",
+      "sql/x_read_attempts.sql"
+    ],
+    "0001_01_01_000270_create_business_context.php": [
+      "sql/business_context.sql"
+    ],
+    "0001_01_01_000280_create_commercial_market_approvals.php": [
+      "sql/commercial_market_approvals.sql"
+    ],
+    "0001_01_01_000290_founder_direct_commercial_authority.php": [
+      "sql/founder_commercial_authority.sql"
+    ],
+    "0001_01_01_000300_commercial_market_countries.php": [
+      "sql/commercial_market_countries.sql"
+    ],
+    "0001_01_01_000310_customer_administration.php": [
+      "sql/customer_administration.sql",
+      "sql/customer_owner_reassessment.sql"
+    ],
+    "0001_01_01_000320_commercial_delivery_effect_time.php": [
+      "sql/commercial_delivery_effect_time.sql"
+    ],
+    "0001_01_01_000330_create_declared_target_markets.php": [
+      "reference/countries/labels.json",
+      "sql/business_context_lock_order.sql",
+      "sql/declared_target_markets.sql"
+    ],
+    "0001_01_01_000340_create_current_intent.php": [
+      "sql/current_intent.sql"
+    ],
+    "0001_01_01_000350_create_object_purposes.php": [
+      "sql/foundation_workspace_actor.sql",
+      "sql/object_purpose.sql"
+    ],
+    "0001_01_01_000360_create_advertiser_goal_preferences.php": [
+      "sql/advertiser_goal_preferences.sql"
+    ],
+    "0001_01_01_000370_optimize_current_intent_timezone_lookup.php": [
+      "sql/current_intent.sql"
+    ],
+    "0001_01_01_000380_create_browser_identity_transitions.php": [],
+    "0001_01_01_000390_customer_directory_witness.php": [
+      "sql/customer_directory_witness.sql"
+    ],
+    "0001_01_01_000400_create_global_appearance.php": [],
+    "0001_01_01_000420_create_business_scope_foundation.php": [
+      "sql/business_scope/authority.sql",
+      "sql/business_scope/codec.sql",
+      "sql/business_scope/cohort.sql",
+      "sql/business_scope/commands.sql",
+      "sql/business_scope/data_use.sql",
+      "sql/business_scope/facts.sql",
+      "sql/business_scope/grant_commands.sql",
+      "sql/business_scope/history.sql",
+      "sql/business_scope/legacy_fences.sql",
+      "sql/business_scope/legacy_history.sql",
+      "sql/business_scope/legacy_import.sql",
+      "sql/business_scope/legacy_install_seal.sql",
+      "sql/business_scope/lifecycle.sql",
+      "sql/business_scope/material_lineage.sql",
+      "sql/business_scope/material_publish.sql",
+      "sql/business_scope/material_use.sql",
+      "sql/business_scope/permissions.sql",
+      "sql/business_scope/producer_contracts.sql",
+      "sql/business_scope/purpose.sql",
+      "sql/business_scope/purpose_snapshot.sql",
+      "sql/business_scope/resource_rights.sql",
+      "sql/business_scope/schema.sql",
+      "sql/business_scope/scope_authority.sql",
+      "sql/business_scope/source_adoption.sql",
+      "sql/business_scope/source_facts.sql",
+      "sql/business_scope/source_rights.sql",
+      "sql/business_scope/surfaces.sql"
+    ],
+    "0001_01_01_000430_create_market_evidence_origin.php": [
+      "sql/market_evidence/admission.sql",
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/market_evidence/evidence.sql",
+      "sql/market_evidence/integration.sql",
+      "sql/market_evidence/permissions.sql",
+      "sql/market_evidence/schema.sql"
+    ],
+    "0001_01_01_000440_qualify_market_evidence_read_metadata.php": [
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/market_evidence/qualified_read.sql"
+    ],
+    "0001_01_01_000450_create_market_processing.php": [
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/market_processing/capture.sql",
+      "sql/market_processing/complete.sql",
+      "sql/market_processing/evidence.sql",
+      "sql/market_processing/permissions.sql",
+      "sql/market_processing/schema.sql"
+    ],
+    "0001_01_01_000460_harden_market_processing_completion.php": [
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/market_processing/completion_ticket_schema.sql",
+      "sql/market_processing/trusted_completion.sql"
+    ],
+    "0001_01_01_000470_create_platform_maintenance.php": [
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000480_create_market_operations.php": [
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/market_knowledge/operations.sql"
+    ],
+    "0001_01_01_000490_create_market_knowledge_authority.php": [
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/market_knowledge/authority.sql",
+      "sql/market_knowledge/enrollment.sql"
+    ],
+    "0001_01_01_000500_create_market_knowledge_capture.php": [
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/market_knowledge/capture.sql",
+      "sql/market_knowledge/schema.sql"
+    ],
+    "0001_01_01_000510_create_market_knowledge_publication.php": [
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/market_knowledge/dispatch.sql",
+      "sql/market_knowledge/integration.sql",
+      "sql/market_knowledge/producers.sql",
+      "sql/market_knowledge/publication.sql",
+      "sql/market_knowledge/read.sql",
+      "sql/market_knowledge/retention.sql",
+      "sql/market_knowledge/tickets.sql"
+    ],
+    "0001_01_01_000520_create_private_market_findings.php": [
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/market_knowledge/dispatch.sql",
+      "sql/market_knowledge/private_capture.sql",
+      "sql/market_knowledge/private_integration.sql",
+      "sql/market_knowledge/private_producer.sql",
+      "sql/market_knowledge/private_read.sql",
+      "sql/market_knowledge/private_retention.sql",
+      "sql/market_knowledge/private_schema.sql"
+    ],
+    "0001_01_01_000530_integrate_market_knowledge_operations.php": [
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/market_knowledge/operational_publication.sql"
+    ],
+    "0001_01_01_000540_create_inquiry_evidence.php": [
+      "sql/inquiry_evidence/authority.sql",
+      "sql/inquiry_evidence/declarations.sql",
+      "sql/inquiry_evidence/permissions.sql",
+      "sql/inquiry_evidence/schema.sql",
+      "sql/inquiry_evidence/table_permissions.sql",
+      "sql/inquiry_evidence/validation.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000550_business_source_visibility.php": [
+      "sql/business_scope/business_source_visibility.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000560_internal_client_file_team.php": [
+      "sql/business_scope/grant_commands.sql",
+      "sql/business_scope/history.sql",
+      "sql/business_scope/internal_team.sql",
+      "sql/business_scope/legacy_history.sql",
+      "sql/business_scope/scope_authority.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000570_business_declaration_team.php": [
+      "sql/business_scope/business_source_visibility.sql",
+      "sql/business_scope/direct_team.sql",
+      "sql/business_scope/grant_commands.sql",
+      "sql/business_scope/history.sql",
+      "sql/business_scope/legacy_history.sql",
+      "sql/business_scope/scope_authority.sql",
+      "sql/business_scope/surfaces.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000580_organization_team.php": [
+      "sql/business_scope/authority.sql",
+      "sql/business_scope/organization_team.sql",
+      "sql/business_scope/scope_authority.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000590_organization_resources.php": [
+      "sql/business_scope/organization_resources.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000600_retire_workspace_commercial_facts.php": [
+      "sql/business_scope/commercial_retirement.sql",
+      "sql/business_scope/retired_legacy_inventory.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000610_retire_workspace_purpose_declarations.php": [
+      "sql/business_scope/purpose_retirement.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000620_business_purpose_statement_policy.php": [
+      "sql/business_scope/purpose_statement_policy.sql",
+      "sql/business_scope/scope_authority.sql",
+      "sql/business_scope/surfaces.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000630_preserve_final_scope_contracts.php": [
+      "sql/business_scope/authority.sql",
+      "sql/business_scope/purpose_retirement.sql",
+      "sql/business_scope/purpose_snapshot.sql",
+      "sql/business_scope/scope_authority.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000640_add_business_native_source_custody.php": [
+      "sql/business_native_sources/audit.sql",
+      "sql/business_native_sources/authority.sql",
+      "sql/business_native_sources/bootstrap.sql",
+      "sql/business_native_sources/integrity.sql",
+      "sql/business_native_sources/permissions.sql",
+      "sql/business_native_sources/providers.sql",
+      "sql/business_native_sources/schema.sql",
+      "sql/business_scope/authority.sql",
+      "sql/business_scope/purpose_retirement.sql",
+      "sql/business_scope/scope_authority.sql",
+      "sql/business_scope/source_adoption.sql",
+      "sql/business_scope/source_facts.sql",
+      "sql/business_scope/source_rights.sql",
+      "sql/business_scope/surfaces.sql",
+      "sql/google_connection_credential.sql",
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/provider_read_prerequisites.sql",
+      "sql/provider_request_gate.sql",
+      "sql/provider_runtime/google_read_attempts.sql",
+      "sql/provider_runtime/meta_read_attempts.sql",
+      "sql/provider_runtime/provider_access.sql",
+      "sql/provider_runtime/provider_observation.sql",
+      "sql/provider_runtime/snapchat_read_attempts.sql",
+      "sql/provider_runtime/snapchat_renewal_failures.sql",
+      "sql/provider_runtime/tiktok_read_attempts.sql",
+      "sql/provider_runtime/x_read_attempts.sql",
+      "sql/snapchat_connection_credential.sql"
+    ],
+    "0001_01_01_000650_expose_qualified_draft_archive.php": [
+      "sql/business_scope/surfaces.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000660_complete_native_material_identity.php": [
+      "sql/business_native_sources/materials.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000670_enable_declared_data_licenses.php": [
+      "sql/data_use_licensing.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000680_complete_data_license_journey.php": [
+      "sql/business_scope/scope_authority.sql",
+      "sql/business_scope/surfaces.sql",
+      "sql/data_license_beneficiaries.sql",
+      "sql/data_license_journey.sql",
+      "sql/data_use_licensing.sql",
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/market_evidence/integration.sql"
+    ],
+    "0001_01_01_000690_preserve_agency_relationship_incarnation.php": [
+      "sql/business_scope/scope_authority.sql",
+      "sql/data_license_journey.sql",
+      "sql/market_evidence/catalog_seal.sql"
+    ],
+    "0001_01_01_000700_register_bounded_expenditure_summary.php": [
+      "sql/business_native_sources/authority.sql",
+      "sql/business_scope/scope_authority.sql",
+      "sql/business_scope/surfaces.sql",
+      "sql/data_license_beneficiaries.sql",
+      "sql/data_license_journey.sql",
+      "sql/data_use_licensing.sql",
+      "sql/expenditure_summary.sql",
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/market_knowledge/dispatch.sql"
+    ],
+    "0001_01_01_000710_correct_expenditure_preparation_and_selection.php": [
+      "sql/data_license_journey.sql",
+      "sql/expenditure_summary.sql",
+      "sql/market_evidence/catalog_seal.sql",
+      "sql/market_knowledge/private_integration.sql"
+    ]
+  },
+  "historical": {
+    "0001_01_01_000000_create_users_table.php": "49b4724794bf0e0abee8d40935372520f1a549a3f61c3e2deb8f4f437aaaf25f",
+    "0001_01_01_000010_create_workspace_foundation.php": "bc0d7699d2c33f9b0845f19f6507d99af56a5de73500dc395569ee8b45108675",
+    "0001_01_01_000020_create_principal_lifecycle.php": "d464a9d8e0d68a603e682f096885d3610fd0276a39cd6baf2f4d426799d2baca",
+    "0001_01_01_000030_create_security_sessions.php": "af3a2f1231f76509cc631abfb4290efd2c58f2dca9ae2ce1a4fe8764346e523b",
+    "0001_01_01_000040_create_passkeys.php": "7f95ff0ed699fb08c76b2872fbc555918d43147df36e3f7f3d4555a1157ab3df",
+    "0001_01_01_000050_create_internal_authority.php": "0dff89b8b55319776cddeabd14774ee9dd464773f805e5011b52249f0ec650a5",
+    "0001_01_01_000060_create_workspace_authority.php": "3d72588431de5e2b012ba081ae76057dd843b198e2ef37570744c2a04eed2b35",
+    "0001_01_01_000070_create_service_authority.php": "3c2ca8b4dc3428073d5fd6bd154b391be038c1a390b769cf21151a41fd709401",
+    "0001_01_01_000080_create_security_mail_queue_tables.php": "eb1d2b0493751c98328e3b23f6f89cbb8c1894ff8cf55bee50c423d767ab3725",
+    "0001_01_01_000090_create_owner_grant_reassessment.php": "79e6c2289a5abb24d65dbae04328580026f1666eb92057c53a60b413bbbb7167",
+    "0001_01_01_000100_create_authority_context.php": "aa7312fa463b24bddbdeff18ae8a49033ed45f862dcedbc62a2129845796d2aa",
+    "0001_01_01_000110_restrict_runtime_authority_writes.php": "f7b50a8dfdd28820ff3e8bf5e374f0b0288a2f171e114104a4be30853ac1b98e",
+    "0001_01_01_000120_fix_workspace_membership_context_correlation.php": "2711d6666bda7613467e800f69d796f73f9caed53d205a81a7fff3efb1ec8974",
+    "0001_01_01_000130_create_sa01_commercial_scope.php": "a9a4ddc5cb6712df55f1c94a1444a56c11310ae3772ce7ebefeec9c9f0c3ee8e",
+    "0001_01_01_000140_create_source_registry.php": "5aa5f7354f00bd9a7307550b44c402cbbfbca63298527cc19576030cd64e57c1",
+    "0001_01_01_000150_create_provider_access.php": "ae35572187eae4ddce4de78be8054026d6f9ef876ef76f1dae823c358393662f",
+    "0001_01_01_000160_create_provider_observation_journal.php": "e4b4ca20fb2b5b11aea4fe83d69dc360c7b854767c33affd61ffd0a736ec6649",
+    "0001_01_01_000170_create_provider_request_gate.php": "d664e29ea78237955f7eabb82237b01075fcefc8e5ced8fa72ac2e28120ad277",
+    "0001_01_01_000180_separate_provider_read_from_product_readiness.php": "9049fec0460ec0944362ccbc0e1278cd064219c0009821a8b6274a03d571184e",
+    "0001_01_01_000190_create_meta_read_attempts.php": "b7de9d3128ae7699e5d1ee2c9f5e81ba68a390555f7ab6742b0a02abc6fcd432",
+    "0001_01_01_000200_create_google_connection_credential.php": "b0aff22fb40c39f165ef3bd6e5234f546407334e60ccbf71da8db4bb791038f9",
+    "0001_01_01_000210_create_google_read_attempts.php": "2994fa0c068dac6faf95c5dd28c3acbccac2b3f51bb3feb5c38a63401c5264f3",
+    "0001_01_01_000220_create_tiktok_read_attempts.php": "d6b3f2e79aa66a6cd582b54778c0648ea51102217c2ce4311efb70c69de0549a",
+    "0001_01_01_000230_create_snapchat_read_attempts.php": "5d379ff4a5756f00d3a32396fb21f53780391c668f09984b8a4db476bb3207a0",
+    "0001_01_01_000240_create_snapchat_connection_credential.php": "78114c9e077cda65f1e792d3649dfe17625a95a999a853f57bfe1e1f434f546b",
+    "0001_01_01_000250_create_snapchat_renewal_failures.php": "2dc01feed361a8aef79672fff88862c1cb561c2344c3a62559a9e101684dab4a",
+    "0001_01_01_000260_create_x_read_attempts.php": "c1f14d06fa4ccab399ada60f8ba83fbe78831b9c8c31b266dd593da40ee0ec73",
+    "0001_01_01_000270_create_business_context.php": "c2de55fc16c5fb5ef55fa1381df7df816c6d0f9241feced43b068bed9041f99b",
+    "0001_01_01_000280_create_commercial_market_approvals.php": "d0bba2b9a5fdc43fb307236a286d5053e646f28d1afce9ae5a62f30357509319",
+    "0001_01_01_000290_founder_direct_commercial_authority.php": "5146a4e04bbda2be4a6236b4a53da8ad55c3d0bdd041c0cf1b164266895efbcc",
+    "0001_01_01_000300_commercial_market_countries.php": "394f2ebd05ecb9cc0b339ea2abbbd31cb94b761985ff25992325c48b3294c36c",
+    "0001_01_01_000310_customer_administration.php": "345c096a95bbaa1a6a525d6fe5b7f0528aaea8f7373e4170b71457feb5b637b1",
+    "0001_01_01_000320_commercial_delivery_effect_time.php": "febafaefafe71dd4335f58b42daeba2a4e952e47cd640efbd5db9cfccd5b9894",
+    "0001_01_01_000330_create_declared_target_markets.php": "7fc360311331c19e0511efd519ad9f72820b8637042a39f3b932eb053b302a2c",
+    "0001_01_01_000340_create_current_intent.php": "8ad371aebb6d4d33e3df0c43976ee81cb12eee8c9a13529d451d58ede051d04b",
+    "0001_01_01_000350_create_object_purposes.php": "4d5777c5bc3c4751a9018d254935123ba382799497dbf19c3048c72bc424abf1",
+    "0001_01_01_000360_create_advertiser_goal_preferences.php": "e76447a4f69f294ccddf9fc83cc327d0cb020c84636c6a74967f0a87f5896562",
+    "0001_01_01_000370_optimize_current_intent_timezone_lookup.php": "3d986de776f95bca15baa23df9036150e3a1d60a01207bca9aee33e1d78e2872",
+    "0001_01_01_000380_create_browser_identity_transitions.php": "93f3bbadc2635514cdf4cec29b4b701a3a3a8c35ff5eacf6efd0b05a530550ea",
+    "0001_01_01_000390_customer_directory_witness.php": "71dea3f4fc3651da410b887db46ae73aaa7b5fe84f4d8b11be5e184268e0d805",
+    "0001_01_01_000400_create_global_appearance.php": "5729b9c41651cb6d9e5d88826a855b6cfc1199e651007b89480c9209ac6352a5",
+    "0001_01_01_000420_create_business_scope_foundation.php": "a2dc88d19b0da4375fabe6ee9420c549bf73e9437966a469cbd0b57fa63299c6",
+    "0001_01_01_000430_create_market_evidence_origin.php": "63143322eb3a2a3de24352f219086fae2a380a5980e2fad1ac9dfbd72b9aee95",
+    "0001_01_01_000440_qualify_market_evidence_read_metadata.php": "41a19eb50cd79210ac7606582d739cb27b352ec819d48c4e2557f9abe4e2905f",
+    "0001_01_01_000450_create_market_processing.php": "3ba9875d0d7a9da55d75461615de86bf419380131bf256d4545a162515ac8e36",
+    "0001_01_01_000460_harden_market_processing_completion.php": "1d5368ec44ff8fb62e59217a840b5f3afe3d1e697bf6142b5f66482d6f6034c5",
+    "0001_01_01_000470_create_platform_maintenance.php": "e6be5814d6c65261f59260253257c25a74d931b96dc9833eea7d16542d4ec6c6",
+    "0001_01_01_000480_create_market_operations.php": "478464ad1511bd08a4fc98f224c9c7c3a7e75dbca0ea858c14386f526a5e0c79",
+    "0001_01_01_000490_create_market_knowledge_authority.php": "b826a6d9cf9fed3fe8cf53216632a659c0ba63a1546cf3808f25dca5bb84f509",
+    "0001_01_01_000500_create_market_knowledge_capture.php": "d0875c2da44b4aead858a2a440668d189a623188eff43e8d84a13a48c03c8ad7",
+    "0001_01_01_000510_create_market_knowledge_publication.php": "970ab7a962fba06f7f3fb425b8024a3ada8de84fb42ac77c2853c7af9bda5688",
+    "0001_01_01_000520_create_private_market_findings.php": "2348da4bfdbc554514718a0fac2a7d357a0a149a3fab0ea1fec92b6a7a48f25b",
+    "0001_01_01_000530_integrate_market_knowledge_operations.php": "c017442a70e52ac4802066a3e19d31266226f7f28c72631b5614edf90f25e277",
+    "0001_01_01_000540_create_inquiry_evidence.php": "72482dcc1492f50dcee9112d926900bcbf02c85159b54adbeb4bc82725230491",
+    "0001_01_01_000550_business_source_visibility.php": "9fee1645158461023207f291034456a61d0b4f3cd4e82fff489f2a42db33f19b",
+    "0001_01_01_000560_internal_client_file_team.php": "62405fc9184d7ef72383abb7584b4e3af7d476bc77cb57f6fd45483ac6994a67",
+    "0001_01_01_000570_business_declaration_team.php": "762a0cdad0096f86986ba2d499a410c972e9ae153400544d2d2569dfa939e41b",
+    "0001_01_01_000580_organization_team.php": "3a1b30001c3b4d6bdae39951a4d174ce1adbe50c2e32eb174063ceb16206d573",
+    "0001_01_01_000590_organization_resources.php": "5c376dbcc151a8e0bfbd0df0acfbeafec13de66d4b09721620ee6e788da57f0b",
+    "0001_01_01_000600_retire_workspace_commercial_facts.php": "a13bd4604e8fae97e69a279e6f967226827a331327b3e139ab6b8a4683d88b3d",
+    "0001_01_01_000610_retire_workspace_purpose_declarations.php": "af72481ca34e310244b7f4f7340ca0ca5f01238a9810a340777f03170bc65b7c",
+    "0001_01_01_000620_business_purpose_statement_policy.php": "e7e9fff2133fe6887607465e06a56d23872c15812d0b77248e6ad5d840c9a173",
+    "0001_01_01_000630_preserve_final_scope_contracts.php": "6bfd626dce4c658c3a54d6432ac409b6b906ad1cbf64995055f88daee2f8c5ff",
+    "0001_01_01_000640_add_business_native_source_custody.php": "399239096702a96adb572533eab3486db88402a4c6155cb3fd9022d69fade886",
+    "0001_01_01_000650_expose_qualified_draft_archive.php": "95287a11abb13f6cf4a6a46c164e5dd8e2b9c431661cd029564dcaa80f17ffb9",
+    "0001_01_01_000660_complete_native_material_identity.php": "9873127dad7ed525bdcf27cddd866212412cf3f20b6748cac5d00f1fff4b0f1b",
+    "0001_01_01_000670_enable_declared_data_licenses.php": "7706c6fbb809c0f9fec95358e3415cd49e98876beeb550adee18be6365d02a6e",
+    "0001_01_01_000680_complete_data_license_journey.php": "12071c62b4ae7415bf9fc1c80f510a02a86dad03b45a3a05ee73e5c0532b1d6b",
+    "0001_01_01_000690_preserve_agency_relationship_incarnation.php": "9fab261341dc3bb0c40b8afcee4ccf07b693d810315665910cf4f7189adac26f",
+    "0001_01_01_000700_register_bounded_expenditure_summary.php": "81b13bc5ee095b8cff2e83c12fd8f94d3ad2257344dfc7d974fb377b249691be",
+    "0001_01_01_000710_correct_expenditure_preparation_and_selection.php": "8cf103891b9511aa1af4277d6c75c4b4a23d88429416bdcefdba3044d44a4475"
+  },
+  "inputs": {
+    "reference/countries/labels.json": "264bcc1dfb5267520bc0a423e556e8ed07f976a66a46104905310b353d20557a",
+    "sql/advertiser_goal_preferences.sql": "b82ada57217c509582d37adb2bd10f42904c95a4166010a2565c0cb471e3a417",
+    "sql/business_context.sql": "1addf01f5e55ec6b494d77286367d31dca36b35402002c8c0cdd27f130d5e25e",
+    "sql/business_context_lock_order.sql": "fb1de5f61f099b98a3724e324521573ada2d007cdbcbb819c34af718fedecaeb",
+    "sql/business_native_sources/audit.sql": "759493de6061211fd2f41dd50b4cd71dd8ce3a3abcdda1c53575050fadf18553",
+    "sql/business_native_sources/authority.sql": "6953b6eee81d5edd0a7d5e13a4cb652d335a2ff53270a4cb1cfd84d501e13f4c",
+    "sql/business_native_sources/bootstrap.sql": "6e23f4486b578033d998e56c279a166b0259a7e0041d2babafc8592ea2eedc61",
+    "sql/business_native_sources/integrity.sql": "b6817ba7b9b22e1fe02b67dc24fa7abe828837211690ce45863bd73b68061acc",
+    "sql/business_native_sources/materials.sql": "03a1eb0d3a60450427d3fefe6903f5490ffd1eb56ac07c7c91f722ab22ca407a",
+    "sql/business_native_sources/permissions.sql": "e1e3558ca2636db89d8cd50e45279b9c0eb1118e103eddf669e093ea50ea1882",
+    "sql/business_native_sources/providers.sql": "8e11f31ef3945d42a0612f13aeffe90e8aa21ba4a4e9ef9d49b21c3a9f9192fd",
+    "sql/business_native_sources/schema.sql": "8cf64e6e722d1eb331e285ab5238de7def22115c2f922076c784ba4b2956a646",
+    "sql/business_scope/authority.sql": "af0a1b2580c96b1083e482247f9cbe98c07a1c0309b15571aa4c55964df1af29",
+    "sql/business_scope/business_source_visibility.sql": "7410b1b8d0dfa208b2785123e5398d920a613f961a192189cd44d8a239d8d2f9",
+    "sql/business_scope/codec.sql": "661cc12cf086c83051999ef88f8bd6ab8e40a382bf310688aece6f89ca23677a",
+    "sql/business_scope/cohort.sql": "fbd6dc0c92ed60c004a72dece59ec97094f6470046d881ef6fcb9d15138ea8d2",
+    "sql/business_scope/commands.sql": "1b9cfdfb29f993aaf155985918789e6c5bb80969caedc4bc7c35a954aec9d2cd",
+    "sql/business_scope/commercial_retirement.sql": "130da9754388c5eece1d804358bea2460cd1a25744d757ee2309eb9f51c59956",
+    "sql/business_scope/data_use.sql": "64df56b08ee3d0dee8fd6889eb2dec91cf41b7bf140d4334af58cc31d0a4037b",
+    "sql/business_scope/direct_team.sql": "472734c7e81f63af86dc1280f6e15751ca19689650035b33bff4093a33fea414",
+    "sql/business_scope/facts.sql": "6989a0fa4b1487f96a67c9967fb17cc62b5f253d513054e0df7e766494b16229",
+    "sql/business_scope/grant_commands.sql": "1efc1a02e2f87c349615b33ed17fff1a66a8d6774dbd9ddbd0fef2dd2ef6ae31",
+    "sql/business_scope/history.sql": "406b9010551e7a247b1be0ae453391d29bee6c7b21ae5697168821591bf8528c",
+    "sql/business_scope/internal_team.sql": "d2ffddb6f25fbd8b94930192912311c254c224950e795c399102d0682ed14011",
+    "sql/business_scope/legacy_fences.sql": "f7d9accba6b69a22a0527db3600dbe189cff6114666674ad22f351e5390005d4",
+    "sql/business_scope/legacy_history.sql": "712fd7d10dd91ea57f54fb1d6ac2f8c918f11d5f3d6e28ffbd5b13ff1d310b0c",
+    "sql/business_scope/legacy_import.sql": "ede9288ec2ee6b3cea94f49e904bb748e763d580d4da07f2c0c2fbb59a1b8da4",
+    "sql/business_scope/legacy_install_seal.sql": "4cfa89652559fe041061177949bb2620734f5c866c12d2b20171604fce8c4926",
+    "sql/business_scope/lifecycle.sql": "ad117dfdae24f00462977e35320ad4aa81103ff95b42d96f7432638a35f51fb7",
+    "sql/business_scope/material_lineage.sql": "f80186590e00f0e69b7de89b7b7e7772ad238a6de4857cb9cf1d53b89b790307",
+    "sql/business_scope/material_publish.sql": "befb2bfd2cb8b3ecf95459030583815f95ce76ba7d5d1af0f7df51517b8cf34a",
+    "sql/business_scope/material_use.sql": "8764d49bea00aa31d5ba699f749cfe9ee23e2912d22f6ec805fc75302f8ca454",
+    "sql/business_scope/organization_resources.sql": "d2e78ea513471798ed4d93c3b7ec85f9e0a69ad35e0b56790a4c9fd0265890c0",
+    "sql/business_scope/organization_team.sql": "c39cbbb582052739dc96a35e0b2b44ff233cf5a2a74cb08bc484459d2d396d57",
+    "sql/business_scope/permissions.sql": "1b7d0e297b9bca60cd1be57f904459672ae62e05de473e599cec9df86cdc756c",
+    "sql/business_scope/producer_contracts.sql": "40d996cc2a4cc6bbdc79d4580f5c89df37aaed22c5d462619c60d17a42cdd949",
+    "sql/business_scope/purpose.sql": "7284ac56b2383b9d9692d6068dbdd72222a464ff26086f5ee6f08a24ababa1cf",
+    "sql/business_scope/purpose_retirement.sql": "078731d1e1fef4b8f4f37b2bf1f5a2cdb3497cef41ba16f9a82bf9e94743a144",
+    "sql/business_scope/purpose_snapshot.sql": "95cfefd595d19384ed5a8c466bbde64e631a655d3659d428a6e0f869f7ad366a",
+    "sql/business_scope/purpose_statement_policy.sql": "2475e1f508d2fe756942c5f092ff95d70cefd8fe0fa805f9016fff17ba7561e7",
+    "sql/business_scope/resource_rights.sql": "58feee02c71d6030863ef5a2d019f04645c8163f81ed3c5f25177f9bb5f14989",
+    "sql/business_scope/retired_legacy_inventory.sql": "653218303966be51788af9ff68ebb85e09993dda3fc6ac24bd7b97fd30baa2ce",
+    "sql/business_scope/schema.sql": "5571c836e6e261756f04888d20db2f1cee18cc7cd6f96fa015dce462867f0e0e",
+    "sql/business_scope/scope_authority.sql": "8288f7a7c6488c038880ecbce7fa7fdd89b8b3949b1dbdecac80e1a610155b2c",
+    "sql/business_scope/source_adoption.sql": "98974fd1edd15ee4c52ce00ea222d593eed1328d580273f203c41454e018a415",
+    "sql/business_scope/source_facts.sql": "12337a7dad184803d5efbfd59f8cf06be585584981ad3a44a8a2848527540464",
+    "sql/business_scope/source_rights.sql": "cac9a461ddc478cf28f525db9e626b148a11a143ec20db581a8c70ba5a0dbbdc",
+    "sql/business_scope/surfaces.sql": "7e2955f49712d34add8820d6300579cef55941ebcd08e9461370e3f473c7b243",
+    "sql/commercial_delivery_effect_time.sql": "48fc7712811179a4fae7f7f453bf17200f3bb4c579a10fba03c0205f87a132e5",
+    "sql/commercial_market_approvals.sql": "e6f6ce1c60958b01a4676e37b91ad4ca87ff8dec9bb08dcf721bb82466686806",
+    "sql/commercial_market_countries.sql": "5b61de1fca4d3c36acfb21faa8f92f332b57fe12e1b84dd110b5e7cceb4e7843",
+    "sql/current_intent.sql": "7618fdede2e1d6f3c2ce22b6b5aa57dfb3539f5f48a68424ebbcea6351f6aa2b",
+    "sql/customer_administration.sql": "76a50156aae2c70da49a43a8bdae1fa59a8b3d6fecedfde0139c568423415cef",
+    "sql/customer_directory_witness.sql": "453056aefa849247ed668788eb0d6ea7e6783cf66b0d84f326b410e76522b75a",
+    "sql/customer_owner_reassessment.sql": "3376318cfe394695d8be8211fa99167ab3a9de169f4b45c6ba3dc6f163f5d117",
+    "sql/data_license_beneficiaries.sql": "ee07bceadd5a5a6c3814d1e1ad6f14217f598f45e444ed42cec03d9a29935fc6",
+    "sql/data_license_journey.sql": "902e4f1812bb91b2dfc271ba03182d076f88594cf57a516e808cf7ec4e85c4f2",
+    "sql/data_use_licensing.sql": "aaeb648ce1c73b477715b37e27ca27085bd10ccc31419ed6f5e0ccd197cbc14e",
+    "sql/declared_target_markets.sql": "4b2f08c5d1e16f988e39523195654ff7a9e08de67b9dfbbf992fc3147722aff2",
+    "sql/expenditure_summary.sql": "eefaf063e9aeab51108159f5a5e9eedc185900121e0eb6d9c808b8a0720aab39",
+    "sql/foundation_workspace_actor.sql": "e46a05a3fff50d2f4c875c6fc7e4e6cb2f4630e997c5093539597599565e0f4e",
+    "sql/founder_commercial_authority.sql": "8a2026545a5c7f9546f628c5ed75df70b7defcaf39ac6378fe45e33af4f1ded9",
+    "sql/google_connection_credential.sql": "d0e9a42a5127143525a38886509a1fe0a646707f1e42bfcf3c7ca73f7de62e68",
+    "sql/google_read_attempts.sql": "7c82cdf0b4a5ab68f0f868e97032c5b735f17ea48ca37a07283d17bc1f3b91ac",
+    "sql/inquiry_evidence/authority.sql": "b50bc5605a56dba9d4c05f8e9d23a75deda55866a732b157b003bfd9454baca2",
+    "sql/inquiry_evidence/declarations.sql": "d793f4763eb5f563bc44e53372d0c582bf1e79393c1aca7d3f64e17179ae2df2",
+    "sql/inquiry_evidence/permissions.sql": "f0129285b158fcad03546993f56635044d387bad92f0b9da1519198fd49e23c7",
+    "sql/inquiry_evidence/schema.sql": "459b44acda7aacd3acb059d8ba4d7ca2a6766e97c62774c8468785a9bf8002ca",
+    "sql/inquiry_evidence/table_permissions.sql": "9e2c2c82c37952f6aa36dcf04c97dd275949aede7d2adc18c7cd1e168b4bcb7e",
+    "sql/inquiry_evidence/validation.sql": "6a8f3d1d7308265fe0e86f2f823b7eae31ed25e446b1e485917318441e07ebc8",
+    "sql/market_evidence/admission.sql": "6556b8c6a2e7c6772cd507ead9bf7a7e2a17680e478d1b6a0f1d18d2c6addd18",
+    "sql/market_evidence/catalog_seal.sql": "f3df44e6fe8c08404d6262ccedae4fa0d338f7f84aca6e5fcfb4be477389d9df",
+    "sql/market_evidence/evidence.sql": "bbd4ba5defac2e18f70cb39451b4cd2485de0c7978e83033ae692137c50d2b48",
+    "sql/market_evidence/integration.sql": "41a370c78e012da523ec73b3a789d7dca23aa1cef5f656f1f0a8718e76772672",
+    "sql/market_evidence/permissions.sql": "2c6760fec131f10f8c889c07bb4765e5591d023e250e7771244320a241c3909c",
+    "sql/market_evidence/qualified_read.sql": "9f108e8bcff98fb7700a2326467b63159ed06d092ed8cc88470190371fa303e4",
+    "sql/market_evidence/schema.sql": "4d547134a6253cf1c72e660acbd84d9f9498f95c37dea5069fed1b9434785d47",
+    "sql/market_knowledge/authority.sql": "602189afe52a6591ef135594a8f861312503b7ca3bebe47ccb980caafc5179e1",
+    "sql/market_knowledge/capture.sql": "50de0ae5e1aeb5e3557c320535d97b66b17fb437baf303e3bb28e4a945ea6448",
+    "sql/market_knowledge/dispatch.sql": "161e4643c3d856dffe4b4788cb6917613a795df32a800a1ccd0268723d610b40",
+    "sql/market_knowledge/enrollment.sql": "f9c03f0cd49a8aa099474127fed4221535569abb159e477ecc73f11c3618b13b",
+    "sql/market_knowledge/integration.sql": "b5047a5db31c8fdf589305111c9d91c56de1047393107b82402aaf9eedc9efe9",
+    "sql/market_knowledge/operational_publication.sql": "27238cbed0373d17761981654bb596ee83017a196371d18e51b946ca2b0052e5",
+    "sql/market_knowledge/operations.sql": "f536e5bd344de465b96e7d4e08add04bbdfd42cd987d9c39a67663d6f3962783",
+    "sql/market_knowledge/private_capture.sql": "bb94d7917f5d63ba8b95330776c7e721ff4ad5a87af56be3dd3e804e0dcc7912",
+    "sql/market_knowledge/private_integration.sql": "33276636ea53ea0db75c0371d708467497eb8a671c17bfa6bc2addb3aa20ece7",
+    "sql/market_knowledge/private_producer.sql": "af1209d1c5709c672c78b461cac5e5540f10d1f7215ade1e902740e113ba5401",
+    "sql/market_knowledge/private_read.sql": "53ea255e5d9a7c33a646b4357ae1bbfe0f918191b00d5b336cd10535f396c8c7",
+    "sql/market_knowledge/private_retention.sql": "b935e93a5c47a324d1bdd7244e7f513c7b236a451855386850d3763a50f3d09a",
+    "sql/market_knowledge/private_schema.sql": "ba890c5f7011355a34577e0738424f894483eb40fb5160ef545b91338a853a9d",
+    "sql/market_knowledge/producers.sql": "a905989e1c1269f5ab8aa2f4ebb91aaa360f77e8230a06cf0cf1079e5ebb6ff5",
+    "sql/market_knowledge/publication.sql": "95c52fb6933a2ca275d5b331ddf12027b4f4453a4b2fd8a7f74a787f448f5cbf",
+    "sql/market_knowledge/read.sql": "8e4f29e9786e3ba0942bc063ac476c578189c0ebba4fd6d62b5336f125a15d9c",
+    "sql/market_knowledge/retention.sql": "cdced84cd63e3048138375dc185f415ae8684fc344c4e1e91accd258e8861e81",
+    "sql/market_knowledge/schema.sql": "d98e4d9000ef99545a5f9be4198bd58c0e12efd7d3b1c573289ebe762cdfc41f",
+    "sql/market_knowledge/tickets.sql": "b7550d4f0fd1dd14767eeafcd69bb9f806a7fd8826b625fb6e29dd059d31fa41",
+    "sql/market_processing/capture.sql": "eb6de3c59eedd9b51cb33d82b0816f9dd101bbc1496fb5bebea87bd514ebddee",
+    "sql/market_processing/complete.sql": "83540c23068b3cf4dddbb3828ca769e054c4a8ff57637a1da7eca5e0eac6ebc7",
+    "sql/market_processing/completion_ticket_schema.sql": "533c67c94cf587102df6e7dcd47963f0d0837328f14ab66d7030cfe2923703e5",
+    "sql/market_processing/evidence.sql": "ca51ccd0fcb91bf5952976e97920fef94ac85b2c905111162eee9b185b0a2630",
+    "sql/market_processing/permissions.sql": "7c1dc96cce753604a66fe7a2c7539c7bcb12c74ebdac61991624e5e0a4e754f7",
+    "sql/market_processing/schema.sql": "7fef6d7a5d5b03303c5e78db6e470323497b92cacd7016436cb41e49e19a1e9a",
+    "sql/market_processing/trusted_completion.sql": "65e1ffdecffda412624a531c72c6ff8882ce89ca978975ed979c9023e1a55624",
+    "sql/meta_read_attempts.sql": "3be0b8b2d990a4f9e487759b4cd74c3d86901f2ee0b7258236635f985f817b8b",
+    "sql/object_purpose.sql": "0ce776a3e546e7ca08b82858fe1f6924b6ea29f8685fa3e12fb2f344f665ce59",
+    "sql/provider_access.sql": "018cf2acbcc47553f5bcfea39f2e516ee801470f843d7066f054091b539444f6",
+    "sql/provider_observation.sql": "e9ce5604d848d07f63ead8085c8805b345f59e3c3077e0c2cf96c7b910dba22c",
+    "sql/provider_read_prerequisites.sql": "5107b3b6bf9b73cf92f96bfc263ddaeb1a9815f3581f944da0c7a5a8f2fded48",
+    "sql/provider_request_gate.sql": "4463e36904c881d7b8ba870fdd395617f81013ac270b6a8f0f76bad09aa84386",
+    "sql/provider_runtime/google_read_attempts.sql": "ae8a7807fea6cdb6144e96d76395d3033b7a6863c34f9819c4697dc53e6f3d29",
+    "sql/provider_runtime/meta_read_attempts.sql": "2f1ea4be6eb7cfb94e727d9ab53434ab66d892bb63f174c29a34cb81db3bdd21",
+    "sql/provider_runtime/provider_access.sql": "9a037665f77bfb4657d3b834310bf547e87c596351af44f9f5f1f2f482946249",
+    "sql/provider_runtime/provider_observation.sql": "59bb99f0ee98837304ed9c5ef80e80802b03b9b4ee15bbf8ea3558c37549462a",
+    "sql/provider_runtime/snapchat_read_attempts.sql": "bed28cdecbc417bca873b91f5d5ace40789d95a18924141f783b2ad659034fdd",
+    "sql/provider_runtime/snapchat_renewal_failures.sql": "79c9605f6b6fa49b67f763a5f12ad5c3989fefaabaa77849f2fae22a63f8ef0f",
+    "sql/provider_runtime/tiktok_read_attempts.sql": "c95de59ac5d9cb5376f15327888c9b8c42e1eb9de1320397a60174fc4db6eb5b",
+    "sql/provider_runtime/x_read_attempts.sql": "943649a1fb2d08629bdefc1c703084aff7f14eb159f0c12af449e60072b55b6c",
+    "sql/sa01.sql": "4cba55307cae70d326fd7a7f12f3d534cec67a1cd14749857df6e0a8ac29d0fb",
+    "sql/snapchat_connection_credential.sql": "4cb0a114c7373e4b464041143f5bbf03c83dba64f7e93b5163b05f373fa26922",
+    "sql/snapchat_read_attempts.sql": "829a4d3b206f51adab827dedca8ef58ad2882516a8cb526fe37b0439b5f1b19a",
+    "sql/snapchat_renewal_failures.sql": "06f74e98dec2a52223ce51c0af96e4c2d9077588b96d4622126e486ed9a9473c",
+    "sql/source_registry.sql": "f67e19eee4cf71835e647b722288b563b2c9e4c54c0fef8ac53243823d7ba829",
+    "sql/tiktok_read_attempts.sql": "6f3511cf78c3e7a6acd4f22b82657be0682bf8bc7b844573bd46df993470e7c4",
+    "sql/x_read_attempts.sql": "cc560d69e1235405247457a5c12e9c5868eef3601c3eb8733108b9d57c53cf7b"
+  }
+}

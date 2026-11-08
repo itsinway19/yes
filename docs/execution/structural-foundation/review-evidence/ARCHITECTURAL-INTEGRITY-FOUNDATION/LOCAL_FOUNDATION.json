@@ -1,0 +1,76 @@
+{
+  "task": "ARCHITECTURAL-INTEGRITY-REMEDIATION-01 with REVIEW-CORRECTIONS-01",
+  "authorization_date": "2026-11-08",
+  "baseline_sha": "bd62d7d74ddb9d77144d903f47cb4360045a2c79",
+  "baseline_tree": "b064931545a89778ec69ac1d409fbde9e17fd8fb",
+  "run": "C:\\Users\\stoma\\.codex\\worktrees\\ba-architectural-integrity-remediation-01\\builderad\\storage\\framework\\testing\\goals-spa-1ea21c53-b1b0-4a96-a40c-87bce023728a",
+  "result": "PASS",
+  "exit_code": 0,
+  "php": {
+    "failures": 0,
+    "errors": 0,
+    "tests": 1499,
+    "assertions": 31813,
+    "skips": 0,
+    "duration_seconds": 6288.06
+  },
+  "javascript": {
+    "skipped": 0,
+    "failed": 0,
+    "tests": 505,
+    "passed": 505
+  },
+  "gates": [
+    "PHP complete",
+    "inertia retirement",
+    "Composer validate --strict",
+    "Composer audit",
+    "npm audit --audit-level=high",
+    "complete JavaScript selection",
+    "API/types",
+    "full Pint",
+    "production TypeScript/Vite",
+    "production asset guard"
+  ],
+  "source_identity": {
+    "runner_source_unchanged": "False",
+    "reason": "The run started without public/build manifests and created production output manifests; all 1361 original tracked/untracked source entries still match exactly. Build outputs are separately hashed.",
+    "original_files": 1361,
+    "changed_original_files": [],
+    "manifest_sha256": "3c84aa3dd72e04db668a6af31076c59622c03fe8ac928c7024cc59d34a54ea68",
+    "added_git_source_files": []
+  },
+  "cleanup": {
+    "postgres": "STOPPED",
+    "listening_task_ports": [],
+    "redis": "STOPPED"
+  },
+  "evidence": {
+    "tests.xml": "7e6993f36a2dcf5f220c0526e60bc4a76b0b8245b8b80f49b7988209fd6551de",
+    "tests.log": "5acd9186b8b08d42aeb3df5a7b0ee9b489807015bc0dbfa2aaff3f5cfb770516",
+    "events.log": "7ac1d02a8362bfe88bdc406f2e1d18f36c75f03239920c9004105068ae5b503b",
+    "source-manifest.json": "3c84aa3dd72e04db668a6af31076c59622c03fe8ac928c7024cc59d34a54ea68",
+    "source-unchanged.txt": "60a33e6cf5151f2d52eddae9685cfa270426aa89d8dbc7dfb854606f1d1a40fe",
+    "gate-composer-audit.log": "a2caf0f7c741e62640c2da83b829c15d0373825abc85618ad482156a2b00c508",
+    "gate-composer-validate---strict.log": "617d39e3b4752168f63039991b7e1efaca11e54a1f5a9153d93b0d4efe91fe05",
+    "gate-npm-audit---audit-level=high.log": "4b02d4a3c23d969c46bd2041360f80bfcb1fe760d9db864009acdd710f9de601",
+    "gate-npm-run-api-check.log": "2c71ba663c22b2ad2262d2700f1450730424444fea56ac773f1557722b0c8132",
+    "gate-npm-run-build.log": "f25d9fff7b02bab5228af2dfa61df27f1b0f91dabde3b7a0aefd62d3a3eb2d81",
+    "gate-npm-run-inertia-check.log": "2b2f2f721e66d8b5c9856bd80b9322c3cc7b9e7acc07e8d6bd07867233b35457",
+    "gate-npm-test.log": "a94370589052a42b5f02db06c6dfd69fdf53ed226fb71770a91242ef120f87bb",
+    "gate-php-vendor-bin-pint---test.log": "acbf5da6385237b6f4cd342c4454d93f6c4df8bfcf1687838edb3b651981c4e1",
+    "gate-runtime-assets.log": "fd85bd93a295017263a6532dde8c83ee1a21a702c54868f46feb022c7a09743c",
+    "launch/console.log": "8b754a806b52969d1e8f85ca01a54f3ef4a3aa52e191739447c1178662eb29d1",
+    "launch/errors.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "launch/launch.json": "c2864b173b17d31fbd88db95e8abd80c51786f2f276038d6c5846d0f8f8faab7"
+  },
+  "generated_manifests": {
+    "public/build/goals-spa/manifest.json": "b9e1eec8cfe82b40303938e91bb0c09c2990897b61db6bd3cba050fd0a91c242"
+  },
+  "limits": [
+    "Local complete gate only; hosted PR and its checks are separate",
+    "No browser lifecycle run implied",
+    "No merge, deployment or Owner-data migration",
+    "R12 production operating envelope remains unverified as recorded"
+  ]
+}

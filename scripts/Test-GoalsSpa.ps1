@@ -1,4 +1,4 @@
-param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation','workspaces','context','purpose','sources','account','auth','appearance','admin-ui','businesses','public-platform','market-knowledge','data-licenses')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='', [switch]$CreateBrowserFixture)
+param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation','workspaces','context','purpose','sources','account','auth','appearance','admin-ui','businesses','public-platform','market-knowledge','data-licenses')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='', [switch]$CreateBrowserFixture, [ValidateSet('default','reverse')][string]$TestOrder='default')
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $proofRoot=Split-Path -Parent $PSScriptRoot
@@ -135,7 +135,8 @@ try {
   $proofFilter=if($Phase -in @('Acceptance','Affected')){'WorkspaceCommercialRetirementTest|BusinessFoundationContractTest|LegacyPurposeHistoryTest|ProductionIdentityTest|IdentityRenewalTest|IdentityDocumentTest|SessionAuthorityTest|DatabaseAuthorityBoundaryTest|CoreDependencyBoundaryTest|ArchitectureSourceOptionalityTest'}else{'WorkspaceCommercialRetirementTest'}
   if($TestFilter){$proofFilter=$TestFilter}
   $proofJunit='storage/framework/testing/'+(Split-Path -Leaf $proofRun)+'/tests.xml'
-  & pwsh -NoProfile -File scripts/builderad.ps1 test --compact --display-warnings "--filter=$proofFilter" "--log-junit=$proofJunit" 2>&1 | Tee-Object -FilePath (Join-Path $proofRun 'tests.log')
+  Write-Output "GOALS_SPA_TEST_ORDER=$TestOrder"
+  & pwsh -NoProfile -File scripts/builderad.ps1 test --compact --display-warnings "--filter=$proofFilter" "--order-by=$TestOrder" "--log-junit=$proofJunit" 2>&1 | Tee-Object -FilePath (Join-Path $proofRun 'tests.log')
   if($LASTEXITCODE -ne 0){throw 'Focused/affected acceptance checks failed; evidence retained'}
  }
  if($Phase -notin @('Focused','Affected','Foundation')) {

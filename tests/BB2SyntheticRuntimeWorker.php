@@ -7,6 +7,7 @@ use App\Providers\Ads\ProviderRequestGuard;
 use App\Providers\Ads\ProviderScope;
 use App\Security\DisposableTestDatabaseGuard;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Request;
 use Illuminate\Session\ArraySessionHandler;
@@ -15,6 +16,7 @@ use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 
 // Independent worker for disposable proof only. Never boot a preview or call a provider.
 require __DIR__.'/../vendor/autoload.php';
@@ -22,11 +24,29 @@ $app = require __DIR__.'/../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 app(DisposableTestDatabaseGuard::class)->assertSafe();
 $fixture = json_decode(file_get_contents($argv[1]), true, flags: JSON_THROW_ON_ERROR);
+if (isset($fixture['application_name'])) {
+    DB::statement("SELECT set_config('application_name',?,false)", [$fixture['application_name']]);
+}
 config()->set('logging.channels.bb2_runtime_proof', ['driver' => 'single', 'path' => $argv[1].'.log', 'level' => 'debug']);
 config()->set('logging.default', 'bb2_runtime_proof');
 $http = new Factory;
 $http->preventStrayRequests();
 $http->fake(['*' => function ($request) use ($http, $fixture) {
+    if ($fixture['mode'] === 'snapchat-execution') {
+        $backend = DB::selectOne('SELECT pg_backend_pid() AS pid,pg_current_xact_id()::text AS xid');
+        echo 'TRANSPORT='.json_encode($backend, JSON_THROW_ON_ERROR).PHP_EOL;
+        if (isset($fixture['release'])) {
+            $deadline = hrtime(true) + 10_000_000_000;
+            while (! is_file($fixture['release'])) {
+                if (hrtime(true) >= $deadline) {
+                    throw new RuntimeException('Synthetic transport release was not observed.');
+                }
+                usleep(10000);
+            }
+        }
+
+        return $http->response($fixture['report']);
+    }
     if (($fixture['http_failure'] ?? false) === true) {
         return $http->response('<html>synthetic unavailable</html>', 503);
     }
@@ -36,6 +56,19 @@ $http->fake(['*' => function ($request) use ($http, $fixture) {
 }]);
 $app->instance(Factory::class, $http);
 config()->set('services.google_ads', $fixture['google_configuration'] ?? []);
+
+if ($fixture['mode'] === 'snapchat-execution') {
+    // Deliberately exercise the SQL execution fence below the optional queue mutex.
+    // This is real queue reservation/deserialization/ACK, not queue middleware proof.
+    try {
+        Queue::connection('database')->pop('bb2.provider.snapchat')->fire();
+    } catch (QueryException $error) {
+        echo 'DENIED_STATE='.$error->errorInfo[0].'; HTTP_REQUESTS='.count($http->recorded()).PHP_EOL;
+        exit(2);
+    }
+    echo 'EXECUTION_COMMITTED; HTTP_REQUESTS='.count($http->recorded()).PHP_EOL;
+    exit(0);
+}
 
 if ($fixture['mode'] === 'queue') {
     $exit = Artisan::call('queue:work', ['connection' => 'database', '--queue' => 'bb2.provider.google',

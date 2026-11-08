@@ -9,6 +9,7 @@ use App\Security\ServiceWorkspaceContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -34,7 +35,13 @@ class ServiceAuthorityTest extends TestCase
         $this->assertDenied(fn () => app(ServiceWorkspaceContext::class)->run($secret['public_id'], $secret['credential'], $workspace->public_id, fn () => null));
         $this->deleteJson($path.'/'.$secret['public_id'])->assertOk()->assertJsonPath('redirect', '/workspaces/'.$workspace->public_id);
         $this->assertSame('revoked', $database->table('service_workspace_scopes')->sole()->status);
-        $this->actingAs(User::factory()->create())->postJson($path, ['service' => $secret['public_id'], 'purpose' => 'Forbidden cross-Workspace scope'])->assertForbidden();
+        $this->actingAs(User::factory()->create());
+        $business = $this->postJson('/api/businesses', [
+            'command_id' => (string) Str::uuid(), 'name' => 'Independent advertiser',
+        ])->assertCreated()->json('data');
+        $this->getJson('/api/businesses/'.$business['business_public_id'].'/surface?access='.$business['grant_refs']['business.context.read'])
+            ->assertOk();
+        $this->postJson($path, ['service' => $secret['public_id'], 'purpose' => 'Forbidden cross-Workspace scope'])->assertForbidden();
         $this->deleteJson($path.'/'.$secret['public_id'])->assertForbidden();
         $this->assertSame('revoked', $database->table('service_workspace_scopes')->sole()->status);
     }

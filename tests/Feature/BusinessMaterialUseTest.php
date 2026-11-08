@@ -113,6 +113,17 @@ final class BusinessMaterialUseTest extends TestCase
         $f = $this->original();
         $db = DB::connection('pgsql_migrations');
         $a = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Second material client'])->assertCreated()->json('data');
+        $workspace = $db->table('workspaces')->sole();
+        foreach ([$f['a'], $a] as $draft) {
+            $this->postJson('/api/businesses/'.$draft['business_public_id'].'/workspace-links', [
+                'command_id' => (string) Str::uuid(), 'workspace_public_id' => $workspace->public_id,
+                'effect' => 'add', 'expected_revision' => 0, 'authority_selection' => [
+                    'realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+                    'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $draft['grant_refs']['business.link.manage']]],
+                ],
+            ])->assertOk();
+        }
+        $this->assertSame(2, $db->table('business_workspace_links')->where('workspace_id', $workspace->id)->count());
         $business = $db->table('businesses')->where('public_id', $a['business_public_id'])->value('id');
         $businessGrant = Fixture::root($business, $f['user']->id, 'business.data.use');
         $boundary = Fixture::boundary($f['user']->id);
