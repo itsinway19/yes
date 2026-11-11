@@ -125,6 +125,8 @@ final class DataLicenseJourneyTest extends TestCase
         $this->postJson($path, $invalid)->assertUnprocessable();
         $receipt = $this->postJson($path, $body)->assertOk()->assertJsonPath('data.assurance', 'DECLARED_AUTHORITY')->json('data');
         $this->assertSame(['business.data.use', 'business.link.manage'], array_keys($receipt['grant_refs']));
+        $bindingOptions = $this->getJson('/api/businesses/'.$f['business']['business_public_id'].'/surface?access='.$f['business']['grant_refs']['business.context.read'])->assertOk()->json('data.data_use.binding_options');
+        $this->assertContains((string) $receipt['grant_refs']['business.link.manage'], array_column($bindingOptions, 'grant_id'));
         $this->assertSame(count($before) + 2, $owner->table('security_action_grants')->count());
         $this->assertEquals($before, $owner->table('security_action_grants')->where('id', '<=', end($before)->id)->orderBy('id')->get()->toArray());
         $this->assertSame($receipt, $this->postJson($path, $body)->assertOk()->json('data'));
@@ -195,13 +197,23 @@ final class DataLicenseJourneyTest extends TestCase
             $this->assertFalse($owner->table('migrations')->where('migration', '0001_01_01_000690_preserve_agency_relationship_incarnation')->exists());
             // A disposable historical fixture explicitly seals the demonstrated680 regression.
             $owner->unprepared(file_get_contents(database_path('sql/market_evidence/catalog_seal.sql')));
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
+            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations',
+                '--path' => ['database/migrations/0001_01_01_000690_preserve_agency_relationship_incarnation.php'], '--force' => true]));
             $this->assertSame($definition, $owner->scalar('SELECT pg_get_functiondef(?::regprocedure)', [$signature]));
+            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
+            $forward = file_get_contents(database_path('migration-sql/0001_01_01_000770_business_workspace_authority_closure/authority.sql'));
+            $this->assertSame(1, preg_match('/CREATE OR REPLACE FUNCTION builderad_private\.verify_scope_path\(.*?AS \$\$(.*?)\$\$;/s', $forward, $expectedDefinition));
+            $this->assertSame(str_replace("\r\n", "\n", $expectedDefinition[1]), str_replace("\r\n", "\n", $owner->scalar('SELECT prosrc FROM pg_proc WHERE oid=?::regprocedure', [$signature])));
             foreach (['workspace_memberships', 'security_action_grants'] as $table) {
                 $this->assertSame('timestamp(6) with time zone', $owner->scalar("SELECT format_type(atttypid,atttypmod) FROM pg_attribute WHERE attrelid=?::regclass AND attname='created_at'", [$table]));
             }
             foreach ($before as $table => $rows) {
-                $this->assertSame($rows, $owner->scalar("SELECT jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text)::text FROM {$table} r"), $table);
+                $image = $table === 'authority_qualification_receipts' ? "to_jsonb(r)-'agency_business_id'-'agency_membership_grant_id'" : 'to_jsonb(r)';
+                $this->assertSame($rows, $owner->scalar("SELECT jsonb_agg({$image} ORDER BY ({$image})::text)::text FROM {$table} r"), $table);
+                if ($table === 'authority_qualification_receipts') {
+                    $this->assertSame(0, $owner->table($table)->whereNotNull('agency_business_id')->count());
+                    $this->assertSame(0, $owner->table($table)->whereNotNull('agency_membership_grant_id')->count());
+                }
             }
             $this->assertFalse((bool) $owner->scalar("SELECT has_schema_privilege('builderad_scope_executor','builderad_private','CREATE')"));
             foreach (['builderad_app', 'builderad_authority', 'public'] as $role) {

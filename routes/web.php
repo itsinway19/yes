@@ -27,12 +27,12 @@ use App\Http\Controllers\MarketOperationsController;
 use App\Http\Controllers\MarketProcessingController;
 use App\Http\Controllers\MetaConnectionController;
 use App\Http\Controllers\MetaReportController;
-use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationTeamController;
 use App\Http\Controllers\PasskeyManagementController;
 use App\Http\Controllers\PlatformMaintenanceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RetiredWorkspaceCommercialController;
+use App\Http\Controllers\RetiredWorkspaceCreationController;
 use App\Http\Controllers\SecurityDevicesController;
 use App\Http\Controllers\SnapchatConnectionController;
 use App\Http\Controllers\SnapchatReportController;
@@ -118,11 +118,11 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
         ->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.purpose-history.show');
     Route::post('/workspaces/{workspace}/purpose-history/{purpose}/revisions', [LegacyPurposeHistoryController::class, 'revise'])
         ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.purpose-history.revise');
-    Route::get('/organizations/new', [OrganizationController::class, 'create'])->name('organizations.create');
-    Route::post('/organizations', [OrganizationController::class, 'store'])->name('organizations.store');
+    Route::redirect('/organizations/new', '/businesses/new')->name('organizations.create');
+    Route::post('/organizations', RetiredWorkspaceCreationController::class)->name('organizations.store');
     Route::get('/api/organizations/{organization}/team', [OrganizationTeamController::class, 'index'])->whereUuid('organization')->name('organization-team.index');
     Route::post('/api/organizations/{organization}/team', [OrganizationTeamController::class, 'store'])->whereUuid('organization')->name('organization-team.store');
-    Route::redirect('/business/start', '/organizations/new')->name('business.start');
+    Route::redirect('/business/start', '/businesses/new')->name('business.start');
     Route::post('/business/start', fn () => response()->json(['message' => 'This workspace business-creation workflow is retired. Register an organization or create an independent Business.'], 410))->name('business.start.store');
     Route::get('/workspaces/{workspace}/business', RetiredWorkspaceCommercialController::class)
         ->whereUuid('workspace')->name('workspaces.business.edit');
@@ -316,7 +316,7 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
     Route::post('/workspaces/{workspace}/providers/meta/{source}/disconnect', [MetaConnectionController::class, 'disconnect'])
         ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.meta.disconnect');
     Route::get('/workspaces', [WorkspaceController::class, 'index'])->name('workspaces.index');
-    Route::post('/workspaces', [WorkspaceController::class, 'store'])->name('workspaces.store');
+    Route::post('/workspaces', RetiredWorkspaceCreationController::class)->name('workspaces.store');
     Route::post('/workspaces/{workspace}/reassess-owner-grant', [WorkspaceController::class, 'reassessOwnerGrant'])
         ->middleware(EnsureFreshAuthentication::class)
         ->whereUuid('workspace')->name('workspaces.reassess-owner-grant');
@@ -483,6 +483,9 @@ Route::middleware('auth:internal')->group(function () {
     Route::post('/internal/identity/passkey', [PasskeySessionController::class, 'store']);
 });
 
+Route::get('/business-registration/catalog', [BusinessSurfaceController::class, 'setupCatalog'])
+    ->name('business-registration.catalog');
+
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->prefix('api/businesses')->group(function () {
     Route::get('/{business}/practices', [BusinessActivityController::class, 'index'])->whereUuid('business')->name('business-activity.index');
     Route::post('/{business}/practices', [BusinessActivityController::class, 'store'])->whereUuid('business')->name('business-activity.store');
@@ -514,6 +517,13 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->prefix('api/business
     Route::post('/{business}/grants', [BusinessFoundationController::class, 'grant'])->whereUuid('business')->name('business-foundation.grant');
     Route::post('/{business}/internal-team', [BusinessFoundationController::class, 'internalTeam'])->whereUuid('business')->name('business-foundation.internal-team');
     Route::post('/{business}/direct-team', [BusinessFoundationController::class, 'enrollDirectTeam'])->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('business-foundation.direct-team');
+    Route::post('/{business}/agency-grants', [BusinessFoundationController::class, 'agencyGrant'])->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('business-foundation.agency-grant');
+    Route::get('/{business}/agency-options', [BusinessFoundationController::class, 'agencyOptions'])->whereUuid('business')->name('business-foundation.agency-options');
+    Route::get('/{business}/team', [BusinessFoundationController::class, 'team'])->whereUuid('business')->name('business-foundation.team');
+    Route::post('/{business}/team/recipient', [BusinessFoundationController::class, 'teamRecipient'])->middleware('throttle:30,1')->whereUuid('business')->name('business-foundation.team-recipient');
+    Route::post('/{business}/team', [BusinessFoundationController::class, 'changeTeam'])->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('business-foundation.team-change');
+    Route::get('/{business}/agency-mandates', [BusinessFoundationController::class, 'agencyMandates'])->whereUuid('business')->name('business-foundation.agency-mandates');
+    Route::post('/{business}/agency-mandates', [BusinessFoundationController::class, 'withdrawAgencyMandates'])->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('business-foundation.agency-withdraw');
     Route::post('/{business}/purpose-enrollment', [BusinessFoundationController::class, 'enrollPurposeStatement'])->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('business-foundation.purpose-enrollment');
     Route::get('/{business}/internal-team', [BusinessFoundationController::class, 'internalTeamSurface'])->whereUuid('business')->name('business-foundation.internal-team-surface');
     Route::post('/{business}/workspace-links', [BusinessFoundationController::class, 'link'])->whereUuid('business')->name('business-foundation.link');

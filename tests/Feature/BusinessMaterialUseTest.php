@@ -121,9 +121,10 @@ final class BusinessMaterialUseTest extends TestCase
                     'realm_kind' => 'direct', 'realm_workspace_public_id' => null,
                     'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $draft['grant_refs']['business.link.manage']]],
                 ],
-            ])->assertOk();
+            ])->assertForbidden();
         }
-        $this->assertSame(2, $db->table('business_workspace_links')->where('workspace_id', $workspace->id)->count());
+        // Shared native custody needs independent scoped rights, not a retired Business/Workspace link.
+        $this->assertSame(0, $db->table('business_workspace_links')->where('workspace_id', $workspace->id)->count());
         $business = $db->table('businesses')->where('public_id', $a['business_public_id'])->value('id');
         $businessGrant = Fixture::root($business, $f['user']->id, 'business.data.use');
         $boundary = Fixture::boundary($f['user']->id);

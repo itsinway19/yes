@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { locale } from '../spa/locale';
 import { owned, stamp, TransportError } from '../spa/transport';
 import { beginDelivery, definitiveRejection, drafts, key, type EditorDraft } from './drafts';
 import { write, type Surface } from './api';
-const props = defineProps<{ surface: Surface; refreshing?: boolean; embedded?: boolean }>();
+import BusinessTaskRow from './BusinessTaskRow.vue';
+const props = defineProps<{ surface: Surface; refreshing?: boolean; embedded?: boolean; summaryFirst?: boolean }>();
 const emit = defineEmits<{ refresh: [] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const resourceKey = key(props.surface.business.business_public_id, props.surface.authority_selection);
@@ -22,6 +23,22 @@ let disposed = false;
 const options = computed(() => props.surface.context_write_options.filter(x => Number.isSafeInteger(Number(x.grant_id))));
 const canEdit = computed(() => !props.refreshing && !draft.blocked && !denied.value && options.value.some(x => x.grant_id === draft.selected));
 const dirty = computed(() => draft.name !== draft.baselineName || draft.type !== draft.baselineType);
+const editing = ref(!props.summaryFirst || !!draft.pending || dirty.value);
+const taskRef = ref<{ focus: () => void }>(), editorHeading = ref<HTMLElement>();
+async function openEditor() {
+    editing.value = true;
+    await nextTick();
+    editorHeading.value?.focus();
+}
+async function closeEditor() {
+    editing.value = false;
+    await nextTick();
+    taskRef.value?.focus();
+}
+const typeLabel = computed(() => {
+    const type = props.surface.catalog.business_types.find(item => item.id === business.value.business_type_id);
+    return type ? t(type.name_ar, type.name_en) : t('لم يُحدد المجال', 'Sector not specified');
+});
 const conflict = computed(() => dirty.value && draft.version !== observedVersion.value);
 watch(() => props.surface, () => {
     observedVersion.value = business.value.versions.context; displayedName.value = business.value.name;
@@ -68,6 +85,9 @@ async function save() {
 <template>
     <header v-if="!embedded" class="bf-heading"><div><p class="bf-eyebrow">{{ t('معلومات النشاط', 'Business details') }}</p><h1 data-business-name>{{ displayedName }}</h1><p>{{ t('هذه المعلومات تخص النشاط المختار وحده.', 'These details belong only to the selected business.') }}</p></div></header>
     <section class="bf-card bf-form" :data-business-public="embedded ? undefined : business.business_public_id">
+        <BusinessTaskRow v-if="summaryFirst && !editing" ref="taskRef" task="business-profile" :title="t('اسم النشاط ومجاله', 'Business name and sector')" :value="business.name + ' · ' + typeLabel" :description="t('هذه الهوية التي تظهر عند فتح النشاط والتبديل إليه.', 'These details identify the business when you open or switch to it.')" :action="options.length && !denied ? t('تعديل المعلومات', 'Edit details') : t('عرض المعلومات', 'View details')" @select="openEditor" />
+        <div v-show="editing" class="business-task-editor">
+        <header v-if="summaryFirst" class="business-task-editor-heading"><h2 ref="editorHeading" tabindex="-1">{{ t('اسم النشاط ومجاله', 'Business name and sector') }}</h2><button type="button" class="workspace-button" data-business-profile-back :disabled="busy" @click="closeEditor">{{ t('العودة إلى الملخص', 'Back to summary') }}</button></header>
         <p v-if="!options.length || denied" role="status" data-business-readonly>{{ t('يمكنك الاطلاع على المعلومات. لا يوجد تفويض متاح لتعديلها هنا.', 'You can view these details. No editing delegation is available here.') }}</p>
         <label v-if="options.length > 1" for="bf-write-path">{{ t('تفويض التعديل', 'Editing delegation') }}<select id="bf-write-path" v-model="draft.selected" :disabled="busy || !!draft.pending"><option value="">{{ t('اختر التفويض', 'Choose delegation') }}</option><option v-for="(option, i) in options" :key="option.grant_id" :value="option.grant_id">{{ t('تفويض', 'Delegation') }} {{ i + 1 }}</option></select></label>
         <p v-if="draft.blocked && draft.pending" role="status">{{ t('الطلب الأصلي محفوظ وغير محسوم. راجع وصولك الحالي قبل المتابعة.', 'The unresolved original request is retained. Review current access before continuing.') }}</p>
@@ -81,5 +101,6 @@ async function save() {
             <p v-if="draft.notice" role="status">{{ draft.notice }}</p><p v-if="confirmed" role="status" data-business-saved>{{ t('تم حفظ المعلومات بتأكيد من الخادم.', 'Details saved with server confirmation.') }}</p>
             <button v-if="canEdit" class="bf-primary" :disabled="busy || conflict && !draft.pending || !dirty && !draft.pending">{{ busy ? t('جارٍ الإرسال…', 'Sending…') : draft.pending ? t('تحقق بالطلب الأصلي', 'Check using original command') : t('حفظ المعلومات', 'Save details') }}</button>
         </form>
+        </div>
     </section>
 </template>

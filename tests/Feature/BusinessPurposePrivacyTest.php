@@ -10,12 +10,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\ApplicationContractAssertions;
+use Tests\Support\Pre770BusinessAuthority;
 use Tests\Support\PurposeDeclarationFixture;
 use Tests\TestCase;
 
 final class BusinessPurposePrivacyTest extends TestCase
 {
     use ApplicationContractAssertions;
+    use Pre770BusinessAuthority;
 
     private function selection(int|string $grant, ?string $workspace = null): array
     {
@@ -35,14 +37,16 @@ final class BusinessPurposePrivacyTest extends TestCase
 
     private function privacyScenario(bool $internal): void
     {
+        if ($internal) {
+            $this->installPre770BusinessAuthority();
+        }
         $creator = User::factory()->create();
         $employee = User::factory()->create();
         $this->actingAs($creator);
         $workspace = null;
         if ($internal) {
             app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($creator, 1);
-            $key = $this->getJson('/organizations/new')->assertOk()->json('data.creationKey');
-            $this->postJson('/organizations', ['name' => 'Purpose privacy team', 'creation_key' => $key])->assertOk();
+            $this->legacyWorkspace(['name' => 'Previous Purpose privacy team', 'slug' => 'purpose-privacy-team'])->assertRedirect();
             $workspace = DB::connection('pgsql_migrations')->table('workspaces')->sole();
             DB::connection('pgsql_migrations')->table('workspace_memberships')->insert(['workspace_id' => $workspace->id,
                 'user_id' => $employee->id, 'role' => 'member', 'status' => 'active', 'created_at' => now()]);
@@ -85,6 +89,9 @@ final class BusinessPurposePrivacyTest extends TestCase
             'effect' => 'issue', 'grantee_public_id' => $employee->public_id, 'action' => 'business.context.read',
             'parent_grant_id' => (int) $roots['business.context.read'], 'grant_id' => null, 'expected_grant' => 0,
             'expires_at' => null, 'delegable' => false, 'realm_workspace_public_id' => $workspace?->public_id])->assertOk()->json('data.grant_id');
+        if ($internal) {
+            $this->upgradeBusinessAuthority();
+        }
         $this->actingAs($employee);
         $surface = $this->getJson($base.'/surface?access='.$read)->assertOk()->assertJsonPath('data.private_history_available', false);
         $this->assertApplicationContract('BusinessSurfaceResult', $surface->json());

@@ -22,9 +22,9 @@ export type PracticeRelation = PracticeAssessmentCommand['relation'];
 export type PracticeQuestion = PracticeAssessmentCommand['question'];
 export type PracticeAssessment = components['schemas']['PracticeKnowledgeResult']['data'];
 
-export async function readPractices(business: string, access: number, practice?: string): Promise<PracticeList> {
+export async function readPractices(business: string, access: number, practice?: string, signal?: AbortSignal): Promise<PracticeList> {
     const query = new URLSearchParams({ access: String(access), ...(practice ? { practice } : {}) });
-    return (await request<{ data: PracticeList }>(`/api/businesses/${business}/practices?${query}`)).data;
+    return (await request<{ data: PracticeList }>(`/api/businesses/${business}/practices?${query}`, { signal })).data;
 }
 export async function writePractice(business: string, body: PracticeCommand): Promise<PracticeReceipt> {
     return (await request<{ data: PracticeReceipt }>(`/api/businesses/${business}/practices`, {

@@ -178,7 +178,7 @@ final class MaterialLineageTest extends TestCase
     {
         $u = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($u, 1);
-        $this->actingAs($u)->post('/workspaces', ['name' => 'Native metadata fixture', 'slug' => 'native-metadata'])->assertRedirect();
+        $this->actingAs($u)->legacyWorkspace(['name' => 'Native metadata fixture', 'slug' => 'native-metadata'])->assertRedirect();
         $db = DB::connection('pgsql_migrations');
         $w = $db->table('workspaces')->where('slug', 'native-metadata')->value('id');
         $source = (string) Str::uuid7();

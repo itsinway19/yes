@@ -75,7 +75,7 @@ final class BusinessDelegationTest extends TestCase
         $db = DB::connection('pgsql_migrations');
         $this->request($manager);
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($manager, 1);
-        $this->post('/workspaces', ['name' => 'Internal agency team', 'slug' => 'internal-agency-team'])->assertRedirect();
+        $this->legacyWorkspace(['name' => 'Internal agency team', 'slug' => 'internal-agency-team'])->assertRedirect();
         $workspace = $db->table('workspaces')->where('slug', 'internal-agency-team')->sole();
         foreach ($employees as $employee) {
             $db->table('workspace_memberships')->insert(['workspace_id' => $workspace->id, 'user_id' => $employee->id,
@@ -91,7 +91,7 @@ final class BusinessDelegationTest extends TestCase
                 'authority_selection' => $this->selection($draft['grant_refs']['business.context.manage'])])->assertOk();
             $this->postJson($base.'/workspace-links', ['command_id' => (string) Str::uuid(),
                 'workspace_public_id' => $workspace->public_id, 'kind' => 'collaboration', 'effect' => 'add', 'expected_revision' => 0,
-                'authority_selection' => $this->selection($draft['grant_refs']['business.link.manage'])])->assertOk();
+                'authority_selection' => $this->selection($draft['grant_refs']['business.link.manage'])])->assertForbidden();
             $this->postJson($base.'/workspace-links', ['command_id' => (string) Str::uuid(),
                 'workspace_public_id' => $workspace->public_id, 'kind' => 'agency', 'effect' => 'add', 'expected_revision' => 0,
                 'authority_selection' => $this->selection($draft['grant_refs']['business.link.manage'])])->assertForbidden();
@@ -174,12 +174,12 @@ final class BusinessDelegationTest extends TestCase
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($agent, 1);
         for ($i = 0; $i < 2; $i++) {
             $this->request($agent);
-            $this->post('/workspaces', ['name' => 'Agency '.$i, 'slug' => 'agency-'.$i])->assertRedirect();
+            $this->legacyWorkspace(['name' => 'Agency '.$i, 'slug' => 'agency-'.$i])->assertRedirect();
             $w = $db->table('workspaces')->where('slug', 'agency-'.$i)->first();
             $workspaces[] = $w;
             Fixture::insert('business_workspace_links', ['link_id' => (string) Str::uuid7(), 'business_id' => $b, 'workspace_id' => $w->id,
                 'kind' => 'agency', 'status' => 'active', 'revision' => 1, 'valid_from' => now()->toIso8601String(), 'valid_until' => null, 'authority_ref' => $linkRoot->qualification_id], $owner->id);
-            $grants[] = $this->command($this->request($owner), $a['business_public_id'], $agent, $root->id, agency: $w->public_id);
+            $grants[] = ['grant_id' => Fixture::legacyAgencyGrant($root, $agent->id, $w->id, $owner->id)->id];
         }
         $scope = app(BusinessScope::class);
         $this->assertSame('Independent customer', $scope->read($this->request($agent), $a['business_public_id'], $this->selection($grants[0]['grant_id'], $workspaces[0]->public_id))['name']);
@@ -233,11 +233,11 @@ final class BusinessDelegationTest extends TestCase
         $linkRoot = Fixture::root($b, $owner->id, 'business.link.manage');
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($agent, 1);
         $this->request($agent);
-        $this->post('/workspaces', ['name' => 'Qualified agency', 'slug' => 'qualified-agency'])->assertRedirect();
+        $this->legacyWorkspace(['name' => 'Qualified agency', 'slug' => 'qualified-agency'])->assertRedirect();
         $w = $db->table('workspaces')->where('slug', 'qualified-agency')->first();
         Fixture::insert('business_workspace_links', ['link_id' => (string) Str::uuid7(), 'business_id' => $b, 'workspace_id' => $w->id,
             'kind' => 'agency', 'status' => 'active', 'revision' => 1, 'valid_from' => now()->toIso8601String(), 'valid_until' => null, 'authority_ref' => $linkRoot->qualification_id], $owner->id);
-        $g = $this->command($this->request($owner), $a['business_public_id'], $agent, $readRoot->id, agency: $w->public_id);
+        $g = ['grant_id' => Fixture::legacyAgencyGrant($readRoot, $agent->id, $w->id, $owner->id)->id];
         $this->assertSame('Independent customer', app(BusinessScope::class)->read($this->request($agent), $a['business_public_id'], $this->selection($g['grant_id'], $w->public_id))['name']);
         Fixture::revokeQualification($linkRoot->qualification_id, $owner->id);
         $count = $db->table('security_action_grants')->count();
@@ -286,7 +286,7 @@ final class BusinessDelegationTest extends TestCase
         $linkRoot = Fixture::root($b, $owner->id, 'business.link.manage');
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($agent, 1);
         $this->request($agent);
-        $this->post('/workspaces', ['name' => 'Future agency', 'slug' => 'future-agency'])->assertRedirect();
+        $this->legacyWorkspace(['name' => 'Future agency', 'slug' => 'future-agency'])->assertRedirect();
         $w = $db->table('workspaces')->where('slug', 'future-agency')->first();
         Fixture::insert('business_workspace_links', ['link_id' => (string) Str::uuid7(), 'business_id' => $b, 'workspace_id' => $w->id,
             'kind' => 'agency', 'status' => 'active', 'revision' => 1, 'valid_from' => now()->addDay()->toIso8601String(), 'valid_until' => null,
@@ -308,12 +308,12 @@ final class BusinessDelegationTest extends TestCase
         $this->assertSame('active', $db->table('security_action_grants')->where('id', $grant->id)->value('status'));
     }
 
-    public function test_agency_relationship_is_an_explicit_qualified_command_and_never_a_draft_membership_grant(): void
+    public function test_old_agency_creation_is_retired_even_with_qualified_authority_and_historical_end_remains_exact(): void
     {
         $u = User::factory()->create();
         $a = $this->draft($u);
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($u, 1);
-        $this->post('/workspaces', ['name' => 'Own agency workspace', 'slug' => 'own-agency'])->assertRedirect();
+        $this->legacyWorkspace(['name' => 'Own agency workspace', 'slug' => 'own-agency'])->assertRedirect();
         $db = DB::connection('pgsql_migrations');
         $w = $db->table('workspaces')->where('slug', 'own-agency')->first();
         $url = '/api/businesses/'.$a['business_public_id'].'/workspace-links';
@@ -326,9 +326,11 @@ final class BusinessDelegationTest extends TestCase
         $count = $db->table('security_action_grants')->count();
         $body['authority_selection'] = $this->selection($root->id);
         $body['command_id'] = (string) Str::uuid();
-        $this->postJson($url, $body)->assertOk()->assertJsonPath('data.kind', 'agency')->assertJsonPath('data.state', 'active')->assertJsonPath('data.versions.link', 1);
-        $this->postJson($url, $body)->assertOk()->assertJsonPath('data.versions.link', 1);
+        $this->postJson($url, $body)->assertForbidden();
+        $this->postJson($url, $body)->assertForbidden();
         $this->assertSame($count, $db->table('security_action_grants')->count());
+        $this->assertSame(0, $db->table('business_workspace_links')->count());
+        Fixture::legacyWorkspaceLink($b, $w->id, $root, $u->id);
         $this->assertSame(1, $db->table('business_workspace_links')->count());
         $body['command_id'] = (string) Str::uuid();
         $body['expected_revision'] = 1;

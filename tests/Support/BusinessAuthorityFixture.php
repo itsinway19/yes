@@ -9,11 +9,51 @@ use Illuminate\Support\Str;
 /** Explicit synthetic qualification graph; never installed as a runtime root-issuer policy. */
 final class BusinessAuthorityFixture
 {
+    /** Previously admitted organizational relationship, never a new product writer. */
+    public static function legacyWorkspaceLink(int|string $business, int $workspace, object $authority, int $actor, string $kind = 'agency'): object
+    {
+        app(DisposableTestDatabaseGuard::class)->assertSafe();
+        if (! in_array($kind, ['agency', 'collaboration'], true) || (int) $authority->business_id !== (int) $business || $authority->action !== 'business.link.manage' || (int) $authority->subject_user_id !== $actor) {
+            throw new \LogicException('Exact synthetic historical relationship issuer required.');
+        }
+        $db = DB::connection('pgsql_migrations');
+        if ($db->table('business_workspace_links')->where('business_id', $business)->where('workspace_id', $workspace)->where('kind', $kind)->where('status', 'active')->exists()) {
+            throw new \LogicException('Historical active relationship must be ended before its replacement fixture.');
+        }
+        $version = (int) $db->table('business_workspace_links')->where('business_id', $business)->where('workspace_id', $workspace)->where('kind', $kind)->max('revision');
+
+        return self::insert('business_workspace_links', ['link_id' => (string) Str::uuid7(), 'business_id' => (int) $business, 'workspace_id' => $workspace, 'kind' => $kind,
+            'status' => 'active', 'revision' => $version + 1, 'valid_from' => $db->scalar('SELECT clock_timestamp()::text'), 'valid_until' => null, 'authority_ref' => $authority->qualification_id], $actor);
+    }
+
+    /** Previously issued child: verification/revocation remain production paths. */
+    public static function legacyAgencyGrant(object $parent, int $recipient, int $workspace, int $actor): object
+    {
+        app(DisposableTestDatabaseGuard::class)->assertSafe();
+        $db = DB::connection('pgsql_migrations');
+        $qualification = json_decode($db->scalar('SELECT to_jsonb(q)::text FROM authority_qualification_receipts q WHERE qualification_id=?::uuid', [$parent->qualification_id]), true, flags: JSON_THROW_ON_ERROR);
+        $qualification['qualification_id'] = (string) Str::uuid7();
+        $qualification['policy_id'] = 'bounded_parent_delegation';
+        $qualification['issuer_kind'] = 'existing_grant';
+        $qualification['issuer_grant_id'] = $parent->id;
+        $qualification['subject_user_id'] = $recipient;
+        $qualification['allowed_actions'] = [$parent->action];
+        $qualification['evidence_ref'] = 'synthetic:historical-agency-child';
+        $issuedAt = $db->scalar('SELECT clock_timestamp()::text');
+        $qualification['valid_from'] = $issuedAt;
+        $q = self::insert('authority_qualification_receipts', $qualification, $actor);
+
+        return self::insert('security_action_grants', [...(array) $parent, 'id' => (int) $db->scalar("SELECT nextval('security_action_grants_id_seq')"),
+            'subject_user_id' => $recipient, 'subject_generation' => $db->table('principal_lifecycles')->where('user_id', $recipient)->value('generation'),
+            'granted_by' => $actor, 'source' => 'qualified_delegation', 'qualification_id' => $q->qualification_id, 'parent_grant_id' => $parent->id,
+            'created_at' => $issuedAt, 'updated_at' => $issuedAt, 'delegable' => false, 'delegation_realm_kind' => 'agency', 'delegation_workspace_id' => $workspace], $actor);
+    }
+
     public static function insert(string $table, array $values, int $actor): object
     {
         app(DisposableTestDatabaseGuard::class)->assertSafe();
         if (! in_array($table, ['authority_qualification_receipts', 'security_action_grants', 'business_workspace_links',
-            'client_data_boundaries', 'resource_right_fences', 'boundary_subjects', 'data_use_scopes', 'business_data_use_bindings'], true)) {
+            'business_command_receipts', 'client_data_boundaries', 'resource_right_fences', 'boundary_subjects', 'data_use_scopes', 'business_data_use_bindings'], true)) {
             throw new \LogicException('Unregistered synthetic fixture relation.');
         }
         $owner = DB::connection('pgsql_migrations');

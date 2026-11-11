@@ -72,8 +72,12 @@ final class ExpenditureSummaryTest extends TestCase
             $replace($definition);
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
             foreach ($before as $table => $rows) {
-                $this->assertSame($rows, $owner->scalar("SELECT jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text)::text FROM {$table} r"), $table);
+                // Preserve every pre750 field and separately prove no agency authority was inferred.
+                $image = $table === 'authority_qualification_receipts' ? "to_jsonb(r)-ARRAY['agency_business_id','agency_membership_grant_id']" : 'to_jsonb(r)';
+                $this->assertSame($rows, $owner->scalar("SELECT jsonb_agg({$image} ORDER BY ({$image})::text)::text FROM {$table} r"), $table);
             }
+            $this->assertSame(0, $owner->table('authority_qualification_receipts')->whereNotNull('agency_business_id')->count());
+            $this->assertSame(0, $owner->table('authority_qualification_receipts')->whereNotNull('agency_membership_grant_id')->count());
             foreach (['business.expenditure_summary', 'market.business_finding', 'market.knowledge'] as $namespace) {
                 $this->assertStringContainsString($namespace, $owner->scalar('SELECT pg_get_functiondef(?::regprocedure)', [$signature]));
             }

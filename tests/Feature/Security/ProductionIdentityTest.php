@@ -8,6 +8,7 @@ use App\Http\Middleware\CaptureIdentityInput;
 use App\Models\User;
 use App\Notifications\SecurityResetPassword;
 use App\Security\IdentityReceipt;
+use App\Security\RegistrationEmailProof;
 use App\Security\SessionAuthority;
 use Illuminate\Auth\Events\Attempting;
 use Illuminate\Auth\Middleware\Authenticate;
@@ -22,11 +23,14 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Symfony\Component\Process\Process;
 use Tests\Support\IdentityTransitionFixture;
+use Tests\Support\RegistrationEmailProofFixture;
 use Tests\TestCase;
 
 /** Executes candidate production routes, including Laravel's real CSRF branch. */
 class ProductionIdentityTest extends TestCase
 {
+    use RegistrationEmailProofFixture;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -269,14 +273,11 @@ class ProductionIdentityTest extends TestCase
         }
     }
 
-    public function test_authcompat_registration_owns_pending_session_without_business_authority_and_verification_rebinds_generation(): void
+    public function test_authcompat_legacy_unverified_advertiser_lacks_business_authority_and_verification_rebinds_generation(): void
     {
+        $user = User::factory()->unverified()->create(['name' => 'Protocol fixture', 'email' => 'protocol-pending@example.test']);
         $guest = $this->freshGuest();
-        $response = $this->post('/register', ['name' => 'Protocol fixture', 'email' => 'protocol-registration@example.test',
-            'password' => 'Dense-Unique-Fixture-Password-921!', 'password_confirmation' => 'Dense-Unique-Fixture-Password-921!'], $this->headers($guest));
-        $response->assertOk()->assertJsonPath('transition.epoch', 1)->assertJsonPath('redirect', '/verify-email');
-        $identity = $response->json('identity');
-        $user = User::where('email', 'protocol-registration@example.test')->firstOrFail();
+        $identity = $this->ownedLogin($guest, $user);
         $this->assertSame('pending', DB::table('principal_lifecycles')->value('status'));
         $this->reloadGuard();
         $this->get('/verify-email', ['Accept' => 'text/html'])->assertOk();
@@ -294,6 +295,41 @@ class ProductionIdentityTest extends TestCase
         $profile->assertOk();
         $this->assertSame(1, $profile->viewData('identity')['binding']['lifecycle']);
         $this->post('/locale', ['locale' => 'en'], $this->headers($identity))->assertStatus(409);
+    }
+
+    public function test_authcompat_registration_reconciles_lost_acknowledgement_without_replaying_or_adopting_identity(): void
+    {
+        // Same-origin JSON must carry the actual browser cookies; CSRF remains enabled.
+        $this->withCredentials();
+        $guest = $this->freshGuest();
+        $email = 'protocol-registration@example.test';
+        $attempt = $this->verifyRegistrationEmail($email, $this->headers($guest));
+        $anonymousCookies = $this->unencryptedCookies;
+        $password = 'Dense-Unique-Fixture-Password-921!';
+        $command = ['name' => 'Protocol fixture', 'email' => $email, 'attempt_id' => $attempt,
+            'password' => $password, 'password_confirmation' => $password];
+        $this->postJson('/register', $command, $this->headers($guest))->assertOk()->assertJsonPath('transition.epoch', 1);
+
+        $this->unencryptedCookies = $anonymousCookies;
+        $this->reloadGuard();
+        $this->getJson('/identity/transition', $this->headers($guest))
+            ->assertOk()->assertJsonPath('transition.epoch', 1)->assertJsonMissingPath('identity');
+        $this->getJson('/identity/context')->assertUnauthorized();
+        // Lost credentials fail CSRF before document admission. A current CSRF
+        // token must still reject the stale document at the identity boundary.
+        $this->postJson('/register', $command, $this->headers($guest))->assertStatus(419);
+        $reauthentication = $this->freshGuest();
+        $staleDocument = $this->headers($guest);
+        $staleDocument['X-CSRF-TOKEN'] = $reauthentication['csrf'];
+        $this->postJson('/register', $command, $staleDocument)->assertStatus(409)->assertJsonPath('identityConflict', true);
+        $this->assertDatabaseCount('users', 1);
+
+        $this->postJson('/login', ['email' => $email, 'password' => $password], $this->headers($reauthentication))
+            ->assertOk()->assertJsonPath('transition.epoch', 2);
+        $created = User::where('email', $email)->sole();
+        $this->assertAuthenticatedAs($created);
+        $this->assertSame($attempt, app(RegistrationEmailProof::class)->businessAttempt($created));
+        $this->assertDatabaseCount('users', 1);
     }
 
     public function test_authcompat_confirmation_password_change_and_native_form_keep_current_owned_credential(): void

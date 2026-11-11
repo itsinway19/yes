@@ -70,8 +70,12 @@ final class InquiryEvidenceUpgradeTest extends TestCase
             }
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
             foreach ($snapshots as $table => $bytes) {
-                $this->assertSame($bytes, $owner->scalar("SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]')::text FROM {$table} t"));
+                // Migration750 extends the row shape, not historical qualification authority.
+                $image = $table === 'authority_qualification_receipts' ? "to_jsonb(t)-ARRAY['agency_business_id','agency_membership_grant_id']" : 'to_jsonb(t)';
+                $this->assertSame($bytes, $owner->scalar("SELECT coalesce(jsonb_agg({$image} ORDER BY ({$image})::text),'[]')::text FROM {$table} t"));
             }
+            $this->assertSame(0, $owner->table('authority_qualification_receipts')->whereNotNull('agency_business_id')->count());
+            $this->assertSame(0, $owner->table('authority_qualification_receipts')->whereNotNull('agency_membership_grant_id')->count());
             $this->assertSame(0, $owner->table('inquiry_evidence_enrollments')->count());
             $this->assertSame(0, $owner->table('security_action_grants')->where('action', 'like', 'business.inquiry_evidence.%')->count());
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));

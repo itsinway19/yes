@@ -42,7 +42,8 @@ class OwnerGrantReassessmentTest extends TestCase
         $authenticatedAt = DB::table('security_sessions')->where('user_id', $owner->id)
             ->whereNull('revoked_at')->value('authenticated_at');
         $this->assertGreaterThanOrEqual($changedAt, $authenticatedAt);
-        $this->get('/workspaces/'.$workspace->public_id)->assertForbidden();
+        $this->get('/workspaces/'.$workspace->public_id)->assertRedirect('/businesses');
+        $this->getJson('/workspaces/'.$workspace->public_id)->assertForbidden();
         $this->getJson('/workspaces')->assertOk()
             ->assertJsonCount(0, 'data.workspaces')
             ->assertJsonCount(1, 'data.reassessableWorkspaces')
@@ -50,7 +51,8 @@ class OwnerGrantReassessmentTest extends TestCase
 
         $this->post('/workspaces/'.$workspace->public_id.'/reassess-owner-grant')
             ->assertRedirect(route('workspaces.show', $workspace->public_id));
-        $this->get('/workspaces/'.$workspace->public_id)->assertOk();
+        $this->get('/workspaces/'.$workspace->public_id)->assertRedirect('/businesses');
+        $this->getJson('/workspaces/'.$workspace->public_id)->assertOk();
         $this->assertSame(2, DB::connection('pgsql_migrations')->table('security_action_grants')
             ->where('workspace_id', $workspace->id)
             ->where('subject_generation', 2)
@@ -146,7 +148,7 @@ class OwnerGrantReassessmentTest extends TestCase
     {
         $owner = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($owner, 1);
-        $this->actingAs($owner)->post('/workspaces', [
+        $this->actingAs($owner)->legacyWorkspace([
             'name' => $name, 'slug' => $slug,
         ])->assertRedirect();
         $workspace = DB::connection('pgsql_migrations')->table('workspaces')

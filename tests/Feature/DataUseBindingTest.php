@@ -31,7 +31,7 @@ final class DataUseBindingTest extends TestCase
         $db = DB::connection('pgsql_migrations');
         $a = app(BusinessScope::class)->create($this->request($u), (string) Str::uuid(), 'Data customer', null);
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($u, 1);
-        $this->post('/workspaces', ['name' => 'Source custody', 'slug' => 'source-custody'])->assertRedirect();
+        $this->legacyWorkspace(['name' => 'Source custody', 'slug' => 'source-custody'])->assertRedirect();
         $w = $db->table('workspaces')->where('slug', 'source-custody')->first();
         $source = (string) Str::uuid7();
         // Registered native metadata only; no credential, live provider, or production source-adoption claim.

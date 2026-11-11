@@ -19,7 +19,7 @@ class ServiceAuthorityTest extends TestCase
     {
         $owner = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($owner, 1);
-        $this->actingAs($owner)->post('/workspaces', ['name' => 'Service SPA scope', 'slug' => 'service-spa-scope'])->assertRedirect();
+        $this->actingAs($owner)->legacyWorkspace(['name' => 'Service SPA scope', 'slug' => 'service-spa-scope'])->assertRedirect();
         $database = DB::connection('pgsql_migrations');
         $workspace = $database->table('workspaces')->sole();
         $manager = $this->serviceManager();
@@ -50,7 +50,7 @@ class ServiceAuthorityTest extends TestCase
     {
         $owner = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($owner, 1);
-        $this->actingAs($owner)->post('/workspaces', [
+        $this->actingAs($owner)->legacyWorkspace([
             'name' => 'Owner Workspace', 'slug' => 'owner-workspace',
         ])->assertRedirect();
         $workspace = DB::connection('pgsql_migrations')->table('workspaces')->first();
@@ -140,7 +140,7 @@ class ServiceAuthorityTest extends TestCase
     {
         $owner = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($owner, 1);
-        $this->actingAs($owner)->post('/workspaces', [
+        $this->actingAs($owner)->legacyWorkspace([
             'name' => 'Revocation Workspace', 'slug' => 'revocation-workspace',
         ])->assertRedirect();
         $workspace = DB::connection('pgsql_migrations')->table('workspaces')->first();

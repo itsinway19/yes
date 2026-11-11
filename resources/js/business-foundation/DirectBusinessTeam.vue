@@ -77,8 +77,8 @@ async function enroll() {
 </script>
 <template>
     <section v-if="currentContext() && (surface.direct_team_enrollment_available || draft.pending || draft.notice)" class="bf-card" data-business-direct-team>
-        <h3>{{ t('موظفو النشاط دون جهة تنظيمية', 'Business employees without an organization') }}</h3>
-        <p>{{ t('يمكنك منح موظف مسجل صلاحيات محددة على معلومات هذا النشاط وأسواقه ونيته وأولوياته، دون إنشاء مساحة عمل. لا يشمل ذلك البيانات الخاصة أو حقوق المصادر أو تفويضًا عن عميل خارجي.', 'Grant a registered employee exact rights over this business’s details, markets, intent and preferences without creating a workspace. This excludes private records, source rights and external-client representation.') }}</p>
+        <h3>{{ t('فريق النشاط', 'Business team') }}</h3>
+        <p>{{ t('امنح موظفًا مسجلًا صلاحيات محددة على معلومات نشاطك وأسواقه وأهدافه. لا تشمل هذه الصلاحيات السجلات الخاصة أو حقوق المصادر أو تمثيل عميل خارجي.', 'Give a registered employee specific rights to your business details, markets and goals. These rights exclude private records, source rights and external-client representation.') }}</p>
         <label v-if="surface.direct_team_enrollment_available && !draft.pending && !draft.blocked && !draft.completed"><input v-model="draft.confirmed" type="checkbox" :disabled="busy || refreshing" data-direct-team-confirm />{{ t('أوافق على تفعيل إدارة فريق لهذا النشاط ضمن هذه الحدود.', 'Enable team administration for this business within these limits.') }}</label>
         <button v-if="surface.direct_team_enrollment_available || draft.pending" type="button" class="workspace-button" :disabled="busy || refreshing || draft.blocked || !!draft.review || draft.completed || (!draft.pending && !draft.confirmed)" data-direct-team-submit @click="enroll">{{ busy ? t('جارٍ التحقق…', 'Checking…') : draft.pending ? t('التحقق من النتيجة', 'Check the outcome') : t('تفعيل إدارة الموظفين', 'Enable employee administration') }}</button>
         <p v-if="draft.notice" role="status">{{ draft.notice }}</p>

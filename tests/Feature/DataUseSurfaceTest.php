@@ -85,7 +85,7 @@ final class DataUseSurfaceTest extends TestCase
         $businessId = DB::connection('pgsql_migrations')->table('businesses')->where('public_id', $a['business_public_id'])->value('id');
         $readOnly = BusinessAuthorityFixture::root($businessId, $viewer->id, 'business.context.read');
         $this->actingAs($viewer)->getJson('/api/businesses/'.$a['business_public_id'].'/surface?access='.$readOnly->id)
-            ->assertOk()->assertJsonCount(0, 'data.data_use.bindings')->assertJsonCount(0, 'data.collaboration.options');
+            ->assertOk()->assertJsonCount(0, 'data.data_use.bindings')->assertJsonMissingPath('data.collaboration');
         $this->getJson('/api/data-rights/use-scopes')->assertOk()->assertJsonCount(0, 'data.scopes');
         $this->actingAs($actor);
         $revoke = ['command_id' => (string) Str::uuid(), 'target_kind' => 'data_use', 'target_ref' => $scope['scope_id'], 'effect' => 'revoke',

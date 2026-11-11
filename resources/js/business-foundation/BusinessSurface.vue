@@ -6,6 +6,7 @@ import { status } from '../spa/presentation';
 import { owned, stamp } from '../spa/transport';
 import { locale } from '../spa/locale';
 import { key } from './drafts';
+import { hasRegistrationBusiness } from './businessWizard';
 import BusinessCreate from './BusinessCreate.vue';
 import BusinessWorkspace from './BusinessWorkspace.vue';
 import AdvertiserWorkspaceLayout from './AdvertiserWorkspaceLayout.vue';
@@ -17,7 +18,7 @@ const router = useRouter();
 watch(() => [route.fullPath, data.value], () => {
     const value = data.value;
     if (route.query.entry !== '1' || !value || !('items' in value)) return;
-    if (!value.items.length && !value.next_cursor) void router.replace('/businesses/new');
+    if (hasRegistrationBusiness(value.registration_attempt) || (!value.items.length && !value.next_cursor)) void router.replace('/businesses/new');
     else if (value.items.length === 1 && !value.next_cursor) void router.replace(`/businesses/${value.items[0].business_public_id}?access=${value.items[0].read_grant_id}`);
 }, { immediate: true });
 let disposed = false;
@@ -37,18 +38,18 @@ async function refresh() {
         <BusinessWorkspace v-if="data && 'business' in data" :key="key(data.business.business_public_id, data.authority_selection)" :surface="data" :refreshing="refreshing" @refresh="refresh" />
         <AdvertiserWorkspaceLayout v-else>
         <template v-if="data && 'items' in data">
-            <header class="bf-heading"><div><p class="bf-eyebrow">{{ t('مساحة المعلن', 'Advertiser workspace') }}</p><h1>{{ t('أنشطتي التجارية', 'My businesses') }}</h1><p>{{ t('افتح نشاطًا لمراجعة معلوماته، وتحديد اتجاهه، وإدارة بياناته.', 'Open a business to review its details, set its direction and manage its data.') }}</p></div>
+            <header class="bf-heading"><div><p class="bf-eyebrow">{{ t('لوحة المعلن', 'Advertiser dashboard') }}</p><h1>{{ t('أنشطتي التجارية', 'My businesses') }}</h1><p>{{ t('افتح نشاطًا لمراجعة معلوماته، وتحديد اتجاهه، وإدارة بياناته.', 'Open a business to review its details, set its direction and manage its data.') }}</p></div>
                 <RouterLink class="bf-primary" to="/businesses/new"><Plus aria-hidden="true" :size="15" />{{ t('إضافة نشاط', 'Add a business') }}</RouterLink>
             </header>
             <section v-if="!data.items.length" class="bf-card advertiser-empty" data-business-empty>
                 <Building2 aria-hidden="true" />
                 <h2>{{ data.next_cursor ? t('لا أنشطة في هذه الصفحة', 'No businesses on this page') : t('ابدأ بإضافة نشاطك', 'Start with your business') }}</h2>
-                <p>{{ t('أضف اسم نشاطك لتبدأ. يمكنك استكمال مجاله وأسواقه لاحقًا، دون ربط حساب إعلاني.', 'Add its name to get started. You can choose its field and markets later, without connecting an ad account.') }}</p>
+                <p>{{ t('عرّف نشاطك وما تقدّمه واختر سوقك. يمكنك البدء دون ربط حساب إعلاني.', 'Describe your business, what it offers and the market you serve. You can get started without an ad account.') }}</p>
                 <RouterLink class="bf-primary" to="/businesses/new"><Plus aria-hidden="true" :size="15" />{{ t('إضافة نشاط', 'Add a business') }}</RouterLink>
             </section>
             <ul v-else class="bf-grid" data-business-list>
                 <li v-for="item in data.items" :key="item.read_grant_id" class="bf-card">
-                    <p class="bf-badge">{{ item.realm_kind === 'internal_team' ? t('إدارة ملف ضمن فريق', 'File administration within a team') : item.realm_kind === 'agency' ? t('عبر تفويض وكالة', 'Through an agency delegation') : t('وصول مباشر', 'Direct access') }}</p>
+                    <p class="bf-badge">{{ item.agency_business_public_id ? t('بتفويض بين الأنشطة', 'Through a business mandate') : t('وصول مباشر', 'Direct access') }}</p>
                     <h2>{{ item.name }}</h2>
                     <p>{{ item.state === 'declared_draft' ? t('معلومات أضافها النشاط', 'Business-provided details') : t('نشاط قائم', 'Existing business') }}</p>
                     <RouterLink :to="`/businesses/${item.business_public_id}?access=${item.read_grant_id}`" class="bf-link bf-open"><span>{{ t('فتح النشاط', 'Open business') }}</span><ArrowLeft aria-hidden="true" /></RouterLink>
@@ -62,7 +63,7 @@ async function refresh() {
                 <p>{{ t('مشاركة المعرّف وحدها لا تفتح بيانات النشاط.', 'Sharing the identifier alone does not open business data.') }}</p>
             </details>
         </template>
-        <BusinessCreate v-else-if="data && 'catalog' in data" :catalog="data.catalog" />
+        <BusinessCreate v-else-if="data && 'catalog' in data" :catalog="data.catalog" :registration-attempt="data.registration_attempt" />
         </AdvertiserWorkspaceLayout>
     </div>
 </template>

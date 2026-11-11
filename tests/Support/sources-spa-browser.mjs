@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import Ajv from 'ajv/dist/2020.js';
 
-export async function runSourceCases({ browser, check, login, meta, get, post, command, fixture, result, run, until, held }) {
+export async function runSourceCases({ browser, check, login, meta, get, post, command, fixture, result, run, until, held, target }) {
     const stage = process.env.SOURCES_SPA_STAGE ?? 'all';
     const stages = stage.split(',');
     assert.ok(stages.every(value => ['all', 'shell', 'remaining', 'registry', 'reports', 'renew', 'disconnect', 'lifecycle', 'recovery'].includes(value)));
@@ -15,10 +15,12 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
                 : /superseded|account switch|expired-session|csrf is|revoked authority/.test(name) ? 'lifecycle' : 'shell';
         return stages.includes('all') || stages.includes(group) || (stages.includes('remaining') && group !== 'shell') ? runCheck(name, mode, execute) : Promise.resolve();
     };
-    if (stage === 'all') fixture.a.workspaces[0] = command('source-fresh');
-    const workspace = fixture.a.workspaces[0].public_id, other = fixture.a.workspaces[1].public_id, foreign = fixture.b.workspaces[0].public_id;
-    const base = `/workspaces/${workspace}`;
-    command('restore-view');
+    const sourceBusiness=stage==='all'||!fixture.a.source_business?command('source-fresh'):fixture.a.source_business;
+    const workspace=sourceBusiness.business_public_id,other=fixture.a.businesses[1].business_public_id,foreign=fixture.b.businesses[0].business_public_id;
+    const base=`/businesses/${workspace}`,home=`${base}?access=${sourceBusiness.grant_refs['business.context.read']}&section=sources`;
+    const historicalBase=`/workspaces/${fixture.a.workspaces[0].public_id}`;
+    const otherHome=target('application',fixture.a.workspaces[1].public_id),foreignHome=target('application',fixture.b.workspaces[0].public_id);
+    command('source-restore-owner');
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } }), page = await context.newPage();
     page.setDefaultTimeout(15000); page.on('dialog', dialog => dialog.accept());
     page.on('crash', () => result.errors.push({ mode: 'sources', message: 'Source browser page crashed' }));
@@ -27,11 +29,11 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
     const spec = JSON.parse(await readFile('contracts/application.openapi.json', 'utf8'));
     const validate = name => new Ajv({ strict: false, validateFormats: false }).compile({ ...spec, $ref: `#/components/schemas/${name}` });
     const sourceSchema = validate('WorkspaceSourcesResource');
-    const ready = () => page.waitForFunction(workspace => document.querySelector(`[data-sources-workspace="${workspace}"]`) && document.getElementById('application-spa')?.dataset.state === 'ready', workspace);
-    const visit = async url => { await page.evaluate(url => __goalsSpa.router.push(url), url); await page.waitForURL('http://localhost:8138' + url); };
+    const ready = () => page.waitForFunction(workspace => document.querySelector('[data-business-public]')?.getAttribute('data-business-public')===workspace && document.getElementById('application-spa')?.dataset.state==='ready' && !!document.querySelector('[data-business-source-inventory]'),workspace);
+    const visit = async url => { await page.evaluate(url => document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(url), url); await page.waitForURL('http://localhost:8138' + url); };
     const panel = provider => page.locator(`dialog[open] section[aria-labelledby="${provider}-connection-heading"]`);
-    const open = async provider => { await page.locator(`[data-provider="${provider}"] .source-action`).click(); await panel(provider).waitFor(); };
-    const close = async () => { await page.locator('.source-dialog-close').click(); await ready(); };
+    const open = async provider => { await page.locator(`[data-business-source-inventory] [data-provider="${provider}"] button`).click(); await panel(provider).waitFor(); };
+    const close = async () => { await page.locator('.advertising-dialog-heading button').click(); await ready(); };
     const snapshots = async provider => { const response = await get(page, `${base}/providers/${provider}`, { 'X-Builderad-Passive': '1' }); assert.equal(response.status, 200, JSON.stringify(response)); return response.body; };
     const handoffs = [];
     await context.route(/^https:\/\/(www\.facebook\.com|accounts\.google\.com|business-api\.tiktok\.com|accounts\.snapchat\.com|api\.(x|twitter)\.com)\//, async route => {
@@ -50,7 +52,7 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
             const connected = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === `${base}/providers/${provider}/connect`);
             await panel(provider).locator(`[data-source-connect="${provider}"]`).click();
             assert.equal((await connected).status(), 200);
-            await page.waitForURL(new RegExp(`/workspaces/${workspace}#${provider}-flow=`)); await ready();
+            await page.waitForURL(new RegExp(`/businesses/${workspace}.*#${provider}-flow=`)); await ready();
             const current = panel(provider); await current.locator('[data-source-select]').first().waitFor();
             if (provider === 'google' && await current.locator('[data-source-hierarchy]').count()) {
                 const hierarchy = page.waitForResponse(response => new URL(response.url()).pathname.includes('/providers/google/hierarchy/'));
@@ -60,9 +62,9 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
             const selected = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === `${base}/providers/${provider}/select`);
             await current.locator('[data-source-select]').first().click(); const reply = await selected; assert.equal(reply.status(), 200, await reply.text());
             if (provider === 'google') {
-                const denied = await post(page, `/workspaces/${other}/providers/google/select`, reply.request().postDataJSON());
+                const denied = await post(page, `/businesses/${other}/providers/google/select`, reply.request().postDataJSON());
                 assert.ok([403, 409, 422].includes(denied.status));
-                const isolated = await get(page, `/workspaces/${other}/providers/google`, { 'X-Builderad-Passive': '1' });
+                const isolated = await get(page, `/businesses/${other}/providers/google`, { 'X-Builderad-Passive': '1' });
                 assert.equal(isolated.status, 200); assert.equal(isolated.body.connections.length, 0);
             }
             await current.locator('[data-source-disconnect]').first().waitFor();
@@ -75,79 +77,45 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
             return { nativeCallback: true, existingWriter: true, connectedNotReady: true, syntheticOnly: true, sources: snapshot.connections.length };
     }
     try {
-        if (stage !== 'all' && stage !== 'shell') { await login(page, 'application'); await visit(base); await ready(); }
-        await check('canonical Source shell uses the unified router and exact private scoped resource', 'sources', async () => {
-            await login(page, 'application'); const before = await meta(page);
-            await page.getByRole('banner').getByRole('link', { name: 'المصادر', exact: true }).click(); await ready();
-            assert.equal((await meta(page)).binding.generation, before.binding.generation);
-            await visit('/workspaces'); await page.locator(`a.workspace-row[href="${base}"]`).click(); await ready();
-            assert.equal((await meta(page)).binding.generation, before.binding.generation);
-            const resource = await get(page, base, { 'X-Builderad-Passive': '1' }); assert.equal(resource.status, 200); assert.ok(sourceSchema(resource.body), JSON.stringify(sourceSchema.errors));
-            assert.equal((await get(page, `/workspaces/${foreign}`)).status, 403);
-            assert.equal((await get(page, base + '/providers/meta', { 'X-Builderad-Passive': '1' })).status, 200);
-            assert.equal(await page.locator('[data-page]').count(), 0);
-            await page.locator('[data-application="locale"]').click(); await page.waitForFunction(() => document.documentElement.lang === 'en');
-            assert.equal(await page.locator('[data-sources-workspace]').count(), 1);
-            await page.setViewportSize({ width: 390, height: 844 }); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 0);
-            await page.locator('[data-application="locale"]').click(); await page.waitForFunction(() => document.documentElement.lang === 'ar');
-            await page.screenshot({ path: path.join(run, 'sources-ar-mobile.png'), fullPage: true }); await page.setViewportSize({ width: 1280, height: 900 });
-            return { sameDocument: true, locales: ['ar', 'en'], foreignWorkspace: 403, overflow: 0 };
+        if (stage !== 'all' && stage !== 'shell') { await login(page, 'application'); await visit(home); await ready(); }
+        await check('canonical Source shell is the current Business-native inventory with independent historical JSON custody','sources',async()=>{
+            await login(page,'application');const before=await meta(page);await visit(home);await ready();
+            assert.equal((await meta(page)).binding.generation,before.binding.generation);
+            await visit('/businesses');await page.locator('[data-business-list]').waitFor();await visit(home);await ready();
+            const resource=await get(page,historicalBase,{'X-Builderad-Passive':'1'});assert.equal(resource.status,200);assert.ok(sourceSchema(resource.body),JSON.stringify(sourceSchema.errors));
+            assert.equal((await get(page,foreignHome)).status,403);assert.equal((await get(page,base+'/providers/meta',{'X-Builderad-Passive':'1'})).status,200);
+            const language=async wanted=>{const menu=page.locator('.advertiser-account-menu');if(await menu.getAttribute('open')===null)await menu.locator(':scope > summary').click();await page.locator('[data-application="locale"]').click();await page.waitForFunction(wanted=>document.documentElement.lang===wanted,wanted);await ready();if(await menu.getAttribute('open')!==null)await menu.locator(':scope > summary').click();};
+            await language('en');assert.equal(await page.locator('[data-business-public]').count(),1);await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await language('ar');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.setViewportSize({width:1280,height:900});
+            return{sameDocument:true,locales:['ar','en'],foreignBusiness:403,historicalJSONContract:true,overflow:false,publicWorkspacePage:false,screenshots:false};
         });
         for (const provider of ['meta', 'google', 'tiktok', 'snapchat', 'x']) await check(`${provider} real SPA connection, synthetic native OAuth, discovery and exact account selection`, 'sources', () => connectAccount(provider));
-        await check('registry grants, registration, scope declaration, correction, recovery and revocation use real Laravel effects', 'sources', async () => {
-            await page.locator('details > summary').click();
-            const registry = page.locator('section[aria-labelledby="sources-heading"]');
-            const grant = registry.locator('form').filter({ hasText: 'طلب صلاحية صريحة' });
-            const source = await grant.getByLabel('معرّف المصدر', { exact: true }).inputValue();
-            const authorize = async (action, operation = 'report.read') => {
-                await grant.getByLabel('معرّف المصدر', { exact: true }).fill(source);
-                await grant.getByLabel('المورد', { exact: true }).fill('synthetic-resource');
-                await grant.getByLabel('العملية (رمز)', { exact: true }).fill(operation);
-                await grant.getByLabel('الغرض (رمز)', { exact: true }).fill('advertising_analysis');
-                await grant.locator('select').first().selectOption(action);
-                const response = page.waitForResponse(reply => reply.request().method() === 'POST' && new URL(reply.url()).pathname === base + '/source-grants');
-                await grant.getByRole('button', { name: 'تأكيد القرار الصريح' }).click(); const reply = await response; assert.equal(reply.status(), 200, await reply.text());
-                await grant.getByRole('button').waitFor({ state: 'visible' }); await ready();
-            };
-            for (const action of ['source.register', 'source.read', 'source.manage', 'source.audit.recover']) await authorize(action);
-            const registration = registry.locator('form').filter({ hasText: 'تسجيل الهوية المعلنة' });
-            await registration.locator('input[list="source-families"]').fill('business');
-            for (const [name, value] of [['نطاق المعرّف', 'account'], ['معرّف الحساب المعلن', 'synthetic-local-' + source], ['الاسم المعلن', 'Synthetic local Source']]) await registration.getByLabel(name, { exact: true }).fill(value);
-            const registered = page.waitForResponse(reply => reply.request().method() === 'POST' && new URL(reply.url()).pathname === base + '/sources');
-            await registration.locator(`[data-register-source="${source}"]`).click(); const reply = await registered; assert.equal(reply.status(), 200, await reply.text());
-            const item = () => registry.locator('article').filter({ hasText: source }).first(); await item().waitFor();
-            await authorize('source.manage', 'discovery.read'); await authorize('source.read', 'discovery.read'); await authorize('source.audit.recover', 'discovery.read');
-            const declaration = item().locator('form').filter({ hasText: 'إعلان نطاق إضافي' });
-            await declaration.locator('select').selectOption('0');
-            const declared = page.waitForResponse(reply => reply.request().method() === 'POST' && new URL(reply.url()).pathname === base + '/sources');
-            await declaration.getByRole('button', { name: 'تأكيد إعلان النطاق' }).click(); assert.equal((await declared).status(), 200);
-            await item().getByRole('button', { name: 'إعادة تسليم الالتزام نفسه' }).first().waitFor();
-            const recovered = page.waitForResponse(reply => reply.request().method() === 'POST' && /\/source-audit\/[^/]+\/recover$/.test(new URL(reply.url()).pathname));
-            await item().getByRole('button', { name: 'إعادة تسليم الالتزام نفسه' }).first().click(); assert.equal((await recovered).status(), 200);
-            page.removeAllListeners('dialog'); page.on('dialog', dialog => dialog.accept(dialog.type() === 'prompt' ? 'Synthetic corrected Source' : undefined));
-            const corrected = page.waitForResponse(reply => reply.request().method() === 'POST' && new URL(reply.url()).pathname === base + '/sources');
-            await item().getByRole('button', { name: 'تصحيح الاسم' }).click(); assert.equal((await corrected).status(), 200);
-            await item().getByRole('heading', { name: /Synthetic corrected Source/ }).waitFor();
-            const revoked = page.waitForResponse(reply => reply.request().method() === 'POST' && new URL(reply.url()).pathname === base + '/sources');
-            await item().getByRole('button', { name: 'سحب المصدر', exact: true }).click(); assert.equal((await revoked).status(), 200);
-            await item().getByText('المصدر مسحوب؛ لا يسمح بالاستخدام المحمي', { exact: false }).waitFor();
-            return { register: 200, declareScope: 200, recover: 200, rename: 200, revoke: 200, providerVerificationInvented: false };
+        await check('historical registry grants registration scope correction recovery and revocation retain real Laravel effects','sources',async()=>{
+            const source=crypto.randomUUID(),scope={source_id:source,resource:'synthetic-resource',operation:'report.read',purpose:'advertising_analysis',reason:'synthetic_browser_fixture'};
+            const authorize=async(action,operation='report.read')=>{const response=await post(page,historicalBase+'/source-grants',{...scope,operation,action,decision:'authorize',expires_at:null});assert.equal(response.status,200);};
+            for(const action of ['source.register','source.read','source.manage','source.audit.recover'])await authorize(action);
+            const registration={...scope,command_id:crypto.randomUUID(),effect:'register',expected_version:0,family:'business',namespace:'account',external_id:'synthetic-local-'+source,label:'Synthetic local Source'};
+            const registered=await post(page,historicalBase+'/sources',registration);assert.equal(registered.status,200);assert.equal(registered.body.registration_state,'UNVERIFIED');
+            const replay=await post(page,historicalBase+'/sources',registration);assert.equal(replay.status,200);assert.deepEqual(replay.body,registered.body);
+            for(const action of ['source.manage','source.read','source.audit.recover'])await authorize(action,'discovery.read');
+            const declared=await post(page,historicalBase+'/sources',{...scope,operation:'discovery.read',command_id:crypto.randomUUID(),effect:'declare_scope',expected_version:1});assert.equal(declared.status,200);
+            const recovered=await post(page,historicalBase+'/source-audit/'+registered.body.obligation_id+'/recover',{});assert.equal(recovered.status,200);
+            const renamed=await post(page,historicalBase+'/sources',{...scope,command_id:crypto.randomUUID(),effect:'rename',expected_version:2,label:'Synthetic corrected Source'});assert.equal(renamed.status,200);
+            const revoked=await post(page,historicalBase+'/sources',{...scope,command_id:crypto.randomUUID(),effect:'revoke',expected_version:3});assert.equal(revoked.status,200);
+            const projection=await get(page,historicalBase);assert.equal(projection.status,200);const item=projection.body.data.sources.items.find(item=>item.id===source||item.source_id===source);assert.ok(item);assert.equal(item.capability.state,'REVOKED');
+            assert.equal(JSON.stringify(projection.body).includes('synthetic-web-token'),false);
+            return{surface:'qualified historical JSON only',register:200,declareScope:200,recover:200,rename:200,revoke:200,registrationUnverified:true,exactReplay:true};
         });
-        await check('existing service authorization and revocation work from the Source screen without exposing credentials', 'sources', async () => {
-            const service = command('source-service');
-            const section = page.locator('section').filter({ has: page.locator('form.biz-form') }).last();
-            const form = section.locator('form.biz-form'); await form.locator('input').nth(0).fill(service.public_id); await form.locator('input').nth(1).fill('Synthetic explicit Source service purpose');
-            const authorized = page.waitForResponse(reply => reply.request().method() === 'POST' && new URL(reply.url()).pathname === base + '/services');
-            await form.locator('button').click(); assert.equal((await authorized).status(), 200);
-            const row = page.locator('.service-list li').filter({ hasText: service.public_id }); await row.waitFor();
-            const revoked = page.waitForResponse(reply => reply.request().method() === 'DELETE' && new URL(reply.url()).pathname === base + '/services/' + service.public_id);
-            await row.locator('button').click(); assert.equal((await revoked).status(), 200); await row.waitFor({ state: 'detached' });
-            return { authorize: 200, revoke: 200, identityCreation: 'isolated fixture only', credentialExposed: false };
+        await check('historical service authorization and revocation remain qualified JSON effects without credentials','sources',async()=>{
+            const service=command('source-service');const authorized=await post(page,historicalBase+'/services',{service:service.public_id,purpose:'Synthetic explicit Source service purpose'});assert.equal(authorized.status,200);
+            const before=await get(page,historicalBase);assert.equal(before.status,200);assert.ok(JSON.stringify(before.body).includes(service.public_id));assert.equal(JSON.stringify(before.body).includes('credential_hash'),false);
+            const identity=await meta(page);const response=await context.request.delete('http://localhost:8138'+historicalBase+'/services/'+service.public_id,{headers:{Accept:'application/json','X-CSRF-TOKEN':identity.csrf,'X-Builderad-Document':identity.receipt,'X-Builderad-Transition':identity.transition},maxRedirects:0});assert.equal(response.status(),200);
+            const after=await get(page,historicalBase);assert.equal(after.status,200);assert.equal(JSON.stringify(after.body).includes(service.public_id),false);
+            return{surface:'qualified historical JSON only',authorize:200,revoke:200,identityCreation:'isolated fixture only',credentialExposed:false};
         });
         await check('report requests travel through Laravel with original unknown command retained and no automatic replay', 'sources', async () => {
             const jobsBefore = command('source-inspect').jobs;
             const admission = command('source-admit'); assert.equal(admission.admitted, 5); result.sourceAdmissionContext = admission;
-            await page.evaluate(() => __goalsSpa.resume()); await ready();
+            await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))); await ready();
             let original;
             for (const provider of ['meta', 'google', 'tiktok', 'snapchat', 'x']) {
                 if (['meta', 'tiktok', 'x'].includes(provider)) await connectAccount(provider, true);
@@ -179,7 +147,7 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
                 if (provider === 'google') {
                     await report.getByText('تعذّر تأكيد نتيجة الطلب.', { exact: false }).waitFor();
                     assert.equal(posts.length, 1); original = posts[0];
-                    await visit(base + '/commercial-history'); await page.locator('[data-commercial-history]').waitFor(); await visit(base); await ready(); await open('google');
+                    await visit('/businesses'); await page.locator('[data-business-list]').waitFor(); await visit(home); await ready(); await open('google');
                     const restored = panel('google').locator('[data-source-report="google"]'); assert.equal(await restored.locator('input[type=date]').first().inputValue(), '2026-09-01');
                     assert.equal(await restored.locator('input[type=date]').first().isDisabled(), true);
                     await restored.locator('button[type=submit]').click();
@@ -198,11 +166,11 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
             const identity = await meta(page);
             const csrf = await context.request.post('http://localhost:8138' + base + '/providers/google/connect', { headers: { Accept: 'application/json', 'X-Builderad-Document': identity.receipt, 'X-CSRF-TOKEN': 'wrong' }, data: { intent: 'invalid' }, maxRedirects: 0 });
             assert.equal(csrf.status(), 419);
-            command('deny-view'); assert.equal((await get(page, base)).status, 403);
+            command('source-deny-owner'); assert.equal((await get(page, home)).status, 403);
             assert.equal((await post(page, `${base}/providers/google/${source}/disconnect`, { command_id: crypto.randomUUID(), expected_version: snapshot.connections[0].access.version })).status, 403);
-            await page.evaluate(() => __goalsSpa.resume()); await page.waitForFunction(() => __goalsSpa.status.value === 'unavailable');
-            assert.equal(await page.locator('[data-sources-workspace]').count(), 0);
-            command('restore-view'); await page.evaluate(() => __goalsSpa.resume()); await ready();
+            await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))); await page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'unavailable');
+            assert.equal(await page.locator('[data-business-public]').count(), 0);
+            command('source-restore-owner');await page.reload();await ready();
             return { statuses: [403, 409, 419, 422], ordinaryPermissionDenialDoesNotAuthenticate: true };
         });
         await check('queued reports execute canonical workers and their real result status returns to the SPA', 'sources', async () => {
@@ -253,7 +221,7 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
                 if (provider === 'google') {
                     await current.locator('[data-source-confirm-disconnect]').click(); await until(() => committed, 'actual disconnect committed before losing its acknowledgement');
                     await current.getByRole('button', { name: 'إعادة إرسال الأمر الأصلي', exact: true }).click({ trial: true });
-                    await visit(base + '/commercial-history'); await page.locator('[data-commercial-history]').waitFor(); await visit(base); await ready(); await open(provider);
+                    await visit('/businesses'); await page.locator('[data-business-list]').waitFor(); await visit(home); await ready(); await open(provider);
                     await page.reload(); await ready(); await open(provider);
                     assert.equal(bodies.length, 1); await panel(provider).getByRole('button', { name: 'إعادة إرسال الأمر الأصلي', exact: true }).click();
                     await panel(provider).locator('[data-source-pending]').waitFor({ state: 'detached' }); assert.deepEqual(bodies[1], bodies[0]);
@@ -271,14 +239,14 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
             command('source-google-offline-missing');
             await open('google');
             await panel('google').locator('[data-source-connect="google"]').click();
-            await page.waitForURL(new RegExp(`/workspaces/${workspace}#google-result=OFFLINE_GRANT_REQUIRED`)); await ready();
+            await page.waitForURL(new RegExp(`/businesses/${workspace}.*#google-result=OFFLINE_GRANT_REQUIRED`)); await ready();
             const recovery = panel('google').locator('[data-source-connect="recover"]'); await recovery.waitFor();
             assert.equal(handoffs.at(-1).prompt, null);
             command('source-google-offline-restore');
             const request = page.waitForResponse(reply => reply.request().method() === 'POST' && new URL(reply.url()).pathname.endsWith('/google/connect'));
             await recovery.click(); const response = await request; assert.equal(response.status(), 200);
             assert.equal(response.request().postDataJSON().recover_offline_grant, true);
-            await page.waitForURL(new RegExp(`/workspaces/${workspace}#google-flow=`)); await ready();
+            await page.waitForURL(new RegExp(`/businesses/${workspace}.*#google-flow=`)); await ready();
             assert.equal(handoffs.at(-1).prompt, 'consent');
             const current = panel('google'); await current.locator('[data-source-hierarchy]').first().waitFor();
             await current.locator('li').filter({ hasText: '9999999999' }).locator('[data-source-hierarchy]').click();
@@ -287,53 +255,53 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
             await current.locator('[data-source-disconnect]').waitFor(); await close();
             return { missingRefreshToken: 'OFFLINE_GRANT_REQUIRED', recoverOfflineGrant: true, normalPrompt: null, recoveryPrompt: 'consent', nativeCallback: true };
         });
-        await check('superseded Source resource is aborted and cannot publish another Workspace', 'sources', async () => {
-            const key = 'late-source-resource'; let once = true;
-            await page.route(`**/workspaces/${other}`, async route => {
+        await check('superseded Source resource is aborted and cannot publish another Business', 'sources', async () => {
+            const key = 'late-source-resource'; let once = true;const otherRead=url=>url.pathname===new URL(otherHome,'http://localhost:8138').pathname;
+            await page.route(otherRead, async route => {
                 if (once && route.request().headers()['x-builderad-witness'] !== '1') { once = false; await route.continue({ headers: { ...route.request().headers(), 'X-Proof-Hold': key } }); }
                 else await route.continue();
             });
-            await page.evaluate(url => { void __goalsSpa.router.push(url); }, `/workspaces/${other}`); await until(() => held.has(key));
-            await visit(base + '/commercial-history'); await page.locator('[data-commercial-history]').waitFor(); await visit(base); await ready(); held.get(key).deliver(); held.delete(key); await page.waitForTimeout(100);
-            assert.equal(await page.locator('[data-sources-workspace]').getAttribute('data-sources-workspace'), workspace);
-            await page.unroute(`**/workspaces/${other}`); return { stalePublication: false, actualLaravelRead: 200 };
+            await page.evaluate(url => { void document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(url); }, otherHome); await until(() => held.has(key));
+            await visit('/businesses'); await page.locator('[data-business-list]').waitFor(); await visit(home); await ready(); held.get(key).deliver(); held.delete(key); await page.waitForTimeout(100);
+            assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'), workspace);
+            await page.unroute(otherRead); return { stalePublication: false, actualLaravelRead: 200 };
         });
         await check('account switch during a real Source request closes the old document and blocks its effects', 'sources', async () => {
-            const key = 'account-switch-source'; let once = true;
+            const key = 'account-switch-source'; let once = true;await open('google');
             await page.route(`**${base}/providers/google`, async route => {
                 if (once) { once = false; await route.continue({ headers: { ...route.request().headers(), 'X-Proof-Hold': key } }); } else await route.continue();
             });
-            await open('google'); await panel('google').getByRole('button', { name: 'تحديث حالة الربط', exact: true }).click({ noWaitAfter: true }); await until(() => held.has(key));
-            const sibling = await context.newPage(); await sibling.goto('http://localhost:8138' + base + '/commercial-history'); await sibling.waitForFunction(() => __goalsSpa.status.value === 'ready');
+            await panel('google').getByRole('button', { name: 'تحديث حالة الربط', exact: true }).click({ noWaitAfter: true }); await until(() => held.has(key));
+            const sibling = await context.newPage(); await sibling.goto('http://localhost:8138'+home); await sibling.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready');
             const switched = await post(sibling, '/identity/switch', { email: 'goals-b@example.test', password: 'DisposableGoalsProof42!' }); assert.equal(switched.status, 200);
-            await sibling.goto(`http://localhost:8138/workspaces/${foreign}/commercial-history`); await sibling.waitForFunction(() => __goalsSpa.status.value === 'ready');
+            await sibling.goto('http://localhost:8138'+foreignHome); await sibling.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready');
             assert.equal((await meta(sibling)).binding.principal, fixture.b.user);
-            await page.evaluate(() => __goalsSpa.resume()); await page.waitForFunction(() => __goalsSpa.status.value === 'closed');
-            held.get(key).deliver(); held.delete(key); assert.equal(await page.locator('[data-sources-workspace]').count(), 0);
+            await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))); await page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'closed');
+            held.get(key).deliver(); held.delete(key); assert.equal(await page.locator('[data-business-public]').count(), 0);
             const denied = await post(page, `${base}/providers/google/select`, { selection: 'old-context' }); assert.ok([401, 409].includes(denied.status));
-            const latest = await get(sibling, `/workspaces/${foreign}/commercial-history`); assert.equal(latest.status, 200);
+            const latest = await get(sibling, foreignHome); assert.equal(latest.status, 200);
             await sibling.close(); return { closed: true, oldEffect: denied.status, stalePublication: false };
         });
         for (const failure of ['expired-session', 'csrf']) await check(`Source ${failure} is a terminal real Laravel failure rather than a provider success`, 'sources', async () => {
             const isolated = await browser.newContext(), current = await isolated.newPage(); current.setDefaultTimeout(15000);
             try {
-                await login(current, 'application'); await current.evaluate(url => __goalsSpa.router.push(url), base);
-                await current.waitForFunction(() => !!document.querySelector('[data-sources-workspace]') && __goalsSpa.status.value === 'ready');
-                if (failure === 'expired-session') { command('expire'); await current.evaluate(() => __goalsSpa.resume()); }
+                await login(current, 'application'); await current.evaluate(url => document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(url), home);
+                await current.waitForFunction(() => !!document.querySelector('[data-business-public]') && document.getElementById('application-spa')?.dataset.state === 'ready');
+                if (failure === 'expired-session') { command('expire'); await current.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))); }
                 else {
                     await current.route(`**${base}/providers/google/connect`, async route => {
                         const headers = Object.fromEntries(Object.entries(await route.request().allHeaders()).filter(([key]) => !['sec-fetch-site', 'x-csrf-token'].includes(key.toLowerCase())));
                         const response = await isolated.request.fetch(route.request().url(), { method: 'POST', headers: { ...headers, 'X-CSRF-TOKEN': 'invalid' }, data: route.request().postData(), maxRedirects: 0 });
                         await route.fulfill({ response });
                     });
-                    await current.locator('[data-provider="google"] .source-action').click();
+                    await current.locator('[data-business-source-inventory] [data-provider="google"] button').click();
                     const response = current.waitForResponse(reply => reply.request().method() === 'POST' && new URL(reply.url()).pathname.endsWith('/google/connect'));
                     await current.locator('dialog[open] [data-source-connect="google"]').click(); assert.equal((await response).status(), 419);
                 }
-                await current.waitForFunction(() => __goalsSpa.status.value === 'closed'); assert.equal(await current.locator('[data-sources-workspace]').count(), 0);
-                const denied = await get(current, base);
+                await current.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'closed'); assert.equal(await current.locator('[data-business-public]').count(), 0);
+                const denied = await get(current,home);
                 if (failure === 'expired-session') assert.ok([401, 409].includes(denied.status));
-                else { assert.equal(denied.status, 200); assert.equal(await current.evaluate(() => __goalsSpa.status.value), 'closed'); }
+                else { assert.equal(denied.status, 200); assert.equal(await current.evaluate(() => document.getElementById('application-spa')?.dataset.state), 'closed'); }
                 return { closed: true, oldResource: denied.status, expectedError: failure === 'csrf' ? 419 : 401, csrfDoesNotRevokeServerSession: failure === 'csrf' };
             } finally { await isolated.close(); }
         });
@@ -341,5 +309,5 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
             assert.deepEqual(handoffs.map(value => value.provider), ['meta', 'google', 'tiktok', 'snapchat', 'x', 'meta', 'tiktok', 'x', 'google', 'google']);
             assert.equal(handoffs.find(value => value.provider === 'google').prompt, null);
         }
-    } finally { command('restore-view'); command('source-snap-restore'); command('source-google-offline-restore'); await context.close(); }
+    } finally { command('source-restore-owner'); command('source-snap-restore'); command('source-google-offline-restore'); await context.close(); }
 }

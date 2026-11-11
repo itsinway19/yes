@@ -339,6 +339,44 @@
     "0001_01_01_000720_business_activity_foundation.php": [
       "migration-sql/0001_01_01_000720_business_activity_foundation/catalog_seal.sql",
       "migration-sql/0001_01_01_000720_business_activity_foundation/definition.sql"
+    ],
+    "0001_01_01_000730_create_registration_email_proofs.php": [
+      "migration-sql/0001_01_01_000730_create_registration_email_proofs/catalog_seal.sql"
+    ],
+    "0001_01_01_000740_install_current_intent_timezone_catalog.php": [
+      "migration-sql/0001_01_01_000740_install_current_intent_timezone_catalog/catalog_seal.sql",
+      "migration-sql/0001_01_01_000740_install_current_intent_timezone_catalog/definition.sql",
+      "migration-sql/0001_01_01_000740_install_current_intent_timezone_catalog/refresh.sql"
+    ],
+    "0001_01_01_000750_business_agency_ownership.php": [
+      "migration-sql/0001_01_01_000750_business_agency_ownership/schema.sql",
+      "migration-sql/0001_01_01_000750_business_agency_ownership/locks.sql",
+      "migration-sql/0001_01_01_000750_business_agency_ownership/agency.sql",
+      "migration-sql/0001_01_01_000750_business_agency_ownership/authority.sql",
+      "migration-sql/0001_01_01_000750_business_agency_ownership/grant_commands.sql",
+      "migration-sql/0001_01_01_000750_business_agency_ownership/surfaces.sql",
+      "migration-sql/0001_01_01_000750_business_agency_ownership/projection.sql",
+      "migration-sql/0001_01_01_000750_business_agency_ownership/catalog_seal.sql"
+    ],
+    "0001_01_01_000760_business_team_management.php": [
+      "migration-sql/0001_01_01_000760_business_team_management/team.sql",
+      "migration-sql/0001_01_01_000760_business_team_management/mandates.sql",
+      "migration-sql/0001_01_01_000760_business_team_management/legacy_links.sql",
+      "migration-sql/0001_01_01_000760_business_team_management/grant_commands.sql",
+      "migration-sql/0001_01_01_000760_business_team_management/business_product.sql",
+      "migration-sql/0001_01_01_000760_business_team_management/catalog_seal.sql"
+    ],
+    "0001_01_01_000770_business_workspace_authority_closure.php": [
+      "migration-sql/0001_01_01_000770_business_workspace_authority_closure/authority.sql",
+      "migration-sql/0001_01_01_000770_business_workspace_authority_closure/business_product.sql",
+      "migration-sql/0001_01_01_000770_business_workspace_authority_closure/catalog_seal.sql",
+      "migration-sql/0001_01_01_000770_business_workspace_authority_closure/custody.sql",
+      "migration-sql/0001_01_01_000770_business_workspace_authority_closure/custody_surface.sql",
+      "migration-sql/0001_01_01_000770_business_workspace_authority_closure/grant_commands.sql",
+      "migration-sql/0001_01_01_000770_business_workspace_authority_closure/journey_projection.sql",
+      "migration-sql/0001_01_01_000770_business_workspace_authority_closure/operating_mandate.sql",
+      "migration-sql/0001_01_01_000770_business_workspace_authority_closure/privacy.sql",
+      "migration-sql/0001_01_01_000770_business_workspace_authority_closure/team_context.sql"
     ]
   },
   "historical": {
@@ -413,7 +451,12 @@
     "0001_01_01_000690_preserve_agency_relationship_incarnation.php": "9fab261341dc3bb0c40b8afcee4ccf07b693d810315665910cf4f7189adac26f",
     "0001_01_01_000700_register_bounded_expenditure_summary.php": "81b13bc5ee095b8cff2e83c12fd8f94d3ad2257344dfc7d974fb377b249691be",
     "0001_01_01_000710_correct_expenditure_preparation_and_selection.php": "8cf103891b9511aa1af4277d6c75c4b4a23d88429416bdcefdba3044d44a4475",
-    "0001_01_01_000720_business_activity_foundation.php": "11b6c67cc1ef955721b83e4df79916f34d981745167f35233b8ad3d46d3bfc89"
+    "0001_01_01_000720_business_activity_foundation.php": "11b6c67cc1ef955721b83e4df79916f34d981745167f35233b8ad3d46d3bfc89",
+    "0001_01_01_000730_create_registration_email_proofs.php": "a58308cf6231ca72279c9b4e4a73fc2d0ff9119498f15a10e9fd10c28137240e",
+    "0001_01_01_000740_install_current_intent_timezone_catalog.php": "ca9d81f631b0f5ddcd3729c105ffb9720fe6e0728cc0d557ea8cc31718cd5af9",
+    "0001_01_01_000750_business_agency_ownership.php": "c0f70644746f4de7120097e368223faf1fb230310063134943c6f3dcb72e0b3b",
+    "0001_01_01_000760_business_team_management.php": "2cc1f2f3cd918b3d0ceae067f7620c40e683580813cfc14e7c8e8522e9074bb2",
+    "0001_01_01_000770_business_workspace_authority_closure.php": "bfe0ad7c50cf9bea3014410f884ebe0dbaca733def3ad1e8bb756e2cb95ef4f3"
   },
   "inputs": {
     "reference/countries/labels.json": "264bcc1dfb5267520bc0a423e556e8ed07f976a66a46104905310b353d20557a",
@@ -541,6 +584,34 @@
     "sql/tiktok_read_attempts.sql": "6f3511cf78c3e7a6acd4f22b82657be0682bf8bc7b844573bd46df993470e7c4",
     "sql/x_read_attempts.sql": "cc560d69e1235405247457a5c12e9c5868eef3601c3eb8733108b9d57c53cf7b",
     "migration-sql/0001_01_01_000720_business_activity_foundation/catalog_seal.sql": "f3df44e6fe8c08404d6262ccedae4fa0d338f7f84aca6e5fcfb4be477389d9df",
-    "migration-sql/0001_01_01_000720_business_activity_foundation/definition.sql": "fe66aa8a8a7ef91c46c618a253bd51710f109afdca8dc49d3c63f06af6667f65"
+    "migration-sql/0001_01_01_000720_business_activity_foundation/definition.sql": "fe66aa8a8a7ef91c46c618a253bd51710f109afdca8dc49d3c63f06af6667f65",
+    "migration-sql/0001_01_01_000730_create_registration_email_proofs/catalog_seal.sql": "f3df44e6fe8c08404d6262ccedae4fa0d338f7f84aca6e5fcfb4be477389d9df",
+    "migration-sql/0001_01_01_000740_install_current_intent_timezone_catalog/catalog_seal.sql": "f3df44e6fe8c08404d6262ccedae4fa0d338f7f84aca6e5fcfb4be477389d9df",
+    "migration-sql/0001_01_01_000740_install_current_intent_timezone_catalog/definition.sql": "15674822808075169a3fafd0a4ececbd7ec23cdf82c9a7379295117e1a3eaa13",
+    "migration-sql/0001_01_01_000740_install_current_intent_timezone_catalog/refresh.sql": "0046a37a195dcf10c0d6d4b5e9c1bccd6c46c4c090b50b216049727a39fd092a",
+    "migration-sql/0001_01_01_000750_business_agency_ownership/schema.sql": "b25d3c795c26ee37c641b7da5917a1576df3d9ad855f33c71ae33e1d306e0027",
+    "migration-sql/0001_01_01_000750_business_agency_ownership/locks.sql": "a2c1059951d59710758958eb700154ab540acb15d843bd5094fd80d588f22266",
+    "migration-sql/0001_01_01_000750_business_agency_ownership/agency.sql": "ca14a4c6c7c7349167c30cedf4b0b89bfecde8e9a14d1bafa581f32d5f614863",
+    "migration-sql/0001_01_01_000750_business_agency_ownership/authority.sql": "c2c18617845a5cfc8b357252257c68c4d7c4d87fe908397adccba35c9598b133",
+    "migration-sql/0001_01_01_000750_business_agency_ownership/grant_commands.sql": "3064728e2cef0a86f7c4479f0419ddf9919c51ba38df0a0e27e02dc65e9056bb",
+    "migration-sql/0001_01_01_000750_business_agency_ownership/surfaces.sql": "4f0819d04e0d09926715a33b9abdc1178e7a5723f10db48fe5f22eef6f06639a",
+    "migration-sql/0001_01_01_000750_business_agency_ownership/catalog_seal.sql": "f3df44e6fe8c08404d6262ccedae4fa0d338f7f84aca6e5fcfb4be477389d9df",
+    "migration-sql/0001_01_01_000750_business_agency_ownership/projection.sql": "872fbf31f3ded7ea8268fb6845a57afd0242474c9cb27e7a5a14de5d0d62e3a5",
+    "migration-sql/0001_01_01_000760_business_team_management/team.sql": "43225ad6d4cd67be7ca409bc8b709db90500e86fd918d2357868181e6b3307cf",
+    "migration-sql/0001_01_01_000760_business_team_management/catalog_seal.sql": "f3df44e6fe8c08404d6262ccedae4fa0d338f7f84aca6e5fcfb4be477389d9df",
+    "migration-sql/0001_01_01_000760_business_team_management/mandates.sql": "20e7d62f4080405613fa94c152bf6a5b4dd56c64361f7c669c9702bb92a026ea",
+    "migration-sql/0001_01_01_000760_business_team_management/legacy_links.sql": "fda4bdf6d97f1dee518e46e16e907a9869b44a0bc7c626cfc4b78ccef83e706c",
+    "migration-sql/0001_01_01_000760_business_team_management/grant_commands.sql": "934e94820b49787bda4617f21566a7afd0f0932e6b0c40fd84e58cefe14f5b8a",
+    "migration-sql/0001_01_01_000760_business_team_management/business_product.sql": "0f3e1652545da3dbe2157ac51c18f5638b3e77f17e8fee128538efbd2ef45849",
+    "migration-sql/0001_01_01_000770_business_workspace_authority_closure/authority.sql": "914eb5f4c179a1958a24d7b7b1e088d4fb2a978f33d6027c73a5be1caad8f48b",
+    "migration-sql/0001_01_01_000770_business_workspace_authority_closure/business_product.sql": "f33501af3fe4bacf5de62376ff126bb559df82ced02da85b9200dc2b7074eb3c",
+    "migration-sql/0001_01_01_000770_business_workspace_authority_closure/catalog_seal.sql": "f3df44e6fe8c08404d6262ccedae4fa0d338f7f84aca6e5fcfb4be477389d9df",
+    "migration-sql/0001_01_01_000770_business_workspace_authority_closure/custody.sql": "b9fea161d0e29539fe54d5c458583b76d8bc6ec6b0011738ee79f40e337bb182",
+    "migration-sql/0001_01_01_000770_business_workspace_authority_closure/custody_surface.sql": "aa130555f36b482c83f770a86c73f0a0b8078b7e7622226c89492de37516dbaa",
+    "migration-sql/0001_01_01_000770_business_workspace_authority_closure/grant_commands.sql": "1f49e115fae9b78e977d29da3a197317e612cac20edc1f4e7056def0640e44cb",
+    "migration-sql/0001_01_01_000770_business_workspace_authority_closure/journey_projection.sql": "2f35dbd45832dfbc6d6528135d313ce8c82b1cf118949ef839a75415202a0708",
+    "migration-sql/0001_01_01_000770_business_workspace_authority_closure/operating_mandate.sql": "14237d54c18b83bbf16e3714a802745499b34cbf60be052370ab66b487425dad",
+    "migration-sql/0001_01_01_000770_business_workspace_authority_closure/privacy.sql": "f178defa3aaac2e357440b53b60d2969ca0439b70f4757e1584e3326230af919",
+    "migration-sql/0001_01_01_000770_business_workspace_authority_closure/team_context.sql": "cd6ac418b02bc0649e0fd38dd27b7921a7f4c9661cfa60bc0765d8b7b12fb8e0"
   }
 }

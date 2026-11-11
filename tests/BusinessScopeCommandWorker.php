@@ -54,6 +54,10 @@ try {
         app(PrincipalContext::class)->activate($user);
         echo 'XID='.DB::scalar('SELECT pg_current_xact_id()::text').PHP_EOL;
         flush();
+        if ($f['operation'] === 'team-change') {
+            return DB::scalar('SELECT builderad_v2_business_team_change(?,?::uuid,?::uuid,?::jsonb,?::uuid,?::jsonb,?::jsonb,?::timestamptz,true)',
+                [$f['session'], $f['business'], $f['command'], json_encode($f['selection']), $f['recipient'], json_encode($f['expected_grants']), json_encode($f['permissions']), $f['expires_at']]);
+        }
         if ($f['operation'] === 'market-processing-complete') {
             if ($f['outcome']['finding'] !== null) {
                 $f['outcome']['finding']['values'] = (object) $f['outcome']['finding']['values'];
@@ -109,6 +113,11 @@ try {
         }
         if ($f['operation'] === 'surface') {
             return DB::scalar('SELECT builderad_v2_business_surface(?,?::uuid,?)', [$f['session'], $f['business'], $f['read_grant']]);
+        }
+        if ($f['operation'] === 'agency-grant') {
+            return DB::scalar('SELECT builderad_v2_business_agency_grant(?,?::uuid,?::uuid,?,?::uuid,?::uuid,?,?,?,?::timestamptz,true,?::jsonb)',
+                [$f['session'], $f['business'], $f['command'], $f['effect'], $f['agency'], $f['recipient'], $f['membership'],
+                    'business.context.read', $f['parent'], $f['release_value'], json_encode($f['selection'], JSON_THROW_ON_ERROR)]);
         }
         if ($f['operation'] === 'internal-team') {
             return DB::scalar('SELECT builderad_v2_internal_team_command(?,?::uuid,?::uuid,?::uuid,?,?::uuid,?,?::jsonb)',

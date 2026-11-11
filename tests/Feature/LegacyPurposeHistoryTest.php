@@ -18,7 +18,7 @@ final class LegacyPurposeHistoryTest extends TestCase
         LegacyCommercialUpgradeFixture::install();
         $actor = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($actor, 1);
-        $this->actingAs($actor)->post('/workspaces', ['name' => 'Original history owner', 'slug' => 'original-history'])->assertRedirect();
+        $this->actingAs($actor)->legacyWorkspace(['name' => 'Original history owner', 'slug' => 'original-history'])->assertRedirect();
         $db = DB::connection('pgsql_migrations');
         $workspace = $db->table('workspaces')->where('slug', 'original-history')->sole();
         $request = Request::create('/organizations');

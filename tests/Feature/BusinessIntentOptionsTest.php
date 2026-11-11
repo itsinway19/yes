@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Business\BusinessContext;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Tests\Support\BusinessIntentOptionsTestCase;
@@ -64,8 +65,7 @@ final class BusinessIntentOptionsTest extends BusinessIntentOptionsTestCase
             }
         };
         $walk($plan[0]['Plan']);
-        $this->assertCount(1, $catalogNodes, json_encode($plan));
-        $this->assertSame(1, $catalogNodes[0]['Actual Loops']);
+        $this->assertCount(0, $catalogNodes, 'Ordinary option reads must reuse the installed native-name reference instead of enumerating timezone files.');
         $this->assertStringNotContainsString('builderad_current_intent_timezone_supported', $query['query']);
         $this->assertLessThan(15000, $plan[0]['Execution Time']);
         $candidates = array_values(array_unique([...\DateTimeZone::listIdentifiers(\DateTimeZone::ALL), 'UTC']));
@@ -97,7 +97,7 @@ final class BusinessIntentOptionsTest extends BusinessIntentOptionsTestCase
         }
         $evidence = ['query' => $query['query'], 'explain' => $plan, 'discoveryMilliseconds' => $elapsed,
             'candidateCount' => count($candidates), 'optionCount' => count($options), 'statementTimeout' => '15s',
-            'setDifferenceBothDirections' => [], 'catalogFunctionNodes' => count($catalogNodes), 'catalogActualLoops' => 1];
+            'setDifferenceBothDirections' => [], 'catalogFunctionNodes' => count($catalogNodes), 'catalogActualLoops' => 0];
         $path = storage_path('framework/testing/current-intent-execution/timezone-set-execution.json');
         File::ensureDirectoryExists(dirname($path));
         file_put_contents($path, json_encode($evidence, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
@@ -140,6 +140,36 @@ final class BusinessIntentOptionsTest extends BusinessIntentOptionsTestCase
             $this->assertSame('Pacific/Auckland', DB::scalar('SHOW TimeZone'));
         });
         $this->assertSame($prior, DB::scalar('SHOW TimeZone'));
+    }
+
+    public function test_missing_or_different_postgresql_reference_requires_explicit_refresh(): void
+    {
+        $owner = DB::connection('pgsql_migrations');
+        $reference = (array) $owner->table('current_intent_timezone_catalog')->sole();
+        try {
+            foreach (['missing', 'different_postgresql'] as $condition) {
+                if ($condition === 'missing') {
+                    $owner->table('current_intent_timezone_catalog')->delete();
+                } else {
+                    $owner->table('current_intent_timezone_catalog')->insert([
+                        ...$reference, 'postgres_version' => (int) $reference['postgres_version'] - 1,
+                    ]);
+                }
+                try {
+                    app(BusinessContext::class)->currentIntentTimezones();
+                    $this->fail('An unavailable environment reference must not become an empty option list.');
+                } catch (QueryException $error) {
+                    $this->assertSame('55000', $error->errorInfo[0]);
+                    $this->assertStringContainsString('CURRENT_INTENT_TIMEZONE_REFERENCE_REFRESH_REQUIRED', $error->getMessage());
+                }
+            }
+        } finally {
+            $owner->table('current_intent_timezone_catalog')->updateOrInsert(['id' => 1], $reference);
+        }
+        $owner->transaction(fn () => $owner->unprepared(file_get_contents(database_path(
+            'migration-sql/0001_01_01_000740_install_current_intent_timezone_catalog/refresh.sql',
+        ))));
+        $this->assertContains('UTC', app(BusinessContext::class)->currentIntentTimezones());
     }
 
     public function test_timezone_optimization_preserves_skipped_civil_date_rejection(): void

@@ -114,54 +114,104 @@
             }
           }
         }
-      }
-    },
-    "/organizations/new": {
-      "get": {
-        "operationId": "readOrganizationCreation",
+      },
+      "post": {
+        "operationId": "rejectRetiredWorkspaceCreation",
         "security": [
           {
             "sessionCookie": [],
             "documentReceipt": []
           }
         ],
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-Builderad-Passive",
-            "schema": {
-              "enum": [
-                "1"
-              ]
+        "deprecated": true,
+        "responses": {
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
             }
           },
-          {
-            "in": "header",
-            "name": "X-Builderad-Witness",
-            "schema": {
-              "enum": [
-                "1"
-              ]
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
             }
-          }
-        ],
-        "responses": {
-          "200": {
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
             "description": "Authorized existing Laravel owner response.",
             "content": {
               "application/json": {
                 "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/OrganizationCreationResource"
-                    },
-                    {
-                      "$ref": "#/components/schemas/GoalsWitness"
-                    }
-                  ]
+                  "$ref": "#/components/schemas/RetiredWorkspaceCreation"
                 }
               }
             }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Public Workspace creation is retired. Existing resource/history authority is preserved; no Business is created implicitly."
+      }
+    },
+    "/organizations/new": {
+      "get": {
+        "operationId": "redirectRetiredOrganizationCreation",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "deprecated": true,
+        "responses": {
+          "302": {
+            "description": "Continue to explicit Business creation at /businesses/new."
           },
           "401": {
             "description": "Original Laravel authorization, CSRF, validation or service failure.",
@@ -228,34 +278,15 @@
     },
     "/organizations": {
       "post": {
-        "operationId": "createOrganization",
+        "operationId": "rejectRetiredOrganizationCreation",
         "security": [
           {
             "sessionCookie": [],
             "documentReceipt": []
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateOrganization"
-              }
-            }
-          }
-        },
+        "deprecated": true,
         "responses": {
-          "200": {
-            "description": "Authorized existing Laravel owner response.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApplicationDestination"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Original Laravel authorization, CSRF, validation or service failure.",
             "content": {
@@ -282,6 +313,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetiredWorkspaceCreation"
                 }
               }
             }
@@ -317,7 +358,7 @@
             }
           }
         },
-        "description": "Register the organization through the atomic WorkspaceAuthority owner/membership/resource boundary, without commercial facts or goals. Exact creation-key retry; no automatic retry."
+        "description": "Separate organization creation is retired. A prior unknown request is not classified as uncommitted; inspect qualified existing resources. This endpoint creates nothing."
       }
     },
     "/api/organizations/{organization}/team": {
@@ -16076,6 +16117,417 @@
             }
           },
           "503": {
+            "description": "A classified password-safety outage rejects registration before account creation. Other service failures remain unclassified.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PasswordBreachUnavailableError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/register/email": {
+      "get": {
+        "operationId": "readRegistrationEmail",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "description": "Guest advertiser document-bound registration proof. This operation does not authenticate a principal.",
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationEmailState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "sendRegistrationCode",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationEmailCommand"
+              }
+            }
+          }
+        },
+        "description": "Guest advertiser document-bound registration proof. This operation does not authenticate a principal.",
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationEmailState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/register/email/verify": {
+      "post": {
+        "operationId": "verifyRegistrationCode",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationCodeCommand"
+              }
+            }
+          }
+        },
+        "description": "Guest advertiser document-bound registration proof. This operation does not authenticate a principal.",
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationEmailState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/register/email/cancel": {
+      "post": {
+        "operationId": "cancelRegistrationEmail",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationAttemptCommand"
+              }
+            }
+          }
+        },
+        "description": "Guest advertiser document-bound registration proof. This operation does not authenticate a principal.",
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationEmailState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
             "description": "Original Laravel authorization, CSRF, validation or service failure.",
             "content": {
               "application/json": {
@@ -25925,6 +26377,13 @@
               "type": "integer",
               "minimum": 0
             }
+          },
+          {
+            "in": "query",
+            "name": "entry",
+            "schema": {
+              "const": "1"
+            }
           }
         ],
         "responses": {
@@ -25980,6 +26439,17 @@
                                         "type": "null"
                                       }
                                     ]
+                                  },
+                                  "agency_business_public_id": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "format": "uuid"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   }
                                 },
                                 "required": [
@@ -26021,6 +26491,17 @@
                                 "authority_fingerprint"
                               ],
                               "additionalProperties": false
+                            },
+                            "registration_attempt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
                             }
                           },
                           "required": [
@@ -26274,10 +26755,22 @@
                                 "goals"
                               ],
                               "additionalProperties": false
+                            },
+                            "registration_attempt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
                             }
                           },
                           "required": [
-                            "catalog"
+                            "catalog",
+                            "registration_attempt"
                           ],
                           "additionalProperties": false
                         },
@@ -26367,6 +26860,218 @@
             }
           }
         }
+      }
+    },
+    "/business-registration/catalog": {
+      "get": {
+        "operationId": "publicBusinessSetupCatalog",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_types": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "minimum": 1
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "name_ar": {
+                                "type": "string"
+                              },
+                              "name_en": {
+                                "type": "string"
+                              },
+                              "active": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "key",
+                              "name_ar",
+                              "name_en",
+                              "active"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "countries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "name_ar": {
+                                "type": "string"
+                              },
+                              "name_en": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "name_ar",
+                              "name_en"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "goals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name_ar": {
+                                "type": "string"
+                              },
+                              "name_en": {
+                                "type": "string"
+                              },
+                              "description_ar": {
+                                "type": "string"
+                              },
+                              "description_en": {
+                                "type": "string"
+                              },
+                              "results": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "name_ar": {
+                                      "type": "string"
+                                    },
+                                    "name_en": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "name_ar",
+                                    "name_en"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name_ar",
+                              "name_en",
+                              "description_ar",
+                              "description_en",
+                              "results"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "business_types",
+                        "countries",
+                        "goals"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Published onboarding choices, also available to an admitted guest document. This response contains no Business, user or source records and does not authorize creation."
       }
     },
     "/businesses/{business}": {
@@ -26873,7 +27578,8 @@
                                 "workspace_more",
                                 "relationship_limit"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": false,
+                              "description": "Optional original-resource contract for isolated headless consumers only; never a public Business workspace surface."
                             },
                             "delegation": {
                               "type": "object",
@@ -26917,6 +27623,17 @@
                                       "chain_depth": {
                                         "type": "integer",
                                         "minimum": 1
+                                      },
+                                      "agency_business_public_id": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "format": "uuid"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
                                       }
                                     },
                                     "required": [
@@ -26983,6 +27700,17 @@
                                         ]
                                       },
                                       "realm_workspace_public_id": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "format": "uuid"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "agency_business_public_id": {
                                         "anyOf": [
                                           {
                                             "type": "string",
@@ -27288,6 +28016,22 @@
                             "data_use": {
                               "type": "object",
                               "properties": {
+                                "binding_options": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "grant_id": {
+                                        "type": "string",
+                                        "pattern": "^[1-9][0-9]{0,18}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "grant_id"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
                                 "bindings": {
                                   "type": "array",
                                   "items": {
@@ -27329,9 +28073,49 @@
                                 }
                               },
                               "required": [
+                                "binding_options",
                                 "bindings",
                                 "bindings_limit",
                                 "bindings_more"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "agency_business_public_id": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "agency_task": {
+                              "type": "object",
+                              "properties": {
+                                "can_mandate": {
+                                  "type": "boolean"
+                                },
+                                "can_assign": {
+                                  "type": "boolean"
+                                },
+                                "agency_business_public_id": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "can_mandate",
+                                "can_assign",
+                                "agency_business_public_id"
                               ],
                               "additionalProperties": false
                             }
@@ -27345,7 +28129,6 @@
                             "direct_team_enrollment_available",
                             "purpose_statement",
                             "fact_write_options",
-                            "collaboration",
                             "delegation",
                             "catalog",
                             "scope",
@@ -28167,7 +28950,8 @@
                             "workspace_more",
                             "relationship_limit"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "description": "Optional original-resource contract for isolated headless consumers only; never a public Business workspace surface."
                         },
                         "delegation": {
                           "type": "object",
@@ -28211,6 +28995,17 @@
                                   "chain_depth": {
                                     "type": "integer",
                                     "minimum": 1
+                                  },
+                                  "agency_business_public_id": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "format": "uuid"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   }
                                 },
                                 "required": [
@@ -28277,6 +29072,17 @@
                                     ]
                                   },
                                   "realm_workspace_public_id": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "format": "uuid"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "agency_business_public_id": {
                                     "anyOf": [
                                       {
                                         "type": "string",
@@ -28582,6 +29388,22 @@
                         "data_use": {
                           "type": "object",
                           "properties": {
+                            "binding_options": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "grant_id": {
+                                    "type": "string",
+                                    "pattern": "^[1-9][0-9]{0,18}$"
+                                  }
+                                },
+                                "required": [
+                                  "grant_id"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
                             "bindings": {
                               "type": "array",
                               "items": {
@@ -28623,9 +29445,49 @@
                             }
                           },
                           "required": [
+                            "binding_options",
                             "bindings",
                             "bindings_limit",
                             "bindings_more"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "agency_business_public_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "agency_task": {
+                          "type": "object",
+                          "properties": {
+                            "can_mandate": {
+                              "type": "boolean"
+                            },
+                            "can_assign": {
+                              "type": "boolean"
+                            },
+                            "agency_business_public_id": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "can_mandate",
+                            "can_assign",
+                            "agency_business_public_id"
                           ],
                           "additionalProperties": false
                         }
@@ -28639,7 +29501,6 @@
                         "direct_team_enrollment_available",
                         "purpose_statement",
                         "fact_write_options",
-                        "collaboration",
                         "delegation",
                         "catalog",
                         "scope",
@@ -31352,6 +32213,17 @@
                                 ]
                               },
                               "realm_workspace_public_id": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "agency_business_public_id": {
                                 "anyOf": [
                                   {
                                     "type": "string",
@@ -35121,6 +35993,1356 @@
         }
       }
     },
+    "/api/businesses/{business}/agency-grants": {
+      "post": {
+        "operationId": "writeBusinessAgencyGrant",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "Explicit finite Business-to-Business declaration mandate or named employee assignment through the existing grant graph. authority_selection must select direct realm, required realm_workspace_public_id JSON null and exactly one Business requirement matching parent_grant_id; PostgreSQL rejects every other selection. Current agency eligibility, exact parent authority and finite expiry are requalified in PostgreSQL. Grants no Source, client-data, private-history or external-execution rights. Exact existing-grant revocation remains at /grants. Uncertain delivery retains the original command without automatic retry.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessAgencyGrantCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "agency_business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "grant_id": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "status": {
+                          "const": "active"
+                        },
+                        "qualification_ref": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "grant": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "grant"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "agency_business_public_id",
+                        "grant_id",
+                        "status",
+                        "qualification_ref",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current scoped authority denied; no authority inferred from Workspace membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed command, shape or semantic validation rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/agency-options": {
+      "get": {
+        "operationId": "readBusinessAgencyOptions",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "access",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "agency",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "recipient",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "agency_business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "effect": {
+                          "enum": [
+                            "mandate",
+                            "assign"
+                          ]
+                        },
+                        "recipient": {
+                          "type": "object",
+                          "properties": {
+                            "public_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "membership_grant_id": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          },
+                          "required": [
+                            "public_id",
+                            "membership_grant_id"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "options": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "enum": [
+                                  "business.context.read",
+                                  "business.context.manage",
+                                  "business.intent.declare",
+                                  "business.markets.declare",
+                                  "business.preferences.manage"
+                                ]
+                              },
+                              "parent_grant_id": {
+                                "type": "integer",
+                                "minimum": 1
+                              },
+                              "authority_selection": {
+                                "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                              },
+                              "max_expires_at": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "action",
+                              "parent_grant_id",
+                              "authority_selection",
+                              "max_expires_at"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 30
+                        },
+                        "scope": {
+                          "const": "current_declaration_agency_only"
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "agency_business_public_id",
+                        "effect",
+                        "recipient",
+                        "options",
+                        "scope"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/team": {
+      "get": {
+        "operationId": "readBusinessTeamMembers",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "access",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "members": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "public_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "email": {
+                                "type": "string",
+                                "format": "email",
+                                "maxLength": 254
+                              },
+                              "grants": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "grant_id": {
+                                      "type": "string",
+                                      "pattern": "^[1-9][0-9]{0,18}$"
+                                    },
+                                    "version": {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    "action": {
+                                      "enum": [
+                                        "business.context.read",
+                                        "business.context.manage",
+                                        "business.intent.declare",
+                                        "business.markets.declare",
+                                        "business.preferences.manage"
+                                      ]
+                                    },
+                                    "expires_at": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "format": "date-time"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "grant_id",
+                                    "version",
+                                    "action",
+                                    "expires_at"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "public_id",
+                              "name",
+                              "email",
+                              "grants"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 64
+                        },
+                        "next_cursor": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "enum": [
+                              "business.context.read",
+                              "business.context.manage",
+                              "business.intent.declare",
+                              "business.markets.declare",
+                              "business.preferences.manage"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "members",
+                        "next_cursor",
+                        "actions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "writeBusinessTeamMembers",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "Original Business creator and current independent team enrollment required. authority_selection is the exact current Business read path; SQL selects and requalifies the five canonical team roots. expected_grants must contain every active recorded direct-team grant of this employee. Nonempty permissions require business.context.read; empty permissions withdraw only this direct team set. A common new expiry is explicit, including replacement of differing historical expiries. No invitation, Workspace, independent authority or Source/data right is created or withdrawn. Unknown delivery retains the original command.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessTeamCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "recipient_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "const": "recorded"
+                        },
+                        "grant_refs": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string",
+                            "pattern": "^[1-9][0-9]{0,18}$"
+                          }
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "authority_epoch": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "authority_epoch"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "recipient_public_id",
+                        "status",
+                        "grant_refs",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current scoped authority denied; no authority inferred from Workspace membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed command, shape or semantic validation rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/team/recipient": {
+      "post": {
+        "operationId": "resolveBusinessTeamRecipient",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "This is the current web ingress; its session/document credentials do not define authentication for other clients. Resource and command/result schemas are independent of Vue. Own principal transaction; explicit selected grant paths requalified in PostgreSQL. Workspace, payer and cached state confer no Business authority. Commands are never automatically retried after an uncertain response.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "access": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 254
+                  }
+                },
+                "required": [
+                  "access",
+                  "email"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "recipient": {
+                          "type": "object",
+                          "properties": {
+                            "public_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string",
+                              "format": "email",
+                              "maxLength": 254
+                            }
+                          },
+                          "required": [
+                            "public_id",
+                            "name",
+                            "email"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "recipient"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current scoped authority denied; no authority inferred from Workspace membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed command, shape or semantic validation rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business}/agency-mandates": {
+      "get": {
+        "operationId": "readBusinessAgencyMandates",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "access",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "agency_business_public_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "grants": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "grant_id": {
+                                      "type": "string",
+                                      "pattern": "^[1-9][0-9]{0,18}$"
+                                    },
+                                    "version": {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    }
+                                  },
+                                  "required": [
+                                    "grant_id",
+                                    "version"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "complete": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "agency_business_public_id",
+                              "grants",
+                              "complete"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "more": {
+                          "type": "boolean"
+                        },
+                        "next_cursor": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "items",
+                        "more",
+                        "next_cursor"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity context conflict; close the document when identityConflict is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "withdrawBusinessAgencyMandates",
+        "security": [
+          {
+            "sessionCookie": [],
+            "documentReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "business",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "Original client creator and current direct team authority required. Withdraw exactly the complete selected Business-to-Business current-declaration mandate group using all returned grant identities/versions. Partial groups cannot authorize bulk withdrawal. Agency expiry or suspension does not confer authority or prevent client-owned withdrawal. Descendant assignments lose their basis; independent grants and Source/data rights remain separate. Uncertain delivery retains the exact original command.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessAgencyMandatesCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized existing Laravel owner response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "agency_business_public_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "const": "withdrawn"
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "authority_epoch": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "authority_epoch"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "business_public_id",
+                        "agency_business_public_id",
+                        "status",
+                        "versions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current scoped authority denied; no authority inferred from Workspace membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "business_relation_revision_rejected is a typed pre-effect relationship revision rejection. Generic business_conflict is not evidence of the original command outcome; retain and reconcile it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed command, shape or semantic validation rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BusinessFoundationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Original Laravel authorization, CSRF, validation or service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/businesses/{business}/internal-team": {
       "get": {
         "operationId": "readInternalClientFileTeam",
@@ -35204,6 +37426,70 @@
                               "workspace_slug",
                               "state",
                               "revision"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "can_appoint": {
+                          "type": "boolean"
+                        },
+                        "versions": {
+                          "type": "object",
+                          "properties": {
+                            "authority_epoch": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "authority_epoch"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "custodians": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "public_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "email": {
+                                "type": "string"
+                              },
+                              "qualification_ref": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "status": {
+                                "const": "recorded"
+                              },
+                              "grant_refs": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                      "type": "string",
+                                      "pattern": "^[1-9][0-9]{0,18}$"
+                                    }
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "public_id",
+                              "name",
+                              "email",
+                              "qualification_ref",
+                              "status",
+                              "grant_refs"
                             ],
                             "additionalProperties": false
                           }
@@ -35323,8 +37609,15 @@
                     "$ref": "#/components/schemas/BusinessAuthoritySelection"
                   },
                   "workspace_public_id": {
-                    "type": "string",
-                    "format": "uuid"
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "effect": {
                     "enum": [
@@ -35379,12 +37672,26 @@
                           "format": "uuid"
                         },
                         "workspace_public_id": {
-                          "type": "string",
-                          "format": "uuid"
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "link_ref": {
-                          "type": "string",
-                          "format": "uuid"
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "state": {
                           "enum": [
@@ -35411,17 +37718,34 @@
                           }
                         },
                         "versions": {
-                          "type": "object",
-                          "properties": {
-                            "link": {
-                              "type": "integer",
-                              "minimum": 0
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "link": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "link"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "authority_epoch": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "authority_epoch"
+                              ],
+                              "additionalProperties": false
                             }
-                          },
-                          "required": [
-                            "link"
-                          ],
-                          "additionalProperties": false
+                          ]
                         }
                       },
                       "required": [
@@ -42469,7 +44793,7 @@
             }
           },
           "canCreateWorkspace": {
-            "type": "boolean"
+            "const": false
           }
         },
         "required": [
@@ -42536,58 +44860,19 @@
         ],
         "additionalProperties": false
       },
-      "OrganizationCreationData": {
+      "RetiredWorkspaceCreation": {
         "type": "object",
         "properties": {
-          "creationKey": {
-            "type": "string",
-            "format": "uuid"
+          "error": {
+            "const": "workspace_creation_retired"
+          },
+          "next": {
+            "const": "/businesses/new"
           }
         },
         "required": [
-          "creationKey"
-        ],
-        "additionalProperties": false
-      },
-      "OrganizationCreationResource": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/OrganizationCreationData"
-          },
-          "locale": {
-            "enum": [
-              "ar",
-              "en"
-            ]
-          },
-          "visibility": {
-            "$ref": "#/components/schemas/Visibility"
-          }
-        },
-        "required": [
-          "data",
-          "locale",
-          "visibility"
-        ],
-        "additionalProperties": false
-      },
-      "CreateOrganization": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 2,
-            "maxLength": 120
-          },
-          "creation_key": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "required": [
-          "name",
-          "creation_key"
+          "error",
+          "next"
         ],
         "additionalProperties": false
       },
@@ -45726,6 +48011,22 @@
         ],
         "additionalProperties": false
       },
+      "PasswordBreachUnavailableError": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "code": {
+            "const": "password_breach_unavailable"
+          }
+        },
+        "required": [
+          "message",
+          "code"
+        ],
+        "additionalProperties": false
+      },
       "InternalAuthTransitionResponse": {
         "type": "object",
         "properties": {
@@ -45893,15 +48194,112 @@
           },
           "password_confirmation": {
             "type": "string"
+          },
+          "attempt_id": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": [
           "name",
           "email",
           "password",
-          "password_confirmation"
+          "password_confirmation",
+          "attempt_id"
         ],
         "additionalProperties": false
+      },
+      "RegistrationEmailCommand": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "additionalProperties": false
+      },
+      "RegistrationCodeCommand": {
+        "type": "object",
+        "properties": {
+          "attempt_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[0-9]{6}$"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "RegistrationAttemptCommand": {
+        "type": "object",
+        "properties": {
+          "attempt_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "attempt_id"
+        ],
+        "additionalProperties": false
+      },
+      "RegistrationEmailState": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "enum": [
+                  "code_required",
+                  "verified"
+                ]
+              },
+              "email": {
+                "type": "string",
+                "format": "email",
+                "maxLength": 255
+              },
+              "attempt_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "resend_after": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "state",
+              "email",
+              "attempt_id",
+              "resend_after"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
       "AuthPasskeyCommand": {
         "type": "object",
@@ -49803,8 +52201,15 @@
             "$ref": "#/components/schemas/BusinessAuthoritySelection"
           },
           "workspace_public_id": {
-            "type": "string",
-            "format": "uuid"
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "effect": {
             "enum": [
@@ -49848,12 +52253,26 @@
             "format": "uuid"
           },
           "workspace_public_id": {
-            "type": "string",
-            "format": "uuid"
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "link_ref": {
-            "type": "string",
-            "format": "uuid"
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "state": {
             "enum": [
@@ -49880,17 +52299,34 @@
             }
           },
           "versions": {
-            "type": "object",
-            "properties": {
-              "link": {
-                "type": "integer",
-                "minimum": 0
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "link": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "link"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "authority_epoch": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "authority_epoch"
+                ],
+                "additionalProperties": false
               }
-            },
-            "required": [
-              "link"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "required": [
@@ -49950,6 +52386,70 @@
                 "workspace_slug",
                 "state",
                 "revision"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "can_appoint": {
+            "type": "boolean"
+          },
+          "versions": {
+            "type": "object",
+            "properties": {
+              "authority_epoch": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "authority_epoch"
+            ],
+            "additionalProperties": false
+          },
+          "custodians": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "public_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "qualification_ref": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "status": {
+                  "const": "recorded"
+                },
+                "grant_refs": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string",
+                        "pattern": "^[1-9][0-9]{0,18}$"
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "public_id",
+                "name",
+                "email",
+                "qualification_ref",
+                "status",
+                "grant_refs"
               ],
               "additionalProperties": false
             }
@@ -53718,6 +56218,17 @@
                       "type": "null"
                     }
                   ]
+                },
+                "agency_business_public_id": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -54234,7 +56745,8 @@
               "workspace_more",
               "relationship_limit"
             ],
-            "additionalProperties": false
+            "additionalProperties": false,
+            "description": "Optional original-resource contract for isolated headless consumers only; never a public Business workspace surface."
           },
           "delegation": {
             "type": "object",
@@ -54278,6 +56790,17 @@
                     "chain_depth": {
                       "type": "integer",
                       "minimum": 1
+                    },
+                    "agency_business_public_id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -54344,6 +56867,17 @@
                       ]
                     },
                     "realm_workspace_public_id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "agency_business_public_id": {
                       "anyOf": [
                         {
                           "type": "string",
@@ -54649,6 +57183,22 @@
           "data_use": {
             "type": "object",
             "properties": {
+              "binding_options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "grant_id": {
+                      "type": "string",
+                      "pattern": "^[1-9][0-9]{0,18}$"
+                    }
+                  },
+                  "required": [
+                    "grant_id"
+                  ],
+                  "additionalProperties": false
+                }
+              },
               "bindings": {
                 "type": "array",
                 "items": {
@@ -54690,9 +57240,49 @@
               }
             },
             "required": [
+              "binding_options",
               "bindings",
               "bindings_limit",
               "bindings_more"
+            ],
+            "additionalProperties": false
+          },
+          "agency_business_public_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "agency_task": {
+            "type": "object",
+            "properties": {
+              "can_mandate": {
+                "type": "boolean"
+              },
+              "can_assign": {
+                "type": "boolean"
+              },
+              "agency_business_public_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "can_mandate",
+              "can_assign",
+              "agency_business_public_id"
             ],
             "additionalProperties": false
           }
@@ -54706,7 +57296,6 @@
           "direct_team_enrollment_available",
           "purpose_statement",
           "fact_write_options",
-          "collaboration",
           "delegation",
           "catalog",
           "scope",
@@ -56000,6 +58589,17 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "agency_business_public_id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -56525,7 +59125,8 @@
                   "workspace_more",
                   "relationship_limit"
                 ],
-                "additionalProperties": false
+                "additionalProperties": false,
+                "description": "Optional original-resource contract for isolated headless consumers only; never a public Business workspace surface."
               },
               "delegation": {
                 "type": "object",
@@ -56569,6 +59170,17 @@
                         "chain_depth": {
                           "type": "integer",
                           "minimum": 1
+                        },
+                        "agency_business_public_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -56635,6 +59247,17 @@
                           ]
                         },
                         "realm_workspace_public_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "agency_business_public_id": {
                           "anyOf": [
                             {
                               "type": "string",
@@ -56940,6 +59563,22 @@
               "data_use": {
                 "type": "object",
                 "properties": {
+                  "binding_options": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "grant_id": {
+                          "type": "string",
+                          "pattern": "^[1-9][0-9]{0,18}$"
+                        }
+                      },
+                      "required": [
+                        "grant_id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
                   "bindings": {
                     "type": "array",
                     "items": {
@@ -56981,9 +59620,49 @@
                   }
                 },
                 "required": [
+                  "binding_options",
                   "bindings",
                   "bindings_limit",
                   "bindings_more"
+                ],
+                "additionalProperties": false
+              },
+              "agency_business_public_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "agency_task": {
+                "type": "object",
+                "properties": {
+                  "can_mandate": {
+                    "type": "boolean"
+                  },
+                  "can_assign": {
+                    "type": "boolean"
+                  },
+                  "agency_business_public_id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "can_mandate",
+                  "can_assign",
+                  "agency_business_public_id"
                 ],
                 "additionalProperties": false
               }
@@ -56997,7 +59676,6 @@
               "direct_team_enrollment_available",
               "purpose_statement",
               "fact_write_options",
-              "collaboration",
               "delegation",
               "catalog",
               "scope",
@@ -60480,6 +63158,621 @@
             "required": [
               "business_public_id",
               "grant_id",
+              "status",
+              "versions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessAgencyGrantCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "authority_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          },
+          "effect": {
+            "enum": [
+              "mandate",
+              "assign"
+            ]
+          },
+          "agency_business_public_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recipient_public_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "membership_grant_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "action": {
+            "enum": [
+              "business.context.read",
+              "business.context.manage",
+              "business.intent.declare",
+              "business.markets.declare",
+              "business.preferences.manage"
+            ]
+          },
+          "parent_grant_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmed": {
+            "const": true
+          }
+        },
+        "required": [
+          "command_id",
+          "authority_selection",
+          "effect",
+          "agency_business_public_id",
+          "recipient_public_id",
+          "membership_grant_id",
+          "action",
+          "parent_grant_id",
+          "expires_at",
+          "confirmed"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessAgencyGrantResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "business_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "agency_business_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "grant_id": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "status": {
+                "const": "active"
+              },
+              "qualification_ref": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "versions": {
+                "type": "object",
+                "properties": {
+                  "grant": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "grant"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "business_public_id",
+              "agency_business_public_id",
+              "grant_id",
+              "status",
+              "qualification_ref",
+              "versions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessAgencyOptions": {
+        "type": "object",
+        "properties": {
+          "business_public_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "agency_business_public_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "effect": {
+            "enum": [
+              "mandate",
+              "assign"
+            ]
+          },
+          "recipient": {
+            "type": "object",
+            "properties": {
+              "public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "membership_grant_id": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "public_id",
+              "membership_grant_id"
+            ],
+            "additionalProperties": false
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "enum": [
+                    "business.context.read",
+                    "business.context.manage",
+                    "business.intent.declare",
+                    "business.markets.declare",
+                    "business.preferences.manage"
+                  ]
+                },
+                "parent_grant_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "authority_selection": {
+                  "$ref": "#/components/schemas/BusinessAuthoritySelection"
+                },
+                "max_expires_at": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "action",
+                "parent_grant_id",
+                "authority_selection",
+                "max_expires_at"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 30
+          },
+          "scope": {
+            "const": "current_declaration_agency_only"
+          }
+        },
+        "required": [
+          "business_public_id",
+          "agency_business_public_id",
+          "effect",
+          "recipient",
+          "options",
+          "scope"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessTeamMembers": {
+        "type": "object",
+        "properties": {
+          "business_public_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "public_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string",
+                  "format": "email",
+                  "maxLength": 254
+                },
+                "grants": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "grant_id": {
+                        "type": "string",
+                        "pattern": "^[1-9][0-9]{0,18}$"
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "action": {
+                        "enum": [
+                          "business.context.read",
+                          "business.context.manage",
+                          "business.intent.declare",
+                          "business.markets.declare",
+                          "business.preferences.manage"
+                        ]
+                      },
+                      "expires_at": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "grant_id",
+                      "version",
+                      "action",
+                      "expires_at"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "public_id",
+                "name",
+                "email",
+                "grants"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 64
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "business.context.read",
+                "business.context.manage",
+                "business.intent.declare",
+                "business.markets.declare",
+                "business.preferences.manage"
+              ]
+            }
+          }
+        },
+        "required": [
+          "business_public_id",
+          "members",
+          "next_cursor",
+          "actions"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessTeamCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "authority_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          },
+          "recipient_public_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_grants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "grant_id": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,17}$"
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "grant_id",
+                "version"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 256
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "business.context.read",
+                "business.context.manage",
+                "business.intent.declare",
+                "business.markets.declare",
+                "business.preferences.manage"
+              ]
+            },
+            "uniqueItems": true,
+            "maxItems": 5
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confirmed": {
+            "const": true
+          }
+        },
+        "required": [
+          "command_id",
+          "authority_selection",
+          "recipient_public_id",
+          "expected_grants",
+          "permissions",
+          "expires_at",
+          "confirmed"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessTeamResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "business_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "recipient_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "status": {
+                "const": "recorded"
+              },
+              "grant_refs": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                }
+              },
+              "versions": {
+                "type": "object",
+                "properties": {
+                  "authority_epoch": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "authority_epoch"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "business_public_id",
+              "recipient_public_id",
+              "status",
+              "grant_refs",
+              "versions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessAgencyMandates": {
+        "type": "object",
+        "properties": {
+          "business_public_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "agency_business_public_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "grants": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "grant_id": {
+                        "type": "string",
+                        "pattern": "^[1-9][0-9]{0,18}$"
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    },
+                    "required": [
+                      "grant_id",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "complete": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "agency_business_public_id",
+                "grants",
+                "complete"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "more": {
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "business_public_id",
+          "items",
+          "more",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessAgencyMandatesCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "authority_selection": {
+            "$ref": "#/components/schemas/BusinessAuthoritySelection"
+          },
+          "agency_business_public_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_grants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "grant_id": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,17}$"
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "grant_id",
+                "version"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 256
+          },
+          "confirmed": {
+            "const": true
+          }
+        },
+        "required": [
+          "command_id",
+          "authority_selection",
+          "agency_business_public_id",
+          "expected_grants",
+          "confirmed"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessAgencyMandatesResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "business_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "agency_business_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "status": {
+                "const": "withdrawn"
+              },
+              "versions": {
+                "type": "object",
+                "properties": {
+                  "authority_epoch": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "authority_epoch"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "business_public_id",
+              "agency_business_public_id",
               "status",
               "versions"
             ],

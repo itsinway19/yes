@@ -6,10 +6,13 @@ use App\Security\BreachPasswordVerifier;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
+use Tests\Support\RegistrationEmailProofFixture;
 use Tests\TestCase;
 
 class PasswordPolicyTest extends TestCase
 {
+    use RegistrationEmailProofFixture;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -43,8 +46,9 @@ class PasswordPolicyTest extends TestCase
             'name' => 'Advertiser', 'email' => 'offline-json@example.com',
             'password' => 'a unique long passphrase 2026',
             'password_confirmation' => 'a unique long passphrase 2026',
-        ])->assertStatus(503)->assertJsonPath('message',
-            'تعذّر التحقق من أمان كلمة المرور مؤقتًا. احتفظ بكلمة المرور وحاول مجددًا بعد قليل.');
+        ])->assertStatus(503)->assertJsonPath('code', 'password_breach_unavailable')
+            ->assertJsonMissingPath('transition')->assertJsonMissingPath('identity')->assertJsonPath('message',
+                'تعذّر التحقق من أمان كلمة المرور مؤقتًا. احتفظ بكلمة المرور وحاول مجددًا بعد قليل.');
         $this->assertDatabaseMissing('users', ['email' => 'offline-json@example.com']);
 
         Http::swap(new Factory);
@@ -69,10 +73,12 @@ class PasswordPolicyTest extends TestCase
     public function test_password_of_more_than_64_characters_is_accepted_without_composition(): void
     {
         $password = str_repeat('open field phrase ', 5);
+        $attempt = $this->verifyRegistrationEmail('long@example.com');
         $this->post('/register', [
             'name' => 'Advertiser', 'email' => 'long@example.com',
             'password' => $password, 'password_confirmation' => $password,
-        ])->assertOk()->assertJsonPath('redirect', route('verification.notice', absolute: false))
+            'attempt_id' => $attempt,
+        ])->assertOk()->assertJsonPath('redirect', '/businesses/new')
             ->assertJsonPath('transition.epoch', 1);
     }
 

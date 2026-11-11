@@ -2,6 +2,8 @@
 
 namespace Tests;
 
+use App\Http\Controllers\WorkspaceController;
+use App\Http\Middleware\EnsureCurrentPrincipal;
 use App\Security\DisposableTestDatabaseGuard;
 use App\Security\IdentityReceipt;
 use App\Security\IdentityTransition;
@@ -12,10 +14,28 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Testing\TestResponse;
 use Tests\Support\DisposableDatabaseReset;
 
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * Explicit legacy-resource setup. This route exists only inside a marked
+     * disposable test application and calls the original protected provisioner
+     * with the normal web/auth/document middleware. Public creation is tested
+     * separately as retired; no intercepted request or fabricated response.
+     */
+    protected function legacyWorkspace(array $data): TestResponse
+    {
+        app(DisposableTestDatabaseGuard::class)->assertSafe();
+        Route::post('/__fixture/legacy-workspaces', [WorkspaceController::class, 'store'])
+            ->middleware(['web', 'auth', EnsureCurrentPrincipal::class])
+            ->name('test.legacy-workspace.provision');
+
+        return $this->post('/__fixture/legacy-workspaces', $data);
+    }
+
     private static bool $databasePrepared = false;
 
     private bool $ownedIdentityFixture = false;

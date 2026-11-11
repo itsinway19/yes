@@ -35,8 +35,7 @@ final class WorkspaceController extends Controller
         return new SpaPage([
             'workspaces' => $workspaces,
             'reassessableWorkspaces' => $grants->reassessableOwnerWorkspaces($request),
-            'canCreateWorkspace' => $grants->has($request->user(),
-                (int) $request->session()->get('a001_generation', 0), 'workspace.create'),
+            'canCreateWorkspace' => false,
         ]);
     }
 
@@ -96,6 +95,7 @@ final class WorkspaceController extends Controller
         );
     }
 
+    /** Historical provisioner retained for guarded compatibility fixtures; no public route. */
     public function store(Request $request, WorkspaceAuthority $authority): RedirectResponse
     {
         $input = $request->validate([

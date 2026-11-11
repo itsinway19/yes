@@ -49,9 +49,9 @@ class ArchitectureSourceOptionalityTest extends TestCase
         $this->postJson($base.'/purposes', $body)->assertUnprocessable();
         $this->assertSame(1, $db->table('object_purpose_revisions')->count());
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($actor, 1);
-        $key = $this->getJson('/organizations/new')->assertOk()->json('data.creationKey');
-        $organization = $this->postJson('/organizations', ['name' => 'Source-optional organization', 'creation_key' => $key])->assertOk()->json('redirect');
-        $this->getJson($organization)->assertOk()->assertJsonMissingPath('data.business')->assertJsonMissingPath('data.guidance');
+        $this->get('/organizations/new')->assertRedirect('/businesses/new');
+        $this->postJson('/organizations', ['name' => 'Retired parallel organization'])->assertStatus(410);
+        $this->assertSame(0, $db->table('workspaces')->count());
         foreach (['business_context_events', 'business_current_intent_events', 'business_target_markets', 'advertiser_goal_preferences', 'source_registry', 'provider_access'] as $table) {
             $this->assertSame(0, $db->table($table)->count(), $table);
         }

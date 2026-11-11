@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Security\GrantAuthority;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\ApplicationContractAssertions;
@@ -54,11 +53,12 @@ final class BusinessFoundationContractTest extends TestCase
         $this->assertApplicationContract('BusinessPreferenceWriteResult', $preferences->json());
         $intent = $this->putJson($base.'/intent', $body('business.intent.declare') + ['value' => null, 'confirmations' => ['declaration' => true], 'expected_context' => 2, 'expected_intent' => 0])->assertOk();
         $this->assertApplicationContract('BusinessIntentWriteResult', $intent->json());
-        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($u, 1);
-        $this->post('/workspaces', ['name' => 'Collaboration contract', 'slug' => 'collaboration-contract'])->assertRedirect();
-        $w = DB::connection('pgsql_migrations')->table('workspaces')->where('slug', 'collaboration-contract')->value('public_id');
-        $linked = $this->postJson($base.'/workspace-links', $body('business.link.manage') + ['workspace_public_id' => $w, 'kind' => 'collaboration', 'effect' => 'add', 'expected_revision' => 0])->assertOk();
-        $this->assertApplicationContract('BusinessLinkWriteResult', $linked->json());
+        $this->assertCount(7, $a['grant_refs']);
+        $this->assertArrayHasKey('business.link.manage', $a['grant_refs']);
+        $team = $this->postJson($base.'/direct-team', $body('business.context.read'))->assertOk()->json('data');
+        $this->assertCount(5, $team['grant_refs']);
+        $this->assertApplicationContract('BusinessSurface', $this->getJson($base.'/surface?access='.$a['grant_refs']['business.context.read'])->assertOk()->json('data'));
+        $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
         $this->assertApplicationContract('BusinessFoundationProjection', $this->postJson($base.'/read', ['authority_selection' => $selection('business.context.read')])->assertOk()->json());
         $this->assertSame('no-store, private', $context->headers->get('Cache-Control'));
         $denied = $this->actingAs(User::factory()->create())->postJson($base.'/read', ['authority_selection' => $selection('business.context.read')])->assertForbidden();
@@ -67,7 +67,7 @@ final class BusinessFoundationContractTest extends TestCase
         $archive = $this->postJson($base.'/lifecycle', $body('business.draft.archive') + ['effect' => 'archive', 'target_ref' => null, 'payload' => (object) [], 'expected_revision' => 0])->assertOk();
         $this->assertApplicationContract('BusinessLifecycleWriteResult', $archive->json());
         $this->assertSame(1, DB::connection('pgsql_migrations')->table('businesses')->count());
-        $this->assertSame(1, DB::connection('pgsql_migrations')->table('workspaces')->count());
+        $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
     }
 
     public function test_business_entry_rejects_uncontracted_workspace_and_authority_claims_instead_of_discarding_them(): void

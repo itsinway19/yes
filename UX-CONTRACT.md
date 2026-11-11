@@ -1,5 +1,25 @@
 # BuilderAd affected-surface interaction contract
 
+## Governing clean-product clarification — 2026-11-10
+
+The single Business experience replaces all public Workspace and previous-record navigation. HTML `/workspaces/**` redirects to `/businesses`; no archive notice, separate organizational team or shared Workspace source inventory appears in normal Business screens. «الفريق والصلاحيات» owns named employee add/edit/remove and assignment to explicitly delegated clients. Source management and independent data-use remain separate tasks under the selected Business. Retained headless historical contracts are not advertiser destinations. Older transition descriptions below do not override this rule. Comprehensive Foundation is deferred by the Owner for a review session.
+
+## Business agency declaration workflow — 2026-11-10
+
+Business → Team and collaboration → Work with an agency is the primary finite Business-to-Business declaration task. The client chooses the agency Business identifier, a server-qualified permission and a finite expiry, then explicitly confirms. The agency manager chooses the named employee for that client through the same task. The UI never asks for grant or membership-grant identifiers. The qualified options endpoint provides those exact machine references; command delivery freezes them without replacing a lost-acknowledgement request.
+
+This flow covers current Business details, markets, goals and preferences only. It grants no Source, client-data, private-history or external-execution authority. Optional agency-Business display metadata labels an admitted path without changing the existing evaluator selection. Legacy installed responses may omit that metadata. Existing organizational resources and their independently authorized advanced controls remain available during the bounded transition; this stage does not retire public Workspace creation.
+
+Agency drafts remain in the existing document/Business/read-selection store and participate in pending-operation and archive guards. Inactive panels and changed identity, Business or read basis conceal qualified options; late replies cannot populate another context. Unknown writes retain the exact original command through remount, denial and explicit reconciliation. A recorded receipt does not imply ongoing usability after withdrawal, membership change or expiry. Existing native controls, locale, appearance and focus-return owners remain canonical.
+
+## Advertiser internal tasks — Owner direction 2026-11-09
+
+Overview shows the qualified business name, sector, practice/channel declarations, target markets and current goal, with one available next task and useful shortcuts. Markets and goals opens on saved summaries. Explicit review/edit actions enter the existing editors, retaining all draft baselines, independent write selections and exact pending command identities. Returning to the summary preserves unsaved work. Current-intent editing uses short outcome, optional precision and confirmation stages without changing the command payload or mandatory acknowledgments.
+
+The Sources screen keeps the existing qualified platform snapshots and dialogs. Data-use controls and shared-source administration open as intentional tasks. Inactive protected readers retain their existing concealment rules. The existing BusinessDataUse owner remains mounted after the first Sources visit so an unresolved command can be reopened. Daily business profile and active practices lead Management. Historical and previous-Workspace readers are reached through the separate Records and history destination and retain their current authority.
+
+Local tasks never save automatically, assign access or convert declarations into verified results. All supported read-only, denied, unavailable, conflict, unknown-command, acknowledged and empty states remain with the original owners. The new presentation does not establish a subscription, account connection, data-use licence or measured business result.
+
 ## Accepted Vue integration — 2026-11-05
 
 The sidebar/mobile drawer uses exact server-qualified Business/read-path/realm choices. It must not merge distinct paths or display ambiguous duplicate choices; no creation eligibility or source authority is inferred from the picker. Same-document Router navigation retains existing operation owners and drafts, while a changed Business, principal or read qualification re-admits protected content. Local section/settings navigation is presentation, not a new authority source.
@@ -16,13 +36,15 @@ The Business owns the user's visible work context. Advertising platforms remain 
 
 Definitive initial422 releases the rejected command for reviewed confirmation;409 refreshes authoritative state before any newly confirmed command;403 denies until eligibility review. A rejection while reconciling an earlier unknown request does not prove that request never committed: preserve the original. No automatic replacement/replay on navigation. Operational source pending commands and unsent data remain with their existing identity-scoped owners.
 
-| Capability | Canonical owner | Source of truth | Allowed variant | Verification |
+| Capability | Canonical owner | Source of truth | Allowed variants | Verification |
 |---|---|---|---|---|
 | Select/Listbox | native select and existing bounded country checkbox list | server catalog and qualified choices | organization selection/type/target markets | popup, keyboard and real browser |
 | Form | BusinessCreate/BusinessFacts and existing API adapters | explicit commands, versions and receipts | setup versus existing fact edit | component and HTTP/browser |
 | Dialog | shared AdvertisingAccounts native dialog | actual provider panel/snapshot | platform account review | focus, Escape, backdrop, restoration |
 | CRUD | BusinessSurface/BusinessWorkspace and existing router | admitted resource/witness and exact command result | first entry/normal chooser/local task | end-to-end source and Business isolation |
 | Status | localized inline role=status/alert | current read or receipt, never inference | success/rejected/conflict/unknown | component and browser failures |
+| Date | native date input in BusinessFacts | canonical deadline date and selected timezone | optional Current Intent horizon; preserve exact date and end-of-day semantics | existing intent validation and browser |
+| Scrollbar | public/brand/theme.css and resources/css/app.css | shared visible scrollbar tokens and native scroll behavior | natural page scroll, bounded sidebar and country lists | rendered overflow and keyboard checks |
 
 Existing locale, display preference, scrollbar, identity and authority owners below remain canonical. No table-selection or date semantic change is introduced; native platform popup ownership remains deliberate. No standalone toast/permission store or new frontend framework is introduced.
 
@@ -69,6 +91,12 @@ Existing BusinessSurface admission owns the route; BusinessWorkspace owns local 
 
 Inquiry collection/detail/create/correction use existing typed API/SQL authority. Explicit current record selection, back/focus, append-only history, separate read permission, no hidden closed form payload, no automatic replay or replacement of an uncertain command. Definitive initial validation rejection preserves editable input; generic conflict/transport loss remains uncertain. Locale changes translate retained critical status without clearing it. Source assertions never become verified leads/sales/profit through presentation. Exact user-job/browser evidence and limits: docs/execution/structural-foundation/BUSINESS_WORKSPACE_UX.md. Existing brand theme controls and native semantic field/select/date ownership remain in use; no new date parser or pagination meaning.
 
+
+## Business-first unified access and commercial packaging
+
+Every Business uses the same advertiser navigation and management surface. A shop, individual-owned Business and agency may receive explicit Business-to-Business mandates without selecting another account or dashboard type. Display qualified delegation in the Business switcher; never infer ownership from direct access or infer execution/data rights from a mandate. The shared team surface remains “الفريق والصلاحيات”. Employee job titles describe work; only implemented, currently qualified actions enable controls.
+
+Future plans may limit Business creation counts or external-management availability. Commercial entitlement and current action/resource authority remain independent requirements. No unspecified plan limits, unlimited offering or subscription-generated access are implied by this UI. Internal `agency_*` command references retain their exact pending identity during reconciliation and do not denote an account type.
 
 ## BF03 bounded correction — retained display and criterion snapshots
 

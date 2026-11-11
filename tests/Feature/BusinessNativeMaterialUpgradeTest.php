@@ -57,8 +57,11 @@ final class BusinessNativeMaterialUpgradeTest extends TestCase
             }
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
             foreach ($before as $table => $rows) {
-                $this->assertSame($rows, $owner->scalar("SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]')::text FROM {$table} r"), $table.' is not rewritten by660');
+                $image = $table === 'authority_qualification_receipts'
+                    ? "to_jsonb(r)-ARRAY['agency_business_id','agency_membership_grant_id']" : 'to_jsonb(r)';
+                $this->assertSame($rows, $owner->scalar("SELECT coalesce(jsonb_agg({$image} ORDER BY ({$image})::text),'[]')::text FROM {$table} r"), $table.' is not rewritten by660 or later upgrades');
             }
+            $this->assertSame(0, $owner->table('authority_qualification_receipts')->whereNotNull('agency_business_id')->orWhereNotNull('agency_membership_grant_id')->count(), 'Upgrade adds nullable agency references without qualifying historical rights.');
             $this->assertSame($closure, $this->legacyClosure($legacy['body']['material_refs']));
             $this->assertSame($legacyResult, $this->postJson($legacyUrl, $legacy['body'])->assertOk()->json());
             $this->actingAs($native['user']);

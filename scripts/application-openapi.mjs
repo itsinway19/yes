@@ -59,16 +59,16 @@ export const spec = {
         ...goals.paths,
         '/workspaces': {
             get: { operationId: 'listWorkspaces', security, parameters: headers, responses: { 200: response(resource('WorkspaceIndexResource')), ...errors } },
+            post: { operationId: 'rejectRetiredWorkspaceCreation', security, deprecated: true, responses: { 410: response(ref('RetiredWorkspaceCreation')), ...errors }, description: 'Public Workspace creation is retired. Existing resource/history authority is preserved; no Business is created implicitly.' },
         },
         '/organizations/new': {
-            get: { operationId: 'readOrganizationCreation', security, parameters: headers,
-                responses: { 200: response(resource('OrganizationCreationResource')), ...errors } },
+            get: { operationId: 'redirectRetiredOrganizationCreation', security, deprecated: true,
+                responses: { 302: { description: 'Continue to explicit Business creation at /businesses/new.' }, ...errors } },
         },
         '/organizations': {
-            post: { operationId: 'createOrganization', security,
-                requestBody: { required: true, ...json(ref('CreateOrganization')) },
-                responses: { 200: response(ref('ApplicationDestination')), ...errors },
-                description: 'Register the organization through the atomic WorkspaceAuthority owner/membership/resource boundary, without commercial facts or goals. Exact creation-key retry; no automatic retry.',
+            post: { operationId: 'rejectRetiredOrganizationCreation', security, deprecated: true,
+                responses: { 410: response(ref('RetiredWorkspaceCreation')), ...errors },
+                description: 'Separate organization creation is retired. A prior unknown request is not classified as uncommitted; inspect qualified existing resources. This endpoint creates nothing.',
             },
         },
         '/api/organizations/{organization}/team': {
@@ -112,12 +112,10 @@ export const spec = {
         schemas: {
             ...goals.components.schemas,
             WorkspaceReference: object({ public_id: uuid, name: text, slug: text }),
-            WorkspaceIndexData: object({ workspaces: list(ref('WorkspaceReference')), reassessableWorkspaces: list(ref('WorkspaceReference')), canCreateWorkspace: { type: 'boolean' } }),
+            WorkspaceIndexData: object({ workspaces: list(ref('WorkspaceReference')), reassessableWorkspaces: list(ref('WorkspaceReference')), canCreateWorkspace: { const: false } }),
             WorkspaceIndexResource: envelope('WorkspaceIndexData'),
             BusinessType: object({ id: { type: 'integer', minimum: 1 }, key: text, name_ar: text, name_en: text, active: { type: 'boolean' }, version: { type: 'integer', minimum: 0 } }),
-            OrganizationCreationData: object({ creationKey: uuid }),
-            OrganizationCreationResource: envelope('OrganizationCreationData'),
-            CreateOrganization: object({ name: { type: 'string', minLength: 2, maxLength: 120 }, creation_key: uuid }),
+            RetiredWorkspaceCreation: object({ error: { const: 'workspace_creation_retired' }, next: { const: '/businesses/new' } }),
             OrganizationTeam: object({ workspace_public_id: uuid, actor_public_id: uuid, revision: version, can_manage: { type: 'boolean' }, can_leave: { type: 'boolean' }, members: list(object({ public_id: uuid, role: { enum: ['owner', 'admin', 'member'] }, state: { enum: ['active', 'revoked'] } })) }),
             OrganizationTeamCommand: object({ command_id: uuid, effect: { enum: ['add', 'remove', 'leave'] }, recipient_public_id: uuid, expected_revision: version }),
             OrganizationTeamError: object({ error: { const: 'organization_team_request_rejected' } }),

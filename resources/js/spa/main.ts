@@ -24,7 +24,9 @@ import { isAdvertiserWorkspacePath } from '../business-foundation/advertiserNavi
 import '../business-foundation/advertiser.css';
 const root = document.getElementById('application-spa')!;
 watch(status, value => { root.dataset.state = value; }, { immediate: true, flush: 'sync' });
-const style=document.createElement('style');style.textContent='[data-application-spa]:not([data-state="ready"]) [data-spa-private]{display:none!important} .business-main{max-width:1040px;margin:auto;padding:32px}';document.head.append(style);
+const concealment = document.createElement('style');
+concealment.textContent = '[data-application-spa]:not([data-state="ready"]) :is([data-spa-view], [data-spa-private]){display:none!important}';
+document.head.append(concealment);
 const router = createApplicationRouter([...independentBusinessRoutes, ...workspaceRoutes, ...objectPurposeRoutes, ...sourceRoutes, ...accountRoutes, ...authEntryRoutes, ...staffEnrollmentRoutes, ...internalOperationsRoutes, ...commercialRoutes], {
     pending: (active, passive) => { if (active && passive) conceal(); navigating.value = active; if (active) navigationError.value = false; },
     prepare, commit: commitRoute, failed,
@@ -33,12 +35,21 @@ onClose(() => router.cancelCandidate());
 startLease();
 const renderFailure = ref(false);
 const localeError = ref(false);
+const progressVisible = ref(false);
+watch(() => documentStatus.value === 'active' && !renderFailure.value
+    && (status.value === 'checking' || (status.value === 'ready' && navigating.value)), (pending, _previous, onCleanup) => {
+    progressVisible.value = false;
+    if (!pending) return;
+    const timer = setTimeout(() => { progressVisible.value = true; }, 700);
+    onCleanup(() => clearTimeout(timer));
+}, { immediate: true });
 const copy = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const i18n = createI18n({ legacy: false, locale: locale.value, fallbackLocale: 'en', messages });
 watch(locale, value => { i18n.global.locale.value = value; });
 const app = createApp(defineComponent({ setup: () => () => {
     const administrationLayout = internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0;
     const advertiserHeader = !internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 && isAdvertiserWorkspacePath(router.currentRoute.value.path);
+    const registrationHeader = !internalBoundary && bootstrap.identity.binding.principal === 0 && router.currentRoute.value.path === '/register';
     const administrativePaths = administrationLayout ? bootstrap.navigation ?? [] : [];
     const administrationHome = administrativePaths.includes('/internal/administration') ? '/internal/administration' : administrativePaths[0];
     const headerItems = [h(BrandLogo, { to: administrationHome }), h(ThemeToggle),
@@ -52,26 +63,35 @@ const app = createApp(defineComponent({ setup: () => () => {
         !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: internalBoundary ? '/internal/security/devices' : '/security/devices' }, () => copy('الأمان', 'Security')) : null,
         internalBoundary && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: '/internal/identity/switch', ...(administrationLayout ? { class: 'ba-admin-identity-switch', 'aria-label': copy('تبديل الهوية الداخلية', 'Switch internal identity') } : {}) }, () => administrationLayout ? copy('تبديل الهوية', 'Switch identity') : copy('تبديل الهوية الداخلية', 'Switch internal identity')) : null,
         h('button', { disabled: localeBusy.value || status.value !== 'ready', 'data-application': 'locale', onClick: async () => { localeError.value = false; try { await switchLocale(); } catch { localeError.value = true; } } }, locale.value === 'ar' ? 'English' : 'العربية'),
+        registrationHeader ? h(RouterLink, { to: '/login', class: 'application-registration-signin' }, () => copy('لدي حساب', 'Sign in')) : null,
         bootstrap.identity.binding.principal > 0 ? h('button', { onClick: () => { if(confirmDeparture.value())void logout(); }, disabled: status.value !== 'ready', 'data-spa': 'logout' }, copy('تسجيل الخروج', 'Sign out')) : null];
-    const header = h(administrationLayout ? 'div' : 'header', administrationLayout ? { class: 'ba-admin-header-controls' } : advertiserHeader ? { class: 'advertiser-appbar' } : { style: 'display:flex;gap:20px;padding:18px;flex-wrap:wrap;align-items:center' }, advertiserHeader
+    const header = h(administrationLayout ? 'div' : 'header', administrationLayout ? { class: 'ba-admin-header-controls' } : advertiserHeader ? { class: 'advertiser-appbar' } : { class: ['application-appbar', { 'application-appbar--registration': registrationHeader }] }, advertiserHeader
         ? [h('div', { id: 'advertiser-header-context', class: 'advertiser-header-context' }), headerItems[1], h('details', { class: 'advertiser-account-menu' }, [h('summary', {}, copy('حسابي', 'My account')), h('div', { class: 'advertiser-account-actions' }, headerItems.slice(2))])]
         : headerItems);
+    const handoff = documentStatus.value === 'retiring' || (documentStatus.value === 'closed' && departure.value.reason === 'handoff');
+    const unavailable = renderFailure.value || status.value === 'unavailable' || (status.value === 'closed' && !handoff);
+    const checking = status.value === 'checking';
+    const routeProgress = !handoff && !unavailable && progressVisible.value && (checking || navigating.value);
+    const notice = handoff || unavailable || routeProgress ? h('div', {
+        class: ['application-route-notice', { 'application-route-progress': routeProgress }],
+        'data-spa': routeProgress && !checking ? 'navigation' : 'status',
+    }, [
+        h('p', { role: unavailable ? 'alert' : 'status', class: routeProgress ? 'sr-only' : undefined }, handoff
+            ? copy('جارٍ فتح الصفحة الجديدة…', 'Opening a new document…')
+            : unavailable
+                ? copy('تعذّر التحقق من الصفحة. يمكنك فتحها مجددًا للتحقق من حالة طلبك.', 'The page could not be verified. Reopen it to check your request status.')
+                : admittedRoute.value ? copy('جارٍ تحديث الصفحة…', 'Updating page…') : copy('جارٍ فتح الصفحة…', 'Loading page…')),
+        handoff && departure.value.destination
+            ? h('a', { href: departure.value.destination, 'data-spa': 'handoff' }, copy('فتح الصفحة الجديدة', 'Open the new document'))
+            : unavailable ? h('button', { onClick: () => location.reload(), 'data-spa': 'retry' }, copy('فتح الصفحة مجددًا', 'Reopen page')) : null,
+    ]) : null;
     const content = [
-    localeError.value ? h('p', { role: 'alert' }, copy('تعذّر حفظ اللغة. حاول مجددًا.', 'The language change could not be confirmed. Try again.')) : null,
-    navigating.value ? h('p', { role: 'status', 'data-spa': 'navigation', style: 'padding:0 30px' }, copy('جارٍ تحميل الوجهة…', 'Loading destination…')) : null,
-    navigationError.value && admittedRoute.value && status.value === 'ready' ? h('p', { role: 'alert', 'data-spa': 'navigation-error', style: 'padding:0 30px' }, copy('تعذر فتح الوجهة. بقيت الصفحة الحالية دون إعادة إرسال أي طلب.', 'The destination could not be opened. The current page was retained; no request was replayed.')) : null,
-    admittedRoute.value && !['closed', 'retiring'].includes(documentStatus.value) && !renderFailure.value
-        ? h(RouterView, {}, { default: ({ Component }: { Component: object }) => h('div', { 'data-spa-view': true, inert: navigating.value || status.value !== 'ready' }, [h(Component, { key: router.currentRoute.value.path })]) }) : null,
-    status.value !== 'ready' || renderFailure.value
-        ? h('section', { role: 'status', 'data-spa': 'status', style: 'padding:30px' }, [
-            documentStatus.value === 'retiring' || (documentStatus.value === 'closed' && departure.value.reason === 'handoff')
-                ? copy('جارٍ الانتقال إلى مستند جديد. لا تعِد إرسال الطلب.', 'Opening a new document. Do not resend the request.')
-                : status.value === 'checking' ? copy('جارٍ التحقق…', 'Checking…') : copy('تعذر التحقق من الصفحة. نتيجة أي طلب معلّق لم تتغير.', 'The page could not be verified. Pending request outcomes have not changed.'),
-            documentStatus.value === 'closed' && departure.value.destination
-                ? h('a', { href: departure.value.destination, 'data-spa': 'handoff' }, copy('فتح المستند الجديد', 'Open the new document'))
-                : status.value !== 'checking' ? h('button', { onClick: () => location.reload(), 'data-spa': 'retry' }, copy('فتح مستند جديد من الخادم', 'Open a new server document')) : null,
-        ]) : null,
-];
+        localeError.value ? h('p', { role: 'alert' }, copy('تعذّر حفظ اللغة. حاول مجددًا.', 'The language change could not be confirmed. Try again.')) : null,
+        navigationError.value && admittedRoute.value && status.value === 'ready' ? h('p', { role: 'alert', 'data-spa': 'navigation-error', class: 'application-route-notice' }, copy('تعذّر فتح الوجهة. ما زلت في الصفحة الحالية.', 'The destination could not be opened. You are still on the current page.')) : null,
+        notice,
+        admittedRoute.value && !['closed', 'retiring'].includes(documentStatus.value) && !renderFailure.value
+            ? h(RouterView, {}, { default: ({ Component }: { Component: object }) => h('div', { 'data-spa-view': true, inert: navigating.value || status.value !== 'ready' }, [h(Component, { key: router.currentRoute.value.path })]) }) : null,
+    ];
     return h('div', { dir: locale.value === 'ar' ? 'rtl' : 'ltr' }, administrationLayout
         ? [h(AdministrationLayout, { allowedPaths: administrativePaths }, { header: () => header, default: () => content })]
         : [header, ...content]);

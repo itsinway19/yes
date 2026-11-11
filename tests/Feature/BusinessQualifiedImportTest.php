@@ -30,7 +30,7 @@ final class BusinessQualifiedImportTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user)->withCredentials();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
-        $this->post('/workspaces', ['name' => 'Original collaboration', 'slug' => 'qualified-import'])->assertRedirect();
+        $this->legacyWorkspace(['name' => 'Original collaboration', 'slug' => 'qualified-import'])->assertRedirect();
         $db = DB::connection('pgsql_migrations');
         $w = $db->table('workspaces')->where('slug', 'qualified-import')->first();
         $r = Request::create('/workspaces/'.$w->public_id);
@@ -619,7 +619,8 @@ final class BusinessQualifiedImportTest extends TestCase
             'expected_grant' => 1, 'expires_at' => null, 'delegable' => false, 'realm_workspace_public_id' => null, 'authority_selection' => $selection])->assertOk();
         $this->postJson('/api/businesses/'.$f['a']['business_public_id'].'/read', ['authority_selection' => $selection])->assertForbidden();
         $safe = $this->getJson('/api/businesses/'.$f['b']['business_public_id'].'/surface?access='.$f['b']['grant_refs']['business.context.read'])->assertOk();
-        $safe->assertJsonPath('data.collaboration.workspaces.0.slug', 'qualified-import')->assertJsonMissingPath('data.collaboration.workspaces.0.name');
+        $safe->assertJsonPath('data.business.business_public_id', $f['b']['business_public_id'])
+            ->assertJsonMissingPath('data.collaboration');
         $this->assertStringNotContainsString('Legacy A', $safe->getContent());
         DB::transaction(function () use ($f): void {
             app(PrincipalContext::class)->activate($f['user']);

@@ -3,15 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Notifications\SecurityVerifyEmail;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
 use Tests\Support\ApplicationContractAssertions;
+use Tests\Support\RegistrationEmailProofFixture;
 use Tests\TestCase;
 
 class AuthEntrySpaTest extends TestCase
 {
     use ApplicationContractAssertions;
+    use RegistrationEmailProofFixture;
 
     public function test_guest_entry_has_no_private_projection_and_actual_resources_match_the_contract(): void
     {
@@ -48,17 +48,17 @@ class AuthEntrySpaTest extends TestCase
             ->assertViewHas('identity', fn ($identity) => $identity['binding']['principal'] === 0);
     }
 
-    public function test_native_registration_keeps_pending_lifecycle_and_the_existing_verification_destination(): void
+    public function test_native_registration_publishes_current_identity_only_after_email_proof(): void
     {
-        Notification::fake();
         $this->useIdentityDocument('/register');
-        $this->postJson('/register', ['name' => 'Native pending advertiser', 'email' => 'native-pending@example.test',
+        $email = 'native-register@example.test';
+        $attempt = $this->verifyRegistrationEmail($email);
+        $this->postJson('/register', ['name' => 'Native advertiser', 'email' => $email, 'attempt_id' => $attempt,
             'password' => 'NativePendingPassword42!', 'password_confirmation' => 'NativePendingPassword42!'])
-            ->assertOk()->assertJsonPath('redirect', '/verify-email');
-        $user = User::where('email', 'native-pending@example.test')->firstOrFail();
+            ->assertOk()->assertJsonPath('redirect', '/businesses/new');
+        $user = User::where('email', $email)->firstOrFail();
         $this->assertAuthenticatedAs($user);
-        $this->assertNull($user->email_verified_at);
-        $this->assertSame('pending', DB::table('principal_lifecycles')->where('user_id', $user->id)->value('status'));
-        Notification::assertSentTo($user, SecurityVerifyEmail::class);
+        $this->assertNotNull($user->email_verified_at);
+        $this->assertSame('current', DB::table('principal_lifecycles')->where('user_id', $user->id)->value('status'));
     }
 }

@@ -37,12 +37,17 @@ test('actual shell preserves the mounted editor during concealment and distingui
     const status=ref('ready'),documentStatus=ref('active'),route={params:{workspace:'workspace'}};
     const state={unmounts:0},root={children:[]};
     const view=defineComponent({setup(){const draft=ref('unsaved');onBeforeUnmount(()=>state.unmounts++);return()=>h('main',{'data-spa-private':true},draft.value)}});
-    const renderer=createRenderer({createElement:type=>({type,children:[]}),createText:text=>({text}),createComment:text=>({text}),setText(n,t){n.text=t},setElementText(n,t){n.text=t;n.children=[]},parentNode:n=>n.parent,nextSibling:()=>null,insert(n,p){(p.children??=[]).push(n);n.parent=p},remove(n){if(n.parent)n.parent.children=n.parent.children.filter(c=>c!==n)},patchProp(){}});
-    const ports={BrandLogo:{render:()=>h('a','BuilderAd')},ThemeToggle:{render:()=>h('button','Theme')},createApp:renderer.createApp,defineComponent,h,RouterView:view,RouterLink:view,status,documentStatus,admittedRoute:ref(route),navigating:ref(false),navigationError:ref(false),renderFailure:ref(false),locale:ref('ar'),localeBusy:ref(false),localeError:ref(false),bootstrap:{identity:{binding:{principal:0}}},internalBoundary:false,router:{currentRoute:ref(route)},copy:(ar,en)=>en,confirmDeparture:ref(()=>true),logout(){},switchLocale(){},location:{reload(){}},departure:ref({reason:'handoff',destination:'/workspaces'})};
+    const renderer=createRenderer({createElement:type=>({type,children:[],props:{}}),createText:text=>({text}),createComment:text=>({text}),setText(n,t){n.text=t},setElementText(n,t){n.text=t;n.children=[]},parentNode:n=>n.parent,nextSibling:()=>null,insert(n,p){(p.children??=[]).push(n);n.parent=p},remove(n){if(n.parent)n.parent.children=n.parent.children.filter(c=>c!==n)},patchProp(n,key,_old,value){n.props[key]=value}});
+    const ports={BrandLogo:{render:()=>h('a','BuilderAd')},ThemeToggle:{render:()=>h('button','Theme')},createApp:renderer.createApp,defineComponent,h,RouterView:view,RouterLink:view,status,documentStatus,admittedRoute:ref(route),navigating:ref(false),progressVisible:ref(false),navigationError:ref(false),renderFailure:ref(false),locale:ref('ar'),localeBusy:ref(false),localeError:ref(false),bootstrap:{identity:{binding:{principal:0}}},internalBoundary:false,router:{currentRoute:ref(route)},copy:(ar,en)=>en,confirmDeparture:ref(()=>true),logout(){},switchLocale(){},location:{reload(){}},departure:ref({reason:'handoff',destination:'/workspaces'})};
     const app=new Function(...Object.keys(ports),render)(...Object.values(ports));app.mount(root);
     const text=n=>[n.text??'',...(n.children??[]).map(text)].join(' ');
-    status.value='checking';await nextTick();assert.equal(state.unmounts,0);assert.match(text(root),/unsaved/);
-    status.value='ready';await nextTick();assert.equal(state.unmounts,0);
+    const statuses = n => Number(n.props?.role === 'status') + (n.children ?? []).reduce((count, child) => count + statuses(child), 0);
+    ports.navigating.value=true;await nextTick();assert.equal(statuses(root),0);assert.match(text(root),/unsaved/);
+    ports.progressVisible.value=true;await nextTick();assert.equal(statuses(root),1);assert.match(text(root),/Updating page/);
+    status.value='checking';await nextTick();assert.equal(state.unmounts,0);assert.equal(statuses(root),1);assert.doesNotMatch(text(root),/Restoring page/);
+    const statusNode = n => n.props?.role === 'status' ? n : (n.children ?? []).map(statusNode).find(Boolean);
+    assert.equal(statusNode(root).props.class,'sr-only','Progress copy is accessible without a flashing text banner');
+    ports.navigating.value=false;ports.progressVisible.value=false;status.value='ready';await nextTick();assert.equal(state.unmounts,0);
     documentStatus.value='closed';status.value='closed';await nextTick();assert.equal(state.unmounts,1);assert.match(text(root),/Opening a new document/);assert.doesNotMatch(text(root),/could not be verified/);app.unmount();
 });
 

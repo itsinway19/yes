@@ -17,11 +17,11 @@ class WorkspaceCreationTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $this->post('/workspaces', ['name' => 'North Region', 'slug' => 'north-region'])->assertForbidden();
+        $this->legacyWorkspace(['name' => 'North Region', 'slug' => 'north-region'])->assertForbidden();
         $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
 
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
-        $this->post('/workspaces', ['name' => 'North Region', 'slug' => 'north-region'])
+        $this->legacyWorkspace(['name' => 'North Region', 'slug' => 'north-region'])
             ->assertRedirect(route('workspaces.index'));
 
         $owner = DB::connection('pgsql_migrations');
@@ -45,7 +45,7 @@ class WorkspaceCreationTest extends TestCase
             'status' => 'active',
         ], 'pgsql_migrations');
         $this->assertSame(0, DB::table('security_action_grants')->where('workspace_id', $workspace->id)->count(), 'Creation does not expose raw grants without a signed scope.');
-        $this->post('/workspaces', ['name' => 'North Region', 'slug' => 'north-region'])
+        $this->legacyWorkspace(['name' => 'North Region', 'slug' => 'north-region'])
             ->assertRedirect(route('workspaces.index'));
         $this->assertSame(1, $owner->table('workspaces')->count());
         $this->assertSame(1, $owner->table('workspace_ownerships')->count());
@@ -55,21 +55,24 @@ class WorkspaceCreationTest extends TestCase
             ->where('event', 'workspace_created')->count());
 
         $this->withCredentials()->getJson('/workspaces/'.$workspace->public_id.'/foundation')->assertOk();
-        $this->get('/workspaces/'.$workspace->public_id)->assertOk();
+        $this->get('/workspaces/'.$workspace->public_id)->assertRedirect('/businesses');
+        $this->getJson('/workspaces/'.$workspace->public_id)->assertOk();
         $this->getJson('/workspaces')->assertOk()
             ->assertJsonCount(1, 'data.workspaces')
             ->assertJsonPath('data.workspaces.0.public_id', $workspace->public_id);
 
         $owner->table('security_action_grants')->where('workspace_id', $workspace->id)
             ->update(['status' => 'revoked', 'revoked_at' => now()]);
-        $this->get('/workspaces/'.$workspace->public_id)->assertForbidden();
-        $this->post('/workspaces', ['name' => 'North Region', 'slug' => 'north-region'])->assertForbidden();
+        $this->get('/workspaces/'.$workspace->public_id)->assertRedirect('/businesses');
+        $this->getJson('/workspaces/'.$workspace->public_id)->assertForbidden();
+        $this->legacyWorkspace(['name' => 'North Region', 'slug' => 'north-region'])->assertForbidden();
         $this->getJson('/workspaces')->assertOk()->assertJsonCount(0, 'data.workspaces');
 
         $other = User::factory()->create();
         $this->actingAs($other)->withCredentials()
             ->getJson('/workspaces/'.$workspace->public_id.'/foundation')->assertForbidden();
-        $this->get('/workspaces/'.$workspace->public_id)->assertForbidden();
+        $this->get('/workspaces/'.$workspace->public_id)->assertRedirect('/businesses');
+        $this->getJson('/workspaces/'.$workspace->public_id)->assertForbidden();
     }
 
     public function test_runtime_role_cannot_write_workspace_tables_directly(): void
@@ -89,7 +92,7 @@ class WorkspaceCreationTest extends TestCase
         DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $user->id)
             ->update(['status' => 'revoked', 'revoked_at' => now()]);
 
-        $this->post('/workspaces', ['name' => 'Denied', 'slug' => 'denied'])->assertForbidden();
+        $this->legacyWorkspace(['name' => 'Denied', 'slug' => 'denied'])->assertForbidden();
         $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
     }
 
@@ -110,7 +113,7 @@ class WorkspaceCreationTest extends TestCase
             SQL);
         $owner->statement('CREATE TRIGGER reject_test_workspace_grant BEFORE INSERT ON security_action_grants FOR EACH ROW EXECUTE FUNCTION reject_test_workspace_grant()');
         try {
-            $this->post('/workspaces', ['name' => 'Atomic', 'slug' => 'atomic'])->assertInternalServerError();
+            $this->legacyWorkspace(['name' => 'Atomic', 'slug' => 'atomic'])->assertInternalServerError();
         } finally {
             $owner->statement('DROP TRIGGER reject_test_workspace_grant ON security_action_grants');
             $owner->statement('DROP FUNCTION reject_test_workspace_grant()');
@@ -127,7 +130,7 @@ class WorkspaceCreationTest extends TestCase
     {
         $user = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
-        $this->actingAs($user)->post('/workspaces', [
+        $this->actingAs($user)->legacyWorkspace([
             'name' => 'Ordered Workspace', 'slug' => 'ordered-workspace',
         ])->assertRedirect();
         $workspace = DB::connection('pgsql_migrations')->table('workspaces')->first();
