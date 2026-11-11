@@ -89,7 +89,8 @@ class GlobalAppearanceTest extends TestCase
         $this->assertSame($before, $db->table('principal_lifecycles')->orderBy('user_id')->get()->toJson());
         $this->assertSame($grants, $db->table('security_action_grants')->orderBy('id')->get()->toJson());
         foreach ([User::factory()->create(), User::factory()->create()] as $advertiser) {
-            $this->actingAs($advertiser)->get('/workspaces')->assertOk()->assertViewIs('spa')
+            $this->actingAs($advertiser)->get('/workspaces')->assertRedirect('/businesses');
+            $this->get('/businesses')->assertOk()->assertViewIs('spa')
                 ->assertSee('--ba-brand-primary:#ffffff;', false)->assertSee('--ba-secondary-text:#ffffff;', false)
                 ->assertSee('--ba-brand-secondary:#012345;', false);
         }

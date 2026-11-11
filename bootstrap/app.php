@@ -4,6 +4,7 @@ use App\Http\Middleware\AdmitIdentityDocument;
 use App\Http\Middleware\CaptureIdentityInput;
 use App\Http\Middleware\EnforcePlatformMaintenance;
 use App\Http\Middleware\ResolveLocale;
+use App\Http\Middleware\RetireWorkspaceBrowserNavigation;
 use App\Http\Middleware\SanitizeProviderCallback;
 use App\Http\Middleware\SelectSessionContext;
 use App\Http\Middleware\SpaPresentation;
@@ -40,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
             AdmitIdentityDocument::class,
             ResolveLocale::class,
             EnforcePlatformMaintenance::class,
+            RetireWorkspaceBrowserNavigation::class,
             SpaPresentation::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
@@ -47,11 +49,12 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash(['code']);
         $exceptions->render(function (BreachCheckUnavailable $exception, Request $request) {
-            $message = 'تعذّر التحقق من أمان كلمة المرور مؤقتًا. احتفظ بكلمة المرور وحاول مجددًا بعد قليل.';
+            $message = __('registration.breach_check_unavailable');
 
             if ($request->expectsJson()) {
-                return response()->json(['message' => $message], 503);
+                return response()->json(['message' => $message, 'code' => 'password_breach_unavailable'], 503);
             }
 
             return back()->withErrors(['service' => $message]);

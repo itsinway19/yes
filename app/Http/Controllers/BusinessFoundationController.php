@@ -206,7 +206,7 @@ final class BusinessFoundationController
             throw $invalid();
         }
         foreach ($fields as $field) {
-            if (str_starts_with($field, 'expected_') && (! is_int($raw->{$field}) || $raw->{$field} < 0)) {
+            if ($field !== 'expected_grants' && str_starts_with($field, 'expected_') && (! is_int($raw->{$field}) || $raw->{$field} < 0)) {
                 throw $invalid();
             }
         }
@@ -217,6 +217,57 @@ final class BusinessFoundationController
     private function selection(object $raw): array
     {
         return json_decode(json_encode($raw->authority_selection, JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    public function team(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $input = $request->validate(['access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX], 'after' => ['sometimes', 'integer', 'min:0', 'max:'.PHP_INT_MAX]]);
+
+        return $this->respond(fn () => $scope->team($request, $business, (int) $input['access'], (int) ($input['after'] ?? 0)));
+    }
+
+    public function teamRecipient(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $input = $request->validate(['access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX], 'email' => ['required', 'string', 'email', 'max:254']]);
+
+        return $this->respond(fn () => $scope->teamRecipient($request, $business, (int) $input['access'], $input['email']));
+    }
+
+    public function changeTeam(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $raw = $this->commandBody($request, ['recipient_public_id', 'expected_grants', 'permissions', 'expires_at', 'confirmed'], 80000);
+        abort_unless(is_string($raw->recipient_public_id) && Str::isUuid($raw->recipient_public_id) && $raw->confirmed === true
+            && is_array($raw->expected_grants) && array_is_list($raw->expected_grants) && count($raw->expected_grants) <= 256
+            && is_array($raw->permissions) && array_is_list($raw->permissions) && count($raw->permissions) <= 5
+            && count(array_filter($raw->permissions, 'is_string')) === count($raw->permissions)
+            && ($raw->expires_at === null || is_string($raw->expires_at)), 422);
+        abort_unless($raw->expires_at === null || preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/D', $raw->expires_at), 422);
+        foreach ($raw->expected_grants as $grant) {
+            abort_unless(is_object($grant) && count(get_object_vars($grant)) === 2 && isset($grant->grant_id, $grant->version)
+                && is_string($grant->grant_id) && preg_match('/^[1-9][0-9]{0,17}$/D', $grant->grant_id) && is_int($grant->version) && $grant->version > 0, 422);
+        }
+
+        return $this->respond(fn () => $scope->changeTeam($request, $business, $raw, $this->selection($raw)));
+    }
+
+    public function agencyMandates(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $input = $request->validate(['access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX], 'after' => ['sometimes', 'uuid']]);
+
+        return $this->respond(fn () => $scope->agencyMandates($request, $business, (int) $input['access'], $input['after'] ?? null));
+    }
+
+    public function withdrawAgencyMandates(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $raw = $this->commandBody($request, ['agency_business_public_id', 'expected_grants', 'confirmed'], 80000);
+        abort_unless($raw->confirmed === true && is_string($raw->agency_business_public_id) && Str::isUuid($raw->agency_business_public_id)
+            && is_array($raw->expected_grants) && array_is_list($raw->expected_grants) && count($raw->expected_grants) <= 256, 422);
+        foreach ($raw->expected_grants as $grant) {
+            abort_unless(is_object($grant) && count(get_object_vars($grant)) === 2 && isset($grant->grant_id,$grant->version)
+                && is_string($grant->grant_id) && preg_match('/^[1-9][0-9]{0,17}$/D', $grant->grant_id) && is_int($grant->version) && $grant->version > 0, 422);
+        }
+
+        return $this->respond(fn () => $scope->withdrawAgencyMandates($request, $business, $raw, $this->selection($raw)));
     }
 
     public function enrollPurposeStatement(Request $request, string $business, BusinessScope $scope): JsonResponse
@@ -275,6 +326,29 @@ final class BusinessFoundationController
             $raw->realm_workspace_public_id, $this->selection($raw)));
     }
 
+    public function agencyOptions(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $input = $request->validate(['access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX],
+            'agency' => ['required', 'uuid'], 'recipient' => ['nullable', 'uuid']]);
+
+        return $this->respond(fn () => $scope->agencyOptions($request, $business, (int) $input['access'], $input['agency'], $input['recipient'] ?? null));
+    }
+
+    public function agencyGrant(Request $request, string $business, BusinessScope $scope): JsonResponse
+    {
+        $raw = $this->commandBody($request, ['effect', 'agency_business_public_id', 'recipient_public_id',
+            'membership_grant_id', 'action', 'parent_grant_id', 'expires_at', 'confirmed'], 80000);
+        abort_unless(in_array($raw->effect, ['mandate', 'assign'], true)
+            && is_string($raw->agency_business_public_id) && Str::isUuid($raw->agency_business_public_id)
+            && is_string($raw->recipient_public_id) && Str::isUuid($raw->recipient_public_id)
+            && is_int($raw->membership_grant_id) && $raw->membership_grant_id > 0
+            && is_int($raw->parent_grant_id) && $raw->parent_grant_id > 0
+            && is_string($raw->action) && strlen($raw->action) <= 80 && $raw->confirmed === true
+            && is_string($raw->expires_at) && preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/D', $raw->expires_at), 422);
+
+        return $this->respond(fn () => $scope->agencyGrant($request, $business, $raw));
+    }
+
     public function enrollDirectTeam(Request $request, string $business, BusinessScope $scope): JsonResponse
     {
         $raw = $this->commandBody($request, [], 80000);
@@ -285,7 +359,7 @@ final class BusinessFoundationController
     public function internalTeam(Request $request, string $business, BusinessScope $scope): JsonResponse
     {
         $raw = $this->commandBody($request, ['workspace_public_id', 'effect', 'recipient_public_id', 'expected_revision'], 80000);
-        abort_unless(is_string($raw->workspace_public_id) && Str::isUuid($raw->workspace_public_id)
+        abort_unless(($raw->workspace_public_id === null || (is_string($raw->workspace_public_id) && Str::isUuid($raw->workspace_public_id)))
             && in_array($raw->effect, ['enroll', 'appoint', 'remove', 'end'], true)
             && ($raw->recipient_public_id === null || (is_string($raw->recipient_public_id) && Str::isUuid($raw->recipient_public_id))), 422);
 

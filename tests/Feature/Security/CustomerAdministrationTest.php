@@ -51,17 +51,17 @@ class CustomerAdministrationTest extends TestCase
     {
         $this->usePersistentTestSessions();
         [$customer, $workspace] = $this->workspace();
-        $this->actingAs($customer)->get('/workspaces/'.$workspace->public_id.'/foundation')->assertOk();
+        $this->actingAs($customer)->getJson('/workspaces/'.$workspace->public_id.'/foundation')->assertOk();
         $this->actingAsInternal($this->staff('founder'))->withCredentials();
         $input = $this->decision('workspaces', $workspace->public_id, 'active', 0);
         $this->postJson('/internal/administration/customers/status', $input)->assertOk()->assertJsonPath('status', 'suspended');
         $this->getJson('/internal/administration/customers?kind=workspaces&selected='.$workspace->public_id)->assertOk()
             ->assertJsonPath('data.rows.0.status', 'suspended')->assertJsonCount(1, 'data.details.members')->assertJsonCount(1, 'data.details.history');
-        $this->actingAs($customer)->get('/workspaces/'.$workspace->public_id.'/foundation')->assertForbidden();
+        $this->actingAs($customer)->getJson('/workspaces/'.$workspace->public_id.'/foundation')->assertForbidden();
         $this->actingAsInternal($this->staff('founder'))->withCredentials();
         $this->postJson('/internal/administration/customers/status', $this->decision('workspaces', $workspace->public_id, 'active', 0, 'reactivate'))->assertConflict();
         $this->postJson('/internal/administration/customers/status', $this->decision('workspaces', $workspace->public_id, 'suspended', 1, 'reactivate'))->assertOk();
-        $this->actingAs($customer)->get('/workspaces/'.$workspace->public_id.'/foundation')->assertOk();
+        $this->actingAs($customer)->getJson('/workspaces/'.$workspace->public_id.'/foundation')->assertOk();
         $this->assertSame(1, DB::connection('pgsql_migrations')->table('workspace_memberships')->where('workspace_id', $workspace->id)->where('status', 'active')->count());
     }
 
@@ -126,11 +126,11 @@ class CustomerAdministrationTest extends TestCase
         $this->postJson('/internal/administration/customers/status', $this->decision('users', $customer->public_id, 'disabled', 2, 'reactivate'))->assertOk();
         // Simulate a new authenticated session through the actual session issuer.
         $this->app['session']->driver()->regenerate();
-        $this->actingAs($customer)->get('/workspaces/'.$workspace->public_id.'/foundation')->assertForbidden();
+        $this->actingAs($customer)->getJson('/workspaces/'.$workspace->public_id.'/foundation')->assertForbidden();
         $this->getJson('/workspaces')->assertOk()->assertJsonCount(1, 'data.reassessableWorkspaces')
             ->assertJsonPath('data.reassessableWorkspaces.0.public_id', $workspace->public_id);
         $this->post('/workspaces/'.$workspace->public_id.'/reassess-owner-grant')->assertRedirect();
-        $this->get('/workspaces/'.$workspace->public_id.'/foundation')->assertOk();
+        $this->getJson('/workspaces/'.$workspace->public_id.'/foundation')->assertOk();
         DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $customer->id)->where('action', 'workspace.view')->update(['status' => 'revoked', 'revoked_at' => now()]);
         $this->post('/workspaces/'.$workspace->public_id.'/reassess-owner-grant')->assertForbidden();
     }
@@ -159,7 +159,7 @@ class CustomerAdministrationTest extends TestCase
     {
         $owner = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($owner, 1);
-        $this->actingAs($owner)->post('/workspaces', ['name' => 'Customer Space', 'slug' => 'customer-space'])->assertRedirect();
+        $this->actingAs($owner)->legacyWorkspace(['name' => 'Customer Space', 'slug' => 'customer-space'])->assertRedirect();
         $db = DB::connection('pgsql_migrations');
         $workspace = $db->table('workspaces')->where('slug', 'customer-space')->first();
         $workspace = $db->table('workspaces')->where('id', $workspace->id)->first();

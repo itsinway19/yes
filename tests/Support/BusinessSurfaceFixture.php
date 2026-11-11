@@ -37,7 +37,11 @@ $scope = app(BusinessScope::class);
 $path = $run.'/business-surface-fixture.json';
 $mode = $argv[1] ?? 'setup';
 $select = fn (int $grant) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
-if (in_array($mode, ['activity-knowledge-setup', 'activity-knowledge-withdraw'], true)) {
+if (str_starts_with($mode, 'historical-links-')) {
+    require __DIR__.'/HistoricalBusinessLinksBrowserFixture.php';
+} elseif (in_array($mode, ['business-agency-setup', 'business-agency-audit'], true)) {
+    require __DIR__.'/BusinessAgencyBrowserFixture.php';
+} elseif (in_array($mode, ['activity-knowledge-setup', 'activity-knowledge-withdraw'], true)) {
     require __DIR__.'/BusinessActivityBrowserFixture.php';
 } elseif ($mode === 'new-advertiser-identity') {
     // Verified identity fixture only. No Workspace, Business or resource grant
@@ -49,23 +53,17 @@ if (in_array($mode, ['activity-knowledge-setup', 'activity-knowledge-withdraw'],
     file_put_contents($run.'/team-identities.json', json_encode(['manager' => $recipient->public_id, 'staff' => $owner->public_id,
         'qualification' => 'IDENTITY FIXTURES ONLY; NO MEMBERSHIP OR BUSINESS GRANT INSERTED'], JSON_THROW_ON_ERROR));
 } elseif ($mode === 'internal-team-setup') {
-    $team = $base['b']['workspaces'][0];
-    DB::connection('pgsql_migrations')->table('workspace_memberships')->updateOrInsert(
-        ['workspace_id' => $team['id'], 'user_id' => $owner->id],
-        ['role' => 'member', 'status' => 'active', 'created_at' => now()],
-    );
-    $store = new Store('internal-file-browser', new ArraySessionHandler(120));
-    $store->start();
-    $creatorRequest = Request::create('/api/businesses');
-    $creatorRequest->setLaravelSession($store);
-    $creatorRequest->setUserResolver(fn () => $recipient);
-    app(SessionAuthority::class)->issue($creatorRequest, $recipient);
-    $store->save();
-    $draft = $scope->create($creatorRequest, (string) Str::uuid(), 'ملف عميل لإدارة الفريق', null);
-    file_put_contents($run.'/internal-team-browser-fixture.json', json_encode([
-        'business' => $draft, 'team' => $team, 'staff' => $owner->public_id,
-        'qualification' => 'REAL CREATOR PATH; NO SYNTHETIC INTERNAL TEAM ROOT',
-    ], JSON_THROW_ON_ERROR));
+    // Created on the real <=760 installation by GoalsSpaFixture, then forward
+    // migrated before either PHP server or the browser starts. Never reinstall
+    // a retired writer into this already-running final-schema candidate.
+    $historicalPath = $run.'/internal-team-browser-fixture.json';
+    if (! is_file($historicalPath) || ! DB::connection('pgsql_migrations')->table('migrations')->where('migration', 'like', '0001_01_01_000770_%')->exists()) {
+        throw new RuntimeException('Forward-upgraded historical internal-team browser fixture required; create a fresh guarded browser fixture.');
+    }
+    $historical = json_decode(file_get_contents($historicalPath), true, flags: JSON_THROW_ON_ERROR);
+    if (! isset($historical['rights'], $historical['creator_email'], $historical['staff_email'])) {
+        throw new RuntimeException('The retained fixture must contain actual historical rights and isolated actors.');
+    }
 } elseif (in_array($mode, ['purpose-setup', 'purpose-revoke-read', 'purpose-revoke-write'], true)) {
     require __DIR__.'/BusinessPurposeBrowserFixture.php';
 } elseif (in_array($mode, ['legacy-history-setup', 'legacy-history-withdraw'], true)) {
@@ -148,11 +146,13 @@ if (in_array($mode, ['activity-knowledge-setup', 'activity-knowledge-withdraw'],
     app(SessionAuthority::class)->issue($request, $recipient);
     $session->save();
     $workspace = $db->table('workspaces')->where('id', $sources['a']['workspace'])->value('public_id');
-    $scope->link($request, $out['business'], $workspace, (string) Str::uuid(), 'add', 0, $select($issued['grant_id']));
+    $businessId = $db->table('businesses')->where('public_id', $out['business'])->value('id');
+    $linkAuthority = $db->table('security_action_grants')->where('id', $issued['grant_id'])->sole();
+    BusinessAuthorityFixture::legacyWorkspaceLink($businessId, $sources['a']['workspace'], $linkAuthority, $recipient->id, 'collaboration');
     file_put_contents($run.'/shared-return-fixture.json', json_encode(['business' => $out['business'],
         'access' => $read['grant_id'], 'read_issuer' => $readRoot->id, 'workspace' => $workspace, 'other_workspace' => $base['b']['workspaces'][0]['public_id'],
         'other_identity_workspace' => $base['a']['workspaces'][0]['public_id'],
-        'qualification' => 'ISOLATED SYNTHETIC RIGHTS; OPERATING LINK WRITER; NO LIVE PROVIDER'], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+        'qualification' => 'ISOLATED SYNTHETIC HISTORICAL RELATIONSHIP; NO OPERATING LINK WRITER OR LIVE PROVIDER'], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
     Cache::store('redis')->put('shared-source-return-runtime', true, 600);
 } elseif ($mode === 'shared-return-revoke') {
     $out = json_decode(file_get_contents($run.'/shared-return-fixture.json'), true, flags: JSON_THROW_ON_ERROR);

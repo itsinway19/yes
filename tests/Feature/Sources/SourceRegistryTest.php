@@ -150,12 +150,13 @@ class SourceRegistryTest extends TestCase
         $this->actingAs(User::factory()->create())->getJson($path)->assertForbidden();
     }
 
-    public function test_workspace_presents_stable_opaque_session_binding_without_granting_source_authority(): void
+    public function test_business_shell_presents_stable_opaque_session_binding_while_historical_source_authority_remains_independent(): void
     {
         $sessionId = $this->app['session']->driver()->getId();
         $expected = hash_hmac('sha256', $sessionId, (string) config('app.key'));
+        $this->get('/workspaces/'.$this->workspace)->assertRedirect('/businesses');
         foreach ([1, 2] as $attempt) {
-            $response = $this->get('/workspaces/'.$this->workspace)->assertOk()->assertViewIs('spa')
+            $response = $this->get('/businesses')->assertOk()->assertViewIs('spa')
                 ->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false)
                 ->assertDontSee('sourceCandidateId', false)->assertDontSee('commercial', false);
             $this->assertSame($expected, $response->viewData('identity')['binding']['context']);

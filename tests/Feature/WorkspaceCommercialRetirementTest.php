@@ -15,7 +15,7 @@ final class WorkspaceCommercialRetirementTest extends TestCase
     {
         $actor = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($actor, 1);
-        $this->actingAs($actor)->post('/workspaces', ['name' => 'Organization only', 'slug' => 'retired-writer'])->assertRedirect();
+        $this->actingAs($actor)->legacyWorkspace(['name' => 'Organization only', 'slug' => 'retired-writer'])->assertRedirect();
         $db = DB::connection('pgsql_migrations');
         $organization = $db->table('workspaces')->where('slug', 'retired-writer')->sole();
         foreach (['business', 'business/authority', 'business/target-markets', 'business/current-intent', 'goals'] as $suffix) {

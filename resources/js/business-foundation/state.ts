@@ -5,7 +5,7 @@ import { request, stamp, owned, onClose } from '../spa/transport';
 import type { Catalog, Choices, Surface, BoundaryChoices, BoundarySurface, SourceChoices, SourceSurface } from './api';
 
 type Visibility = { protected: boolean; path: string; context: string | null };
-export type Page = { data: Choices | Surface | BoundaryChoices | BoundarySurface | SourceChoices | SourceSurface | { catalog: Catalog }; locale: string; visibility: Visibility };
+export type Page = { data: (Choices & { registration_attempt?: string | null }) | Surface | BoundaryChoices | BoundarySurface | SourceChoices | SourceSurface | { catalog: Catalog; registration_attempt?: string | null }; locale: string; visibility: Visibility };
 export const current = shallowRef<Page>();
 let serial = 0;
 export function clear() { serial++; current.value = undefined; }

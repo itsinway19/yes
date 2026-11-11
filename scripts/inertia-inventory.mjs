@@ -162,7 +162,7 @@ for (const route of matrixRoutes) {
 const report = {
     baseline: '505da99f1c551f2f6143980ad624d1b591a6824d',
     evidence: process.argv.includes('--runtime')
-        ? 'SOURCE_AND_RUNTIME_ROUTE_REGISTRATION; both Goals opt-in states recorded. Runtime middleware names establish registration, not authorization behavior or passing coverage. Test references are discovery leads.'
+        ? 'SOURCE_AND_RUNTIME_ROUTE_REGISTRATION; current application routes recorded. Runtime middleware names establish registration, not authorization behavior or passing coverage. Test references are discovery leads.'
         : 'STATIC_SOURCE_ONLY; runtime expansion pending. Includes conditional routes, not a claim that they are enabled. Test references are discovery leads, not passing evidence.',
     routes: matrixRoutes, sourceDeclarations: routes, runtime, imports: edges, support,
     summary: {
@@ -177,7 +177,7 @@ const escape = value => String(value).replaceAll('|', '\\|').replaceAll('\n', ' 
 const rows = matrixRoutes.map(route => [
     `${route.method} ${route.uri} (${route.source})`,
     route.migration?.journey || route.pages.join(', ') || route.name || route.action,
-    route.runtime?.goalsEnabled.flatMap(entry => entry.middleware).join('; ') || route.authorization.join('; ') || 'web; inspect action',
+    Object.values(route.runtime ?? {}).flatMap(entries => entries.flatMap(entry => entry.middleware)).join('; ') || route.authorization.join('; ') || 'web; inspect action',
     route.migration ? route.migration.businessOwners.join(', ') : route.action,
     route.spaBoundary,
     route.apiContract,
@@ -190,8 +190,9 @@ const markdown = '# Inertia retirement migration matrix\n\n' + report.evidence +
     + '|---|---|---|---|---|---|---|---|\n'
     + rows.map(row => `| ${row} |`).join('\n') + '\n';
 for (const [path, content] of [['docs/inertia-inventory.json', json], ['docs/INERTIA_RETIREMENT_MATRIX.md', markdown]]) {
+    if (process.argv.includes('--summary')) continue;
     if (process.argv.includes('--check')) {
         if (await read(path) !== content) throw Error(`Inventory drift: ${path}`);
     } else await writeFile(resolve(root, path), content);
 }
-console.log(`Inventory: ${matrixRoutes.length} matrix routes, ${routes.length} source declarations, ${sources.size} frontend modules; runtime variants: ${Object.keys(runtime).join(', ') || 'not executed'}. Behavioral acceptance pending.`);
+console.log(`Inventory: ${matrixRoutes.length} matrix routes, ${routes.length} source declarations, ${sources.size} frontend modules, ${report.summary.legacyRenderRoutes} legacy render routes; runtime variants: ${Object.keys(runtime).join(', ') || 'not executed'}. Behavioral acceptance pending.`);

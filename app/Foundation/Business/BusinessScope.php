@@ -234,12 +234,19 @@ final class BusinessScope
         )));
     }
 
-    public function internalTeam(Request $request, string $business, string $command, string $workspace, string $effect, ?string $recipient, int $expected, array $selection): array
+    public function internalTeam(Request $request, string $business, string $command, ?string $workspace, string $effect, ?string $recipient, int $expected, array $selection): array
     {
-        return $this->run($request, fn () => $this->decode(DB::scalar(
-            'SELECT builderad_v2_internal_team_command(?,?::uuid,?::uuid,?::uuid,?,?::uuid,?,?::jsonb)',
-            [SessionAuthority::sessionKey($request), $business, $command, $workspace, $effect, $recipient, $expected, json_encode($selection, JSON_THROW_ON_ERROR)],
-        )));
+        return $this->run($request, function () use ($request, $business, $command, $workspace, $effect, $recipient, $expected, $selection): array {
+            $result = $this->decode(DB::scalar(
+                'SELECT builderad_v2_internal_team_command(?,?::uuid,?::uuid,?::uuid,?,?::uuid,?,?::jsonb)',
+                [SessionAuthority::sessionKey($request), $business, $command, $workspace, $effect, $recipient, $expected, json_encode($selection, JSON_THROW_ON_ERROR)],
+            ));
+            if ($result['grant_refs'] === []) {
+                $result['grant_refs'] = (object) [];
+            }
+
+            return $result;
+        });
     }
 
     public function internalTeamSurface(Request $request, string $business, int $read): array
@@ -306,6 +313,25 @@ final class BusinessScope
         )));
     }
 
+    public function agencyOptions(Request $request, string $business, int $access, string $agency, ?string $recipient): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar(
+            'SELECT builderad_v2_business_agency_options(?,?::uuid,?,?::uuid,?::uuid)',
+            [SessionAuthority::sessionKey($request), $business, $access, $agency, $recipient],
+        )));
+    }
+
+    public function agencyGrant(Request $request, string $business, object $body): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar(
+            'SELECT builderad_v2_business_agency_grant(?,?::uuid,?::uuid,?,?::uuid,?::uuid,?,?,?,?::timestamptz,?::boolean,?::jsonb)',
+            [SessionAuthority::sessionKey($request), $business, $body->command_id, $body->effect,
+                $body->agency_business_public_id, $body->recipient_public_id, $body->membership_grant_id,
+                $body->action, $body->parent_grant_id, $body->expires_at, $body->confirmed ? 'true' : 'false',
+                json_encode($body->authority_selection, JSON_THROW_ON_ERROR)],
+        )));
+    }
+
     public function resourceRight(Request $request, string $command, string $kind, string $target, string $effect, \stdClass $payload, int $expected, array $selection): array
     {
         return $this->run($request, fn () => $this->decode(DB::scalar(
@@ -357,6 +383,39 @@ final class BusinessScope
             [SessionAuthority::sessionKey($request), $business, $command, $effect, $target,
                 json_encode($payload, JSON_THROW_ON_ERROR), $expected, json_encode($selection, JSON_THROW_ON_ERROR)],
         )));
+    }
+
+    public function team(Request $request, string $business, int $access, int $after): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar('SELECT builderad_v2_business_team_surface(?,?::uuid,?,?)', [SessionAuthority::sessionKey($request), $business, $access, $after])));
+    }
+
+    public function teamRecipient(Request $request, string $business, int $access, string $email): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar('SELECT builderad_v2_business_team_recipient(?,?::uuid,?,?)', [SessionAuthority::sessionKey($request), $business, $access, $email])));
+    }
+
+    public function changeTeam(Request $request, string $business, object $body, array $selection): array
+    {
+        $result = $this->run($request, fn () => $this->decode(DB::scalar('SELECT builderad_v2_business_team_change(?,?::uuid,?::uuid,?::jsonb,?::uuid,?::jsonb,?::jsonb,?::timestamptz,?::boolean)',
+            [SessionAuthority::sessionKey($request), $business, $body->command_id, json_encode($selection, JSON_THROW_ON_ERROR), $body->recipient_public_id,
+                json_encode($body->expected_grants, JSON_THROW_ON_ERROR), json_encode($body->permissions, JSON_THROW_ON_ERROR), $body->expires_at, $body->confirmed])));
+        if ($result['grant_refs'] === []) {
+            $result['grant_refs'] = (object) [];
+        }
+
+        return $result;
+    }
+
+    public function agencyMandates(Request $request, string $business, int $access, ?string $after = null): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar('SELECT builderad_v2_business_agency_mandates(?,?::uuid,?,?::uuid)', [SessionAuthority::sessionKey($request), $business, $access, $after])));
+    }
+
+    public function withdrawAgencyMandates(Request $request, string $business, object $body, array $selection): array
+    {
+        return $this->run($request, fn () => $this->decode(DB::scalar('SELECT builderad_v2_business_agency_withdraw(?,?::uuid,?::uuid,?::jsonb,?::uuid,?::jsonb,?::boolean)',
+            [SessionAuthority::sessionKey($request), $business, $body->command_id, json_encode($selection, JSON_THROW_ON_ERROR), $body->agency_business_public_id, json_encode($body->expected_grants, JSON_THROW_ON_ERROR), $body->confirmed])));
     }
 
     private function run(Request $request, callable $command): array

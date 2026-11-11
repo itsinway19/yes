@@ -13,36 +13,36 @@ final class WorkspaceSpaIntegrationTest extends TestCase
 {
     use ApplicationContractAssertions;
 
-    public function test_individual_advertiser_workspace_creation_is_discoverable_only_with_its_existing_grant(): void
+    public function test_previous_resources_never_offer_parallel_creation_even_with_an_existing_creation_grant(): void
     {
         $actor = User::factory()->create();
         $this->actingAs($actor);
         $this->getJson('/workspaces')->assertOk()->assertJsonPath('data.canCreateWorkspace', false);
-        $this->getJson('/organizations/new')->assertForbidden();
+        $this->get('/organizations/new')->assertRedirect('/businesses/new');
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($actor, 1);
-        $resource = $this->getJson('/workspaces')->assertOk()->assertJsonPath('data.canCreateWorkspace', true);
+        $resource = $this->getJson('/workspaces')->assertOk()->assertJsonPath('data.canCreateWorkspace', false);
         $this->assertApplicationContract('WorkspaceIndexResource', $resource->json());
-        $this->getJson('/organizations/new')->assertOk()->assertJsonStructure(['data' => ['creationKey']]);
+        $this->get('/organizations/new')->assertRedirect('/businesses/new');
         $owner = DB::connection('pgsql_migrations');
         $this->assertSame(0, $owner->table('workspaces')->count());
         $this->assertSame(0, $owner->table('businesses')->count());
         $owner->table('security_action_grants')->where('subject_user_id', $actor->id)
             ->where('action', 'workspace.create')->update(['status' => 'revoked', 'revoked_at' => now()]);
         $this->getJson('/workspaces')->assertOk()->assertJsonPath('data.canCreateWorkspace', false);
-        $this->getJson('/organizations/new')->assertForbidden();
-        $this->post('/workspaces', ['name' => 'Denied workspace', 'slug' => 'denied-workspace'])->assertForbidden();
+        $this->get('/organizations/new')->assertRedirect('/businesses/new');
+        $this->legacyWorkspace(['name' => 'Denied workspace', 'slug' => 'denied-workspace'])->assertForbidden();
         $this->assertSame(0, $owner->table('workspaces')->count());
     }
 
-    public function test_historical_read_shell_and_witness_preserve_authority_without_a_competing_editor(): void
+    public function test_retired_historical_html_redirect_and_qualified_json_witness_preserve_authority(): void
     {
         $actor = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($actor, 1);
-        $this->actingAs($actor)->post('/workspaces', ['name' => 'Organization SPA fixture', 'slug' => 'context-spa'])->assertRedirect();
+        $this->actingAs($actor)->legacyWorkspace(['name' => 'Organization SPA fixture', 'slug' => 'context-spa'])->assertRedirect();
         $owner = DB::connection('pgsql_migrations');
         $workspace = $owner->table('workspaces')->where('slug', 'context-spa')->sole();
         $path = '/workspaces/'.$workspace->public_id.'/commercial-history';
-        $this->get($path)->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
+        $this->get($path)->assertRedirect('/businesses');
         $initial = $this->getJson($path)->assertOk()->assertJsonPath('data.read_only', true)->assertJsonPath('data.current_business_inferred', false);
         $this->assertApplicationContract('WorkspaceCommercialHistoryResource', $initial->json());
         $before = $owner->table('security_sessions')->where('user_id', $actor->id)->sole();
@@ -60,35 +60,20 @@ final class WorkspaceSpaIntegrationTest extends TestCase
         $this->getJson('/workspaces/not-a-uuid/commercial-history')->assertNotFound();
     }
 
-    public function test_creation_uses_the_existing_atomic_idempotent_writer_and_private_shell(): void
+    public function test_creation_routes_retire_while_the_private_legacy_resource_shell_remains(): void
     {
         $user = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
-        $this->actingAs($user);
+        $this->actingAs($user)->get('/organizations/new')->assertRedirect('/businesses/new');
+        $this->postJson('/organizations', ['name' => 'Parallel agency'])->assertStatus(410);
+        $this->legacyWorkspace(['name' => 'Existing custody', 'slug' => 'existing-custody'])->assertRedirect();
         $owner = DB::connection('pgsql_migrations');
-        $type = $owner->table('business_types')->where('key', 'real_estate')->value('id');
-        $owner->table('business_types')->where('id', $type)->update(['active' => true]);
-        $this->get('/organizations/new')->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
-        $projection = $this->getJson('/organizations/new')->assertOk()->json('data');
-        $command = ['name' => 'Private SPA agency', 'creation_key' => $projection['creationKey']];
-        $this->postJson('/organizations', [...$command, 'business_type_id' => 999999])->assertUnprocessable();
-        $this->assertSame(0, $owner->table('workspaces')->count());
-        $first = $this->postJson('/organizations', $command)->assertOk()->json();
-        $this->assertSame($first, $this->postJson('/organizations', $command)->assertOk()->json());
         $workspace = $owner->table('workspaces')->sole();
-        $this->assertSame('/workspaces/'.$workspace->public_id, $first['redirect']);
-        $this->assertSame(1, $owner->table('workspaces')->count());
-        $this->assertSame(0, $owner->table('business_context_events')->count());
-        $this->assertNull($workspace->business_type_id);
         $this->getJson('/workspaces/'.$workspace->public_id)->assertOk()->assertJsonMissingPath('data.business')->assertJsonMissingPath('data.guidance');
-        $this->getJson('/organizations/new')->assertOk();
-        $this->getJson('/organizations/new')->assertOk()->assertJsonStructure(['data' => ['creationKey']]);
-        $this->get('/workspaces')->assertOk()->assertSee('application-spa', false)->assertDontSee($workspace->name);
-        $this->getJson('/workspaces')->assertOk()->assertJsonPath('data.workspaces.0.public_id', $workspace->public_id);
-        $owner->table('security_action_grants')->where('subject_user_id', $user->id)
-            ->where('action', 'workspace.create')->update(['status' => 'revoked', 'revoked_at' => now()]);
-        $this->postJson('/organizations', $command)->assertForbidden();
-        $this->assertSame(1, $owner->table('workspaces')->count());
+        $this->get('/workspaces')->assertRedirect('/businesses');
+        $this->get('/workspaces/'.$workspace->public_id)->assertRedirect('/businesses');
+        $this->getJson('/workspaces')->assertOk()->assertJsonPath('data.canCreateWorkspace', false)->assertJsonPath('data.workspaces.0.public_id', $workspace->public_id);
+        $this->assertSame(0, $owner->table('business_context_events')->count());
         $this->get('/contracts/application.openapi.json')->assertNotFound();
     }
 
@@ -97,15 +82,11 @@ final class WorkspaceSpaIntegrationTest extends TestCase
         $user = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
         $this->actingAs($user);
-        $projection = $this->getJson('/organizations/new')->assertOk()->json('data');
         $owner = DB::connection('pgsql_migrations');
-        $type = $owner->table('business_types')->where('key', 'real_estate')->value('id');
-        $owner->table('business_types')->where('id', $type)->update(['active' => true]);
-        $owner->table('security_action_grants')->where('subject_user_id', $user->id)
-            ->where('action', 'workspace.create')->update(['status' => 'revoked', 'revoked_at' => now()]);
-        $this->getJson('/organizations/new')->assertForbidden();
-        $this->postJson('/organizations', ['name' => 'Denied creation',
-            'creation_key' => $projection['creationKey']])->assertForbidden();
+        $owner->table('security_action_grants')->where('subject_user_id', $user->id)->where('action', 'workspace.create')->update(['status' => 'revoked', 'revoked_at' => now()]);
+        $this->get('/organizations/new')->assertRedirect('/businesses/new');
+        $this->postJson('/organizations', ['name' => 'Denied creation'])->assertStatus(410);
+        $this->postJson('/workspaces', ['name' => 'Denied creation', 'slug' => 'denied-creation'])->assertStatus(410);
         $this->assertSame(0, $owner->table('workspaces')->count());
     }
 
@@ -134,8 +115,8 @@ final class WorkspaceSpaIntegrationTest extends TestCase
         foreach ([$actor, $other] as $user) {
             app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
         }
-        $this->actingAs($actor)->post('/workspaces', ['name' => 'Own visible workspace', 'slug' => 'witness-own'])->assertRedirect();
-        $this->actingAs($other)->post('/workspaces', ['name' => 'Foreign private workspace', 'slug' => 'witness-foreign'])->assertRedirect();
+        $this->actingAs($actor)->legacyWorkspace(['name' => 'Own visible workspace', 'slug' => 'witness-own'])->assertRedirect();
+        $this->actingAs($other)->legacyWorkspace(['name' => 'Foreign private workspace', 'slug' => 'witness-foreign'])->assertRedirect();
         $owner = DB::connection('pgsql_migrations');
         $own = $owner->table('workspaces')->where('slug', 'witness-own')->sole();
         $foreign = $owner->table('workspaces')->where('slug', 'witness-foreign')->sole();

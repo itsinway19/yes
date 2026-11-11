@@ -16,7 +16,7 @@ const choices = ref<Choices['items']>([]), next = ref<string | null>(null), targ
 let disposed = false, targetSerial = 0, choiceSerial = 0;
 onBeforeUnmount(() => { disposed = true; });
 const chosen = computed(() => choices.value.find(item => item.read_grant_id === draft.choice));
-const options = computed(() => target.value?.collaboration.options.filter(item => Number.isSafeInteger(Number(item.grant_id))) ?? []);
+const options = computed(() => target.value?.data_use.binding_options.filter(item => Number.isSafeInteger(Number(item.grant_id))) ?? []);
 const latest = computed(() => props.surface.memberships.find(row => row.business_public_id === chosen.value?.business_public_id && row.branch_public_id === null));
 const stale = computed(() => !!chosen.value && (draft.revision !== (latest.value?.revision ?? 0) || draft.membership !== (latest.value?.membership_id ?? null)));
 const exactIdentifiers = computed(() => props.surface.authority_selection.requirements.every(item => Number.isSafeInteger(item.leaf_grant_id) && item.leaf_grant_id > 0));
@@ -119,7 +119,7 @@ function detach(row: BoundarySurface['memberships'][number]) { if (enabled.value
             <p>{{ t('يحتاج الربط حق إدارة هذا النطاق وحق إدارة علاقات النشاط معًا. تعرض أسماء الأنشطة التي تملك حق قراءتها في نطاق التفويض نفسه فقط.', 'Attachment requires both boundary management and business relationship authority. Names are shown only for businesses you may read in the same realm.') }}</p>
             <fieldset :disabled="!enabled || !!draft.pending || loading">
                 <label for="bf-boundary-business">{{ t('النشاط المؤهل', 'Qualified business') }}</label><select id="bf-boundary-business" v-model="draft.choice" @change="choose()"><option value="">{{ t('اختر النشاط', 'Choose business') }}</option><option v-for="item in choices" :key="item.read_grant_id" :value="item.read_grant_id">{{ item.name }}</option></select>
-                <label v-if="options.length > 1" for="bf-boundary-grant">{{ t('تفويض إدارة علاقات النشاط', 'Business relationship delegation') }}<select id="bf-boundary-grant" v-model="draft.selected"><option value="">{{ t('اختر التفويض', 'Choose delegation') }}</option><option v-for="option in options" :key="option.grant_id" :value="option.grant_id">{{ option.grant_id }}</option></select></label>
+                <label v-if="options.length > 1" for="bf-boundary-grant">{{ t('تفويض ربط استعمال البيانات', 'Data-use binding delegation') }}<select id="bf-boundary-grant" v-model="draft.selected"><option value="">{{ t('اختر التفويض', 'Choose delegation') }}</option><option v-for="option in options" :key="option.grant_id" :value="option.grant_id">{{ option.grant_id }}</option></select></label>
                 <p v-if="target && !options.length">{{ t('يمكنك قراءة هذا النشاط لكن لا يوجد تفويض مؤهل معروض لربطه.', 'You may read this business but no qualified attachment delegation is displayed.') }}</p>
                 <p v-if="draft.choice && !chosen && !loading">{{ t('النشاط المختار غير متاح في الخيارات الحالية. راجع الاختيار دون استبدال سند طلب سابق.', 'The selected business is absent from current choices. Review the selection without replacing a prior command’s authority.') }}</p>
             </fieldset>

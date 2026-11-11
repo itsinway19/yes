@@ -4,12 +4,14 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { businessAgencyBrowserProof } from './business-agency-browser.mjs';
 if (process.env.GOALS_SPA_PROOF !== 'enabled' || process.env.GOALS_SPA_ONLY !== 'businesses') throw Error('Guarded Business browser entry required');
 const require = createRequire('C:/Users/stoma/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json');
 const { chromium } = require('playwright');
 const run = process.env.GOALS_SPA_RUN, origin = 'http://localhost:8136';
 const result = { scope: 'Independent Business reference flow; legacy cases may use synthetic qualification roots; internal-team enrollment uses the operating limited issuer; no live migration or external authority proof', cases: [], errors: [], assets: [] };
 let activePage;
+const capture = (target, options) => process.env.GOALS_SPA_CAPTURE_IMAGES === '1' ? target.screenshot(options) : Promise.resolve();
 result.http = []; result.failedRequests = [];
 function fixture(mode) {
     const p = spawnSync('C:/tools/php85/php.exe', ['tests/Support/BusinessSurfaceFixture.php', mode], { encoding: 'utf8', env: { ...process.env, APP_ENV: 'testing' } });
@@ -27,7 +29,7 @@ async function check(name, fn) {
         if (activePage && !activePage.isClosed()) {
             row.presentation = await activePage.evaluate(() => ({ path: location.pathname, href: location.href, hash: location.hash, state: document.querySelector('[data-application-spa]')?.getAttribute('data-state'),
                 text: document.body.innerText.slice(0, 2500), resources: performance.getEntriesByType('resource').slice(-16).map(r => ({ name: new URL(r.name).pathname, duration: r.duration })) })).catch(error => ({ captureError: error.message }));
-            await activePage.screenshot({ path: path.join(run, 'business-failure.png'), fullPage: true }).catch(() => {});
+            if (process.env.GOALS_SPA_CAPTURE_IMAGES === '1') await capture(activePage, { path: path.join(run, 'business-failure.png'), fullPage: true }).catch(() => {});
         }
         throw e;
     }
@@ -67,6 +69,20 @@ try {
         return { status: response.status, body: await response.json() };
     }, { url, method, body });
     const send = (url, method = 'GET', body) => sendFrom(page, url, method, body);
+    async function chooseSectorAndReachMarket(tab) {
+        const sector = tab.locator('#bf-create-type input[value]').first();
+        await sector.check();
+        const selected = await sector.inputValue();
+        await tab.locator('[data-wizard-step="sector"] [data-wizard-next]').click();
+        await tab.locator('[data-wizard-step="practices"] [data-wizard-next]').click();
+        return selected;
+    }
+    async function nameBusinessAndSave(tab, name) {
+        await tab.locator('[data-wizard-step="market"] [data-wizard-next]').click();
+        await tab.locator('[data-wizard-step="goal"] [data-wizard-next]').click();
+        await tab.locator('#bf-create-name').fill(name);
+        await tab.locator('[data-wizard-step="review"] [data-wizard-next]').click();
+    }
     await check('actual login, independent creation, list and opening without a Workspace identity', async () => {
         await page.goto(origin+'/login');
         const logged = await send('/login', 'POST', { email: 'goals-b@example.test', password: 'DisposableGoalsProof42!' }); assert.equal(logged.status, 200);
@@ -74,27 +90,109 @@ try {
         assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'),delegated.business,'A single qualified existing business opens after login without creating another');
         assert.equal((await send('/api/businesses')).body.data.items.length, 1);
         await index();
-        await page.locator('main').getByRole('link', { name: 'إضافة نشاط', exact: true }).click(); await ready('#bf-create-name');
-        await page.getByLabel('اسم النشاط', { exact: true }).fill('نشاط مستقل للمتصفح');
-        await page.locator('#bf-create-type').selectOption({ index: 1 });
-        const selectedType = await page.locator('#bf-create-type').inputValue();
+        await page.locator('main').getByRole('link', { name: 'إضافة نشاط', exact: true }).click(); await ready('[data-wizard-step="sector"]');
+        const saudiArabia = (await send('/businesses/new')).body.data.catalog.countries.find(country => country.code === 'SA').name_ar;
+        const selectedType = await chooseSectorAndReachMarket(page);
         await page.locator('#bf-create-market-search').fill('SA');
+        assert.equal(await page.locator('.setup-countries input').count(), 1, 'An exact country code selects one matching result');
         await page.locator('.setup-countries input[value="SA"]').check();
         await page.locator('#bf-create-market-search').fill('no-country-matches-this-query');
         await page.locator('[data-create-market-search-empty]').waitFor();
         await page.locator('[data-create-market-search-clear]').click();
         assert.equal(await page.locator('#bf-create-market-search').evaluate(input=>document.activeElement===input),true);
         assert.equal(await page.locator('.setup-countries input[value="SA"]').isChecked(),true,'Clearing search must not clear the selected target market');
-        await page.getByRole('button', { name: 'إنشاء النشاط والمتابعة', exact: true }).click();
+        await nameBusinessAndSave(page, 'نشاط مستقل للمتصفح');
         await ready('[data-business-public]');
-        assert.equal(await page.locator('[data-business-name]').textContent(), 'نشاط مستقل للمتصفح');
+        assert.equal(await page.locator('[data-workspace-heading]').textContent(), 'نشاط مستقل للمتصفح');
+        assert.equal(await page.locator('[data-overview-markets]').textContent(), saudiArabia);
+        assert.equal((await send('/api/businesses')).body.data.items.length, 2);
         await ensureWorkspaceNavigation();
         await page.locator('[data-workspace-section="settings"]').click();
+        await page.locator('[data-business-task="business-profile"]').click();
         assert.equal(await page.locator('#bf-type').inputValue(), selectedType);
+        await page.locator('[data-business-profile-back]').click();
         result.createdBusiness = await page.locator('[data-business-public]').getAttribute('data-business-public');
         assert.deepEqual((await send(`/api/businesses/${result.createdBusiness}/surface?access=${new URL(page.url()).searchParams.get('access')}`)).body.data.business.declared_markets,['SA']);
         assert.notEqual(result.createdBusiness, delegated.business);
         return { createdBusiness: result.createdBusiness, sharedWorkspaceInference: false };
+    });
+    await check('advertiser redesigned four views use real summaries focused editors compact bilingual layouts and retained drafts', async () => {
+        const baselineSurface = (await send(`/api/businesses/${result.createdBusiness}/surface?access=${new URL(page.url()).searchParams.get('access')}`)).body.data;
+        const before = baselineSurface.business;
+        const documentOrigin = await page.evaluate(() => performance.timeOrigin);
+        const observations = [];
+        async function section(name) {
+            await ensureWorkspaceNavigation();
+            const start = Date.now();
+            await page.locator(`[data-workspace-section="${name}"]`).click();
+            await page.locator(`[data-workspace-panel="${name}"]`).waitFor({state:'visible'});
+            await ready('[data-business-public]');
+            const layout = await page.evaluate(() => {
+                const main = document.querySelector('#advertiser-content');
+                const heading = document.querySelector('[data-workspace-heading]');
+                const styles = getComputedStyle(main);
+                return { overflow:document.documentElement.scrollWidth>innerWidth, mainOverflow:styles.overflowY,
+                    bodyFont:parseFloat(getComputedStyle(main).fontSize), headingFont:parseFloat(getComputedStyle(heading).fontSize), headingTop:heading.getBoundingClientRect().top };
+            });
+            assert.equal(layout.overflow,false);
+            assert.ok(!['auto','scroll'].includes(layout.mainOverflow),'Document owns the main page scroll');
+            assert.ok(layout.bodyFont>=13 && layout.bodyFont<=15,'Moderate body typography');
+            assert.ok(layout.headingFont<=26,'Moderate page heading');
+            observations.push({name,ms:Date.now()-start,...layout});
+        }
+        await section('overview');
+        await page.locator('[data-current-work]').waitFor();
+        assert.ok((await page.locator('[data-business-declared-summary]').innerText()).includes(baselineSurface.catalog.countries.find(country=>country.code==='SA').name_ar));
+        await section('direction');
+        await page.locator('[data-business-direction-summary]').waitFor();
+        assert.equal(await page.locator('[data-business-fact-form]:visible').count(),0);
+        await page.locator('[data-business-task="markets"]').click();
+        await page.locator('#bf-market-search').fill('AE');
+        await page.locator('#bf-market-codes input[value="AE"]').check();
+        await page.locator('[data-business-direction-back]').click();
+        assert.equal(await page.locator('[data-business-fact-form]:visible').count(),0);
+        await page.locator('[data-business-task="markets"]').click();
+        assert.equal(await page.locator('#bf-market-codes input[value="AE"]').isChecked(),true);
+        assert.deepEqual((await send(`/api/businesses/${result.createdBusiness}/surface?access=${new URL(page.url()).searchParams.get('access')}`)).body.data.business.declared_markets,before.declared_markets,'Back never implicitly saves');
+        await page.locator('#bf-market-codes input[value="AE"]').uncheck();
+        await page.locator('[data-business-direction-back]').click();
+        await section('sources');
+        await page.waitForFunction(()=>document.querySelectorAll('[data-business-source-inventory] [data-provider]').length===5);
+        assert.equal(await page.locator('[data-business-source-advanced]:visible').count(),0,'Permissions are contextual');
+        await page.locator('[data-source-task="data-use"]').click();
+        await page.locator('[data-business-source-advanced]').waitFor({state:'visible'});
+        await section('settings');
+        assert.equal(await page.locator('#bf-name:visible').count(),0,'Profile edit is explicit');
+        assert.equal(await page.locator('[data-business-history]:visible').count(),0,'History is not the daily management surface');
+        await page.locator('[data-business-task="business-profile"]').click();
+        assert.equal(await page.locator('#bf-name').inputValue(),before.name);
+        await page.locator('[data-business-profile-back]').click();
+        for (const width of [1440,390]) {
+            await page.setViewportSize({width,height:900});
+            for (const language of ['ar','en']) {
+                if(await page.locator('html').getAttribute('lang')!==language){
+                    const account=page.locator('.advertiser-account-menu');
+                    await account.locator('summary').click();
+                    await page.locator('[data-application="locale"]').click();
+                    await page.waitForFunction(language=>document.documentElement.lang===language,language);
+                    if(await account.locator('[data-application="locale"]').isVisible())await account.locator('summary').click();
+                }
+                for(const theme of ['light','dark']){
+                    if(await page.locator('html').evaluate(node=>node.classList.contains('dark'))!==(theme==='dark'))await page.locator('[data-theme-toggle]').click();
+                    for(const name of ['overview','direction','sources','settings'])await section(name);
+                }
+            }
+        }
+        assert.equal(await page.evaluate(()=>performance.timeOrigin),documentOrigin,'All internal tasks retain the same document');
+        await page.setViewportSize({width:1280,height:900});
+        if(await page.locator('html').getAttribute('lang')!=='ar'){
+            await page.locator('.advertiser-account-menu > summary').click();
+            await page.locator('[data-application="locale"]').click();
+            await page.waitForFunction(()=>document.documentElement.lang==='ar');
+            await page.locator('.advertiser-account-menu > summary').click();
+        }
+        if(await page.locator('html').evaluate(node=>node.classList.contains('dark')))await page.locator('[data-theme-toggle]').click();
+        return {actualBusiness:true,noImplicitSave:true,dirtyDraftRetained:true,observations,sameDocument:true};
     });
     await check('business activities real creation revision history deactivation and bilingual phone layout', async () => {
         await index(); await openCreated('settings');
@@ -168,7 +266,7 @@ try {
             for (const width of [390, 1280]) {
                 await page.setViewportSize({ width, height: 900 });
                 assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-                const file = `business-activities-${language}-${width}.png`; await page.screenshot({ path: path.join(run, file), fullPage: true }); screenshots.push(file);
+                const file = `business-activities-${language}-${width}.png`; await capture(page, { path: path.join(run, file), fullPage: true }); screenshots.push(file);
             }
         }
         if (await page.locator('html').getAttribute('lang') !== 'ar') await changeActivityLocale('ar');
@@ -202,7 +300,7 @@ try {
         assert.equal(positiveBody.assessment, 'applicable'); assert.equal(positiveBody.relation_basis, 'business_declared'); assert.equal(positiveBody.relation_independently_verified, false);
         await knowledge.locator('[data-practice-assessment-result]').waitFor();
         assert.ok((await knowledge.locator('[data-practice-assessment-result]').innerText()).includes('لا يثبت وجود مشترين'));
-        await page.screenshot({ path: path.join(run, 'business-activity-conditional-interest.png'), fullPage: true });
+        await capture(page, { path: path.join(run, 'business-activity-conditional-interest.png'), fullPage: true });
         await knowledge.locator('#bf-assess-practice').selectOption(await maintenance.getAttribute('data-practice-id'));
         assert.equal(await knowledge.locator('#bf-assess-relation').inputValue(), 'unknown');
         const abstained = page.waitForResponse(r => r.request().method() === 'POST' && r.url().endsWith('/knowledge/customer-discovery/practice'));
@@ -249,7 +347,7 @@ try {
         assert.equal(receipt.historical_receipt, true); assert.equal(receipt.practice.revision, 1);
         await panel.locator('[data-practice-unknown]').waitFor({ state: 'hidden' });
         await page.waitForFunction(count => document.querySelectorAll('[data-business-practices] .bf-practice-list > li').length === count, before + 1);
-        await page.screenshot({ path: path.join(run, 'business-activity-reconciled-reload.png'), fullPage: true });
+        await capture(page, { path: path.join(run, 'business-activity-reconciled-reload.png'), fullPage: true });
         return { command: original.command_id, historicalReceipt: true, oneAdditionalPractice: true, automaticResend: false };
     });
     await check('accepted Vue shell switches only qualified Businesses in sidebar and mobile drawer without a document reload', async () => {
@@ -264,10 +362,17 @@ try {
         assert.ok(created&&other);
         const choice=item=>candidates.find(option=>JSON.parse(option.value)[0]===item.business_public_id&&JSON.parse(option.value)[1]===item.read_grant_id).value;
         const documentOrigin=await page.evaluate(()=>performance.timeOrigin);
+        await workspaceSection('access');
+        assert.equal(await page.locator('.advertiser-sidebar a[href="/workspaces"]').count(),0);
         await desktop.selectOption(choice(other));await ready('[data-business-public]');
         await page.waitForFunction(id=>document.querySelector('[data-business-public]')?.getAttribute('data-business-public')===id,other.business_public_id);
         assert.equal(await page.evaluate(()=>performance.timeOrigin),documentOrigin);
         assert.ok(!(await page.locator('[data-business-workspace]').innerText()).includes('نشاط مستقل للمتصفح'),'The former Business private content is not reused');
+        assert.equal(await page.locator('[data-workspace-panel="access"]').isVisible(),false,'The previous Business team does not follow the switch');
+        await workspaceSection('access');
+        assert.equal(new URL(page.url()).searchParams.get('access'),String(other.read_grant_id));
+        assert.equal(await page.locator('[data-direct-team-submit]:visible').count(),0,'A delegated reader must not inherit the owner’s team action');
+        await page.goBack();await ready('[data-business-public]');
         await page.goBack();await ready('[data-business-public]');
         await page.waitForFunction(id=>document.querySelector('[data-business-public]')?.getAttribute('data-business-public')===id,result.createdBusiness);
         await page.setViewportSize({width:390,height:850});
@@ -278,12 +383,12 @@ try {
         assert.equal(await drawer.evaluate(element=>element.open),false);
         assert.equal(await page.locator('.advertiser-sidebar').isVisible(),false);
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
-        await page.screenshot({path:path.join(run,'stage1-shell-mobile.png'),fullPage:true});
+        await capture(page, {path:path.join(run,'stage1-shell-mobile.png'),fullPage:true});
         await toggle.click();await drawer.locator('[data-business-switch]').selectOption(choice(created));await ready('[data-business-public]');
         await page.waitForFunction(id=>document.querySelector('[data-business-public]')?.getAttribute('data-business-public')===id,result.createdBusiness);
         await toggle.click();await page.setViewportSize({width:1280,height:900});
         await page.waitForFunction(()=>!document.querySelector('[data-advertiser-drawer]')?.open);
-        await page.screenshot({path:path.join(run,'stage1-shell-desktop.png'),fullPage:true});
+        await capture(page, {path:path.join(run,'stage1-shell-desktop.png'),fullPage:true});
         return{qualifiedOptions:before.items.length,realAPI:true,mobileDrawer:true,sameDocument:documentOrigin===await page.evaluate(()=>performance.timeOrigin),noWorkspaceCreation:true};
     });
     await check('qualified draft archive recovers a real stale-revision conflict and reconciles a lost acknowledgement once', async () => {
@@ -310,7 +415,7 @@ try {
             await ready('[data-business-lifecycle]');
         } finally { await page.unroute(pageRoute,staleSurface); }
         await page.locator('.advertiser-sidebar [data-business-choices-loading]').waitFor({state:'hidden'});
-        await page.screenshot({path:path.join(run,'stage2-lifecycle-desktop.png'),fullPage:true});
+        await capture(page, {path:path.join(run,'stage2-lifecycle-desktop.png'),fullPage:true});
         const sent=[];
         const endpoint=`**/api/businesses/${business}/lifecycle`;
         const intercept=async route=>{
@@ -326,7 +431,7 @@ try {
             await page.locator('[data-business-archive]').click();
             await page.locator('[data-business-archive-cancel]').waitFor();
             assert.equal(await page.locator('[data-business-archive-cancel]').evaluate(element=>document.activeElement===element),true);
-            await page.screenshot({path:path.join(run,'stage2-lifecycle-confirm-desktop.png'),fullPage:true,animations:'disabled'});
+            await capture(page, {path:path.join(run,'stage2-lifecycle-confirm-desktop.png'),fullPage:true,animations:'disabled'});
             await page.locator('[data-business-archive-cancel]').click();
             await page.locator('[data-business-archive-confirm]').waitFor({state:'hidden'});
             assert.equal(sent.length,0,'Cancel does not send an archive command');
@@ -354,7 +459,7 @@ try {
             assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
             const activeTab=await page.locator('.workspace-local-navigation [aria-current="page"]').boundingBox();
             assert.ok(activeTab && activeTab.x>=0 && activeTab.x+activeTab.width<=390 && activeTab.height>=44,'The active settings tab must fit within the mobile viewport and remain a 44px target');
-            await page.screenshot({path:path.join(run,'stage2-lifecycle-mobile-unknown.png'),fullPage:true});
+            await capture(page, {path:path.join(run,'stage2-lifecycle-mobile-unknown.png'),fullPage:true});
             await page.locator('[data-business-archive-reconcile]').click();
             await page.waitForURL(origin+'/businesses');await ready();
             assert.equal(sent.length,3);assert.deepEqual(sent[2],sent[1]);
@@ -367,82 +472,48 @@ try {
         return{realArchive:true,realConflict:true,explicitRevisionAdoption:true,lostAckAfterCommit:true,exactCommandReplay:true,matchingReceipt:true,originalBusinessPreserved:true};
     });
     async function sharedSourceReturnCheck() {
-    await check('shared-source return survives actual OAuth success and cancel, fresh documents and revoked Business authority', async () => {
-        fixture('source-setup'); fixture('shared-return-setup');
-        const target = JSON.parse(await readFile(path.join(run, 'shared-return-fixture.json'), 'utf8'));
-        const businessPath = `/businesses/${target.business}?access=${target.access}&section=sources`;
-        const organizationPath = `/workspaces/${target.workspace}`;
-        const returnLink = page.locator('[data-business-return]');
-        const assertReturn = async () => {
-            await ready('[data-sources-workspace]');
-            await returnLink.waitFor();
-            assert.equal(await returnLink.getAttribute('href'), businessPath);
-            const hints = await page.evaluate(() => Object.entries(sessionStorage).filter(([key]) => key.startsWith('builderad.account-return.v1:')).map(([, value]) => JSON.parse(value)));
-            assert.equal(hints.length, 1);
-            assert.deepEqual(Object.keys(hints[0]).sort(), ['access', 'business', 'workspace']);
-            assert.equal(hints[0].business, target.business);
-        };
-        const enter = async (label) => {
-            await page.goto(origin + businessPath); await ready('[data-business-source-inventory]');
-            await page.locator('[data-business-source-inventory-details] > summary').click();
-            await page.getByRole('link', { name: label, exact: true }).first().click();
-            await page.waitForURL(origin + organizationPath); await assertReturn();
-        };
-        await enter('إدارة المصدر');
-        await page.reload(); await assertReturn();
-        await page.goto(origin + `/workspaces/${target.other_workspace}`); await ready('[data-sources-workspace]');
-        assert.equal(await returnLink.count(), 0, 'A different organization cannot consume this return hint');
-        await page.goto(origin + organizationPath); await assertReturn();
-        assert.equal((await send(`/workspaces/${target.other_identity_workspace}/providers/google`)).status, 403,
-            'A Business return hint cannot grant source authority in another organization');
-        const external = url => url.hostname === 'accounts.google.com';
-        await page.route(external, async route => {
-            const state = new URL(route.request().url()).searchParams.get('state'); assert.ok(state);
-            const callback = origin + '/providers/google/callback?state=' + encodeURIComponent(state);
-            await route.fulfill({ contentType: 'text/html', body: `<main data-synthetic-oauth><a href="${callback}&error=access_denied">Cancel synthetic OAuth</a><a href="${callback}&code=synthetic-code">Authorize synthetic OAuth</a></main>` });
+        await check('Business navigation preserves qualified historical collaboration metadata and conceals revoked access',async()=>{
+            fixture('source-setup');fixture('shared-return-setup');
+            const target=JSON.parse(await readFile(path.join(run,'shared-return-fixture.json'),'utf8'));
+            try{
+                const qualified=`/businesses/${target.business}?access=${target.access}`;
+                await page.goto(origin+qualified);await ready('[data-business-public]');const documentOrigin=await page.evaluate(()=>performance.timeOrigin);
+                for(const section of ['sources','direction','access'])await workspaceSection(section);
+                assert.equal(await page.evaluate(()=>performance.timeOrigin),documentOrigin);assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'),target.business);
+                const admitted=await send(`/api/businesses/${target.business}/surface?access=${target.access}`);assert.equal(admitted.status,200);
+                assert.equal('collaboration' in admitted.body.data,false,'Historical links are not exposed by the current Business surface');
+                assert.equal(await page.locator('[data-business-collaboration]').count(),0,'Historical Workspace collaboration is not an operating Business editor');
+                assert.equal((await send(`/api/businesses/${result.createdBusiness}/surface?access=${target.access}`)).status,403);
+                fixture('shared-return-revoke');assert.equal((await send(`/api/businesses/${target.business}/surface?access=${target.access}`)).status,403);
+                await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await page.waitForFunction(()=>['unavailable','closed'].includes(document.querySelector('[data-application-spa]')?.dataset.state));
+                assert.equal(await page.locator('[data-workspace-panel="access"]').isVisible(),false);assert.ok((await send('/api/businesses')).body.data.items.some(item=>item.business_public_id===result.createdBusiness));
+                return{realBusinessNavigation:true,historicalMetadata:'qualified JSON only',exactBusinessDenied:403,revokedPrivateContentHidden:true,independentBusinessAvailable:true};
+            }finally{fixture('shared-return-finish');}
         });
-        const outcomes = [];
-        try {
-            for (const outcome of ['Cancel', 'Authorize']) {
-                const snapshot = await send(organizationPath + '/providers/google');
-                assert.equal(snapshot.status, 200);
-                assert.equal(snapshot.body.availability, 'CONNECT_AVAILABLE');
-                await page.locator('[data-provider="google"] button').click();
-                await page.locator('[data-source-connect="google"]:visible').click();
-                await page.locator('[data-synthetic-oauth]').waitFor();
-                await page.getByRole('link', { name: outcome + ' synthetic OAuth', exact: true }).click();
-                await page.waitForURL(url => url.origin === origin && url.pathname === organizationPath);
-                await assertReturn();
-                await page.reload(); await assertReturn();
-                const dialog = page.locator('dialog[open]');
-                if (await dialog.count()) await dialog.getByRole('button', { name: /^إغلاق/ }).click();
-                await returnLink.click(); await ready('[data-business-public]');
-                assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'), target.business);
-                await page.locator('[data-business-source-inventory]').waitFor();
-                assert.equal((await send(`/api/businesses/${result.createdBusiness}/surface?access=${target.access}`)).status, 403,
-                    'The original grant cannot admit a different Business');
-                outcomes.push(outcome);
-                await enter('فتح الجهة');
-            }
-        } finally { await page.unroute(external); }
-        fixture('shared-return-revoke');
-        await page.reload(); await assertReturn();
-        const denied = page.waitForResponse(response => new URL(response.url()).pathname === `/businesses/${target.business}`);
-        await returnLink.click(); assert.equal((await denied).status(), 403);
-        await page.waitForFunction(() => document.querySelector('[data-application-spa]')?.dataset.state === 'ready');
-        assert.equal(await page.locator('[data-business-public]').count(), 0, 'The hint cannot restore revoked Business access');
-        assert.equal(new URL(page.url()).pathname, organizationPath, 'A denied destination keeps the qualified source page');
-        await page.goto(origin + organizationPath); await assertReturn();
-        assert.equal((await send('/logout', 'POST')).status, 200);
-        await page.goto(origin + '/login');
-        assert.equal((await send('/login', 'POST', { email: 'goals-a@example.test', password: 'DisposableGoalsProof42!' })).status, 200);
-        await page.goto(origin + `/workspaces/${target.other_identity_workspace}`); await ready('[data-sources-workspace]');
-        assert.equal(await returnLink.count(), 0);
-        assert.equal(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('builderad.account-return.v1:')).length), 0);
-        fixture('shared-return-finish');
-        return { outcomes, newDocuments: true, wrongOrganizationRejected: true, wrongBusinessGrantRejected: true,
-            revokedBusinessDenied: true, changedIdentityCleared: true, authority: 'real server; synthetic provider responses only' };
-    });
+        await check('historical shared-source OAuth JSON success and cancellation preserve owner and Business permission boundaries',async()=>{
+            fixture('source-setup');fixture('shared-return-setup');
+            const target=JSON.parse(await readFile(path.join(run,'shared-return-fixture.json'),'utf8'));
+            const businessPath=`/businesses/${target.business}?access=${target.access}&section=sources`,organizationPath=`/workspaces/${target.workspace}`;
+            try{
+                await page.goto(origin+businessPath);await ready('[data-business-public]');await page.reload();await ready('[data-business-public]');
+                assert.equal(await page.locator('[data-business-public]').getAttribute('data-business-public'),target.business);
+                assert.equal((await send(`/workspaces/${target.other_identity_workspace}/providers/google`)).status,403,'A Business return path cannot grant foreign source authority');
+                const outcomes=[];
+                for(const outcome of ['cancel','authorize']){
+                    const snapshot=await send(organizationPath+'/providers/google');assert.equal(snapshot.status,200);assert.equal(snapshot.body.availability,'CONNECT_AVAILABLE');
+                    const connected=await send(organizationPath+'/providers/google/connect','POST',{intent:snapshot.body.connect_intent});assert.equal(connected.status,200);
+                    const state=new URL(connected.body.authorization_url).searchParams.get('state');assert.ok(state);
+                    const callback=await send('/providers/google/callback?state='+encodeURIComponent(state)+(outcome==='cancel'?'&error=access_denied':'&code=synthetic-code'));
+                    assert.equal(callback.status,200);assert.equal(callback.body.status,outcome==='cancel'?'AUTHORIZATION_NOT_COMPLETED':'ACCOUNT_SELECTION_REQUIRED');
+                    assert.equal(callback.body.workspace,target.workspace,'OAuth callback retains the exact historical source owner');
+                    assert.equal((await send(`/api/businesses/${result.createdBusiness}/surface?access=${target.access}`)).status,403);
+                    assert.equal((await send(`/api/businesses/${target.business}/surface?access=${target.access}`)).status,200);outcomes.push(outcome);
+                }
+                fixture('shared-return-revoke');assert.equal((await send(`/api/businesses/${target.business}/surface?access=${target.access}`)).status,403);
+                assert.equal((await send(organizationPath+'/providers/google')).status,200,'Independent historical source authority survives Business revocation');
+                return{outcomes,newBusinessDocument:true,wrongOwnerRejected:true,wrongBusinessGrantRejected:true,revokedBusinessDenied:true,historicalSourceAuthorityIndependent:true,scope:'qualified JSON callbacks; synthetic provider responses; no retired Workspace page'};
+            }finally{fixture('shared-return-finish');}
+        });
     }
     await check('Business advertising accounts open directly in the activity with five brands and preserve a simulated cancellation return', async()=>{
         await workspaceSection('sources');
@@ -462,7 +533,7 @@ try {
         const xTrigger=accounts.locator('[data-provider="x"] button');await xTrigger.click();
         const dialog=accounts.locator('dialog');await dialog.waitFor({state:'visible'});assert.equal(await dialog.getAttribute('aria-label'),'X Ads');
         assert.equal(await page.locator('#business-account-administration').count(),0);
-        await page.screenshot({path:path.join(run,'source-x-dialog-ar-390.png'),fullPage:true});
+        await capture(page, {path:path.join(run,'source-x-dialog-ar-390.png'),fullPage:true});
         await dialog.locator('.advertising-dialog-heading button').focus();await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
         assert.equal(await xTrigger.evaluate(button=>document.activeElement===button),true);
         // The PHP acceptance exercises actual callback ingress. This browser case
@@ -485,12 +556,12 @@ try {
         await page.waitForFunction(()=>document.querySelectorAll('[data-business-source-inventory] [data-state="loading"]').length===0);
         assert.equal(await accounts.locator('[data-state="unselected"]').count(),0,'Reload/history preserve the qualified Business owner without another setup step');
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-        await page.screenshot({path:path.join(run,'business-advertising-accounts-ar-390.png'),fullPage:true});
-        await page.setViewportSize({width:1280,height:900});await page.screenshot({path:path.join(run,'business-sources-ar-1280.png'),fullPage:true});
+        await capture(page, {path:path.join(run,'business-advertising-accounts-ar-390.png'),fullPage:true});
+        await page.setViewportSize({width:1280,height:900});await capture(page, {path:path.join(run,'business-sources-ar-1280.png'),fullPage:true});
         await page.setViewportSize({width:768,height:1024});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-        await page.screenshot({path:path.join(run,'business-sources-ar-768.png'),fullPage:true});
+        await capture(page, {path:path.join(run,'business-sources-ar-768.png'),fullPage:true});
         if(await page.locator('html').getAttribute('data-theme')!=='dark')await page.locator('[data-theme-toggle]').first().click();await page.waitForFunction(()=>document.documentElement.dataset.theme==='dark');
-        await page.screenshot({path:path.join(run,'business-sources-dark-ar-768.png'),fullPage:true});
+        await capture(page, {path:path.join(run,'business-sources-dark-ar-768.png'),fullPage:true});
         await page.locator('[data-theme-toggle]').first().click();await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');await page.setViewportSize({width:1280,height:900});
         const accountMenu=page.locator('.advertiser-account-menu');
         await accountMenu.locator('summary').click();
@@ -498,7 +569,7 @@ try {
         await page.waitForFunction(()=>document.documentElement.lang==='en'&&document.documentElement.dir==='ltr');
         await accountMenu.locator('summary').click();
         await page.getByRole('heading',{name:'Business advertising accounts',exact:true}).waitFor();
-        await page.screenshot({path:path.join(run,'business-sources-en-1280.png'),fullPage:true});
+        await capture(page, {path:path.join(run,'business-sources-en-1280.png'),fullPage:true});
         await accountMenu.locator('summary').click();
         await page.locator('[data-application="locale"]').click();
         await page.waitForFunction(()=>document.documentElement.lang==='ar'&&document.documentElement.dir==='rtl');
@@ -532,14 +603,31 @@ try {
         const freshReady=async selector=>tab.waitForFunction(selector=>document.querySelector('[data-application-spa]')?.dataset.state==='ready'&&!!document.querySelector(selector),selector);
         try{
             await tab.goto(origin+'/login');assert.equal((await sendFrom(tab,'/login','POST',{email:identity.email,password:'DisposableGoalsProof42!'})).status,200);
-            await tab.goto(origin+'/dashboard');await freshReady('#bf-create-name');assert.equal(new URL(tab.url()).pathname,'/businesses/new');
+            await tab.goto(origin+'/dashboard');await freshReady('[data-wizard-step="sector"]');assert.equal(new URL(tab.url()).pathname,'/businesses/new');
             assert.equal((await sendFrom(tab,'/api/businesses')).body.data.items.length,0);const organizations=await sendFrom(tab,'/workspaces');assert.equal(organizations.status,200);assert.deepEqual(organizations.body.data.workspaces,[]);
-            await tab.locator('#bf-create-name').fill('نشاط المعلن الأول');await tab.locator('#bf-create-type').selectOption({index:1});await tab.locator('#bf-create-market-search').fill('SA');await tab.locator('.setup-countries input[value="SA"]').check();
-            await tab.getByRole('button',{name:'إنشاء النشاط والمتابعة',exact:true}).click();await freshReady('[data-business-public]');const business=await tab.locator('[data-business-public]').getAttribute('data-business-public');
+            await chooseSectorAndReachMarket(tab);await tab.locator('#bf-create-market-search').fill('SA');await tab.locator('.setup-countries input[value="SA"]').check();
+            await nameBusinessAndSave(tab,'نشاط المعلن الأول');await freshReady('[data-business-public]');const business=await tab.locator('[data-business-public]').getAttribute('data-business-public');
             assert.equal((await sendFrom(tab,'/api/businesses')).body.data.items.length,1);assert.deepEqual((await sendFrom(tab,'/workspaces')).body.data.workspaces,[]);
+            const businessUrl = new URL(tab.url());
+            const documentOrigin = await tab.evaluate(() => performance.timeOrigin);
+            await ensureWorkspaceNavigation(tab);
+            assert.equal(await tab.locator('[data-advertiser-drawer] a[href="/workspaces"]').count(), 0);
+            await tab.locator('[data-workspace-section="access"]').filter({visible:true}).click();
+            const team = tab.locator('[data-workspace-panel="access"] [data-business-direct-team]');
+            await team.waitFor();
+            assert.equal(new URL(tab.url()).pathname, businessUrl.pathname);
+            assert.equal(new URL(tab.url()).searchParams.get('access'), businessUrl.searchParams.get('access'));
+            assert.equal(await tab.evaluate(() => performance.timeOrigin), documentOrigin);
+            await team.locator('[data-direct-team-confirm]').check();
+            const enrollment = tab.waitForResponse(response => new URL(response.url()).pathname === `/api/businesses/${business}/direct-team` && response.request().method() === 'POST');
+            await team.locator('[data-direct-team-submit]').click();
+            assert.equal((await enrollment).status(), 200);
+            await tab.getByText('تم تفعيل إدارة فريق النشاط. اختر الصلاحية والموظف أدناه.', {exact:true}).waitFor();
+            assert.deepEqual((await sendFrom(tab,'/workspaces')).body.data.workspaces,[]);
             await ensureWorkspaceNavigation(tab);await tab.locator('[data-workspace-section="sources"]').filter({visible:true}).click();
+            await tab.locator('[data-business-source-inventory] .advertising-platforms > [data-provider] .provider-brand').first().waitFor();
             assert.equal(await tab.locator('[data-business-source-inventory] .advertising-platforms > [data-provider] .provider-brand').count(),5);assert.equal(await tab.locator('[data-advertising-accounts] dialog').isVisible(),false);assert.equal(await tab.locator('[data-state="unselected"]').count(),0);await tab.locator('[data-provider="meta"] button').click();await tab.getByRole('dialog',{name:'Meta Ads',exact:true}).waitFor({state:'visible'});assert.equal(await tab.locator('#business-account-administration').count(),0);assert.deepEqual((await sendFrom(tab,'/workspaces')).body.data.workspaces,[]);assert.equal(await tab.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-            return{identityFixture:'verified before browser; registration email transport not exercised',firstEntrySetup:true,business,workspacesBeforeAndAfter:0,brandedPlatforms:5,mobileOverflow:false};
+            return{identityFixture:'verified before browser; registration email transport not exercised',firstEntrySetup:true,business,workspacesBeforeAndAfter:0,directTeamEnrollment:200,exactBusinessAccessPreserved:true,brandedPlatforms:5,mobileOverflow:false};
         }finally{await freshContext.close();activePage=page;}
     });
     await check('direct Business team recovers initial422 and409 and reconciles a committed unknown result without a replacement command',async()=>{
@@ -609,186 +697,126 @@ try {
         }finally{await page.unroute(target);}
     });
     async function ensureWorkspaceNavigation(targetPage=page){const sidebar=targetPage.locator('[data-advertiser-shell] > .advertiser-sidebar');if(!await sidebar.isVisible()){const drawer=targetPage.locator('[data-advertiser-drawer]');if(!await drawer.evaluate(element=>element.open))await targetPage.locator('[data-advertiser-menu-toggle]').click();}}
-    async function workspaceSection(section,targetPage=page){await ensureWorkspaceNavigation(targetPage);if(["inquiries","access","settings"].includes(section)){await targetPage.locator('[data-workspace-section="settings"]').click();await targetPage.locator(`[data-workspace-settings="${section==="inquiries"?"data":section==="access"?"access":"details"}"]`).click();}else await targetPage.locator(`[data-workspace-section="${section}"]`).click();await targetPage.locator(`[data-workspace-panel="${section}"]`).waitFor({state:'visible'});}
+    async function workspaceSection(section,targetPage=page){
+        const before = new URL(targetPage.url());
+        await ensureWorkspaceNavigation(targetPage);
+        if(["inquiries","settings"].includes(section)){
+            await targetPage.locator('[data-workspace-section="settings"]').click();
+            await targetPage.locator(`[data-workspace-settings="${section==="inquiries"?"data":"details"}"]`).click();
+        }else await targetPage.locator(`[data-workspace-section="${section}"]`).filter({visible:true}).click();
+        await targetPage.locator(`[data-workspace-panel="${section}"]`).waitFor({state:'visible'});
+        if (section === 'access') {
+            const after = new URL(targetPage.url());
+            assert.equal(after.pathname, before.pathname);
+            assert.equal(after.searchParams.get('access'), before.searchParams.get('access'));
+        }
+        // Legacy scenarios explicitly exercise an editor. The redesign scenario
+        // above separately verifies the new summary-first entry contract.
+        const task=targetPage.locator(`[data-business-task="${section==='settings'?'business-profile':'markets'}"]`);
+        if(['settings','direction'].includes(section)&&await task.isVisible())await task.click();
+    }
     const openInquiryDetail=async()=>{await inquiryPanel().locator('[data-inquiry-open]').first().click();await inquiryPanel().locator('[data-inquiry-detail]').waitFor();};
-    await check('operating independent team and organization registration, membership and departure', async () => {
+    // Operating journeys use the Business team. Existing Workspace custody is
+    // exercised only through independently qualified historical JSON contracts.
+    const historicalBase = JSON.parse(await readFile(path.join(run, 'fixture.json'), 'utf8'));
+    const directSelection = grant => ({ realm_kind: 'direct', realm_workspace_public_id: null,
+        requirements: [{ requirement_kind: 'business', leaf_grant_id: Number(grant) }] });
+    await check('operating independent Business team enrollment and staff edit preserve private boundaries', async () => {
         fixture('team-identities');
         const identities=JSON.parse(await readFile(path.join(run,'team-identities.json'),'utf8'));
         const created=await send('/api/businesses','POST',{command_id:crypto.randomUUID(),name:'نشاط مستقل لفريق الموظفين'});
-        assert.equal(created.status,201);const independent=created.body.data,teamBusiness=independent.business_public_id;
-        await page.goto(`${origin}/businesses/${teamBusiness}?access=${independent.grant_refs['business.context.read']}`);
+        assert.equal(created.status,201);const independent=created.body.data,business=independent.business_public_id;
+        await page.goto(`${origin}/businesses/${business}?access=${independent.grant_refs['business.context.read']}`);
         await ready('[data-business-public]');await workspaceSection('access');
-        const direct=page.locator('[data-business-direct-team]');
-        await direct.locator('input[type=checkbox]').check();
+        const direct=page.locator('[data-business-direct-team]');await direct.locator('[data-direct-team-confirm]').check();
         const [enrollment]=await Promise.all([
-            page.waitForResponse(response=>new URL(response.url()).pathname===`/api/businesses/${teamBusiness}/direct-team`&&response.request().method()==='POST'),
-            direct.getByRole('button',{name:'تفعيل إدارة الموظفين',exact:true}).click(),
+            page.waitForResponse(response=>new URL(response.url()).pathname===`/api/businesses/${business}/direct-team`&&response.request().method()==='POST'),
+            direct.locator('[data-direct-team-submit]').click(),
         ]);
-        assert.equal(enrollment.status(),200);const roots=(await enrollment.json()).data.grant_refs;
-        const rights={};
-        for(const action of ['business.context.read','business.context.manage']){
-            await page.locator('#bf-delegation-parent').selectOption(roots[action]);
-            await page.locator('#bf-delegation-recipient').fill(identities.staff);
-            assert.equal(await page.locator('#bf-delegation-agency').count(),0);
-            const [response]=await Promise.all([
-                page.waitForResponse(response=>new URL(response.url()).pathname===`/api/businesses/${teamBusiness}/grants`&&response.request().method()==='POST'),
-                page.locator('[data-delegation-form]').getByRole('button',{name:'منح الحق المحدد',exact:true}).click(),
-            ]);
-            assert.equal(response.status(),200);rights[action]=(await response.json()).data.grant_id;
-            await page.locator('[data-delegation-confirmed]').waitFor();
-        }
-        await page.goto(origin+'/workspaces');await ready('[data-workspaces="index"]');
-        await page.locator('[data-workspaces-add]').click();await ready('[data-workspaces="create"]');
-        assert.equal(await page.locator('[data-workspaces="type"]').count(),0);
-        await page.locator('[data-workspaces="name"]').fill('وكالة الفريق المتصفحي');
-        await page.locator('[data-workspaces="save"]').click();await ready('[data-sources-workspace]');
-        const organization=new URL(page.url()).pathname.split('/')[2],team=page.locator('[data-organization-team]');
-        result.operatingOrganization=organization;result.organizationStaff=identities.staff;
-        await page.getByRole('button',{name:'الفريق',exact:true}).click();
-        await team.locator('[data-organization-recipient]').fill(identities.staff);
-        await team.locator('[data-organization-confirm]').check();
-        const [added]=await Promise.all([
-            page.waitForResponse(response=>new URL(response.url()).pathname===`/api/organizations/${organization}/team`&&response.request().method()==='POST'),
-            team.getByRole('button',{name:'إضافة الموظف',exact:true}).click(),
+        assert.equal(enrollment.status(),200);await ready('[data-business-public]');
+        const members=page.locator('[data-business-team-members]');
+        await members.locator('[data-team-add]').click();await members.locator('[data-team-email]').fill('goals-a@example.test');
+        await members.locator('[data-team-lookup]').click();await members.locator('[data-team-recipient]').waitFor();
+        await members.locator('[data-team-permissions][value="business.context.manage"]').check();
+        await members.locator('[data-team-confirm]').check();
+        const [issued]=await Promise.all([
+            page.waitForResponse(response=>new URL(response.url()).pathname===`/api/businesses/${business}/team`&&response.request().method()==='POST'),
+            members.locator('[data-team-save]').click(),
         ]);
-        assert.equal(added.status(),200);
-        const newMember=team.locator('[data-organization-members] li').filter({hasText:identities.staff});
-        await newMember.waitFor();
-        assert.equal(await newMember.locator('code').isVisible(),false);
-        await newMember.locator('summary').click();
-        assert.equal(await newMember.locator('code').textContent(),identities.staff);
-        await newMember.locator('summary').click();
-        await page.screenshot({path:path.join(run,'organization-team-ar-1280.png'),fullPage:true});
-        await page.setViewportSize({width:390,height:844});
-        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-        await page.screenshot({path:path.join(run,'organization-team-ar-390.png'),fullPage:true});
-        const language=async target=>{const menu=page.locator('.advertiser-account-menu');if(await menu.getAttribute('open')===null)await menu.locator(':scope > summary').click();await page.locator('[data-application="locale"]').click();await page.waitForFunction(lang=>document.documentElement.lang===lang,target);await ready('[data-sources-workspace]');await team.locator('[data-organization-members]').waitFor();if(await menu.getAttribute('open')!==null)await menu.locator(':scope > summary').click();};
-        await language('en');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-        await team.getByText('Team membership updated. Business rights remain explicit per file.',{exact:true}).waitFor();
-        assert.equal(await team.getByText('تم تحديث عضوية الفريق. صلاحيات الأنشطة تُحدد لكل ملف بصورة مستقلة.',{exact:true}).count(),0);
-        await page.screenshot({path:path.join(run,'organization-team-en-390.png'),fullPage:true});
-        await page.getByRole('button',{name:'Accounts and sources',exact:true}).click();
-        await page.locator('.sources-page > div > details.biz-divider > summary').click();
-        const registryHeading=page.locator('#sources-heading');await registryHeading.waitFor();assert.equal(await registryHeading.textContent(),'Sources and current permissions');
-        await page.getByText('No sources are visible under the current source permission. Workspace view permission alone is insufficient.',{exact:true}).waitFor();
-        await page.screenshot({path:path.join(run,'organization-sources-en-390-advanced.png'),fullPage:true});
-        await page.getByRole('button',{name:'Team',exact:true}).click();await team.locator('[data-organization-members]').waitFor();await language('ar');
-        await page.setViewportSize({width:1280,height:900});
+        assert.equal(issued.status(),200);const rights=(await issued.json()).data.grant_refs;
         const employee=await browser.newContext({viewport:{width:390,height:844},locale:'ar-JO'});
         try{
             const tab=await employee.newPage();tab.on('pageerror',e=>result.errors.push(e.message));
-            await tab.goto(origin+'/login');
-            assert.equal((await sendFrom(tab,'/login','POST',{email:'goals-a@example.test',password:'DisposableGoalsProof42!'})).status,200);
-            await tab.goto(`${origin}/businesses/${teamBusiness}?access=${rights['business.context.read']}`);
+            await tab.goto(origin+'/login');assert.equal((await sendFrom(tab,'/login','POST',{email:'goals-a@example.test',password:'DisposableGoalsProof42!'})).status,200);
+            await tab.goto(`${origin}/businesses/${business}?access=${rights['business.context.read']}`);
             await tab.waitForSelector('[data-business-public]');await workspaceSection('settings',tab);
-            assert.equal(await tab.locator('[data-business-history], [data-business-legacy-history]').count(),0);
             await tab.locator('#bf-name').fill('نشاط عدّله الموظف المباشر');
             await tab.getByRole('button',{name:'حفظ المعلومات',exact:true}).click();await tab.locator('[data-business-saved]').waitFor();
-            await tab.goto(`${origin}/workspaces/${organization}`);
-            await tab.getByRole('button',{name:'الفريق',exact:true}).click();
-            const ownTeam=tab.locator('[data-organization-team]');await ownTeam.getByRole('button',{name:'مغادرة الجهة',exact:true}).waitFor();
-            assert.equal(await ownTeam.locator('form').count(),0);
-            await ownTeam.locator('[data-organization-confirm]').check();await ownTeam.getByRole('button',{name:'مغادرة الجهة',exact:true}).click();
-            await tab.waitForURL(origin+'/workspaces');
-            assert.equal((await sendFrom(tab,`/api/organizations/${organization}/team`)).status,403);
-            assert.equal((await sendFrom(tab,`/api/businesses/${teamBusiness}/surface?access=${rights['business.context.read']}`)).status,200,'Independent Business rights are not organizational membership');
+            assert.equal((await sendFrom(tab,`/api/businesses/${business}/history?access=${rights['business.context.read']}&kind=context`)).status,403);
+            await workspaceSection('inquiries',tab);assert.equal(await tab.locator('[data-inquiry-panel]').count(),0);
+            assert.equal(await tab.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+            const organization=historicalBase.b.workspaces[1].public_id;
+            result.operatingOrganization=organization;result.organizationStaff=identities.staff;
+            const teamPath=`/api/organizations/${organization}/team`;
+            const before=await send(teamPath);assert.equal(before.status,200);
+            const added=await send(teamPath,'POST',{command_id:crypto.randomUUID(),effect:'add',recipient_public_id:identities.staff,expected_revision:before.body.data.revision});assert.equal(added.status,200);
+            const own=await sendFrom(tab,teamPath);assert.equal(own.status,200);assert.equal(own.body.data.can_leave,true);
+            const leave=await sendFrom(tab,teamPath,'POST',{command_id:crypto.randomUUID(),effect:'leave',recipient_public_id:identities.staff,expected_revision:own.body.data.revision});assert.equal(leave.status,200);
+            assert.equal((await sendFrom(tab,teamPath)).status,403);
+            assert.equal((await sendFrom(tab,`/api/businesses/${business}/surface?access=${rights['business.context.read']}`)).status,200,'Independent Business rights survive historical organizational departure');
         }finally{await employee.close();}
-        return {independentBusiness:teamBusiness,locales:['ar','en'],operatingIssuers:true,workspaceInferredForIndependentBusiness:false,organizationRegisteredWithoutCommercialType:true,employeeMembershipAndSelfDeparture:true,directBusinessPreservedAfterOrganizationalDeparture:true,width:390,horizontalOverflow:0};
+        return{independentBusiness:business,operatingBusinessTeamUI:true,staffEdit:true,privateHistoryDenied:true,privateInquiryNotMounted:true,historicalMembershipAndSelfDeparture:'qualified JSON only',directBusinessPreservedAfterDeparture:true,width:390};
     });
-    await check('organization membership keeps a committed unknown command through later409 and422 and reconciles one effect', async()=>{
+    await check('historical organization membership exact receipt replay after lost ACK and later409 and422 has one effect',async()=>{
         const organization=result.operatingOrganization,recipient=result.organizationStaff;
-        assert.ok(organization&&recipient,'The operating organization journey is a required prerequisite');
-        await page.goto(`${origin}/workspaces/${organization}`);await ready('[data-sources-workspace]');
-        await page.getByRole('button',{name:'الفريق',exact:true}).click();
-        const team=page.locator('[data-organization-team]'),target=`**/api/organizations/${organization}/team`,evidence=[];
+        assert.ok(organization&&recipient,'The Business team and historical custody journey is a prerequisite');
+        const endpoint=`/api/organizations/${organization}/team`,evidence=[];
         for(const [rejection,effect] of [[409,'add'],[422,'remove']]){
-            const before=await send(`/api/organizations/${organization}/team`);assert.equal(before.status,200);
-            const commands=[];let committedReceipt;
-            await page.route(target,async route=>{
+            const before=await send(endpoint);assert.equal(before.status,200);
+            const original={command_id:crypto.randomUUID(),effect,recipient_public_id:recipient,expected_revision:before.body.data.revision};
+            let deliveries=0,committedReceipt;const commands=[];
+            await page.route('**'+endpoint,async route=>{
                 if(route.request().method()!=='POST')return route.continue();
-                commands.push(route.request().postDataJSON());
-                if(commands.length===1){const response=await route.fetch();assert.equal(response.status(),200);committedReceipt=(await response.json()).data;return route.abort('failed');}
-                if(commands.length===2)return route.fulfill({status:rejection,contentType:'application/json',body:JSON.stringify({error:'simulated_reconciliation_rejection'})});
+                commands.push(route.request().postDataJSON());deliveries++;
+                if(deliveries===1){const response=await route.fetch();assert.equal(response.status(),200);committedReceipt=(await response.json()).data;return route.abort('failed');}
+                if(deliveries===2)return route.fulfill({status:rejection,contentType:'application/json',body:JSON.stringify({error:'simulated_reconciliation_rejection'})});
                 return route.continue();
             });
             try{
-                if(effect==='add')await team.locator('[data-organization-recipient]').fill(recipient);
-                await team.locator('[data-organization-confirm]').check();
-                if(effect==='add')await team.getByRole('button',{name:'إضافة الموظف',exact:true}).click();
-                else await team.locator('[data-organization-members] li').filter({hasText:recipient}).getByRole('button',{name:'سحب العضوية',exact:true}).click();
-                const unknown=team.getByText('لم نتأكد من النتيجة. تحقّق بالطلب الأصلي نفسه؛ لن يُرسل تلقائيًا.',{exact:true});await unknown.waitFor();
-                assert.equal(commands.length,1);const original=structuredClone(commands[0]);assert.equal(original.expected_revision,before.body.data.revision);
-                const rejected=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/organizations/${organization}/team`&&response.request().method()==='POST');
-                await team.locator('[data-organization-retry]').click();assert.equal((await rejected).status(),rejection);await unknown.waitFor();
-                assert.equal(await team.locator('fieldset').evaluate(fieldset=>fieldset.disabled),true);
-                assert.equal(await team.locator('[data-organization-recipient]').isDisabled(),true,'The retained unknown command keeps editable membership input disabled');
-                assert.equal(commands.length,2);assert.deepEqual(commands[1],original);
-                const settled=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/organizations/${organization}/team`&&response.request().method()==='POST');
-                await team.locator('[data-organization-retry]').click();const receipt=await settled;assert.equal(receipt.status(),200);assert.deepEqual((await receipt.json()).data,committedReceipt);
-                await team.locator('[data-organization-retry]').waitFor({state:'hidden'});assert.equal(commands.length,3);assert.deepEqual(commands[2],original);
-                const after=await send(`/api/organizations/${organization}/team`);assert.equal(after.status,200);assert.equal(after.body.data.revision,before.body.data.revision+1,'Three deliveries must produce only one membership change');
-                evidence.push({rejection,effect,requests:3,revisionDelta:1,exactOriginal:true,transport:'real committed effect then dropped ACK; simulated later rejection'});
-            }finally{await page.unroute(target);}
+                await assert.rejects(()=>send(endpoint,'POST',original));
+                assert.equal(deliveries,1,'A lost ACK must not trigger automatic replay');
+                assert.equal((await send(endpoint,'POST',original)).status,rejection);
+                const replay=await send(endpoint,'POST',original);assert.equal(replay.status,200);assert.deepEqual(replay.body.data,committedReceipt);
+                assert.equal(deliveries,3);assert.ok(commands.every(command=>JSON.stringify(command)===JSON.stringify(original)));
+                const after=await send(endpoint);assert.equal(after.body.data.revision,before.body.data.revision+1);
+                evidence.push({rejection,effect,requests:3,revisionDelta:1,exactOriginal:true,transport:'real committed effect then lost ACK; simulated later rejection',surface:'qualified historical JSON'});
+            }finally{await page.unroute('**'+endpoint);}
         }
         return{cases:evidence};
     });
-    await check('internal client file team opt-in, real staff assignment and staff edit preserve private boundaries', async () => {
-        fixture('internal-team-setup');
-        const f=JSON.parse(await readFile(path.join(run,'internal-team-browser-fixture.json'),'utf8'));
-        const business=f.business.business_public_id;
-        await page.goto(`${origin}/businesses/${business}?access=${f.business.grant_refs['business.context.read']}`);
-        await ready('[data-business-public]');await workspaceSection('access');
-        const panel=page.locator('[data-internal-client-team]');
-        await panel.locator('select').selectOption(f.team.public_id);
-        await panel.locator('input[type=checkbox]').check();
-        await panel.getByRole('button',{name:'تفعيل إدارة الفريق لهذا الملف',exact:true}).click();
-        const openTeam=panel.locator('[data-open-internal-team]');await openTeam.waitFor();
-        await openTeam.click();await ready('[data-business-public]');await workspaceSection('access');
-        assert.equal(await page.locator('[data-business-delegation] input[type=checkbox]').count(),0);
-        const readAccess = new URL(page.url()).searchParams.get('access');
-        const qualified=await send(`/api/businesses/${business}/surface?access=${readAccess}`);assert.equal(qualified.status,200);
-        assert.equal(qualified.body.data.authority_selection.realm_kind,'internal_team');
-        const rights={};
-        for (const action of ['business.context.read','business.context.manage']) {
-            const option=qualified.body.data.delegation.options.find(item=>item.action===action&&item.can_issue);assert.ok(option);
-            await page.locator('#bf-delegation-parent').selectOption(option.grant_id);
-            await page.locator('#bf-delegation-recipient').fill(f.staff);
-            const [response]=await Promise.all([
-                page.waitForResponse(response=>new URL(response.url()).pathname===`/api/businesses/${business}/grants`&&response.request().method()==='POST'),
-                page.locator('[data-delegation-form]').getByRole('button',{name:'منح الحق المحدد',exact:true}).click(),
-            ]);
-            const receipt=await response.json();assert.equal(receipt.data.status,'active');rights[action]=receipt.data.grant_id;
-            await page.locator('[data-delegation-confirmed]').waitFor();
-        }
-        await page.setViewportSize({width:390,height:844});
-        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-        await page.screenshot({path:path.join(run,'internal-team-ar-390.png'),fullPage:true});await page.setViewportSize({width:1280,height:900});
-        const staffContext=await browser.newContext({viewport:{width:1280,height:900},locale:'ar-JO'});
-        try {
-            const staffPage=await staffContext.newPage();
-            staffPage.on('pageerror',error=>result.errors.push(error.message));
-            await staffPage.goto(origin+'/login');
-            const login=await sendFrom(staffPage,'/login','POST',{email:'goals-a@example.test',password:'DisposableGoalsProof42!'});assert.equal(login.status,200);
-            await staffPage.goto(`${origin}/businesses/${business}?access=${rights['business.context.read']}`);
-            await staffPage.waitForSelector('[data-business-public]');await workspaceSection('settings',staffPage);
-            await staffPage.locator('#bf-name').fill('ملف عدّله موظف مؤهل');
-            await staffPage.getByRole('button',{name:'حفظ المعلومات',exact:true}).click();
-            await staffPage.locator('[data-business-saved]').waitFor();
-            await staffPage.waitForFunction(()=>document.querySelector('[data-business-name]')?.textContent==='ملف عدّله موظف مؤهل');
-            assert.equal(await staffPage.locator('[data-business-name]').textContent(),'ملف عدّله موظف مؤهل');
-            await workspaceSection('inquiries',staffPage);assert.equal(await staffPage.locator('[data-inquiry-panel]').count(),0);
-            const history=await sendFrom(staffPage,`/api/businesses/${business}/history?access=${rights['business.context.read']}&kind=context`);assert.equal(history.status,403);
-            await workspaceSection('access',staffPage);
-            const membership=staffPage.locator('[data-organization-team]');await membership.getByRole('button',{name:'مغادرة الجهة',exact:true}).waitFor();
-            assert.equal(await membership.locator('form').count(),0);
-            assert.equal((await sendFrom(staffPage,`/workspaces/${f.team.public_id}`)).status,403,'Native Workspace view is not required for self-surrender');
-            await membership.locator('[data-organization-confirm]').check();await membership.getByRole('button',{name:'مغادرة الجهة',exact:true}).click();
-            await staffPage.waitForURL(origin+'/workspaces');
-            assert.equal((await sendFrom(staffPage,`/api/businesses/${business}/surface?access=${rights['business.context.read']}`)).status,403);
-            const retained=await send(`/api/businesses/${business}/surface?access=${f.business.grant_refs['business.context.read']}`);
-            assert.equal(retained.status,200);assert.equal(retained.body.data.business.name,'ملف عدّله موظف مؤهل');
-        } finally {await staffContext.close();}
-        return {operatingCreatorEnrollment:true,staffEdit:true,selfDepartureWithoutWorkspaceView:true,departedStaffDenied:true,qualifiedFilePreserved:true,privateHistoryDenied:true,privateInquiryNotMounted:true,mobileOverflow:false};
+    await check('historical internal client team staff edit and self-departure preserve qualified file and privacy',async()=>{
+        fixture('internal-team-setup');const f=JSON.parse(await readFile(path.join(run,'internal-team-browser-fixture.json'),'utf8'));
+        const business=f.business.business_public_id,rights=f.rights;
+        const creatorContext=await browser.newContext({viewport:{width:1280,height:900},locale:'ar-JO'});
+        const employee=await browser.newContext({viewport:{width:390,height:844},locale:'ar-JO'});
+        try{
+            const creator=await creatorContext.newPage();creator.on('pageerror',e=>result.errors.push(e.message));await creator.goto(origin+'/login');
+            assert.equal((await sendFrom(creator,'/login','POST',{email:f.creator_email,password:'DisposableGoalsProof42!'})).status,200);
+            await creator.goto(origin+'/businesses');await creator.waitForSelector('[data-business-list]');
+            const qualified=await sendFrom(creator,`/api/businesses/${business}/surface?access=${f.team_read}`);assert.equal(qualified.status,200);assert.equal(qualified.body.data.authority_selection.realm_kind,'internal_team');
+            assert.equal(qualified.body.data.delegation.options.some(option=>option.can_issue),false,'Retired historical issuance must not be advertised as an operating control');
+            const denied=await sendFrom(creator,`/api/businesses/${business}/grants`,'POST',{command_id:crypto.randomUUID(),effect:'issue',grantee_public_id:f.staff,action:'business.context.read',parent_grant_id:Number(f.team_read),grant_id:null,expected_grant:0,expires_at:null,delegable:false,realm_workspace_public_id:f.team.public_id,authority_selection:{realm_kind:'internal_team',realm_workspace_public_id:f.team.public_id,requirements:[{requirement_kind:'business',leaf_grant_id:Number(f.team_read)}]}});assert.equal(denied.status,403);
+            const tab=await employee.newPage();tab.on('pageerror',e=>result.errors.push(e.message));await tab.goto(origin+'/login');assert.equal((await sendFrom(tab,'/login','POST',{email:f.staff_email,password:'DisposableGoalsProof42!'})).status,200);
+            await tab.goto(`${origin}/businesses/${business}?access=${rights['business.context.read']}`);await tab.waitForSelector('[data-business-public]');await workspaceSection('settings',tab);
+            await tab.locator('#bf-name').fill('Historical file edited after authority closure');await tab.locator('form').filter({has:tab.locator('#bf-name')}).locator('button.bf-primary').click();await tab.locator('[data-business-saved]').waitFor();
+            await workspaceSection('inquiries',tab);assert.equal(await tab.locator('[data-inquiry-panel]').count(),0);assert.equal((await sendFrom(tab,`/api/businesses/${business}/history?access=${rights['business.context.read']}&kind=context`)).status,403);
+            assert.equal((await sendFrom(tab,`/workspaces/${f.team.public_id}`)).status,403,'Historical native Workspace view is not required for self-surrender');
+            const endpoint=`/api/organizations/${f.team.public_id}/team`,own=await sendFrom(tab,endpoint);assert.equal(own.status,200);assert.equal(own.body.data.can_leave,true);
+            assert.equal((await sendFrom(tab,endpoint,'POST',{command_id:crypto.randomUUID(),effect:'leave',recipient_public_id:f.staff,expected_revision:own.body.data.revision})).status,200);
+            assert.equal((await sendFrom(tab,`/api/businesses/${business}/surface?access=${rights['business.context.read']}`)).status,403);
+            const retained=await sendFrom(creator,`/api/businesses/${business}/surface?access=${f.business.grant_refs['business.context.read']}`);assert.equal(retained.status,200);assert.equal(retained.body.data.business.name,'Historical file edited after authority closure');
+        }finally{await employee.close();await creatorContext.close();}
+        return{qualification:f.qualification,historicalRightsSeededBefore770:true,targetSchemaBeforeBrowser:true,newHistoricalIssuance:403,retiredIssuanceNotAdvertised:true,staffEditUI:true,departedStaffDenied:true,qualifiedFilePreserved:true,privateHistoryDenied:true,privateInquiryNotMounted:true};
     });
     const inquiryPanel=()=>page.locator('[data-inquiry-panel]');
     const inquiryRecord=()=>inquiryPanel().locator('[data-inquiry-record-action]');
@@ -823,7 +851,7 @@ try {
         await panel.getByRole('button',{name:'حفظ التصريح',exact:true}).click();await panel.getByText('لم تُحفظ البيانات. صحّح النموذج ثم احفظه من جديد.',{exact:true}).waitFor();
         assert.equal(await panel.locator('[data-inquiry-count]').isDisabled(),false);assert.equal(await panel.locator('[data-inquiry-unknown]').count(),0);
         await panel.locator('[data-inquiry-asof]').fill('2020-01-03T00:00:00Z');
-        await page.screenshot({path:path.join(run,'workspace-ar-light-1280-form.png'),fullPage:true});await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);const timezoneInput=panel.getByLabel('المنطقة الزمنية',{exact:true});assert.equal(await timezoneInput.isVisible(),true);assert.equal(await timezoneInput.inputValue(),'Asia/Riyadh');await timezoneInput.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(run,'workspace-ar-light-390-timezone.png')});await page.screenshot({path:path.join(run,'workspace-ar-light-390-form.png'),fullPage:true});await page.setViewportSize({width:1280,height:900});
+        await capture(page, {path:path.join(run,'workspace-ar-light-1280-form.png'),fullPage:true});await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);const timezoneInput=panel.getByLabel('المنطقة الزمنية',{exact:true});assert.equal(await timezoneInput.isVisible(),true);assert.equal(await timezoneInput.inputValue(),'Asia/Riyadh');await timezoneInput.scrollIntoViewIfNeeded();await capture(page, {path:path.join(run,'workspace-ar-light-390-timezone.png')});await capture(page, {path:path.join(run,'workspace-ar-light-390-form.png'),fullPage:true});await page.setViewportSize({width:1280,height:900});
         page.on('request',request=>{if(request.method()==='POST'&&new URL(request.url()).pathname===`/api/businesses/${result.createdBusiness}/inquiry-evidence`)inquiryPayload=request.postDataJSON();});
         await panel.getByRole('button',{name:'حفظ التصريح',exact:true}).click();await panel.locator('.inquiry-item').waitFor();
         assert.ok((await panel.innerText()).includes('غير متحقق منه'));
@@ -843,9 +871,9 @@ try {
         await panel.getByText('رُفض التصحيح لأن الإصدار تغير. ألغِ التعديل وافتح النسخة الحالية.',{exact:true}).waitFor();assert.equal(await panel.locator('[data-inquiry-unknown]').count(),0);
         await panel.getByRole('button',{name:'إلغاء التعديل',exact:true}).click();await panel.getByRole('button',{name:'التحقق من الحالة الحالية',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-inquiry-panel]')?.getAttribute('aria-busy')==='false');
         const latest=(await inquirySend('GET',`?access=${inquiryGrants['business.inquiry_evidence.read']}`)).body.data.items[0];assert.equal(latest.revision,2);assert.equal(latest.value.acceptance.count,11);
-        await page.screenshot({path:path.join(run,'inquiry-desktop.png'),fullPage:true});await page.setViewportSize({width:390,height:844});
+        await capture(page, {path:path.join(run,'inquiry-desktop.png'),fullPage:true});await page.setViewportSize({width:390,height:844});
         assert.equal(await panel.getAttribute('dir'),'rtl');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-        await page.screenshot({path:path.join(run,'inquiry-mobile.png'),fullPage:true});await page.setViewportSize({width:1280,height:900});
+        await capture(page, {path:path.join(run,'inquiry-mobile.png'),fullPage:true});await page.setViewportSize({width:1280,height:900});
         return {typedPreEffectConflict:true,newerRevisionRetained:true,mobileRTL:true};
     });
     await check('BF03 history denial clears detail and stored collection',async()=>{
@@ -955,13 +983,13 @@ try {
                     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`${language}/${theme}/${width} overflow`);
                     const nav=page.locator('[data-workspace-section="inquiries"]');assert.equal(await nav.getAttribute('aria-current'),'page');
                     const first=panel.locator('.inquiry-item:has(.inquiry-record-preview) [data-inquiry-open]').first();assert.ok((await first.boundingBox()).height>=44);
-                    if(width===390||width===1366)await page.screenshot({path:path.join(run,`workspace-${language}-${theme}-${width}-collection.png`),fullPage:true});
+                    if(width===390||width===1366)await capture(page, {path:path.join(run,`workspace-${language}-${theme}-${width}-collection.png`),fullPage:true});
                     matrix.push({language,theme,width,overflow:false});
                 }
                 await panel.locator('.inquiry-item:has(.inquiry-record-preview) [data-inquiry-open]').first().click();await panel.locator('[data-inquiry-detail]').waitFor();
                 const detail=await panel.locator('[data-inquiry-detail]').innerText();
                 assert.ok(detail.includes(language==='ar'?'غير متحقق':'not independently verified')||detail.includes(language==='ar'?'ليست نتائج':'not results'));
-                for(const width of [390,1366]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:path.join(run,`workspace-${language}-${theme}-${width}-detail.png`),fullPage:true});}
+                for(const width of [390,1366]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await capture(page, {path:path.join(run,`workspace-${language}-${theme}-${width}-detail.png`),fullPage:true});}
                 await panel.locator('[data-inquiry-back]').click();await panel.locator('.inquiry-item:has(.inquiry-record-preview) [data-inquiry-open]').first().waitFor();assert.equal(await page.locator(':focus').getAttribute('data-inquiry-open')!==null,true);
             }
         }
@@ -1070,10 +1098,10 @@ try {
         await page.waitForFunction(() => { const field = document.querySelector('#bf-name'); return field && !field.matches(':disabled'); });
         await page.getByLabel('اسم النشاط', { exact: true }).focus(); await page.keyboard.press('Tab');
         assert.equal(await page.locator('#bf-type').evaluate(e => document.activeElement === e), true);
-        await page.screenshot({ path: path.join(run, 'business-desktop.png'), fullPage: true });
+        await capture(page, { path: path.join(run, 'business-desktop.png'), fullPage: true });
         await page.setViewportSize({ width: 390, height: 844 });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        await page.screenshot({ path: path.join(run, 'business-small-viewport.png'), fullPage: true });
+        await capture(page, { path: path.join(run, 'business-small-viewport.png'), fullPage: true });
         await page.setViewportSize({ width: 1280, height: 900 });
         return { rtl: true, widths: [1280,390], keyboardLabelledFields: true, nativeMobileApp: 'not implemented or tested' };
     });
@@ -1110,7 +1138,7 @@ try {
         await page.locator('[data-business-conflict]').waitFor();
         assert.equal(await page.locator('#bf-name').inputValue(), 'مسودة النشاط الثاني');
         assert.equal(await page.getByRole('button', { name: 'حفظ المعلومات', exact: true }).isDisabled(), true);
-        await page.screenshot({ path: path.join(run, 'business-conflict.png'), fullPage: true });
+        await capture(page, { path: path.join(run, 'business-conflict.png'), fullPage: true });
         await page.getByRole('button', { name: 'استبدال المسودة بالمعلومات الحالية', exact: true }).click();
         assert.equal(await page.locator('#bf-name').inputValue(), 'معلومات أحدث للنشاط الثاني');
         await page.locator('#bf-name').fill('التعديل بعد مراجعة النسخة الأحدث');
@@ -1125,6 +1153,10 @@ try {
     const chooseFactMarkets = async codes => {await factForm('markets').locator('#bf-market-search').fill('');for(const option of await factForm('markets').locator('[data-fact-country]:checked').all()){if(!codes.includes(await option.getAttribute('data-fact-country')))await option.uncheck();}for(const code of codes)await factForm('markets').locator(`[data-fact-country="${code}"]`).check();};
     const selectedFactMarkets = () => factForm('markets').locator('[data-fact-country]:checked').evaluateAll(options => options.map(option=>option.value).sort());
     await check('independent markets, explicit whole-business intent and advertiser preferences are discoverable and persist through the shared API', async () => {
+        const owned = (await send('/api/businesses')).body.data.items.find(item => item.business_public_id === result.createdBusiness);
+        assert.ok(owned, 'The original independent Business remains available');
+        await page.goto(`${origin}/businesses/${result.createdBusiness}?access=${owned.read_grant_id}`);
+        await ready('[data-business-public]');
         await workspaceSection('direction'); await ready('[data-business-facts]');
         await chooseFactMarkets(['SA', 'JO']);
         await factForm('markets').getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
@@ -1135,17 +1167,50 @@ try {
         const intent = factForm('intent');
         await intent.locator('#bf-intent-direction').selectOption('increase_value');
         await intent.locator('#bf-intent-meaning').fill('زيادة مشتريات العملاء المؤهلين');
+        await intent.locator('[data-intent-next]').click();
+        await intent.locator('[data-intent-next]').click();
         for (const checkbox of await intent.locator('input[type=checkbox]:not([data-fact-intent-clear])').all()) {
             if (!(await checkbox.isChecked()) && !await checkbox.evaluate(el => el.closest('label').textContent.includes('إزالة النية'))) await checkbox.check();
         }
+        await intent.getByRole('button',{name:'السابق',exact:true}).click();
+        await intent.getByRole('button',{name:'السابق',exact:true}).click();
         await intent.locator('#bf-intent-meaning').fill('زيادة المشتريات المؤهلة في السوقين');
         assert.equal(await intent.locator('[data-fact-confirm="outcome"]').isChecked(), false);
+        await intent.locator('[data-intent-next]').click();
+        await intent.locator('[data-intent-next]').click();
         for (const checkbox of await intent.locator('input[type=checkbox]:not([data-fact-intent-clear])').all()) {
             if (!await checkbox.evaluate(el => el.closest('label').textContent.includes('إزالة النية'))) await checkbox.check();
         }
         await intent.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
         await intent.locator('[data-fact-saved]').waitFor();
         assert.equal((await surface()).business.current_intent.outcome.meaning, 'زيادة المشتريات المؤهلة في السوقين');
+        const beforeClear = await surface();
+        await intent.locator('[data-intent-back]').click();
+        await intent.locator('[data-intent-back]').click();
+        await intent.locator('[data-fact-intent-clear]').check();
+        let clearPosts = 0;
+        const observeClear = request => { if (request.method() === 'PUT' && new URL(request.url()).pathname.endsWith('/intent')) clearPosts++; };
+        page.on('request', observeClear);
+        try {
+            await intent.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+            await intent.locator('[role=alert]').waitFor();
+            assert.equal(clearPosts, 0, 'Clearing requires declaration confirmation');
+            await intent.locator('[data-fact-confirm="declaration"]').check();
+            const [response] = await Promise.all([
+                page.waitForResponse(response => response.request().method() === 'PUT' && new URL(response.url()).pathname.endsWith('/intent')),
+                intent.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click(),
+            ]);
+            assert.equal(response.status(), 200);
+            const command = response.request().postDataJSON();
+            assert.equal(command.value, null); assert.equal(command.confirmations.declaration, true);
+            assert.equal(command.expected_context, beforeClear.business.versions.context);
+            assert.equal(command.expected_intent, beforeClear.business.versions.intent);
+            assert.equal(clearPosts, 1);
+            await intent.locator('[data-fact-saved]').waitFor();
+            await page.waitForFunction(() => !document.querySelector('[data-business-rechecking]'));
+            assert.equal((await surface()).business.current_intent, null);
+        } finally { page.off('request', observeClear); }
+
         await page.getByRole('button', { name: 'أولويات المعلن', exact: true }).click();
         const preferences = factForm('preferences');
         await preferences.getByLabel('زيادة المبيعات والعملاء الفعليين', { exact: true }).check();
@@ -1161,7 +1226,7 @@ try {
         assert.deepEqual(current.business.preferences.results.sales, ['actual_sales']);
         await page.setViewportSize({ width: 390, height: 844 });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        await page.screenshot({ path: path.join(run, 'business-facts-small-viewport.png'), fullPage: true });
+        await capture(page, { path: path.join(run, 'business-facts-small-viewport.png'), fullPage: true });
         await page.setViewportSize({ width: 1280, height: 900 });
         return { markets: ['JO','SA'], explicitIntent: true, confirmationsResetOnEdit: true, preferences: 'sales', responsiveWidth: 390 };
     });
@@ -1214,123 +1279,55 @@ try {
         assert.equal(await factForm('intent').count(), 1);
         return { read: 200, marketActions: 0, intentActions: 1 };
     });
-    const collaboration = page.locator('[data-business-collaboration]');
     const settled = () => page.waitForFunction(() => !document.querySelector('[data-business-rechecking]'));
-    const linkState = async (business = third.business_public_id, access = third.grant_refs['business.context.read']) => {
-        const response = await send(`/api/businesses/${business}/surface?access=${access}`);
-        assert.equal(response.status, 200); return response.body.data;
-    };
-    let workspace, firstLink;
-    await check('team collaboration is discoverable, draft authority cannot become agency authority and ending preserves history', async () => {
-        await workspaceSection('access'); await settled(); const current = await linkState();
-        assert.equal(current.collaboration.options.length, 1);
-        assert.equal(current.collaboration.options[0].allows_agency, false);
-        assert.equal(current.collaboration.workspaces.length, 2);
-        workspace = current.collaboration.workspaces.find(w => w.slug === 'spa-b-1'); assert.ok(workspace);
-        assert.equal('name' in workspace, false);
-        await collaboration.locator('#bf-link-workspace').selectOption(workspace.public_id);
-        assert.equal(await collaboration.locator('#bf-link-kind option[value=agency]').count(), 0);
-        await collaboration.getByRole('button', { name: 'ربط المساحة بالنشاط', exact: true }).click();
-        await collaboration.locator('[data-collaboration-confirmed]').waitFor(); await settled();
-        firstLink = (await linkState()).collaboration.relationships[0];
-        assert.equal(firstLink.revision, 1); assert.equal(firstLink.state, 'active');
-        await collaboration.getByRole('button', { name: 'إنهاء العلاقة', exact: true }).click(); await settled();
-        await page.waitForFunction(() => !!document.querySelector('[data-relationship-state=ended]'));
-        const ended = (await linkState()).collaboration.relationships[0];
-        assert.equal(ended.revision, 2); assert.equal(ended.link_ref, firstLink.link_ref);
-        return { add: 1, end: 2, draftAgencyOption: false, metadata: 'independently qualified slug only' };
+    let historicalLinks;
+    const linkState=async()=>{fixture('historical-links-inspect');return JSON.parse(await readFile(path.join(run,'historical-links-browser.json'),'utf8'));};
+    const historicalLinkCommand=(state,effect,revision,kind=state.kind)=>({command_id:crypto.randomUUID(),workspace_public_id:historicalBase.b.workspaces[0].public_id,kind,effect,expected_revision:revision,authority_selection:state.authority_selection});
+    const latestLink=state=>state.history.at(-1);
+    await check('historical collaboration creation is denied while exact ending preserves qualified identity and history',async()=>{
+        fixture('historical-links-setup');historicalLinks=await linkState();
+        assert.equal(historicalLinks.workspaces.length,2);assert.equal('name' in historicalLinks.workspaces[0],false);
+        const initial=latestLink(historicalLinks);assert.equal(initial.revision,1);assert.equal(initial.status,'active');
+        const endpoint=`/api/businesses/${historicalLinks.business}/workspace-links`;
+        for(const kind of ['agency','collaboration'])assert.equal((await send(endpoint,'POST',historicalLinkCommand(historicalLinks,'add',1,kind))).status,403,'New Workspace relationships stay retired');
+        assert.equal((await send(endpoint,'POST',historicalLinkCommand(historicalLinks,'end',1))).status,200);
+        const ended=latestLink(await linkState());assert.equal(ended.revision,2);assert.equal(ended.link_id,initial.link_id);assert.equal(ended.status,'ended');
+        return{fixtureQualification:historicalLinks.qualification,newRelationshipsDenied:403,endRevision:2,sameHistoricalIdentity:true};
     });
-    await check('stale relationship revision is rejected before effect and requires explicit review without automatic rebase', async () => {
-        await settled(); await collaboration.locator('#bf-link-workspace').selectOption(workspace.public_id);
-        const current = await linkState();
-        const make = (effect, revision) => ({ command_id: crypto.randomUUID(), workspace_public_id: workspace.public_id, kind: 'collaboration', effect,
-            expected_revision: revision, authority_selection: { ...current.authority_selection,
-                requirements: [{ requirement_kind: 'business', leaf_grant_id: Number(current.collaboration.options[0].grant_id) }] } });
-        const add = await send(`/api/businesses/${third.business_public_id}/workspace-links`, 'POST', make('add', 2)); assert.equal(add.status, 200);
-        assert.notEqual((await linkState()).collaboration.relationships[0].link_ref, firstLink.link_ref);
-        const end = await send(`/api/businesses/${third.business_public_id}/workspace-links`, 'POST', make('end', 3)); assert.equal(end.status, 200);
-        const commands = [];
-        await page.route(`**/api/businesses/${third.business_public_id}/workspace-links`, async route => {
-            commands.push(route.request().postDataJSON()); await route.continue();
-        });
-        await collaboration.getByRole('button', { name: 'ربط المساحة بالنشاط', exact: true }).click();
-        await collaboration.locator('[data-collaboration-conflict]').waitFor(); await settled();
-        assert.equal(commands.length, 1); assert.equal(commands[0].expected_revision, 2);
-        assert.equal(await collaboration.locator('[data-collaboration-unknown]').count(), 0);
-        await collaboration.getByRole('button', { name: 'اعتماد الحالة المعروضة لطلب جديد', exact: true }).click();
-        await collaboration.getByRole('button', { name: 'ربط المساحة بالنشاط', exact: true }).click();
-        await collaboration.locator('[data-collaboration-confirmed]').waitFor(); await settled();
-        assert.equal(commands.length, 2); assert.equal(commands[1].expected_revision, 4);
-        assert.notEqual(commands[0].command_id, commands[1].command_id);
-        assert.equal((await linkState()).collaboration.relationships[0].revision, 5);
-        await page.unroute(`**/api/businesses/${third.business_public_id}/workspace-links`);
-        return { rejectedOriginalRevision: 2, explicitNewRevision: 4, finalRevision: 5, automaticRetries: 0 };
+    await check('historical relationship stale end cannot target a replacement identity and requires a new reviewed command',async()=>{
+        const old=await linkState(),stale=historicalLinkCommand(old,'end',2),oldRef=latestLink(old).link_id;
+        fixture('historical-links-replace');const replaced=await linkState();assert.equal(latestLink(replaced).revision,3);assert.notEqual(latestLink(replaced).link_id,oldRef);
+        const endpoint=`/api/businesses/${replaced.business}/workspace-links`;
+        assert.equal((await send(endpoint,'POST',stale)).status,409);assert.equal(latestLink(await linkState()).status,'active');
+        const reviewed=historicalLinkCommand(replaced,'end',3);assert.notEqual(reviewed.command_id,stale.command_id);
+        assert.equal((await send(endpoint,'POST',reviewed)).status,200);const ended=await linkState();assert.equal(latestLink(ended).revision,4);assert.equal(ended.history.length,2);assert.equal(ended.history[0].link_id,oldRef);
+        return{surface:'synthetic historical rows plus real end API',rejectedRevision:2,reviewedRevision:3,finalRevision:4,priorIdentityRetained:true};
     });
-    await check('late relationship acknowledgement stays with its business and exact reconciliation does not repeat the effect', async () => {
-        const commands = []; let committed;
-        const reached = new Promise(resolve => { committed = resolve; });
-        const held = new Promise(resolve => { release = resolve; });
-        await page.route(`**/api/businesses/${third.business_public_id}/workspace-links`, async route => {
-            commands.push(route.request().postDataJSON()); const response = await route.fetch();
-            if (commands.length === 1) { assert.equal(response.status(), 200); committed(); await held; }
-            await route.fulfill({ response });
-        });
-        await collaboration.getByRole('button', { name: 'إنهاء العلاقة', exact: true }).click(); await reached;
-        await index(); await open('التعديل بعد مراجعة النسخة الأحدث','access'); release();
-        assert.deepEqual((await surface()).collaboration.relationships, []);
-        await index(); await open('النشاط الثالث لاختبار الفصل','access');
-        await collaboration.locator('[data-collaboration-unknown]').waitFor();
-        await collaboration.getByRole('button', { name: 'تحقق بالطلب الأصلي', exact: true }).click();
-        await collaboration.locator('[data-collaboration-confirmed]').waitFor(); await settled();
-        assert.equal(commands.length, 2); assert.deepEqual(commands[0], commands[1]);
-        assert.equal((await linkState()).collaboration.relationships[0].revision, 6);
-        await page.unroute(`**/api/businesses/${third.business_public_id}/workspace-links`);
-        return { explicitOriginalCommandReplay: true, effects: 1, independentBusinessUntouched: true };
+    await check('historical late ending ACK stays with its Business and exact receipt replay has one effect',async()=>{
+        fixture('historical-links-replace');const state=await linkState(),endpoint=`/api/businesses/${state.business}/workspace-links`,original=historicalLinkCommand(state,'end',5);
+        let committed;const reached=new Promise(resolve=>{committed=resolve;});const held=new Promise(resolve=>{release=resolve;});const commands=[];let receipt;
+        await page.route('**'+endpoint,async route=>{commands.push(route.request().postDataJSON());const response=await route.fetch();if(commands.length===1){assert.equal(response.status(),200);receipt=(await response.json()).data;committed();await held;}await route.fulfill({response});});
+        try{
+            const pending=send(endpoint,'POST',original);await reached;await index();await openCreated('access');release();await pending;
+            const independent=await surface();assert.equal(independent.business.business_public_id,result.createdBusiness);assert.equal('collaboration' in independent,false);
+            const replay=await send(endpoint,'POST',original);assert.equal(replay.status,200);assert.deepEqual(replay.body.data,receipt);
+            assert.equal(commands.length,2);assert.deepEqual(commands[0],commands[1]);assert.equal(latestLink(await linkState()).revision,6);
+        }finally{release?.();release=undefined;await page.unroute('**'+endpoint);}
+        return{explicitOriginalReplay:true,effects:1,independentBusinessUntouched:true,finalRevision:6};
     });
-    await check('qualified agency relationship is managed through the same resource without granting access to workspace members', async () => {
-        fixture('agency-setup');
-        const agency = JSON.parse(await readFile(path.join(run, 'business-agency-fixture.json'), 'utf8'));
-        await index(); await open('نشاط إدارة الوكالة','access'); await settled();
-        const current = await linkState(agency.business, agency.read.leaf);
-        assert.equal(current.collaboration.options[0].allows_agency, true);
-        const agencyWorkspace=current.collaboration.workspaces.find(item=>item.slug==='spa-b-1');
-        assert.ok(agencyWorkspace);
-        await collaboration.locator('#bf-link-workspace').selectOption(agencyWorkspace.public_id);
-        await collaboration.locator('#bf-link-kind').selectOption('agency');
-        await collaboration.getByRole('button', { name: 'ربط المساحة بالنشاط', exact: true }).click();
-        await collaboration.locator('[data-collaboration-confirmed]').waitFor(); await settled();
-        assert.equal((await linkState(agency.business, agency.read.leaf)).collaboration.relationships[0].kind, 'agency');
-        await collaboration.getByRole('button', { name: 'إنهاء العلاقة', exact: true }).click();
-        await page.waitForFunction(() => !!document.querySelector('[data-relationship-state=ended][data-relationship-kind=agency]')); await settled();
-        await collaboration.locator('#bf-link-workspace').selectOption(agencyWorkspace.public_id);
-        await collaboration.locator('#bf-link-kind').selectOption('agency');
-        await collaboration.getByRole('button', { name: 'ربط المساحة بالنشاط', exact: true }).click();
-        await collaboration.locator('[data-collaboration-confirmed]').waitFor(); await settled();
-        const latest = (await linkState(agency.business, agency.read.leaf)).collaboration.relationships[0];
-        assert.equal(latest.state, 'active'); assert.equal(latest.revision, 3);
-        fixture('agency-audit');
-        await collaboration.locator('#bf-link-workspace').focus(); await page.keyboard.press('Tab');
-        assert.equal(await collaboration.locator('#bf-link-kind').evaluate(e => document.activeElement === e), true);
-        await page.setViewportSize({ width: 390, height: 844 });
-        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        await page.screenshot({ path: path.join(run, 'business-collaboration-small-viewport.png'), fullPage: true });
-        await page.setViewportSize({ width: 1280, height: 900 });
-        return { qualification: 'SYNTHETIC TEST ROOT; NOT AN OPERATING ISSUER', agencyRevision: 3, keyboard: true, width: 390 };
+    await check('historical qualified agency ending issues no Business access and new agency recreation is retired',async()=>{
+        fixture('agency-setup');fixture('historical-links-agency');const state=await linkState(),endpoint=`/api/businesses/${state.business}/workspace-links`;
+        assert.equal(latestLink(state).kind,'agency');assert.equal(latestLink(state).status,'active');
+        assert.equal((await send(endpoint,'POST',historicalLinkCommand(state,'end',1))).status,200);assert.equal(latestLink(await linkState()).revision,2);
+        assert.equal((await send(endpoint,'POST',historicalLinkCommand(state,'add',2))).status,403);assert.equal(latestLink(await linkState()).status,'ended');fixture('agency-audit');
+        return{historicalAgencyEnd:200,recreationDenied:403,noAdditionalBusinessGrants:true,currentAgencyJourney:'Business-first mandate and employee-assignment browser proof'};
     });
-    await check('withdrawing independent workspace authority removes its metadata and rejects forged management without withdrawing business reading', async () => {
-        fixture('withdraw-workspace');
-        await index(); await open('النشاط الثالث لاختبار الفصل','access'); await settled();
-        const current = await linkState();
-        assert.equal(current.collaboration.workspaces.some(w => w.public_id === workspace.public_id), false);
-        assert.deepEqual(current.collaboration.relationships, []);
-        assert.equal(current.collaboration.workspaces.length, 1);
-        assert.equal(await collaboration.locator(`#bf-link-workspace option[value="${workspace.public_id}"]`).count(), 0);
-        const denied = await send(`/api/businesses/${third.business_public_id}/workspace-links`, 'POST', {
-            command_id: crypto.randomUUID(), workspace_public_id: workspace.public_id, kind: 'collaboration', effect: 'add', expected_revision: 6,
-            authority_selection: { ...current.authority_selection, requirements: [{ requirement_kind: 'business', leaf_grant_id: Number(current.collaboration.options[0].grant_id) }] }
-        });
-        assert.equal(denied.status, 403); assert.equal((await linkState()).business.name, 'النشاط الثالث لاختبار الفصل');
-        return { independentBusinessRead: 200, forgedRelationshipWrite: 403, withdrawnMetadata: 0, remainingWorkspaceChoices: 1 };
+    await check('historical Workspace authority withdrawal excludes its fixture metadata and denies forged ending while Business read survives',async()=>{
+        const state=await linkState();fixture('withdraw-workspace');const after=await linkState();
+        assert.equal(after.workspaces.some(w=>w.public_id===historicalBase.b.workspaces[0].public_id),false);assert.deepEqual(after.history,[]);assert.equal(after.workspaces.length,1);assert.equal(after.all_historical_rows,state.all_historical_rows,'Authority loss does not erase retained history');
+        assert.equal((await send(`/api/businesses/${state.business}/workspace-links`,'POST',historicalLinkCommand(state,'end',2))).status,403);
+        assert.equal((await send(`/api/businesses/${state.business}/surface?access=${state.read}`)).status,200);
+        return{independentBusinessRead:200,forgedEnding:403,withdrawnMetadata:0,historyPhysicallyPreserved:true};
     });
     let delegationFixture, firstGrant, secondGrant, otherClientGrant, recipientPage, recipientContext;
     const delegation = page.locator('[data-business-delegation]');
@@ -1364,7 +1361,7 @@ try {
         assert.equal(recipientId, delegationFixture.recipient_public_id);
         await recipientPage.setViewportSize({ width: 390, height: 844 });
         assert.equal(await recipientPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        await recipientPage.screenshot({ path: path.join(run, 'business-recipient-empty-account.png'), fullPage: true });
+        await capture(recipientPage, { path: path.join(run, 'business-recipient-empty-account.png'), fullPage: true });
         await recipientPage.setViewportSize({ width: 1280, height: 900 });
         await delegation.locator('#bf-delegation-recipient').fill(recipientId);
         await delegation.getByRole('button', { name: 'منح الحق المحدد', exact: true }).click();
@@ -1424,7 +1421,7 @@ try {
         assert.equal(await delegation.locator('#bf-delegation-recipient').evaluate(e => document.activeElement === e), true);
         await page.setViewportSize({ width: 390, height: 844 });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        await page.screenshot({ path: path.join(run, 'business-delegation-small-viewport.png'), fullPage: true });
+        await capture(page, { path: path.join(run, 'business-delegation-small-viewport.png'), fullPage: true });
         await page.setViewportSize({ width: 1280, height: 900 });
         return { withdrawnRead: 403, independentRead: 200, otherCustomerRead: 200, width: 390, keyboard: true };
     });
@@ -1550,7 +1547,7 @@ try {
         await page.waitForFunction(() => !document.querySelector('#bf-boundary-business')?.matches(':disabled'));
         await boundaryPanel.locator('#bf-boundary-business').focus(); assert.equal(await boundaryPanel.locator('#bf-boundary-business').evaluate(e => document.activeElement === e), true);
         await page.setViewportSize({ width: 390, height: 844 }); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        await page.screenshot({ path: path.join(run, 'client-boundary-small-viewport.png'), fullPage: true });
+        await capture(page, { path: path.join(run, 'client-boundary-small-viewport.png'), fullPage: true });
         await page.setViewportSize({ width: 1280, height: 900 });
         return { businessRead: 403, custodianWithdrawal: 200, revision: 4, oldIdentityRejected: 409, otherBoundaryPreserved: true,
             oldQualifiedBusinessReplyDiscarded: true, width: 390 };
@@ -1639,7 +1636,7 @@ try {
         assert.equal((await sourceState('a')).source.status, 'REVOKED'); assert.equal((await sourceState('a')).source.revision, 4);
         assert.equal((await sourceState('b')).source.revision, 1);
         await page.setViewportSize({ width: 390, height: 844 }); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        await page.screenshot({ path: path.join(run, 'source-rights-small-viewport.png'), fullPage: true }); await page.setViewportSize({ width: 1280, height: 900 });
+        await capture(page, { path: path.join(run, 'source-rights-small-viewport.png'), fullPage: true }); await page.setViewportSize({ width: 1280, height: 900 });
         return { oldRight: 'revoked', newIndependentRead: true, retiredRevision: 4, otherSourceRevision: 1, width: 390 };
     });
     await check('a qualified delayed source-list reply cannot restore source names after responsible ownership is withdrawn', async () => {
@@ -1674,7 +1671,7 @@ try {
         const b = dataFixture[key].business; const response = await send(`/api/businesses/${b.business_public_id}/surface?access=${b.grant_refs['business.context.read']}`);
         assert.equal(response.status, 200); return response.body.data;
     };
-    const openData = async key => { await index(); await open(dataFixture[key].name,'sources');const advanced=page.locator('[data-business-source-advanced]');if(await advanced.getAttribute('open')===null)await advanced.locator(':scope > summary').click();await dataPanel.waitFor(); await page.waitForFunction(() => !document.querySelector('[data-business-rechecking]') && (!!document.querySelector('[data-data-use-reconcile]') || !document.querySelector('#bf-data-scope')?.matches(':disabled'))); };
+    const openData = async key => { await index(); await open(dataFixture[key].name,'sources');await page.locator('[data-source-task="data-use"]').click();await page.locator('[data-business-source-advanced]').waitFor({state:'visible'});await dataPanel.waitFor(); await page.waitForFunction(() => !document.querySelector('[data-business-rechecking]') && (!!document.querySelector('[data-data-use-reconcile]') || !document.querySelector('#bf-data-scope')?.matches(':disabled'))); };
     const selectData = async key => { await dataPanel.locator('#bf-data-scope').selectOption(String(dataFixture[key].data.grant_id)); await dataPanel.locator('[data-data-use-details]').waitFor(); };
     const bindData = async key => {
         await selectData(key); await dataPanel.getByRole('button', { name: 'طلب ربط النطاق بالنشاط', exact: true }).click();
@@ -1765,7 +1762,7 @@ try {
         assert.equal((await dataState('a')).data_use.bindings[0].revision, 6);
         await dataPanel.locator('#bf-data-scope').focus(); assert.equal(await dataPanel.locator('#bf-data-scope').evaluate(row => document.activeElement === row), true);
         await page.setViewportSize({ width: 390, height: 844 }); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        await page.screenshot({ path: path.join(run, 'data-use-small-viewport.png'), fullPage: true }); await page.setViewportSize({ width: 1280, height: 900 });
+        await capture(page, { path: path.join(run, 'data-use-small-viewport.png'), fullPage: true }); await page.setViewportSize({ width: 1280, height: 900 });
         return { syntheticNewQualificationOnly: true, noAutomaticRebinding: true, staleEndDenied: 409, surrenderedOnlySelectedRight: true, finalRevision: 6, width: 390 };
     });
     let historyA, historyB;
@@ -1792,7 +1789,7 @@ try {
         }
         await historyPanel.locator('#bf-history-kind').focus(); assert.equal(await historyPanel.locator('#bf-history-kind').evaluate(e => document.activeElement === e), true);
         await page.setViewportSize({ width: 390, height: 844 }); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        await page.screenshot({ path: path.join(run, 'history-small-viewport.png'), fullPage: true }); await page.setViewportSize({ width: 1280, height: 900 });
+        await capture(page, { path: path.join(run, 'history-small-viewport.png'), fullPage: true }); await page.setViewportSize({ width: 1280, height: 900 });
         return { nativeKinds: 4, originalVersionsPreserved: true, labelsAndFocus: true, width: 390 };
     });
     await check('history: late A history cannot populate B or survive current read withdrawal', async () => {
@@ -1864,7 +1861,7 @@ try {
         await legacyPanel.locator('#bf-legacy-kind').selectOption('object_purpose'); await legacyPanel.locator('[data-legacy-purpose]').last().waitFor();
         await legacyPanel.locator('#bf-legacy-kind').focus(); assert.equal(await legacyPanel.locator('#bf-legacy-kind').evaluate(e => document.activeElement === e), true);
         await page.setViewportSize({ width: 390, height: 844 }); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        await legacyPanel.screenshot({ path: path.join(run, 'legacy-history-small-viewport.png') }); await page.setViewportSize({ width: 1280, height: 900 });
+        await capture(legacyPanel, { path: path.join(run, 'legacy-history-small-viewport.png') }); await page.setViewportSize({ width: 1280, height: 900 });
         return { actualSyntheticImport: true, nativeRevisions: [legacyFixture.first.revision_id, legacyFixture.second.revision_id], noCurrentApplicabilityClaim: true, width: 390 };
     });
     await check('legacy-history: withdrawn original qualifications invalidate delayed completed replies without erasing native history', async () => {
@@ -1942,7 +1939,7 @@ try {
         assert.equal(deliveries.length,2);assert.deepEqual(deliveries[0],deliveries[1]);
         await panel.locator('[data-purpose-item] summary').click();assert.equal(await panel.locator('[data-purpose-item] li').count(),3);
         await page.setViewportSize({width:390,height:844}); assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-        await page.screenshot({path:path.join(run,'business-purpose-mobile.png'),fullPage:true}); await page.setViewportSize({width:1280,height:900});
+        await capture(page, {path:path.join(run,'business-purpose-mobile.png'),fullPage:true}); await page.setViewportSize({width:1280,height:900});
         const contract = await send(`/api/businesses/${f.business}/purposes?access=${f.read.leaf}`);
         assert.equal(contract.status,200); assert.equal(contract.body.data.establishes_external_authority,false);
         return {operatingOriginalCreatorOptIn:true,externalAuthorityEstablished:false,providerNeutral:true,currentDeclarationCorrectionWithdrawal:true,historyVersions:3,unknownAckSameFrozenCommand:true,mobile:true};
@@ -1982,6 +1979,8 @@ try {
         assert.equal(await page.getByText('غرض مصحح مؤهل',{exact:true}).count(),0);
         return {operatingUISurrender:true,explicitRequalification:true,writeRevokedReadRetained:true,lateCompletedReplyDiscarded:true,revokedBusinessNotDisplayed:true};
     });
+    await businessAgencyBrowserProof({ browser, run, origin, fixture, check, sendFrom, errors: result.errors,
+        activate: tab => { activePage = tab; }, restore: () => { activePage = page; } });
     await sharedSourceReturnCheck();
     assert.deepEqual(result.errors, []); result.result = 'PASS'; await context.close();
 } catch (error) { result.result = 'FAIL'; result.failure = error.stack; console.error(error); process.exitCode = 1; }

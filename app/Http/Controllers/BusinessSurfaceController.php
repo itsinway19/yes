@@ -2,24 +2,43 @@
 
 namespace App\Http\Controllers;
 
+use App\Business\BusinessContext;
 use App\Foundation\Business\BusinessScope;
 use App\Http\Responses\SpaPage;
+use App\Security\RegistrationEmailProof;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /** Web presentation adapter. Resource authority belongs to BusinessScope, never to Vue. */
 final class BusinessSurfaceController
 {
-    public function index(Request $request, BusinessScope $scope): SpaPage
+    public function setupCatalog(BusinessContext $context): JsonResponse
+    {
+        return response()->json(['data' => $context->setupCatalog()])->header('Cache-Control', 'no-store');
+    }
+
+    public function index(Request $request, BusinessScope $scope, RegistrationEmailProof $registration): SpaPage
     {
         $input = $request->validate(['after' => ['sometimes', 'integer', 'min:0', 'max:'.PHP_INT_MAX]]);
 
-        return $this->page($request, fn () => $scope->choices($request, (int) ($input['after'] ?? 0)));
+        return $this->page($request, function () use ($request, $scope, $registration, $input): array {
+            $data = $scope->choices($request, (int) ($input['after'] ?? 0));
+
+            if ($request->query('entry') === '1') {
+                $data['registration_attempt'] = $registration->businessAttempt($request->user());
+            }
+
+            return $data;
+        });
     }
 
-    public function create(Request $request, BusinessScope $scope): SpaPage
+    public function create(Request $request, BusinessScope $scope, RegistrationEmailProof $registration): SpaPage
     {
-        return $this->page($request, fn () => ['catalog' => $scope->catalog($request)]);
+        return $this->page($request, fn () => [
+            'catalog' => $scope->catalog($request),
+            'registration_attempt' => $registration->businessAttempt($request->user()),
+        ]);
     }
 
     public function boundaries(Request $request, BusinessScope $scope): SpaPage

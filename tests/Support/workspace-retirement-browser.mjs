@@ -8,7 +8,7 @@ export async function runWorkspaceRetirementCases({ browser, check, login, get, 
     const workspace = fixture.a.workspaces[0].public_id;
     try {
         await login(page, 'application');
-        await check('retired commercial HTTP entrances reject reads and writes while original history and organizational sources remain available', 'retirement', async () => {
+        await check('retired commercial HTTP entrances reject reads and writes while qualified historical JSON remains available', 'retirement', async () => {
             const base = `/workspaces/${workspace}`;
             const denied = [];
             for (const path of ['/business', '/goals', '/object-purposes']) {
@@ -23,7 +23,8 @@ export async function runWorkspaceRetirementCases({ browser, check, login, get, 
             const history = await get(page, base + '/commercial-history');
             assert.equal(history.status, 200); assert.equal(history.body.data.read_only, true);
             assert.equal(history.body.data.current_business_inferred, false);
-            assert.equal(await page.locator('[data-commercial-history] form').count(), 0);
+            assert.equal(await page.locator('[data-commercial-history]').count(), 0, 'Retired history has no public page');
+            assert.equal(await page.locator('[data-business-public]').count(), 1, 'The admitted page remains the current Business');
             const sources = await get(page, base); assert.equal(sources.status, 200);
             assert.equal(sources.body.data.business, undefined);
             assert.equal(sources.body.data.guidance, undefined);

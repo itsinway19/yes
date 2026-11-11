@@ -13,12 +13,14 @@ use Symfony\Component\Process\Process;
 use Tests\Support\ApplicationContractAssertions;
 use Tests\Support\DisposableDatabaseReset;
 use Tests\Support\InquiryEvidenceFixture;
+use Tests\Support\Pre770BusinessAuthority;
 use Tests\TestCase;
 
 final class InternalClientFileTeamTest extends TestCase
 {
     use ApplicationContractAssertions;
     use InquiryEvidenceFixture { selection as private inquirySelection; }
+    use Pre770BusinessAuthority;
 
     private function selection(int|string $grant, ?string $workspace = null): array
     {
@@ -32,7 +34,7 @@ final class InternalClientFileTeamTest extends TestCase
         if (! DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $creator->id)->where('action', 'workspace.create')->exists()) {
             app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($creator, 1);
         }
-        $this->post('/workspaces', ['name' => $slug, 'slug' => $slug])->assertRedirect();
+        $this->legacyWorkspace(['name' => $slug, 'slug' => $slug])->assertRedirect();
         $workspace = DB::connection('pgsql_migrations')->table('workspaces')->where('slug', $slug)->sole();
         foreach ($staff as $user) {
             DB::connection('pgsql_migrations')->table('workspace_memberships')->insert(['workspace_id' => $workspace->id,
@@ -65,6 +67,7 @@ final class InternalClientFileTeamTest extends TestCase
 
     public function test_three_client_files_two_staff_and_unknown_receipt_replay_preserve_exact_internal_authority(): void
     {
+        $this->installPre770BusinessAuthority();
         $manager = User::factory()->create();
         $employees = [User::factory()->create(), User::factory()->create()];
         $team = $this->team($manager, 'client-team', $employees);
@@ -74,18 +77,27 @@ final class InternalClientFileTeamTest extends TestCase
             $url = '/api/businesses/'.$file['business_public_id'];
             $enroll = $this->custody($file, $team, 'enroll', $manager, 0);
             $receipt = $this->postJson($url.'/internal-team', $enroll)->assertOk()->assertJsonPath('data.state', 'active')->json();
+            $root = $receipt['data']['grant_refs'];
+            $employee = $employees[$i % 2];
+            $issued = [];
+            $commands = [];
+            foreach (['business.context.read', 'business.context.manage'] as $action) {
+                $command = $this->grant($root, $employee, $action, $team->public_id);
+                $grant = $this->postJson($url.'/grants', $command)->assertOk()->json('data');
+                $commands[] = [$command, $grant];
+                $issued[$action] = $grant['grant_id'];
+            }
+            $records[] = [$file, $root, $issued, $enroll, $receipt, $commands, $employee];
+        }
+        $this->upgradeBusinessAuthority();
+        foreach ($records as $i => [$file, $root, $issued, $enroll, $receipt, $commands, $employee]) {
+            $url = '/api/businesses/'.$file['business_public_id'];
             $this->assertApplicationContract('InternalTeamReceipt', $receipt['data']);
             $teamSurface = $this->getJson($url.'/internal-team?access='.$file['grant_refs']['business.context.read'])->assertOk()->json('data');
             $this->assertApplicationContract('InternalTeamSurface', $teamSurface);
             $this->postJson($url.'/internal-team', $enroll)->assertOk()->assertExactJson($receipt);
-            $root = $receipt['data']['grant_refs'];
-            $employee = $employees[$i % 2];
-            $issued = [];
-            foreach (['business.context.read', 'business.context.manage'] as $action) {
-                $command = $this->grant($root, $employee, $action, $team->public_id);
-                $grant = $this->postJson($url.'/grants', $command)->assertOk()->json('data');
+            foreach ($commands as [$command, $grant]) {
                 $this->postJson($url.'/grants', $command)->assertOk()->assertJsonPath('data.grant_id', $grant['grant_id']);
-                $issued[$action] = $grant['grant_id'];
             }
             $this->actingAs($employee);
             $selection = $this->selection($issued['business.context.read'], $team->public_id);
@@ -105,7 +117,6 @@ final class InternalClientFileTeamTest extends TestCase
             $bad['delegable'] = false;
             $bad['realm_workspace_public_id'] = null;
             $this->postJson($url.'/grants', $bad)->assertForbidden();
-            $records[] = [$file, $root, $issued];
         }
         [$first, $root, $issued] = $records[0];
         $url = '/api/businesses/'.$first['business_public_id'];
@@ -128,6 +139,7 @@ final class InternalClientFileTeamTest extends TestCase
 
     public function test_explicit_custodian_continuity_survives_creator_departure_without_workspace_owner_takeover(): void
     {
+        $this->installPre770BusinessAuthority();
         $creator = User::factory()->create();
         $backup = User::factory()->create();
         $newOwner = User::factory()->create();
@@ -136,6 +148,7 @@ final class InternalClientFileTeamTest extends TestCase
         $url = '/api/businesses/'.$file['business_public_id'];
         $this->postJson($url.'/internal-team', $this->custody($file, $team, 'enroll', $creator, 0))->assertOk();
         $this->postJson($url.'/internal-team', $this->custody($file, $team, 'appoint', $backup, 1))->assertOk();
+        $this->upgradeBusinessAuthority();
         $db = DB::connection('pgsql_migrations');
         // Test fixture models an independently qualified organizational ownership change.
         // The internal policy does not issue that organizational authority.
@@ -149,7 +162,9 @@ final class InternalClientFileTeamTest extends TestCase
         $this->actingAs($newOwner)->getJson('/api/businesses')->assertOk()->assertJsonCount(0, 'data.items');
         $this->postJson($url.'/internal-team', $this->custody($file, $team, 'appoint', $newOwner, 2))->assertForbidden();
         // Creator retains only its own direct file basis and explicitly appoints recovery.
-        $this->actingAs($creator)->postJson($url.'/internal-team', $this->custody($file, $team, 'appoint', $newOwner, 2))->assertOk();
+        $this->actingAs($creator);
+        $recovery = $this->directCustody($file, 'appoint', $newOwner);
+        $this->postJson($url.'/internal-team', $recovery)->assertOk();
         $this->actingAs($newOwner)->getJson('/api/businesses')->assertOk()->assertJsonCount(1, 'data.items');
         $db->table('workspace_memberships')->where('workspace_id', $team->id)->where('user_id', $backup->id)->update(['status' => 'revoked', 'revoked_at' => now()]);
         $this->actingAs($backup)->postJson($url.'/read', ['authority_selection' => $this->selection($choices[0]['read_grant_id'], $team->public_id)])->assertForbidden();
@@ -157,6 +172,7 @@ final class InternalClientFileTeamTest extends TestCase
 
     public function test_two_internal_team_realms_end_independently_and_do_not_become_external_agency_authority(): void
     {
+        $this->installPre770BusinessAuthority();
         $creator = User::factory()->create();
         $staff = User::factory()->create();
         $a = $this->team($creator, 'internal-realm-a', [$staff]);
@@ -168,6 +184,7 @@ final class InternalClientFileTeamTest extends TestCase
             $root = $this->postJson($url.'/internal-team', $this->custody($file, $team, 'enroll', $creator, 0))->assertOk()->json('data.grant_refs');
             $paths[] = $this->postJson($url.'/grants', $this->grant($root, $staff, 'business.context.read', $team->public_id))->assertOk()->json('data.grant_id');
         }
+        $this->upgradeBusinessAuthority();
         $this->actingAs($staff)->postJson($url.'/read', ['authority_selection' => $this->selection($paths[0], $a->public_id)])->assertOk();
         $this->postJson($url.'/read', ['authority_selection' => $this->selection($paths[0], $b->public_id)])->assertForbidden();
         $forged = $this->selection($paths[0], $a->public_id);
@@ -186,6 +203,7 @@ final class InternalClientFileTeamTest extends TestCase
 
     public function test_custodian_withdrawal_invalidates_its_staff_chain_without_reviving_it_on_reappointment(): void
     {
+        $this->installPre770BusinessAuthority();
         $creator = User::factory()->create();
         $backup = User::factory()->create();
         $staff = User::factory()->create();
@@ -196,26 +214,29 @@ final class InternalClientFileTeamTest extends TestCase
         $appointed = $this->postJson($url.'/internal-team', $this->custody($file, $team, 'appoint', $backup, 1))->assertOk()->json('data.grant_refs');
         $this->actingAs($backup);
         $leaf = $this->postJson($url.'/grants', $this->grant($appointed, $staff, 'business.context.read', $team->public_id))->assertOk()->json('data.grant_id');
+        $this->upgradeBusinessAuthority();
         $this->actingAs($staff)->postJson($url.'/read', ['authority_selection' => $this->selection($leaf, $team->public_id)])->assertOk();
         $this->actingAs($creator)->postJson($url.'/internal-team', $this->custody($file, $team, 'remove', $backup, 2))->assertOk();
         $this->actingAs($backup)->postJson($url.'/read', ['authority_selection' => $this->selection($appointed['business.context.read'], $team->public_id)])->assertForbidden();
         $this->actingAs($staff)->postJson($url.'/read', ['authority_selection' => $this->selection($leaf, $team->public_id)])->assertForbidden();
         $this->actingAs($creator)->postJson($url.'/read', ['authority_selection' => $this->selection($creatorRoot['business.context.read'], $team->public_id)])->assertOk();
-        $replacement = $this->postJson($url.'/internal-team', $this->custody($file, $team, 'appoint', $backup, 3))->assertOk()->json('data.grant_refs');
+        $replacement = $this->postJson($url.'/internal-team', $this->directCustody($file, 'appoint', $backup))->assertOk()->json('data.grant_refs');
         $this->assertNotSame($appointed['business.context.read'], $replacement['business.context.read']);
         $this->actingAs($staff)->postJson($url.'/read', ['authority_selection' => $this->selection($leaf, $team->public_id)])->assertForbidden();
     }
 
     public function test_unauthorized_custody_and_raw_database_access_remain_denied(): void
     {
+        $this->installPre770BusinessAuthority();
         $creator = User::factory()->create();
         $staff = User::factory()->create();
         $outsider = User::factory()->create();
         $team = $this->team($creator, 'restricted-file-team', [$staff]);
         $file = $this->file($creator, 'Restricted file');
         $url = '/api/businesses/'.$file['business_public_id'];
-        $this->postJson($url.'/internal-team', $this->custody($file, $team, 'enroll', $staff, 0))->assertForbidden();
         $this->postJson($url.'/internal-team', $this->custody($file, $team, 'enroll', $creator, 0))->assertOk();
+        $this->upgradeBusinessAuthority();
+        $this->postJson($url.'/internal-team', $this->custody($file, $team, 'enroll', $staff, 0))->assertForbidden();
         $this->postJson($url.'/internal-team', $this->custody($file, $team, 'appoint', $outsider, 1))->assertForbidden();
         $db = DB::connection('pgsql_migrations');
         $this->assertFalse($db->scalar("SELECT has_function_privilege('builderad_app','builderad_private.internal_team_admin(bigint,bigint,uuid,bigint,bytea)','EXECUTE')"));
@@ -225,6 +246,7 @@ final class InternalClientFileTeamTest extends TestCase
 
     public function test_membership_revocation_during_observed_row_wait_denies_staff_write_and_leaves_no_receipt(): void
     {
+        $this->installPre770BusinessAuthority();
         $creator = User::factory()->create();
         $staff = User::factory()->create();
         $team = $this->team($creator, 'waiting-team', [$staff]);
@@ -232,6 +254,7 @@ final class InternalClientFileTeamTest extends TestCase
         $url = '/api/businesses/'.$file['business_public_id'];
         $root = $this->postJson($url.'/internal-team', $this->custody($file, $team, 'enroll', $creator, 0))->assertOk()->json('data.grant_refs');
         $issued = $this->postJson($url.'/grants', $this->grant($root, $staff, 'business.context.manage', $team->public_id))->assertOk()->json('data.grant_id');
+        $this->upgradeBusinessAuthority();
         $this->actingAs($staff)->getJson('/api/businesses')->assertOk();
         $request = Request::create('/api/businesses');
         $request->setUserResolver(fn () => $staff);
@@ -288,6 +311,7 @@ final class InternalClientFileTeamTest extends TestCase
 
     public function test_preexisting_private_inquiry_and_history_are_not_shared_by_team_activation(): void
     {
+        $this->installPre770BusinessAuthority();
         $f = $this->fixture();
         $staff = User::factory()->create();
         $team = $this->team($f['user'], 'private-record-team', [$staff]);
@@ -298,6 +322,7 @@ final class InternalClientFileTeamTest extends TestCase
         $url = '/api/businesses/'.$f['business'];
         $root = $this->postJson($url.'/internal-team', $this->custody($f['draft'], $team, 'enroll', $f['user'], 0))->assertOk()->json('data.grant_refs');
         $issued = $this->postJson($url.'/grants', $this->grant($root, $staff, 'business.context.read', $team->public_id))->assertOk()->json('data.grant_id');
+        $this->upgradeBusinessAuthority();
         $this->actingAs($staff)->getJson($url.'/surface?access='.$issued)->assertOk();
         $this->getJson($url.'/inquiry-evidence?access='.$f['enrolled']['grants']['business.inquiry_evidence.read'])->assertForbidden();
         $this->getJson($url.'/inquiry-evidence/eligibility?access='.$issued)->assertForbidden();
@@ -333,8 +358,11 @@ final class InternalClientFileTeamTest extends TestCase
             }
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
             foreach ($snapshots as $table => $snapshot) {
-                $this->assertSame($snapshot, $db->scalar("SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]')::text FROM {$table} r"));
+                $image = $table === 'authority_qualification_receipts' ? "to_jsonb(r)-ARRAY['agency_business_id','agency_membership_grant_id']" : 'to_jsonb(r)';
+                $this->assertSame($snapshot, $db->scalar("SELECT coalesce(jsonb_agg({$image} ORDER BY ({$image})::text),'[]')::text FROM {$table} r"));
             }
+            $this->assertSame(0, $db->table('authority_qualification_receipts')->whereNotNull('agency_business_id')->count());
+            $this->assertSame(0, $db->table('authority_qualification_receipts')->whereNotNull('agency_membership_grant_id')->count());
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
             $this->assertSame(0, $db->table('business_workspace_links')->where('kind', 'internal_team')->count());
             $this->assertSame(0, $db->table('security_action_grants')->where('delegation_realm_kind', 'internal_team')->count());
@@ -346,6 +374,16 @@ final class InternalClientFileTeamTest extends TestCase
         } finally {
             $reset->install();
         }
+    }
+
+    private function directCustody(array $file, string $effect, User $recipient): array
+    {
+        $read = $file['grant_refs']['business.context.read'];
+        $base = '/api/businesses/'.$file['business_public_id'];
+        $epoch = $this->getJson($base.'/internal-team?access='.$read)->assertOk()->json('data.versions.authority_epoch');
+
+        return ['command_id' => (string) Str::uuid(), 'workspace_public_id' => null, 'effect' => $effect,
+            'recipient_public_id' => $recipient->public_id, 'expected_revision' => $epoch, 'authority_selection' => $this->selection($read)];
     }
 
     private function observe(callable $probe, Process $worker): mixed

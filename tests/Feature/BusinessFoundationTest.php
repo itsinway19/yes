@@ -7,7 +7,6 @@ use App\Security\GrantAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Testing\Fluent\AssertableJson as Assert;
 use Tests\TestCase;
 
 class BusinessFoundationTest extends TestCase
@@ -30,7 +29,7 @@ class BusinessFoundationTest extends TestCase
             ->where('action', 'workspace.create')->exists()) {
             app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
         }
-        $this->actingAs($user)->post('/workspaces', ['name' => 'Original business', 'slug' => $slug])->assertRedirect();
+        $this->actingAs($user)->legacyWorkspace(['name' => 'Original business', 'slug' => $slug])->assertRedirect();
 
         return DB::connection('pgsql_migrations')->table('workspaces')->where('slug', $slug)->first();
     }
@@ -69,26 +68,17 @@ class BusinessFoundationTest extends TestCase
     public function test_first_creation_is_atomic_minimal_and_idempotent(): void
     {
         $user = User::factory()->create();
-        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
         $this->actingAs($user)->get('/dashboard')->assertRedirect(route('business-foundation.index-page', ['entry' => 1]));
-        $this->get('/organizations/new')->assertOk()->assertViewIs('spa');
-        $this->assertNull(session('organization.creation_key'));
-        $key = $this->getJson('/organizations/new')->assertOk()->json('data.creationKey');
-        $this->assertTrue(Str::isUuid($key));
-        $this->assertSame($key, session('organization.creation_key'));
-        $input = ['name' => 'My organization', 'creation_key' => $key];
-        $this->post('/organizations', [...$input, 'business_type_id' => 999999])->assertSessionHasErrors('business_type_id');
-        $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
-        $this->post('/organizations', $input)->assertRedirect();
-        $this->post('/organizations', $input)->assertRedirect();
+        $this->get('/organizations/new')->assertRedirect('/businesses/new');
+        $command = ['command_id' => (string) Str::uuid(), 'name' => 'My independent business'];
+        $first = $this->postJson('/api/businesses', $command)->assertCreated()->json('data');
+        $this->postJson('/api/businesses', $command)->assertCreated()->assertJsonPath('data', $first);
         $db = DB::connection('pgsql_migrations');
-        $this->assertSame(1, $db->table('workspaces')->count());
+        $this->assertSame(1, $db->table('businesses')->count());
+        $this->assertSame(0, $db->table('workspaces')->count());
+        $this->assertSame(0, $db->table('workspace_memberships')->count());
         $this->assertSame(0, $db->table('business_context_events')->count());
-        $workspace = $db->table('workspaces')->first();
-        $this->assertNull($workspace->business_type_id);
-        $this->get('/dashboard')->assertRedirect(route('business-foundation.index-page', ['entry' => 1]));
-        $this->getJson('/workspaces/'.$workspace->public_id)->assertJson(fn (Assert $page) => $page
-            ->missing('data.business')->missing('data.guidance')->etc());
+        $this->getJson('/api/businesses/'.$first['business_public_id'].'/surface?access='.$first['grant_refs']['business.context.read'])->assertOk();
     }
 
     public function test_gate_preserves_destination_security_and_existing_identity(): void
@@ -97,10 +87,11 @@ class BusinessFoundationTest extends TestCase
         app('session')->forgetDrivers();
         app()->forgetInstance('session.store');
         $workspace = $this->business(User::factory()->create());
-        $this->get('/workspaces/'.$workspace->public_id.'?tab=sources')->assertOk();
+        $this->get('/workspaces/'.$workspace->public_id.'?tab=sources')->assertRedirect('/businesses');
+        $this->getJson('/workspaces/'.$workspace->public_id)->assertOk();
         $this->get('/profile')->assertOk();
         $this->get('/security/devices')->assertOk();
-        $this->get('/workspaces/'.$workspace->public_id.'/commercial-history')->assertOk()->assertSee('application-bootstrap', false)->assertDontSee('data-page=', false);
+        $this->get('/workspaces/'.$workspace->public_id.'/commercial-history')->assertRedirect('/businesses');
         $this->getJson('/workspaces/'.$workspace->public_id.'/commercial-history')->assertOk()->assertJsonPath('data.workspace.name', 'Original business')->assertJsonPath('data.read_only', true);
         $this->post('/workspaces/'.$workspace->public_id.'/business', ['business_type_id' => $this->type(), 'version' => 0])->assertStatus(410);
         $db = DB::connection('pgsql_migrations');

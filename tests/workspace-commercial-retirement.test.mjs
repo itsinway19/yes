@@ -5,16 +5,32 @@ import { readFile, access } from 'node:fs/promises';
 const read = path => readFile(new URL('../' + path, import.meta.url), 'utf8');
 
 test('retired Workspace business onboarding cannot be reintroduced through routes, contracts or the creation controller', async () => {
-    const [routes, contract, organization, page] = await Promise.all([
+    const [routes, contract, creation, navigation] = await Promise.all([
         read('routes/web.php'), read('contracts/application.openapi.json'),
-        read('app/Http/Controllers/OrganizationController.php'), read('resources/js/workspaces/OrganizationCreate.vue'),
+        read('app/Http/Controllers/RetiredWorkspaceCreationController.php'), read('resources/js/workspaces/routes.ts'),
     ]);
     assert.match(routes, /Route::post\('\/business\/start',[^\n]+410/);
-    await assert.rejects(access(new URL('../app/Http/Controllers/BusinessContextController.php', import.meta.url)), { code: 'ENOENT' });
+    for (const path of ['app/Http/Controllers/BusinessContextController.php', 'app/Http/Controllers/OrganizationController.php', 'resources/js/workspaces/OrganizationCreate.vue']) {
+        await assert.rejects(access(new URL('../' + path, import.meta.url)), { code: 'ENOENT' });
+    }
     assert.equal(JSON.parse(contract).paths['/business/start'], undefined);
-    assert.doesNotMatch(organization, /BusinessContext|->(?:write|replaceCurrentIntent|replaceTargetMarkets)\(/);
-    assert.doesNotMatch(page, /business_type_id|\/goals/);
-    assert.ok(JSON.parse(contract).paths['/organizations'].post);
+    for (const path of ['/organizations', '/workspaces']) {
+        const writers = routes.split('\n').filter(line => line.includes(`Route::post('${path}',`));
+        assert.equal(writers.length, 1, `${path} must have exactly one retired POST owner`);
+        assert.match(writers[0], /RetiredWorkspaceCreationController::class/);
+        const operation = JSON.parse(contract).paths[path].post;
+        assert.equal(operation.deprecated, true);
+        assert.equal(operation.operationId, path === '/organizations' ? 'rejectRetiredOrganizationCreation' : 'rejectRetiredWorkspaceCreation');
+        assert.deepEqual(Object.keys(operation.responses).filter(status => /^2\d\d$/.test(status)), []);
+        assert.equal(operation.responses['410'].content['application/json'].schema.$ref, '#/components/schemas/RetiredWorkspaceCreation');
+    }
+    assert.match(creation, /response\(\)->json\(\['error' => 'workspace_creation_retired', 'next' => '\/businesses\/new'\], 410\)/);
+    assert.doesNotMatch(creation, /BusinessContext|WorkspaceAuthority|DB::|->(?:create|write|replaceCurrentIntent|replaceTargetMarkets)\(/);
+    assert.match(navigation, /path: '\/workspaces\/:pathMatch\(\.\*\)\*', redirect: '\/businesses'/);
+    for (const path of ['/organizations/new', '/business/start']) {
+        assert.ok(navigation.includes(`{ path: '${path}', redirect: '/businesses/new' }`));
+    }
+    assert.doesNotMatch(navigation, /\bcomponent[s]?\s*:|OrganizationCreate|WorkspaceIndex/);
 });
 
 test('retired commercial contracts and editors cannot return alongside Business owners', async () => {

@@ -13,8 +13,14 @@ final class IdentityAuthentication
 {
     public function __construct(private IdentityTransition $transitions, private IdentityDocument $documents) {}
 
-    public function login(Request $request, Closure $authenticate, string|Closure $method, Closure $destination, ?Closure $afterIssue = null): JsonResponse
-    {
+    public function login(
+        Request $request,
+        Closure $authenticate,
+        string|Closure $method,
+        Closure $destination,
+        ?Closure $afterIssue = null,
+        ?Closure $beforeAuthenticate = null,
+    ): JsonResponse {
         [$captured, $locked] = $this->documents->transition($request,
             (string) ($request->header('X-Builderad-Transition') ?? $request->input('_identity_transition', '')));
         $mutating = false;
@@ -23,7 +29,12 @@ final class IdentityAuthentication
                 $captured['epoch'], $captured['nonce'], function () use ($authenticate, &$mutating): void {
                     $mutating = true;
                     $authenticate();
-                }, $method, $locked, $afterIssue);
+                }, $method, function (object $row) use ($locked, $beforeAuthenticate): void {
+                    $locked($row);
+                    if ($beforeAuthenticate) {
+                        $beforeAuthenticate($row);
+                    }
+                }, $afterIssue);
         } catch (Throwable $error) {
             // A rejected/consumed precondition never reaches any guard mutation.
             if ($mutating && ! $request->attributes->get('builderad.identity_uncertain')) {

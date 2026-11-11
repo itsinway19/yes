@@ -3,84 +3,182 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRouter, onBeforeRouteLeave } from 'vue-router';
 import { locale } from '../spa/locale';
 import { owned, stamp, TransportError } from '../spa/transport';
-import { businessSurface, create, writeFact, type Catalog } from './api';
+import { create, writeFact, type DraftResult } from './api';
+import { writePractice } from './activity';
 import { creation } from './drafts';
-const props = defineProps<{ catalog: Catalog }>();
-const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
-const draft = reactive(creation), busy = ref(false), message = ref<''|'invalid'|'conflict'|'denied'|'unknown'|'refreshed'|'unavailable'>(''), blocked = ref(false), search = ref('');
-const marketSearch = ref<HTMLInputElement>();
-function clearMarketSearch() { search.value = ''; marketSearch.value?.focus(); }
+import { clearSetup, emptySetup, prepareSetup, readSetup, setupDeclarations, setupKey, writeSetup } from './businessSetup';
+import { wizardAnswersValid, type WizardAnswers, type WizardCatalog } from './businessWizard';
+import BusinessWizard from './BusinessWizard.vue';
+
+const props = defineProps<{ catalog: WizardCatalog; registrationAttempt?: string | null }>();
 const router = useRouter();
-const notice = computed(() => ({invalid:t('راجع المعلومات المحددة ثم حاول الحفظ مجددًا.','Review the selected details, then save again.'),conflict:t('تغيرت معلومات النشاط. حدّثها وراجع الأسواق قبل إعادة الحفظ.','Business details changed. Refresh and review the markets before saving again.'),denied:t('لم يعد الحفظ متاحًا بصلاحيتك الحالية. راجع النشاط أو أكّد تسجيل الدخول.','Saving is no longer available with your current permission. Review the business or confirm sign-in.'),unknown:t('لم نتأكد من نتيجة الحفظ. الطلب الأصلي محفوظ؛ تحقّق من نتيجته قبل تغيير المعلومات.','The save outcome is unknown. The original request is retained; check its result before changing the details.'),refreshed:t('تم تحديث النشاط. راجع الأسواق ثم احفظ اختيارك.','Business refreshed. Review the markets and save your selection.'),unavailable:t('تعذر تحديث النشاط. احتفظ بالمعلومات وراجع صلاحية الوصول.','The business could not be refreshed. Keep your details and review access.'),'':''})[message.value]);
-const countries = computed(() => props.catalog.countries.filter(country => [country.name_ar, country.name_en, country.code].some(text => text.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase()))));
+const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
+const registeredDraft = props.registrationAttempt ? readSetup(setupKey(props.registrationAttempt)) : undefined;
+const attempt = registeredDraft ? props.registrationAttempt : undefined;
+const key = setupKey(attempt);
+const draft = reactive(registeredDraft ?? readSetup(key) ?? emptySetup(locale.value));
+const busy = ref(false), finished = ref(false), opening = ref(false), receipt = ref<DraftResult>();
+const uncertain = computed(() => !!draft.uncertain?.length);
+const settled = new Set<string>();
+const message = ref<'invalid' | 'conflict' | 'denied' | 'unknown' | 'storage' | 'open' | ''>(uncertain.value ? 'unknown' : '');
+const notice = computed(() => ({
+    invalid: t('لم يُقبل أحد الاختيارات. راجع معلومات نشاطك قبل استكمال الإعداد.', 'A choice was rejected. Review your business details before finishing setup.'),
+    conflict: t('تغيّرت معلومات النشاط أو سبق استخدام معرّف الطلب. افتح النشاط لمراجعة حالته الحالية إن كان متاحًا.', 'Business details changed or the request identifier was already used. Open the business to review its current state if available.'),
+    denied: t('لم يعد الحفظ متاحًا بصلاحيتك الحالية. راجع الوصول إلى النشاط قبل استكمال الإعداد.', 'Your current access no longer permits this save. Check access to the business before finishing setup.'),
+    unknown: t('لم نتأكد من نتيجة الحفظ. تحقّق من نتيجة الطلب المحفوظ قبل إجراء تغييرات أخرى.', 'We could not confirm the save. Check the original request before making further changes.'),
+    storage: t('تعذر الاحتفاظ بالطلب في هذا التبويب. أتح التخزين المؤقت للمتصفح لإرسال الطلب بأمان.', 'This tab could not retain the request. Enable browser session storage to submit it safely.'),
+    open: t('حُفظ نشاطك. تعذر فتح اللوحة الآن، ويمكنك محاولة فتحها مجددًا.', 'Your business was saved. The dashboard could not open. You can try opening it again.'),
+    '': '',
+})[message.value]);
+
 let disposed = false;
-const beforeUnload = (event: BeforeUnloadEvent) => { if (draft.pending || draft.marketPending) { event.preventDefault(); event.returnValue = ''; } };
-onMounted(() => { if (typeof window !== 'undefined') window.addEventListener?.('beforeunload', beforeUnload); });
-onBeforeUnmount(() => { disposed = true; if (typeof window !== 'undefined') window.removeEventListener?.('beforeunload', beforeUnload); if (draft.receipt && !draft.marketPending) Object.assign(draft, { name: '', type: null, codes: [], pending: undefined, receipt: undefined, marketPending: undefined, marketsSaved: false }); });
-onBeforeRouteLeave(() => (!draft.pending && !draft.marketPending) || confirm(t('نتيجة الحفظ غير مؤكدة. هل تريد المغادرة مع الاحتفاظ بالطلب في هذا المستند؟', 'The save outcome is unknown. Leave while retaining the request in this document?')));
-const destination = () => draft.receipt ? `/businesses/${draft.receipt.business_public_id}?access=${draft.receipt.grant_refs['business.context.read']}` : '/businesses';
-async function save() {
-    if (busy.value || blocked.value) return;
-    const captured = stamp(); let reconciling = Boolean(draft.pending); busy.value = true; message.value = '';
-    try {
-        if (!draft.receipt) {
-            draft.pending ??= { command_id: crypto.randomUUID(), name: draft.name, business_type_id: draft.type };
-            const result = await create(JSON.parse(JSON.stringify(draft.pending)));
-            if (disposed || !owned(captured)) return;
-            draft.receipt = result; draft.pending = undefined;
-        }
-        if (!draft.marketsSaved && (draft.codes.length || draft.marketPending)) {
-            const receipt = draft.receipt;
-            reconciling = Boolean(draft.marketPending);
-            draft.marketPending ??= { kind: 'markets', command_id: crypto.randomUUID(), codes: [...draft.codes], expected_context: receipt.versions.context,
-                authority_selection: { realm_kind: 'direct', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: Number(receipt.grant_refs['business.markets.declare']) }] } };
-            await writeFact(receipt.business_public_id, JSON.parse(JSON.stringify(draft.marketPending)));
-            if (disposed || !owned(captured)) return;
-            draft.marketPending = undefined; draft.marketsSaved = true;
-        }
-        if (!disposed && owned(captured)) await router.push(destination());
-    } catch (error) {
-        if (disposed || !owned(captured)) return;
-        const status = error instanceof TransportError ? error.status : 0;
-        if ([403, 409, 422].includes(status) && !reconciling) {
-            if (!draft.receipt) draft.pending = undefined;
-            else draft.marketPending = undefined;
-            blocked.value = status === 403 || status === 409;
-            message.value = status === 422 ? 'invalid' : status === 409 ? 'conflict' : 'denied';
-        } else message.value = 'unknown';
-    } finally { if (!disposed && owned(captured)) busy.value = false; }
+const beforeUnload = (event: BeforeUnloadEvent) => {
+    if (busy.value || uncertain.value) { event.preventDefault(); event.returnValue = ''; }
+};
+onMounted(() => {
+    window.addEventListener?.('beforeunload', beforeUnload);
+    if (attempt && !draft.plan && wizardAnswersValid(draft.answers, props.catalog)) void save();
+});
+onBeforeUnmount(() => { disposed = true; window.removeEventListener?.('beforeunload', beforeUnload); });
+onBeforeRouteLeave(() => finished.value || (!busy.value && !uncertain.value)
+    || confirm(t('يوجد طلب حفظ لم تُحسم نتيجته. هل تريد المغادرة مع الاحتفاظ بالطلب في هذا التبويب؟', 'A save has an unresolved outcome. Leave while retaining the request in this tab?')));
+
+function persist() {
+    try { writeSetup(key, draft); return true; }
+    catch { return false; }
 }
-async function refresh() {
-    if (!draft.receipt || busy.value || draft.marketPending) return;
-    const captured = stamp(); busy.value = true;
+function updateAnswers(answers: WizardAnswers) {
+    draft.answers = answers;
+    if (!attempt) draft.language = locale.value;
+    message.value = '';
+    persist();
+}
+function updateStep(step: number) {
+    draft.step = step;
+    persist();
+}
+const destination = computed(() => receipt.value
+    ? `/businesses/${receipt.value.business_public_id}?access=${receipt.value.grant_refs['business.context.read']}` : '/businesses');
+
+async function openDashboard() {
+    if (opening.value) return;
+    opening.value = true;
+    message.value = '';
     try {
-        const surface = await businessSurface(draft.receipt.business_public_id, Number(draft.receipt.grant_refs['business.context.read']));
-        if (disposed || !owned(captured)) return;
-        draft.receipt.versions.context = surface.business.versions.context;
-        blocked.value = false; message.value = 'refreshed';
-    } catch { if (owned(captured)) message.value = 'unavailable'; }
-    finally { if (!disposed && owned(captured)) busy.value = false; }
+        const failure = await router.replace(destination.value);
+        if (failure) { if (!disposed) message.value = 'open'; return; }
+        try { clearSetup(key); } catch { /* The retained commands still replay exactly. */ }
+    } catch { if (!disposed) message.value = 'open'; }
+    finally { if (!disposed) opening.value = false; }
+}
+
+async function save() {
+    if (busy.value || finished.value || (!draft.plan && !wizardAnswersValid(draft.answers, props.catalog))) return;
+    const captured = stamp();
+    const active = () => !disposed && owned(captured);
+    busy.value = true;
+    message.value = '';
+    let command: string | undefined;
+    let reconciling = false;
+    const markPending = (id: string) => {
+        command = id;
+        reconciling = !!draft.uncertain?.includes(id);
+        draft.uncertain = [...new Set([...(draft.uncertain ?? []), id])];
+        if (!persist()) {
+            if (!reconciling) draft.uncertain = draft.uncertain.filter(item => item !== id);
+            message.value = 'storage';
+            return false;
+        }
+        if (receipt.value) creation.set(key, receipt.value.business_public_id);
+        return true;
+    };
+    const settle = (id: string) => {
+        settled.add(id);
+        draft.uncertain = draft.uncertain?.filter(item => item !== id);
+        if (!uncertain.value) creation.delete(key);
+        persist();
+        command = undefined;
+    };
+    try {
+        if (!draft.plan) {
+            const plan = await prepareSetup(draft, props.catalog, attempt);
+            if (!active()) return;
+            draft.plan = plan;
+        }
+        const plan = draft.plan;
+        if (!receipt.value) {
+            if (!markPending(plan.create.command_id)) return;
+            const result = await create(plan.create);
+            if (!active()) return;
+            receipt.value = result;
+            draft.created = true;
+            settle(plan.create.command_id);
+            if (uncertain.value) creation.set(key, result.business_public_id);
+        }
+        const business = receipt.value.business_public_id;
+        const { markets, preferences, practices } = setupDeclarations(plan, receipt.value);
+        for (const fact of [markets, preferences]) {
+            if (!fact || settled.has(fact.command_id)) continue;
+            if (!markPending(fact.command_id)) return;
+            const result = await writeFact(business, fact);
+            if (!active()) return;
+            if (result.business_public_id !== business) throw Error('Business fact acknowledgement subject mismatch');
+            settle(fact.command_id);
+        }
+        for (const practice of practices) {
+            if (settled.has(practice.command_id)) continue;
+            if (!markPending(practice.command_id)) return;
+            const result = await writePractice(business, practice);
+            if (!active()) return;
+            if (result.business_public_id !== business || result.practice.practice_id !== practice.practice_id) {
+                throw Error('Practice acknowledgement subject mismatch');
+            }
+            settle(practice.command_id);
+        }
+        finished.value = true;
+        busy.value = false;
+        await openDashboard();
+    } catch (error) {
+        if (!active()) return;
+        const status = error instanceof TransportError ? error.status : 0;
+        if (command && !reconciling && [403, 409, 422].includes(status)) {
+            draft.uncertain = draft.uncertain?.filter(item => item !== command);
+            if (!uncertain.value) creation.delete(key);
+            if (status === 422 && !draft.created) draft.plan = undefined;
+            persist();
+        }
+        if (status === 403) receipt.value = undefined;
+        message.value = status === 403 ? 'denied' : status === 409 ? 'conflict'
+            : status === 422 && !reconciling ? 'invalid' : 'unknown';
+    } finally { if (active()) busy.value = false; }
 }
 </script>
+
 <template>
-    <header class="bf-heading"><div><p class="bf-eyebrow">{{ t('نشاط جديد', 'New business') }}</p><h1>{{ t('عرّفنا بنشاطك', 'Tell us about your business') }}</h1><p>{{ t('اسم النشاط ومجاله والأسواق التي يخدمها. لا تحتاج إلى ربط حساب إعلاني أو تسجيل جهة.', 'Its name, field and the markets it serves. No advertising connection or organization registration is needed.') }}</p></div><RouterLink class="bf-link" to="/businesses">{{ t('العودة إلى أنشطتي', 'Back to my businesses') }}</RouterLink></header>
-    <form class="bf-form business-setup" @submit.prevent="save">
-        <p v-if="draft.receipt" role="status" data-business-created>{{ t('أُنشئ النشاط باسم', 'Business created as') }} <strong>{{ draft.receipt.name }}</strong>. {{ t('يمكنك استكمال أسواقه الآن؛ لن يُنشأ نشاط آخر عند إعادة الحفظ.', 'You can finish its markets now; saving again will not create another business.') }}</p>
-        <fieldset :disabled="busy || !!draft.pending || !!draft.receipt">
-            <label for="bf-create-name">{{ t('اسم النشاط', 'Business name') }}</label><input id="bf-create-name" v-model="draft.name" required minlength="2" maxlength="120" autocomplete="organization" />
-            <label for="bf-create-type">{{ t('تصنيف عام أولي — اختياري', 'Initial general classification — optional') }}</label><select id="bf-create-type" v-model="draft.type"><option :value="null">{{ t('سأحدده لاحقًا', 'Choose later') }}</option><option v-for="type in props.catalog.business_types.filter(x => x.active)" :key="type.id" :value="type.id">{{ locale === 'ar' ? type.name_ar : type.name_en }}</option></select>
-        </fieldset>
-        <fieldset :disabled="busy || !!draft.pending || !!draft.marketPending || blocked || draft.marketsSaved">
-            <legend>{{ t('أين تخدم عملاءك؟', 'Where do you serve customers?') }}</legend><p>{{ t('اختر سوقًا أو أكثر، أو اتركه لوقت لاحق. هذه أسواق مستهدفة وليست بلد تأسيس النشاط.', 'Choose one or more markets, or leave this for later. These are target markets, not the country of incorporation.') }}</p>
-            <label for="bf-create-market-search">{{ t('ابحث عن دولة', 'Search countries') }}</label><input id="bf-create-market-search" ref="marketSearch" v-model="search" type="search" />
-            <button v-if="search" type="button" class="bf-link" data-create-market-search-clear @click="clearMarketSearch">{{ t('مسح البحث', 'Clear search') }}</button>
-            <p v-if="search.trim() && !countries.length" role="status" data-create-market-search-empty>{{ t('لا توجد دول مطابقة للبحث.', 'No countries match your search.') }}</p>
-            <div class="setup-countries"><label v-for="country in countries" :key="country.code"><input v-model="draft.codes" type="checkbox" :value="country.code" />{{ locale === 'ar' ? country.name_ar : country.name_en }}</label></div>
-        </fieldset>
-        <p v-if="message" role="status" :data-business-unknown="!!draft.pending || !!draft.marketPending ? '' : undefined">{{ notice }}</p>
-        <div class="setup-actions"><button type="submit" class="bf-primary" :disabled="busy || blocked">{{ busy ? t('جارٍ الحفظ…', 'Saving…') : draft.pending || draft.marketPending ? t('التحقق من النتيجة', 'Check the outcome') : draft.receipt ? t('حفظ الأسواق وفتح النشاط', 'Save markets and open business') : t('إنشاء النشاط والمتابعة', 'Create business and continue') }}</button><button v-if="blocked && draft.receipt" type="button" class="bf-link" :disabled="busy" @click="refresh">{{ t('تحديث معلومات النشاط', 'Refresh business details') }}</button><RouterLink v-if="draft.receipt && !draft.marketPending" class="bf-link" :to="destination()">{{ t('فتح النشاط واستكماله لاحقًا', 'Open business and finish later') }}</RouterLink></div>
-    </form>
+    <div class="business-setup-header"><RouterLink class="bf-link" to="/businesses">{{ t('العودة إلى أنشطتي', 'Back to my businesses') }}</RouterLink></div>
+    <BusinessWizard v-if="!draft.plan && !busy" :catalog="catalog" :answers="draft.answers" :initial-step="draft.step"
+        :action-label="t('إنشاء النشاط وفتح لوحته', 'Create business and open dashboard')"
+        @update:answers="updateAnswers" @step="updateStep" @finish="save" />
+    <section v-else class="business-setup-progress" :aria-busy="busy" data-business-setup-progress>
+        <p class="bf-eyebrow">{{ t('تعريف النشاط', 'Business setup') }}</p>
+        <h1>{{ message === 'denied' ? t('استكمال إعداد النشاط', 'Finish business setup') : (receipt?.name ?? draft.answers.name) }}</h1>
+        <p v-if="busy" role="status">{{ t('جارٍ حفظ معلومات النشاط…', 'Saving business details…') }}</p>
+        <p v-else-if="receipt" data-business-created>{{ finished ? t('حُفظت معلومات النشاط.', 'Your business details were saved.') : t('أُنشئ النشاط. يمكنك استكمال حفظ تفاصيله دون إنشاء نشاط آخر.', 'The business was created. Finish saving its details using the existing business.') }}</p>
+        <div v-if="!busy" class="business-setup-actions">
+            <button v-if="finished" type="button" class="bf-primary" :disabled="opening" @click="openDashboard">{{ t('فتح لوحة النشاط', 'Open business dashboard') }}</button>
+            <template v-else>
+                <button type="button" class="bf-primary" data-setup-reconcile @click="save">{{ uncertain ? t('التحقق من النتيجة', 'Check the outcome') : t('استكمال الإعداد', 'Finish setup') }}</button>
+                <RouterLink v-if="receipt && !uncertain" class="bf-link" :to="destination">{{ t('فتح النشاط واستكماله لاحقًا', 'Open business and finish later') }}</RouterLink>
+            </template>
+        </div>
+    </section>
+    <p v-if="message" class="business-setup-notice" role="alert" :data-business-unknown="uncertain ? '' : undefined">{{ notice }}</p>
 </template>
+
 <style scoped>
-.business-setup{max-width:720px}.business-setup fieldset{border:0;margin:0 0 24px;padding:0}.business-setup legend{font-size:16px;font-weight:650;padding:0}.business-setup p{font-size:13px;line-height:1.9;color:var(--ad-muted)}.setup-countries{max-height:220px;overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 18px;border:1px solid var(--ad-line);border-radius:6px;padding:8px 12px}.setup-countries label{display:flex;align-items:center;gap:9px;min-height:44px;margin:0!important;cursor:pointer}.setup-countries input{flex:none;margin:0!important;width:18px!important}.setup-actions{display:flex;align-items:center;flex-wrap:wrap;gap:14px}.setup-actions :is(button,a){min-height:44px}@media(max-width:480px){.setup-countries{grid-template-columns:1fr}}
+.business-setup-header{margin:0 0 15px}.business-setup-header a{display:inline-flex;align-items:center;min-height:44px}
+.business-setup-progress,.business-setup-notice{max-width:680px;margin-inline:auto;border-radius:12px;border:1px solid var(--ad-line);padding:clamp(17px,3vw,30px);background:var(--ad-paper)}
+.business-setup-progress h1{font-size:clamp(24px,3vw,36px);line-height:1.4;margin:3px 0 12px;overflow-wrap:anywhere}
+.business-setup-actions{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:16px}.business-setup-actions :is(button,a){min-height:44px}
+.business-setup-notice{margin-block:12px 0;border-inline-start:3px solid var(--ad-accent);padding-block:12px}
 </style>

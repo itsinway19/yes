@@ -1,5 +1,13 @@
 # Business foundation implementation — scoped isolated verification complete
 
+## Current Owner continuation — Business-first ownership consolidation — 2026-11-10
+
+Latest governing clarification: no public Workspace/archive experience remains in the new product. The Owner requests a review handoff and explicitly forbids starting comprehensive Foundation at this stage: **NOT_RUN_OWNER_DEFERRED**. See the consolidation record for current focused evidence; historical acceptance below does not qualify this dirty candidate.
+
+Current bounded handoff: [READY_FOR_REVIEW — results, before/after owners and residual Workspace contracts](REVIEW_HANDOFF.md). Core13/266, affected UI163, production build and two no-image browser cases passed. These results do not replace the deferred comprehensive gate.
+
+The Owner accepted the diagnosis and authorized closing dependencies and incremental replacement in the current dirty `ba-business-activity-next-001` tree. [Closed dispositions, first proof and continuing evidence](OWNERSHIP_CONSOLIDATION.md). Extend the existing qualification/grant owner; no parallel membership/permission store. Earlier acceptance statements below retain their original candidate scope. Current focused SQL and UI evidence exists; whole-objective Backend/UI/browser/Foundation acceptance remains pending. No production migration, main merge or publication is authorized.
+
 Owner-approved scope: G3-F v1.0.1 / G4 E01–E05, isolated implementation and tests. Base `bc947c5c60df434cd7bed553fd4ed45c4919fa52`. Detached checkout `C:\dev\builderad-worktrees\ba-business-foundation-001`, initially clean. Current changes are deliberately preserved and uncommitted. No publication, real customer migration or production deployment.
 
 ## Governing current status — read before historical checkpoints
@@ -766,3 +774,7 @@ Whole-run log: `storage/business-foundation-final-foundation-qualified.log`. Mac
 - Actual customer migration G3-M, production source/provider policy qualification, publication and deployment remain **NOT_AUTHORIZED**. Final Owner acceptance is **NOT_RECORDED**; this implementation record does not attribute a decision to the Owner.
 
 Only evidence documents and checkpoint metadata change after this final proof. No runtime edits justify another test cycle; the accepted isolated implementation task ends with the passing official gate and explicit scope limits above.
+
+### 2026-11-11 — bounded Business / Workspace authority closure
+
+The subsequent Owner-authorized closure is recorded separately in [AUTHORITY_CLOSURE.md](AUTHORITY_CLOSURE.md). It blocks all identified new Workspace-backed Business issuance while preserving qualified historical operations and explicit limited Business file custody. Current status is `AUTHORITY_CLOSURE_VERIFIED` for the documented local candidate: focused backend/migration checks, compiled UI, production build and three actual browser journeys passed with retained failed attempts and targeted correction evidence. No Foundation rerun, preview database write or publication occurred. This entry does not revise the scope of the earlier Foundation record.

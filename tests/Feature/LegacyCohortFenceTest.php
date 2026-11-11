@@ -19,7 +19,7 @@ final class LegacyCohortFenceTest extends TestCase
     {
         $u = User::factory()->create();
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($u, 1);
-        $this->actingAs($u)->post('/workspaces', ['name' => 'Retained collaboration label', 'slug' => 'legacy-fence'])->assertRedirect();
+        $this->actingAs($u)->legacyWorkspace(['name' => 'Retained collaboration label', 'slug' => 'legacy-fence'])->assertRedirect();
         $db = DB::connection('pgsql_migrations');
         $w = $db->table('workspaces')->where('slug', 'legacy-fence')->first();
         $r = Request::create('/workspaces/'.$w->public_id);

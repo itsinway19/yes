@@ -91,6 +91,84 @@
     }
 }
 
+/* Application document chrome and its single route notice. */
+.application-appbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .75rem 1rem;
+    min-block-size: 4rem;
+    padding: .65rem clamp(.75rem, 4vw, 2rem);
+    border-block-end: 1px solid var(--border);
+    background: var(--card);
+}
+.application-appbar > .ba-logo + .ba-theme-toggle { margin-inline-start: auto; }
+.application-appbar > :is(button, a:not(.ba-logo)) {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 2.75rem;
+    padding-inline: .75rem;
+    border-radius: .5rem;
+    font-size: .875rem;
+}
+.application-appbar > :is(button, a:not(.ba-logo)):hover { background: var(--accent); }
+.application-appbar--registration { min-block-size: 76px; }
+.application-registration-signin { font-weight: 700; }
+@media (max-width: 510px) {
+    .application-appbar--registration { min-block-size: 66px; gap: .25rem .45rem; }
+    .application-appbar--registration > .ba-logo { font-size: 21px; gap: 5px; }
+    .application-appbar--registration > .ba-logo img { inline-size: 30px; block-size: 30px; }
+    .application-appbar--registration > :is(button, a:not(.ba-logo)) { padding-inline: .4rem; font-size: .75rem; }
+}
+.business-main { max-inline-size: 65rem; margin-inline: auto; padding: clamp(1rem, 4vw, 2rem); }
+.application-route-notice {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .65rem 1rem;
+    padding: .85rem 1rem;
+    margin: 1rem;
+    border: 1px solid var(--border);
+    border-inline-start: 3px solid var(--ba-primary-ink, var(--primary));
+    border-radius: .5rem;
+    background: var(--card);
+    color: var(--card-foreground);
+    font-size: .875rem;
+}
+.application-route-notice :is(a, button) {
+    min-block-size: 2.75rem;
+    align-content: center;
+    text-decoration: underline;
+    text-underline-offset: .2em;
+}
+.application-route-progress {
+    position: fixed;
+    z-index: 30;
+    inset-inline: 0;
+    inset-block-start: 0;
+    block-size: 3px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: color-mix(in srgb, var(--ba-primary-ink, #155f53) 15%, transparent);
+    pointer-events: none;
+}
+.application-route-progress::before {
+    content: '';
+    inline-size: 35%;
+    block-size: 100%;
+    background: var(--ba-primary-ink, #155f53);
+    animation: application-route-wait 1.4s ease-in-out infinite alternate;
+}
+@keyframes application-route-wait {
+    to { transform: translateX(185%); }
+}
+[dir=rtl] .application-route-progress::before { animation-direction: alternate-reverse; }
+@media (prefers-reduced-motion: reduce) {
+    .application-route-progress::before { inline-size: 100%; animation: none; }
+}
+
 /* Internal operations: shared shell and first administration slice. */
 .admin-shell {
     --admin-canvas: #fff;

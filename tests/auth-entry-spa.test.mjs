@@ -8,6 +8,21 @@ import 'vue';
 const dataUrl = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
 const compile = source => ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
 
+test('authentication errors present each recognized field message once and reserve the alert for general failures', async () => {
+    const { authErrors } = await import(dataUrl(compile(await readFile('resources/js/auth-entry/errors.ts', 'utf8'))));
+    const wrong = 'The email and password did not match.';
+    assert.deepEqual(authErrors({ message: wrong, errors: { email: [wrong], password: [wrong] } }, ['email', 'password']), {
+        fields: { email: wrong }, general: '',
+    });
+    assert.deepEqual(authErrors({ message: 'تعذر التحقق', errors: { code: ['أدخل الرمز الصحيح.'] } }, ['code']), {
+        fields: { code: 'أدخل الرمز الصحيح.' }, general: '',
+    });
+    assert.deepEqual(authErrors({ errors: { attempt_id: ['The email proof expired.'] } }, ['name', 'password']), {
+        fields: {}, general: 'The email proof expired.',
+    });
+    assert.deepEqual(authErrors({}, ['email'], 'The result is unknown.'), { fields: {}, general: 'The result is unknown.' });
+});
+
 test('native auth handoff captures current evidence, nests actual WebAuthn form fields and closes before exactly one submit', async () => {
     const previous = { document: globalThis.document, location: globalThis.location, HTMLFormElement: globalThis.HTMLFormElement };
     const events = [], fields = [];

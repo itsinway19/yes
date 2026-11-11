@@ -15,7 +15,7 @@ watch(() => Boolean(draft.pending), pending => emit('pendingChange', pending), {
 const choices = ref<DataUseChoices['scopes']>([]), next = ref<string | null>(null), loading = ref(false), busy = ref(false);
 let serial = 0, disposed = false;
 onBeforeUnmount(() => { disposed = true; serial++; });
-const managers = computed(() => props.surface.collaboration.options.filter(row => Number.isSafeInteger(Number(row.grant_id))));
+const managers = computed(() => props.surface.data_use.binding_options.filter(row => Number.isSafeInteger(Number(row.grant_id))));
 const chosen = computed(() => choices.value.find(row => row.grant_id === draft.selected));
 const latest = computed(() => props.surface.data_use.bindings.find(row => row.scope_id === chosen.value?.scope_id));
 const stale = computed(() => chosen.value && (draft.baselineScope !== chosen.value.scope_id || draft.baselineRevision !== (latest.value?.revision ?? 0)));

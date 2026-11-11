@@ -76,8 +76,8 @@ async function send(effect?: TeamCommand['effect'], recipient?: string) {
 </script>
 <template>
     <section class="bf-card organization-team" data-organization-team>
-        <h2>{{ t('فريق الجهة', 'Organization team') }}</h2>
-        <p>{{ t('أضف الموظف إلى فريق الجهة، ثم افتح النشاط الذي سيعمل عليه وحدّد صلاحياته هناك. العضوية لا تمنح حقًا تجاريًا أو حق استعمال بيانات.', 'Add the employee to the organization team, then open the business they will work on and set their permissions there. Membership gives no access to a business or its data.') }}</p>
+        <h2>{{ t('أذونات السجل السابق', 'Previous record permissions') }}</h2>
+        <p>{{ t('هذه العضوية تخص الأذونات القديمة المرتبطة بهذا السجل فقط. أدر فريق النشاط وتفويض الوكالة داخل النشاط المعني. لا تمنح هذه العضوية حقًا تجاريًا أو حق استعمال بيانات.', 'This membership applies only to old permissions bound to this record. Manage Business teams and agency mandates inside the relevant Business. This membership grants no business or data-use right.') }}</p>
         <p v-if="loading" role="status">{{ t('جارٍ التحقق من الفريق…', 'Checking the team…') }}</p>
         <p v-if="unavailable" role="alert">{{ t('تعذر التحقق من الفريق. لا نفترض أنه فارغ.', 'The team could not be checked. No empty team is inferred.') }}</p>
         <template v-if="team">

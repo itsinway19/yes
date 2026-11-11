@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
+use Tests\Support\BusinessAuthorityFixture;
 use Tests\TestCase;
 
 final class BusinessScopeFoundationTest extends TestCase
@@ -197,13 +198,15 @@ final class BusinessScopeFoundationTest extends TestCase
         $alice = User::factory()->create();
         $request = $this->request($alice);
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($alice, 1);
-        $this->post('/workspaces', ['name' => 'Collaboration label', 'slug' => 'shared-team'])->assertRedirect();
+        $this->legacyWorkspace(['name' => 'Collaboration label', 'slug' => 'shared-team'])->assertRedirect();
         $workspace = $this->owner()->table('workspaces')->where('slug', 'shared-team')->first();
         $a = $this->draft($alice, 'Business A');
         $b = $this->draft($alice, 'Business B');
         $request = $this->request($alice);
         foreach ([$a, $b] as $draft) {
-            app(BusinessScope::class)->link($request, $draft['business_public_id'], $workspace->public_id, (string) Str::uuid(), 'add', 0, $this->selection($draft, 'business.link.manage'));
+            $this->denied(fn () => app(BusinessScope::class)->link($request, $draft['business_public_id'], $workspace->public_id, (string) Str::uuid(), 'add', 0, $this->selection($draft, 'business.link.manage')));
+            $root = $this->owner()->table('security_action_grants')->where('id', $draft['grant_refs']['business.link.manage'])->sole();
+            BusinessAuthorityFixture::legacyWorkspaceLink($root->business_id, $workspace->id, $root, $alice->id, 'collaboration');
         }
         $this->assertSame(2, $this->owner()->table('business_workspace_links')->where('workspace_id', $workspace->id)->count());
         $this->assertSame('Collaboration label', $this->owner()->table('workspaces')->where('id', $workspace->id)->value('name'));

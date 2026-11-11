@@ -46,13 +46,18 @@ const onlyAuth=process.env.GOALS_SPA_ONLY==='auth';
 const result={head:spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim(),selection:process.env.GOALS_SPA_ONLY??'all',kind:'Real Laravel + dedicated Redis + PostgreSQL runtime/RLS + Chromium; synthetic users only',cases:[],wire,errors:[],assets:[],findings:[],unverified:[]};
 let browser;
 const until=async(fn,message='checkpoint')=>{const end=Date.now()+15000;while(!fn()){if(Date.now()>end)throw Error(message);await new Promise(resolve=>setTimeout(resolve,15));}};
-function command(mode,who='a'){
- const child=spawnSync('C:/tools/php85/php.exe',['tests/Support/GoalsSpaFixture.php',mode,who],{encoding:'utf8',env:{...process.env,APP_ENV:'testing'}});
+function command(mode,who='a',...args){
+ const child=spawnSync('C:/tools/php85/php.exe',['tests/Support/GoalsSpaFixture.php',mode,who,...args],{encoding:'utf8',env:{...process.env,APP_ENV:'testing'}});
  assert.equal(child.status,0,child.stderr||child.stdout);
  try{return JSON.parse(child.stdout.trim());}catch{throw Error('Fixture '+mode+' did not return JSON: '+child.stdout+' '+child.stderr);}
 }
 const workspace=fixture.a.workspaces[0].public_id,other=fixture.a.workspaces[1].public_id,foreign=fixture.b.workspaces[0].public_id;
-const target=(mode,id=workspace,review=false)=>`/workspaces/${id}/commercial-history`;
+const lifecycleBusiness = new Map(Object.values(fixture).filter(actor=>actor?.workspaces&&actor?.businesses)
+ .flatMap(actor=>actor.workspaces.map((workspace,index)=>[workspace.public_id,actor.businesses[index]])));
+const target=(mode,id=workspace,review=false)=>{
+ const business=lifecycleBusiness.get(id);assert.ok(business,'The active lifecycle Business fixture is required');
+ return `/businesses/${business.business_public_id}?access=${business.grant_refs['business.context.read']}`;
+};
 const meta=page=>page.evaluate(()=>{const raw=document.getElementById('application-bootstrap')?.textContent;return raw?JSON.parse(raw).identity:JSON.parse(document.querySelector('meta[name="identity-context"]').content);});
 async function post(page,url,body,extra={}){
  return page.evaluate(async({url,body,extra})=>{
@@ -71,7 +76,7 @@ async function get(page,url,extra={}){
   return {status:response.status,body};
  },{url,extra});
 }
-const ready=(page,mode)=>page.waitForFunction(()=>document.querySelector('[data-application-spa]')?.dataset.state==='ready'&&!!document.querySelector('[data-commercial-history]'));
+const ready=(page,mode)=>page.waitForFunction(()=>document.querySelector('[data-application-spa]')?.dataset.state==='ready'&&!!document.querySelector('[data-business-public]'));
 async function login(page,mode,who='a'){
  await page.goto('http://localhost:8138/login');
  const response=await post(page,'/login',{email:`goals-${who}@example.test`,password:'DisposableGoalsProof42!'});assert.equal(response.status,200,JSON.stringify(response));

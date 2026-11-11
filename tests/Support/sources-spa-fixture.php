@@ -1,16 +1,15 @@
 <?php
 
+use App\Foundation\Business\BusinessScope;
 use App\Models\User;
 use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderReportingEvidence;
 use App\Providers\Ads\ProviderScope;
 use App\Security\SessionAuthority;
-use App\Security\WorkspaceAuthority;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
@@ -27,10 +26,20 @@ if ($mode === 'source-fresh') {
     $request->setUserResolver(fn () => $actor);
     app(SessionAuthority::class)->issue($request, $actor);
     $session->save();
-    $created = DB::transaction(fn () => app(WorkspaceAuthority::class)->create($request, 'Synthetic Sources proof', 'sources-'.Str::uuid()));
-    $fixture[$who]['workspaces'][0] = $created;
+    $created = app(BusinessScope::class)->create($request, (string) Str::uuid(), 'Native Business Sources proof', null);
+    $fixture[$who]['source_business'] = $created;
     file_put_contents($file, json_encode($fixture, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
     echo json_encode($created, JSON_THROW_ON_ERROR).PHP_EOL;
+    exit;
+}
+$sourceBusiness = $fixture[$who]['source_business'] ?? null;
+$sourceBusinessId = $sourceBusiness ? $db->table('businesses')->where('public_id', $sourceBusiness['business_public_id'])->value('id') : null;
+$ownedSources = fn () => $db->table('source_registry')->where('custody_kind', 'business_native')->where('business_id', $sourceBusinessId);
+if (in_array($mode, ['source-deny-owner', 'source-restore-owner'], true)) {
+    $denied = $mode === 'source-deny-owner';
+    $db->table('security_action_grants')->where('id', $sourceBusiness['grant_refs']['business.context.read'])
+        ->update(['status' => $denied ? 'revoked' : 'active', 'revoked_at' => $denied ? now() : null]);
+    echo json_encode(['owner_denied' => $denied]).PHP_EOL;
     exit;
 }
 require __DIR__.'/sources-spa-runtime.php';
@@ -42,8 +51,8 @@ if ($mode === 'source-service') {
 }
 if ($mode === 'source-admit') {
     $count = 0;
-    foreach ($db->table('source_registry')->where('workspace_id', $workspace)->where('namespace', 'ad_account')->get() as $source) {
-        $scope = new ProviderScope($workspace, $source->id, Provider::from($source->family), $source->declared_external_id, 'report.read', 'advertising_analysis');
+    foreach ($ownedSources()->where('namespace', 'ad_account')->get() as $source) {
+        $scope = ProviderScope::forBusiness($sourceBusinessId, $source->id, Provider::from($source->family), $source->declared_external_id, 'report.read', 'advertising_analysis');
         $record = ['scope' => $scope->jsonSerialize(), 'configuration' => app(ProviderReportingEvidence::class)->configuration($scope)];
         $root = storage_path('framework/testing/source-admission-'.Str::uuid());
         mkdir($root, 0700, true);
@@ -89,5 +98,5 @@ if ($mode === 'source-run-reports') {
 if ($mode !== 'source-inspect') {
     throw new RuntimeException('Unknown Source proof action');
 }
-echo json_encode(['sources' => $db->table('source_registry')->where('workspace_id', $workspace)->get(['id', 'family', 'namespace', 'declared_external_id', 'version', 'status']), 'receipts' => $db->table('source_command_receipts')->count(), 'accessEvents' => $db->table('provider_access_events')->count(), 'access' => $db->table('provider_access')->where('workspace_id', $workspace)->get(['source_id', 'provider', 'version', 'local_state']), 'jobs' => $db->table('jobs')->count(), 'runs' => $db->table('provider_observation_runs')->get(['generation', 'coverage', 'failure'])], JSON_THROW_ON_ERROR).PHP_EOL;
+echo json_encode(['sources' => $ownedSources()->get(['id', 'family', 'namespace', 'declared_external_id', 'version', 'status']), 'receipts' => $db->table('source_command_receipts')->count(), 'accessEvents' => $db->table('provider_access_events')->count(), 'access' => $db->table('provider_access')->whereIn('source_id', $ownedSources()->select('id'))->get(['source_id', 'provider', 'version', 'local_state']), 'jobs' => $db->table('jobs')->count(), 'runs' => $db->table('provider_observation_runs')->get(['generation', 'coverage', 'failure'])], JSON_THROW_ON_ERROR).PHP_EOL;
 exit;

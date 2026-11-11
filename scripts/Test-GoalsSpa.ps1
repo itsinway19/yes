@@ -30,6 +30,7 @@ if($ReuseRun){
  }
 }
 New-Item -ItemType Directory -Force -Path $proofRun | Out-Null
+if('Foundation' -eq $Phase){Write-Output "GOALS_SPA_FOUNDATION_RUN=$proofRun"}
 $proofDataPath=if($ClusterDataPath){[IO.Path]::GetFullPath($ClusterDataPath)}else{Join-Path $proofRun 'data'}
 if($ClusterDataPath){
  if(-not [IO.Path]::IsPathFullyQualified($ClusterDataPath)){throw 'ClusterDataPath must be absolute'}
@@ -108,11 +109,15 @@ try {
  $proofSourceBefore=Get-ProofSource
  [IO.File]::WriteAllText((Join-Path $proofRun 'source-manifest.json'),$proofSourceBefore)
  if($Phase -eq 'Foundation'){
+  Write-Output 'GOALS_SPA_FOUNDATION_TOTAL=10'
+  Write-Output 'GOALS_SPA_GATE_START=PHP suite'
   $proofJunit='storage/framework/testing/'+(Split-Path -Leaf $proofRun)+'/tests.xml'
   $proofEvents='storage/framework/testing/'+(Split-Path -Leaf $proofRun)+'/events.log'
   & pwsh -NoProfile -File scripts/builderad.ps1 test --compact --display-warnings "--log-junit=$proofJunit" "--log-events-text=$proofEvents" 2>&1 | Tee-Object -FilePath (Join-Path $proofRun 'tests.log')
   if($LASTEXITCODE -ne 0){throw 'Full Foundation PHP suite failed; evidence retained'}
+  Write-Output 'GOALS_SPA_GATE_PASS=PHP suite'
   foreach($proofGate in @(@('npm','run','inertia:check'),@('composer','validate','--strict'),@('composer','audit'),@('npm','audit','--audit-level=high'),@('npm','test'),@('npm','run','api:check'),@('php','vendor/bin/pint','--test'),@('npm','run','build'))){
+   Write-Output "GOALS_SPA_GATE_START=$($proofGate -join ' ')"
    $proofAction=$proofGate[0];$proofArguments=$proofGate[1..($proofGate.Count-1)]
    $proofGateLogName=('gate-'+($proofGate -join '-')+'.log') -replace '[\\/:*?"<>|]', '-'
    $proofGateLog=Join-Path $proofRun $proofGateLogName
@@ -127,9 +132,12 @@ try {
     & pwsh -NoProfile -File scripts/builderad.ps1 $proofAction @proofArguments 2>&1|Tee-Object -FilePath $proofGateLog
    }
    if($LASTEXITCODE -ne 0){throw "Foundation gate failed: $($proofGate -join ' ')"}
+   Write-Output "GOALS_SPA_GATE_PASS=$($proofGate -join ' ')"
   }
+  Write-Output 'GOALS_SPA_GATE_START=production asset guard'
   & 'C:\tools\node24\node.exe' scripts/runtime-retirement.mjs --assets 2>&1|Tee-Object -FilePath (Join-Path $proofRun 'gate-runtime-assets.log')
   if($LASTEXITCODE -ne 0){throw 'Foundation production asset guard failed'}
+  Write-Output 'GOALS_SPA_GATE_PASS=production asset guard'
  }
  if($Phase -in @('Focused','Affected','Acceptance')) {
   $proofFilter=if($Phase -in @('Acceptance','Affected')){'WorkspaceCommercialRetirementTest|BusinessFoundationContractTest|LegacyPurposeHistoryTest|ProductionIdentityTest|IdentityRenewalTest|IdentityDocumentTest|SessionAuthorityTest|DatabaseAuthorityBoundaryTest|CoreDependencyBoundaryTest|ArchitectureSourceOptionalityTest'}else{'WorkspaceCommercialRetirementTest'}
@@ -140,6 +148,7 @@ try {
   if($LASTEXITCODE -ne 0){throw 'Focused/affected acceptance checks failed; evidence retained'}
  }
  if($Phase -notin @('Focused','Affected','Foundation')) {
+  $env:GOALS_SPA_ONLY=$BrowserSelection
   if(-not $ReuseRun -or $CreateBrowserFixture){
    Invoke-ProofPhp @('artisan','migrate','--database=pgsql_migrations','--force')
    $proofFixtureOutput=Invoke-ProofPhp @('tests/Support/GoalsSpaFixture.php','setup')
@@ -170,7 +179,10 @@ try {
  $proofExit=0
 } finally {
  if($null -ne $proofSourceBefore){[IO.File]::WriteAllText((Join-Path $proofRun 'source-unchanged.txt'),[string]($proofSourceBefore -eq (Get-ProofSource)))}
- foreach($proofProcess in $proofProcesses){if(-not $proofProcess.HasExited){Stop-Process -Id $proofProcess.Id -Force}}
+ foreach($proofProcess in $proofProcesses){
+  if(-not $proofProcess.HasExited){Stop-Process -Id $proofProcess.Id -Force}
+  if(-not $proofProcess.WaitForExit(5000)){throw "Owned test process $($proofProcess.Id) did not exit; cleanup is unconfirmed"}
+ }
  if($proofStarted){
   $proofData=[IO.Path]::GetFullPath($proofDataPath)
   if($proofData -ne [IO.File]::ReadAllText((Join-Path $proofRun 'cluster-path.txt'))){throw 'Cluster stop escaped its recorded owned path'}

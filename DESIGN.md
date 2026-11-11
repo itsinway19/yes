@@ -1,5 +1,19 @@
 # BuilderAd visual context
 
+## Governing clean-product clarification — 2026-11-10
+
+There is no public Workspace or previous-record area. Former `/workspaces/**` HTML entry points redirect to the Business list. Business owns the visible team, client assignments and native source tasks. Keep technical historical custody out of ordinary advertiser navigation. This supersedes the conditional previous-resource entry described below. No database history is deleted or inferred ownership migrated by this presentation change.
+
+## Unified Business product — Owner clarification 2026-11-10
+
+One advertiser surface serves all Businesses, including agencies. Business mandates are available through current qualified rights, without an agency account type or separate agency dashboard. Use “التفويض بين الأنشطة” in the shared access task and distinguish delegated paths in the Business switcher. Employee job titles do not imply unimplemented advertising, sales, private-data or Source permissions. Future commercial plans may limit creation counts or external management, independently of employee/resource authority; no undefined quota or unlimited offering is presented now. Previous Workspace resources retain qualified historical access and a conditional entry, without a parallel public creation flow.
+
+## Advertiser internal experience — Owner direction 2026-11-09
+
+The Owner's internal redesign direction supersedes the earlier overview-only orientation. The existing qualified Business is presented through four connected destinations. Overview combines the declared business brief, a state-dependent next task and preparation gaps. Markets and goals starts with saved summaries and opens one edit task at a time. Intent editing advances through outcome, optional time/detail and the required confirmations. Sources presents the five actual platform states with contextual data-permission and shared-source tasks. Daily business information and practices lead Management, while history has its own intentional destination.
+
+BusinessTaskRow and workspace.css provide the shared task/action treatment using the established appearance tokens, 14px body, 22–24px headings and 44px mobile actions. Natural document scrolling, the bounded sidebar and the existing mobile drawer remain the layout owners. Actual account connection, data-use and publication states retain their independent contracts. Preparation is a summary of declared details rather than a performance score.
+
 ## Accepted Vue integration — 2026-11-05
 
 The Owner accepted `builderad-ui-concept-20261105` as the visual/navigation reference; actual implemented capabilities and server authority govern content. The Business switcher belongs directly beneath the sidebar brand; mobile shows the selected name and opens the qualified picker in the navigation drawer. The overview presents available work and review without repeating the Business profile. Internal administration retains independent navigation and no Business switcher. Keep the existing theme/token path, compact14px body,22–24px headings, natural page scrolling, RTL/LTR and44px primary mobile targets.

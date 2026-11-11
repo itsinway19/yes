@@ -1,5 +1,6 @@
 <?php
 
+use App\Foundation\Business\BusinessScope;
 use App\Models\User;
 use App\Security\DisposableTestDatabaseGuard;
 use App\Security\GrantAuthority;
@@ -7,6 +8,9 @@ use App\Security\SessionAuthority;
 use App\Security\WorkspaceAuthority;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Http\Request;
+use Illuminate\Session\ArraySessionHandler;
+use Illuminate\Session\Store;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -66,7 +70,73 @@ if ($mode === 'setup') {
         }
         $out[$who] = ['user' => $user->id, 'workspaces' => $workspaces];
     }
-    LegacyCommercialUpgradeFixture::upgrade();
+    try {
+        if (getenv('GOALS_SPA_ONLY') === 'businesses') {
+            // Populate the existing internal-team consumer on the actual former
+            // installation. Isolated actors keep the standard a/b first-entry
+            // counts unchanged. No browser ever receives a pre770 installation.
+            $historicalPaths = array_values(array_filter(glob(database_path('migrations/*.php')),
+                fn ($path) => strcmp(basename($path), '0001_01_01_000770_') < 0));
+            if (Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $historicalPaths, '--realpath' => true, '--force' => true]) !== 0) {
+                throw new RuntimeException('Historical internal-team fixture installation failed.');
+            }
+            $historicalCreator = User::factory()->create(['name' => 'Historical browser creator', 'email' => 'historical-file-creator@example.test', 'password' => Hash::make('DisposableGoalsProof42!')]);
+            $historicalStaff = User::factory()->create(['name' => 'Historical browser employee', 'email' => 'historical-file-staff@example.test', 'password' => Hash::make('DisposableGoalsProof42!')]);
+            $historicalStore = new Store('historical-internal-browser', new ArraySessionHandler(120));
+            $historicalStore->start();
+            $historicalRequest = Request::create('/api/businesses', 'POST');
+            $historicalRequest->setLaravelSession($historicalStore);
+            $historicalRequest->setUserResolver(fn () => $historicalCreator);
+            app(SessionAuthority::class)->issue($historicalRequest, $historicalCreator);
+            $historicalStore->save();
+            app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($historicalCreator, 1);
+            $historicalTeam = DB::transaction(fn () => app(WorkspaceAuthority::class)->create($historicalRequest, 'Historical internal file team', 'historical-internal-browser'));
+            $db->table('workspace_memberships')->insert(['workspace_id' => $historicalTeam['id'], 'user_id' => $historicalStaff->id,
+                'role' => 'member', 'status' => 'active', 'created_at' => now()]);
+            $historicalScope = app(BusinessScope::class);
+            $historicalBusiness = $historicalScope->create($historicalRequest, (string) Str::uuid(), 'Historical internal client file', null);
+            $directSelection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+                ['requirement_kind' => 'business', 'leaf_grant_id' => (int) $historicalBusiness['grant_refs']['business.context.read']]]];
+            $historicalEnrollment = $historicalScope->internalTeam($historicalRequest, $historicalBusiness['business_public_id'], (string) Str::uuid(),
+                $historicalTeam['public_id'], 'enroll', $historicalCreator->public_id, 0, $directSelection);
+            $historicalRights = [];
+            foreach (['business.context.read', 'business.context.manage'] as $action) {
+                $parent = (int) $historicalEnrollment['grant_refs'][$action];
+                $selection = ['realm_kind' => 'internal_team', 'realm_workspace_public_id' => $historicalTeam['public_id'], 'requirements' => [
+                    ['requirement_kind' => 'business', 'leaf_grant_id' => $parent]]];
+                $grant = $historicalScope->grant($historicalRequest, $historicalBusiness['business_public_id'], (string) Str::uuid(), 'issue',
+                    $historicalStaff->public_id, $action, $parent, null, 0, null, false, $historicalTeam['public_id'], $selection);
+                $historicalRights[$action] = $grant['grant_id'];
+            }
+            file_put_contents(getenv('GOALS_SPA_RUN').'/internal-team-browser-fixture.json', json_encode([
+                'business' => $historicalBusiness, 'team' => $historicalTeam, 'staff' => $historicalStaff->public_id,
+                'creator_email' => $historicalCreator->email, 'staff_email' => $historicalStaff->email,
+                'team_read' => $historicalEnrollment['grant_refs']['business.context.read'], 'rights' => $historicalRights,
+                'qualification' => 'ACTUAL PRE770 ENROLLMENT AND GRANTS; FORWARD UPGRADED BEFORE BROWSER; NO TARGET-SCHEMA LEGACY ISSUANCE',
+            ], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+        }
+    } finally {
+        LegacyCommercialUpgradeFixture::upgrade();
+    }
+    if (getenv('GOALS_SPA_ONLY') !== 'businesses') {
+        // Lifecycle browser proofs run against the active Business resource.
+        // Historical Workspace fixtures above remain solely for qualified JSON reads.
+        foreach (['a', 'b'] as $who) {
+            $user = User::findOrFail($out[$who]['user']);
+            $store = new Store('business-lifecycle-'.$who, new ArraySessionHandler(120));
+            $store->start();
+            $businessRequest = Request::create('/api/businesses', 'POST');
+            $businessRequest->setLaravelSession($store);
+            $businessRequest->setUserResolver(fn () => $user);
+            app(SessionAuthority::class)->issue($businessRequest, $user);
+            $store->save();
+            $out[$who]['businesses'] = [];
+            foreach ([1, 2] as $index) {
+                $out[$who]['businesses'][] = app(BusinessScope::class)
+                    ->create($businessRequest, (string) Str::uuid(), 'نشاط دورة المتصفح '.$who.' '.$index, null);
+            }
+        }
+    }
     file_put_contents($file, json_encode($out, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
 } else {
     $fixture = json_decode(file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
@@ -93,6 +163,8 @@ if ($mode === 'setup') {
         'revoke' => $db->table('security_sessions')->where('user_id', $user)->update(['revoked_at' => now()]),
         'deny-create' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('action', 'workspace.create')->update(['status' => 'revoked', 'revoked_at' => now()]),
         'restore-create' => $db->table('security_action_grants')->where('subject_user_id', $user)->where('action', 'workspace.create')->update(['status' => 'active', 'revoked_at' => null]),
+        'deny-business-view' => $db->table('security_action_grants')->where('id', $fixture[$who]['businesses'][0]['grant_refs']['business.context.read'])->update(['status' => 'revoked', 'revoked_at' => now()]),
+        'restore-business-view' => $db->table('security_action_grants')->where('id', $fixture[$who]['businesses'][0]['grant_refs']['business.context.read'])->update(['status' => 'active', 'revoked_at' => null]),
         'deny-view' => $db->table('workspace_memberships')->where('user_id', $user)->where('workspace_id', $workspace)->update(['status' => 'revoked', 'revoked_at' => now()]),
         'restore-view' => $db->table('workspace_memberships')->where('user_id', $user)->where('workspace_id', $workspace)->update(['status' => 'active', 'revoked_at' => null]),
         'inspect' => null,

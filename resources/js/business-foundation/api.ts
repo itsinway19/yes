@@ -102,6 +102,49 @@ export type CreateCommand = { command_id: string; name: string; business_type_id
 export type ContextCommand = CreateCommand & { expected_context: number; authority_selection: Selection };
 export type LinkCommand = operations['writeIndependentBusinessRelationship']['requestBody']['content']['application/json'];
 export type GrantCommand = operations['writeIndependentBusinessGrant']['requestBody']['content']['application/json'];
+export type AgencyGrantCommand = components['schemas']['BusinessAgencyGrantCommand'];
+export type AgencyOptions = components['schemas']['BusinessAgencyOptions'];
+export type AgencyMandates = components['schemas']['BusinessAgencyMandates'];
+export type AgencyMandatesCommand = components['schemas']['BusinessAgencyMandatesCommand'];
+export async function businessAgencyMandates(business: string, access: number, after?: string): Promise<AgencyMandates> {
+    const result = await api.GET('/api/businesses/{business}/agency-mandates', { params: { path: { business }, query: { access, ...(after ? { after } : {}) } } });
+    if (!result.data) throw Error('Business mandate groups unavailable');
+    return result.data.data;
+}
+export async function withdrawBusinessMandates(business: string, body: AgencyMandatesCommand) {
+    const result = await api.POST('/api/businesses/{business}/agency-mandates', { params: { path: { business } }, body });
+    if (!result.data) throw Error('Business mandate withdrawal acknowledgement unavailable');
+    return result.data.data;
+}
+export type BusinessTeam = components['schemas']['BusinessTeamMembers'];
+export type BusinessTeamCommand = components['schemas']['BusinessTeamCommand'];
+export async function businessTeam(business: string, access: number, after?: number): Promise<BusinessTeam> {
+    const result = await api.GET('/api/businesses/{business}/team', { params: { path: { business }, query: { access, ...(after ? { after } : {}) } } });
+    if (!result.data) throw Error('Business team unavailable');
+    return result.data.data;
+}
+export async function businessTeamRecipient(business: string, body: { access: number; email: string }) {
+    const result = await api.POST('/api/businesses/{business}/team/recipient', { params: { path: { business } }, body });
+    if (!result.data) throw Error('Registered Business team recipient unavailable');
+    return result.data.data;
+}
+export async function writeBusinessTeam(business: string, body: BusinessTeamCommand) {
+    const result = await api.POST('/api/businesses/{business}/team', { params: { path: { business } }, body });
+    if (!result.data) throw Error('Business team acknowledgement unavailable');
+    return result.data.data;
+}
+export async function agencyOptions(business: string, access: number, agency: string, recipient?: string): Promise<AgencyOptions> {
+    const result = await api.GET('/api/businesses/{business}/agency-options', {
+        params: { path: { business }, query: { access, agency, ...(recipient ? { recipient } : {}) } },
+    });
+    if (!result.data) throw Error('Business agency options unavailable');
+    return result.data.data;
+}
+export async function writeAgencyGrant(business: string, body: AgencyGrantCommand) {
+    const result = await api.POST('/api/businesses/{business}/agency-grants', { params: { path: { business } }, body });
+    if (!result.data) throw Error('Business agency grant acknowledgement unavailable');
+    return result.data.data;
+}
 export async function writeGrant(business: string, body: GrantCommand) {
     const result = await api.POST('/api/businesses/{business}/grants', { params: { path: { business } }, body });
     if (!result.data) throw Error('Delegation acknowledgement unavailable');

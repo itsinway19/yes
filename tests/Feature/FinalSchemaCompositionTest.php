@@ -61,6 +61,14 @@ final class FinalSchemaCompositionTest extends TestCase
                     }
                     unset($row);
                 }
+                if ($table === 'authority_qualification_receipts') {
+                    foreach ($after as &$row) {
+                        $this->assertNull($row['agency_business_id']);
+                        $this->assertNull($row['agency_membership_grant_id']);
+                        unset($row['agency_business_id'], $row['agency_membership_grant_id']);
+                    }
+                    unset($row);
+                }
                 $this->assertSame($rows, $after, $table.' historical rows survive630→640 unchanged');
             }
             $this->assertSame($dependency, $this->assertNativeDependencyDigest($native));
@@ -199,12 +207,15 @@ final class FinalSchemaCompositionTest extends TestCase
                 '--path' => database_path('migrations/'.$repair.'.php'), '--realpath' => true, '--force' => true]));
             $this->assertSame([$repair], array_values(array_diff($owner->table('migrations')->pluck('migration')->all(), $installed)), 'Only additive630 may repair the initialized620 catalog');
             foreach ($before as $table => $rows) {
-                $this->assertSame($rows, $owner->scalar("SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]')::text FROM {$table} r"), $table.' historical rows must survive final-schema installation unchanged');
+                $image = $table === 'authority_qualification_receipts'
+                    ? "to_jsonb(r)-ARRAY['agency_business_id','agency_membership_grant_id']" : 'to_jsonb(r)';
+                $this->assertSame($rows, $owner->scalar("SELECT coalesce(jsonb_agg({$image} ORDER BY ({$image})::text),'[]')::text FROM {$table} r"), $table.' historical rows must survive final-schema installation unchanged');
             }
             $this->assertSame($scopeDigest, $owner->scalar("SELECT encode(scope_digest,'hex') FROM data_use_scopes WHERE scope_id=?::uuid", [$native['scope']]));
             $this->assertSame($dependency, $this->assertNativeDependencyDigest($native), 'The historical six-field resource image retains its exact CB1 digest');
             $this->assertFinalBehavior($native, $nativeResult, $shared);
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
+            $this->assertSame(0, $owner->table('authority_qualification_receipts')->whereNotNull('agency_business_id')->orWhereNotNull('agency_membership_grant_id')->count(), 'Only750 adds nullable agency bases; historical rows remain unassigned.');
             $this->assertFinalFunctionOwners();
         } finally {
             DB::disconnect('pgsql');
@@ -409,8 +420,33 @@ final class FinalSchemaCompositionTest extends TestCase
             ['builderad_private', 'assert_invocation_current', 'authority'],
             ['builderad_private', 'guard_effect', 'purpose_retirement'],
             ['builderad_private', 'require_scope', 'scope_authority'],
-            ['builderad_private', 'verify_scope_path', 'scope_authority'],
-            ['public', 'builderad_v2_business_purpose_snapshot', 'purpose_snapshot'],
+            ['builderad_private', 'verify_scope_path', '../../migration-sql/0001_01_01_000770_business_workspace_authority_closure/authority'],
+            ['builderad_private', 'authority_footprint', '../../migration-sql/0001_01_01_000750_business_agency_ownership/authority'],
+            ['builderad_private', 'lock_authority_footprint', '../../migration-sql/0001_01_01_000750_business_agency_ownership/authority'],
+            ['builderad_private', 'lock_authority_rows', '../../migration-sql/0001_01_01_000750_business_agency_ownership/locks'],
+            ['builderad_private', 'business_agency_eligibility', '../../migration-sql/0001_01_01_000750_business_agency_ownership/agency'],
+            ['public', 'builderad_v2_business_agency_grant', '../../migration-sql/0001_01_01_000750_business_agency_ownership/agency'],
+            ['public', 'builderad_v2_business_agency_options', '../../migration-sql/0001_01_01_000750_business_agency_ownership/projection'],
+            ['builderad_private', 'business_team_context', '../../migration-sql/0001_01_01_000770_business_workspace_authority_closure/team_context'],
+            ['builderad_private', 'business_team_complete_child', '../../migration-sql/0001_01_01_000760_business_team_management/team'],
+            ['public', 'builderad_v2_business_team_surface', '../../migration-sql/0001_01_01_000760_business_team_management/team'],
+            ['public', 'builderad_v2_business_team_recipient', '../../migration-sql/0001_01_01_000760_business_team_management/team'],
+            ['public', 'builderad_v2_business_team_change', '../../migration-sql/0001_01_01_000760_business_team_management/team'],
+            ['public', 'builderad_v2_business_agency_mandates', '../../migration-sql/0001_01_01_000760_business_team_management/mandates'],
+            ['public', 'builderad_v2_business_agency_withdraw', '../../migration-sql/0001_01_01_000760_business_team_management/mandates'],
+            ['public', 'builderad_v2_business_grant_command', '../../migration-sql/0001_01_01_000770_business_workspace_authority_closure/grant_commands'],
+            ['public', 'builderad_v2_business_link_command', '../../migration-sql/0001_01_01_000760_business_team_management/legacy_links'],
+            ['public', 'builderad_v2_internal_team_command', '../../migration-sql/0001_01_01_000770_business_workspace_authority_closure/custody'],
+            ['public', 'builderad_v2_internal_team_surface', '../../migration-sql/0001_01_01_000770_business_workspace_authority_closure/custody_surface'],
+            ['public', 'builderad_v2_business_operating_mandate', '../../migration-sql/0001_01_01_000770_business_workspace_authority_closure/operating_mandate'],
+            ['public', 'builderad_v2_data_license_journey', '../../migration-sql/0001_01_01_000770_business_workspace_authority_closure/journey_projection'],
+            ['public', 'builderad_v2_business_history', '../../migration-sql/0001_01_01_000770_business_workspace_authority_closure/privacy'],
+            ['public', 'builderad_v2_business_legacy_history', '../../migration-sql/0001_01_01_000770_business_workspace_authority_closure/privacy'],
+            ['builderad_private', 'business_file_custody_command', '../../migration-sql/0001_01_01_000770_business_workspace_authority_closure/custody'],
+            ['public', 'builderad_v2_business_create_draft', 'commands'],
+            ['public', 'builderad_v2_business_choices', '../../migration-sql/0001_01_01_000770_business_workspace_authority_closure/business_product'],
+            ['public', 'builderad_v2_business_surface', '../../migration-sql/0001_01_01_000770_business_workspace_authority_closure/business_product'],
+            ['public', 'builderad_v2_business_purpose_snapshot', '../../migration-sql/0001_01_01_000770_business_workspace_authority_closure/privacy'],
             ['builderad_private', 'require_native_source_grant', 'source_rights'],
             ['builderad_private', 'source_grant_issue', 'source_adoption'],
             ['builderad_private', 'source_fact_command', 'source_facts'],

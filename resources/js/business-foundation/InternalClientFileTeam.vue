@@ -16,7 +16,7 @@ internalTeamDrafts.set(draftKey, draft);
 const data = ref<InternalTeamSurface>(), busy = ref(false), unavailable = ref(false), loading = ref(false);
 const teamRead = ref('');
 let generation = 0, disposed = false;
-const eligible = computed(() => props.surface.collaboration.workspaces);
+const eligible = computed(() => props.surface.collaboration?.workspaces ?? []);
 const selected = computed(() => data.value?.teams.find(team => team.workspace_public_id === draft.workspace));
 const canEdit = computed(() => !!data.value?.can_admin && !busy.value && !loading.value && !unavailable.value && props.active);
 const uuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -94,6 +94,6 @@ async function execute() {
         </template>
         <p v-if="draft.notice" role="status">{{ draft.notice }}</p>
         <p v-if="draft.pending" data-internal-team-pending>{{ t('يوجد طلب غير محسوم. تحقّق من نتيجته قبل إنشاء طلب جديد.', 'A command is unresolved. Check its outcome before creating another command.') }} <button type="button" class="workspace-button" :disabled="!canEdit" @click="execute">{{ t('التحقق بالطلب الأصلي', 'Check with original command') }}</button></p>
-        <RouterLink v-if="teamRead" :to="`/businesses/${surface.business.business_public_id}?access=${teamRead}`" class="workspace-button" data-open-internal-team>{{ t('فتح الملف ضمن إدارة الفريق لتوزيع الصلاحيات', 'Open the file in team administration to assign rights') }}</RouterLink>
+        <RouterLink v-if="teamRead" :to="{ path: `/businesses/${surface.business.business_public_id}`, query: { access: teamRead, section: 'settings', settings: 'access' } }" class="workspace-button" data-open-internal-team>{{ t('فتح الملف ضمن إدارة الفريق لتوزيع الصلاحيات', 'Open the file in team administration to assign rights') }}</RouterLink>
     </section>
 </template>

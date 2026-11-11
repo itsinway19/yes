@@ -32,7 +32,7 @@ trait NativeMaterialFixture
                 DB::scalar('SELECT builderad_create_workspace(?,?,?,?)', [$user->id, SessionAuthority::sessionKey($request), 'Native material custody', 'material-custody']);
             });
         } else {
-            $this->post('/workspaces', ['name' => 'Native material custody', 'slug' => 'material-custody'])->assertRedirect();
+            $this->legacyWorkspace(['name' => 'Native material custody', 'slug' => 'material-custody'])->assertRedirect();
         }
         $db = DB::connection('pgsql_migrations');
         $workspace = $db->table('workspaces')->first();

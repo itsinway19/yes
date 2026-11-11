@@ -17,7 +17,11 @@ Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 
-    Route::post('register', [RegisteredUserController::class, 'store'])->middleware('throttle:6,1');
+    Route::post('register', [RegisteredUserController::class, 'store'])->middleware('throttle:6,1,register');
+    Route::get('register/email', [RegisteredUserController::class, 'emailState'])->middleware('throttle:30,1,registration-state');
+    Route::post('register/email', [RegisteredUserController::class, 'sendCode'])->middleware('throttle:8,1,registration-send');
+    Route::post('register/email/verify', [RegisteredUserController::class, 'verifyCode'])->middleware('throttle:20,1,registration-verify');
+    Route::post('register/email/cancel', [RegisteredUserController::class, 'cancelProof'])->middleware('throttle:10,1,registration-cancel');
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');

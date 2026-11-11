@@ -5,8 +5,8 @@ import { owned, stamp, TransportError } from '../spa/transport';
 import { beginDelivery, definitiveRejection, delegationDrafts, key, type DelegationDraft } from './drafts';
 import { writeGrant, type GrantCommand, type Surface } from './api';
 
-const props = defineProps<{ surface: Surface; refreshing?: boolean }>();
-const emit = defineEmits<{ refresh: [] }>();
+const props = withDefaults(defineProps<{ surface: Surface; refreshing?: boolean; showIssuance?: boolean; showOwnSurrender?: boolean }>(), { showIssuance: true, showOwnSurrender: true });
+const emit = defineEmits<{ refresh: []; pendingChange: [pending: boolean] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const labels: Record<string, [string, string]> = {
     'business.context.read': ['قراءة معلومات النشاط', 'Read business information'],
@@ -35,6 +35,7 @@ const draft = reactive<DelegationDraft>(delegationDrafts.get(resourceKey) ?? { s
     recipient: '', agency: '', expires: '', delegable: false, notice: '', confirmed: false, blocked: false });
 delegationDrafts.set(resourceKey, draft);
 draft.uncertain ??= !!draft.pending;
+watch(() => !!draft.pending, value => emit('pendingChange', value), { immediate: true, flush: 'sync' });
 const busy = ref(false);
 let disposed = false;
 onBeforeUnmount(() => { disposed = true; });
@@ -112,7 +113,7 @@ function surrenderOwnStatement() {
 <template>
     <section class="bf-card bf-delegation" data-business-delegation>
         <h2>{{ t('من يستطيع العمل على هذا النشاط؟', 'Who can work on this business?') }}</h2>
-        <section v-if="ownStatement" data-own-purpose-right>
+        <section v-if="ownStatement && showOwnSurrender" data-own-purpose-right>
             <h3>{{ t('حق إدارة تصريحات غرض نشاطك', 'Your business purpose statement right') }}</h3>
             <p>{{ t('يمكنك التنازل عن هذا الحق وحده. يبقى تاريخ التصريحات والتصحيحات وحق القراءة المستقل محفوظين. لا يتضمن الحق صلاحية على مصدر أو عنصر خارجي.', 'Surrender only this right. Statement and correction history and independent reading remain preserved. This right grants no source or external-object authority.') }}</p>
             <label class="bf-check"><input v-model="ownConfirmed" type="checkbox" data-purpose-surrender-confirm :disabled="!enabled || !!draft.pending">{{ t('أؤكد التنازل عن حق التصريحات المحدد فقط.', 'I confirm surrendering only this statement right.') }}</label>
@@ -122,26 +123,27 @@ function surrenderOwnStatement() {
             <p>{{ t('طلب محفوظ غير محسوم. غياب الحق الحالي لا يثبت نتيجة طلب السحب السابق، ولا يعيد تفعيله.', 'An unresolved request is retained. Current absence of authority does not prove the earlier surrender outcome or reactivate it.') }}</p>
             <p>{{ draft.notice }}</p><button type="button" data-purpose-surrender-retry :disabled="!enabled" @click="execute(draft.pending!)">{{ t('التحقق بالطلب الأصلي', 'Check original request') }}</button>
         </div>
-        <p>{{ t('امنح شخصًا صلاحية محددة على هذا النشاط، أو اسحب صلاحية سبق أن منحتها. حدّد الصلاحيات لكل نشاط على حدة.', 'Give someone a specific permission for this business, or withdraw one you previously granted. Set permissions separately for each business.') }}</p>
+        <p v-if="showIssuance && options.some(option => option.can_issue)">{{ t('امنح شخصًا صلاحية محددة على هذا النشاط، أو اسحب صلاحية سبق أن منحتها. حدّد الصلاحيات لكل نشاط على حدة.', 'Give someone a specific permission for this business, or withdraw one you previously granted. Set permissions separately for each business.') }}</p>
         <p v-if="!options.length || draft.blocked" role="status" data-delegation-readonly>{{ t('إدارة صلاحيات الآخرين غير متاحة لك هنا.', 'You cannot manage other people’s permissions here.') }}</p>
         <template v-else>
             <p v-if="metadata.options_may_be_partial || metadata.issued_more" role="status">{{ t('هذه قائمة محدودة بالسندات المعروضة وأحدث 64 حقًا مباشرًا صادرًا منها، وليست دليلًا شاملًا لكل الأشخاص أو السلاسل.', 'This bounded view shows selected paths and their latest 64 direct issued rights, not a directory of all people or chains.') }}</p>
             <p v-if="refreshing" role="status">{{ t('جارٍ التحقق من التفويضات الحالية…', 'Checking current delegations…') }}</p>
             <div v-else class="bf-issued-list">
                 <h3>{{ t('الصلاحيات التي منحتها', 'Permissions you granted') }}</h3>
-                <p>{{ t('الحالة المسجلة لا تكفي لإثبات إمكان الاستعمال الآن؛ تُفحص السلسلة والمدة والوكالة وحقوق البيانات عند كل عملية.', 'Recorded status alone does not establish current usability; chain, expiry, agency and data rights are checked for each operation.') }}</p>
+                <p>{{ t('الحالة المسجلة لا تكفي لإثبات إمكان الاستعمال الآن؛ تُفحص السلسلة والمدة والنشاط المفوَّض وحقوق البيانات عند كل عملية.', 'Recorded status alone does not establish current usability; chain, expiry, delegated business and data rights are checked for each operation.') }}</p>
                 <p v-if="!metadata.issued.length">{{ t('لا حقوق صادرة معروضة.', 'No issued rights displayed.') }}</p>
                 <article v-for="row in metadata.issued" :key="row.grant_id" class="bf-issued" :data-issued-grant="row.grant_id" :data-issued-status="row.recorded_status">
                     <strong>{{ label(row.action) }}</strong><p>{{ t('الحساب', 'Account') }}: <code>{{ row.recipient_public_id }}</code></p>
-                    <p>{{ row.realm_kind === 'internal_team' ? t('إدارة ملف داخلي', 'Internal file administration') : row.realm_kind === 'agency' ? t('عبر وكالة', 'Through an agency') : t('وصول مباشر', 'Direct access') }}</p>
+                    <p>{{ row.agency_business_public_id ? t('بتفويض بين الأنشطة', 'Through a business mandate') : row.realm_kind === 'internal_team' ? t('إدارة ملف داخلي', 'Internal file administration') : row.realm_kind === 'agency' ? t('عبر وكالة', 'Through an agency') : t('وصول مباشر', 'Direct access') }}</p>
+                    <p v-if="row.agency_business_public_id">{{ t('النشاط المفوَّض', 'Delegated business') }}: <code>{{ row.agency_business_public_id }}</code></p>
                     <details class="advertiser-context-note"><summary>{{ t('مراجع الصلاحية', 'Permission references') }}</summary><p>{{ t('الصلاحية', 'Permission') }} {{ row.grant_id }} · {{ t('مرجع الصلاحية الأصلية', 'Parent permission') }} {{ row.parent_grant_id }}</p></details>
                     <p>{{ row.recorded_status === 'revoked' ? t('مسحوب', 'Withdrawn') : t('مسجل نشطًا — الاستعمال مشروط', 'Recorded active — use remains conditional') }} · {{ row.delegable ? t('يسمح بتفويض تابع', 'Further delegation permitted') : t('للمستفيد فقط', 'Recipient only') }}</p>
                     <p v-if="row.expires_at">{{ t('انتهاء السند', 'Expiry') }}: <time>{{ row.expires_at }}</time></p>
                     <button v-if="row.recorded_status === 'active'" type="button" :disabled="!enabled || !!draft.pending || !Number.isSafeInteger(Number(row.grant_id))" @click="revoke(row)">{{ t('سحب هذا الحق', 'Withdraw this right') }}</button>
                 </article>
             </div>
-            <form data-delegation-form class="bf-form" @submit.prevent="issue">
-                <fieldset :disabled="!enabled || !!draft.pending">
+            <form v-if="draft.pending || showIssuance && options.some(option => option.can_issue)" data-delegation-form class="bf-form" @submit.prevent="issue">
+                <fieldset v-if="!draft.pending" :disabled="!enabled">
                     <label for="bf-delegation-parent">{{ t('الصلاحية التي تريد منحها أو مراجعتها', 'Permission to grant or review') }}</label>
                     <select id="bf-delegation-parent" v-model="draft.selected"><option value="">{{ t('اختر سندًا', 'Choose a path') }}</option><option v-for="option in options" :key="option.grant_id" :value="option.grant_id">{{ label(option.action) }} — {{ option.grant_id }}{{ !option.can_issue ? t(' — سحب الصادر فقط', ' — issued-right withdrawal only') : '' }}</option></select>
                     <p v-if="selected?.max_expires_at">{{ t('لا تتجاوز مدة السند', 'Must not exceed parent validity') }}: {{ selected.max_expires_at }}</p>

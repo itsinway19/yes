@@ -43,7 +43,7 @@ final class BusinessSourceVisibilityTest extends TestCase
             ->where('action', 'workspace.create')->where('status', 'active')->exists()) {
             app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($actor, 1);
         }
-        $this->actingAs($actor)->post('/workspaces', ['name' => $slug, 'slug' => $slug])->assertRedirect();
+        $this->actingAs($actor)->legacyWorkspace(['name' => $slug, 'slug' => $slug])->assertRedirect();
 
         return $this->owner()->table('workspaces')->where('slug', $slug)->sole();
     }
@@ -89,9 +89,15 @@ final class BusinessSourceVisibilityTest extends TestCase
         $request = Request::create('/api/businesses');
         $request->setUserResolver(fn () => $actor);
         $request->setLaravelSession(app('session')->driver());
-        $link = fn (array $business, object $workspace, string $effect, int $expected) => $scope->link($request,
-            $business['business_public_id'], $workspace->public_id, (string) Str::uuid(), $effect, $expected,
-            $this->selection($business['grant_refs']['business.link.manage']));
+        $link = function (array $business, object $workspace, string $effect, int $expected) use ($scope, $request, $actor) {
+            if ($effect === 'add') {
+                $root = $this->owner()->table('security_action_grants')->where('id', $business['grant_refs']['business.link.manage'])->sole();
+
+                return BusinessAuthorityFixture::legacyWorkspaceLink($root->business_id, $workspace->id, $root, $actor->id, 'collaboration');
+            }
+
+            return $scope->link($request, $business['business_public_id'], $workspace->public_id, (string) Str::uuid(), $effect, $expected, $this->selection($business['grant_refs']['business.link.manage']));
+        };
         $link($a, $first, 'add', 0);
         $response = $this->read($a);
         $this->assertCount(1, $response['sources']);
@@ -123,8 +129,7 @@ final class BusinessSourceVisibilityTest extends TestCase
         $request = Request::create('/api/businesses');
         $request->setUserResolver(fn () => $agency);
         $request->setLaravelSession(app('session')->driver());
-        app(BusinessScope::class)->link($request, $business['business_public_id'], $workspace->public_id,
-            (string) Str::uuid(), 'add', 0, $this->selection($qualified->id), 'agency');
+        BusinessAuthorityFixture::legacyWorkspaceLink($businessId, $workspace->id, $qualified, $agency->id);
         $this->assertSame([$source], array_column($this->read($business)['sources'], 'source_id'));
 
         $client = User::factory()->create();

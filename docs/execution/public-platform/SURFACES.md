@@ -1,5 +1,21 @@
 # Capability-to-surface acceptance record
 
+## Business-first consolidation — review candidate, 2026-11-10
+
+| User job | Placement and authority | States and evidence limits |
+| --- | --- | --- |
+| Add, edit and remove a named employee | Business → settings → «الفريق والصلاحيات»; existing direct-team grants, exact current registered account and owner qualification | Finite five declaration actions, explicit expiry, CAS conflicts, denied/unknown and exact pending recovery. UI_INTEGRATED; current executed backend/browser evidence belongs to the consolidation review record. No sales/ad execution or subscription entitlement inferred. |
+| Assign one employee to an explicitly delegated client | Employee row → client activities; existing Business-to-Business qualification plus current exact employee membership grant | Only qualified client choices; no automatic access to all clients. Withdrawal, expiry, membership change and recovery mode invalidate derived access. Independent Source/private-data rights remain required. |
+| Withdraw a Business mandate | Client Business → «الفريق والصلاحيات» → delegations | Explicit grouped confirmation and exact all-action CAS; independent grants survive. Unknown outcomes retain original command. |
+| Open an old Workspace URL | HTML redirects to Business list; no public archive/team/source surface | Original data and qualified headless contracts retained internally. New Workspace creation and link/agency declaration issuance retired at their writers. Foundation NOT_RUN_OWNER_DEFERRED; no production readiness claim. |
+
+## Advertiser experience integration, 2026-11-09
+
+| User job | Audience and placement | Authority and entitlement | States and next action | Evidence |
+| --- | --- | --- | --- | --- |
+| Describe a business and create an advertiser account | Guest opens `/register` directly into business setup, then email, code and account details | The public catalog exposes active setup choices. The identity owner binds temporary proof to the guest document and consumes it in the existing identity transition. Account creation creates no Business or source right by itself. | Arabic and English, RTL/LTR, responsive and themed. Incorrect/expired code, changed email and uncertain completion have their own actions. Only the resulting qualified principal can resume the linked draft. | UI_INTEGRATED. See the [package verification record](../business-foundation/ACTIVITY_FOUNDATION.md#advertiser-experience-integration-01). |
+| Create a Business and review what was declared | Advertiser opens My businesses → Add a business, or continues from registration. The same questions lead to the exact Business dashboard. | BusinessScope owns creation. Separate qualified writers save practices, markets and preferences. This flow has no Workspace or advertising connection prerequisite, and grants no subscription, external access or data-use right. | Optional declarations, retained original commands for uncertain saves, and explicit current readback. Dashboard labels declarations and offers a useful next action without requiring source access. | UI_INTEGRATED. Backend, browser and Foundation evidence are recorded separately in the [package verification record](../business-foundation/ACTIVITY_FOUNDATION.md#advertiser-experience-integration-01). |
+
 Business activity foundation, 2026-11-08: existing advertiser Business management → details now hosts multi-practice declarations and a practice-specific market-knowledge check. Context read/manage qualify general declarations; material source/field/purpose rights remain independent. Read-only/private-history-denied, inactive, conflict, uncertain-save, unavailable licence, conditional/unknown/review-required results and mobile RTL/LTR are explicit. No additional entitlement/subscription policy is introduced. The separately licensed `practice_basis` projection does not expand old finding-only licences. [Current evidence and pending gates](../business-foundation/ACTIVITY_FOUNDATION.md) distinguish Backend/UI/browser/Foundation; implementation is not final acceptance.
 
 Current scope: public platform experience, maintenance, logo/themes and bounded market-knowledge operations/D3 integration. This inventory classifies actual owners; it does not claim future product capabilities are implemented. Existing routes retain their own authority.

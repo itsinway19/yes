@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-export async function runAuthEntryCases({ browser, check, meta, get, post, command, fixture, result, run, until, held }) {
+export async function runAuthEntryCases({ browser, check, meta, get, post, command, fixture, result, run, until, held, before }) {
     const onlyInternal = process.env.AUTH_ENTRY_ONLY === 'internal';
     const completion = process.env.AUTH_ENTRY_ONLY === 'completion';
     const passkeyExpiry = process.env.AUTH_ENTRY_ONLY === 'passkey-expiry';
     const cleanupPasskeys = process.env.AUTH_ENTRY_ONLY === 'cleanup-passkeys';
+    const registrationOnly = process.env.AUTH_ENTRY_ONLY === 'registration';
     const runCheck = check;
-    check = (name, mode, action) => (cleanupPasskeys && !['A actual virtual', 'A cancelled and expired', 'A known passkey', 'A committed passkey'].some(prefix => name.startsWith(prefix))) || (onlyInternal && !name.startsWith('C internal')) || (completion && !name.startsWith('C ') && !name.startsWith('B pending staff')) || (passkeyExpiry && !name.startsWith('A actual virtual') && !name.startsWith('A cancelled and expired')) ? Promise.resolve() : runCheck(name, mode, action);
+    check = (name, mode, action) => (cleanupPasskeys && !['A actual virtual', 'A cancelled and expired', 'A known passkey', 'A committed passkey'].some(prefix => name.startsWith(prefix))) || (onlyInternal && !name.startsWith('C internal')) || (completion && !name.startsWith('C ') && !name.startsWith('B pending staff')) || (passkeyExpiry && !name.startsWith('A actual virtual') && !name.startsWith('A cancelled and expired')) || (registrationOnly && !['A public native', 'A native rejected password', 'A registration', 'B lost registration'].some(prefix => name.startsWith(prefix))) ? Promise.resolve() : runCheck(name, mode, action);
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } }), page = await context.newPage();
     page.setDefaultTimeout(20000); page.on('dialog', dialog => dialog.accept());
     context.on('page', current => current.on('pageerror', error => result.errors.push({ mode: 'auth', message: error.message, stack: error.stack, url: current.url(), case: result.cases.at(-1)?.name })));
@@ -22,17 +23,94 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
         await page.locator('#email').fill(`goals-${who}@example.test`); await page.locator('#password').fill('DisposableGoalsProof42!');
         await page.locator('[data-auth-entry] button[type=submit]').click(); await page.waitForURL('http://localhost:8138' + destination); await privateReady();
     }
-    async function logout() { await page.locator('[data-spa=logout]').click(); await page.waitForURL('http://localhost:8138/'); }
+    async function logout() {
+        const button = page.locator('[data-spa=logout]');
+        if (!(await button.isVisible())) await page.locator('.advertiser-account-menu > summary').click();
+        await button.click();
+        await page.waitForURL('http://localhost:8138/');
+    }
     async function mailLinks(email, segment) {
         const messages = (await readFile(path.join(run, 'mailbox.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
         return messages.filter(message => message.to.includes(email) && message.html.includes(segment))
             .map(message => message.html.match(new RegExp(`href="([^"]*${segment}[^\\"]+)"`))[1].replaceAll('&amp;', '&'));
     }
-    async function register(email) {
+    const registrationPassword = 'BrowserRegistrationPassword42!';
+    const registrationRun = crypto.randomUUID();
+    const stage = name => page.locator('[data-registration-stage="' + name + '"]');
+    const wizard = name => page.locator('[data-wizard-step="' + name + '"]');
+    const registrationSubmit = () => page.locator('[data-registration-stage] button[type=submit]').click();
+    async function registrationCode(email) {
+        const deadline = Date.now() + 15000;
+        while (Date.now() < deadline) {
+            const content = await readFile(path.join(run, 'mailbox.jsonl'), 'utf8').catch(error => {
+                if (error.code !== 'ENOENT') throw error;
+                return '';
+            });
+            for (const line of content.split('\n').filter(Boolean).reverse()) {
+                const message = JSON.parse(line);
+                if (!message.to.includes(email)) continue;
+                const code = message.html.match(/(?:رمز التسجيل في BuilderAd هو|Your BuilderAd registration code is) (\d{6})/)?.[1];
+                if (code) return code;
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        throw Error('Registration verification mail did not arrive in the isolated mailbox');
+    }
+    async function registrationWizard(name, evidence = false) {
         await page.goto('http://localhost:8138/register'); await ready('register');
-        await page.locator('#name').fill('Isolated acceptance advertiser'); await page.locator('#email').fill(email);
-        await page.locator('#password').fill('BrowserRegistrationPassword42!'); await page.locator('#password_confirmation').fill('BrowserRegistrationPassword42!');
-        await page.locator('[data-auth-entry] button[type=submit]').click();
+        await wizard('sector').waitFor();
+        if (evidence) await page.screenshot({ path: path.join(run, 'registration-wizard-desktop.png'), fullPage: true });
+        await wizard('sector').locator('input[type=radio][value]:not([value=on])').first().check();
+        await wizard('sector').locator('[data-wizard-next]').click();
+        await wizard('practices').locator('input[type=checkbox]').first().check();
+        const practice = await wizard('practices').locator('label:has(input:checked) span').first().innerText();
+        assert.equal(await wizard('practices').locator('input[type=text]').count(), 0, 'Selecting an offering must not open a practice-name form');
+        await wizard('practices').locator('[data-wizard-next]').click();
+        await page.locator('#bf-create-market-search').fill('SA');
+        await wizard('market').locator('input[value=SA]').check();
+        const market = await wizard('market').locator('label:has(input[value=SA]) span').innerText();
+        await wizard('market').locator('[data-wizard-next]').click();
+        await wizard('channels').locator('input[type=checkbox]').first().check();
+        await wizard('channels').locator('[data-wizard-next]').click();
+        await wizard('goal').locator('input[type=radio]').first().check();
+        const goal = await wizard('goal').locator('label:has(input[type=radio]) strong').first().innerText();
+        await wizard('goal').locator('[data-wizard-next]').click();
+        await page.locator('#bf-create-name').fill(name);
+        await wizard('review').locator('[data-wizard-next]').click();
+        await stage('email').waitFor();
+        return { practice, market, goal };
+    }
+    async function sendCode(email) {
+        await page.locator('#registration-email').fill(email); await registrationSubmit();
+        await stage('code').waitFor();
+        return registrationCode(email);
+    }
+    async function submitRegistrationProfile() {
+        await page.locator('#registration-name').fill('Isolated acceptance advertiser');
+        await page.locator('#registration-password').fill(registrationPassword);
+        await page.locator('#registration-confirmation').fill(registrationPassword);
+        await registrationSubmit();
+    }
+    async function registrationDashboard(name, declared) {
+        await page.waitForURL(url => /^\/businesses\/[0-9a-f-]{36}$/.test(url.pathname));
+        await privateReady();
+        await page.locator('[data-workspace-heading]').filter({ hasText: name }).waitFor();
+        assert.equal((await page.locator('[data-workspace-heading]').innerText()).trim(), name);
+        const practice = page.locator('[data-overview-practices]').filter({ hasText: declared.practice });
+        await practice.waitFor();
+        assert.equal((await practice.innerText()).trim(), declared.practice);
+        assert.equal((await page.locator('[data-overview-markets]').innerText()).trim(), declared.market.trim());
+        assert.equal((await page.locator('[data-overview-goal]').innerText()).trim(), declared.goal.trim());
+    }
+    async function assertSingleFieldError(selector) {
+        const input = page.locator(selector);
+        await page.waitForFunction(selector => document.querySelector(selector)?.getAttribute('aria-invalid') === 'true', selector);
+        const errorId = await input.getAttribute('aria-describedby');
+        assert.ok(errorId);
+        const message = (await page.locator('#' + errorId).innerText()).trim();
+        assert.ok(message);
+        assert.equal((await page.locator('[data-auth-entry]').innerText()).split(message).length - 1, 1);
+        assert.equal(await page.locator('[data-auth-entry] [role=alert]').count(), 0);
     }
     async function loseNativeAcknowledgement(action, submit) {
         let deliveries = 0;
@@ -63,9 +141,17 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             return { guest: true, privateBootstrap: false, noWorkspaceRequired: true, mobileRtl: true };
         });
         await check('A native rejected password returns safe validation; valid login honors actual intended destination and replaces document', 'auth', async () => {
-            await page.locator('#email').fill('goals-a@example.test'); await page.locator('#password').fill('incorrect-password');
+            await page.locator('#email').fill('goals-a@example.test');
+            const before = result.wire.filter(row => row.method === 'POST' && row.path === '/login').length;
+            await page.locator('[data-auth-entry] button[type=submit]').click();
+            assert.equal(await page.locator('#password').evaluate(input => input.validity.valueMissing), true);
+            assert.equal(await page.locator('#password').evaluate(input => document.activeElement === input), true);
+            assert.equal(result.wire.filter(row => row.method === 'POST' && row.path === '/login').length, before);
+            assert.equal(await page.locator('[data-auth-entry] [role=alert]').count(), 0);
+            await page.locator('#password').fill('incorrect-password');
             await page.locator('[data-auth-entry] button[type=submit]').click();
             await page.locator('[data-auth-recover]').waitFor();
+            await assertSingleFieldError('#email');
             assert.equal((await meta(page)).binding.principal, 0); assert.equal(await page.locator('#password').inputValue(), '');
             await page.locator('[data-auth-recover]').click(); await ready('login');
             await page.evaluate(() => { window.authOldDocument = 'must-not-survive'; });
@@ -73,7 +159,7 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             assert.equal((await meta(page)).binding.principal, fixture.a.user);
             assert.equal(await page.evaluate(() => window.authOldDocument), undefined);
             await logout(); await page.goto('http://localhost:8138/login'); await ready('login'); assert.equal((await meta(page)).binding.principal, 0);
-            return { rejected: true, secretsCleared: true, intended: '/security/devices', fullNativeDocument: true, logoutToGuest: true };
+            return { missingPasswordBlockedLocally: true, oneFieldError: true, rejected: true, secretsCleared: true, intended: '/security/devices', fullNativeDocument: true, logoutToGuest: true };
         });
         await check('A native identity switch replaces the old account document and server-selected destination', 'auth', async () => {
             await login(); const before = await meta(page);
@@ -292,23 +378,53 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             assert.equal((await meta(page)).binding.principal, fixture.a.user); await logout();
             return { committed: true, acknowledgement: 'unknown', deliveries, automaticReplay: false, explicitRecovery: 'native server-owned authenticated document' };
         });
-        await check('A native registration creates a pending advertiser and dispatches actual isolated verification mail', 'auth', async () => {
-            await page.goto('http://localhost:8138/register'); await ready('register');
-            await page.locator('#name').fill('Browser pending advertiser'); await page.locator('#email').fill('auth-register@example.test');
-            await page.locator('#password').fill('BrowserRegistrationPassword42!'); await page.locator('#password_confirmation').fill('BrowserRegistrationPassword42!');
-            await page.locator('[data-auth-entry] button[type=submit]').click(); await page.waitForURL('http://localhost:8138/verify-email');
-            assert.ok((await meta(page)).binding.principal > 0);
+        await check('A registration starts with the shared wizard, verifies mail, resumes, and opens the declared Business', 'auth', async () => {
+            const name = 'Browser acceptance business';
+            const declared = await registrationWizard(name, true);
+            const email = `auth-register-${registrationRun}@example.test`;
+            await sendCode(email);
+            const attempt = (await get(page, '/register/email')).body.attempt_id;
+            assert.equal(command('auth-open-resend', 'a', attempt).updated, 1);
+            const sendA = post(page, '/register/email', { email }, { 'X-Proof-Before': 'resend-a' });
+            const sendB = post(page, '/register/email', { email }, { 'X-Proof-Before': 'resend-b' });
+            await until(() => before.has('resend-a') && before.has('resend-b'));
+            for (const key of ['resend-a', 'resend-b']) { before.get(key)(); before.delete(key); }
+            const resends = await Promise.all([sendA, sendB]);
+            assert.deepEqual(resends.map(reply => [reply.status, reply.body.attempt_id]), [[200, attempt], [200, attempt]]);
             const messages = (await readFile(path.join(run, 'mailbox.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
-            assert.ok(messages.some(message => message.to.includes('auth-register@example.test') && message.html.includes('/verify-email/')));
-            return { realRegistration: true, destination: '/verify-email', verificationMail: true, externalMail: false };
+            assert.equal(messages.filter(message => message.to.includes(email)).length, 2, 'Two concurrent resends deliver only one replacement code');
+            const code = await registrationCode(email);
+            await page.locator('#registration-code').fill(code === '111111' ? '222222' : '111111');
+            await registrationSubmit(); await assertSingleFieldError('#registration-code');
+            await page.setViewportSize({ width: 390, height: 844 });
+            assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+            await page.screenshot({ path: path.join(run, 'registration-code-mobile.png'), fullPage: true });
+            await page.setViewportSize({ width: 1280, height: 900 });
+            const arabicDigits = code.replace(/\d/g, digit => String.fromCharCode(0x660 + Number(digit)));
+            await page.locator('#registration-code').fill(arabicDigits);
+            assert.equal(await page.locator('#registration-code').inputValue(), code);
+            await registrationSubmit(); await stage('profile').waitFor();
+            assert.equal((await meta(page)).binding.principal, 0);
+            await page.reload(); await stage('profile').waitFor();
+            assert.equal(await page.locator('#registration-password').inputValue(), '');
+            await submitRegistrationProfile(); await registrationDashboard(name, declared);
+            assert.ok((await meta(page)).binding.principal > 0);
+            await page.screenshot({ path: path.join(run, 'registration-business-desktop.png'), fullPage: true });
+            await logout();
+            return { directWizard: true, concurrentResends: 2, replacementMails: 1, wrongCodeOneFieldError: true, realMailboxCode: true, resumedProof: true, codeAloneGuest: true, declaredBusinessDashboard: declared };
         });
         await check('B real resend and signed email verification preserve Laravel lifecycle and native new document', 'auth', async () => {
-            await page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready' && document.querySelector('[data-auth-kind="verify-email"]'));
-            await page.locator('[data-auth-resend]').click();
-            await page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready' && document.querySelector('[data-auth-kind="verify-email"]'));
-            const messages = (await readFile(path.join(run, 'mailbox.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line)).filter(message => message.to.includes('auth-register@example.test') && message.html.includes('/verify-email/'));
-            assert.ok(messages.length >= 2);
-            const link = messages.at(-1).html.match(/href="([^"]*\/verify-email\/[^\"]+)"/)[1].replaceAll('&amp;', '&');
+            command('auth-legacy-unverified');
+            await page.goto('http://localhost:8138/verify-email'); await ready('login');
+            await page.locator('#email').fill('auth-legacy@example.test'); await page.locator('#password').fill(registrationPassword);
+            await page.locator('[data-auth-entry] button[type=submit]').click(); await ready('verify-email');
+            await page.locator('[data-auth-resend]').click(); await ready('verify-email');
+            const resendDeliveries = await loseNativeAcknowledgement('/email/verification-notification', () => page.locator('[data-auth-resend]').click());
+            await page.goto('http://localhost:8138/verify-email'); await ready('verify-email');
+            assert.equal(resendDeliveries(), 1);
+            const links = await mailLinks('auth-legacy@example.test', '/verify-email/');
+            assert.ok(links.length >= 2);
+            const link = links.at(-1);
             const invalid = new URL(link); invalid.searchParams.set('signature', 'invalid');
             assert.equal((await context.request.get(invalid.href, { headers: { Accept: 'text/html' } })).status(), 403);
             const expired = command('auth-expired-verification').url;
@@ -317,7 +433,7 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             const prior = await meta(page); await page.goto(link); await privateReady();
             assert.equal(command('auth-inspect-email').verified, true); assert.equal(command('auth-inspect-email').lifecycle, 'current');
             assert.ok((await meta(page)).binding.lifecycle > prior.binding.lifecycle);
-            await logout(); return { isolatedMail: messages.length, invalidSignature: 403, expiredSignature: 403, verified: true, lifecycleCurrent: true, nativeTransition: true };
+            await logout(); return { isolatedMail: links.length, invalidSignature: 403, expiredSignature: 403, verified: true, lifecycleCurrent: true, nativeTransition: true };
         });
         await check('B actual broker recovery mail and native reset consume token, revoke sessions and reject replay', 'auth', async () => {
             await page.goto('http://localhost:8138/forgot-password');
@@ -341,21 +457,36 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             return { realBrokerToken: true, secretsOutsideBootstrap: true, consumedReplay: 422, sessionsRevoked: true, passwordActuallyChanged: true };
         });
         await check('B lost registration and resend acknowledgements never replay committed operations', 'auth', async () => {
+            const name = 'Resumed acceptance business', email = `auth-unknown-${registrationRun}@example.test`;
+            const declared = await registrationWizard(name);
+            let emailDeliveries = 0;
+            await page.route('**/register/email', async route => {
+                if (route.request().method() !== 'POST') return route.continue();
+                emailDeliveries++; assert.equal((await route.fetch()).status(), 200); await route.abort('failed');
+            });
+            await page.locator('#registration-email').fill(email); await registrationSubmit();
+            const reconcile = stage('email').locator('button.auth-entry-secondary');
+            await reconcile.waitFor(); await reconcile.click(); await stage('code').waitFor();
+            assert.equal(emailDeliveries, 1); await page.unroute('**/register/email');
+            await page.locator('#registration-code').fill(await registrationCode(email));
+            await registrationSubmit(); await stage('profile').waitFor();
             let registrations = 0;
             await page.route('**/register', async route => {
                 if (route.request().method() !== 'POST') return route.continue();
                 registrations++; assert.equal((await route.fetch({ maxRedirects: 0 })).status(), 200); await route.abort('failed');
             });
-            await register('auth-unknown@example.test'); await page.locator('[data-auth-recover]').waitFor();
-            assert.equal(await page.locator('[data-auth-entry] button[type=submit]').isDisabled(), true);
-            assert.equal(command('auth-inspect-unknown').count, 1); assert.equal(registrations, 1);
-            await page.unroute('**/register'); await page.locator('[data-auth-recover]').click(); await ready('verify-email');
-            const before = (await mailLinks('auth-unknown@example.test', '/verify-email/')).length;
-            const deliveries = await loseNativeAcknowledgement('/email/verification-notification', () => page.locator('[data-auth-resend]').click());
-            await page.goto('http://localhost:8138/verify-email'); await ready('verify-email');
-            assert.equal((await mailLinks('auth-unknown@example.test', '/verify-email/')).length, before + 1);
-            assert.equal(deliveries(), 1); assert.equal(registrations, 1); await logout();
-            return { registrationCommitted: 1, registrationReplay: 0, resendDelivered: 1, resendReplay: 0, explicitNativeRecovery: true };
+            await submitRegistrationProfile(); await page.locator('[data-auth-recover]').waitFor();
+            assert.equal(await page.locator('[data-auth-entry] button[type=submit]').count(), 0);
+            assert.equal(command('auth-inspect-unknown', 'a', email).count, 1); assert.equal(registrations, 1);
+            await page.unroute('**/register'); await page.locator('[data-auth-recover]').click();
+            await page.waitForURL(url => url.pathname !== '/register');
+            if (new URL(page.url()).pathname === '/login') {
+                await ready('login'); await page.locator('#email').fill(email); await page.locator('#password').fill(registrationPassword);
+                await page.locator('[data-auth-entry] button[type=submit]').click();
+            }
+            await registrationDashboard(name, declared);
+            assert.equal(registrations, 1); assert.equal(emailDeliveries, 1); await logout();
+            return { registrationCommitted: 1, registrationReplay: 0, codeSendCommitted: 1, codeSendReplay: 0, explicitNativeRecovery: true };
         });
         await check('B expired recovery token is rejected and lost recovery/reset acknowledgements are not replayed', 'auth', async () => {
             await page.goto('http://localhost:8138/forgot-password'); await ready('forgot-password');
@@ -365,7 +496,7 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             command('auth-expire-token'); await page.goto(expiredLink); await ready('reset-password');
             await page.locator('#password').fill('ExpiredMustNotApplyPassword42!'); await page.locator('#password_confirmation').fill('ExpiredMustNotApplyPassword42!');
             await page.locator('[data-auth-entry] button[type=submit]').click();
-            await page.waitForFunction(() => document.querySelector('[data-auth-kind="reset-password"] [role=alert]')?.textContent.trim());
+            await assertSingleFieldError('#email');
             assert.equal(await page.locator('#password').inputValue(), '');
             await page.goto('http://localhost:8138/forgot-password'); await ready('forgot-password');
             await page.locator('#email').fill('goals-a@example.test'); await page.locator('[data-auth-entry] button[type=submit]').click(); await ready('forgot-password');
@@ -380,11 +511,12 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             return { expiredRejected: true, expiredSecretCleared: true, forgotDelivered: 1, resetDelivered: 1, passwordActuallyChanged: true, automaticReplay: false };
         });
         await check('B pending staff signed verification returns to existing onboarding without activating staff', 'auth', async () => {
-            await register('auth-staff@example.test'); await ready('verify-email'); command('auth-pending-staff');
+            command('auth-legacy-unverified', 'a', 'staff'); command('auth-pending-staff');
             await context.clearCookies(); await page.goto('http://localhost:8138/login'); await ready('login');
             await page.locator('#email').fill('auth-staff@example.test'); await page.locator('#password').fill('BrowserRegistrationPassword42!');
             await page.locator('[data-auth-entry] button[type=submit]').click(); await page.waitForURL('http://localhost:8138/staff/onboarding');
             await page.goto('http://localhost:8138/verify-email'); await ready('verify-email');
+            await page.locator('[data-auth-resend]').click(); await ready('verify-email');
             const link = (await mailLinks('auth-staff@example.test', '/verify-email/')).at(-1);
             await page.goto(link); await page.waitForURL('http://localhost:8138/staff/onboarding');
             await page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready' && document.querySelector('[data-staff-enrollment]'));
@@ -401,7 +533,7 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             await page.goto('http://localhost:8138/confirm-password');
             await page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready' && document.querySelector('[data-auth-kind="confirm-password"]'));
             await page.locator('#password').fill('incorrect-password'); await page.locator('[data-auth-entry] button[type=submit]').click();
-            await page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready' && document.querySelector('[data-auth-kind="confirm-password"] [role=alert]')?.textContent.trim());
+            await assertSingleFieldError('#password');
             assert.equal(await page.locator('#password').inputValue(), ''); assert.equal((await get(page, '/security/passkeys/options')).status, 403);
             await page.locator('#password').fill('DisposableGoalsProof42!'); await page.locator('[data-auth-entry] button[type=submit]').click(); await privateReady();
             assert.equal((await get(page, '/security/passkeys/options')).status, 200);
@@ -443,7 +575,7 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
                 await page.evaluate(() => { void document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push('/register'); }); await ready('register');
                 release(); await page.unrouteAll({ behavior: 'wait' });
                 assert.equal(await page.locator('[data-auth-kind="forgot-password"]').count(), 0);
-                assert.equal(await page.locator('#password').inputValue(), '');
+                assert.equal(await page.locator('#password').count(), 0);
                 // The cancelled candidate was never admitted and must not enter history.
                 await page.goBack(); await ready('login'); await page.goForward(); await ready('register');
                 assert.equal((await meta(page)).binding.principal, 0);

@@ -42,6 +42,36 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
     const preferenceResult = fact({ value: ref('GoalValue'), versions: versions(['preferences']) });
     const intentResult = fact({ value: nullable(ref('CurrentIntentValue')), versions: versions(['context', 'intent']) });
     const grantResult = fact({ grant_id: id, status: { enum: ['active', 'revoked'] }, versions: versions(['grant']) });
+    const agencyCommand = body({ effect: { enum: ['mandate', 'assign'] }, agency_business_public_id: uuid,
+        recipient_public_id: uuid, membership_grant_id: id,
+        action: { enum: ['business.context.read', 'business.context.manage', 'business.intent.declare', 'business.markets.declare', 'business.preferences.manage'] },
+        parent_grant_id: id, expires_at: { type: 'string', format: 'date-time' }, confirmed: { const: true } });
+    // Reuse the existing wire selection. Direct realm, JSON-null Workspace and
+    // one exact Business parent are semantic admission rules enforced by SQL.
+    agencyCommand.properties.authority_selection = ref('BusinessAuthoritySelection');
+    const agencyResult = fact({ agency_business_public_id: uuid, grant_id: id, status: { const: 'active' },
+        qualification_ref: uuid, versions: versions(['grant']) });
+    const agencyOptions = fact({ agency_business_public_id: uuid, effect: { enum: ['mandate', 'assign'] },
+        recipient: object({ public_id: uuid, membership_grant_id: id }),
+        options: { ...list(object({ action: agencyCommand.properties.action, parent_grant_id: id,
+            authority_selection: agencyCommand.properties.authority_selection, max_expires_at: nullable({ type: 'string', format: 'date-time' }) })), maxItems: 30 },
+        scope: { const: 'current_declaration_agency_only' } });
+    const teamIdentity = object({ public_id: uuid, name: text, email: { type: 'string', format: 'email', maxLength: 254 } });
+    const teamGrant = object({ grant_id: { type: 'string', pattern: '^[1-9][0-9]{0,18}$' }, version: id,
+        action: agencyCommand.properties.action, expires_at: nullable({ type: 'string', format: 'date-time' }) });
+    const teamMembers = fact({ members: { ...list(object({ ...teamIdentity.properties, grants: list(teamGrant) })), maxItems: 64 },
+        next_cursor: nullable(id), actions: list(agencyCommand.properties.action) });
+    const teamCommand = body({ recipient_public_id: uuid,
+        expected_grants: { ...list(object({ grant_id: { ...teamGrant.properties.grant_id, pattern: '^[1-9][0-9]{0,17}$' }, version: id })), maxItems: 256 },
+        permissions: { ...list(agencyCommand.properties.action), uniqueItems: true, maxItems: 5 },
+        expires_at: nullable({ type: 'string', format: 'date-time' }), confirmed: { const: true } });
+    const teamResult = fact({ recipient_public_id: uuid, status: { const: 'recorded' },
+        grant_refs: { type: 'object', additionalProperties: teamGrant.properties.grant_id }, versions: versions(['authority_epoch']) });
+    const agencyMandates = fact({ items: list(object({ agency_business_public_id: uuid,
+        grants: list(object({ grant_id: teamGrant.properties.grant_id, version: id })), complete: { type: 'boolean' } })), more: { type: 'boolean' }, next_cursor: nullable(uuid) });
+    const agencyMandatesCommand = body({ agency_business_public_id: uuid,
+        expected_grants: { ...list(object({ grant_id: { ...teamGrant.properties.grant_id, pattern: '^[1-9][0-9]{0,17}$' }, version: id })), maxItems: 256 }, confirmed: { const: true } });
+    const agencyMandatesResult = fact({ agency_business_public_id: uuid, status: { const: 'withdrawn' }, versions: versions(['authority_epoch']) });
     const linkResult = fact({ workspace_public_id: uuid, kind: { enum: ['collaboration', 'agency'] }, state: { enum: ['active', 'ended'] }, versions: versions(['link']) });
     const bindingResult = object({ binding_id: nullable(uuid), status: { enum: ['active', 'ended'] }, versions: versions(['binding']) });
     const boundaryResult = object({ membership_id: uuid, status: { enum: ['active', 'ended'] }, versions: versions(['membership']) });
@@ -52,12 +82,16 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
     const lifecycleResult = { oneOf: [fact({ state: { enum: ['declared_draft', 'active', 'suspended', 'archived'] }, versions: versions(['lifecycle']) }),
         fact({ branch_public_id: uuid, status: { enum: ['active', 'archived'] }, versions: versions(['branch']) })] };
     const decimalId = { type: 'string', pattern: '^[1-9][0-9]{0,18}$' };
+    // Historical installed surfaces omit agency metadata; it describes the exact
+    // read/grant basis without changing the evaluator's authority selection.
+    const agencyMetadata = schema => object({ ...schema.properties, agency_business_public_id: nullable(uuid) }, schema.required);
     const localized = { id: text, name_ar: text, name_en: text };
-    const catalog = object({ business_types: list(object({ id, key: text, name_ar: text, name_en: text, active: { type: 'boolean' }, version: id })),
+    const sector = { id, key: text, name_ar: text, name_en: text, active: { type: 'boolean' } };
+    const catalog = object({ business_types: list(object({ ...sector, version: id })),
         countries: list(object({ code: text, name_ar: text, name_en: text })), intent_timezones: list(text),
         goals: list(object({ ...localized, description_ar: text, description_en: text, results: list(object(localized)) })) });
     const scope = object({ principal_generation: id, authority_fingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' } });
-    const choices = object({ actor_public_id: uuid, items: list(fact({ name: text, state: text, read_grant_id: decimalId, realm_kind: realm, realm_workspace_public_id: nullable(uuid) })), next_cursor: nullable(decimalId), scope });
+    const choices = object({ actor_public_id: uuid, items: list(agencyMetadata(fact({ name: text, state: text, read_grant_id: decimalId, realm_kind: realm, realm_workspace_public_id: nullable(uuid) }))), next_cursor: nullable(decimalId), scope });
     const purposeRevision = object({ purpose_id: uuid, revision_id: uuid, version, prior_version: nullable(version), supersedes_revision_id: nullable(uuid), operation: text, effective_from: text, effective_until: nullable(text), accepted_at: text, snapshot: ref('PurposeSnapshot'), reason: nullable(text), affected_revision_ids: list(uuid), confirmations: object(Object.fromEntries(['meaning','scope','authority','identity','standing','dtm','intent','historical','transition'].map(k => [k,{type:'boolean'}]))) });
     const currentPurposeRevision = object({ purpose_id: uuid, revision_id: uuid, version, operation: text, effective_from: text, effective_until: nullable(text), accepted_at: text, snapshot: ref('PurposeSnapshot') });
     const purposeItem = object({purpose_id:uuid,head_version:version,state:text,applicable:nullable({oneOf:[purposeRevision,currentPurposeRevision]}),history:list(purposeRevision),relationship_revalidation_required:{type:'boolean'},continuity:text,dtm_standing:text,scheduled_revision_ids:list(uuid)});
@@ -71,12 +105,12 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
         relationships: list(object({ link_ref: uuid, workspace_public_id: uuid, workspace_slug: text, kind: { enum: ['collaboration','agency','internal_team'] }, state: { enum: ['active','ended'] }, revision: id })),
         workspace_limit: { const: 32 }, workspace_more: { type: 'boolean' }, relationship_limit: { const: 64 } });
     const delegation = object({ actor_public_id: uuid,
-        options: list(object({ grant_id: decimalId, action: text, can_issue: { type: 'boolean' }, can_delegate_onward: { type: 'boolean' }, can_choose_agency: { type: 'boolean' }, max_expires_at: nullable({ type: 'string', format: 'date-time' }), chain_depth: id })),
-        issued: list(object({ grant_id: decimalId, parent_grant_id: decimalId, recipient_public_id: uuid, action: text,
+        options: list(agencyMetadata(object({ grant_id: decimalId, action: text, can_issue: { type: 'boolean' }, can_delegate_onward: { type: 'boolean' }, can_choose_agency: { type: 'boolean' }, max_expires_at: nullable({ type: 'string', format: 'date-time' }), chain_depth: id }))),
+        issued: list(agencyMetadata(object({ grant_id: decimalId, parent_grant_id: decimalId, recipient_public_id: uuid, action: text,
             recorded_status: { enum: ['active', 'revoked'] }, revision: id, expires_at: nullable({ type: 'string', format: 'date-time' }), delegable: { type: 'boolean' },
-            realm_kind: realm, realm_workspace_public_id: nullable(uuid) })),
+            realm_kind: realm, realm_workspace_public_id: nullable(uuid) }))),
         issued_limit: { const: 64 }, issued_more: { type: 'boolean' }, option_limit: { const: 32 }, options_may_be_partial: { type: 'boolean' } });
-    const surface = object({ business: projection, authority_selection: authority, context_write_options: writeOptions,
+    const surface = agencyMetadata(object({ business: projection, authority_selection: authority, context_write_options: writeOptions,
         lifecycle: object({ revision: version, archive_options: writeOptions }),
         private_history_available: { type: 'boolean' }, direct_team_enrollment_available: { type: 'boolean' },
         purpose_statement: object({ authority_scope: { const: 'own_business_statement_only' }, establishes_external_authority: { const: false }, enrollment_available: { type: 'boolean' }, previous_grant: { type: 'string', pattern: '^(0|[1-9][0-9]{0,18})$' }, current_grant: nullable(object({ id: decimalId, version })) }),
@@ -84,7 +118,10 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
         commercial: object({beneficiary:object({kind:{const:'business'},public_id:uuid}),context_state:{const:'QUALIFIED_BUSINESS_BINDING_UNAVAILABLE'},context:nullable(object({})),
             ...Object.fromEntries(['subscription_state','entitlement_state','quota_state','payer_state','coverage_state','amount_state'].map(k=>[k,{const:'UNKNOWN'}])),
             conditioned_feature_admission:{const:'HOLD'},usage_reservation:{const:'NOT_CREATED'},foundation_declarations:object({entitlement:{const:'NOT_APPLICABLE'},quota:{const:'NOT_APPLICABLE'},billing:{const:'NOT_APPLICABLE'}}),limitation:{const:'NO_OPERATING_SUBSCRIPTION_OR_METERING_POLICY'}}),
-        data_use: object({ bindings: list(object({ binding_id: uuid, scope_id: uuid, state: { enum: ['active','ended'] }, revision: id })), bindings_limit: { const: 64 }, bindings_more: { type: 'boolean' } }) });
+        data_use: object({ binding_options: list(object({ grant_id: decimalId })), bindings: list(object({ binding_id: uuid, scope_id: uuid, state: { enum: ['active','ended'] }, revision: id })), bindings_limit: { const: 64 }, bindings_more: { type: 'boolean' } }) }));
+    surface.required = surface.required.filter(name => name !== 'collaboration');
+    surface.properties.collaboration.description = 'Optional original-resource contract for isolated headless consumers only; never a public Business workspace surface.';
+    surface.properties.agency_task = object({ can_mandate: { type: 'boolean' }, can_assign: { type: 'boolean' }, agency_business_public_id: nullable(uuid) });
     const dataUseChoices = object({ scopes: list(object({ scope_id: uuid, grant_id: decimalId, grant_revision: id,
         operation: { enum: ['retained_read','process','combine','display','reuse','export','train','retain','delete','forward'] }, purpose: text, resource: text,
         source_ref: uuid, boundary_ref: uuid, field_keys: list(text), record_count: id, namespace_count: id, authority_selection: authority })), next_cursor: nullable(decimalId) });
@@ -152,11 +189,13 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
     const sourceParam = { in: 'path', name: 'source', required: true, schema: uuid };
     const sourceFields = { source_id: uuid, label: text, status: { enum: ['UNVERIFIED', 'REVOKED'] }, resource: text, operation: text, purpose: text };
     const sourceChoices = object({ sources: list(object({ ...sourceFields, access_grant_id: decimalId })), next_cursor: nullable(decimalId) });
-    const internalTeamCommand = body({ workspace_public_id: uuid, effect: { enum: ['enroll','appoint','remove','end'] }, recipient_public_id: nullable(uuid), expected_revision: version });
-    const internalTeamReceipt = fact({ workspace_public_id: uuid, link_ref: uuid, state: { enum: ['active','ended'] }, recipient_public_id: nullable(uuid),
-        grant_refs: { type: 'object', additionalProperties: decimalId }, versions: versions(['link']) });
+    const internalTeamCommand = body({ workspace_public_id: nullable(uuid), effect: { enum: ['enroll','appoint','remove','end'] }, recipient_public_id: nullable(uuid), expected_revision: version });
+    const internalTeamReceipt = fact({ workspace_public_id: nullable(uuid), link_ref: nullable(uuid), state: { enum: ['active','ended'] }, recipient_public_id: nullable(uuid),
+        grant_refs: { type: 'object', additionalProperties: decimalId }, versions: { oneOf: [versions(['link']), versions(['authority_epoch'])] } });
     const internalTeamSurface = fact({ creator_basis: { type: 'boolean' }, can_admin: { type: 'boolean' },
-        teams: list(object({ link_ref: uuid, workspace_public_id: uuid, workspace_slug: text, state: { enum: ['active','ended'] }, revision: id })) });
+        teams: list(object({ link_ref: uuid, workspace_public_id: uuid, workspace_slug: text, state: { enum: ['active','ended'] }, revision: id })),
+        can_appoint: { type: 'boolean' }, versions: versions(['authority_epoch']), custodians: list(object({ public_id: uuid, name: text, email: text, qualification_ref: uuid, status: { const: 'recorded' }, grant_refs: nullable({ type: 'object', additionalProperties: decimalId }) })) });
+    internalTeamSurface.required = internalTeamSurface.required.filter(name => !['can_appoint','versions','custodians'].includes(name));
     const businessSources = object({ business_public_id: uuid, scope: { const: 'current_operator_in_linked_workspaces' },
         inventory_kind: { const: 'manageable_sources' }, establishes_business_data_use: { const: false },
         sources: list(object({ ...sourceFields, access_grant_id: decimalId, family: text, namespace: text,
@@ -215,7 +254,11 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
             BusinessFoundationError: object({ error: { enum: ['business_authority_denied', 'business_conflict', 'business_relation_revision_rejected', 'invalid_business_command'] } }),
             BusinessDraftResult: data(draft), BusinessFoundationProjection: data(projection), BusinessContextWriteResult: data(contextResult),
             BusinessMarketWriteResult: data(marketsResult), BusinessPreferenceWriteResult: data(preferenceResult), BusinessIntentWriteResult: data(intentResult),
-            BusinessGrantWriteResult: data(grantResult), BusinessLinkWriteResult: data(linkResult), BusinessBindingWriteResult: data(bindingResult),
+            BusinessGrantWriteResult: data(grantResult), BusinessAgencyGrantCommand: agencyCommand, BusinessAgencyGrantResult: data(agencyResult),
+            BusinessAgencyOptions: agencyOptions,
+            BusinessTeamMembers: teamMembers, BusinessTeamCommand: teamCommand, BusinessTeamResult: data(teamResult),
+            BusinessAgencyMandates: agencyMandates, BusinessAgencyMandatesCommand: agencyMandatesCommand, BusinessAgencyMandatesResult: data(agencyMandatesResult),
+            BusinessLinkWriteResult: data(linkResult), BusinessBindingWriteResult: data(bindingResult),
             BusinessResourceRightResult: data({ oneOf: [boundaryResult, revokeResult, sourceGrantResult, sourceAdoptionResult, sourceRetirementResult] }), BusinessLifecycleWriteResult: data(lifecycleResult),
         },
         paths: {
@@ -233,8 +276,14 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
             '/api/data-rights/boundaries/{boundary}': { get: read('qualifiedClientBoundarySurface', data(boundarySurface), [boundaryParam, query('access', true)]) },
             '/data-rights': { get: read('clientBoundaryChoicesPage', page(boundaryChoices), [query('after')]) },
             '/data-rights/{boundary}': { get: read('clientBoundaryDetailPage', page(boundarySurface), [boundaryParam, query('access', true)]) },
-            '/businesses': { get: read('businessChoicesPage', page(choices), [query('after')]) },
-            '/businesses/new': { get: read('businessCreatePage', page(object({ catalog }))) },
+            '/businesses': { get: read('businessChoicesPage', page(object({
+                ...choices.properties, registration_attempt: nullable(uuid),
+            }, choices.required)), [query('after'), { in: 'query', name: 'entry', schema: { const: '1' } }]) },
+            '/businesses/new': { get: read('businessCreatePage', page(object({ catalog, registration_attempt: nullable(uuid) }))) },
+            '/business-registration/catalog': { get: {
+                ...read('publicBusinessSetupCatalog', data(object({ business_types: list(object(sector)), countries: catalog.properties.countries, goals: catalog.properties.goals }))),
+                description: 'Published onboarding choices, also available to an admitted guest document. This response contains no Business, user or source records and does not authorize creation.',
+            } },
             '/businesses/{business}': { get: read('businessDetailPage', page(surface), [business, query('access', true)]) },
             '/api/businesses/catalog': { get: read('independentBusinessCatalog', data(catalog)) },
             [`${base}/surface`]: { get: read('independentBusinessSurface', data(surface), [business, query('access', true)]) },
@@ -256,6 +305,25 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
             [`${base}/data-use-bindings`]: { post: endpoint('writeBusinessDataUseBinding', body({ data_use_scope_id: uuid, effect: { enum: ['add', 'end'] }, expected_relation: { ...version, description: 'Latest logical Business/data-use binding revision, including ended bindings; never reset on recreation.' } }), bindingResult) },
             [`${base}/grants`]: { post: endpoint('writeIndependentBusinessGrant', body({ effect: { enum: ['issue', 'revoke'] }, grantee_public_id: uuid, action: text, parent_grant_id: nullable(id), grant_id: nullable(id), expected_grant: version,
                 expires_at: nullable({ type: 'string', format: 'date-time' }), delegable: { type: 'boolean' }, realm_workspace_public_id: nullable(uuid) }), grantResult) },
+            [`${base}/agency-grants`]: { post: {
+                ...endpoint('writeBusinessAgencyGrant', ref('BusinessAgencyGrantCommand'), agencyResult),
+                description: 'Explicit finite Business-to-Business declaration mandate or named employee assignment through the existing grant graph. authority_selection must select direct realm, required realm_workspace_public_id JSON null and exactly one Business requirement matching parent_grant_id; PostgreSQL rejects every other selection. Current agency eligibility, exact parent authority and finite expiry are requalified in PostgreSQL. Grants no Source, client-data, private-history or external-execution rights. Exact existing-grant revocation remains at /grants. Uncertain delivery retains the original command without automatic retry.',
+            } },
+            [`${base}/agency-options`]: { get: read('readBusinessAgencyOptions', data(agencyOptions), [business, query('access', true),
+                { in: 'query', name: 'agency', required: true, schema: uuid }, { in: 'query', name: 'recipient', schema: uuid }]) },
+            [`${base}/team`]: {
+                get: read('readBusinessTeamMembers', data(teamMembers), [business, query('access', true), query('after')]),
+                post: { ...endpoint('writeBusinessTeamMembers', ref('BusinessTeamCommand'), teamResult),
+                    description: 'Original Business creator and current independent team enrollment required. authority_selection is the exact current Business read path; SQL selects and requalifies the five canonical team roots. expected_grants must contain every active recorded direct-team grant of this employee. Nonempty permissions require business.context.read; empty permissions withdraw only this direct team set. A common new expiry is explicit, including replacement of differing historical expiries. No invitation, Workspace, independent authority or Source/data right is created or withdrawn. Unknown delivery retains the original command.',
+                },
+            },
+            [`${base}/team/recipient`]: { post: endpoint('resolveBusinessTeamRecipient', object({ access: id, email: teamIdentity.properties.email }), fact({ recipient: teamIdentity })) },
+            [`${base}/agency-mandates`]: {
+                get: read('readBusinessAgencyMandates', data(agencyMandates), [business, query('access', true), { in: 'query', name: 'after', schema: uuid }]),
+                post: { ...endpoint('withdrawBusinessAgencyMandates', ref('BusinessAgencyMandatesCommand'), agencyMandatesResult),
+                    description: 'Original client creator and current direct team authority required. Withdraw exactly the complete selected Business-to-Business current-declaration mandate group using all returned grant identities/versions. Partial groups cannot authorize bulk withdrawal. Agency expiry or suspension does not confer authority or prevent client-owned withdrawal. Descendant assignments lose their basis; independent grants and Source/data rights remain separate. Uncertain delivery retains the exact original command.',
+                },
+            },
             [`${base}/internal-team`]: { get: read('readInternalClientFileTeam', data(internalTeamSurface), [business, query('access', true)]),
                 post: endpoint('writeInternalClientFileTeam', internalTeamCommand, internalTeamReceipt) },
             [`${base}/direct-team`]: { post: endpoint('enrollIndependentBusinessTeam', body({}), fact({ grant_refs: { type: 'object', additionalProperties: decimalId }, qualification_ref: uuid, versions: versions(['qualification']) })) },

@@ -7,20 +7,22 @@ use App\Security\GrantAuthority;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\ApplicationContractAssertions;
+use Tests\Support\Pre770BusinessAuthority;
 use Tests\TestCase;
 
 final class OrganizationTeamTest extends TestCase
 {
     use ApplicationContractAssertions;
+    use Pre770BusinessAuthority;
 
     private function organization(User $owner): string
     {
         $this->actingAs($owner);
         app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($owner, 1);
-        $key = $this->getJson('/organizations/new')->assertOk()->json('data.creationKey');
-        $path = $this->postJson('/organizations', ['name' => 'Agency without commercial profile', 'creation_key' => $key])->assertOk()->json('redirect');
+        $slug = 'legacy-agency-'.Str::uuid();
+        $this->legacyWorkspace(['name' => 'Existing agency resource custody', 'slug' => $slug])->assertRedirect();
 
-        return basename($path);
+        return DB::connection('pgsql_migrations')->table('workspaces')->where('slug', $slug)->value('public_id');
     }
 
     private function membership(string $organization, User $recipient, string $effect, int $revision): array
@@ -56,6 +58,7 @@ final class OrganizationTeamTest extends TestCase
 
     public function test_registered_agency_adds_staff_assigns_three_unregistered_client_files_and_survives_staff_departure(): void
     {
+        $this->installPre770BusinessAuthority();
         $owner = User::factory()->create();
         $staff = [User::factory()->create(), User::factory()->create()];
         $organization = $this->organization($owner);
@@ -74,11 +77,15 @@ final class OrganizationTeamTest extends TestCase
                 'authority_selection' => $this->selection($file['grant_refs']['business.context.read'])])->assertOk()->json('data.grant_refs');
             $read = $this->delegate($organization, $file, $roots, $staff[$i % 2], 'business.context.read');
             $write = $this->delegate($organization, $file, $roots, $staff[$i % 2], 'business.context.manage');
+            $files[] = compact('file', 'read', 'write', 'roots');
+        }
+        $this->upgradeBusinessAuthority();
+        foreach ($files as $i => ['file' => $file, 'read' => $read, 'write' => $write]) {
+            $base = '/api/businesses/'.$file['business_public_id'];
             $this->actingAs($staff[$i % 2])->getJson($base.'/surface?access='.$read)->assertOk()->assertJsonPath('data.business.business_public_id', $file['business_public_id']);
             $this->putJson($base.'/context', ['command_id' => (string) Str::uuid(), 'name' => 'Employee updated client '.$i,
                 'business_type_id' => null, 'expected_context' => 0, 'authority_selection' => $this->selection($write, $organization)])->assertOk();
             $this->actingAs($staff[($i + 1) % 2])->getJson($base.'/surface?access='.$read)->assertForbidden();
-            $files[] = compact('file', 'read', 'write', 'roots');
         }
         $own = $this->file($staff[0], 'Employee independent activity');
         $this->actingAs($staff[0]);
@@ -98,8 +105,22 @@ final class OrganizationTeamTest extends TestCase
         $this->membership($organization, $staff[0], 'add', 3);
         $this->actingAs($staff[0])->getJson('/api/businesses/'.$files[0]['file']['business_public_id'].'/surface?access='.$files[0]['read'])->assertForbidden();
         $this->actingAs($owner);
-        $newRead = $this->delegate($organization, $files[0]['file'], $files[0]['roots'], $staff[0], 'business.context.read');
-        $this->actingAs($staff[0])->getJson('/api/businesses/'.$files[0]['file']['business_public_id'].'/surface?access='.$newRead)->assertOk();
+        $first = $files[0]['file'];
+        $base = '/api/businesses/'.$first['business_public_id'];
+        $oldParent = $files[0]['roots']['business.context.read'];
+        $this->postJson($base.'/grants', ['command_id' => (string) Str::uuid(), 'effect' => 'issue', 'grantee_public_id' => $staff[0]->public_id,
+            'action' => 'business.context.read', 'parent_grant_id' => (int) $oldParent, 'grant_id' => null, 'expected_grant' => 0,
+            'expires_at' => null, 'delegable' => false, 'realm_workspace_public_id' => $organization,
+            'authority_selection' => $this->selection($oldParent, $organization)])->assertForbidden();
+        // Rejoining does not revive old rights. Explicit current Business
+        // custodianship supplies an independent, limited recovery path.
+        $creatorRead = $first['grant_refs']['business.context.read'];
+        $epoch = $this->getJson($base.'/internal-team?access='.$creatorRead)->assertOk()->json('data.versions.authority_epoch');
+        $newRead = $this->postJson($base.'/internal-team', ['command_id' => (string) Str::uuid(), 'workspace_public_id' => null,
+            'effect' => 'appoint', 'recipient_public_id' => $staff[0]->public_id, 'expected_revision' => $epoch,
+            'authority_selection' => $this->selection($creatorRead)])->assertOk()->json('data.grant_refs')['business.context.read'];
+        $this->actingAs($staff[0])->getJson($base.'/surface?access='.$newRead)->assertOk()->assertJsonPath('data.private_history_available', false);
+        $this->getJson($base.'/surface?access='.$files[0]['read'])->assertForbidden();
         $db = DB::connection('pgsql_migrations');
         $this->assertSame(3, $db->table('users')->count(), 'Clients need no accounts.');
         $this->assertSame(1, $db->table('workspaces')->count());
@@ -110,6 +131,7 @@ final class OrganizationTeamTest extends TestCase
 
     public function test_same_second_departure_and_rejoin_cannot_restore_the_old_business_grant(): void
     {
+        $this->installPre770BusinessAuthority();
         $owner = User::factory()->create();
         $employee = User::factory()->create();
         $organization = $this->organization($owner);
@@ -133,6 +155,7 @@ final class OrganizationTeamTest extends TestCase
             FROM security_action_grants g JOIN workspaces w ON w.public_id=?::uuid
             JOIN workspace_memberships m ON m.workspace_id=w.id AND m.user_id=g.subject_user_id WHERE g.id=?", [$organization, $read]),
             'The fixture must exercise the same-second boundary.');
+        $this->upgradeBusinessAuthority();
         $this->actingAs($employee)->getJson($base.'/surface?access='.$read)->assertForbidden();
     }
 

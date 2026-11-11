@@ -17,6 +17,7 @@ use Tests\Support\BusinessAuthorityFixture;
 use Tests\Support\BusinessNativeMaterialFixture;
 use Tests\Support\DisposableDatabaseReset;
 use Tests\Support\NativeMaterialFixture;
+use Tests\Support\Pre770BusinessAuthority;
 use Tests\TestCase;
 
 final class DataUseLicenseTest extends TestCase
@@ -24,6 +25,7 @@ final class DataUseLicenseTest extends TestCase
     use ApplicationContractAssertions;
     use BusinessNativeMaterialFixture;
     use NativeMaterialFixture;
+    use Pre770BusinessAuthority;
 
     public static function providers(): array
     {
@@ -346,7 +348,12 @@ final class DataUseLicenseTest extends TestCase
             }
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
             foreach ($before as $table => $value) {
-                $this->assertSame($value, $owner->scalar("SELECT jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text)::text FROM {$table} r"), $table);
+                $image = $table === 'authority_qualification_receipts' ? "to_jsonb(r)-'agency_business_id'-'agency_membership_grant_id'" : 'to_jsonb(r)';
+                $this->assertSame($value, $owner->scalar("SELECT jsonb_agg({$image} ORDER BY ({$image})::text)::text FROM {$table} r"), $table);
+                if ($table === 'authority_qualification_receipts') {
+                    $this->assertSame(0, $owner->table($table)->whereNotNull('agency_business_id')->count());
+                    $this->assertSame(0, $owner->table($table)->whereNotNull('agency_membership_grant_id')->count());
+                }
             }
             $this->getJson('/api/businesses/'.$f['business']['business_public_id'].'/data-use-journey?access='.$f['business']['grant_refs']['business.context.read'])
                 ->assertOk()->assertJsonPath('data.licenses.0.license_id', $issued['license_id'])->assertJsonPath('data.licenses.0.status', 'active');
@@ -396,6 +403,7 @@ final class DataUseLicenseTest extends TestCase
 
     public function test_shared_workspace_licence_preserves_qualified_agency_realm_for_binding_and_actual_read(): void
     {
+        $this->installPre770BusinessAuthority();
         $original = $this->original(adoptViaCommand: true);
         $owner = DB::connection('pgsql_migrations');
         $workspace = $owner->table('workspaces')->sole();
@@ -404,7 +412,7 @@ final class DataUseLicenseTest extends TestCase
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $directManager->id]]];
         $link = ['command_id' => (string) Str::uuid(), 'workspace_public_id' => $workspace->public_id, 'kind' => 'agency', 'effect' => 'add',
             'expected_revision' => 0, 'authority_selection' => $direct];
-        $this->postJson('/api/businesses/'.$original['a']['business_public_id'].'/workspace-links', $link)->assertOk();
+        BusinessAuthorityFixture::legacyWorkspaceLink($original['business'], $workspace->id, $directManager, $original['user']->id);
         // Fixture supplies only the previously admitted agency relationship and context authority.
         $root = BusinessAuthorityFixture::root($original['business'], $original['user']->id, 'business.context.read');
         $agencyRead = BusinessAuthorityFixture::insert('security_action_grants', [...(array) $root,
@@ -416,14 +424,20 @@ final class DataUseLicenseTest extends TestCase
         $mandate = ['command_id' => (string) Str::uuid(), 'confirmed' => true, 'capacity' => 'client_mandate',
             'authority_reference' => 'Synthetic client mandate within the existing relationship', 'valid_until' => now()->addHour()->toIso8601String(),
             'previous_grant' => '0', 'authority_selection' => $agencyContext];
+        // This exact agency operating mandate was legitimately issued before
+        // closure. The final schema must keep its receipt and qualified rights.
+        $agency = $this->postJson($base.'/operating-mandate', $mandate)->assertOk()->json('data.grant_refs');
+        $oldMandateRows = $owner->table('security_action_grants')->whereIn('id', array_values($agency))->orderBy('id')->get()->toJson();
+        $this->upgradeBusinessAuthority();
+        $this->assertSame($oldMandateRows, $owner->table('security_action_grants')->whereIn('id', array_values($agency))->orderBy('id')->get()->toJson());
+        $this->postJson($base.'/operating-mandate', $mandate)->assertOk()->assertJsonPath('data.grant_refs', $agency);
         $directContext = $direct;
         $directContext['requirements'][0]['leaf_grant_id'] = (int) $original['a']['grant_refs']['business.context.read'];
-        $this->postJson($base.'/operating-mandate', [...$mandate, 'command_id' => (string) Str::uuid(),
-            'capacity' => 'responsible_business', 'authority_selection' => $directContext])->assertOk();
+        $directMandate = [...$mandate, 'command_id' => (string) Str::uuid(), 'capacity' => 'responsible_business', 'authority_selection' => $directContext];
+        $directOperating = $this->postJson($base.'/operating-mandate', $directMandate)->assertOk()->json('data.grant_refs');
         $this->getJson($base.'/data-use-journey?access='.$agencyRead)->assertOk()
-            ->assertJsonPath('data.operating_mandate.previous_grant', '0');
-        $this->postJson($base.'/operating-mandate', [...$mandate, 'capacity' => 'responsible_business'])->assertForbidden();
-        $agency = $this->postJson($base.'/operating-mandate', $mandate)->assertOk()->json('data.grant_refs');
+            ->assertJsonPath('data.operating_mandate.previous_grant', (string) $agency['business.data.use']);
+        $this->postJson($base.'/operating-mandate', [...$mandate, 'command_id' => (string) Str::uuid(), 'capacity' => 'responsible_business'])->assertForbidden();
         $limited = $agencyContext;
         $limited['requirements'][0]['leaf_grant_id'] = (int) $agency['business.link.manage'];
         $this->postJson($base.'/workspace-links', [...$link, 'command_id' => (string) Str::uuid(), 'effect' => 'end',
@@ -462,8 +476,8 @@ final class DataUseLicenseTest extends TestCase
         $this->postJson('/api/businesses/'.$original['a']['business_public_id'].'/workspace-links', $link)->assertOk();
         $read['command_id'] = (string) Str::uuid();
         $this->postJson('/api/businesses/'.$original['a']['business_public_id'].'/materials/read', $read)->assertForbidden();
-        $this->postJson($base.'/workspace-links', [...$link, 'command_id' => (string) Str::uuid(),
-            'effect' => 'add', 'expected_revision' => 2])->assertOk()->assertJsonPath('data.versions.link', 3);
+        $replacementLink = BusinessAuthorityFixture::legacyWorkspaceLink($original['business'], $workspace->id, $directManager, $original['user']->id);
+        $this->assertSame(3, $replacementLink->revision);
         $this->postJson($base.'/materials/read', $read)->assertForbidden();
         $this->getJson($base.'/data-use-journey?access='.$agencyRead)->assertForbidden();
         $replacementRoot = BusinessAuthorityFixture::root($original['business'], $original['user']->id,
@@ -476,10 +490,27 @@ final class DataUseLicenseTest extends TestCase
             'id' => (int) $owner->scalar("SELECT nextval('security_action_grants_id_seq')"),
             'created_at' => $replacementStart], $original['user']->id)->id;
         $agencyContext['requirements'][0]['leaf_grant_id'] = $replacementRead;
-        $replacement = $this->postJson($base.'/operating-mandate', [...$mandate, 'command_id' => (string) Str::uuid(),
-            'previous_grant' => $agency['business.data.use'], 'authority_selection' => $agencyContext])->assertOk()->json('data.grant_refs');
-        $read['authority_selection']['requirements'][0]['leaf_grant_id'] = (int) $replacement['business.data.use'];
+        $this->postJson($base.'/operating-mandate', [...$mandate, 'command_id' => (string) Str::uuid(),
+            'previous_grant' => $agency['business.data.use'], 'authority_selection' => $agencyContext])->assertForbidden();
         $this->postJson($base.'/materials/read', $read)->assertForbidden();
+        // New Workspace-backed mandates are retired. Independent Business
+        // responsibility and its separately qualified source/data rights remain.
+        $beforeRenewal = $owner->table('security_action_grants')->count();
+        $this->postJson($base.'/operating-mandate', [...$directMandate, 'command_id' => (string) Str::uuid(),
+            'previous_grant' => $directOperating['business.data.use']])->assertConflict();
+        $this->assertSame($beforeRenewal, $owner->table('security_action_grants')->count(), 'An active direct mandate cannot be implicitly renewed.');
+        $replacement = $this->postJson($base.'/operating-mandate', $directMandate)->assertOk()->json('data.grant_refs');
+        $this->assertSame($directOperating, $replacement);
+        $directRead = $original['body'];
+        $directRead['command_id'] = (string) Str::uuid();
+        foreach ($directRead['authority_selection']['requirements'] as &$requirement) {
+            if ($requirement['requirement_kind'] === 'business') {
+                $requirement['leaf_grant_id'] = (int) $replacement['business.data.use'];
+            }
+        }
+        unset($requirement);
+        $this->postJson($base.'/materials/read', $directRead)->assertOk()->assertJsonPath('data.materials.0.fields.spend.amount', '17');
+        $this->postJson($base.'/materials/read', [...$read, 'command_id' => (string) Str::uuid()])->assertForbidden();
     }
 
     public function test_historical_non_delegable_scope_is_not_reinterpreted_as_a_named_licence(): void

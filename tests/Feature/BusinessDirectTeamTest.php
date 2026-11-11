@@ -119,8 +119,11 @@ final class BusinessDirectTeamTest extends TestCase
             }
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
             foreach ($tables as $table) {
-                $this->assertSame($before[$table], $db->scalar("SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]')::text FROM {$table} r"));
+                $image = $table === 'authority_qualification_receipts'
+                    ? "to_jsonb(r)-ARRAY['agency_business_id','agency_membership_grant_id']" : 'to_jsonb(r)';
+                $this->assertSame($before[$table], $db->scalar("SELECT coalesce(jsonb_agg({$image} ORDER BY ({$image})::text),'[]')::text FROM {$table} r"));
             }
+            $this->assertSame(0, $db->table('authority_qualification_receipts')->whereNotNull('agency_business_id')->orWhereNotNull('agency_membership_grant_id')->count(), 'Upgrade must not infer any agency or employee eligibility for historical qualifications.');
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
             $this->getJson('/api/businesses/'.$file['business_public_id'].'/surface?access='.$file['grant_refs']['business.context.read'])
                 ->assertOk()->assertJsonPath('data.direct_team_enrollment_available', true)->assertJsonPath('data.private_history_available', true);

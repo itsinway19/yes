@@ -3,11 +3,22 @@ export function authEntryContracts({ ref, text, object, list, nullable, response
     const probe = [{ in: 'query', name: 'webauthn_probe', required: false, schema: { type: 'string', pattern: '^[0-9a-f]{16}$' }, description: 'Non-secret local diagnostic correlation only; never authentication evidence.' }];
     const options = operationId => ({ operationId, security, parameters: probe, responses: { 200: response(ref('AccountPasskeyOptions')), ...errors } });
     const read = operationId => ({ operationId, security, parameters: headers, responses: { 200: response({ oneOf: [ref('AuthEntryResource'), ref('AuthEntryWitness')] }), 302: { description: 'Existing Laravel access/intended destination redirect.' }, ...failures } });
-    const authenticate = (operationId, schema) => ({ operationId, security, ...(schema === 'AuthPasskeyCommand' ? { parameters: probe } : {}), description: 'Existing JSON identity transition contract. The shared transport verifies its acknowledgement and departs to a new native document; the browser never adopts the returned identity.', requestBody: { required: true, ...json(ref(schema)) }, responses: { 200: response(ref('AuthTransitionResponse')), 302: { description: 'Existing Laravel access middleware redirect, not an authentication success acknowledgement.' }, ...failures } });
+    const authenticate = (operationId, schema) => ({ operationId, security, ...(schema === 'AuthPasskeyCommand' ? { parameters: probe } : {}), description: 'Existing JSON identity transition contract. The shared transport verifies its acknowledgement and departs to a new native document; the browser never adopts the returned identity.', requestBody: { required: true, ...json(ref(schema)) }, responses: { 200: response(ref('AuthTransitionResponse')), 302: { description: 'Existing Laravel access middleware redirect, not an authentication success acknowledgement.' }, ...failures, ...(schema === 'AuthRegistrationCommand' ? { 503: { description: 'A classified password-safety outage rejects registration before account creation. Other service failures remain unclassified.', ...json({ anyOf: [ref('PasswordBreachUnavailableError'), ref('Error')] }) } } : {}) } });
+    const attemptId = { ...text, format: 'uuid' };
+    const email = { ...text, format: 'email', maxLength: 255 };
+    const registrationProof = (operationId, schema) => ({
+        operationId, security,
+        ...(schema ? { requestBody: { required: true, ...json(ref(schema)) } } : {}),
+        description: 'Guest advertiser document-bound registration proof. This operation does not authenticate a principal.',
+        responses: { 200: response(ref('RegistrationEmailState')), ...failures },
+    });
     return {
         paths: {
             '/login': { get: read('readLoginEntry'), post: authenticate('authenticateAdvertiser', 'AuthPasswordCommand') },
             '/register': { get: read('readRegistrationEntry'), post: authenticate('registerAdvertiser', 'AuthRegistrationCommand') },
+            '/register/email': { get: registrationProof('readRegistrationEmail'), post: registrationProof('sendRegistrationCode', 'RegistrationEmailCommand') },
+            '/register/email/verify': { post: registrationProof('verifyRegistrationCode', 'RegistrationCodeCommand') },
+            '/register/email/cancel': { post: registrationProof('cancelRegistrationEmail', 'RegistrationAttemptCommand') },
             '/identity/switch': { get: read('readIdentitySwitchEntry'), post: authenticate('switchAdvertiser', 'AuthPasswordCommand') },
             '/forgot-password': { get: read('readRecoveryEntry') },
             '/reset-password/{token}': { get: { ...read('readResetEntry'), parameters: [...headers, { in: 'path', name: 'token', required: true, schema: text }] } },
@@ -26,12 +37,22 @@ export function authEntryContracts({ ref, text, object, list, nullable, response
             '/internal/locale': { post: { operationId: 'setInternalLocale', security, requestBody: { required: true, ...json(object({ locale: { enum: ['ar', 'en'] } })) }, responses: { 200: response(object({ locale: { enum: ['ar', 'en'] } })), ...errors } } },
         },
         schemas: {
+            PasswordBreachUnavailableError: object({ message: text, code: { const: 'password_breach_unavailable' } }),
             InternalAuthTransitionResponse: object({ transition: object({ lineage: { ...text, format: 'uuid' }, boundary: { const: 'internal' }, epoch: { type: 'integer', minimum: 1 }, nonce: text, kind: { const: 'login' }, status: { const: 'active' } }), identity: ref('AuthIdentityEvidence'), redirect: text }),
             AuthEntryVisibility: { oneOf: [object({ protected: { const: false }, path: text, context: { type: 'null' } }), object({ protected: { const: true }, path: text, context: text })] },
             AuthEntryWitness: object({ visibility: ref('AuthEntryVisibility') }),
             AuthEntryResource: object({ data: ref('AuthEntryData'), locale: { enum: ['ar', 'en'] }, visibility: ref('AuthEntryVisibility') }),
             AuthPasswordCommand: object({ email: { ...text, format: 'email' }, password: text, remember: { type: 'boolean' } }, ['email', 'password']),
-            AuthRegistrationCommand: object({ name: { ...text, maxLength: 255 }, email: { ...text, format: 'email', maxLength: 255 }, password: text, password_confirmation: text }),
+            AuthRegistrationCommand: object({ name: { ...text, maxLength: 255 }, email, password: text, password_confirmation: text, attempt_id: attemptId }),
+            RegistrationEmailCommand: object({ email }),
+            RegistrationCodeCommand: object({ attempt_id: attemptId, code: { ...text, pattern: '^[0-9]{6}$' } }),
+            RegistrationAttemptCommand: object({ attempt_id: attemptId }),
+            RegistrationEmailState: {
+                oneOf: [
+                    object({ state: { const: 'none' } }),
+                    object({ state: { enum: ['code_required', 'verified'] }, email, attempt_id: attemptId, resend_after: { type: 'integer', minimum: 0 } }),
+                ],
+            },
             AuthPasskeyCommand: object({ credential: object({ id: text, rawId: text, type: { const: 'public-key' }, response: object({}, [], true) }, undefined, true) }),
             AuthIdentityBinding: object({ lineage: { ...text, format: 'uuid' }, epoch: { type: 'integer', minimum: 0 }, boundary: { enum: ['advertiser', 'internal'] }, credential: text, principal: { type: 'integer', minimum: 0 }, lifecycle: { type: 'integer', minimum: 0 }, context: text, generation: text }),
             AuthIdentityEvidence: object({ receipt: text, binding: ref('AuthIdentityBinding'), csrf: text, transition: text, leaseMilliseconds: { type: 'number', exclusiveMinimum: 0 }, renewalProtocol: { enum: [0, 1] } }),

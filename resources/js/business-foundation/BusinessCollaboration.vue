@@ -8,7 +8,7 @@ import { writeLink, type LinkCommand, type Surface } from './api';
 const props = defineProps<{ surface: Surface; refreshing?: boolean }>();
 const emit = defineEmits<{ refresh: [] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
-const metadata = computed(() => props.surface.collaboration);
+const metadata = computed(() => props.surface.collaboration ?? { options: [], workspaces: [], relationships: [], workspace_more: false });
 const options = computed(() => metadata.value.options.filter(option => Number.isSafeInteger(Number(option.grant_id))));
 const resourceKey = `${key(props.surface.business.business_public_id, props.surface.authority_selection)}:relationships:1`;
 function concealDraft(value: LinkDraft) { Object.assign(value, { workspace: '', kind: 'collaboration', selected: '', version: 0, linkRef: null, confirmed: false, blocked: true }); }
@@ -26,7 +26,7 @@ const canManage = computed(() => !draft.blocked && !!selected.value && !props.re
 const latest = computed(() => metadata.value.relationships.find(row => row.workspace_public_id === draft.workspace && row.kind === draft.kind));
 const available = computed(() => metadata.value.workspaces.some(workspace => workspace.public_id === draft.workspace));
 const stale = computed(() => !!draft.workspace && (draft.version !== (latest.value?.revision ?? 0) || draft.linkRef !== (latest.value?.link_ref ?? null)));
-const canAdd = computed(() => canManage.value && available.value && !stale.value && latest.value?.state !== 'active' && (draft.kind !== 'agency' || selected.value?.allows_agency));
+const canAdd = computed(() => draft.kind === 'collaboration' && canManage.value && available.value && !stale.value && latest.value?.state !== 'active');
 function review() {
     if (draft.pending || busy.value) return;
     draft.version = latest.value?.revision ?? 0; draft.linkRef = latest.value?.link_ref ?? null;
@@ -53,7 +53,7 @@ async function execute(body: LinkCommand) {
         const result = await writeLink(business, frozen);
         if (disposed || !owned(captured)) return;
         if (result.business_public_id !== business || result.workspace_public_id !== frozen.workspace_public_id || result.kind !== (frozen.kind ?? 'collaboration')) throw Error('Relationship acknowledgement target mismatch');
-        draft.pending = undefined; draft.uncertain = false; draft.workspace = ''; draft.confirmed = true;
+        draft.pending = undefined; draft.uncertain = false; draft.workspace = ''; draft.kind = 'collaboration'; draft.confirmed = true;
         emit('refresh');
     } catch (error) {
         if (disposed || !owned(captured)) return;
@@ -75,7 +75,7 @@ function add() {
     if (draft.pending) { void execute(draft.pending); return; }
     if (canAdd.value) void execute(command('add', draft.workspace, draft.kind, draft.version));
 }
-function end(row: Surface['collaboration']['relationships'][number]) {
+function end(row: NonNullable<Surface['collaboration']>['relationships'][number]) {
     if (!canManage.value || draft.pending || row.state !== 'active' || row.kind === 'internal_team' || row.kind === 'agency' && !selected.value?.allows_agency) return;
     draft.workspace = row.workspace_public_id; draft.kind = row.kind;
     void execute(command('end', row.workspace_public_id, row.kind, row.revision));
@@ -84,8 +84,8 @@ function end(row: Surface['collaboration']['relationships'][number]) {
 
 <template>
     <section class="bf-card bf-collaboration" data-business-collaboration>
-        <h2>{{ t('الفريق والتعاون', 'Team and collaboration') }}</h2>
-        <p>{{ t('اربط هذا النشاط بمساحة تديرها، أو أنهِ العلاقة القائمة. الربط لا يمنح أعضاء المساحة حق قراءة بيانات النشاط أو العميل؛ التفويض وحقوق البيانات مستقلان.', 'Link this business to a workspace you manage, or end its current relationship. Linking does not grant members access to business or client data; delegation and data rights remain independent.') }}</p>
+        <h2>{{ t('علاقات النشاط الحالية', 'Current business relationships') }}</h2>
+        <p>{{ t('راجع علاقات الموارد القائمة أو أنهِ علاقة سابقة. ربط مورد قائم لا يمنح أعضاء الجهة حق قراءة بيانات النشاط أو العميل؛ التفويض وحقوق البيانات مستقلان.', 'Review existing resource relationships or end a prior relationship. Linking an existing resource does not grant organization members access to business or client data; delegation and data rights remain independent.') }}</p>
         <p v-if="!options.length || draft.blocked" role="status" data-collaboration-readonly>{{ t('لا يوجد تفويض مؤهل معروض لإدارة علاقات هذا النشاط في السياق الحالي.', 'No qualified delegation for managing these relationships is available in this context.') }}</p>
         <p v-if="draft.blocked && draft.pending" role="status">{{ t('الطلب الأصلي محفوظ وغير محسوم. راجع وصولك الحالي قبل المتابعة.', 'The unresolved original request is retained. Review current access before continuing.') }}</p>
         <template v-if="options.length && !draft.blocked">
@@ -106,8 +106,7 @@ function end(row: Surface['collaboration']['relationships'][number]) {
                 <fieldset :disabled="busy || refreshing || !!draft.pending || draft.blocked">
                     <label v-if="options.length > 1" for="bf-link-grant">{{ t('تفويض إدارة العلاقة', 'Relationship delegation') }}<select id="bf-link-grant" v-model="draft.selected"><option value="">{{ t('اختر التفويض', 'Choose delegation') }}</option><option v-for="(option, index) in options" :key="option.grant_id" :value="option.grant_id">{{ t('تفويض', 'Delegation') }} {{ index + 1 }}{{ option.allows_agency ? t(' — يسمح بعلاقة وكالة', ' — allows agency relationships') : t(' — تعاون فقط', ' — collaboration only') }}</option></select></label>
                     <label for="bf-link-workspace">{{ t('معرّف مساحة التعاون', 'Collaboration workspace identifier') }}</label><select id="bf-link-workspace" v-model="draft.workspace"><option value="">{{ t('اختر المساحة المؤهلة', 'Choose a qualified workspace') }}</option><option v-for="workspace in metadata.workspaces" :key="workspace.public_id" :value="workspace.public_id">{{ workspace.slug }}</option></select>
-                    <label for="bf-link-kind">{{ t('نوع العلاقة', 'Relationship type') }}</label><select id="bf-link-kind" v-model="draft.kind"><option value="collaboration">{{ t('تعاون', 'Collaboration') }}</option><option v-if="selected?.allows_agency" value="agency">{{ t('علاقة وكالة مفوضة', 'Qualified agency relationship') }}</option></select>
-                    <p v-if="selected && !selected.allows_agency">{{ t('هذا التفويض لا يكفي لإنشاء علاقة وكالة. لا تتحول المسودة أو ملكية المساحة إلى حق على عميل.', 'This delegation cannot establish agency authority. A draft or workspace ownership does not confer client rights.') }}</p>
+                    <p>{{ t('تُحفظ العلاقات السابقة وحقوقها الأصلية. التفويض الجديد لجهة أخرى يُدار من «التفويض بين الأنشطة». لا يُنشأ تفويض وكالة عبر مساحة.', 'Previous relationships retain their original authority. New delegation to another business is managed under Business delegation. Workspace agency mandates are no longer created here.') }}</p>
                 </fieldset>
                 <p v-if="stale && !draft.pending && !refreshing" role="alert" data-collaboration-conflict>{{ t('تغيّرت العلاقة منذ اختيارها. لم نبدّل الإصدار الأصلي تلقائيًا.', 'The relationship changed after selection. Its original revision has not been replaced automatically.') }}<button type="button" :disabled="busy" @click="review">{{ t('اعتماد الحالة المعروضة لطلب جديد', 'Use displayed state for a new request') }}</button></p>
                 <p v-if="latest?.state === 'active' && !draft.pending && !refreshing">{{ t('العلاقة المختارة نشطة بالفعل. يمكنك إنهاؤها من حالتها أعلاه.', 'This relationship is already active. You may end it above.') }}</p>

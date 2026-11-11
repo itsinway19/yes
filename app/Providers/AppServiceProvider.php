@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Auth\AuthorityUserProvider;
 use App\Models\User;
+use App\Notifications\RegistrationCode;
 use App\Notifications\SecurityNotice;
 use App\Notifications\SecurityResetPassword;
 use App\Notifications\SecurityVerifyEmail;
@@ -67,6 +68,7 @@ class AppServiceProvider extends ServiceProvider
     {
         return $notification instanceof SecurityVerifyEmail ||
             $notification instanceof SecurityResetPassword ||
-            $notification instanceof SecurityNotice;
+            $notification instanceof SecurityNotice ||
+            $notification instanceof RegistrationCode;
     }
 }

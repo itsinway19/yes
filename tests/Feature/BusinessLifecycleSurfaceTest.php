@@ -116,6 +116,8 @@ final class BusinessLifecycleSurfaceTest extends TestCase
             $before = $this->rows();
             $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
             $this->assertSame($before, $this->rows());
+            $this->assertSame(0, $db->table('authority_qualification_receipts')->whereNotNull('agency_business_id')->count());
+            $this->assertSame(0, $db->table('authority_qualification_receipts')->whereNotNull('agency_membership_grant_id')->count());
             $response = $this->getJson($this->url($draft))->assertOk()->assertJsonPath('data.lifecycle.revision', 0);
             $this->assertApplicationContract('BusinessSurfaceResult', $response->json());
             $this->assertSame((string) $draft['grant_refs']['business.draft.archive'], $response->json('data.lifecycle.archive_options.0.grant_id'));
@@ -130,7 +132,9 @@ final class BusinessLifecycleSurfaceTest extends TestCase
         $db = DB::connection('pgsql_migrations');
         $rows = [];
         foreach (['businesses', 'security_action_grants', 'authority_qualification_receipts', 'business_command_receipts'] as $table) {
-            $rows[$table] = $db->scalar("SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]')::text FROM {$table} r");
+            // Migration750 adds nullable agency references; every historical field stays identical.
+            $image = $table === 'authority_qualification_receipts' ? "to_jsonb(r)-ARRAY['agency_business_id','agency_membership_grant_id']" : 'to_jsonb(r)';
+            $rows[$table] = $db->scalar("SELECT coalesce(jsonb_agg({$image} ORDER BY ({$image})::text),'[]')::text FROM {$table} r");
         }
 
         return $rows;

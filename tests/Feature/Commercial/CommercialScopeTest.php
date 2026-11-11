@@ -157,7 +157,7 @@ class CommercialScopeTest extends TestCase
         foreach ([[], ['SA', 'AE']] as $index => $codes) {
             $advertiser = User::factory()->create();
             app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($advertiser, 1);
-            $this->actingAs($advertiser)->post('/workspaces', ['name' => 'DTM independent Commercial', 'slug' => 'commercial-dtm-'.$index])->assertRedirect();
+            $this->actingAs($advertiser)->legacyWorkspace(['name' => 'DTM independent Commercial', 'slug' => 'commercial-dtm-'.$index])->assertRedirect();
             $workspace = $this->owner()->table('workspaces')->where('slug', 'commercial-dtm-'.$index)->first();
             $file = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Independent declared markets'])->assertCreated()->json('data');
             $businessId = $this->owner()->table('businesses')->where('public_id', $file['business_public_id'])->value('id');

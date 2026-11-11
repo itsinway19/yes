@@ -10,12 +10,7 @@ import { locale } from '../spa/locale';
 import AdvertiserWorkspaceLayout from '../business-foundation/AdvertiserWorkspaceLayout.vue';
 import OrganizationTeam from '../workspaces/OrganizationTeam.vue';
 import { hasPendingTeamCommand } from '../workspaces/team';
-const organizationView = ref<'accounts' | 'team'>('accounts');
 const teamVisited = ref(false);
-function openTeam() {
-    teamVisited.value = true;
-    organizationView.value = 'team';
-}
 const returning = computed(() => current.value ? businessReturn(current.value.data.workspace.public_id) : undefined);
 const copy = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const canLeave = () => (!pending.size && !hasPendingTeamCommand()) || confirm(copy('توجد أوامر غير محسومة. هل تريد المغادرة مع الاحتفاظ بها في هذا المستند؟', 'Some commands have unknown outcomes. Leave while retaining them in this document?'));
@@ -28,17 +23,17 @@ onBeforeUnmount(() => { if (confirmDeparture.value === canLeave) confirmDepartur
 <template>
     <div v-if="current" data-spa-private :data-sources-workspace="current.data.workspace.public_id">
         <AdvertiserWorkspaceLayout :context="current.data.workspace.name" :workspace-id="current.data.workspace.public_id" workspace-context>
-            <nav class="advertiser-breadcrumb" :aria-label="copy('مسار الصفحة', 'Breadcrumb')"><RouterLink to="/businesses">{{ copy('أنشطتي', 'My businesses') }}</RouterLink><span aria-hidden="true">/</span><RouterLink to="/workspaces">{{ copy('جهات العمل والفريق', 'Organizations and team') }}</RouterLink><span aria-hidden="true">/</span><span aria-current="page">{{ current.data.workspace.name }}</span></nav>
+            <nav class="advertiser-breadcrumb" :aria-label="copy('مسار الصفحة', 'Breadcrumb')"><RouterLink to="/businesses">{{ copy('أنشطتي', 'My businesses') }}</RouterLink><span aria-hidden="true">/</span><RouterLink to="/workspaces">{{ copy('الموارد والسجلات السابقة', 'Previous resources and records') }}</RouterLink><span aria-hidden="true">/</span><span aria-current="page">{{ current.data.workspace.name }}</span></nav>
             <RouterLink v-if="returning" class="business-return-link" data-business-return :to="businessReturnPath(returning)">{{ copy('العودة إلى مصادر النشاط', 'Return to business sources') }}</RouterLink>
-            <nav class="organization-sections" :aria-label="copy('إدارة الجهة', 'Organization administration')">
-                <button type="button" :aria-current="organizationView === 'accounts' ? 'page' : undefined" @click="organizationView = 'accounts'">{{ copy('الحسابات والمصادر', 'Accounts and sources') }}</button>
-                <button type="button" :aria-current="organizationView === 'team' ? 'page' : undefined" @click="openTeam">{{ copy('الفريق', 'Team') }}</button>
-            </nav>
-            <section v-if="teamVisited" v-show="organizationView === 'team'">
-                <header class="bf-heading"><div><h1>{{ copy('الفريق', 'Team') }}</h1><p>{{ copy('راجع أعضاء الجهة هنا. لتوزيع العمل على نشاط معيّن، افتحه من قائمة الأنشطة المتاحة لك.', 'Review organization members here. To assign work on a specific business, open it from your available businesses.') }}</p></div><RouterLink class="bf-link" to="/businesses">{{ copy('فتح الأنشطة المتاحة', 'Open available businesses') }}</RouterLink></header>
+            <aside class="bf-card" data-legacy-resource-notice><h1>{{ copy('سجل موارد سابق', 'Previous resource record') }}</h1><p>{{ copy('هذا السجل ليس نشاطًا تجاريًا أو فريقًا جديدًا. احتُفظ بموارده وأذوناته وتاريخه، ولا تُنقل إلى نشاط آخر دون تأهيل صريح.', 'This record is not a Business or a new team. Its resources, permissions and history are preserved and do not transfer to another Business without explicit qualification.') }}</p><RouterLink class="bf-link" to="/businesses">{{ copy('إدارة أنشطتي وفريقها', 'Manage my businesses and their teams') }}</RouterLink></aside>
+            <div class="sources-page"><Sources v-bind="current.data" /></div>
+            <details class="bf-card" data-legacy-resource-permissions @toggle="teamVisited = true">
+                <summary>{{ copy('أذونات السجل السابق', 'Previous record permissions') }}</summary>
+                <p>{{ copy('تُدار هنا فقط العضوية التي تعتمد عليها أذونات هذا السجل القديم. فريق النشاط وتكليف موظفي الوكالة يُداران داخل النشاط المعني.', 'Manage only the membership required by this old record’s permissions here. Business teams and agency employee assignments are managed inside the relevant Business.') }}</p>
+                <section v-if="teamVisited">
                 <OrganizationTeam :key="current.data.workspace.public_id" :workspace="current.data.workspace.public_id" />
-            </section>
-            <div v-show="organizationView === 'accounts'" class="sources-page"><Sources v-bind="current.data" /></div>
+                </section>
+            </details>
         </AdvertiserWorkspaceLayout>
     </div>
 </template>

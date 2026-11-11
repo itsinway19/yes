@@ -1,6 +1,6 @@
 import { onClose, scope, TransportError } from '../spa/transport';
 import { hasPendingDataLicense } from './dataLicenseJourney';
-import type { ContextCommand, CreateCommand, DraftResult, FactCommand, FactKind, Goals, LinkCommand, GrantCommand, ResourceCommand, BindingCommand, InternalTeamCommand, LifecycleCommand } from './api';
+import type { ContextCommand, FactCommand, FactKind, Goals, LinkCommand, GrantCommand, ResourceCommand, BindingCommand, InternalTeamCommand, LifecycleCommand } from './api';
 type DeliveryState = { uncertain?: boolean; blocked?: boolean };
 // Delivery uncertainty is document state, not authority. A first validation
 // rejection is definitive; a canonical typed CAS rejection follows receipt lookup.
@@ -28,6 +28,20 @@ export const delegationDrafts = new Map<string, DelegationDraft>();
 export type InternalTeamDraft = { workspace: string; recipient: string; confirmed: boolean; pending?: InternalTeamCommand; uncertain?: boolean; notice: string };
 export const internalTeamDrafts = new Map<string, InternalTeamDraft>();
 export const directTeamDrafts = new Map<string, { confirmed: boolean; pending?: import('./api').DirectTeamEnrollment; blocked: boolean; notice: string }>();
+export type AgencyTeamDraft = { mode: 'mandate' | 'assign'; agency: string; recipient: string; action: string; expires: string;
+    confirmed: boolean; pending?: import('./api').AgencyGrantCommand; uncertain: boolean; blocked: boolean;
+    outcome: '' | 'unavailable' | 'empty' | 'unknown' | 'denied' | 'rejected' | 'recorded' | 'context' };
+export const agencyTeamDrafts = new Map<string, AgencyTeamDraft>();
+export type EmployeeAssignmentReference = { business: string; readGrant: string; resource: string; employee: string };
+export type TeamMembersDraft = { mode: '' | 'add' | 'edit' | 'remove'; email: string; recipient_public_id: string; permissions: string[];
+    expected: { grant_id: string; version: number }[]; expiryMode: 'unreviewed' | 'indefinite' | 'until'; expires: string;
+    confirmed: boolean; pending?: import('./api').BusinessTeamCommand; uncertain: boolean; blocked: boolean;
+    outcome: '' | 'unavailable' | 'recipient_unavailable' | 'unknown' | 'denied' | 'rejected' | 'recorded'; assignment?: EmployeeAssignmentReference };
+export const teamMembersDrafts = new Map<string, TeamMembersDraft>();
+export type BusinessMandatesDraft = { agency: string; expected: { grant_id: string; version: number }[]; confirmed: boolean;
+    pending?: import('./api').AgencyMandatesCommand; uncertain: boolean; blocked: boolean;
+    outcome: '' | 'unavailable' | 'unknown' | 'denied' | 'rejected' | 'withdrawn' };
+export const businessMandatesDrafts = new Map<string, BusinessMandatesDraft>();
 export const purposeEnrollmentDrafts = new Map<string, { confirmed: boolean; pending?: import('./api').PurposeStatementEnrollment; blocked: boolean; notice: string }>();
 export type BoundaryDraft = DeliveryState & { choice: string; selected: string; revision: number; membership: string | null;
     pending?: ResourceCommand; confirmed: boolean; notice: string; blocked: boolean };
@@ -38,15 +52,17 @@ export const sourceDrafts = new Map<string, SourceDraft>();
 export type DataUseDraft = DeliveryState & { selected: string; manager: string; baselineScope: string; baselineRevision: number; confirmed: boolean;
     pending?: { kind: 'binding'; business: string; body: BindingCommand } | { kind: 'surrender'; body: ResourceCommand }; notice: string; acknowledged: boolean; blocked: boolean };
 export const dataUseDrafts = new Map<string, DataUseDraft>();
-export const creation: { name: string; type: number | null; codes: string[]; pending?: CreateCommand; receipt?: DraftResult; marketPending?: Extract<FactCommand, {kind:'markets'}>; marketsSaved: boolean } = { name: '', type: null, codes: [], marketsSaved: false };
+export const creation = new Map<string, string>();
 // This in-document store is deliberately not shared with another principal or lifecycle.
 export function key(business: string, realm: unknown) { return JSON.stringify([scope, business, realm, 'business.context:1']); }
 export const businessDraftPrefix = (business: string) => `${JSON.stringify([scope, business]).slice(0, -1)},`;
 export function hasPendingBusinessDraft(business: string) {
     if (hasPendingDataLicense(business)) return true;
-    if (creation.receipt?.business_public_id === business && creation.marketPending) return true;
+    if ([...creation.values()].includes(business)) return true;
     const prefix = businessDraftPrefix(business);
-    return [drafts, factDrafts, linkDrafts, delegationDrafts, internalTeamDrafts, directTeamDrafts, purposeEnrollmentDrafts, dataUseDrafts, lifecycleDrafts]
+    if ([...teamMembersDrafts].some(([resource, draft]) => resource.startsWith(prefix) && draft.assignment
+        && (!!agencyTeamDrafts.get(draft.assignment.resource)?.pending || !!delegationDrafts.get(`${draft.assignment.resource}:delegations:1`)?.pending))) return true;
+    return [drafts, factDrafts, linkDrafts, delegationDrafts, internalTeamDrafts, directTeamDrafts, agencyTeamDrafts, teamMembersDrafts, businessMandatesDrafts, purposeEnrollmentDrafts, dataUseDrafts, lifecycleDrafts]
         .some(store => [...store].some(([resource, draft]) => resource.startsWith(prefix) && !!draft.pending));
 }
-onClose(() => { drafts.clear(); lifecycleDrafts.clear(); factDrafts.clear(); linkDrafts.clear(); delegationDrafts.clear(); internalTeamDrafts.clear(); directTeamDrafts.clear(); purposeEnrollmentDrafts.clear(); boundaryDrafts.clear(); sourceDrafts.clear(); dataUseDrafts.clear(); Object.assign(creation, { name: '', type: null, codes: [], pending: undefined, receipt: undefined, marketPending: undefined, marketsSaved: false }); });
+onClose(() => { drafts.clear(); lifecycleDrafts.clear(); factDrafts.clear(); linkDrafts.clear(); delegationDrafts.clear(); internalTeamDrafts.clear(); directTeamDrafts.clear(); agencyTeamDrafts.clear(); teamMembersDrafts.clear(); businessMandatesDrafts.clear(); purposeEnrollmentDrafts.clear(); boundaryDrafts.clear(); sourceDrafts.clear(); dataUseDrafts.clear(); creation.clear(); });

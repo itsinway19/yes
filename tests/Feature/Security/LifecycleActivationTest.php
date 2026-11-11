@@ -6,30 +6,38 @@ use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
+use Tests\Support\RegistrationEmailProofFixture;
 use Tests\TestCase;
 
 class LifecycleActivationTest extends TestCase
 {
+    use RegistrationEmailProofFixture;
+
     public function test_registration_stays_pending_until_verified_and_repeated_verification_is_idempotent(): void
     {
         $this->useIdentityDocument('/register');
-        $response = $this->post('/register', [
+        $command = [
             'name' => 'Advertiser',
             'email' => 'advertiser@example.com',
             'password' => 'long unique password 2026',
             'password_confirmation' => 'long unique password 2026',
-        ]);
-
-        $user = User::query()->where('email', 'advertiser@example.com')->firstOrFail();
-        $response->assertOk()->assertJsonPath('redirect', route('verification.notice', absolute: false));
+        ];
+        // Registration730 verifies email before creating the advertiser. A pending
+        // attempt has no account, lifecycle, session or grant to activate.
+        $this->post('/register', $command)->assertSessionHasErrors('attempt_id');
+        $code = $this->issueRegistrationCode($command['email']);
+        $this->post('/register', [...$command, 'attempt_id' => $code['attempt_id']])->assertSessionHasErrors('attempt_id');
+        $this->assertGuest();
+        foreach (['users', 'principal_lifecycles', 'security_sessions', 'security_action_grants'] as $table) {
+            $this->assertSame(0, DB::connection('pgsql_migrations')->table($table)->count(), $table);
+        }
+        $this->postJson('/register/email/verify', $code)->assertOk()->assertJsonPath('state', 'verified');
+        $this->assertDatabaseCount('users', 0);
+        $this->post('/register', [...$command, 'attempt_id' => $code['attempt_id']])
+            ->assertOk()->assertJsonPath('redirect', '/businesses/new');
+        $user = User::query()->where('email', $command['email'])->firstOrFail();
         $this->assertAuthenticatedAs($user);
-        $this->assertDatabaseHas('principal_lifecycles', [
-            'user_id' => $user->id,
-            'status' => 'pending',
-            'generation' => 0,
-        ]);
-        $this->assertSame(0, DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $user->id)->count());
-        $this->get('/dashboard')->assertRedirect(route('verification.notice', absolute: false));
+        $this->assertTrue($user->hasVerifiedEmail());
 
         $url = URL::temporarySignedRoute('verification.verify', now()->addHour(), [
             'id' => $user->id,
@@ -51,7 +59,7 @@ class LifecycleActivationTest extends TestCase
         // instead of submitting the old pending document's signed receipt.
         $this->useIdentityDocument('/profile');
         $this->get('/dashboard')->assertRedirect(route('business-foundation.index-page', ['entry' => 1]));
-        $this->get('/organizations/new')->assertOk();
+        $this->get('/organizations/new')->assertRedirect('/businesses/new');
 
         $this->get($url)->assertRedirect();
         $this->assertSame(1, (int) DB::table('principal_lifecycles')->where('user_id', $user->id)->value('generation'));

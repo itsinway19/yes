@@ -376,9 +376,12 @@ try {
     const logged = await send(page, '/login', { email, password: 'DisposableGoalsProof42!' });
     assert.equal(logged.status, 200);
     await page.goto(origin + '/businesses/new');
-    await ready(page, '#bf-create-name');
+    await ready(page, '[data-wizard-step="sector"]');
+    for (const step of ['sector', 'practices', 'market', 'goal']) {
+        await page.locator(`[data-wizard-step="${step}"] [data-wizard-next]`).click();
+    }
     await page.locator('#bf-create-name').fill('نشاط اختبار ترخيص البيانات');
-    await page.locator('#bf-create-name').locator('xpath=ancestor::form').locator('button[type=submit]').click();
+    await page.locator('[data-wizard-step="review"] [data-wizard-next]').click();
     await ready(page, '[data-business-public]');
     const business = await page.locator('[data-business-public]').getAttribute('data-business-public');
     const base = `/api/businesses/${business}`;
