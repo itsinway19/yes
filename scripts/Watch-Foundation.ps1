@@ -12,7 +12,7 @@ do {
  $started=@($lines|Where-Object{$_ -like 'GOALS_SPA_GATE_START=*'}|ForEach-Object{$_ -replace '^GOALS_SPA_GATE_START=',''})
  $totalLine=@($lines|Where-Object{$_ -like 'GOALS_SPA_FOUNDATION_TOTAL=*'}|Select-Object -Last 1)
  $total=if($totalLine.Count){[int]($totalLine[0] -replace '^GOALS_SPA_FOUNDATION_TOTAL=','')}else{10}
- $terminal=@($lines|Where-Object{$_ -match '^GOALS_SPA_PROCESSES=STOPPED; EXIT=\d+$'}|Select-Object -Last 1)
+ $terminal=@($lines|Where-Object{$_ -match '^GOALS_SPA_(FINISHED=|PROCESSES=STOPPED; )EXIT=\d+$'}|Select-Object -Last 1)
  $status=if($failed.Count -or ($terminal.Count -and $terminal[0] -notmatch 'EXIT=0$')){'FAIL'}elseif($terminal.Count){'PASS'}else{'RUNNING'}
  if($status -eq 'FAIL' -and -not $failed.Count){$failed=@(if($started.Count -and $started[-1] -notin $passed){$started[-1]}else{'runner or process cleanup'})}
  $percent=[math]::Floor(100*$passed.Count/$total)

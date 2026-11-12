@@ -1,8 +1,9 @@
-param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation','workspaces','context','purpose','sources','account','auth','appearance','admin-ui','businesses','public-platform','market-knowledge','data-licenses','content')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='', [switch]$CreateBrowserFixture, [ValidateSet('default','reverse')][string]$TestOrder='default')
+param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation','workspaces','context','purpose','sources','account','auth','appearance','admin-ui','businesses','public-platform','market-knowledge','data-licenses','content')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='', [switch]$CreateBrowserFixture, [ValidateSet('default','reverse')][string]$TestOrder='default', [switch]$KeepCluster)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $proofRoot=Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $proofRoot
+. (Join-Path $PSScriptRoot 'GoalsSpaLifecycle.ps1')
 # Frozen dependency identity is a test precondition: matching lock files alone do not qualify a copied vendor.
 # Fail before starting services; do not repair dependencies or alter lock files inside the proof runner.
 $proofComposerLock=Get-Content -LiteralPath (Join-Path $proofRoot 'composer.lock') -Raw|ConvertFrom-Json -AsHashtable
@@ -16,32 +17,39 @@ $proofPackageRows={param($packages) foreach($package in $packages){
 $proofExpectedPackages=@(& $proofPackageRows (@($proofComposerLock['packages'])+@($proofComposerLock['packages-dev'])))
 $proofInstalledPackages=@(& $proofPackageRows $proofComposerInstalled['packages'])
 if($proofExpectedPackages.Count -ne $proofInstalledPackages.Count -or @(Compare-Object $proofExpectedPackages $proofInstalledPackages -CaseSensitive).Count){throw 'Installed Composer packages do not match composer.lock; run frozen Composer install before tests'}
-$proofRun=Join-Path $proofRoot ('storage/framework/testing/goals-spa-'+[guid]::NewGuid())
+$proofTestingRoot=Join-Path $proofRoot 'storage/framework/testing'
+$proofOwner=[guid]::NewGuid().ToString()
+$proofRun=Join-Path $proofTestingRoot ('goals-spa-'+$proofOwner)
+if(($ReuseRun -or $ClusterDataPath) -and -not $KeepCluster){throw 'ReuseRun and ClusterDataPath require explicit -KeepCluster'}
 if($ReuseRun){
  $proofRun=[IO.Path]::GetFullPath($ReuseRun)
- $proofPrefix=[IO.Path]::GetFullPath((Join-Path $proofRoot 'storage/framework/testing/goals-spa-'))
- if(-not $proofRun.StartsWith($proofPrefix) -or -not (Test-Path -LiteralPath (Join-Path $proofRun 'proof-token.txt'))){throw 'Reuse requires a recorded task-owned run'}
- $proofAttempt=@(Get-ChildItem -LiteralPath $proofRun -Filter 'browser-results-attempt-*.json').Count+1
- if(Test-Path -LiteralPath (Join-Path $proofRun 'browser-results.json')){Copy-Item -LiteralPath (Join-Path $proofRun 'browser-results.json') -Destination (Join-Path $proofRun "browser-results-attempt-$proofAttempt.json")}
- $proofArchive=[guid]::NewGuid().ToString()
- foreach($proofName in @('tests.xml','tests.log','source-manifest.json','source-unchanged.txt','browser.log')){
-  $proofPrior=Join-Path $proofRun $proofName
-  if(Test-Path -LiteralPath $proofPrior){Copy-Item -LiteralPath $proofPrior -Destination (Join-Path $proofRun ($proofArchive+'-'+$proofName))}
+ if([IO.Path]::GetDirectoryName($proofRun) -ne $proofTestingRoot -or [IO.Path]::GetFileName($proofRun) -notmatch '^goals-spa-[0-9a-f-]{36}$'){
+  throw 'Reuse requires a recorded task-owned run'
  }
+ Assert-ProofPlainPath (Join-Path $proofRun 'proof-token.txt')
+ Assert-ProofPlainPath (Join-Path $proofRun 'cluster-path.txt')
+ if(-not (Test-Path -LiteralPath (Join-Path $proofRun 'proof-token.txt') -PathType Leaf)){throw 'Reuse requires an isolation token'}
 }
-New-Item -ItemType Directory -Force -Path $proofRun | Out-Null
-if('Foundation' -eq $Phase){Write-Output "GOALS_SPA_FOUNDATION_RUN=$proofRun"}
 $proofDataPath=if($ClusterDataPath){[IO.Path]::GetFullPath($ClusterDataPath)}else{Join-Path $proofRun 'data'}
 if($ClusterDataPath){
  if(-not [IO.Path]::IsPathFullyQualified($ClusterDataPath)){throw 'ClusterDataPath must be absolute'}
  if(-not $ReuseRun -and (Test-Path -LiteralPath $proofDataPath)){throw 'New external proof cluster must not exist'}
- if($ReuseRun -and [IO.File]::ReadAllText((Join-Path $proofRun 'cluster-path.txt')) -ne $proofDataPath){throw 'External cluster must match its recorded task-owned path'}
 }
-[IO.File]::WriteAllText((Join-Path $proofRun 'cluster-path.txt'),$proofDataPath)
+Assert-ProofPlainPath $proofRun
+Assert-ProofPlainPath $proofDataPath
+if($ReuseRun -and ([IO.File]::ReadAllText((Join-Path $proofRun 'cluster-path.txt')) -ne $proofDataPath -or
+  -not (Test-Path -LiteralPath (Join-Path $proofDataPath 'PG_VERSION') -PathType Leaf))){throw 'Reuse requires the existing recorded cluster path'}
+$proofProcesses=[Collections.Generic.List[object]]::new()
+$proofPostmaster=$null
+$proofStartAttempted=$false
+$proofOwnData=$false
+$proofLock=$null
+$proofRunReady=$false
+$proofFailures=[Collections.Generic.List[string]]::new()
 $proofPg='C:\Program Files\PostgreSQL\18\bin'
-$proofProcesses=@()
-$proofStarted=$false
 $proofExit=1
+$proofPrimaryError=$null
+$proofGateName=$null
 $proofSourceBefore=$null
 $proofEnvironmentPath=Join-Path $proofRoot '.env'
 $proofEnvironmentCreated=$false
@@ -56,16 +64,34 @@ function Get-ProofSource {
  }
  return $proofMap|ConvertTo-Json -Depth 4
 }
-function Invoke-ProofPsql([string[]]$Arguments) {
- & (Join-Path $proofPg 'psql.exe') -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres @Arguments
- if($LASTEXITCODE -ne 0){throw 'Proof PostgreSQL operation failed'}
-}
-function Invoke-ProofPhp([string[]]$Arguments) {
- & pwsh -NoProfile -File scripts/builderad.ps1 php @Arguments
- if($LASTEXITCODE -ne 0){throw 'Proof PHP operation failed'}
-}
 try {
- foreach($proofPort in @(5433,6397,8136,8137,8138)) {
+ Assert-ProofDiskSpace $proofDataPath
+ if([IO.Path]::GetPathRoot($proofRun) -ne [IO.Path]::GetPathRoot($proofDataPath)){Assert-ProofDiskSpace $proofRun}
+ if(-not $ReuseRun){New-Item -ItemType Directory -Path $proofRun | Out-Null}
+ if($ReuseRun){
+  $null=Get-ProofPlainTreeBytes $proofRun
+  if($ClusterDataPath){$null=Get-ProofPlainTreeBytes $proofDataPath}
+ }
+ $proofLockPath=Join-Path $proofRun 'runner.lock'
+ Assert-ProofPlainPath $proofLockPath
+ $proofLock=[IO.File]::Open($proofLockPath,[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+ $proofRunReady=$true
+ if($ReuseRun){
+  $archive=Join-Path $proofRun ('previous-'+$proofOwner)
+  New-Item -ItemType Directory -Path $archive | Out-Null
+  Get-ChildItem -LiteralPath $proofRun -File | Where-Object {
+   $_.Extension -in @('.log','.xml') -or $_.Name -in @('source-manifest.json','source-unchanged.txt','browser-results.json')
+  } | ForEach-Object {
+   Assert-ProofPlainPath $_.FullName
+   Copy-Item -LiteralPath $_.FullName -Destination $archive
+  }
+ }else{
+  [IO.File]::WriteAllText((Join-Path $proofRun 'cluster-path.txt'),$proofDataPath)
+  [IO.File]::WriteAllText((Join-Path $proofRun 'cluster-owner.txt'),$proofOwner)
+ }
+ 'GOALS_SPA_RUNNING' | Set-Content -LiteralPath (Join-Path $proofRun 'lifecycle.log')
+ if('Foundation' -eq $Phase){Write-Output "GOALS_SPA_FOUNDATION_RUN=$proofRun"}
+ foreach($proofPort in @(5433,8136,8137,8138)) {
   if(Get-NetTCPConnection -LocalPort $proofPort -State Listen -ErrorAction SilentlyContinue){throw "Proof port $proofPort is occupied; no existing service contacted"}
  }
  if(-not (Test-Path -LiteralPath $proofEnvironmentPath)){
@@ -73,11 +99,16 @@ try {
   $proofEnvironmentCreated=$true
  }
  if(-not $ReuseRun){
-  & (Join-Path $proofPg 'initdb.exe') -D $proofDataPath -U postgres -A trust --encoding=UTF8 --locale=C
-  if($LASTEXITCODE -ne 0){throw 'initdb failed'}
+  New-Item -ItemType Directory -Path $proofDataPath | Out-Null
+  $proofOwnData=$true
+  Initialize-ProofCluster $proofPg $proofDataPath
  }
- $proofCtl=Start-Process -FilePath (Join-Path $proofPg 'pg_ctl.exe') -ArgumentList @('-D',$proofDataPath,'-l',(Join-Path $proofRun 'postgres.log'),'-o','"-p 5433 -h 127.0.0.1 -c max_wal_size=128MB"','-w','start') -WindowStyle Hidden -PassThru
- $proofCtl.WaitForExit();if($proofCtl.ExitCode -ne 0){throw 'PostgreSQL start failed'};$proofStarted=$true
+ if(Test-Path -LiteralPath (Join-Path $proofDataPath 'postmaster.pid')){throw 'Cluster already has a postmaster PID file'}
+ $proofStartedAt=[datetime]::UtcNow
+ $proofStartAttempted=$true
+ Start-ProofPostgres $proofPg $proofDataPath (Join-Path $proofRun 'postgres.log')
+ $proofPostmaster=Get-ProofPostmaster $proofDataPath $proofStartedAt
+ Assert-ProofPostgresTarget $proofDataPath
  if(-not $ReuseRun){
   Invoke-ProofPsql @('-d','postgres','-f','database/bootstrap/postgresql.sql')
   Invoke-ProofPsql @('-d','builderad_test','-f','database/bootstrap/test-authority-role.sql')
@@ -87,10 +118,7 @@ try {
  }else{
   $proofToken=[IO.File]::ReadAllText((Join-Path $proofRun 'proof-token.txt'))
  }
- $proofRedisConfig=Join-Path $proofRun 'redis.conf'
- [IO.File]::WriteAllText($proofRedisConfig,"bind 127.0.0.1`nport 6397`nsave `"`"`nappendonly no`ndir $($proofRun.Replace('\','/'))`n")
- $proofRedis=Start-Process -FilePath 'C:\Program Files\Redis\redis-server.exe' -ArgumentList $proofRedisConfig -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $proofRun 'redis.log') -RedirectStandardError (Join-Path $proofRun 'redis-error.log')
- $proofProcesses+=,$proofRedis
+ $proofRedisPort=Start-ProofRedis $proofRun $proofProcesses
  $proofProcesses|Select-Object Id,ProcessName|ConvertTo-Json|Set-Content (Join-Path $proofRun 'processes.json')
  $env:APP_ENV='testing';$env:APP_KEY='base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
  $env:DB_CONNECTION='pgsql';$env:DB_HOST='127.0.0.1';$env:DB_PORT='5433'
@@ -99,7 +127,13 @@ try {
  $env:DB_PASSWORD='';$env:DB_OWNER_PASSWORD='';$env:DB_AUTHORITY_PASSWORD=''
  $env:BUILDERAD_TEST_ISOLATION_TOKEN=$proofToken
  $env:SESSION_DRIVER='redis';$env:SESSION_CONNECTION='default';$env:SESSION_LIFETIME='2';$env:SESSION_SECURE_COOKIE='false'
- $env:REDIS_PORT='6397';$env:REDIS_HOST='127.0.0.1';$env:REDIS_DB='0';$env:REDIS_CACHE_DB='1';$env:REDIS_PREFIX='goals-spa-'+$proofToken+':'
+ $env:REDIS_PORT="$proofRedisPort";$env:REDIS_HOST='127.0.0.1';$env:REDIS_DB='0';$env:REDIS_CACHE_DB='1';$env:REDIS_PREFIX='goals-spa-'+$proofToken+':'
+ $env:REDIS_URL='(null)';$env:DB_URL='(null)'
+ # Laravel resolves these variables relative to the application root on Windows.
+ $proofRelativeRun=Join-Path 'storage/framework/testing' (Split-Path -Leaf $proofRun)
+ $env:APP_CONFIG_CACHE=Join-Path $proofRelativeRun "$proofOwner-config.php"
+ $env:APP_PACKAGES_CACHE=Join-Path $proofRelativeRun "$proofOwner-packages.php"
+ $env:APP_SERVICES_CACHE=Join-Path $proofRelativeRun "$proofOwner-services.php"
  # The isolated Redis has no credential; an inherited developer password would make Predis send AUTH.
  $env:REDIS_PASSWORD='';$env:REDIS_USERNAME=''
  $env:CACHE_STORE='array';$env:QUEUE_CONNECTION='sync';$env:MAIL_MAILER='array';$env:BCRYPT_ROUNDS='4'
@@ -113,13 +147,16 @@ try {
  if($Phase -eq 'Foundation'){
   Write-Output 'GOALS_SPA_FOUNDATION_TOTAL=10'
   Write-Output 'GOALS_SPA_GATE_START=PHP suite'
+  $proofGateName='PHP suite'
   $proofJunit='storage/framework/testing/'+(Split-Path -Leaf $proofRun)+'/tests.xml'
   $proofEvents='storage/framework/testing/'+(Split-Path -Leaf $proofRun)+'/events.log'
   & pwsh -NoProfile -File scripts/builderad.ps1 test --compact --display-warnings "--log-junit=$proofJunit" "--log-events-text=$proofEvents" 2>&1 | Tee-Object -FilePath (Join-Path $proofRun 'tests.log')
   if($LASTEXITCODE -ne 0){throw 'Full Foundation PHP suite failed; evidence retained'}
   Write-Output 'GOALS_SPA_GATE_PASS=PHP suite'
+  $proofGateName=$null
   foreach($proofGate in @(@('npm','run','inertia:check'),@('composer','validate','--strict'),@('composer','audit'),@('npm','audit','--audit-level=high'),@('npm','test'),@('npm','run','api:check'),@('php','vendor/bin/pint','--test'),@('npm','run','build'))){
    Write-Output "GOALS_SPA_GATE_START=$($proofGate -join ' ')"
+   $proofGateName=$proofGate -join ' '
    $proofAction=$proofGate[0];$proofArguments=$proofGate[1..($proofGate.Count-1)]
    $proofGateLogName=('gate-'+($proofGate -join '-')+'.log') -replace '[\\/:*?"<>|]', '-'
    $proofGateLog=Join-Path $proofRun $proofGateLogName
@@ -135,18 +172,22 @@ try {
    }
    if($LASTEXITCODE -ne 0){throw "Foundation gate failed: $($proofGate -join ' ')"}
    Write-Output "GOALS_SPA_GATE_PASS=$($proofGate -join ' ')"
+   $proofGateName=$null
   }
   Write-Output 'GOALS_SPA_GATE_START=production asset guard'
+  $proofGateName='production asset guard'
   & 'C:\tools\node24\node.exe' scripts/runtime-retirement.mjs --assets 2>&1|Tee-Object -FilePath (Join-Path $proofRun 'gate-runtime-assets.log')
   if($LASTEXITCODE -ne 0){throw 'Foundation production asset guard failed'}
   Write-Output 'GOALS_SPA_GATE_PASS=production asset guard'
+  $proofGateName=$null
  }
  if($Phase -in @('Focused','Affected','Acceptance')) {
   $proofFilter=if($Phase -in @('Acceptance','Affected')){'WorkspaceCommercialRetirementTest|BusinessFoundationContractTest|LegacyPurposeHistoryTest|ProductionIdentityTest|IdentityRenewalTest|IdentityDocumentTest|SessionAuthorityTest|DatabaseAuthorityBoundaryTest|CoreDependencyBoundaryTest|ArchitectureSourceOptionalityTest'}else{'WorkspaceCommercialRetirementTest'}
   if($TestFilter){$proofFilter=$TestFilter}
   $proofJunit='storage/framework/testing/'+(Split-Path -Leaf $proofRun)+'/tests.xml'
+  $proofEvents='storage/framework/testing/'+(Split-Path -Leaf $proofRun)+'/events.log'
   Write-Output "GOALS_SPA_TEST_ORDER=$TestOrder"
-  & pwsh -NoProfile -File scripts/builderad.ps1 test --compact --display-warnings "--filter=$proofFilter" "--order-by=$TestOrder" "--log-junit=$proofJunit" 2>&1 | Tee-Object -FilePath (Join-Path $proofRun 'tests.log')
+  & pwsh -NoProfile -File scripts/builderad.ps1 test --compact --display-warnings "--filter=$proofFilter" "--order-by=$TestOrder" "--log-junit=$proofJunit" "--log-events-text=$proofEvents" 2>&1 | Tee-Object -FilePath (Join-Path $proofRun 'tests.log')
   if($LASTEXITCODE -ne 0){throw 'Focused/affected acceptance checks failed; evidence retained'}
  }
  if($Phase -notin @('Focused','Affected','Foundation')) {
@@ -168,7 +209,7 @@ try {
   foreach($proofPort in @(8136,8137)){
    $env:APP_ENV='local'
    $proofServer=Start-Process -FilePath 'C:\tools\php85\php.exe' -ArgumentList @('-S',"localhost:$proofPort",'-t','public','tests/Support/goals-spa-server.php') -WorkingDirectory $proofRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $proofRun "server-$proofPort.log") -RedirectStandardError (Join-Path $proofRun "server-$proofPort-error.log")
-   $proofProcesses+=,$proofServer
+   $proofProcesses.Add($proofServer)
   }
   $proofProcesses|Select-Object Id,ProcessName|ConvertTo-Json|Set-Content (Join-Path $proofRun 'processes.json')
   if($Phase -eq 'Closure'){$env:GOALS_SPA_CLOSURE='enabled'}
@@ -179,23 +220,73 @@ try {
   if($LASTEXITCODE -ne 0){throw 'Browser proof failed; no acceptance claimed'}
  }
  $proofExit=0
+} catch {
+ $proofPrimaryError=$_.Exception.Message
+ if($proofGateName){Write-Output "GOALS_SPA_GATE_FAIL=$proofGateName"}
+ Write-Output "GOALS_SPA_ERROR=$proofPrimaryError"
 } finally {
- if($null -ne $proofSourceBefore){[IO.File]::WriteAllText((Join-Path $proofRun 'source-unchanged.txt'),[string]($proofSourceBefore -eq (Get-ProofSource)))}
+ $proofProcessesStopped=$true
  foreach($proofProcess in $proofProcesses){
-  if(-not $proofProcess.HasExited){Stop-Process -Id $proofProcess.Id -Force}
-  if(-not $proofProcess.WaitForExit(5000)){throw "Owned test process $($proofProcess.Id) did not exit; cleanup is unconfirmed"}
+  try {
+   if(-not $proofProcess.HasExited){$proofProcess.Kill()}
+   if(-not $proofProcess.WaitForExit(5000)){throw "Owned test process $($proofProcess.Id) did not exit"}
+  } catch {
+   $proofProcessesStopped=$false
+   $proofFailures.Add($_.Exception.Message)
+  }
  }
- if($proofStarted){
-  $proofData=[IO.Path]::GetFullPath($proofDataPath)
-  if($proofData -ne [IO.File]::ReadAllText((Join-Path $proofRun 'cluster-path.txt'))){throw 'Cluster stop escaped its recorded owned path'}
-  # Process cleanup observation only, after tests. A full isolated migration suite was observed
-  # flushing 71,375 files in a 286.626s checkpoint. Keep graceful shutdown and confirm actual exit;
-  # this does not change SQL lock/statement timeouts, authority expiry, or any behavioral assertion.
-  & (Join-Path $proofPg 'pg_ctl.exe') -D $proofData -m fast -t 360 -w stop
-  if($LASTEXITCODE -ne 0){throw 'Owned PostgreSQL stop is unconfirmed; do not report processes stopped'}
+ if($proofStartAttempted){
+  try {
+   Assert-ProofPlainPath $proofDataPath
+   if($proofDataPath -ne [IO.File]::ReadAllText((Join-Path $proofRun 'cluster-path.txt'))){throw 'Recorded cluster path changed'}
+   if($null -eq $proofPostmaster -and (Test-Path -LiteralPath (Join-Path $proofDataPath 'postmaster.pid'))){
+    $proofPostmaster=Get-ProofPostmaster $proofDataPath $proofStartedAt
+   }
+   if($null -ne $proofPostmaster){
+    Stop-ProofPostgres $proofPg $proofDataPath $proofPostmaster
+   }else{
+    Assert-ProofPostgresAbsent $proofPg $proofDataPath
+   }
+  } catch {
+   $proofProcessesStopped=$false
+   $proofFailures.Add($_.Exception.Message)
+  }
  }
- if($proofEnvironmentCreated -and [IO.File]::ReadAllText($proofEnvironmentPath) -eq $proofEnvironmentContents){Remove-Item -LiteralPath $proofEnvironmentPath}
- Write-Output "GOALS_SPA_EVIDENCE=$proofRun"
- Write-Output "GOALS_SPA_PROCESSES=STOPPED; EXIT=$proofExit"
+ $proofCleanup='NOT_CREATED'
+ $proofClusterBytes=$null
+ if($proofOwnData -or ($proofRunReady -and $ReuseRun)){
+  $proofCleanup='RETAINED'
+  if(-not $proofProcessesStopped){$proofCleanup='FAILED'}
+  elseif(-not $KeepCluster){
+   try {
+    $proofClusterBytes=Remove-ProofCluster $proofRun $proofDataPath $proofTestingRoot $proofOwner
+    $proofCleanup='DELETED'
+   } catch {
+    $proofCleanup='FAILED'
+    $proofFailures.Add($_.Exception.Message)
+   }
+  }
+ }
+ try {
+  if($proofEnvironmentCreated -and [IO.File]::ReadAllText($proofEnvironmentPath) -eq $proofEnvironmentContents){Remove-Item -LiteralPath $proofEnvironmentPath}
+ } catch {$proofFailures.Add($_.Exception.Message)}
+ try {
+  if($null -ne $proofSourceBefore){[IO.File]::WriteAllText((Join-Path $proofRun 'source-unchanged.txt'),[string]($proofSourceBefore -eq (Get-ProofSource)))}
+ } catch {$proofFailures.Add($_.Exception.Message)}
+ $proofResult=@("GOALS_SPA_TEST_EXIT=$proofExit","GOALS_SPA_CLEANUP=$proofCleanup; DATA=$proofDataPath")
+ if($null -ne $proofClusterBytes){$proofResult+=@("GOALS_SPA_CLUSTER_BYTES=$proofClusterBytes")}
+ $proofResult+=@($proofFailures | ForEach-Object {"GOALS_SPA_LIFECYCLE_ERROR=$_"})
+ if($proofExit -eq 0 -and $proofFailures.Count){$proofExit=2}
+ if($proofRunReady){
+  try {
+   @("GOALS_SPA_ERROR=$proofPrimaryError")+$proofResult+@("GOALS_SPA_FINISHED=EXIT=$proofExit") | Set-Content -LiteralPath (Join-Path $proofRun 'lifecycle.log')
+  } catch {$proofFailures.Add($_.Exception.Message); Write-Output "GOALS_SPA_LIFECYCLE_ERROR=$($_.Exception.Message)"}
+  finally {$proofLock.Dispose()}
+  Write-Output "GOALS_SPA_EVIDENCE=$proofRun"
+ }
+ Write-Output $proofResult
+ if($proofExit -eq 0 -and $proofFailures.Count){$proofExit=2}
+ if($proofProcessesStopped){Write-Output "GOALS_SPA_PROCESSES=STOPPED; EXIT=$proofExit"}
+ Write-Output "GOALS_SPA_FINISHED=EXIT=$proofExit"
 }
 exit $proofExit

@@ -5742,6 +5742,9 @@ export interface components {
         };
         ContentPageRevision: {
             revision: number;
+            slug_ar: string;
+            slug_en: string;
+            position: number;
             title_ar: string;
             title_en: string;
             excerpt_ar: string | null;
@@ -5878,6 +5881,10 @@ export interface components {
         };
         ContentArticleRevision: {
             revision: number;
+            slug_ar: string;
+            slug_en: string;
+            position: number;
+            category_public_id: string | null;
             title_ar: string;
             title_en: string;
             summary_ar: string | null;

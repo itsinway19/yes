@@ -14,7 +14,7 @@ const copy = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 export function describeFailure(error: unknown, fallbackAr: string, fallbackEn: string): ContentCommandError {
     if (error instanceof ContentCommandError) return error;
     if (error instanceof TransportError) {
-        const body = error.body as { code?: string; reauthenticate?: string } | undefined;
+        const body = error.body as { code?: string; reauthenticate?: string; errors?: Record<string, string[]> } | undefined;
         if (error.status === 403 && body?.code === 'fresh_authentication_required') {
             return new ContentCommandError(
                 copy('تحتاج هذه العملية إلى مصادقة حديثة بمفتاح المرور. لم يُحفظ أي تغيير. أعد المصادقة ثم احفظ مجددًا.',
@@ -32,7 +32,19 @@ export function describeFailure(error: unknown, fallbackAr: string, fallbackEn: 
             return new ContentCommandError(copy('انتهت صلاحية الجلسة. أعد تحميل الصفحة.', 'Your session expired. Reload the page.'), undefined, 419);
         }
         if (error.status === 422) {
-            return new ContentCommandError(copy('تحقق من الحقول المطلوبة وصيغها.', 'Check the required fields and their formats.'), undefined, 422);
+            const labels: Record<string, [string, string]> = {
+                slug_ar: ['الرابط العربي', 'Arabic slug'], slug_en: ['الرابط الإنجليزي', 'English slug'],
+                title_ar: ['العنوان العربي', 'Arabic title'], title_en: ['العنوان الإنجليزي', 'English title'],
+                category_public_id: ['التصنيف', 'Category'], revision: ['المراجعة', 'Revision'],
+            };
+            const fields = Object.keys(body?.errors ?? {}).slice(0, 4).map(field => {
+                const label = labels[field];
+                return label ? copy(label[0], label[1]) : field.replaceAll('_', ' ');
+            });
+            const message = copy('راجع الحقول التالية؛ بقيت مدخلاتك كما هي: ',
+                'Review these fields; your input is still here: ');
+            return new ContentCommandError(fields.length ? message + fields.join('، ') :
+                copy('راجع المدخلات؛ بقيت كما هي.', 'Review your input; it is still here.'), undefined, 422);
         }
         if (error.status === 404) {
             return new ContentCommandError(copy('لم يعد هذا السجل موجودًا.', 'This record no longer exists.'), undefined, 404);

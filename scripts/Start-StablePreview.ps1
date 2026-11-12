@@ -308,6 +308,9 @@ function Stop-PreviewServer {
     Write-Host 'Laravel and the preview Redis stopped. PostgreSQL was left untouched; database data was untouched.'
 }
 
+$initialRedisPids = @(Get-RedisPreviewProcesses | ForEach-Object { [int] $_.ProcessId })
+$initialServerPids = @(Get-PreviewServerProcesses | ForEach-Object { [int] $_.ProcessId })
+$startedServerId = 0
 try {
     if (-not (Test-Path -LiteralPath $php -PathType Leaf)) { throw "PHP executable not found: $php" }
     if (-not (Test-Path -LiteralPath $router -PathType Leaf)) { throw "Laravel router not found: $router" }
@@ -371,6 +374,7 @@ try {
     $process = Start-Process -FilePath $php -ArgumentList @('-S', "${hostAddress}:$appPort", "`"$router`"") `
         -WorkingDirectory (Join-Path $root 'public') -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    $startedServerId = [int] $process.Id
     $ready = $false
     for ($i=0; $i -lt 40; $i++) {
         try {
@@ -389,6 +393,23 @@ try {
     Write-Host "PostgreSQL: ${database}:$dbPort; builderad_app, builderad_authority and builderad_owner verified independently."
     Write-Host "Redis: 127.0.0.1:$redisPort; PING plus session/cache RedisStore write-read verified."
 } catch {
-    Write-Error $_.Exception.Message
+    $failure = $_.Exception.Message
+    if ($startedServerId -gt 0) {
+        foreach ($server in @(Get-PreviewServerProcesses)) {
+            if ($initialServerPids -contains [int] $server.ProcessId) { continue }
+            try {
+                Assert-PreviewServer ([int] $server.ProcessId) | Out-Null
+                Stop-Process -Id ([int] $server.ProcessId) -ErrorAction Stop
+            } catch { }
+        }
+    }
+    foreach ($redis in @(Get-RedisPreviewProcesses)) {
+        if ($initialRedisPids -contains [int] $redis.ProcessId) { continue }
+        try {
+            Assert-RedisPreview ([int] $redis.ProcessId) | Out-Null
+            Stop-Process -Id ([int] $redis.ProcessId) -ErrorAction Stop
+        } catch { }
+    }
+    Write-Error $failure
     exit 1
 }

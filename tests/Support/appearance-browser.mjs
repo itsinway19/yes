@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { appearanceReliability } from './appearance-reliability-browser.mjs';
 
-if (process.env.GOALS_SPA_PROOF !== 'enabled' || process.env.DB_DATABASE !== 'builderad_test_disposable' || process.env.REDIS_PORT !== '6397') throw Error('Dedicated disposable proof environment required');
+if (process.env.GOALS_SPA_PROOF !== 'enabled' || process.env.DB_DATABASE !== 'builderad_test_disposable' || !/^(6397|1639[7-9]|1640[0-4])$/.test(process.env.REDIS_PORT ?? '')) throw Error('Dedicated disposable proof environment required');
 const require = createRequire('C:/Users/stoma/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json');
 const { chromium } = require('playwright');
 const run = process.env.GOALS_SPA_RUN;

@@ -6,7 +6,7 @@ use App\Content\ContentAdmin;
 use App\Http\Responses\SpaPage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Illuminate\Http\Response;
 
 final class InternalContentController extends Controller
 {
@@ -58,14 +58,14 @@ final class InternalContentController extends Controller
         return new SpaPage(SpaPage::needsData($request) ? $content->pageEditor($page) : []);
     }
 
-    public function pagePreview(ContentAdmin $content, string $page): View
+    public function pagePreview(ContentAdmin $content, string $page): Response
     {
         $preview = $content->pagePreview($page);
         abort_unless($preview, 404);
 
-        return view('public.admin-preview', ['preview' => $preview, 'kind' => 'page',
-            'locale' => app()->getLocale()])
-            ->withHeaders(['X-Robots-Tag' => 'noindex, nofollow', 'Cache-Control' => 'no-store, private']);
+        return response()->view('public.admin-preview', ['preview' => $preview, 'kind' => 'page',
+            'locale' => app()->getLocale()], 200,
+            ['X-Robots-Tag' => 'noindex, nofollow', 'Cache-Control' => 'no-store, private']);
     }
 
     public function articles(Request $request, ContentAdmin $content): SpaPage
@@ -78,14 +78,14 @@ final class InternalContentController extends Controller
         return new SpaPage(SpaPage::needsData($request) ? $content->articleEditor($article) : []);
     }
 
-    public function articlePreview(ContentAdmin $content, string $article): View
+    public function articlePreview(ContentAdmin $content, string $article): Response
     {
         $preview = $content->articlePreview($article);
         abort_unless($preview, 404);
 
-        return view('public.admin-preview', ['preview' => $preview, 'kind' => 'article',
-            'locale' => app()->getLocale()])
-            ->withHeaders(['X-Robots-Tag' => 'noindex, nofollow', 'Cache-Control' => 'no-store, private']);
+        return response()->view('public.admin-preview', ['preview' => $preview, 'kind' => 'article',
+            'locale' => app()->getLocale()], 200,
+            ['X-Robots-Tag' => 'noindex, nofollow', 'Cache-Control' => 'no-store, private']);
     }
 
     public function categories(Request $request, ContentAdmin $content): SpaPage

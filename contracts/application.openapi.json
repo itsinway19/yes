@@ -55117,6 +55117,16 @@
             "minimum": 1,
             "maximum": 1000000000
           },
+          "slug_ar": {
+            "type": "string"
+          },
+          "slug_en": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0
+          },
           "title_ar": {
             "type": "string"
           },
@@ -55209,6 +55219,9 @@
         },
         "required": [
           "revision",
+          "slug_ar",
+          "slug_en",
+          "position",
           "title_ar",
           "title_en",
           "excerpt_ar",
@@ -55970,6 +55983,27 @@
             "minimum": 1,
             "maximum": 1000000000
           },
+          "slug_ar": {
+            "type": "string"
+          },
+          "slug_en": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "category_public_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "title_ar": {
             "type": "string"
           },
@@ -56092,6 +56126,10 @@
         },
         "required": [
           "revision",
+          "slug_ar",
+          "slug_en",
+          "position",
+          "category_public_id",
           "title_ar",
           "title_en",
           "summary_ar",

@@ -18,12 +18,13 @@ const expectedRevision = ref(editor.value?.draft?.revision ?? 0);
 
 const form = reactive({
     title_ar: editor.value?.draft?.title_ar ?? '', title_en: editor.value?.draft?.title_en ?? '',
-    slug_ar: editor.value?.page.slug_ar ?? '', slug_en: editor.value?.page.slug_en ?? '',
+    slug_ar: editor.value?.draft?.slug_ar ?? editor.value?.page.slug_ar ?? '',
+    slug_en: editor.value?.draft?.slug_en ?? editor.value?.page.slug_en ?? '',
     excerpt_ar: editor.value?.draft?.excerpt_ar ?? '', excerpt_en: editor.value?.draft?.excerpt_en ?? '',
     body_ar: editor.value?.draft?.body_ar ?? '', body_en: editor.value?.draft?.body_en ?? '',
     seo_title_ar: editor.value?.draft?.seo_title_ar ?? '', seo_title_en: editor.value?.draft?.seo_title_en ?? '',
     seo_description_ar: editor.value?.draft?.seo_description_ar ?? '', seo_description_en: editor.value?.draft?.seo_description_en ?? '',
-    position: editor.value?.page.position ?? 0,
+    position: editor.value?.draft?.position ?? editor.value?.page.position ?? 0,
 });
 
 function adopt(value: PageEditorData) {
@@ -32,12 +33,12 @@ function adopt(value: PageEditorData) {
     const draft = value.draft;
     Object.assign(form, {
         title_ar: draft?.title_ar ?? '', title_en: draft?.title_en ?? '',
-        slug_ar: value.page.slug_ar, slug_en: value.page.slug_en,
+        slug_ar: draft?.slug_ar ?? value.page.slug_ar, slug_en: draft?.slug_en ?? value.page.slug_en,
         excerpt_ar: draft?.excerpt_ar ?? '', excerpt_en: draft?.excerpt_en ?? '',
         body_ar: draft?.body_ar ?? '', body_en: draft?.body_en ?? '',
         seo_title_ar: draft?.seo_title_ar ?? '', seo_title_en: draft?.seo_title_en ?? '',
         seo_description_ar: draft?.seo_description_ar ?? '', seo_description_en: draft?.seo_description_en ?? '',
-        position: value.page.position,
+        position: draft?.position ?? value.page.position,
     });
 }
 

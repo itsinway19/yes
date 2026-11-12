@@ -16,13 +16,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Tests\Support\LegacyCommercialUpgradeFixture;
+use Tests\Support\ProofRedis;
 use Tests\Support\PurposeDeclarationFixture;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 app(DisposableTestDatabaseGuard::class)->assertSafe();
-if (config('session.driver') !== 'redis' || (int) config('database.redis.default.port') !== 6397) {
+if (config('session.driver') !== 'redis' || ! ProofRedis::matchesConfiguration()) {
     throw new RuntimeException('Dedicated proof Redis required');
 }
 $mode = $argv[1] ?? 'setup';

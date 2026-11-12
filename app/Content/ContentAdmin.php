@@ -2,6 +2,7 @@
 
 namespace App\Content;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -230,9 +231,9 @@ final class ContentAdmin
             'position' => (int) $page->position, 'deleted' => $page->deleted_at !== null,
             'published_at' => $this->iso($page->published_at),
             'url_ar' => '/p/'.$page->slug_ar, 'url_en' => '/p/'.$page->slug_en,
-        ], 'draft' => $this->pageRevision($page->draft_revision_id),
-            'published' => $this->pageRevision($page->published_revision_id),
-            'revisions' => $this->revisionIndex('content_page_revisions', 'page_id', $page->id),
+        ], 'draft' => $this->pageRevision($page->draft_revision_id, $page->published_revision_id),
+            'published' => $this->pageRevision($page->published_revision_id, $page->published_revision_id),
+            'revisions' => $this->revisionIndex('content_page_revisions', 'page_id', $page->id, $page->published_revision_id),
             'sections' => $this->sectionChoices(),
             'placements' => $this->pagePlacements((int) $page->id)];
     }
@@ -288,15 +289,15 @@ final class ContentAdmin
         DB::transaction(function () use ($userId, $publicId, $data): void {
             $page = DB::table('content_pages')->where('public_id', $publicId)->whereNull('deleted_at')->lockForUpdate()->first();
             abort_unless($page, 404);
-            $current = $page->draft_revision_id ? (int) DB::table('content_page_revisions')->where('id', $page->draft_revision_id)->value('revision') : 0;
-            if ((int) $data['expected_revision'] !== $current) {
+            $draft = DB::table('content_page_revisions')->where('id', $page->draft_revision_id)->first(['revision', 'position']);
+            if ((int) $data['expected_revision'] !== (int) ($draft->revision ?? 0)) {
                 throw new ConflictHttpException('This page changed in another session. Reload the editor before saving.');
             }
             $this->assertSlugsFree('content_pages', $data['slug_ar'], $data['slug_en'], $page->id);
+            $data['position'] ??= $draft->position ?? $page->position;
             $next = (int) DB::table('content_page_revisions')->where('page_id', $page->id)->max('revision') + 1;
             $revisionId = $this->insertPageRevision($userId, $page->id, $data, $next);
-            DB::table('content_pages')->where('id', $page->id)->update(['slug_ar' => $data['slug_ar'],
-                'slug_en' => $data['slug_en'], 'position' => (int) ($data['position'] ?? $page->position),
+            DB::table('content_pages')->where('id', $page->id)->update([
                 'draft_revision_id' => $revisionId, 'updated_at' => now()]);
             $this->audit($userId, null, 'content_page_draft_saved', 'page:'.$publicId.';revision:'.$next);
         });
@@ -343,7 +344,8 @@ final class ContentAdmin
         if (! $page) {
             return null;
         }
-        $revision = $this->pageRevision($page->draft_revision_id) ?? $this->pageRevision($page->published_revision_id);
+        $revision = $this->pageRevision($page->draft_revision_id, $page->published_revision_id)
+            ?? $this->pageRevision($page->published_revision_id, $page->published_revision_id);
 
         return $revision ? ['title_ar' => $revision['title_ar'], 'title_en' => $revision['title_en'],
             'body_ar' => $revision['body_ar'], 'body_en' => $revision['body_en'],
@@ -406,9 +408,9 @@ final class ContentAdmin
             'category_public_id' => $category->public_id ?? null,
             'published_at' => $this->iso($article->published_at),
             'url_ar' => '/articles/'.$article->slug_ar, 'url_en' => '/articles/'.$article->slug_en,
-        ], 'draft' => $this->articleRevision($article->draft_revision_id),
-            'published' => $this->articleRevision($article->published_revision_id),
-            'revisions' => $this->revisionIndex('content_article_revisions', 'article_id', $article->id),
+        ], 'draft' => $this->articleRevision($article->draft_revision_id, $article->published_revision_id),
+            'published' => $this->articleRevision($article->published_revision_id, $article->published_revision_id),
+            'revisions' => $this->revisionIndex('content_article_revisions', 'article_id', $article->id, $article->published_revision_id),
             'categories' => $this->categoryChoices()];
     }
 
@@ -437,16 +439,15 @@ final class ContentAdmin
         DB::transaction(function () use ($userId, $publicId, $data): void {
             $article = DB::table('content_articles')->where('public_id', $publicId)->whereNull('deleted_at')->lockForUpdate()->first();
             abort_unless($article, 404);
-            $current = $article->draft_revision_id ? (int) DB::table('content_article_revisions')->where('id', $article->draft_revision_id)->value('revision') : 0;
-            if ((int) $data['expected_revision'] !== $current) {
+            $draft = DB::table('content_article_revisions')->where('id', $article->draft_revision_id)->first(['revision', 'position']);
+            if ((int) $data['expected_revision'] !== (int) ($draft->revision ?? 0)) {
                 throw new ConflictHttpException('This article changed in another session. Reload the editor before saving.');
             }
             $this->assertSlugsFree('content_articles', $data['slug_ar'], $data['slug_en'], $article->id);
+            $data['position'] ??= $draft->position ?? $article->position;
             $next = (int) DB::table('content_article_revisions')->where('article_id', $article->id)->max('revision') + 1;
             $revisionId = $this->insertArticleRevision($userId, $article->id, $data, $next);
-            DB::table('content_articles')->where('id', $article->id)->update(['slug_ar' => $data['slug_ar'],
-                'slug_en' => $data['slug_en'], 'position' => (int) ($data['position'] ?? $article->position),
-                'category_id' => $this->categoryId($data['category_public_id'] ?? null),
+            DB::table('content_articles')->where('id', $article->id)->update([
                 'draft_revision_id' => $revisionId, 'updated_at' => now()]);
             $this->audit($userId, null, 'content_article_draft_saved', 'article:'.$publicId.';revision:'.$next);
         });
@@ -493,7 +494,8 @@ final class ContentAdmin
         if (! $article) {
             return null;
         }
-        $revision = $this->articleRevision($article->draft_revision_id) ?? $this->articleRevision($article->published_revision_id);
+        $revision = $this->articleRevision($article->draft_revision_id, $article->published_revision_id)
+            ?? $this->articleRevision($article->published_revision_id, $article->published_revision_id);
 
         return $revision ? ['title_ar' => $revision['title_ar'], 'title_en' => $revision['title_en'],
             'body_ar' => $revision['body_ar'], 'body_en' => $revision['body_en'],
@@ -520,23 +522,32 @@ final class ContentAdmin
 
     public function saveCategory(int $userId, array $data, ?string $publicId = null): array
     {
-        DB::transaction(function () use ($userId, $data, $publicId): void {
-            $payload = ['slug_ar' => $data['slug_ar'], 'slug_en' => $data['slug_en'],
-                'name_ar' => $data['name_ar'], 'name_en' => $data['name_en'],
-                'description_ar' => ContentSanitizer::plain($data['description_ar'] ?? null),
-                'description_en' => ContentSanitizer::plain($data['description_en'] ?? null),
-                'position' => (int) ($data['position'] ?? 0), 'visible' => (bool) ($data['visible'] ?? true),
-                'updated_at' => now()];
-            if ($publicId !== null) {
-                $row = DB::table('content_categories')->where('public_id', $publicId)->whereNull('deleted_at')->lockForUpdate()->first();
-                abort_unless($row, 404);
-                $this->assertSlugsFree('content_categories', $data['slug_ar'], $data['slug_en'], $row->id);
-                DB::table('content_categories')->where('id', $row->id)->update($payload);
-            } else {
-                DB::table('content_categories')->insertGetId($payload + ['public_id' => (string) Str::uuid7(), 'created_at' => now()]);
+        try {
+            DB::transaction(function () use ($userId, $data, $publicId): void {
+                $payload = ['slug_ar' => $data['slug_ar'], 'slug_en' => $data['slug_en'],
+                    'name_ar' => $data['name_ar'], 'name_en' => $data['name_en'],
+                    'description_ar' => ContentSanitizer::plain($data['description_ar'] ?? null),
+                    'description_en' => ContentSanitizer::plain($data['description_en'] ?? null),
+                    'position' => (int) ($data['position'] ?? 0), 'visible' => (bool) ($data['visible'] ?? true),
+                    'updated_at' => now()];
+                if ($publicId !== null) {
+                    $row = DB::table('content_categories')->where('public_id', $publicId)->whereNull('deleted_at')->lockForUpdate()->first();
+                    abort_unless($row, 404);
+                    $this->assertSlugsFree('content_categories', $data['slug_ar'], $data['slug_en'], $row->id);
+                    DB::table('content_categories')->where('id', $row->id)->update($payload);
+                } else {
+                    DB::table('content_categories')->insertGetId($payload + ['public_id' => (string) Str::uuid7(), 'created_at' => now()]);
+                }
+                $this->audit($userId, null, 'content_category_saved', 'category:'.($publicId ?? 'new'));
+            });
+        } catch (QueryException $error) {
+            if ($publicId === null && ($error->errorInfo[0] ?? null) === '23505'
+                && preg_match('/\bSlug is already used in content_categories(?:\r?\n|$)/', $error->errorInfo[2] ?? '')) {
+                // The failed transaction has rolled back, so the winning slug is readable.
+                $this->assertSlugsFree('content_categories', $data['slug_ar'], $data['slug_en']);
             }
-            $this->audit($userId, null, 'content_category_saved', 'category:'.($publicId ?? 'new'));
-        });
+            throw $error;
+        }
 
         return $this->categories();
     }
@@ -609,13 +620,22 @@ final class ContentAdmin
             abort_unless($entity, 404);
             $revisionRow = DB::table($revisionTable)->where($foreignKey, $entity->id)->where('revision', $revision)->first();
             abort_unless($revisionRow, 404);
+            if ((int) $entity->draft_revision_id !== (int) $revisionRow->id) {
+                throw new ConflictHttpException('The draft changed before publication. Reload the editor.');
+            }
+            $this->assertSlugsFree($entityTable, $revisionRow->slug_ar, $revisionRow->slug_en, $entity->id);
             $now = now();
             if ($entity->published_revision_id) {
                 DB::table($revisionTable)->where('id', $entity->published_revision_id)->update(['state' => 'superseded']);
             }
             DB::table($revisionTable)->where('id', $revisionRow->id)->update(['state' => 'published']);
-            DB::table($entityTable)->where('id', $entity->id)->update([
-                'published_revision_id' => $revisionRow->id, 'published_at' => $now, 'updated_at' => $now]);
+            $published = ['slug_ar' => $revisionRow->slug_ar, 'slug_en' => $revisionRow->slug_en,
+                'position' => $revisionRow->position, 'published_revision_id' => $revisionRow->id,
+                'published_at' => $now, 'updated_at' => $now];
+            if ($entityTable === 'content_articles') {
+                $published['category_id'] = $revisionRow->category_id;
+            }
+            DB::table($entityTable)->where('id', $entity->id)->update($published);
             $this->audit($userId, null, $event, $entityTable.':'.$publicId.';revision:'.$revision);
         });
     }
@@ -639,7 +659,9 @@ final class ContentAdmin
         DB::transaction(function () use ($table, $publicId, $userId, $event): void {
             $row = DB::table($table)->where('public_id', $publicId)->whereNull('deleted_at')->lockForUpdate()->first();
             abort_unless($row, 404);
-            DB::table($table)->where('id', $row->id)->update(['deleted_at' => now(), 'updated_at' => now()]);
+            DB::table($table)->where('id', $row->id)->update([
+                'published_revision_id' => null, 'published_at' => null,
+                'deleted_at' => now(), 'updated_at' => now()]);
             $this->audit($userId, null, $event, $table.':'.$publicId);
         });
     }
@@ -649,7 +671,9 @@ final class ContentAdmin
         DB::transaction(function () use ($table, $publicId, $userId, $event): void {
             $row = DB::table($table)->where('public_id', $publicId)->whereNotNull('deleted_at')->lockForUpdate()->first();
             abort_unless($row, 404);
-            DB::table($table)->where('id', $row->id)->update(['deleted_at' => null, 'updated_at' => now()]);
+            $this->assertSlugsFree($table, $row->slug_ar, $row->slug_en, $row->id);
+            DB::table($table)->where('id', $row->id)->update(['deleted_at' => null,
+                'published_revision_id' => null, 'published_at' => null, 'updated_at' => now()]);
             $this->audit($userId, null, $event, $table.':'.$publicId);
         });
     }
@@ -679,6 +703,8 @@ final class ContentAdmin
     {
         return DB::table('content_page_revisions')->insertGetId([
             'page_id' => $pageId, 'revision' => $revision,
+            'slug_ar' => $data['slug_ar'], 'slug_en' => $data['slug_en'],
+            'position' => (int) ($data['position'] ?? 0),
             'title_ar' => $data['title_ar'], 'title_en' => $data['title_en'],
             'excerpt_ar' => ContentSanitizer::plain($data['excerpt_ar'] ?? null), 'excerpt_en' => ContentSanitizer::plain($data['excerpt_en'] ?? null),
             'body_ar' => ContentSanitizer::html($data['body_ar'] ?? ''), 'body_en' => ContentSanitizer::html($data['body_en'] ?? ''),
@@ -692,6 +718,9 @@ final class ContentAdmin
     {
         return DB::table('content_article_revisions')->insertGetId([
             'article_id' => $articleId, 'revision' => $revision,
+            'slug_ar' => $data['slug_ar'], 'slug_en' => $data['slug_en'],
+            'category_id' => $this->categoryId($data['category_public_id'] ?? null),
+            'position' => (int) ($data['position'] ?? 0),
             'title_ar' => $data['title_ar'], 'title_en' => $data['title_en'],
             'summary_ar' => ContentSanitizer::plain($data['summary_ar'] ?? null), 'summary_en' => ContentSanitizer::plain($data['summary_en'] ?? null),
             'body_ar' => ContentSanitizer::html($data['body_ar'] ?? ''), 'body_en' => ContentSanitizer::html($data['body_en'] ?? ''),
@@ -703,42 +732,56 @@ final class ContentAdmin
         ]);
     }
 
-    private function pageRevision(?int $id): ?array
+    private function pageRevision(?int $id, ?int $publishedId): ?array
     {
         if (! $id) {
             return null;
         }
         $row = DB::table('content_page_revisions')->where('id', $id)->first();
 
-        return $row ? ['revision' => (int) $row->revision, 'title_ar' => $row->title_ar, 'title_en' => $row->title_en,
+        return $row ? ['revision' => (int) $row->revision, 'slug_ar' => $row->slug_ar,
+            'slug_en' => $row->slug_en, 'position' => (int) $row->position,
+            'title_ar' => $row->title_ar, 'title_en' => $row->title_en,
             'excerpt_ar' => $row->excerpt_ar, 'excerpt_en' => $row->excerpt_en,
             'body_ar' => $row->body_ar, 'body_en' => $row->body_en,
             'seo_title_ar' => $row->seo_title_ar, 'seo_title_en' => $row->seo_title_en,
             'seo_description_ar' => $row->seo_description_ar, 'seo_description_en' => $row->seo_description_en,
-            'state' => $row->state, 'created_at' => $this->iso($row->created_at)] : null;
+            'state' => $this->revisionState($row, $publishedId), 'created_at' => $this->iso($row->created_at)] : null;
     }
 
-    private function articleRevision(?int $id): ?array
+    private function articleRevision(?int $id, ?int $publishedId): ?array
     {
         if (! $id) {
             return null;
         }
         $row = DB::table('content_article_revisions')->where('id', $id)->first();
 
-        return $row ? ['revision' => (int) $row->revision, 'title_ar' => $row->title_ar, 'title_en' => $row->title_en,
+        return $row ? ['revision' => (int) $row->revision, 'slug_ar' => $row->slug_ar,
+            'slug_en' => $row->slug_en, 'position' => (int) $row->position,
+            'category_public_id' => $row->category_id ? DB::table('content_categories')->where('id', $row->category_id)->value('public_id') : null,
+            'title_ar' => $row->title_ar, 'title_en' => $row->title_en,
             'summary_ar' => $row->summary_ar, 'summary_en' => $row->summary_en,
             'body_ar' => $row->body_ar, 'body_en' => $row->body_en,
             'image_path' => $row->image_path, 'image_alt_ar' => $row->image_alt_ar, 'image_alt_en' => $row->image_alt_en,
             'seo_title_ar' => $row->seo_title_ar, 'seo_title_en' => $row->seo_title_en,
             'seo_description_ar' => $row->seo_description_ar, 'seo_description_en' => $row->seo_description_en,
-            'state' => $row->state, 'created_at' => $this->iso($row->created_at)] : null;
+            'state' => $this->revisionState($row, $publishedId), 'created_at' => $this->iso($row->created_at)] : null;
     }
 
-    private function revisionIndex(string $table, string $foreignKey, int $id): array
+    private function revisionState(object $row, ?int $publishedId): string
+    {
+        if ((int) $row->id === $publishedId) {
+            return 'published';
+        }
+
+        return $row->state === 'published' ? 'superseded' : $row->state;
+    }
+
+    private function revisionIndex(string $table, string $foreignKey, int $id, ?int $publishedId): array
     {
         return DB::table($table)->where($foreignKey, $id)->orderByDesc('revision')->limit(50)
-            ->get(['revision', 'state', 'created_at'])->map(fn ($row) => ['revision' => (int) $row->revision,
-                'state' => $row->state, 'created_at' => $this->iso($row->created_at)])->all();
+            ->get(['id', 'revision', 'state', 'created_at'])->map(fn ($row) => ['revision' => (int) $row->revision,
+                'state' => $this->revisionState($row, $publishedId), 'created_at' => $this->iso($row->created_at)])->all();
     }
 
     private function linkChoices(): array
@@ -837,7 +880,10 @@ final class ContentAdmin
     private function assertSlugsFree(string $table, string $slugAr, string $slugEn, ?int $exceptId = null): void
     {
         foreach ([['slug_ar', $slugAr], ['slug_en', $slugEn]] as [$column, $slug]) {
-            $query = DB::table($table)->whereNull('deleted_at')->whereRaw("lower($column) = lower(?)", [$slug]);
+            $query = DB::table($table)->whereNull('deleted_at')->where(function ($query) use ($slug) {
+                $query->whereRaw('lower(slug_ar) = lower(?)', [$slug])
+                    ->orWhereRaw('lower(slug_en) = lower(?)', [$slug]);
+            });
             if ($exceptId !== null) {
                 $query->where('id', '<>', $exceptId);
             }
@@ -870,17 +916,8 @@ final class ContentAdmin
 
     private function audit(int $userId, ?int $subjectId, string $event, string $reason): void
     {
-        // The runtime role cannot write the audit table by design; the authority
-        // connection is the existing accepted writer for security_audit_events.
-        $authority = DB::connection('pgsql_authority');
-        $generation = (int) $authority->table('principal_lifecycles')
-            ->where('user_id', $userId)->value('generation');
-        $authority->table('security_audit_events')->insert([
-            'actor_user_id' => $userId, 'subject_user_id' => $subjectId ?? $userId,
-            'event' => $event, 'reason' => mb_substr($reason, 0, 255),
-            'prior_status' => 'current', 'new_status' => 'current',
-            'prior_generation' => $generation, 'new_generation' => $generation, 'occurred_at' => now(),
-        ]);
+        DB::select('SELECT public.builderad_content_write_audit(?, ?, ?)',
+            [$userId, $event, $reason]);
     }
 
     private function iso($value): ?string

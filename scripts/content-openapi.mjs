@@ -14,7 +14,8 @@ export function contentContracts({ ref, text, uuid, object, list, nullable, resp
     const revisionSummary = object({ revision: id, state: { enum: ['draft', 'published', 'superseded'] }, created_at: nullable(text) });
     const pageEntity = object({ public_id: uuid, slug_ar: text, slug_en: text, position: integer, deleted: boolean,
         published_at: nullable(text), url_ar: text, url_en: text });
-    const pageRevision = object({ revision: id, title_ar: text, title_en: text, excerpt_ar: nullable(text), excerpt_en: nullable(text),
+    const pageRevision = object({ revision: id, slug_ar: text, slug_en: text, position: integer,
+        title_ar: text, title_en: text, excerpt_ar: nullable(text), excerpt_en: nullable(text),
         body_ar: text, body_en: text, seo_title_ar: nullable(text), seo_title_en: nullable(text),
         seo_description_ar: nullable(text), seo_description_en: nullable(text),
         state: { enum: ['draft', 'published', 'superseded'] }, created_at: nullable(text) });
@@ -23,7 +24,8 @@ export function contentContracts({ ref, text, uuid, object, list, nullable, resp
         published_at: nullable(text), updated_at: nullable(text), url_ar: text, url_en: text });
     const articleEntity = object({ public_id: uuid, slug_ar: text, slug_en: text, position: integer, deleted: boolean,
         category_public_id: nullable(uuid), published_at: nullable(text), url_ar: text, url_en: text });
-    const articleRevision = object({ revision: id, title_ar: text, title_en: text, summary_ar: nullable(text), summary_en: nullable(text),
+    const articleRevision = object({ revision: id, slug_ar: text, slug_en: text, position: integer,
+        category_public_id: nullable(uuid), title_ar: text, title_en: text, summary_ar: nullable(text), summary_en: nullable(text),
         body_ar: text, body_en: text, image_path: nullable(text), image_alt_ar: nullable(text), image_alt_en: nullable(text),
         seo_title_ar: nullable(text), seo_title_en: nullable(text), seo_description_ar: nullable(text), seo_description_en: nullable(text),
         state: { enum: ['draft', 'published', 'superseded'] }, created_at: nullable(text) });

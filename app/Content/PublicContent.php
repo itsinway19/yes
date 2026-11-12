@@ -55,7 +55,9 @@ final class PublicContent
     {
         $row = DB::table('content_articles as a')
             ->join('content_article_revisions as r', 'r.id', '=', 'a.published_revision_id')
-            ->leftJoin('content_categories as c', 'c.id', '=', 'a.category_id')
+            ->leftJoin('content_categories as c', function ($join) {
+                $join->on('c.id', '=', 'a.category_id')->whereNull('c.deleted_at')->where('c.visible', true);
+            })
             ->whereNull('a.deleted_at')
             ->where(fn ($query) => $query->whereRaw('lower(a.slug_ar) = lower(?)', [$slug])
                 ->orWhereRaw('lower(a.slug_en) = lower(?)', [$slug]))
@@ -74,8 +76,10 @@ final class PublicContent
     {
         $query = DB::table('content_articles as a')
             ->join('content_article_revisions as r', 'r.id', '=', 'a.published_revision_id')
-            ->leftJoin('content_categories as c', 'c.id', '=', 'a.category_id')
-            ->whereNull('a.deleted_at')->whereNull('c.deleted_at');
+            ->leftJoin('content_categories as c', function ($join) {
+                $join->on('c.id', '=', 'a.category_id')->whereNull('c.deleted_at')->where('c.visible', true);
+            })
+            ->whereNull('a.deleted_at');
         $category = null;
         if ($categorySlug !== null) {
             $category = $this->category($categorySlug);

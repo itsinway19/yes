@@ -7,7 +7,7 @@ import path from 'node:path';
 
 if (process.env.GOALS_SPA_PROOF !== 'enabled' ||
     process.env.DB_DATABASE !== 'builderad_test_disposable' ||
-    process.env.REDIS_PORT !== '6397') {
+    !/^(6397|1639[7-9]|1640[0-4])$/.test(process.env.REDIS_PORT ?? '')) {
     throw Error('Guarded disposable environment required');
 }
 
@@ -104,6 +104,15 @@ try {
         const pageId = new URL(page.url()).pathname.split('/').at(-1);
         await fillBody('المحتوى المنشور الأول');
         await clickAndWait('[data-content-save]', `/internal/administration/content/pages/${pageId}`);
+        await page.locator('#page-edit-slug-ar').fill('invalid slug');
+        const invalid = page.waitForResponse(response =>
+            new URL(response.url()).pathname === `/internal/administration/content/pages/${pageId}` &&
+            response.request().method() === 'POST');
+        await page.locator('[data-content-save]').click();
+        assert.equal((await invalid).status(), 422);
+        await page.getByRole('alert').getByText('الرابط العربي', { exact: false }).waitFor();
+        assert.equal(await page.locator('#page-edit-slug-ar').inputValue(), 'invalid slug');
+        await page.locator('#page-edit-slug-ar').fill('company');
 
         await visit('/internal/administration/content/pages', '[data-content-pages]');
         const companyRow = page.locator('[data-content-pages] tbody tr').filter({ hasText: 'الشركة' });
@@ -146,7 +155,6 @@ try {
         publicResponse = await page.goto(base+'/');
         assert.equal(publicResponse.status(), 200);
         await page.locator('header a[href="/p/company"]').getByText('الشركة', { exact: true }).waitFor();
-        await page.screenshot({ path: path.join(output, 'company-header-ar.png'), fullPage: true });
 
         await visit('/internal/administration/content/sections', '[data-content-sections]');
         await page.locator('[data-content-add-section]').click();
@@ -157,6 +165,8 @@ try {
             '/internal/administration/content/sections');
         const news = page.locator('[data-content-sections] tbody tr').filter({ hasText: 'الأخبار' });
         await news.getByRole('button', { name: '↑', exact: true }).click();
+        await page.waitForFunction(() =>
+            document.querySelector('[data-content-sections] tbody tr td:first-child')?.textContent?.includes('الأخبار'));
         const orderedNames = await page.locator('[data-content-sections] tbody tr td:first-child').allInnerTexts();
         assert.equal(orderedNames[0].includes('الأخبار'), true);
 
@@ -236,10 +246,48 @@ try {
         assert.equal(publicResponse.status(), 200);
         await page.getByText('مسودة المقالة الثانية', { exact: true }).waitFor();
         assert.equal(await page.getByText('نسخة المقالة الأولى', { exact: true }).count(), 0);
-        await page.screenshot({ path: path.join(output, 'company-article-ar.png'), fullPage: true });
         await page.goto(base+'/articles/category/news');
         assert.equal(page.url().includes('/articles/category/news'), true);
-        assert.equal(await page.getByText('مسودة المقالة الثانية', { exact: true }).count(), 1);
+        await page.locator('a.public-card[href="/articles/company-article"]').waitFor();
+    });
+
+    await check('Published appearance agrees across Arabic and English landing and content pages', async () => {
+        for (const language of ['ar', 'en']) {
+            await page.goto(base+'/');
+            if (await page.locator('html').getAttribute('lang') !== language) {
+                await page.locator('.public-language button').click();
+                await page.waitForLoadState('domcontentloaded');
+            }
+            assert.equal(await page.locator('html').getAttribute('lang'), language);
+            for (const theme of ['light', 'dark']) {
+                await page.evaluate(value => {
+                    localStorage.setItem('builderad.theme', value);
+                    window.dispatchEvent(new StorageEvent('storage', { key: 'builderad.theme', newValue: value }));
+                }, theme);
+                const colors = [];
+                for (const route of ['/', '/p/company', '/articles/company-article']) {
+                    await page.goto(base+route);
+                    assert.equal(await page.locator('html').getAttribute('data-theme'), theme);
+                    assert.equal(await page.locator('html').getAttribute('lang'), language);
+                    colors.push(await page.locator('body').evaluate(element => getComputedStyle(element).backgroundColor));
+                    if (route === '/') {
+                        const contrast = await page.locator('.ba-stat strong').first().evaluate(element => {
+                            const rgb = color => color.match(/\d+/g).slice(0, 3).map(Number).map(value => {
+                                const channel = value / 255;
+                                return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+                            });
+                            const luminance = color => rgb(color).reduce((sum, channel, index) =>
+                                sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+                            const text = luminance(getComputedStyle(element).color);
+                            const surface = luminance(getComputedStyle(element.closest('.ba-stat')).backgroundColor);
+                            return (Math.max(text, surface) + 0.05) / (Math.min(text, surface) + 0.05);
+                        });
+                        assert.ok(contrast >= 4.5, `${language}/${theme} dashboard text contrast ${contrast}`);
+                    }
+                }
+                assert.equal(new Set(colors).size, 1, `${language}/${theme} body backgrounds differ: ${colors.join(', ')}`);
+            }
+        }
     });
 
     assert.equal(errors.length, 0, errors.join('\n'));

@@ -20,15 +20,16 @@ const expectedRevision = ref(editor.value?.draft?.revision ?? 0);
 
 const form = reactive({
     title_ar: editor.value?.draft?.title_ar ?? '', title_en: editor.value?.draft?.title_en ?? '',
-    slug_ar: editor.value?.article.slug_ar ?? '', slug_en: editor.value?.article.slug_en ?? '',
+    slug_ar: editor.value?.draft?.slug_ar ?? editor.value?.article.slug_ar ?? '',
+    slug_en: editor.value?.draft?.slug_en ?? editor.value?.article.slug_en ?? '',
     summary_ar: editor.value?.draft?.summary_ar ?? '', summary_en: editor.value?.draft?.summary_en ?? '',
     body_ar: editor.value?.draft?.body_ar ?? '', body_en: editor.value?.draft?.body_en ?? '',
     image_path: editor.value?.draft?.image_path ?? '', image_alt_ar: editor.value?.draft?.image_alt_ar ?? '',
     image_alt_en: editor.value?.draft?.image_alt_en ?? '',
     seo_title_ar: editor.value?.draft?.seo_title_ar ?? '', seo_title_en: editor.value?.draft?.seo_title_en ?? '',
     seo_description_ar: editor.value?.draft?.seo_description_ar ?? '', seo_description_en: editor.value?.draft?.seo_description_en ?? '',
-    category_public_id: editor.value?.article.category_public_id ?? '',
-    position: editor.value?.article.position ?? 0,
+    category_public_id: editor.value?.draft?.category_public_id ?? editor.value?.article.category_public_id ?? '',
+    position: editor.value?.draft?.position ?? editor.value?.article.position ?? 0,
 });
 
 function adopt(value: ArticleEditorData) {
@@ -37,13 +38,14 @@ function adopt(value: ArticleEditorData) {
     const draft = value.draft;
     Object.assign(form, {
         title_ar: draft?.title_ar ?? '', title_en: draft?.title_en ?? '',
-        slug_ar: value.article.slug_ar, slug_en: value.article.slug_en,
+        slug_ar: draft?.slug_ar ?? value.article.slug_ar, slug_en: draft?.slug_en ?? value.article.slug_en,
         summary_ar: draft?.summary_ar ?? '', summary_en: draft?.summary_en ?? '',
         body_ar: draft?.body_ar ?? '', body_en: draft?.body_en ?? '',
         image_path: draft?.image_path ?? '', image_alt_ar: draft?.image_alt_ar ?? '', image_alt_en: draft?.image_alt_en ?? '',
         seo_title_ar: draft?.seo_title_ar ?? '', seo_title_en: draft?.seo_title_en ?? '',
         seo_description_ar: draft?.seo_description_ar ?? '', seo_description_en: draft?.seo_description_en ?? '',
-        category_public_id: value.article.category_public_id ?? '', position: value.article.position,
+        category_public_id: draft?.category_public_id ?? value.article.category_public_id ?? '',
+        position: draft?.position ?? value.article.position,
     });
 }
 
