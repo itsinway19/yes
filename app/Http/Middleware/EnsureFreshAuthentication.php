@@ -13,9 +13,10 @@ final class EnsureFreshAuthentication
 {
     public function __construct(private readonly SessionAuthority $sessions) {}
 
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, ?string $staffFreshSeconds = null): Response
     {
-        if (! $this->sessions->hasFreshAuthentication($request, $request->user())) {
+        $window = $staffFreshSeconds !== null && ctype_digit($staffFreshSeconds) ? (int) $staffFreshSeconds : null;
+        if (! $this->sessions->hasFreshAuthentication($request, $request->user(), $window)) {
             if ($request->expectsJson()) {
                 // Return through document admission so the rejection carries the
                 // current server binding. A bare 403 cannot prove recoverability.

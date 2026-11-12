@@ -12,7 +12,7 @@ const compileTs = source => ts.transpileModule(source, { compilerOptions: { modu
 const vue = import.meta.resolve('vue');
 const language = url(`import {ref} from ${JSON.stringify(vue)};export const locale=ref('en');`);
 const locale = (await import(language)).locale;
-const icons = url(`export const Menu={render:()=>null},X=Menu,PanelRight=Menu,Users=Menu,ContactRound=Menu,ListTree=Menu,KeyRound=Menu,BriefcaseBusiness=Menu,Globe2=Menu,Palette=Menu,ShieldCheck=Menu;`);
+const icons = url(`export const Menu={render:()=>null},X=Menu,PanelRight=Menu,Users=Menu,ContactRound=Menu,ListTree=Menu,KeyRound=Menu,BriefcaseBusiness=Menu,Globe2=Menu,Palette=Menu,ShieldCheck=Menu,FileText=Menu,Newspaper=Menu,Tags=Menu,PanelBottom=Menu;`);
 const inventory = url(compileTs(await readFile('resources/js/internal-operations/administrationNavigation.ts', 'utf8')));
 async function component(file, ports = {}) {
     const { descriptor } = parse(await readFile('resources/js/internal-operations/' + file, 'utf8'));
@@ -27,11 +27,12 @@ const expectedNavigation = [
     { en: 'Administration', paths: ['/internal/administration', '/internal/administration/customers'] },
     { en: 'Catalog and services', paths: ['/internal/business-types', '/internal/services'] },
     { en: 'Commercial operations', paths: ['/internal/commercial', '/internal/administration/commercial-markets'] },
-    { en: 'Platform', paths: ['/internal/administration/market-knowledge', '/internal/administration/maintenance', '/internal/administration/appearance', '/internal/security/devices'] },
+    { en: 'Content and appearance', paths: ['/internal/administration/content/sections', '/internal/administration/content/pages', '/internal/administration/content/articles', '/internal/administration/content/categories', '/internal/administration/content/footer', '/internal/administration/appearance'] },
+    { en: 'Platform', paths: ['/internal/administration/market-knowledge', '/internal/administration/maintenance', '/internal/security/devices'] },
 ];
 const expectedPaths = expectedNavigation.flatMap(group => group.paths);
 const renderedPaths = html => [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map(match => match[1]);
-test('real navigation renders the ten exact authorized destinations in their four groups with one active link', async () => {
+test('real navigation renders the exact authorized destinations in their five groups with one active link', async () => {
     const actualInventory = (await import(inventory)).administrationNavigation;
     assert.deepEqual(actualInventory.map(group => ({ en: group.en, paths: group.links.map(link => link.to) })), expectedNavigation);
     const router = createRouter({ history: createMemoryHistory(), routes: expectedPaths.map(path => ({ path, component: { render: () => null } })) });
@@ -62,7 +63,7 @@ test('market knowledge stays absent when omitted from the server projection whil
     const app = createSSRApp(navigation.value, { allowedPaths }); app.use(router);
     const html = await renderToString(app);
     assert.deepEqual(renderedPaths(html), allowedPaths);
-    assert.equal((html.match(/<section /g) ?? []).length, 4);
+    assert.equal((html.match(/<section /g) ?? []).length, 5);
     assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1);
     assert.ok(html.includes('href="/internal/security/devices" aria-current="page"'));
     assert.ok(!html.includes(`href="${marketKnowledge}"`));

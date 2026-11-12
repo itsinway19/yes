@@ -185,6 +185,9 @@ abstract class TestCase extends BaseTestCase
         DB::connection('pgsql_migrations')->statement(
             'TRUNCATE TABLE material_lineage_manifests, builderad_private.invocations, migration_cohort_control, jobs, failed_jobs, service_audit_events, service_workspace_scopes, service_action_grants, service_identities, workspace_ownerships, security_action_grants, internal_personnel, passkeys, security_sessions, security_audit_events, principal_lifecycles, workspace_memberships, workspaces, password_reset_tokens, users RESTART IDENTITY CASCADE'
         );
+        DB::connection('pgsql_migrations')->statement(
+            'TRUNCATE TABLE content_navigation_links, content_navigation_sections, content_article_revisions, content_articles, content_page_revisions, content_pages, content_categories, content_footer_settings RESTART IDENTITY CASCADE'
+        );
         DB::purge('pgsql');
         DB::connection('pgsql_migrations')->statement(
             'TRUNCATE TABLE commercial_markets, commercial_scopes, commercial_command_results, security_commercial_audit_custody, security_commercial_mandate_executions, security_source_audit_custody CASCADE'

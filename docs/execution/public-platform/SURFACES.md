@@ -1,5 +1,11 @@
 # Capability-to-surface acceptance record
 
+## Content management — 2026-11-12
+
+| User job | Audience and placement | Authority and context | States and next action | Verification |
+| --- | --- | --- | --- | --- |
+| Publish and maintain static pages, articles, categories and header/footer navigation | Internal administration → «المحتوى والمظهر» (`/internal/administration/content/*`); readers see `/p/{slug}`, `/articles`, `/articles/category/{slug}` and the header/footer built from visible sections and links. The page editor also shows and edits which sections the page appears in. | Reads require `staff.view`; content writes require fresh staff passkey authentication inside a bounded 30-minute authoring window (security operations keep five minutes) with a bound reauthentication path and no partial save. Content HTML is always re-purified server-side; a raw HTML source mode is therefore safe. `PublicContent` serves the approved published revision only; drafts stay private, and hiding or deleting a section/link never deletes the page. | Arabic RTL and English LTR, draft/published/hidden/deleted badges, CAS conflict, forbidden, fresh-authentication and not-found states each with a next action. Empty listings state "no content yet" rather than failing. | BACKEND_VERIFIED (focused isolated tests), UI_INTEGRATED (compiled Vue/TypeScript and API contract checks), BROWSER_VERIFIED (owner-signed-in browser journey: create/publish page, draft privacy, server-purified HTML source, section create/link/reorder/hide/delete with the page preserved, category and article create/edit/publish and category listing). Content authoring uses a bounded 30-minute step-up window; security operations keep five minutes. See the [content record](./PROGRESS.md#content-management-and-preview--2026-11-12). |
+
 ## Business-first consolidation — review candidate, 2026-11-10
 
 | User job | Placement and authority | States and evidence limits |

@@ -107,3 +107,53 @@ Fresh bounded verification:
 - Only the relevant failed/affected checks were repeated. Earlier browser, frontend source and assets are unchanged by this correction. Those retained results remain separate from the next fresh hosted Foundation.
 
 This is a disclosed change from the independently accepted 52-file candidate: one production migration plus six existing test files and this execution record differ from the first published SHA. Five test files were previously unchanged from main, so the complete PR now contains **57 files**. The review's M1/M2/N1 closure remains applicable to its unchanged frontend source; it is not presented as an independent re-review of this later migration correction. Final hosted verification and Owner acceptance are separate gates. No main merge, production migration, deployment, D3, provider integration or accepted D1/D2 SQL changes.
+
+## Content management and preview — 2026-11-12
+
+Scope: one bounded CMS package inside `ba-admin-content-001` — static pages, articles, categories, header/footer navigation sections and links, footer settings, plus the public reads that publish them. No new Worktree, no Foundation run, no provider or subscription meaning.
+
+**Placement and authority.** Internal administration `/internal/administration/content/*` (Content and appearance group in the existing navigation) is readable with `staff.view` and writable only inside `EnsureFreshAuthentication`: a staff session older than five minutes is rejected with `fresh_authentication_required` and a bound `/internal/identity/switch` recovery, and nothing is written. `PublicContent` exposes only the approved published revision; the editor draft stays private until `publish`, and page/article deletion is logical, so removing a navigation section never deletes its page. Content audit events are written through the existing `pgsql_authority` owner; the runtime role keeps DML on content tables only and no write right on `security_audit_events`.
+
+**Defects found and corrected in this pass (each reproduced first):**
+
+1. Every content mutation returned HTTP 500: `ContentAdmin::audit()` inserted `security_audit_events` on the runtime connection (`42501`). It now writes through the authority connection and records the real lifecycle generation.
+2. `/articles/category/{slug}` returned HTTP 500 (`Undefined array key "public_id"`): the public category chip projection omitted `public_id` while the view compares it. The projection now selects it.
+3. The CMS migration used a private `seal()` helper, which the repository's declared forward-migration convention rejects as unqualified tokens. The DDL, seal and teardown now live in `database/migration-sql/0001_01_01_000780_create_content_management/` and are read literally; the manifest pins the migration plus its three inputs and reader list.
+4. `tests/admin-ui.test.mjs` still asserted the previous four navigation groups; it now asserts the five real groups and their exact destinations, including the CMS entries.
+
+**Executed evidence:**
+
+| Check | Result |
+| --- | --- |
+| `ContentManagementTest` on the isolated disposable cluster (`builderad_test_disposable:5433`, Redis `6397`) | **4 passed / 66 assertions** — staff.view denial, fresh-authentication denial with no write, draft-versus-published isolation, section/link/order/hide/delete leaving the page published, category+article create/reopen/edit and draft-safe publish |
+| `MigrationInputIntegrityTest` (same isolated run) | **passed**, including the new forward migration and pinned inputs |
+| `npm run build` (`vue-tsc` + production build) | **PASS** |
+| `npm run api:check` | **PASS** — Goals and Application contracts match generated types |
+| `npm test` (complete JavaScript selection) | **582 passed / 0 failed** |
+
+**Preview launcher.** `scripts/Start-StablePreview.ps1` now owns its whole `APP_/DB_/SESSION_/CACHE_/REDIS_/QUEUE_` namespace: inherited variables from another tree or an earlier run are removed before the pinned values (`builderad_test:5432`, Redis `6398`, `session.driver=redis`, `session.store=redis`, `session.connection=default`, `cache.default=redis`) are applied to `.env` and the child process, and the configuration cache is cleared every run. A failing probe prints a stable code (`session_handler`, `redis_connection`, `postgres_owner_identity`, …) instead of credentials. `-Status` and `-Stop` are available; both server forms the worktree uses (`php -S 127.0.0.1:8037` and an interactive `php artisan serve --port=8037`) are recognised as this worktree's preview, and anything else on the port is left untouched.
+
+Verified on 2026-11-12 from fresh `pwsh -NoProfile` processes started in `C:\` with deliberately polluted inherited values (`DB_PORT=5433`, `DB_DATABASE=other_db`, `SESSION_DRIVER=file`, `CACHE_STORE=array`, `REDIS_HOST=10.1.2.3`, `REDIS_PORT=6379`, `REDIS_PASSWORD=bogus`): start → `STABLE_PREVIEW_READY`, `/login` and `/internal/login` HTTP 200 with session cookies; `-Stop` → only 8037 and 6398 released, PostgreSQL `5432` and the unrelated Redis `6379` untouched; start again → ready without manual `.env` edits. A missing Redis binary produced the specific `Redis server not found: …` failure instead of a generic one.
+
+**Owner-driven correction after the first review.** Two further defects were reproduced in the running preview and fixed:
+
+5. The slug inputs used `pattern="[\p{L}\p{N}][\p{L}\p{N}-]*"`, which browsers reject as an invalid character class under the `v` flag (`console` error on every page form). It is now escaped (`[\p{L}\p{N}][\p{L}\p{N}\-]*`), so client-side format feedback works again.
+6. Routine authoring asked for a new passkey every five minutes. Sensitive operations keep the unchanged five-minute window; the content routes now pass an explicit `:1800` window to the same middleware, and `SessionAuthority::hasFreshAuthentication()` takes that bounded value only for staff. `ContentManagementTest` proves 6 minutes is accepted and 31 minutes is rejected with the bound recovery path, while `GlobalAppearanceTest` still proves appearance publication keeps 300 seconds.
+
+**Added capabilities (Owner-approved during acceptance).** The editor gained a server-sanitized HTML source mode, and the page editor lists the sections a page already appears in and can attach or detach the page without touching publish state. Both reuse the existing sanitizer and link owners; no new table, endpoint family or duplicate state was introduced.
+
+**Real browser journey (owner-signed-in Chromium against the running preview, no forced clicks):**
+
+| Step | Observed result |
+| --- | --- |
+| Page create → save → publish | `200/200`; `/p/company` renders «الشركة» with the saved body |
+| Draft edit after publish | save `200`; public page keeps the published body and never shows the draft |
+| HTML source mode | `<h2>`, `<p>`, `<strong>` survive; `<script>` and `onclick` are removed by the server purifier |
+| Section create + page link | `200/200`; the public header shows «الشركة» linking to `/p/company` |
+| Section reorder | `200`; order becomes «الأخبار», «الشركة», «عنا» after reload |
+| Section hide | `200`; the header link disappears |
+| Section delete | `200`; `/p/company` still `200` and still published |
+| Category create + rename, article create + category + body | `200`; editor shows draft revision 2 and the category selection |
+| Article publish → draft edit → republish | publish `200`, draft save `200` with the old public body retained, republish `200`; `/articles/company-article` and `/articles/category/news` show the new body |
+
+**Status: BACKEND_VERIFIED / UI_INTEGRATED / BROWSER_VERIFIED / PREVIEW_LAUNCHER_VERIFIED / COMMITTED_LOCALLY.** Evidence: `ContentManagementTest` 4 passed / 72 assertions on the isolated disposable cluster, `ContentManagementTest`+`GlobalAppearanceTest` 12 passed / 142 assertions for the two freshness windows, complete JavaScript selection 582 passed / 0 failed, `vue-tsc` production build and `api:check` PASS. The Playwright proof scripts (`tests/Support/content-browser.mjs`, `BrowserSelection=content`) remain unexecuted here because no Playwright runtime is installed and adding it is a dependency change this task does not authorize; the browser evidence above was produced with the available interactive browser instead. No Foundation run, push, merge or deployment is claimed.

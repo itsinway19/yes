@@ -323,7 +323,7 @@ final class SessionAuthority
         return $changed;
     }
 
-    public function hasFreshAuthentication(Request $request, User $user): bool
+    public function hasFreshAuthentication(Request $request, User $user, ?int $staffFreshSeconds = null): bool
     {
         $authenticatedAt = DB::table('security_sessions')
             ->where('user_id', $user->id)
@@ -339,7 +339,9 @@ final class SessionAuthority
         $confirmedAt = $staff ? 0 : (int) $request->session()->get('auth.password_confirmed_at', 0);
         $freshAt = max(Carbon::parse($authenticatedAt)->timestamp, $confirmedAt);
 
-        return $freshAt <= time() && $freshAt >= time() - ($staff ? 300 : 900);
+        $window = $staff ? ($staffFreshSeconds ?? 300) : 900;
+
+        return $freshAt <= time() && $freshAt >= time() - $window;
     }
 
     public function markFreshPasswordAuthentication(Request $request, User $user): void

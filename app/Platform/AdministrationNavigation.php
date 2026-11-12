@@ -25,6 +25,11 @@ final class AdministrationNavigation
                 $paths[] = $path;
             }
         }
+        if ($grants->has($request->user(), $generation, 'staff.view')) {
+            array_push($paths, '/internal/administration/content/sections',
+                '/internal/administration/content/pages', '/internal/administration/content/articles',
+                '/internal/administration/content/categories', '/internal/administration/content/footer');
+        }
         $founder = $grants->canPrepareCommercialMarket($request);
         if ($founder) {
             $paths[] = '/internal/administration/customers';

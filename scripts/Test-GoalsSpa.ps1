@@ -1,4 +1,4 @@
-param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation','workspaces','context','purpose','sources','account','auth','appearance','admin-ui','businesses','public-platform','market-knowledge','data-licenses')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='', [switch]$CreateBrowserFixture, [ValidateSet('default','reverse')][string]$TestOrder='default')
+param([ValidateSet('Focused','Affected','Browser','Closure','Foundation','Acceptance')][string]$Phase='Browser', [string]$ReuseRun='', [ValidateSet('all','closure','retention','restoration','foundation','workspaces','context','purpose','sources','account','auth','appearance','admin-ui','businesses','public-platform','market-knowledge','data-licenses','content')][string]$BrowserSelection='all', [string]$ClusterDataPath='', [string]$TestFilter='', [switch]$CreateBrowserFixture, [ValidateSet('default','reverse')][string]$TestOrder='default')
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $proofRoot=Split-Path -Parent $PSScriptRoot
@@ -100,6 +100,8 @@ try {
  $env:BUILDERAD_TEST_ISOLATION_TOKEN=$proofToken
  $env:SESSION_DRIVER='redis';$env:SESSION_CONNECTION='default';$env:SESSION_LIFETIME='2';$env:SESSION_SECURE_COOKIE='false'
  $env:REDIS_PORT='6397';$env:REDIS_HOST='127.0.0.1';$env:REDIS_DB='0';$env:REDIS_CACHE_DB='1';$env:REDIS_PREFIX='goals-spa-'+$proofToken+':'
+ # The isolated Redis has no credential; an inherited developer password would make Predis send AUTH.
+ $env:REDIS_PASSWORD='';$env:REDIS_USERNAME=''
  $env:CACHE_STORE='array';$env:QUEUE_CONNECTION='sync';$env:MAIL_MAILER='array';$env:BCRYPT_ROUNDS='4'
  $env:APP_URL='http://localhost:8138';$env:APP_LOCALE='ar';$env:GOALS_SPA_RUN=$proofRun;$env:GOALS_SPA_PROOF='enabled'
  $env:LARAVEL_STORAGE_PATH=Join-Path $proofRun 'laravel'
@@ -171,7 +173,7 @@ try {
   $proofProcesses|Select-Object Id,ProcessName|ConvertTo-Json|Set-Content (Join-Path $proofRun 'processes.json')
   if($Phase -eq 'Closure'){$env:GOALS_SPA_CLOSURE='enabled'}
   $env:GOALS_SPA_ONLY=$BrowserSelection
-  $proofBrowser = if($BrowserSelection -eq 'data-licenses'){'tests/Support/data-license-browser.mjs'}elseif($BrowserSelection -eq 'market-knowledge'){'tests/Support/market-knowledge-browser.mjs'}elseif($BrowserSelection -eq 'public-platform'){'tests/Support/public-platform-browser.mjs'}elseif($BrowserSelection -eq 'businesses'){'tests/Support/business-surface-browser.mjs'}elseif($BrowserSelection -eq 'admin-ui'){'tests/Support/admin-ui-browser.mjs'}elseif($BrowserSelection -eq 'appearance'){'tests/Support/appearance-browser.mjs'}else{'tests/Support/goals-spa-browser.mjs'}
+  $proofBrowser = if($BrowserSelection -eq 'data-licenses'){'tests/Support/data-license-browser.mjs'}elseif($BrowserSelection -eq 'market-knowledge'){'tests/Support/market-knowledge-browser.mjs'}elseif($BrowserSelection -eq 'public-platform'){'tests/Support/public-platform-browser.mjs'}elseif($BrowserSelection -eq 'businesses'){'tests/Support/business-surface-browser.mjs'}elseif($BrowserSelection -eq 'content'){'tests/Support/content-browser.mjs'}elseif($BrowserSelection -eq 'admin-ui'){'tests/Support/admin-ui-browser.mjs'}elseif($BrowserSelection -eq 'appearance'){'tests/Support/appearance-browser.mjs'}else{'tests/Support/goals-spa-browser.mjs'}
   & 'C:\tools\node24\node.exe' $proofBrowser 2>&1|Tee-Object -FilePath (Join-Path $proofRun 'browser.log')
   if($LASTEXITCODE -eq 2){Write-Output 'GOALS_SPA_ACCEPTANCE=BLOCKED; see findings/unverified in browser-results.json';throw 'Required condition remains blocked; no security contract changed'}
   if($LASTEXITCODE -ne 0){throw 'Browser proof failed; no acceptance claimed'}
