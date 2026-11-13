@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\MarketProcessingExamples;
+use Tests\Support\ProofRedis;
 
 $mode = $argv[1] ?? 'setup';
 if (in_array($mode, ['setup', 'employee'], true)) {
@@ -24,7 +25,7 @@ if (in_array($mode, ['setup', 'employee'], true)) {
     $app->make(Kernel::class)->bootstrap();
 }
 app(DisposableTestDatabaseGuard::class)->assertSafe();
-if (config('session.driver') !== 'redis' || (int) config('database.redis.default.port') !== 6397) {
+if (config('session.driver') !== 'redis' || ! ProofRedis::matchesConfiguration()) {
     throw new RuntimeException('Dedicated isolated Redis required.');
 }
 $db = DB::connection('pgsql_migrations');

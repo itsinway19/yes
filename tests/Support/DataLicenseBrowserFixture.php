@@ -14,12 +14,13 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\Support\BusinessAuthorityFixture;
+use Tests\Support\ProofRedis;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 app(DisposableTestDatabaseGuard::class)->assertSafe();
-if (getenv('GOALS_SPA_PROOF') !== 'enabled' || getenv('GOALS_SPA_ONLY') !== 'data-licenses' || (int) config('database.redis.default.port') !== 6397) {
+if (getenv('GOALS_SPA_PROOF') !== 'enabled' || getenv('GOALS_SPA_ONLY') !== 'data-licenses' || ! ProofRedis::matchesConfiguration()) {
     throw new RuntimeException('Guarded data licence browser fixture required.');
 }
 $mode = $argv[1] ?? 'setup';

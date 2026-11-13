@@ -16,6 +16,7 @@ import { authEntryRoutes } from '../auth-entry/routes';
 import { staffEnrollmentRoutes } from '../staff-enrollment/routes';
 import { internalOperationsRoutes } from '../internal-operations/routes';
 import { commercialRoutes } from '../commercial/routes';
+import { contentRoutes } from '../content/routes';
 import { locale, localeBusy, switchLocale } from './locale';
 import AdministrationLayout from '../internal-operations/AdministrationLayout.vue';
 import BrandLogo from '../Components/BrandLogo.vue';
@@ -27,7 +28,7 @@ watch(status, value => { root.dataset.state = value; }, { immediate: true, flush
 const concealment = document.createElement('style');
 concealment.textContent = '[data-application-spa]:not([data-state="ready"]) :is([data-spa-view], [data-spa-private]){display:none!important}';
 document.head.append(concealment);
-const router = createApplicationRouter([...independentBusinessRoutes, ...workspaceRoutes, ...objectPurposeRoutes, ...sourceRoutes, ...accountRoutes, ...authEntryRoutes, ...staffEnrollmentRoutes, ...internalOperationsRoutes, ...commercialRoutes], {
+const router = createApplicationRouter([...independentBusinessRoutes, ...workspaceRoutes, ...objectPurposeRoutes, ...sourceRoutes, ...accountRoutes, ...authEntryRoutes, ...staffEnrollmentRoutes, ...internalOperationsRoutes, ...commercialRoutes, ...contentRoutes], {
     pending: (active, passive) => { if (active && passive) conceal(); navigating.value = active; if (active) navigationError.value = false; },
     prepare, commit: commitRoute, failed,
 });

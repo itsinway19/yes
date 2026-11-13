@@ -11,12 +11,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\ProofRedis;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 app(DisposableTestDatabaseGuard::class)->assertSafe();
-if (config('session.driver') !== 'redis' || (int) config('database.redis.default.port') !== 6397) {
+if (config('session.driver') !== 'redis' || ! ProofRedis::matchesConfiguration()) {
     throw new RuntimeException('Dedicated isolated Redis required.');
 }
 $db = DB::connection('pgsql_migrations');
@@ -32,7 +33,7 @@ foreach (($argv[1] ?? '') === 'employee' ? ['employee'] : ['founder', 'advertise
             $db->table('passkeys')->insert(['user_id' => $user->id, 'name' => 'Synthetic eligibility '.$factor,
                 'credential_id' => 'appearance-'.$user->id.'-'.$factor, 'credential' => '{}', 'created_at' => now(), 'updated_at' => now()]);
         }
-        foreach ($kind === 'founder' ? ['staff.view', 'staff.invite', 'staff.attest', 'staff.activate', 'staff.revoke', 'grant.manage', 'service.manage', 'business.manage', 'platform.maintenance.manage'] : ['staff.view'] as $action) {
+        foreach ($kind === 'founder' ? ['staff.view', 'staff.invite', 'staff.attest', 'staff.activate', 'staff.revoke', 'grant.manage', 'service.manage', 'business.manage', 'platform.maintenance.manage', 'content.read', 'content.edit', 'content.publish'] : ['staff.view'] as $action) {
             $db->table('security_action_grants')->insert(['subject_user_id' => $user->id, 'source' => 'founder_bootstrap',
                 'action' => $action, 'scope_kind' => 'platform', 'subject_generation' => 1,
                 'reason' => 'synthetic appearance browser fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

@@ -1,5 +1,11 @@
 # Capability-to-surface acceptance record
 
+## Content management — 2026-11-12
+
+| User job | Audience and placement | Authority and context | States and next action | Verification |
+| --- | --- | --- | --- | --- |
+| Publish and maintain static pages, articles, categories and header/footer navigation | Internal administration → «المحتوى والمظهر» (`/internal/administration/content/*`); readers see `/p/{slug}`, `/articles`, `/articles/category/{slug}` and the header/footer built from visible sections and links. The page editor also shows and edits which sections the page appears in. | Content reads require `content.read`; draft writes require `content.edit`; publication and public navigation/footer changes require `content.publish`. All content actions also require `staff.view`, and writes require fresh staff passkey authentication inside a bounded 30-minute authoring window. The existing authority transaction serializes revocation with writes. Content HTML is re-purified server-side. `PublicContent` serves only the approved published revision; drafts stay private, and hiding or deleting a section/link never deletes the page. | Arabic RTL and English LTR, draft/published/hidden/deleted badges, CAS conflict, forbidden, fresh-authentication and not-found states each with a next action. Empty listings state "no content yet" rather than failing. | BACKEND_VERIFIED (focused isolated tests including grant separation and revocation contention), UI_INTEGRATED (compiled Vue/TypeScript and API contract checks), BROWSER_VERIFIED (owner-signed-in browser journey and 390/1280 RTL/LTR light/dark checks). See the [closure record](./PROGRESS.md#pr64-final-integrity-closure--2026-11-13). |
+
 ## Business-first consolidation — review candidate, 2026-11-10
 
 | User job | Placement and authority | States and evidence limits |

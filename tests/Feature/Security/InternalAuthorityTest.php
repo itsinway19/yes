@@ -284,6 +284,7 @@ class InternalAuthorityTest extends TestCase
         $this->assertEqualsCanonicalizing([
             'staff.view', 'staff.invite', 'staff.attest', 'staff.activate', 'staff.revoke',
             'grant.manage', 'service.manage', 'business.manage', 'platform.maintenance.manage',
+            'content.read', 'content.edit', 'content.publish',
         ], $bootstrapActions);
         foreach (['market.knowledge.observe', 'market.knowledge.capture', 'market.knowledge.publish'] as $explicitAction) {
             $this->assertNotContains($explicitAction, $bootstrapActions);

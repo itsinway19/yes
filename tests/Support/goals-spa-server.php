@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
+use Tests\Support\ProofRedis;
 use Tests\Support\ProofRequestTiming;
 
 if (PHP_SAPI !== 'cli-server' || getenv('GOALS_SPA_PROOF') !== 'enabled') {
@@ -84,7 +85,7 @@ try {
 } finally {
     $app->instance('env', $environment);
 }
-if ($environment !== 'local' || config('session.driver') !== 'redis' || (int) config('database.redis.default.port') !== 6397) {
+if ($environment !== 'local' || config('session.driver') !== 'redis' || ! ProofRedis::matchesConfiguration()) {
     throw new RuntimeException('The proof requires real CSRF and its dedicated Redis process.');
 }
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);

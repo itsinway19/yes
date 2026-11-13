@@ -7,6 +7,7 @@ import { providerContracts } from './providers-openapi.mjs';
 import { accountContracts } from './account-openapi.mjs';
 import { authEntryContracts } from './auth-entry-openapi.mjs';
 import { internalOperationsContracts } from './internal-operations-openapi.mjs';
+import { contentContracts } from './content-openapi.mjs';
 import { commercialContracts } from './commercial-openapi.mjs';
 import { businessFoundationContracts } from './business-foundation-openapi.mjs';
 import { marketKnowledgeContracts } from './market-knowledge-openapi.mjs';
@@ -44,6 +45,7 @@ const providers = providerContracts({ ref, text, uuid, object, list, nullable, v
 const account = accountContracts({ ref, text, object, list, nullable, response, json, errors, security, headers, envelope, resource });
 const authEntry = authEntryContracts({ ref, text, object, list, nullable, response, json, errors, security, headers, envelope, resource });
 const internalOperations = internalOperationsContracts({ ref, text, uuid, object, list, nullable, response, json, errors, security, headers, envelope, resource });
+const content = contentContracts({ ref, text, uuid, object, list, nullable, response, json, errors, security, headers, resource, envelope });
 const commercial = commercialContracts({ ref, text, uuid, object, list, nullable, response, json, errors, security, headers, envelope, resource });
 
 const foundation = businessFoundationContracts({ ref, text, uuid, object, list, nullable, json, response, security, errors });
@@ -101,6 +103,7 @@ export const spec = {
         ...account.paths,
         ...authEntry.paths,
         ...internalOperations.paths,
+        ...content.paths,
         ...commercial.paths,
         ...foundation.paths,
         ...marketKnowledge.paths,
@@ -143,6 +146,7 @@ export const spec = {
             ...account.schemas,
             ...authEntry.schemas,
             ...internalOperations.schemas,
+            ...content.schemas,
             ...commercial.schemas,
             ...foundation.schemas,
             ...marketKnowledge.schemas,

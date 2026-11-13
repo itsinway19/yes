@@ -5,7 +5,7 @@ import {createRequire} from 'node:module';
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
-if(process.env.GOALS_SPA_PROOF!=='enabled'||process.env.DB_DATABASE!=='builderad_test_disposable'||process.env.REDIS_PORT!=='6397')throw Error('Dedicated proof environment required');
+if(process.env.GOALS_SPA_PROOF!=='enabled'||process.env.DB_DATABASE!=='builderad_test_disposable'||!/^(6397|1639[7-9]|1640[0-4])$/.test(process.env.REDIS_PORT ?? ''))throw Error('Dedicated proof environment required');
 const require=createRequire('C:/Users/stoma/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json');
 const {chromium}=require('playwright');
 const run=process.env.GOALS_SPA_RUN;

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import { Users, ContactRound, ListTree, KeyRound, BriefcaseBusiness, Globe2, Palette, ShieldCheck } from '@lucide/vue';
+import { Users, ContactRound, ListTree, KeyRound, BriefcaseBusiness, Globe2, Palette, ShieldCheck, FileText, Newspaper, Tags, PanelBottom } from '@lucide/vue';
 import { locale } from '../spa/locale';
 import { administrationNavigation } from './administrationNavigation';
 const props = defineProps<{allowedPaths?: readonly string[]}>();
 const groups = computed(() => administrationNavigation.map(group => ({...group,links:group.links.filter(link => props.allowedPaths?.includes(link.to))})).filter(group => group.links.length));
 const emit = defineEmits<{ select: [] }>();
-const icons = { users: Users, contact: ContactRound, catalog: ListTree, service: KeyRound, briefcase: BriefcaseBusiness, globe: Globe2, palette: Palette, shield: ShieldCheck };
+const icons = { users: Users, contact: ContactRound, catalog: ListTree, service: KeyRound, briefcase: BriefcaseBusiness, globe: Globe2, palette: Palette, shield: ShieldCheck, sections: ListTree, page: FileText, article: Newspaper, tags: Tags, footer: PanelBottom };
 </script>
 <template>
     <nav data-admin-nav class="ba-admin-navigation" :aria-label="locale === 'ar' ? 'أقسام الإدارة' : 'Administration sections'">

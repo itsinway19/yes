@@ -1,6 +1,7 @@
 <?php
 
 use App\Appearance\GlobalAppearance;
+use App\Content\PublicContent;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\IdentityContextController;
 use App\Http\Controllers\Auth\InternalAuthenticatedSessionController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\GoogleReportController;
 use App\Http\Controllers\InquiryEvidenceController;
 use App\Http\Controllers\InternalAdministrationController;
 use App\Http\Controllers\InternalBusinessTypeController;
+use App\Http\Controllers\InternalContentController;
 use App\Http\Controllers\InternalCustomerAdministrationController;
 use App\Http\Controllers\InternalServiceController;
 use App\Http\Controllers\KnowledgeConsumerController;
@@ -31,6 +33,7 @@ use App\Http\Controllers\OrganizationTeamController;
 use App\Http\Controllers\PasskeyManagementController;
 use App\Http\Controllers\PlatformMaintenanceController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicContentController;
 use App\Http\Controllers\RetiredWorkspaceCommercialController;
 use App\Http\Controllers\RetiredWorkspaceCreationController;
 use App\Http\Controllers\SecurityDevicesController;
@@ -50,15 +53,23 @@ use App\Http\Middleware\EnsureCurrentPrincipal;
 use App\Http\Middleware\EnsureFreshAuthentication;
 use App\Http\Middleware\EnsurePendingStaffEnrollment;
 use App\Http\Middleware\RequireActionGrant;
+use App\Http\Middleware\RequireContentAction;
 use App\Security\IdentityDocument;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
+Route::get('/', function (PublicContent $content) {
     return response()->view('welcome', ['locale' => app()->getLocale(),
+        'navigation' => $content->navigation(),
+        'footer' => $content->footer(),
         'appearanceTokens' => GlobalAppearance::tokens(app(GlobalAppearance::class)->current()),
         'maintenance' => request()->attributes->get('platform.maintenance'),
         'publicIdentity' => app(IdentityDocument::class)->metadata(request())])->header('Cache-Control', 'no-store');
 });
+
+Route::get('/p/{slug}', [PublicContentController::class, 'page'])->where('slug', '[^/]+')->name('content.page');
+Route::get('/articles', [PublicContentController::class, 'articles'])->name('content.articles');
+Route::get('/articles/category/{slug}', [PublicContentController::class, 'category'])->where('slug', '[^/]+')->name('content.category');
+Route::get('/articles/{slug}', [PublicContentController::class, 'article'])->where('slug', '[^/]+')->name('content.article');
 
 Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->group(function () {
     Route::post('/internal/market-knowledge/publish', [MarketKnowledgeController::class, 'publish'])->name('internal.market-knowledge.publish');
@@ -444,6 +455,53 @@ Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->group(funct
         ->middleware([RequireActionGrant::class.':service.manage', EnsureFreshAuthentication::class])
         ->whereNumber('grant')->name('internal.service-grants.destroy');
 });
+
+Route::middleware(['auth:internal', EnsureCurrentPrincipal::class, RequireContentAction::class])
+    ->prefix('internal/administration/content')->name('internal.content.')->group(function () {
+        Route::get('/sections', [InternalContentController::class, 'sections'])->name('sections');
+        Route::get('/sections/{section}/links', [InternalContentController::class, 'sectionLinks'])->whereUuid('section')->name('section-links');
+        Route::get('/pages', [InternalContentController::class, 'pages'])->name('pages');
+        Route::get('/pages/{page}', [InternalContentController::class, 'pageEditor'])->whereUuid('page')->name('page');
+        Route::get('/pages/{page}/preview', [InternalContentController::class, 'pagePreview'])->whereUuid('page')->name('page-preview');
+        Route::get('/articles', [InternalContentController::class, 'articles'])->name('articles');
+        Route::get('/articles/{article}', [InternalContentController::class, 'articleEditor'])->whereUuid('article')->name('article');
+        Route::get('/articles/{article}/preview', [InternalContentController::class, 'articlePreview'])->whereUuid('article')->name('article-preview');
+        Route::get('/categories', [InternalContentController::class, 'categories'])->name('categories');
+        Route::get('/footer', [InternalContentController::class, 'footer'])->name('footer');
+
+        // Routine content authoring uses a bounded 30-minute step-up window; security
+        // operations keep the five-minute window in their own route groups.
+        Route::middleware(EnsureFreshAuthentication::class.':1800')->group(function () {
+            Route::post('/sections', [InternalContentController::class, 'storeSection'])->name('sections.store');
+            Route::post('/sections/reorder', [InternalContentController::class, 'reorderSections'])->name('sections.reorder');
+            Route::post('/sections/{section}', [InternalContentController::class, 'updateSection'])->whereUuid('section')->name('sections.update');
+            Route::post('/sections/{section}/delete', [InternalContentController::class, 'deleteSection'])->whereUuid('section')->name('sections.delete');
+            Route::post('/sections/{section}/links', [InternalContentController::class, 'storeLink'])->whereUuid('section')->name('links.store');
+            Route::post('/sections/{section}/links/reorder', [InternalContentController::class, 'reorderLinks'])->whereUuid('section')->name('links.reorder');
+            Route::post('/links/{link}', [InternalContentController::class, 'updateLink'])->whereUuid('link')->name('links.update');
+            Route::post('/links/{link}/delete', [InternalContentController::class, 'deleteLink'])->whereUuid('link')->name('links.delete');
+            Route::post('/pages', [InternalContentController::class, 'storePage'])->name('pages.store');
+            Route::post('/pages/{page}', [InternalContentController::class, 'updatePage'])->whereUuid('page')->name('pages.update');
+            Route::post('/pages/{page}/publish', [InternalContentController::class, 'publishPage'])->whereUuid('page')->name('pages.publish');
+            Route::post('/pages/{page}/unpublish', [InternalContentController::class, 'unpublishPage'])->whereUuid('page')->name('pages.unpublish');
+            Route::post('/pages/{page}/delete', [InternalContentController::class, 'deletePage'])->whereUuid('page')->name('pages.delete');
+            Route::post('/pages/{page}/restore', [InternalContentController::class, 'restorePage'])->whereUuid('page')->name('pages.restore');
+            Route::post('/pages/{page}/revisions/{revision}/restore', [InternalContentController::class, 'restorePageRevision'])
+                ->whereUuid('page')->whereNumber('revision')->name('pages.revisions.restore');
+            Route::post('/articles', [InternalContentController::class, 'storeArticle'])->name('articles.store');
+            Route::post('/articles/{article}', [InternalContentController::class, 'updateArticle'])->whereUuid('article')->name('articles.update');
+            Route::post('/articles/{article}/publish', [InternalContentController::class, 'publishArticle'])->whereUuid('article')->name('articles.publish');
+            Route::post('/articles/{article}/unpublish', [InternalContentController::class, 'unpublishArticle'])->whereUuid('article')->name('articles.unpublish');
+            Route::post('/articles/{article}/delete', [InternalContentController::class, 'deleteArticle'])->whereUuid('article')->name('articles.delete');
+            Route::post('/articles/{article}/restore', [InternalContentController::class, 'restoreArticle'])->whereUuid('article')->name('articles.restore');
+            Route::post('/articles/{article}/revisions/{revision}/restore', [InternalContentController::class, 'restoreArticleRevision'])
+                ->whereUuid('article')->whereNumber('revision')->name('articles.revisions.restore');
+            Route::post('/categories', [InternalContentController::class, 'storeCategory'])->name('categories.store');
+            Route::post('/categories/{category}', [InternalContentController::class, 'updateCategory'])->whereUuid('category')->name('categories.update');
+            Route::post('/categories/{category}/delete', [InternalContentController::class, 'deleteCategory'])->whereUuid('category')->name('categories.delete');
+            Route::post('/footer', [InternalContentController::class, 'updateFooter'])->name('footer.update');
+        });
+    });
 
 Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.')->group(function () {
     Route::get('/', [CommercialController::class, 'index'])->name('index');

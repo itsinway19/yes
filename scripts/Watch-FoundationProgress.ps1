@@ -34,7 +34,10 @@ do {
         Get-Content -LiteralPath $gate.FullName -Tail 5
     }
     $completion = Get-Content -LiteralPath (Join-Path $progressRun 'foundation-console.log') -Tail 16 -ErrorAction SilentlyContinue |
-        Where-Object { $_ -match '^GOALS_SPA_PROCESSES=STOPPED; EXIT=(\d+)' } | Select-Object -Last 1
+        Where-Object { $_ -match '^GOALS_SPA_(FINISHED=|PROCESSES=STOPPED; )EXIT=\d+$' } | Select-Object -Last 1
+    if (-not $completion) {
+        $completion = Get-Content -LiteralPath (Join-Path $progressRun 'lifecycle.log') -Tail 1 -ErrorAction SilentlyContinue
+    }
     if ($completion -match 'EXIT=(\d+)') {
         $exitCode = [int]$Matches[1]
         Write-Progress -Activity 'Foundation: PHP tests' -Completed
