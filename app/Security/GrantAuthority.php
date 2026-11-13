@@ -34,6 +34,7 @@ final class GrantAuthority
     public const STAFF_ACTIONS = [
         'staff.view', 'staff.invite', 'staff.attest', 'staff.activate', 'staff.revoke',
         'grant.manage', 'service.manage', 'business.manage', 'platform.maintenance.manage', 'market.knowledge.observe', 'market.knowledge.capture', 'market.knowledge.publish',
+        'content.read', 'content.edit', 'content.publish',
     ];
 
     /** Owner-authorized Founder role; current/fresh checks still guard every effect. */
@@ -151,7 +152,7 @@ final class GrantAuthority
         });
     }
 
-    private const SENSITIVE_STAFF_ACTIONS = ['grant.manage', 'service.manage', 'platform.maintenance.manage', 'market.knowledge.observe', 'market.knowledge.capture', 'market.knowledge.publish'];
+    private const SENSITIVE_STAFF_ACTIONS = ['grant.manage', 'service.manage', 'platform.maintenance.manage', 'market.knowledge.observe', 'market.knowledge.capture', 'market.knowledge.publish', 'content.publish'];
 
     public const SOURCE_ACTIONS = ['source.register', 'source.manage', 'source.read', 'source.audit.recover',
         'provider.connect', 'provider.read', 'provider.revoke'];

@@ -55009,6 +55009,9 @@
           "canManage": {
             "type": "boolean"
           },
+          "canPublish": {
+            "type": "boolean"
+          },
           "total": {
             "type": "integer",
             "minimum": 0
@@ -55030,6 +55033,7 @@
         },
         "required": [
           "canManage",
+          "canPublish",
           "total",
           "page",
           "perPage",
@@ -55276,6 +55280,9 @@
           "canManage": {
             "type": "boolean"
           },
+          "canPublish": {
+            "type": "boolean"
+          },
           "page": {
             "$ref": "#/components/schemas/ContentPageEntity"
           },
@@ -55377,6 +55384,7 @@
         },
         "required": [
           "canManage",
+          "canPublish",
           "page",
           "draft",
           "published",
@@ -55863,6 +55871,9 @@
           "canManage": {
             "type": "boolean"
           },
+          "canPublish": {
+            "type": "boolean"
+          },
           "total": {
             "type": "integer",
             "minimum": 0
@@ -55884,6 +55895,7 @@
         },
         "required": [
           "canManage",
+          "canPublish",
           "total",
           "page",
           "perPage",
@@ -56154,6 +56166,9 @@
           "canManage": {
             "type": "boolean"
           },
+          "canPublish": {
+            "type": "boolean"
+          },
           "article": {
             "$ref": "#/components/schemas/ContentArticleEntity"
           },
@@ -56210,6 +56225,7 @@
         },
         "required": [
           "canManage",
+          "canPublish",
           "article",
           "draft",
           "published",

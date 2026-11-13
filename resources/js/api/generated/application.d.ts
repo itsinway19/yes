@@ -5718,6 +5718,7 @@ export interface components {
         };
         ContentPagesData: {
             canManage: boolean;
+            canPublish: boolean;
             total: number;
             page: number;
             perPage: number;
@@ -5767,6 +5768,7 @@ export interface components {
         };
         ContentPageEditorData: {
             canManage: boolean;
+            canPublish: boolean;
             page: components["schemas"]["ContentPageEntity"];
             draft: components["schemas"]["ContentPageRevision"] | null;
             published: components["schemas"]["ContentPageRevision"] | null;
@@ -5856,6 +5858,7 @@ export interface components {
         };
         ContentArticlesData: {
             canManage: boolean;
+            canPublish: boolean;
             total: number;
             page: number;
             perPage: number;
@@ -5904,6 +5907,7 @@ export interface components {
         };
         ContentArticleEditorData: {
             canManage: boolean;
+            canPublish: boolean;
             article: components["schemas"]["ContentArticleEntity"];
             draft: components["schemas"]["ContentArticleRevision"] | null;
             published: components["schemas"]["ContentArticleRevision"] | null;

@@ -2,6 +2,7 @@
 
 namespace App\Content;
 
+use App\Security\GrantAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,7 @@ final class ContentAdmin
             ->orderByRaw("CASE s.placement WHEN 'header' THEN 0 ELSE 1 END")
             ->orderBy('s.position')->orderBy('s.id')->get();
 
-        return ['canManage' => true, 'sections' => $rows->map(fn ($row) => $this->sectionRow($row))->all(),
+        return ['canManage' => $this->can('content.publish'), 'sections' => $rows->map(fn ($row) => $this->sectionRow($row))->all(),
             'placements' => [['value' => 'header', 'label_ar' => 'رأس الموقع', 'label_en' => 'Site header'],
                 ['value' => 'footer', 'label_ar' => 'الفوتر', 'label_en' => 'Footer']]];
     }
@@ -107,7 +108,7 @@ final class ContentAdmin
             ->get();
 
         return [
-            'canManage' => true,
+            'canManage' => $this->can('content.publish'),
             'section' => $this->sectionRow($section),
             'links' => $links->map(fn ($row) => $this->linkRow($row))->all(),
             'choices' => $this->linkChoices(),
@@ -210,7 +211,7 @@ final class ContentAdmin
             ->orderBy('p.position')->orderByDesc('p.updated_at')->orderBy('p.id')
             ->forPage($page, 20)->get();
 
-        return ['canManage' => true, 'total' => $total, 'page' => $page, 'perPage' => 20,
+        return ['canManage' => $this->can('content.edit'), 'canPublish' => $this->can('content.publish'), 'total' => $total, 'page' => $page, 'perPage' => 20,
             'rows' => $rows->map(fn ($row) => [
                 'public_id' => $row->public_id, 'title_ar' => $row->title_ar, 'title_en' => $row->title_en,
                 'slug_ar' => $row->slug_ar, 'slug_en' => $row->slug_en, 'position' => (int) $row->position,
@@ -226,7 +227,7 @@ final class ContentAdmin
         $page = DB::table('content_pages')->where('public_id', $publicId)->first();
         abort_unless($page, 404);
 
-        return ['canManage' => true, 'page' => [
+        return ['canManage' => $this->can('content.edit'), 'canPublish' => $this->can('content.publish'), 'page' => [
             'public_id' => $page->public_id, 'slug_ar' => $page->slug_ar, 'slug_en' => $page->slug_en,
             'position' => (int) $page->position, 'deleted' => $page->deleted_at !== null,
             'published_at' => $this->iso($page->published_at),
@@ -383,7 +384,7 @@ final class ContentAdmin
             ->orderBy('a.position')->orderByDesc('a.published_at')->orderBy('a.id')
             ->forPage($page, 20)->get();
 
-        return ['canManage' => true, 'total' => $total, 'page' => $page, 'perPage' => 20,
+        return ['canManage' => $this->can('content.edit'), 'canPublish' => $this->can('content.publish'), 'total' => $total, 'page' => $page, 'perPage' => 20,
             'rows' => $rows->map(fn ($row) => [
                 'public_id' => $row->public_id, 'title_ar' => $row->title_ar, 'title_en' => $row->title_en,
                 'slug_ar' => $row->slug_ar, 'slug_en' => $row->slug_en, 'position' => (int) $row->position,
@@ -402,7 +403,7 @@ final class ContentAdmin
         abort_unless($article, 404);
         $category = $article->category_id ? DB::table('content_categories')->where('id', $article->category_id)->first() : null;
 
-        return ['canManage' => true, 'article' => [
+        return ['canManage' => $this->can('content.edit'), 'canPublish' => $this->can('content.publish'), 'article' => [
             'public_id' => $article->public_id, 'slug_ar' => $article->slug_ar, 'slug_en' => $article->slug_en,
             'position' => (int) $article->position, 'deleted' => $article->deleted_at !== null,
             'category_public_id' => $category->public_id ?? null,
@@ -510,7 +511,7 @@ final class ContentAdmin
             ->selectRaw('(SELECT count(*) FROM content_articles a WHERE a.category_id = c.id AND a.deleted_at IS NULL) AS article_count')
             ->orderBy('c.position')->orderBy('c.id')->get();
 
-        return ['canManage' => true, 'rows' => $rows->map(fn ($row) => [
+        return ['canManage' => $this->can('content.publish'), 'rows' => $rows->map(fn ($row) => [
             'public_id' => $row->public_id, 'slug_ar' => $row->slug_ar, 'slug_en' => $row->slug_en,
             'name_ar' => $row->name_ar, 'name_en' => $row->name_en,
             'description_ar' => $row->description_ar, 'description_en' => $row->description_en,
@@ -570,7 +571,7 @@ final class ContentAdmin
     {
         $row = DB::table('content_footer_settings')->where('id', 1)->first();
 
-        return ['canManage' => true, 'footer' => [
+        return ['canManage' => $this->can('content.publish'), 'footer' => [
             'revision' => (int) ($row->revision ?? 0),
             'description_ar' => $row->description_ar ?? '', 'description_en' => $row->description_en ?? '',
             'copyright_ar' => $row->copyright_ar ?? '', 'copyright_en' => $row->copyright_en ?? '',
@@ -623,6 +624,9 @@ final class ContentAdmin
             if ((int) $entity->draft_revision_id !== (int) $revisionRow->id) {
                 throw new ConflictHttpException('The draft changed before publication. Reload the editor.');
             }
+            if ((int) $entity->published_revision_id === (int) $revisionRow->id) {
+                return; // A lost response must not create another publication event.
+            }
             $this->assertSlugsFree($entityTable, $revisionRow->slug_ar, $revisionRow->slug_en, $entity->id);
             $now = now();
             if ($entity->published_revision_id) {
@@ -645,6 +649,9 @@ final class ContentAdmin
         DB::transaction(function () use ($entityTable, $revisionTable, $publicId, $userId, $event): void {
             $entity = DB::table($entityTable)->where('public_id', $publicId)->whereNull('deleted_at')->lockForUpdate()->first();
             abort_unless($entity, 404);
+            if ($entity->published_revision_id === null) {
+                return;
+            }
             if ($entity->published_revision_id) {
                 DB::table($revisionTable)->where('id', $entity->published_revision_id)->update(['state' => 'superseded']);
             }
@@ -918,6 +925,14 @@ final class ContentAdmin
     {
         DB::select('SELECT public.builderad_content_write_audit(?, ?, ?)',
             [$userId, $event, $reason]);
+    }
+
+    private function can(string $action): bool
+    {
+        $request = request();
+        return $request->user() !== null && app(GrantAuthority::class)->has(
+            $request->user(), (int) $request->session()->get('a001_generation', 0), $action,
+        );
     }
 
     private function iso($value): ?string

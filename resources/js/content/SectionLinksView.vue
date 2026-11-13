@@ -130,12 +130,12 @@ function label(row: LinkRow) {
             <p><RouterLink to="/internal/administration/content/sections">← {{ copy('الأقسام والروابط', 'Sections and links') }}</RouterLink></p>
             <h1>{{ copy('روابط القسم', 'Section links') }} — {{ links ? (locale === 'ar' ? links.section.name_ar : links.section.name_en) : '' }}</h1>
             <p>{{ copy('اربط صفحات ومقالات وروابط داخلية وخارجية. ترتيب الرابط مستقل عن ترتيب المحتوى.', 'Attach pages, articles, internal and external links. Link order is independent of content order.') }}</p>
-            <button class="content-action content-action--primary" type="button" data-content-add-link @click="beginCreate">+ {{ copy('إضافة رابط', 'Add link') }}</button>
+            <button v-if="links?.canManage" class="content-action content-action--primary" type="button" data-content-add-link @click="beginCreate">+ {{ copy('إضافة رابط', 'Add link') }}</button>
         </template>
 
         <p v-if="failure" class="content-error" role="alert">{{ failure }}</p>
 
-        <form v-if="showForm" class="content-form" data-content-link-form @submit.prevent="submit">
+        <form v-if="showForm && links?.canManage" class="content-form" data-content-link-form @submit.prevent="submit">
             <h2>{{ editing ? copy('تعديل الرابط', 'Edit link') : copy('رابط جديد', 'New link') }}</h2>
             <div class="content-grid">
                 <div class="content-field">
@@ -197,10 +197,10 @@ function label(row: LinkRow) {
                     <td dir="ltr">{{ row.position }}</td>
                     <td><span class="content-badge" :data-state="row.visible ? 'published' : 'draft'">{{ row.visible ? copy('ظاهر', 'Visible') : copy('مخفي', 'Hidden') }}</span></td>
                     <td><div class="content-actions">
-                        <button class="content-action" type="button" @click="beginEdit(row)">{{ copy('تعديل', 'Edit') }}</button>
-                        <button class="content-action" type="button" @click="move(row, -1)">↑</button>
-                        <button class="content-action" type="button" @click="move(row, 1)">↓</button>
-                        <button class="content-action content-action--danger" type="button" @click="remove(row)">{{ copy('حذف', 'Delete') }}</button>
+                        <button v-if="links?.canManage" class="content-action" type="button" @click="beginEdit(row)">{{ copy('تعديل', 'Edit') }}</button>
+                        <button v-if="links?.canManage" class="content-action" type="button" @click="move(row, -1)">↑</button>
+                        <button v-if="links?.canManage" class="content-action" type="button" @click="move(row, 1)">↓</button>
+                        <button v-if="links?.canManage" class="content-action content-action--danger" type="button" @click="remove(row)">{{ copy('حذف', 'Delete') }}</button>
                     </div></td>
                 </tr>
                 <tr v-if="rows.length === 0"><td colspan="6">{{ copy('لا توجد روابط في هذا القسم.', 'This section has no links yet.') }}</td></tr>

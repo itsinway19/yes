@@ -161,17 +161,17 @@ const categories = computed(() => editor.value?.categories ?? []);
         <p v-if="editor?.article.deleted" class="content-error" role="status">{{ copy('هذه المقالة محذوفة منطقيًا.', 'This article is soft-deleted.') }}</p>
 
         <div class="content-toolbar">
-            <button class="content-action content-action--primary" type="button" :disabled="busy" data-content-save @click="save">{{ busy ? copy('جارٍ الحفظ…', 'Saving…') : copy('حفظ المسودة', 'Save draft') }}</button>
-            <button class="content-action" type="button" :disabled="busy || !editor?.draft" data-content-publish @click="publish">{{ copy('نشر', 'Publish') }}</button>
-            <button v-if="published" class="content-action" type="button" :disabled="busy" @click="unpublish">{{ copy('إلغاء النشر', 'Unpublish') }}</button>
+            <button v-if="editor?.canManage" class="content-action content-action--primary" type="button" :disabled="busy" data-content-save @click="save">{{ busy ? copy('جارٍ الحفظ…', 'Saving…') : copy('حفظ المسودة', 'Save draft') }}</button>
+            <button v-if="editor?.canPublish" class="content-action" type="button" :disabled="busy || !editor?.draft" data-content-publish @click="publish">{{ copy('نشر', 'Publish') }}</button>
+            <button v-if="editor?.canPublish && published" class="content-action" type="button" :disabled="busy" @click="unpublish">{{ copy('إلغاء النشر', 'Unpublish') }}</button>
             <a class="content-action" :href="`/internal/administration/content/articles/${articleId}/preview`" target="_blank" rel="noopener">{{ copy('معاينة محمية', 'Protected preview') }}</a>
             <a v-if="published" class="content-action" :href="editor?.article.url_ar" target="_blank" rel="noopener">{{ copy('عرض المنشور', 'View published') }}</a>
-            <button v-if="!editor?.article.deleted" class="content-action content-action--danger" type="button" :disabled="busy" @click="remove">{{ copy('حذف', 'Delete') }}</button>
-            <button v-else class="content-action" type="button" :disabled="busy" @click="restore">{{ copy('استعادة', 'Restore') }}</button>
+            <button v-if="editor?.canPublish && !editor?.article.deleted" class="content-action content-action--danger" type="button" :disabled="busy" @click="remove">{{ copy('حذف', 'Delete') }}</button>
+            <button v-if="editor?.canManage && editor?.article.deleted" class="content-action" type="button" :disabled="busy" @click="restore">{{ copy('استعادة', 'Restore') }}</button>
             <span class="content-note">{{ copy('المسودة', 'Draft') }}: {{ expectedRevision }} · {{ copy('المنشور', 'Published') }}: {{ published?.revision ?? '—' }}</span>
         </div>
 
-        <form class="content-form" @submit.prevent="save">
+        <form v-if="editor?.canManage" class="content-form" @submit.prevent="save">
             <div class="content-grid">
                 <div class="content-field"><label for="article-edit-title-ar">{{ copy('العنوان بالعربية', 'Arabic title') }}</label><input id="article-edit-title-ar" v-model="form.title_ar" required maxlength="200" dir="rtl"></div>
                 <div class="content-field"><label for="article-edit-title-en">{{ copy('العنوان بالإنجليزية', 'English title') }}</label><input id="article-edit-title-en" v-model="form.title_en" required maxlength="200" dir="ltr"></div>
@@ -204,7 +204,7 @@ const categories = computed(() => editor.value?.categories ?? []);
             <ul>
                 <li v-for="revision in revisions" :key="revision.revision">
                     <span dir="ltr">#{{ revision.revision }} · {{ revision.state }} · {{ revision.created_at?.slice(0, 19).replace('T', ' ') }}</span>
-                    <button class="content-action" type="button" :disabled="busy" @click="restoreRevision(revision.revision)">{{ copy('استعادة كمسودة', 'Restore as draft') }}</button>
+                    <button v-if="editor?.canManage" class="content-action" type="button" :disabled="busy" @click="restoreRevision(revision.revision)">{{ copy('استعادة كمسودة', 'Restore as draft') }}</button>
                 </li>
                 <li v-if="revisions.length === 0">{{ copy('لا توجد مراجعات بعد.', 'No revisions yet.') }}</li>
             </ul>

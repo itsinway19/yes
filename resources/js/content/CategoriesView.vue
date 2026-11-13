@@ -73,12 +73,12 @@ async function remove(row: CategoryRow) {
         <template #header>
             <h1>{{ copy('تصنيفات المقالات', 'Article categories') }}</h1>
             <p>{{ copy('تصنيف أساسي واحد اختياري لكل مقالة. لا يمكن حذف تصنيف مرتبط بمقالات.', 'One optional primary category per article. A category assigned to articles cannot be deleted.') }}</p>
-            <button class="content-action content-action--primary" type="button" data-content-add-category @click="beginCreate">+ {{ copy('إضافة تصنيف', 'Add category') }}</button>
+            <button v-if="categories?.canManage" class="content-action content-action--primary" type="button" data-content-add-category @click="beginCreate">+ {{ copy('إضافة تصنيف', 'Add category') }}</button>
         </template>
 
         <p v-if="failure" class="content-error" role="alert">{{ failure }}</p>
 
-        <form v-if="showForm" class="content-form" data-content-category-form @submit.prevent="submit">
+        <form v-if="showForm && categories?.canManage" class="content-form" data-content-category-form @submit.prevent="submit">
             <h2>{{ editing ? copy('تعديل التصنيف', 'Edit category') : copy('تصنيف جديد', 'New category') }}</h2>
             <div class="content-grid">
                 <div class="content-field"><label for="category-name-ar">{{ copy('الاسم بالعربية', 'Arabic name') }}</label><input id="category-name-ar" v-model="form.name_ar" required maxlength="120" dir="rtl"></div>
@@ -109,8 +109,8 @@ async function remove(row: CategoryRow) {
                     <td><span class="content-badge" :data-state="row.visible ? 'published' : 'draft'">{{ row.visible ? copy('ظاهر', 'Visible') : copy('مخفي', 'Hidden') }}</span></td>
                     <td dir="ltr">{{ row.article_count }}</td>
                     <td><div class="content-actions">
-                        <button class="content-action" type="button" @click="beginEdit(row)">{{ copy('تعديل', 'Edit') }}</button>
-                        <button class="content-action content-action--danger" type="button" :disabled="row.article_count > 0" @click="remove(row)">{{ copy('حذف', 'Delete') }}</button>
+                        <button v-if="categories?.canManage" class="content-action" type="button" @click="beginEdit(row)">{{ copy('تعديل', 'Edit') }}</button>
+                        <button v-if="categories?.canManage" class="content-action content-action--danger" type="button" :disabled="row.article_count > 0" @click="remove(row)">{{ copy('حذف', 'Delete') }}</button>
                     </div></td>
                 </tr>
                 <tr v-if="rows.length === 0"><td colspan="6">{{ copy('لا توجد تصنيفات بعد.', 'No categories yet.') }}</td></tr>

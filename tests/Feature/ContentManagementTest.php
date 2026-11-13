@@ -217,6 +217,202 @@ final class ContentManagementTest extends TestCase
         $this->assertSame(1, $sections->count());
     }
 
+    public function test_content_grants_separate_read_edit_and_publication_at_the_api_boundary(): void
+    {
+        $admin = $this->administrator();
+        $grants = DB::connection('pgsql_migrations')->table('security_action_grants')
+            ->where('subject_user_id', $admin->id)->where('scope_kind', 'platform');
+        $url = '/internal/administration/content';
+        $payload = $this->pagePayload('content-authority', 'Authority', 'Private draft');
+
+        // A staff viewer cannot read drafts or turn a direct API call into a write.
+        (clone $grants)->whereIn('action', ['content.read', 'content.edit', 'content.publish'])->delete();
+        $this->getJson($url.'/pages')->assertForbidden();
+        $this->postJson($url.'/pages', $payload)->assertForbidden();
+
+        $this->contentGrant($admin, 'content.read');
+        $this->getJson($url.'/pages')->assertOk()
+            ->assertJsonPath('data.canManage', false)->assertJsonPath('data.canPublish', false);
+        $this->postJson($url.'/pages', $payload)->assertForbidden();
+
+        $this->contentGrant($admin, 'content.edit');
+        $created = $this->postJson($url.'/pages', $payload)->assertOk()
+            ->assertJsonPath('page.canManage', true)->assertJsonPath('page.canPublish', false)->json('page');
+        $page = $created['page']['public_id'];
+        $this->postJson($url.'/pages/'.$page.'/publish', ['revision' => 1])->assertForbidden();
+        $this->asGuest();
+        $this->get('/p/content-authority')->assertNotFound();
+        $this->actingAsInternal($admin);
+        $this->postJson($url.'/sections', [
+            'name_ar' => 'عام', 'name_en' => 'Public', 'placement' => 'header',
+            'position' => 0, 'visible' => true,
+        ])->assertForbidden();
+
+        $this->contentGrant($admin, 'content.publish');
+        $this->postJson($url.'/pages/'.$page.'/publish', ['revision' => 1])->assertOk()
+            ->assertJsonPath('page.canPublish', true);
+        (clone $grants)->where('action', 'staff.view')->update([
+            'status' => 'revoked', 'revoked_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->getJson($url.'/pages')->assertForbidden();
+        $this->postJson($url.'/pages/'.$page.'/unpublish')->assertForbidden();
+        (clone $grants)->where('action', 'staff.view')->update([
+            'status' => 'active', 'revoked_at' => null, 'updated_at' => now(),
+        ]);
+        $this->asGuest();
+        $this->get('/p/content-authority')->assertOk();
+        $this->actingAsInternal($admin);
+        (clone $grants)->where('action', 'content.publish')->update([
+            'status' => 'revoked', 'revoked_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->postJson($url.'/pages/'.$page.'/unpublish')->assertForbidden();
+        $this->postJson($url.'/footer', [
+            'revision' => 0, 'show_sections' => true,
+        ])->assertForbidden();
+        $this->asGuest();
+        $this->get('/p/content-authority')->assertOk();
+    }
+
+    private function contentGrant(User $user, string $action): void
+    {
+        DB::connection('pgsql_migrations')->table('security_action_grants')->insert([
+            'subject_user_id' => $user->id, 'granted_by' => null,
+            'source' => 'founder_bootstrap', 'action' => $action,
+            'scope_kind' => 'platform', 'subject_generation' => 1,
+            'reason' => 'content_test', 'status' => 'active', 'version' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    public function test_repeated_publication_commands_do_not_repeat_the_public_effect_or_audit(): void
+    {
+        $this->administrator();
+        $url = '/internal/administration/content/pages';
+        $created = $this->postJson($url, $this->pagePayload('retry-page', 'Retry', 'Version one'))
+            ->assertOk()->json('page');
+        $page = $created['page']['public_id'];
+        $publish = $url.'/'.$page.'/publish';
+        $this->postJson($publish, ['revision' => 1])->assertOk();
+        $first = DB::table('content_pages')->where('public_id', $page)->first();
+        $this->postJson($publish, ['revision' => 1])->assertOk();
+        $second = DB::table('content_pages')->where('public_id', $page)->first();
+        $this->assertSame($first->published_at, $second->published_at);
+        $this->assertSame(1, DB::connection('pgsql_migrations')->table('security_audit_events')
+            ->where('event', 'content_page_published')->count());
+
+        $this->postJson($url.'/'.$page.'/unpublish')->assertOk();
+        $this->postJson($url.'/'.$page.'/unpublish')->assertOk();
+        $this->assertSame(1, DB::connection('pgsql_migrations')->table('security_audit_events')
+            ->where('event', 'content_page_unpublished')->count());
+    }
+
+    public function test_content_grant_backfill_is_founder_only_and_does_not_revive_revocation(): void
+    {
+        $founder = $this->administrator();
+        $db = DB::connection('pgsql_migrations');
+        $grants = $db->table('security_action_grants')->where('subject_user_id', $founder->id);
+        (clone $grants)->whereIn('action', ['content.read', 'content.edit'])->delete();
+        (clone $grants)->where('action', 'content.publish')->update([
+            'status' => 'revoked', 'revoked_at' => now(), 'updated_at' => now(),
+        ]);
+        $migration = require database_path('migrations/0001_01_01_000800_separate_content_authority.php');
+        $runtimeConnection = DB::getDefaultConnection();
+        DB::setDefaultConnection('pgsql_migrations');
+        try {
+            $migration->up();
+        } finally {
+            DB::setDefaultConnection($runtimeConnection);
+        }
+        $this->assertSame(1, (clone $grants)->where('action', 'content.read')->where('status', 'active')->count());
+        $this->assertSame(1, (clone $grants)->where('action', 'content.edit')->where('status', 'active')->count());
+        $this->assertSame(0, (clone $grants)->where('action', 'content.publish')->where('status', 'active')->count());
+        DB::setDefaultConnection('pgsql_migrations');
+        try {
+            $migration->up();
+        } finally {
+            DB::setDefaultConnection($runtimeConnection);
+        }
+        $this->assertSame(1, (clone $grants)->where('action', 'content.read')->count());
+
+        $employee = User::factory()->create();
+        $db->table('principal_lifecycles')->where('user_id', $employee->id)
+            ->update(['principal_class' => 'staff']);
+        $db->table('internal_personnel')->insert([
+            'user_id' => $employee->id, 'kind' => 'employee', 'status' => 'active',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $db->table('security_action_grants')->insert([
+            'subject_user_id' => $employee->id, 'granted_by' => $founder->id,
+            'source' => 'human', 'action' => 'staff.view', 'scope_kind' => 'platform',
+            'subject_generation' => 1, 'reason' => 'content migration boundary',
+            'status' => 'active', 'version' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::setDefaultConnection('pgsql_migrations');
+        try {
+            $migration->up();
+        } finally {
+            DB::setDefaultConnection($runtimeConnection);
+        }
+        $this->assertSame(0, $db->table('security_action_grants')->where('subject_user_id', $employee->id)
+            ->where('action', 'like', 'content.%')->count());
+    }
+
+    public function test_content_grant_read_lock_serializes_with_revocation(): void
+    {
+        $admin = $this->administrator();
+        $authority = DB::connection('pgsql_authority');
+        $writer = DB::connection('pgsql_migrations');
+        $grantId = $writer->table('security_action_grants')->where('subject_user_id', $admin->id)
+            ->where('action', 'content.publish')->value('id');
+        $authority->beginTransaction();
+        try {
+            $this->assertTrue(app(GrantAuthority::class)->has($admin, 1, 'content.publish'));
+            $writer->beginTransaction();
+            try {
+                $writer->statement("SET LOCAL lock_timeout = '150ms'");
+                try {
+                    $writer->table('security_action_grants')->where('id', $grantId)
+                        ->update(['status' => 'revoked', 'revoked_at' => now()]);
+                    $this->fail('Revocation must wait for the in-flight content grant check.');
+                } catch (QueryException $error) {
+                    $this->assertSame('55P03', $error->errorInfo[0] ?? null);
+                }
+            } finally {
+                $writer->rollBack();
+            }
+        } finally {
+            $authority->commit();
+        }
+        $writer->table('security_action_grants')->where('id', $grantId)
+            ->update(['status' => 'revoked', 'revoked_at' => now(), 'updated_at' => now()]);
+        $this->postJson('/internal/administration/content/sections', [
+            'name_ar' => 'بعد السحب', 'name_en' => 'After revoke', 'placement' => 'header',
+            'position' => 0, 'visible' => true,
+        ])->assertForbidden();
+    }
+
+    public function test_untrusted_html_is_sanitized_before_preview_and_publication(): void
+    {
+        $this->administrator();
+        $payload = $this->pagePayload('safe-html', 'Safe', 'Safe text');
+        $payload['body_ar'] = '<p>Safe text</p><script>alert(1)</script>'
+            .'<img src="javascript:alert(2)" onerror="alert(3)">'
+            .'<a href="javascript:alert(4)" target="_blank">Link</a>';
+        $saved = $this->postJson('/internal/administration/content/pages', $payload)->assertOk()->json('page');
+        $body = $saved['draft']['body_ar'];
+        $this->assertStringContainsString('Safe text', $body);
+        $this->assertStringNotContainsString('<script', $body);
+        $this->assertStringNotContainsString('onerror', $body);
+        $this->assertStringNotContainsString('javascript:', $body);
+        $page = $saved['page']['public_id'];
+        $this->get('/internal/administration/content/pages/'.$page.'/preview')->assertOk()
+            ->assertDontSee('alert(1)', false)->assertDontSee('onerror', false);
+        $this->postJson('/internal/administration/content/pages/'.$page.'/publish', ['revision' => 1])->assertOk();
+        $this->asGuest();
+        $this->get('/p/safe-html')->assertOk()->assertDontSee('alert(1)', false)
+            ->assertDontSee('onerror', false)->assertDontSee('javascript:', false);
+    }
+
     public function test_page_publication_keeps_saved_draft_edits_private_until_republished(): void
     {
         $admin = $this->administrator();

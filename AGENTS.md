@@ -1,5 +1,9 @@
 # Builderad implementation guidance
 
+Use the smallest sufficient execution path. Keep investigation, changes, and verification tightly within the authorized task. Expand scope only when concrete evidence makes it necessary. Reuse valid evidence and stop once the acceptance criteria are met; do not spend time or token budget on speculative audits or repeated comprehensive gates.
+
+Do not generate images or screenshots without the Owner's approval. Use existing previews and direct inspection for visual checks. This rule does not prevent required browser interaction tests that do not create image files.
+
 Before material product implementation:
 
 - Identify the accepted semantic/capability owner and applicable INV-* rules in [Executable Architecture](docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md).

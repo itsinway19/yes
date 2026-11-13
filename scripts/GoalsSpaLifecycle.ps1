@@ -22,6 +22,21 @@ function Assert-ProofDiskSpace([string]$Path) {
  Write-Output $message
 }
 
+function Test-ProofPortOccupied([int]$Port) {
+ $listeners=@(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue)
+ if($listeners.Count -eq 0){return $false}
+ if(@($listeners|Where-Object{$_.OwningProcess -ne 0}).Count -gt 0){return $true}
+ # Windows can retain owner-zero phantom LISTEN rows after an owned server
+ # exits. Never ignore a row that still accepts a loopback connection.
+ foreach($address in @('127.0.0.1','::1')){
+  $client=[Net.Sockets.TcpClient]::new()
+  try {
+   if($client.ConnectAsync($address,$Port).Wait(250)){return $true}
+  }catch [System.Exception]{}finally{$client.Dispose()}
+ }
+ return $false
+}
+
 function Remove-ProofCluster([string]$Run,[string]$Data,[string]$TestingRoot,[string]$Owner) {
  if([IO.Path]::GetDirectoryName($Run) -ne $TestingRoot -or
     [IO.Path]::GetFileName($Run) -notmatch '^goals-spa-[0-9a-f-]{36}$' -or

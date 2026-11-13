@@ -53,6 +53,7 @@ use App\Http\Middleware\EnsureCurrentPrincipal;
 use App\Http\Middleware\EnsureFreshAuthentication;
 use App\Http\Middleware\EnsurePendingStaffEnrollment;
 use App\Http\Middleware\RequireActionGrant;
+use App\Http\Middleware\RequireContentAction;
 use App\Security\IdentityDocument;
 use Illuminate\Support\Facades\Route;
 
@@ -455,7 +456,7 @@ Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->group(funct
         ->whereNumber('grant')->name('internal.service-grants.destroy');
 });
 
-Route::middleware(['auth:internal', EnsureCurrentPrincipal::class, RequireActionGrant::class.':staff.view'])
+Route::middleware(['auth:internal', EnsureCurrentPrincipal::class, RequireContentAction::class])
     ->prefix('internal/administration/content')->name('internal.content.')->group(function () {
         Route::get('/sections', [InternalContentController::class, 'sections'])->name('sections');
         Route::get('/sections/{section}/links', [InternalContentController::class, 'sectionLinks'])->whereUuid('section')->name('section-links');

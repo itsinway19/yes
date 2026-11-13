@@ -187,17 +187,17 @@ const revisions = computed(() => editor.value?.revisions ?? []);
         <p v-if="editor?.page.deleted" class="content-error" role="status">{{ copy('هذه الصفحة محذوفة منطقيًا.', 'This page is soft-deleted.') }}</p>
 
         <div class="content-toolbar">
-            <button class="content-action content-action--primary" type="button" :disabled="busy" data-content-save @click="save">{{ busy ? copy('جارٍ الحفظ…', 'Saving…') : copy('حفظ المسودة', 'Save draft') }}</button>
-            <button class="content-action" type="button" :disabled="busy || !editor?.draft" data-content-publish @click="publish">{{ copy('نشر', 'Publish') }}</button>
-            <button v-if="published" class="content-action" type="button" :disabled="busy" @click="unpublish">{{ copy('إلغاء النشر', 'Unpublish') }}</button>
+            <button v-if="editor?.canManage" class="content-action content-action--primary" type="button" :disabled="busy" data-content-save @click="save">{{ busy ? copy('جارٍ الحفظ…', 'Saving…') : copy('حفظ المسودة', 'Save draft') }}</button>
+            <button v-if="editor?.canPublish" class="content-action" type="button" :disabled="busy || !editor?.draft" data-content-publish @click="publish">{{ copy('نشر', 'Publish') }}</button>
+            <button v-if="editor?.canPublish && published" class="content-action" type="button" :disabled="busy" @click="unpublish">{{ copy('إلغاء النشر', 'Unpublish') }}</button>
             <a class="content-action" :href="`/internal/administration/content/pages/${pageId}/preview`" target="_blank" rel="noopener">{{ copy('معاينة محمية', 'Protected preview') }}</a>
             <a v-if="published" class="content-action" :href="editor?.page.url_ar" target="_blank" rel="noopener">{{ copy('عرض المنشور', 'View published') }}</a>
-            <button v-if="!editor?.page.deleted" class="content-action content-action--danger" type="button" :disabled="busy" @click="remove">{{ copy('حذف', 'Delete') }}</button>
-            <button v-else class="content-action" type="button" :disabled="busy" @click="restore">{{ copy('استعادة', 'Restore') }}</button>
+            <button v-if="editor?.canPublish && !editor?.page.deleted" class="content-action content-action--danger" type="button" :disabled="busy" @click="remove">{{ copy('حذف', 'Delete') }}</button>
+            <button v-if="editor?.canManage && editor?.page.deleted" class="content-action" type="button" :disabled="busy" @click="restore">{{ copy('استعادة', 'Restore') }}</button>
             <span class="content-note">{{ copy('المسودة', 'Draft') }}: {{ expectedRevision }} · {{ copy('المنشور', 'Published') }}: {{ published?.revision ?? '—' }}</span>
         </div>
 
-        <form class="content-form" @submit.prevent="save">
+        <form v-if="editor?.canManage" class="content-form" @submit.prevent="save">
             <div class="content-grid">
                 <div class="content-field"><label for="page-edit-title-ar">{{ copy('العنوان بالعربية', 'Arabic title') }}</label><input id="page-edit-title-ar" v-model="form.title_ar" required maxlength="200" dir="rtl"></div>
                 <div class="content-field"><label for="page-edit-title-en">{{ copy('العنوان بالإنجليزية', 'English title') }}</label><input id="page-edit-title-en" v-model="form.title_en" required maxlength="200" dir="ltr"></div>
@@ -218,7 +218,7 @@ const revisions = computed(() => editor.value?.revisions ?? []);
         <section class="content-placements">
             <h2>{{ copy('مكان ظهور الصفحة', 'Page placement') }}</h2>
             <p class="content-note">{{ copy('أضف الصفحة إلى قسم في رأس الموقع أو الفوتر. الإضافة لا تنشر الصفحة ولا تحذف ارتباطات أخرى.', 'Attach the page to a header or footer section. Attaching neither publishes the page nor removes other links.') }}</p>
-            <div class="content-actions">
+            <div v-if="editor?.canPublish" class="content-actions">
                 <select id="page-placement-section" v-model="targetSection" :aria-label="copy('القسم', 'Section')">
                     <option value="">{{ copy('اختر قسمًا', 'Choose a section') }}</option>
                     <option v-for="section in sectionChoices" :key="section.public_id" :value="section.public_id">
@@ -231,7 +231,7 @@ const revisions = computed(() => editor.value?.revisions ?? []);
                 <li v-for="placement in placements" :key="placement.link_public_id">
                     <span>{{ locale === 'ar' ? placement.section_name_ar : placement.section_name_en }}</span>
                     <span class="content-note">{{ placement.visible ? copy('ظاهر', 'Visible') : copy('مخفي', 'Hidden') }}</span>
-                    <button class="content-action content-action--danger" type="button" :disabled="addingSection" @click="detachFromSection(placement.link_public_id)">{{ copy('إزالة', 'Remove') }}</button>
+                    <button v-if="editor?.canPublish" class="content-action content-action--danger" type="button" :disabled="addingSection" @click="detachFromSection(placement.link_public_id)">{{ copy('إزالة', 'Remove') }}</button>
                 </li>
             </ul>
             <p v-if="placements.length === 0" class="content-note">{{ copy('هذه الصفحة غير مرتبطة بأي قسم بعد.', 'This page is not attached to any section yet.') }}</p>
@@ -242,7 +242,7 @@ const revisions = computed(() => editor.value?.revisions ?? []);
             <ul>
                 <li v-for="revision in revisions" :key="revision.revision">
                     <span dir="ltr">#{{ revision.revision }} · {{ revision.state }} · {{ revision.created_at?.slice(0, 19).replace('T', ' ') }}</span>
-                    <button class="content-action" type="button" :disabled="busy" @click="restoreRevision(revision.revision)">{{ copy('استعادة كمسودة', 'Restore as draft') }}</button>
+                    <button v-if="editor?.canManage" class="content-action" type="button" :disabled="busy" @click="restoreRevision(revision.revision)">{{ copy('استعادة كمسودة', 'Restore as draft') }}</button>
                 </li>
                 <li v-if="revisions.length === 0">{{ copy('لا توجد مراجعات بعد.', 'No revisions yet.') }}</li>
             </ul>

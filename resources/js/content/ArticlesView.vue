@@ -87,14 +87,14 @@ async function restore(row: ArticleRow) {
             <h1>{{ copy('المقالات', 'Articles') }}</h1>
             <p>{{ copy('أنشئ المقالات واربطها بالتصنيفات. المسودة لا تغيّر النسخة المنشورة حتى تعتمدها.', 'Create articles and link them to categories. A draft never changes the published version until approved.') }}</p>
             <div class="content-actions">
-                <button class="content-action content-action--primary" type="button" data-content-add-article @click="beginCreate">+ {{ copy('إضافة مقالة', 'Add article') }}</button>
+                <button v-if="articles?.canManage" class="content-action content-action--primary" type="button" data-content-add-article @click="beginCreate">+ {{ copy('إضافة مقالة', 'Add article') }}</button>
                 <RouterLink class="content-action" to="/internal/administration/content/categories">{{ copy('إدارة التصنيفات', 'Manage categories') }}</RouterLink>
             </div>
         </template>
 
         <p v-if="failure" class="content-error" role="alert">{{ failure }}</p>
 
-        <form v-if="showForm" class="content-form" data-content-article-create @submit.prevent="create">
+        <form v-if="showForm && articles?.canManage" class="content-form" data-content-article-create @submit.prevent="create">
             <h2>{{ copy('مقالة جديدة', 'New article') }}</h2>
             <div class="content-grid">
                 <div class="content-field"><label for="article-title-ar">{{ copy('العنوان بالعربية', 'Arabic title') }}</label><input id="article-title-ar" v-model="form.title_ar" required maxlength="200" dir="rtl"></div>
@@ -134,8 +134,8 @@ async function restore(row: ArticleRow) {
                     <td dir="ltr">{{ row.updated_at?.slice(0, 10) }}</td>
                     <td><div class="content-actions">
                         <RouterLink class="content-action" :to="`/internal/administration/content/articles/${row.public_id}`">{{ copy('فتح', 'Open') }}</RouterLink>
-                        <button v-if="!row.deleted" class="content-action content-action--danger" type="button" @click="remove(row)">{{ copy('حذف', 'Delete') }}</button>
-                        <button v-else class="content-action" type="button" @click="restore(row)">{{ copy('استعادة', 'Restore') }}</button>
+                        <button v-if="articles?.canPublish && !row.deleted" class="content-action content-action--danger" type="button" @click="remove(row)">{{ copy('حذف', 'Delete') }}</button>
+                        <button v-if="articles?.canManage && row.deleted" class="content-action" type="button" @click="restore(row)">{{ copy('استعادة', 'Restore') }}</button>
                     </div></td>
                 </tr>
                 <tr v-if="rows.length === 0"><td colspan="5">{{ copy('لا توجد مقالات مطابقة.', 'No matching articles.') }}</td></tr>

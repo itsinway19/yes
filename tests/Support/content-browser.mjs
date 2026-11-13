@@ -104,6 +104,7 @@ try {
         const pageId = new URL(page.url()).pathname.split('/').at(-1);
         await fillBody('المحتوى المنشور الأول');
         await clickAndWait('[data-content-save]', `/internal/administration/content/pages/${pageId}`);
+        await page.waitForFunction(() => !document.querySelector('[data-content-save]')?.disabled);
         await page.locator('#page-edit-slug-ar').fill('invalid slug');
         const invalid = page.waitForResponse(response =>
             new URL(response.url()).pathname === `/internal/administration/content/pages/${pageId}` &&
@@ -286,6 +287,13 @@ try {
                     }
                 }
                 assert.equal(new Set(colors).size, 1, `${language}/${theme} body backgrounds differ: ${colors.join(', ')}`);
+                for (const width of [390, 1280]) {
+                    await page.setViewportSize({ width, height: 900 });
+                    await page.goto(base+'/articles/company-article');
+                    assert.equal(await page.locator('html').getAttribute('dir'), language === 'ar' ? 'rtl' : 'ltr');
+                    await visit('/internal/administration/content/pages', '[data-content-pages]');
+                    assert.equal(await page.locator('html').getAttribute('dir'), language === 'ar' ? 'rtl' : 'ltr');
+                }
             }
         }
     });

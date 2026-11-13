@@ -386,7 +386,8 @@
     "0001_01_01_000790_correct_content_publication.php": [
       "migration-sql/0001_01_01_000790_correct_content_publication/teardown.sql",
       "migration-sql/0001_01_01_000790_correct_content_publication/upgrade.sql"
-    ]
+    ],
+    "0001_01_01_000800_separate_content_authority.php": []
   },
   "historical": {
     "0001_01_01_000000_create_users_table.php": "49b4724794bf0e0abee8d40935372520f1a549a3f61c3e2deb8f4f437aaaf25f",
@@ -467,7 +468,8 @@
     "0001_01_01_000760_business_team_management.php": "2cc1f2f3cd918b3d0ceae067f7620c40e683580813cfc14e7c8e8522e9074bb2",
     "0001_01_01_000770_business_workspace_authority_closure.php": "bfe0ad7c50cf9bea3014410f884ebe0dbaca733def3ad1e8bb756e2cb95ef4f3",
     "0001_01_01_000780_create_content_management.php": "8f2d5d2380c5c06fd5024459ab5e68d124a0fa5deb8e3a82083e142082a4fc64",
-    "0001_01_01_000790_correct_content_publication.php": "f84192ae8c4ef7376849f4bfaf8a70587c8172ccf5bc9f88d29afa1298c0b8a9"
+    "0001_01_01_000790_correct_content_publication.php": "f84192ae8c4ef7376849f4bfaf8a70587c8172ccf5bc9f88d29afa1298c0b8a9",
+    "0001_01_01_000800_separate_content_authority.php": "72c784532fa6b5553ed2fe57d229894df57cc645f28bab91385ac5c505026d2d"
   },
   "inputs": {
     "reference/countries/labels.json": "264bcc1dfb5267520bc0a423e556e8ed07f976a66a46104905310b353d20557a",

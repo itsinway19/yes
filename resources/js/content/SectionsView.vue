@@ -89,14 +89,14 @@ async function move(section: Section, direction: -1 | 1) {
         <template #header>
             <h1>{{ copy('إدارة الأقسام والروابط', 'Sections and links') }}</h1>
             <p>{{ copy('نظّم أقسام رأس الموقع والفوتر وروابطها. إخفاء رابط أو قسم لا يحذف الصفحات الأصلية.', 'Organize header and footer sections and their links. Hiding a link or section never deletes the original pages.') }}</p>
-            <button class="content-action content-action--primary" type="button" data-content-add-section @click="beginCreate">
+            <button v-if="sections?.canManage" class="content-action content-action--primary" type="button" data-content-add-section @click="beginCreate">
                 + {{ copy('إضافة قسم', 'Add section') }}
             </button>
         </template>
 
         <p v-if="failure" class="content-error" role="alert">{{ failure }}</p>
 
-        <form v-if="showForm" class="content-form" data-content-section-form @submit.prevent="submit">
+        <form v-if="showForm && sections?.canManage" class="content-form" data-content-section-form @submit.prevent="submit">
             <h2>{{ editing ? copy('تعديل القسم', 'Edit section') : copy('قسم جديد', 'New section') }}</h2>
             <div class="content-grid">
                 <div class="content-field"><label for="section-name-ar">{{ copy('اسم القسم بالعربية', 'Arabic name') }}</label><input id="section-name-ar" v-model="form.name_ar" required maxlength="120" dir="rtl"></div>
@@ -131,10 +131,10 @@ async function move(section: Section, direction: -1 | 1) {
                     <td dir="ltr">{{ row.link_count }}</td>
                     <td><div class="content-actions">
                         <RouterLink class="content-action" :to="`/internal/administration/content/sections/${row.public_id}/links`">{{ copy('إدارة الروابط', 'Manage links') }}</RouterLink>
-                        <button class="content-action" type="button" @click="beginEdit(row)">{{ copy('تعديل', 'Edit') }}</button>
-                        <button class="content-action" type="button" @click="move(row, -1)">↑</button>
-                        <button class="content-action" type="button" @click="move(row, 1)">↓</button>
-                        <button class="content-action content-action--danger" type="button" @click="remove(row)">{{ copy('حذف', 'Delete') }}</button>
+                        <button v-if="sections?.canManage" class="content-action" type="button" @click="beginEdit(row)">{{ copy('تعديل', 'Edit') }}</button>
+                        <button v-if="sections?.canManage" class="content-action" type="button" @click="move(row, -1)">↑</button>
+                        <button v-if="sections?.canManage" class="content-action" type="button" @click="move(row, 1)">↓</button>
+                        <button v-if="sections?.canManage" class="content-action content-action--danger" type="button" @click="remove(row)">{{ copy('حذف', 'Delete') }}</button>
                     </div></td>
                 </tr>
                 <tr v-if="rows.length === 0"><td colspan="6">{{ copy('لا توجد أقسام بعد. أضف أول قسم.', 'No sections yet. Add the first section.') }}</td></tr>

@@ -25,7 +25,7 @@ final class AdministrationNavigation
                 $paths[] = $path;
             }
         }
-        if ($grants->has($request->user(), $generation, 'staff.view')) {
+        if ($grants->has($request->user(), $generation, 'content.read')) {
             array_push($paths, '/internal/administration/content/sections',
                 '/internal/administration/content/pages', '/internal/administration/content/articles',
                 '/internal/administration/content/categories', '/internal/administration/content/footer');

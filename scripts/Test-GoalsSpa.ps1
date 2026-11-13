@@ -92,7 +92,7 @@ try {
  'GOALS_SPA_RUNNING' | Set-Content -LiteralPath (Join-Path $proofRun 'lifecycle.log')
  if('Foundation' -eq $Phase){Write-Output "GOALS_SPA_FOUNDATION_RUN=$proofRun"}
  foreach($proofPort in @(5433,8136,8137,8138)) {
-  if(Get-NetTCPConnection -LocalPort $proofPort -State Listen -ErrorAction SilentlyContinue){throw "Proof port $proofPort is occupied; no existing service contacted"}
+  if(Test-ProofPortOccupied $proofPort){throw "Proof port $proofPort is occupied; no existing service contacted"}
  }
  if(-not (Test-Path -LiteralPath $proofEnvironmentPath)){
   [IO.File]::WriteAllText($proofEnvironmentPath,$proofEnvironmentContents)

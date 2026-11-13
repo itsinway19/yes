@@ -80,12 +80,12 @@ async function restore(row: PageRow) {
         <template #header>
             <h1>{{ copy('الصفحات الثابتة', 'Static pages') }}</h1>
             <p>{{ copy('أنشئ صفحات المحتوى وعدّلها وانشرها. المسودة لا تغيّر النسخة المنشورة حتى تعتمدها.', 'Create, edit and publish content pages. Saving a draft never changes the published version.') }}</p>
-            <button class="content-action content-action--primary" type="button" data-content-add-page @click="beginCreate">+ {{ copy('إضافة صفحة', 'Add page') }}</button>
+            <button v-if="pages?.canManage" class="content-action content-action--primary" type="button" data-content-add-page @click="beginCreate">+ {{ copy('إضافة صفحة', 'Add page') }}</button>
         </template>
 
         <p v-if="failure" class="content-error" role="alert">{{ failure }}</p>
 
-        <form v-if="showForm" class="content-form" data-content-page-create @submit.prevent="create">
+        <form v-if="showForm && pages?.canManage" class="content-form" data-content-page-create @submit.prevent="create">
             <h2>{{ copy('صفحة جديدة', 'New page') }}</h2>
             <div class="content-grid">
                 <div class="content-field"><label for="page-title-ar">{{ copy('العنوان بالعربية', 'Arabic title') }}</label><input id="page-title-ar" v-model="form.title_ar" required maxlength="200" dir="rtl"></div>
@@ -125,8 +125,8 @@ async function restore(row: PageRow) {
                     <td dir="ltr">{{ row.updated_at?.slice(0, 10) }}</td>
                     <td><div class="content-actions">
                         <RouterLink class="content-action" :to="`/internal/administration/content/pages/${row.public_id}`">{{ copy('فتح', 'Open') }}</RouterLink>
-                        <button v-if="!row.deleted" class="content-action content-action--danger" type="button" @click="remove(row)">{{ copy('حذف', 'Delete') }}</button>
-                        <button v-else class="content-action" type="button" @click="restore(row)">{{ copy('استعادة', 'Restore') }}</button>
+                        <button v-if="pages?.canPublish && !row.deleted" class="content-action content-action--danger" type="button" @click="remove(row)">{{ copy('حذف', 'Delete') }}</button>
+                        <button v-if="pages?.canManage && row.deleted" class="content-action" type="button" @click="restore(row)">{{ copy('استعادة', 'Restore') }}</button>
                     </div></td>
                 </tr>
                 <tr v-if="rows.length === 0"><td colspan="5">{{ copy('لا توجد صفحات مطابقة.', 'No matching pages.') }}</td></tr>

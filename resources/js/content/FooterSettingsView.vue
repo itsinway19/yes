@@ -68,6 +68,7 @@ async function submit() {
         <p v-if="saved" role="status" class="content-note">{{ copy('حُفظت الإعدادات ونُشرت على الفوتر العام.', 'Settings saved and published to the public footer.') }}</p>
 
         <form class="content-form" data-content-footer-form @submit.prevent="submit">
+            <fieldset :disabled="!footer?.canManage" style="border:0;padding:0;margin:0">
             <h2>{{ copy('محتوى الفوتر', 'Footer content') }} <span class="content-note" dir="ltr">rev {{ revision }}</span></h2>
             <div class="content-grid">
                 <div class="content-field"><label for="footer-desc-ar">{{ copy('وصف الشركة بالعربية', 'Arabic company description') }}</label><textarea id="footer-desc-ar" v-model="form.description_ar" maxlength="2000" dir="rtl"></textarea></div>
@@ -93,6 +94,7 @@ async function submit() {
                 <button class="content-action content-action--primary" type="submit" :disabled="busy">{{ busy ? copy('جارٍ الحفظ…', 'Saving…') : copy('حفظ ونشر الفوتر', 'Save and publish footer') }}</button>
                 <a class="content-action" href="/" target="_blank" rel="noopener">{{ copy('عرض الموقع', 'View site') }}</a>
             </div>
+            </fieldset>
         </form>
     </OperationsShell>
 </template>
