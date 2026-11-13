@@ -930,6 +930,7 @@ final class ContentAdmin
     private function can(string $action): bool
     {
         $request = request();
+
         return $request->user() !== null && app(GrantAuthority::class)->has(
             $request->user(), (int) $request->session()->get('a001_generation', 0), $action,
         );
