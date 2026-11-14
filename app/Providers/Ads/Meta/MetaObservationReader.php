@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
 
-/** One provider's fetch/map/accept operation inside the caller-owned signed Workspace transaction. */
+/** One provider's fetch/map/accept operation inside the caller-owned signed Business transaction. */
 final readonly class MetaObservationReader
 {
     public function __construct(private Factory $http, private ObservationJournal $journal,

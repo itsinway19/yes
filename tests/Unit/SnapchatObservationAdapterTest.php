@@ -23,7 +23,7 @@ final class SnapchatObservationAdapterTest extends TestCase
 
     private function report(Factory $http, int $rowLimit = 100, ?NativeProgress $progress = null): ProviderReadResult
     {
-        $scope = new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::Snapchat,
+        $scope = ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::Snapchat,
             self::ACCOUNT, 'report.read', 'advertising_analysis');
 
         return (new SnapchatObservationAdapter($http, static fn () => null))->read($scope,

@@ -24,7 +24,7 @@ for (const [name, url] of Object.entries({ vue, '../spa/transport': transportUrl
 const Team = (await import(moduleUrl(source))).default;
 const api = await import(apiUrl), drafts = await import(draftsUrl), transport = await import(transportUrl);
 const business = '11111111-1111-7111-8111-111111111111', employee = '22222222-2222-7222-8222-222222222222';
-const selection = { realm_kind: 'direct', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: 51 }] };
+const selection = { realm_kind: 'direct',  requirements: [{ requirement_kind: 'business', leaf_grant_id: 51 }] };
 const surface = (target = business, allowed = true) => ({ business: { business_public_id: target }, authority_selection: structuredClone(selection), agency_task: { can_mandate: allowed } });
 const member = () => ({ public_id: employee, name: 'Registered Employee', email: 'employee@example.test', grants: [
     { grant_id: '71', version: 2, action: 'business.context.read', expires_at: null },

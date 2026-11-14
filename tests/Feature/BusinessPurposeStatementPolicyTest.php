@@ -16,7 +16,7 @@ final class BusinessPurposeStatementPolicyTest extends TestCase
 
     private function selection(int|string $id): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (int) $id]]];
+        return ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (int) $id]]];
     }
 
     public function test_read_team_authority_stale_authentication_or_unconfirmed_input_cannot_enroll(): void
@@ -43,7 +43,7 @@ final class BusinessPurposeStatementPolicyTest extends TestCase
         $this->postJson($base.'/purpose-enrollment', $body)->assertForbidden();
         $this->assertSame(0, $db->table('authority_qualification_receipts')->where('policy_id', 'business_purpose_statement_v1')->count());
         $this->assertSame(0, $db->table('object_purposes')->count());
-        $this->assertSame(0, $db->table('workspaces')->count());
+        $this->assertNull($db->scalar("SELECT to_regclass('public.workspaces')"));
     }
 
     public function test_operating_creator_opt_in_correct_withdraw_surrender_and_requalify_never_grant_external_or_staff_authority(): void
@@ -65,7 +65,7 @@ final class BusinessPurposeStatementPolicyTest extends TestCase
         $root = $db->table('security_action_grants')->where('id', $grant)->sole();
         $this->assertFalse($root->delegable);
         $this->assertNull($root->parent_grant_id);
-        $this->assertNull($root->delegation_workspace_id);
+        $this->assertObjectNotHasProperty('delegation_workspace_id', $root);
         $this->assertSame('direct', $root->delegation_realm_kind);
         $q = $db->table('authority_qualification_receipts')->where('qualification_id', $root->qualification_id)->sole();
         $this->assertSame('{business.purpose.declare}', $q->allowed_actions);
@@ -83,7 +83,7 @@ final class BusinessPurposeStatementPolicyTest extends TestCase
         $this->postJson($base.'/purposes', ['command' => $withdraw, 'expected_context' => 0, 'authority_selection' => $selection])->assertCreated();
         $this->assertEquals($original, $db->table('object_purpose_revisions')->where('revision_id', $first['revision_id'])->sole());
         $delegation = ['command_id' => (string) Str::uuid(), 'effect' => 'issue', 'grantee_public_id' => $staff->public_id, 'action' => 'business.purpose.declare',
-            'parent_grant_id' => (int) $grant, 'grant_id' => null, 'expected_grant' => 0, 'expires_at' => null, 'delegable' => false, 'realm_workspace_public_id' => null, 'authority_selection' => $selection];
+            'parent_grant_id' => (int) $grant, 'grant_id' => null, 'expected_grant' => 0, 'expires_at' => null, 'delegable' => false, 'authority_selection' => $selection];
         $this->postJson($base.'/grants', $delegation)->assertForbidden();
         $this->postJson($base.'/grants', [...$delegation, 'delegable' => true])->assertForbidden();
         $this->putJson($base.'/context', ['command_id' => (string) Str::uuid(), 'name' => 'Forbidden other fact', 'business_type_id' => null, 'expected_context' => 0, 'authority_selection' => $selection])->assertForbidden();
@@ -106,7 +106,8 @@ final class BusinessPurposeStatementPolicyTest extends TestCase
         $this->postJson($base.'/purposes', ['command' => $freshStatement, 'expected_context' => 0, 'authority_selection' => $this->selection($newGrant)])->assertCreated();
         $this->assertSame(2, $db->table('object_purposes')->count());
         $this->assertEquals($revoked, $db->table('security_action_grants')->where('id', $grant)->sole());
-        foreach (['workspaces', 'source_registry', 'data_use_scopes', 'business_data_use_bindings', 'client_data_boundaries'] as $table) {
+        $this->assertNull($db->scalar("SELECT to_regclass('public.workspaces')"));
+        foreach (['source_registry', 'data_use_scopes', 'business_data_use_bindings', 'client_data_boundaries'] as $table) {
             $this->assertSame(0, $db->table($table)->count(), $table);
         }
         $this->assertSame(0, $db->table('security_action_grants')->where('subject_user_id', $staff->id)->where('scope_kind', 'business')->count());

@@ -178,7 +178,7 @@ final class ExpenditureSummaryConcurrencyTest extends TestCase
     {
         $f = $this->fixture();
         $binding = ['command' => (string) Str::uuid(), 'scope' => $f['useScope'], 'effect' => 'end', 'expected' => 1,
-            'selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $f['manager']->id],
             ]]];
         $a = $this->participant($f, $bindingFirst ? 'binding' : 'summary-prepare', $bindingFirst ? $binding : ['body' => $f['prepare']]);

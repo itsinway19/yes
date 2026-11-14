@@ -56,7 +56,7 @@ class CountryReferenceProvenanceTest extends TestCase
         $business = $db->table('businesses')->where('public_id', $file['business_public_id'])->value('id');
         $url = '/api/businesses/'.$file['business_public_id'];
         $this->putJson($url.'/markets', ['command_id' => (string) Str::uuid(), 'codes' => ['SA', 'KW', 'AE'], 'expected_context' => 0,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.markets.declare']]]]])->assertOk();
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.markets.declare']]]]])->assertOk();
         $snapshot = fn () => [(array) $db->table('business_context_heads')->where('business_id', $business)->first(['business_id', 'display_name', 'context_version']),
             $db->table('business_declared_markets')->where('business_id', $business)->orderBy('country_code')->get()->toArray(),
             $db->table('business_market_transitions')->where('business_id', $business)->orderBy('event_id')->get()->toArray()];
@@ -75,7 +75,7 @@ class CountryReferenceProvenanceTest extends TestCase
             $country = collect($surface->json('data.catalog.countries'))->firstWhere('code', 'AE');
             $this->assertSame('Synthetic display correction', $country['name_en']);
             $this->assertSame('تصحيح عرض اصطناعي', $country['name_ar']);
-            $this->assertSame(0, $db->table('workspaces')->count());
+            $this->assertNull($db->scalar("SELECT to_regclass('public.workspaces')"));
         } finally {
             $db->table('country_references')->where('code', 'AE')->update(['name_en' => $old->name_en, 'name_ar' => $old->name_ar]);
         }

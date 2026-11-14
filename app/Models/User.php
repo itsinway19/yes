@@ -9,7 +9,6 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
@@ -36,13 +35,6 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
                 $user->email = Str::lower($user->email);
             }
         });
-    }
-
-    public function workspaces(): BelongsToMany
-    {
-        return $this->belongsToMany(Workspace::class, 'workspace_memberships')
-            ->using(WorkspaceMembership::class)
-            ->withPivot(['role', 'status', 'created_at', 'revoked_at']);
     }
 
     public function sendEmailVerificationNotification(): void

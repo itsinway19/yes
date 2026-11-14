@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Foundation\Business\BusinessScope;
 use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
-use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -30,12 +29,10 @@ final class DataUseBindingTest extends TestCase
     {
         $db = DB::connection('pgsql_migrations');
         $a = app(BusinessScope::class)->create($this->request($u), (string) Str::uuid(), 'Data customer', null);
-        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($u, 1);
-        $this->legacyWorkspace(['name' => 'Source custody', 'slug' => 'source-custody'])->assertRedirect();
-        $w = $db->table('workspaces')->where('slug', 'source-custody')->first();
+        $businessId = $db->table('businesses')->where('public_id', $a['business_public_id'])->value('id');
         $source = (string) Str::uuid7();
         // Registered native metadata only; no credential, live provider, or production source-adoption claim.
-        $db->table('source_registry')->insert(['id' => $source, 'workspace_id' => $w->id, 'family' => 'test', 'namespace' => 'test.synthetic',
+        $db->table('source_registry')->insert(['id' => $source, 'business_id' => $businessId, 'custody_kind' => 'business_native', 'family' => 'test', 'namespace' => 'test.synthetic',
             'declared_external_id' => 'fixture-only', 'label' => 'Synthetic source', 'version' => 1, 'status' => 'UNVERIFIED']);
         $boundary = Fixture::boundary($u->id);
         $scope = (string) Str::uuid7();
@@ -55,7 +52,7 @@ final class DataUseBindingTest extends TestCase
 
     private function selection(array $a, int $grant): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+        return ['realm_kind' => 'direct', 'requirements' => [
             ['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs']['business.link.manage']], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $grant]]];
     }
 
@@ -189,7 +186,7 @@ final class DataUseBindingTest extends TestCase
         $this->assertSame('active', $this->bind($r, $a, $scope, $this->selection($a, $grant->id))['status']);
         $body = ['command_id' => (string) Str::uuid(), 'target_kind' => 'data_use', 'target_ref' => $scope, 'effect' => 'revoke',
             'payload' => ['grant_id' => (string) $other->id], 'expected_revision' => 1,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+            'authority_selection' => ['realm_kind' => 'direct',
                 'requirements' => [['requirement_kind' => 'data_use', 'leaf_grant_id' => $grant->id]]]];
         $this->postJson('/api/data-rights/commands', $body)->assertForbidden();
         $this->assertSame(0, $db->table('resource_right_fences')->where('fence_id', $boundary['fence_id'])->value('rights_epoch'));
@@ -210,7 +207,7 @@ final class DataUseBindingTest extends TestCase
         $this->postJson('/api/data-rights/commands', $body)->assertOk()->assertJsonPath('data.status', 'revoked');
         $this->assertSame(0, $db->table('security_action_grants')->where('scope_kind', 'data_use')->where('status', 'active')->count());
         $ended = app(BusinessScope::class)->bindDataUse($r, $a['business_public_id'], (string) Str::uuid(), $scope, 'end', 1,
-            ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs']['business.link.manage']]]]);
+            ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs']['business.link.manage']]]]);
         $this->assertSame('ended', $ended['status']);
         $this->assertSame('revoked', $db->table('security_action_grants')->where('id', $other->id)->value('status'));
         $this->assertSame(2, $db->table('resource_right_fences')->where('fence_id', $boundary['fence_id'])->value('rights_epoch'));

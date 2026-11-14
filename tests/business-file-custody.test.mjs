@@ -16,7 +16,7 @@ for(const [name,url] of Object.entries({vue,'../spa/transport':transportUrl,'../
 const Custody=(await import(moduleUrl(source))).default;
 const api=await import(apiUrl),drafts=await import(draftsUrl),transport=await import(transportUrl),{locale}=await import(localeUrl);
 const business='11111111-1111-7111-8111-111111111111',employee='22222222-2222-7222-8222-222222222222';
-const selection={realm_kind:'direct',realm_workspace_public_id:null,requirements:[{requirement_kind:'business',leaf_grant_id:51}]};
+const selection={realm_kind:'direct',requirements:[{requirement_kind:'business',leaf_grant_id:51}]};
 const employeeRow={public_id:employee,name:'Named Employee',email:'employee@example.test'};
 const projection=(custodians=[],allowed=true)=>({business_public_id:business,can_admin:allowed,can_appoint:allowed,creator_basis:true,teams:[],custodians,versions:{authority_epoch:7}});
 globalThis.Document ??= class Document {};
@@ -42,10 +42,10 @@ function mount(reset=true){
  const draft=drafts.internalTeamDrafts.get(drafts.key(business,selection)+':business-file-custody:2');
  return{root,app,draft,active,refreshing,selected,members,refreshes,pendingEvents,admins,async load(value=projection()){api.readPending.shift().resolve(value);await flush();},async model(key,value){find(root,key).props['onUpdate:modelValue'](value);await flush();},send:()=>find(root,'data-custody-save').props.onClick()};
 }
-const receipt=body=>({business_public_id:business,workspace_public_id:null,recipient_public_id:body.recipient_public_id,link_ref:null,state:'active',grant_refs:{},versions:{authority_epoch:8}});
+const receipt=body=>({business_public_id:business,recipient_public_id:body.recipient_public_id,state:'active',grant_refs:{},versions:{authority_epoch:8}});
 test('named appointment requires confirmation and submits exact direct Business authority and epoch once',async()=>{
  const v=mount();try{await v.load();assert.deepEqual(api.reads[0],[business,51]);assert.match(text(v.root),/Activity custody continuity/);assert.match(text(v.root),/Named Employee/);assert.equal(all(v.root).some(n=>n.tag==='input'&&n.props.type!=='checkbox'),false);
- await v.model('data-custody-recipient',employee);await v.send();assert.equal(api.writes.length,0);await v.model('data-custody-confirm',true);assert.match(text(find(v.root,'data-custody-confirm').parent),/Named Employee/);const sending=v.send();v.send();assert.equal(api.writes.length,1);const body=api.writes[0][1];assert.equal(body.effect,'appoint');assert.equal(body.workspace_public_id,null);assert.equal(body.recipient_public_id,employee);assert.equal(body.expected_revision,7);assert.deepEqual(body.authority_selection,selection);assert.match(body.command_id,/^[0-9a-f-]{36}$/);assert.equal(v.pendingEvents.at(-1),true);
+ await v.model('data-custody-recipient',employee);await v.send();assert.equal(api.writes.length,0);await v.model('data-custody-confirm',true);assert.match(text(find(v.root,'data-custody-confirm').parent),/Named Employee/);const sending=v.send();v.send();assert.equal(api.writes.length,1);const body=api.writes[0][1];assert.equal(body.effect,'appoint');assert.equal(Object.hasOwn(body,'workspace_public_id'),false);assert.equal(body.recipient_public_id,employee);assert.equal(body.expected_revision,7);assert.deepEqual(body.authority_selection,selection);assert.match(body.command_id,/^[0-9a-f-]{36}$/);assert.equal(v.pendingEvents.at(-1),true);
  api.writePending.shift().resolve(receipt(body));await sending;await flush();assert.equal(v.draft.pending,undefined);assert.equal(v.refreshes.length,1);assert.equal(v.pendingEvents.at(-1),false);assert.equal(api.reads.length,2,'Success requests authoritative readback');await v.load(projection([{...employeeRow,qualification_ref:'qualified',status:'recorded',grant_refs:{}}]));assert.match(text(v.root),/employee@example.test/);
  locale.value='ar';await flush();assert.match(text(v.root),/\u0627\u0633\u062a\u0645\u0631\u0627\u0631\u064a\u0629/);
  }finally{v.app.unmount();}

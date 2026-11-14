@@ -13,7 +13,7 @@ class ProviderReadBudgetTest extends TestCase
 {
     private function budget(Provider $provider): ProviderReadBudget
     {
-        return new ProviderReadBudget(new ProviderScope(1, '019a0022-0000-7000-8000-000000000001', $provider,
+        return new ProviderReadBudget(ProviderScope::forBusiness(1, '019a0022-0000-7000-8000-000000000001', $provider,
             'synthetic-account', 'report.read', 'advertising_analysis'), 'synthetic-report', 3, 2, 2, 5,
             new DateTimeImmutable('2026-10-01T09:00:00Z'), 2, 8);
     }

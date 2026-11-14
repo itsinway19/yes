@@ -19,7 +19,7 @@ final class XAsyncReportTest extends TestCase
 {
     private function fixture(): array
     {
-        $report = new XCampaignReport(new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::X, 'abc123', 'report.read', 'advertising_analysis'),
+        $report = new XCampaignReport(ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::X, 'abc123', 'report.read', 'advertising_analysis'),
             new ReportWindow('2026-09-01', '2026-09-30', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'), ['campaign1'], 'ALL_ON_TWITTER', true, null, 'NONE');
         $row = $report->query();
         $row['entity_ids'] = ['campaign1'];

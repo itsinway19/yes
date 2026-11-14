@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param()
 
-# Compatibility entry point. Stop only Laravel; shared PostgreSQL/Redis remain up.
+# Stop verified Laravel and only a Redis instance started and still owned by the
+# official launcher. Pre-existing/shared Redis and PostgreSQL remain untouched.
 & (Join-Path $PSScriptRoot 'Start-StablePreview.ps1') -Stop
 exit $LASTEXITCODE

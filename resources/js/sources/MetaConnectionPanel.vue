@@ -23,7 +23,7 @@ type Access = {
 type Connection = { source_id: string; label: string; declared_account_id: string; registration: string; access: Access };
 type Account = { account_id: string; label: string; existing_source_label: string | null; selection_handle: string };
 type Snapshot = ProviderSnapshot;
-const props = defineProps<{ workspaceId?: string; businessId?: string; canManage: boolean }>();
+const props = defineProps<{ businessId?: string; canManage: boolean }>();
 const owner = nativeSourceReference(props);
 const emit = defineEmits<{ summary: [summary: ProviderSummary] }>();
 const snapshot = ref<Snapshot | null>(null);
@@ -225,7 +225,7 @@ onBeforeUnmount(() => { alive = false; abort.abort(); });
 
 <template>
     <section :dir="locale === 'ar' ? 'rtl' : 'ltr'" class="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="meta-connection-heading" :aria-busy="!!busy">
-        <PendingCommands :workspace-id="workspaceId" :business-id="businessId" provider="meta" @settled="settled" />
+        <PendingCommands :business-id="businessId" provider="meta" @settled="settled" />
         <fieldset class="min-w-0 border-0 p-0" :disabled="commandsFor(owner, 'meta').length > 0">
         <header class="flex flex-col gap-5 border-b border-slate-200 p-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
             <div class="flex items-center gap-4">
@@ -271,7 +271,7 @@ onBeforeUnmount(() => { alive = false; abort.abort(); });
                                 <span class="self-start rounded-md px-2.5 py-1 text-xs font-semibold" :class="source.access.connection === 'CONNECTED' ? 'bg-indigo-50 text-indigo-800' : source.access.connection === 'RECONNECT_REQUIRED' ? 'bg-amber-50 text-amber-900' : 'bg-slate-100 text-slate-700'">{{ providerCopy(connectionLabel(source.access)) }}</span>
                             </div>
                             <p class="mt-3 text-sm leading-7 text-slate-600">{{ readiness(source.access) }}</p>
-                            <ProviderReportRequest :workspace-id="workspaceId" :business-id="businessId" :source-id="source.source_id" :version="source.access.version" provider="meta"
+                            <ProviderReportRequest :business-id="businessId" :source-id="source.source_id" :version="source.access.version" provider="meta"
                                 :allowed="source.access.reporting?.can_report === true" />
                             <button v-if="canManage && source.access.version > 0 && source.access.connection !== 'LOCALLY_DISCONNECTED'" type="button" :disabled="!!busy || !!disconnect || !!selectionRetry" class="mt-3 rounded px-1 py-1 text-xs font-semibold text-red-700 underline underline-offset-4 hover:text-red-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-700 disabled:opacity-50" data-source-disconnect @click="prepareDisconnect(source)">{{ providerCopy("فصل الوصول المحلي") }}</button>
                         </li>

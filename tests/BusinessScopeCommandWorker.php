@@ -54,6 +54,10 @@ try {
         app(PrincipalContext::class)->activate($user);
         echo 'XID='.DB::scalar('SELECT pg_current_xact_id()::text').PHP_EOL;
         flush();
+        if ($f['operation'] === 'lifecycle') {
+            return DB::scalar('SELECT builderad_v2_business_lifecycle_command(?,?::uuid,?::uuid,?,NULL,?::jsonb,?,?::jsonb)',
+                [$f['session'], $f['business'], $f['command'], $f['effect'], '{}', $f['expected'], json_encode($f['selection'])]);
+        }
         if ($f['operation'] === 'team-change') {
             return DB::scalar('SELECT builderad_v2_business_team_change(?,?::uuid,?::uuid,?::jsonb,?::uuid,?::jsonb,?::jsonb,?::timestamptz,true)',
                 [$f['session'], $f['business'], $f['command'], json_encode($f['selection']), $f['recipient'], json_encode($f['expected_grants']), json_encode($f['permissions']), $f['expires_at']]);
@@ -119,18 +123,11 @@ try {
                 [$f['session'], $f['business'], $f['command'], $f['effect'], $f['agency'], $f['recipient'], $f['membership'],
                     'business.context.read', $f['parent'], $f['release_value'], json_encode($f['selection'], JSON_THROW_ON_ERROR)]);
         }
-        if ($f['operation'] === 'internal-team') {
-            return DB::scalar('SELECT builderad_v2_internal_team_command(?,?::uuid,?::uuid,?::uuid,?,?::uuid,?,?::jsonb)',
-                [$f['session'], $f['business'], $f['command'], $f['workspace'], $f['effect'], $f['recipient'], $f['expected'], json_encode($f['selection'])]);
-        }
         if ($f['operation'] === 'history') {
             return DB::scalar('SELECT builderad_v2_business_history(?,?::uuid,?,\'context\',0)', [$f['session'], $f['business'], $f['read_grant']]);
         }
-        if ($f['operation'] === 'legacy-history') {
-            return DB::scalar('SELECT builderad_v2_business_legacy_history(?,?::uuid,?,\'context\',NULL)', [$f['session'], $f['business'], $f['read_grant']]);
-        }
         if ($f['operation'] === 'grant') {
-            return DB::scalar('SELECT builderad_v2_business_grant_command(?,?::uuid,?::uuid,?,?::uuid,?,?,?,?,?::timestamptz,false,NULL,?::jsonb)',
+            return DB::scalar('SELECT builderad_v2_business_grant_command(?,?::uuid,?::uuid,?,?::uuid,?,?,?,?,?::timestamptz,false,?::jsonb)',
                 [$f['session'], $f['business'], $f['command'], $f['grant_effect'], $f['recipient'], 'business.context.read',
                     $f['grant_effect'] === 'issue' ? $f['issuer'] : null, $f['grant_id'], $f['grant_effect'] === 'issue' ? 0 : 1,
                     $f['grant_effect'] === 'issue' ? trim($f['release_value'] ?? file_get_contents($f['release'])) : null, json_encode($f['selection'])]);

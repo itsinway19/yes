@@ -3,9 +3,9 @@
 namespace Tests\Feature\Providers;
 
 use App\Foundation\Tenancy\PrincipalContext;
-use App\Foundation\Tenancy\WorkspaceContext;
+use App\Providers\Ads\NativeSourceContext;
+use App\Providers\Ads\NativeSourceOwner;
 use App\Models\User;
-use App\Models\Workspace;
 use App\Providers\Ads\AdObservation;
 use App\Providers\Ads\Google\GoogleAccessAdapter;
 use App\Providers\Ads\Google\GoogleAccessStatus;
@@ -110,7 +110,7 @@ class ProviderAccessStoreTest extends TestCase
         $http = new Factory;
         $http->preventStrayRequests();
         $this->configureGoogleHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google';
+        $base = '/businesses/'.$this->business.'/providers/google';
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
         $command = ['intent' => $intent, 'recover_offline_grant' => true];
         $this->assertApplicationContract('GoogleConnectCommand', $command);
@@ -123,9 +123,11 @@ class ProviderAccessStoreTest extends TestCase
 
     private User $actor;
 
-    private int $workspaceId;
+    private int $businessId;
 
-    private string $workspace;
+    private string $business;
+
+    private int $businessReadGrant;
 
     private array $scopes = [];
 
@@ -133,27 +135,16 @@ class ProviderAccessStoreTest extends TestCase
     {
         parent::setUp();
         $this->actor = User::factory()->create();
-        $this->workspaceId = $this->owner()->table('workspaces')->insertGetId(['name' => 'Synthetic BB2 workspace',
-            'slug' => 'bb2-'.Str::uuid(), 'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
-        $this->workspace = $this->owner()->table('workspaces')->where('id', $this->workspaceId)->value('public_id');
-        $this->owner()->table('workspace_memberships')->insert(['workspace_id' => $this->workspaceId, 'user_id' => $this->actor->id,
-            'role' => 'owner', 'status' => 'active', 'created_at' => now()]);
-        $this->owner()->table('workspace_ownerships')->insert(['workspace_id' => $this->workspaceId, 'responsible_owner_user_id' => $this->actor->id,
-            'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
-        $this->owner()->table('security_action_grants')->insert(['subject_user_id' => $this->actor->id, 'source' => 'system_workspace_creation',
-            'scope_kind' => 'workspace', 'workspace_id' => $this->workspaceId, 'action' => 'workspace.view', 'subject_generation' => 1,
-            'status' => 'active', 'reason' => 'synthetic_fixture', 'created_at' => now(), 'updated_at' => now()]);
         $this->actingAs($this->actor)->withCredentials();
+        $business = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(),
+            'name' => 'Synthetic BB2 Business'])->assertCreated()->json('data');
+        $this->business = $business['business_public_id'];
+        $this->businessReadGrant = (int) $business['grant_refs']['business.context.read'];
+        $this->businessId = (int) $this->owner()->table('businesses')->where('public_id', $this->business)->value('id');
         foreach (Provider::cases() as $provider) {
-            $scope = new ProviderScope($this->workspaceId, (string) Str::uuid7(), $provider, 'synthetic-account', 'report.read', 'advertising_analysis');
+            $scope = ProviderScope::forBusiness($this->businessId, (string) Str::uuid7(), $provider, 'synthetic-account', 'report.read', 'advertising_analysis');
             $this->scopes[$provider->value] = $scope;
-            foreach (GrantAuthority::SOURCE_ACTIONS as $action) {
-                $this->grant($scope, $action);
-            }
-            $this->postJson('/workspaces/'.$this->workspace.'/sources', ['source_id' => $scope->sourceId, 'command_id' => (string) Str::uuid(),
-                'effect' => 'register', 'family' => $provider->value, 'namespace' => 'ad_account', 'external_id' => $scope->accountId,
-                'label' => 'Synthetic '.$provider->value, 'resource' => $scope->accountId, 'operation' => $scope->operation,
-                'purpose' => $scope->purpose, 'expected_version' => 0, 'reason' => 'synthetic_registration'])->assertOk();
+            $this->bootstrapScope($scope);
         }
     }
 
@@ -171,22 +162,20 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame('synthetic-secret-token', json_decode(Crypt::decryptString($cipher), true)['credentials']['access_token']);
         $this->denied(fn () => $this->store($scope, $command, token: 'changed-token'), '23505');
         $this->assertStringNotContainsString('synthetic-secret-token', $this->owner()->table('provider_access_receipts')->value('result'));
-        $this->assertSame('synthetic-secret-token', $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope))->value('access_token'));
+        $this->assertSame('synthetic-secret-token', $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope))->value('access_token'));
         $revoke = (string) Str::uuid();
-        $result = $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->revoke($r, $scope, $revoke, 1));
+        $result = $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->revoke($r, $scope, $revoke, 1));
         $this->assertSame('REVOKED', $result['local_state']);
         $this->assertNull($this->owner()->table('provider_access')->value('encrypted_credentials'));
         $this->assertSame('SYNTHETIC_AUTHORIZED', $this->owner()->table('provider_access')->value('native_state'));
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
     }
 
     public function test_provider_geography_never_populates_or_overwrites_declared_markets(): void
     {
         $file = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Independent geography declaration'])->assertCreated()->json('data');
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.markets.declare']]]];
-        $snapshot = fn () => [(array) $this->owner()->table('workspaces')->find($this->workspaceId),
-            $this->owner()->table('business_target_markets')->where('workspace_id', $this->workspaceId)->orderBy('country_code')->get()->toArray(),
-            $this->owner()->table('business_target_market_events')->where('workspace_id', $this->workspaceId)->orderBy('id')->get()->toArray(),
+        $selection = ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.markets.declare']]]];
+        $snapshot = fn () => [(array) $this->owner()->table('businesses')->find($this->businessId),
             $this->owner()->table('business_declared_markets')->orderBy('country_code')->get()->toArray(),
             $this->owner()->table('business_market_transitions')->orderBy('event_id')->get()->toArray()];
         $acceptGeography = function (ProviderScope $scope, int $generation, string $country): void {
@@ -195,14 +184,14 @@ class ProviderAccessStoreTest extends TestCase
                 [...$native->nativeFacts, 'account_country' => ['value' => $country, 'unit' => 'country_code',
                     'meaning' => 'synthetic:provider-native-account-country', 'basis' => 'PROVIDER_REPORTED']],
                 $native->provenance, $native->readAt, $native->freshUntil);
-            $result = $this->withinWorkspace(fn ($request) => app(ObservationJournal::class)->accept($request,
+            $result = $this->withinBusiness(fn ($request) => app(ObservationJournal::class)->accept($request,
                 new ObservationBatch($scope, [$observation], 'COMPLETE', null, null), 'synthetic-geography',
                 (string) Str::uuid(), $generation, 1, $native->provenance, null));
             $this->assertSame(1, $result[$generation === 0 ? 'first_observations' : 'restatements']);
         };
         $before = $snapshot();
         foreach ($this->scopes as $scope) {
-            $this->withinWorkspace(fn ($request) => app(ProviderAccessStore::class)->store($request, $scope, (string) Str::uuid(), 0,
+            $this->withinBusiness(fn ($request) => app(ProviderAccessStore::class)->store($request, $scope, (string) Str::uuid(), 0,
                 new ProviderCredentials(['access_token' => 'synthetic-private-token', 'account_country' => 'JO']), null, 'SYNTHETIC_AUTHORIZED', $this->evidence()));
             $acceptGeography($scope, 0, 'JO');
             $this->assertEquals($before, $snapshot());
@@ -225,7 +214,6 @@ class ProviderAccessStoreTest extends TestCase
         foreach ($providerTables as $table) {
             $this->assertEquals($providerBefore[$table], $this->owner()->table($table)->get()->toArray(), $table);
         }
-        $this->assertSame([], $this->owner()->table('business_target_markets')->pluck('country_code')->all());
         $this->assertSame([], $this->owner()->table('business_declared_markets')->pluck('country_code')->all());
     }
 
@@ -233,14 +221,15 @@ class ProviderAccessStoreTest extends TestCase
     {
         $scope = $this->scopes['meta'];
         $this->store($scope, (string) Str::uuid(), evidence: []);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
         $this->owner()->table('provider_access')->update(['verification' => json_encode($this->evidence())]);
-        $this->owner()->table('security_action_grants')->where('action', 'provider.read')->where('source_target_id', $scope->sourceId)
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
-        $this->owner()->table('security_action_grants')->where('action', 'provider.read')->update(['expires_at' => null]);
+        $expiry = $this->replaceProviderRightWithExpiringGrant($scope, 'provider.read');
+        $this->awaitProviderRightExpiry($expiry);
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
+        $this->decideProviderRight($scope, 'provider.read', 'revoke');
+        $this->decideProviderRight($scope, 'provider.read', 'authorize');
         $this->owner()->table('provider_access')->update(['credential_expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
     }
 
     public function test_every_provider_failure_and_rollback_leave_siblings_unchanged(): void
@@ -251,7 +240,7 @@ class ProviderAccessStoreTest extends TestCase
         foreach ($this->scopes as $failed) {
             $before = $this->owner()->table('provider_access')->orderBy('provider')->get()->toJson();
             try {
-                $this->withinWorkspace(function ($r) use ($failed): void {
+                $this->withinBusiness(function ($r) use ($failed): void {
                     app(ProviderAccessStore::class)->revoke($r, $failed, (string) Str::uuid(), 1);
                     throw new \RuntimeException('Synthetic provider transaction failure.');
                 });
@@ -261,31 +250,36 @@ class ProviderAccessStoreTest extends TestCase
             }
             $this->assertSame(5, $this->owner()->table('provider_access_events')->count());
         }
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->revoke($r, $this->scopes['snapchat'], (string) Str::uuid(), 1));
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->revoke($r, $this->scopes['snapchat'], (string) Str::uuid(), 1));
         $this->assertSame(4, $this->owner()->table('provider_access')->where('local_state', 'CREDENTIAL_STORED')->count());
     }
 
-    public function test_runtime_raw_secret_access_writes_wrong_resource_and_workspace_are_denied(): void
+    public function test_runtime_raw_secret_access_writes_wrong_resource_and_business_are_denied(): void
     {
         $scope = $this->scopes['meta'];
         $this->store($scope, (string) Str::uuid());
-        $this->denied(fn () => $this->withinWorkspace(fn () => DB::table('provider_access')->value('encrypted_credentials')), '42501');
-        $this->denied(fn () => $this->withinWorkspace(fn () => DB::table('provider_access')->update(['native_state' => 'FAKE'])), '42501');
-        foreach ([new ProviderScope($this->workspaceId + 1, $scope->sourceId, $scope->provider, $scope->accountId, $scope->operation, $scope->purpose),
-            new ProviderScope($scope->workspaceId, $scope->sourceId, Provider::Google, $scope->accountId, $scope->operation, $scope->purpose),
-            new ProviderScope($scope->workspaceId, $scope->sourceId, $scope->provider, 'another-account', $scope->operation, $scope->purpose)] as $other) {
-            $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $other)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn () => DB::table('provider_access')->value('encrypted_credentials')), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn () => DB::table('provider_access')->update(['native_state' => 'FAKE'])), '42501');
+        foreach ([ProviderScope::forBusiness($this->businessId + 1, $scope->sourceId, $scope->provider, $scope->accountId, $scope->operation, $scope->purpose),
+            ProviderScope::forBusiness($scope->businessId, $scope->sourceId, Provider::Google, $scope->accountId, $scope->operation, $scope->purpose),
+            ProviderScope::forBusiness($scope->businessId, $scope->sourceId, $scope->provider, 'another-account', $scope->operation, $scope->purpose)] as $other) {
+            $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $other)), '42501');
         }
-        $this->owner()->table('source_registry')->where('id', $scope->sourceId)->update(['status' => 'REVOKED']);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
+        $this->postJson('/businesses/'.$this->business.'/sources', ['command_id' => (string) Str::uuid7(),
+            'source_id' => $scope->sourceId, 'resource' => $scope->accountId, 'operation' => $scope->operation,
+            'purpose' => $scope->purpose, 'effect' => 'revoke', 'expected_version' => 1, 'reason' => 'synthetic_scope_retirement'])->assertOk();
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
     }
 
     public function test_named_provider_grant_uses_existing_authority_writer_without_implicit_source_manage_authority(): void
     {
         $scope = $this->scopes['meta'];
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')->delete();
+        $this->postJson('/businesses/'.$this->business.'/source-grants', ['command_id' => (string) Str::uuid7(),
+            'source_id' => $scope->sourceId, 'resource' => $scope->accountId, 'operation' => $scope->operation,
+            'purpose' => $scope->purpose, 'action' => 'provider.connect', 'decision' => 'revoke',
+            'reason' => 'synthetic_explicit_withdrawal'])->assertOk();
         $this->denied(fn () => $this->store($scope, (string) Str::uuid()), '42501');
-        $this->postJson('/workspaces/'.$this->workspace.'/source-grants', ['source_id' => $scope->sourceId, 'resource' => $scope->accountId,
+        $this->postJson('/businesses/'.$this->business.'/source-grants', ['command_id' => (string) Str::uuid7(), 'source_id' => $scope->sourceId, 'resource' => $scope->accountId,
             'operation' => $scope->operation, 'purpose' => $scope->purpose, 'action' => 'provider.connect',
             'decision' => 'authorize', 'reason' => 'synthetic_explicit_connection'])->assertOk();
         $this->assertSame('CREDENTIAL_STORED', $this->store($scope, (string) Str::uuid())['local_state']);
@@ -296,19 +290,19 @@ class ProviderAccessStoreTest extends TestCase
         $scope = $this->scopes['meta'];
         $command = (string) Str::uuid();
         $this->store($scope, $command);
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
-            ->where('action', 'provider.connect')->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $expiry = $this->replaceProviderRightWithExpiringGrant($scope, 'provider.connect');
+        $this->awaitProviderRightExpiry($expiry);
         $this->denied(fn () => $this->store($scope, $command), '42501');
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
-            ->where('action', 'provider.connect')->update(['expires_at' => null]);
-        $reconnect = fn (int $version) => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope,
+        $this->decideProviderRight($scope, 'provider.connect', 'revoke');
+        $this->decideProviderRight($scope, 'provider.connect', 'authorize');
+        $reconnect = fn (int $version) => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope,
             (string) Str::uuid(), $version, new ProviderCredentials(['access_token' => 'synthetic-new-token']), null,
             'SYNTHETIC_RECONNECTED', [], reconnect: true));
         $this->denied(fn () => $reconnect(0), '23505');
         $this->assertSame(2, $reconnect(1)['version']);
         $this->assertSame(2, $this->owner()->table('provider_access_events')->count());
         // Replacement credentials cannot inherit the old provider permission/freshness assertions.
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
     }
 
     public function test_ciphertext_from_a_sibling_scope_cannot_be_used_even_with_valid_local_evidence(): void
@@ -318,7 +312,7 @@ class ProviderAccessStoreTest extends TestCase
         $cipher = $this->owner()->table('provider_access')->where('provider', 'meta')->value('encrypted_credentials');
         $this->owner()->table('provider_access')->where('provider', 'google')->update(['encrypted_credentials' => $cipher]);
         $this->expectException(AuthorizationException::class);
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $this->scopes['google']));
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $this->scopes['google']));
     }
 
     public function test_audit_insert_failure_rolls_back_credentials_and_receipt_without_touching_siblings(): void
@@ -381,7 +375,7 @@ class ProviderAccessStoreTest extends TestCase
                 'Credential-row holder did not publish readiness; exit='.(string) $holder->getExitCode().'; stderr_bytes='.strlen($holder->getErrorOutput()));
             $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
                 ->where('action', 'provider.read')->update(['expires_at' => DB::raw("clock_timestamp()+interval '2 seconds'")]);
-            $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
+            $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
             $holder->wait();
             $this->assertTrue($holder->isSuccessful(), $holder->getErrorOutput());
             $this->assertStringContainsString('WAIT_OBSERVED', $holder->getOutput());
@@ -427,21 +421,21 @@ class ProviderAccessStoreTest extends TestCase
     public function test_native_request_gate_rechecks_exact_action_epoch_and_all_current_evidence_for_each_provider(): void
     {
         foreach ($this->scopes as $scope) {
-            $this->withinWorkspace(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.connect', 0));
+            $this->withinBusiness(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.connect', 0));
             $this->store($scope, (string) Str::uuid());
-            $this->withinWorkspace(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', 1));
-            $this->denied(fn () => $this->withinWorkspace(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', 0)), '42501');
-            $this->denied(fn () => $this->withinWorkspace(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.revoke', 1)), '42501');
+            $this->withinBusiness(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', 1));
+            $this->denied(fn () => $this->withinBusiness(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', 0)), '42501');
+            $this->denied(fn () => $this->withinBusiness(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.revoke', 1)), '42501');
             $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
                 ->where('action', 'provider.read')->update(['expires_at' => now()->subSecond()]);
-            $this->denied(fn () => $this->withinWorkspace(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', 1)), '42501');
+            $this->denied(fn () => $this->withinBusiness(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', 1)), '42501');
             // A read denial does not revoke independently authorized local connection authority.
-            $this->withinWorkspace(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.connect', 1));
+            $this->withinBusiness(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.connect', 1));
         }
         $this->assertSame(5, $this->owner()->table('provider_access')->count());
         $scope = $this->scopes['meta'];
         try {
-            $this->withinWorkspace(function ($request) use ($scope): void {
+            $this->withinBusiness(function ($request) use ($scope): void {
                 $guard = app(ProviderRequestGuard::class)->bind($request, $scope, 'provider.connect', 1);
                 $guard($this->scopes['google'], 'provider.connect');
             });
@@ -457,7 +451,7 @@ class ProviderAccessStoreTest extends TestCase
         $evidence = $this->evidence();
         $evidence['provider_permission']['state'] = 'UNKNOWN';
         $this->store($scope, (string) Str::uuid(), evidence: $evidence);
-        $this->denied(fn () => $this->withinWorkspace(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', 1)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', 1)), '42501');
     }
 
     public function test_journal_preserves_identical_rereads_restatements_and_idempotent_native_progress(): void
@@ -481,10 +475,10 @@ class ProviderAccessStoreTest extends TestCase
         $history = $this->owner()->table('provider_observation_entries')->orderBy('generation')->pluck('observation')->all();
         $this->assertSame('10.01', json_decode($history[0], true)['spend']['native_value']);
         $this->assertSame('11.02', json_decode($history[2], true)['spend']['native_value']);
-        $native = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->progress($r, $scope, 'synthetic-range', 1));
+        $native = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->progress($r, $scope, 'synthetic-range', 1));
         $this->assertSame($progress->envelope(), $native->envelope());
         $this->assertSame(1, $this->owner()->table('provider_observation_streams')->value('progress_generation'));
-        $this->denied(fn () => $this->withinWorkspace(fn () => DB::table('provider_observation_streams')->value('encrypted_progress')), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn () => DB::table('provider_observation_streams')->value('encrypted_progress')), '42501');
     }
 
     public function test_partial_failed_and_rolled_back_reads_never_advance_progress(): void
@@ -497,7 +491,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertNull($this->owner()->table('provider_observation_streams')->value('progress_generation'));
         $this->assertSame(1, $this->owner()->table('provider_observation_entries')->count());
         try {
-            $this->withinWorkspace(function ($r) use ($scope): void {
+            $this->withinBusiness(function ($r) use ($scope): void {
                 $this->acceptJournal($r, $scope, (string) Str::uuid(), 2, '11', new NativeProgress('synthetic_cursor', 'synthetic:complete-range', 'next'));
                 throw new \RuntimeException('Synthetic interrupted acceptance.');
             });
@@ -536,18 +530,18 @@ class ProviderAccessStoreTest extends TestCase
         }
         $before = $this->owner()->table('provider_observation_entries')->get()->toJson();
         $scope = $this->scopes['snapchat'];
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->revoke($r, $scope, (string) Str::uuid(), 1));
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->revoke($r, $scope, (string) Str::uuid(), 1));
         $this->denied(fn () => $this->journal($scope, (string) Str::uuid(), 1, '20'), '42501');
         $this->assertSame($before, $this->owner()->table('provider_observation_entries')->get()->toJson());
         foreach ($this->scopes as $sibling) {
             if ($sibling->provider !== Provider::Snapchat) {
-                $native = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->progress($r, $sibling, 'synthetic-range', 1));
+                $native = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->progress($r, $sibling, 'synthetic-range', 1));
                 $this->assertSame($sibling->provider->value, $native->envelope()['payload']);
             }
         }
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 2,
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 2,
             new ProviderCredentials(['access_token' => 'synthetic-replacement']), null, 'SYNTHETIC_AUTHORIZED', $this->evidence(), reconnect: true));
-        $this->assertNull($this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->progress($r, $scope, 'synthetic-range', 3)));
+        $this->assertNull($this->withinBusiness(fn ($r) => app(ObservationJournal::class)->progress($r, $scope, 'synthetic-range', 3)));
         $this->denied(fn () => $this->journal($scope, (string) Str::uuid(), 1, '20'), '42501');
     }
 
@@ -579,7 +573,7 @@ class ProviderAccessStoreTest extends TestCase
         foreach ($this->scopes as $scope) {
             $this->store($scope, (string) Str::uuid());
             $before = $this->owner()->table('jobs')->count();
-            $this->withinWorkspace(function ($r) use ($scope, $before): void {
+            $this->withinBusiness(function ($r) use ($scope, $before): void {
                 $o = $this->journalObservation($scope, '10');
                 $job = PersistObservationJob::capture($r, new ObservationBatch($scope, [$o], 'COMPLETE', null, null),
                     'synthetic-range', (string) Str::uuid(), 0, 1, $o->provenance,
@@ -614,7 +608,7 @@ class ProviderAccessStoreTest extends TestCase
         foreach (['meta', 'google'] as $provider) {
             $scope = $this->scopes[$provider];
             $this->store($scope, (string) Str::uuid());
-            $this->withinWorkspace(function ($r) use ($scope): void {
+            $this->withinBusiness(function ($r) use ($scope): void {
                 $o = $this->journalObservation($scope, '10');
                 Bus::dispatch(PersistObservationJob::capture($r, new ObservationBatch($scope, [$o], 'COMPLETE', null, null),
                     'synthetic-range', (string) Str::uuid(), 0, 1, $o->provenance,
@@ -644,9 +638,9 @@ class ProviderAccessStoreTest extends TestCase
             'encrypted_progress' => null, 'progress_fingerprint' => null,
             'observations' => [['identity' => $o->identity(), 'content_hash' => $o->contentHash(), 'observation' => $o->jsonSerialize()]]];
         $before = $this->owner()->table('provider_observation_streams')->first();
-        $wire = fn ($data) => $this->withinWorkspace(fn ($r) => DB::scalar(
+        $wire = fn ($data) => $this->withinBusiness(fn ($r) => DB::scalar(
             'SELECT builderad_observation_accept(?, ?, ?::uuid, ?, ?, ?, ?, ?, ?::uuid, ?, ?, ?::jsonb)',
-            [$scope->workspaceId, SessionAuthority::sessionKey($r), $scope->sourceId, $scope->provider->value,
+            [$scope->businessId, SessionAuthority::sessionKey($r), $scope->sourceId, $scope->provider->value,
                 $scope->accountId, $scope->operation, $scope->purpose, 'synthetic-range', (string) Str::uuid(), 1, 1, json_encode($data, JSON_THROW_ON_ERROR)]));
         $malformed = $payload;
         $malformed['observations'][0]['observation']['spend']['native_value'] = 'invalid-provider-number';
@@ -670,25 +664,25 @@ class ProviderAccessStoreTest extends TestCase
             $this->store($scope, (string) Str::uuid());
             $this->journal($scope, (string) Str::uuid(), 0, '10');
         }
-        $readCount = fn () => $this->withinWorkspace(function ($r) {
-            DB::selectOne('SELECT builderad_source_begin_read(?,?)', [$this->workspaceId, SessionAuthority::sessionKey($r)]);
+        $readCount = fn () => $this->withinBusiness(function ($r) {
+            DB::selectOne('SELECT builderad_source_begin_read(?,?)', [$this->businessId, SessionAuthority::sessionKey($r)]);
 
             return DB::table('provider_observation_entries')->count();
         });
         $this->assertSame(5, $readCount());
         $scope = $this->scopes['meta'];
-        $history = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'synthetic-range'));
+        $history = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'synthetic-range'));
         $this->assertCount(1, $history);
         $this->assertSame('meta', $history[0]['observation']['scope']['provider']);
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'source.read')
             ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
         $this->assertSame(4, $readCount());
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'synthetic-range')), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'synthetic-range')), '42501');
         foreach (['provider_observation_streams', 'provider_observation_runs', 'provider_observation_entries'] as $table) {
-            $this->denied(fn () => $this->withinWorkspace(fn () => DB::table($table)->delete()), '42501');
+            $this->denied(fn () => $this->withinBusiness(fn () => DB::table($table)->delete()), '42501');
             $this->assertSame(5, $this->owner()->table($table)->count());
         }
-        $other = new ProviderScope($scope->workspaceId + 1, $scope->sourceId, $scope->provider, $scope->accountId, $scope->operation, $scope->purpose);
+        $other = ProviderScope::forBusiness($scope->businessId + 1, $scope->sourceId, $scope->provider, $scope->accountId, $scope->operation, $scope->purpose);
         $this->denied(fn () => $this->journal($other, (string) Str::uuid(), 0, '10'), '42501');
     }
 
@@ -703,7 +697,7 @@ class ProviderAccessStoreTest extends TestCase
             'observations' => [['identity' => $observation->identity(), 'content_hash' => $observation->contentHash(), 'observation' => $observation->jsonSerialize()]]];
         $holder->beginTransaction();
         $holder->selectOne("SELECT pg_advisory_xact_lock(hashtextextended('bb2.observation.'||builderad_observation_namespace(?,?::uuid,?,?,?,?,?),0))",
-            [$scope->workspaceId, $scope->sourceId, $scope->provider->value, $scope->accountId, $scope->operation, $scope->purpose, 'synthetic-range']);
+            [$scope->businessId, $scope->sourceId, $scope->provider->value, $scope->accountId, $scope->operation, $scope->purpose, 'synthetic-range']);
         $request = Request::create('/');
         $request->setLaravelSession($this->app['session']->driver());
         try {
@@ -770,7 +764,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->assertSentCount(1);
         $this->assertSame(1, $result['generation']);
         $this->assertSame(1, $this->owner()->table('provider_observation_streams')->value('progress_generation'));
-        $history = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'meta-integrated'));
+        $history = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'meta-integrated'));
         $this->assertCount(1, $history);
         $this->assertSame('9007199254740993.01', $history[0]['observation']['spend']['native_value']);
         $this->assertNull($history[0]['observation']['fresh_until']);
@@ -838,20 +832,20 @@ class ProviderAccessStoreTest extends TestCase
         $scope = $this->scopes['meta'];
         $states = new MetaOAuthState(Cache::store(), app(ProviderRequestGuard::class));
         $configuration = hash('sha256', 'synthetic-configuration');
-        $state = $this->withinWorkspace(fn ($r) => $states->issue($r, $scope, 0, $configuration));
+        $state = $this->withinBusiness(fn ($r) => $states->issue($r, $scope, 0, $configuration));
         $key = 'bb2.meta.oauth.'.hash('sha256', $state);
         $ciphertext = Cache::get($key);
         $this->assertIsString($ciphertext);
         $this->assertStringNotContainsString($scope->sourceId, $ciphertext);
         $this->assertStringNotContainsString($configuration, $ciphertext);
         try {
-            $this->withinWorkspace(fn ($r) => $states->consume($r, $scope, 0, hash('sha256', 'another-configuration'), $state));
+            $this->withinBusiness(fn ($r) => $states->consume($r, $scope, 0, hash('sha256', 'another-configuration'), $state));
             $this->fail('A changed Meta configuration must not consume callback state.');
         } catch (AuthorizationException) {
             $this->assertSame($ciphertext, Cache::get($key));
         }
         try {
-            $this->withinWorkspace(function ($r) use ($states, $scope, $configuration, $state): void {
+            $this->withinBusiness(function ($r) use ($states, $scope, $configuration, $state): void {
                 $states->consume($r, $scope, 0, $configuration, $state);
                 throw new \RuntimeException('Synthetic post-consumption provider failure.');
             });
@@ -860,7 +854,7 @@ class ProviderAccessStoreTest extends TestCase
         }
         $this->assertNull(Cache::get($key));
         try {
-            $this->withinWorkspace(fn ($r) => $states->consume($r, $scope, 0, $configuration, $state));
+            $this->withinBusiness(fn ($r) => $states->consume($r, $scope, 0, $configuration, $state));
             $this->fail('A callback state must never be replayed.');
         } catch (AuthorizationException) {
             $this->assertSame(0, $this->owner()->table('provider_access_events')->count());
@@ -874,7 +868,7 @@ class ProviderAccessStoreTest extends TestCase
         $configuration = hash('sha256', 'synthetic-configuration');
         $rolledBack = null;
         try {
-            $this->withinWorkspace(function ($r) use ($states, $scope, $configuration, &$rolledBack): void {
+            $this->withinBusiness(function ($r) use ($states, $scope, $configuration, &$rolledBack): void {
                 $rolledBack = $states->issue($r, $scope, 0, $configuration);
                 throw new \RuntimeException('Synthetic initiation rollback.');
             });
@@ -883,10 +877,10 @@ class ProviderAccessStoreTest extends TestCase
         }
         $this->assertNotNull($rolledBack);
         $this->assertNull(Cache::get('bb2.meta.oauth.'.hash('sha256', $rolledBack)));
-        $state = $this->withinWorkspace(fn ($r) => $states->issue($r, $scope, 0, $configuration));
+        $state = $this->withinBusiness(fn ($r) => $states->issue($r, $scope, 0, $configuration));
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
             ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $states->consume($r, $scope, 0, $configuration, $state)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $states->consume($r, $scope, 0, $configuration, $state)), '42501');
         $this->assertIsString(Cache::get('bb2.meta.oauth.'.hash('sha256', $state)));
         $this->assertSame(0, $this->owner()->table('provider_access_events')->count());
     }
@@ -898,22 +892,22 @@ class ProviderAccessStoreTest extends TestCase
         $configuration = hash('sha256', 'synthetic-configuration');
         $axes = array_fill_keys(EffectiveCapability::AXES, ['state' => 'UNKNOWN', 'provenance' => 'synthetic:unestablished']);
         $material = new ProviderAccessMaterial($scope, new ProviderCredentials(['access_token' => 'synthetic-pending-secret']), null, 'CONNECTED', $axes);
-        $handle = $this->withinWorkspace(fn ($r) => $pending->stage($r, $material, 0, $configuration));
+        $handle = $this->withinBusiness(fn ($r) => $pending->stage($r, $material, 0, $configuration));
         $ciphertext = Cache::get('bb2.meta.pending.'.hash('sha256', $handle));
         $this->assertIsString($ciphertext);
         $this->assertStringNotContainsString('synthetic-pending-secret', $ciphertext);
-        $loaded = $this->withinWorkspace(fn ($r) => $pending->material($r, $scope, 0, $configuration, $handle));
+        $loaded = $this->withinBusiness(fn ($r) => $pending->material($r, $scope, 0, $configuration, $handle));
         $this->assertSame('synthetic-pending-secret', $loaded->credentials->value('access_token'));
         $this->assertNull($loaded->expiresAt);
         $this->assertSame($axes, $loaded->verification);
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
         try {
-            $this->withinWorkspace(fn ($r) => $pending->material($r, $scope, 0, hash('sha256', 'changed-configuration'), $handle));
+            $this->withinBusiness(fn ($r) => $pending->material($r, $scope, 0, hash('sha256', 'changed-configuration'), $handle));
             $this->fail('A pending acquisition cannot change its configuration binding.');
         } catch (AuthorizationException) {
             $this->assertSame($ciphertext, Cache::get('bb2.meta.pending.'.hash('sha256', $handle)));
         }
-        $this->withinWorkspace(fn ($r) => $pending->discard($r, $scope, 0, $configuration, $handle));
+        $this->withinBusiness(fn ($r) => $pending->discard($r, $scope, 0, $configuration, $handle));
         $this->assertNull(Cache::get('bb2.meta.pending.'.hash('sha256', $handle)));
     }
 
@@ -925,7 +919,7 @@ class ProviderAccessStoreTest extends TestCase
         $material = new ProviderAccessMaterial($scope, new ProviderCredentials(['access_token' => 'synthetic-pending-secret']), null, 'CONNECTED', []);
         $rolledBack = null;
         try {
-            $this->withinWorkspace(function ($r) use ($pending, $material, $configuration, &$rolledBack): void {
+            $this->withinBusiness(function ($r) use ($pending, $material, $configuration, &$rolledBack): void {
                 $rolledBack = $pending->stage($r, $material, 0, $configuration);
                 throw new \RuntimeException('Synthetic staging rollback.');
             });
@@ -934,10 +928,10 @@ class ProviderAccessStoreTest extends TestCase
         }
         $this->assertNotNull($rolledBack);
         $this->assertNull(Cache::get('bb2.meta.pending.'.hash('sha256', $rolledBack)));
-        $handle = $this->withinWorkspace(fn ($r) => $pending->stage($r, $material, 0, $configuration));
+        $handle = $this->withinBusiness(fn ($r) => $pending->stage($r, $material, 0, $configuration));
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
             ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $pending->material($r, $scope, 0, $configuration, $handle)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $pending->material($r, $scope, 0, $configuration, $handle)), '42501');
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
     }
 
@@ -945,11 +939,9 @@ class ProviderAccessStoreTest extends TestCase
     {
         $sourceId = (string) Str::uuid7();
         $commandId = (string) Str::uuid();
-        $workspace = $this->owner()->table('workspaces')->where('id', $this->workspaceId)->first();
-        $model = new Workspace;
-        $model->setRawAttributes((array) $workspace, true);
+        $model = $this->nativeOwner();
         $bootstrap = app(MetaLoginBootstrap::class);
-        $scope = $this->withinWorkspace(fn ($r) => $bootstrap->requestConnection($r, $model, '999', $sourceId, $commandId));
+        $scope = $this->withinBusiness(fn ($r) => $bootstrap->requestConnection($r, $model, '999', $sourceId, $commandId));
         $this->assertSame('discovery.read', $scope->operation);
         $source = $this->owner()->table('source_registry')->where('id', $sourceId)->first();
         $this->assertSame('facebook_login_configuration', $source->namespace);
@@ -959,11 +951,11 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame(['provider.connect', 'source.read', 'source.register'], $actions);
         $this->assertSame(3, $this->owner()->table('security_audit_events')->where('event', 'source_grant_authorize')
             ->where('reason', 'like', '%'.$sourceId)->count());
-        $again = $this->withinWorkspace(fn ($r) => $bootstrap->requestConnection($r, $model, '999', $sourceId, $commandId));
+        $again = $this->withinBusiness(fn ($r) => $bootstrap->requestConnection($r, $model, '999', $sourceId, $commandId));
         $this->assertSame($scope->jsonSerialize(), $again->jsonSerialize());
         $this->assertSame(1, $this->owner()->table('source_command_receipts')->where('source_id', $sourceId)->count());
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 0)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 0)), '42501');
     }
 
     public function test_native_fetch_accepts_unknown_quality_without_claiming_product_ready_and_requires_every_access_prerequisite(): void
@@ -974,13 +966,13 @@ class ProviderAccessStoreTest extends TestCase
                 $evidence[$axis]['state'] = 'UNKNOWN';
             }
             $this->store($scope, (string) Str::uuid(), evidence: $evidence);
-            $this->withinWorkspace(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1));
+            $this->withinBusiness(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1));
             $this->assertSame('UNKNOWN', (new EffectiveCapability)->derive('UNVERIFIED', true, $evidence, new DateTimeImmutable)['state']);
             foreach (['provider_support', 'provider_permission', 'credential', 'privacy_purpose'] as $axis) {
                 $missing = $evidence;
                 $missing[$axis]['state'] = 'UNKNOWN';
                 $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->update(['verification' => json_encode($missing)]);
-                $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1)), '42501');
+                $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1)), '42501');
             }
             $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->update(['verification' => json_encode($evidence)]);
         }
@@ -999,20 +991,20 @@ class ProviderAccessStoreTest extends TestCase
             ->push($debug)->push($business)->push(['id' => 'act_123', 'account_id' => '123', 'currency' => 'USD', 'timezone_name' => 'UTC'])
             ->push(['data' => []])]);
         [$coordinator, $installation] = $this->metaAuthorizationFixture($http);
-        $url = $this->withinWorkspace(fn ($r) => $coordinator->authorizationUrl($r, $installation));
+        $url = $this->withinBusiness(fn ($r) => $coordinator->authorizationUrl($r, $installation));
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         $this->assertSame('999', $query['config_id']);
         $this->assertStringNotContainsString('synthetic-app-secret', $url);
-        $handle = $this->withinWorkspace(fn ($r) => $coordinator->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
+        $handle = $this->withinBusiness(fn ($r) => $coordinator->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/D', $handle);
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
         $http->assertSentCount(3);
-        $discovery = $this->withinWorkspace(fn ($r) => $coordinator->discover($r, $installation, 0, $handle));
+        $discovery = $this->withinBusiness(fn ($r) => $coordinator->discover($r, $installation, 0, $handle));
         $this->assertSame('COMPLETE', $discovery->coverage);
         $this->assertSame('123', $discovery->accounts[0]['id']);
         $this->assertNull($discovery->accounts[0]['native_role']);
         $selected = $this->metaReaderScope(false);
-        $receipt = $this->withinWorkspace(fn ($r) => $coordinator->select($r, $installation, 0, $handle, $selected, (string) Str::uuid(), 0));
+        $receipt = $this->withinBusiness(fn ($r) => $coordinator->select($r, $installation, 0, $handle, $selected, (string) Str::uuid(), 0));
         $this->assertSame(['version' => 1, 'local_state' => 'CREDENTIAL_STORED'], $receipt);
         $http->assertSentCount(10);
         $this->assertNull(Cache::get('bb2.meta.pending.'.hash('sha256', $handle)));
@@ -1024,9 +1016,9 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame('UNKNOWN', $evidence['completeness']['state']);
         $this->assertSame('UNKNOWN', $evidence['privacy_purpose']['state']);
         $this->assertStringNotContainsString('synthetic-federated-token', $access->encrypted_credentials);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $selected)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $selected)), '42501');
         try {
-            $this->withinWorkspace(fn ($r) => $coordinator->callback($r, $installation, 0, $query['state'], 'replayed-code'));
+            $this->withinBusiness(fn ($r) => $coordinator->callback($r, $installation, 0, $query['state'], 'replayed-code'));
             $this->fail('A callback cannot exchange another code with consumed state.');
         } catch (AuthorizationException) {
             $http->assertSentCount(10);
@@ -1039,20 +1031,19 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake();
         [$coordinator, $installation] = $this->metaAuthorizationFixture($http);
-        $url = $this->withinWorkspace(fn ($r) => $coordinator->authorizationUrl($r, $installation));
+        $url = $this->withinBusiness(fn ($r) => $coordinator->authorizationUrl($r, $installation));
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         $this->owner()->table('security_action_grants')->where('source_target_id', $installation->sourceId)->where('action', 'provider.connect')
             ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $coordinator->callback($r, $installation, 0, $query['state'], 'synthetic-code')), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $coordinator->callback($r, $installation, 0, $query['state'], 'synthetic-code')), '42501');
         $http->assertSentCount(0);
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
     }
 
     private function metaAuthorizationFixture(Factory $http): array
     {
-        $model = new Workspace;
-        $model->setRawAttributes((array) $this->owner()->table('workspaces')->where('id', $this->workspaceId)->first(), true);
-        $installation = $this->withinWorkspace(fn ($r) => app(MetaLoginBootstrap::class)->requestConnection($r, $model,
+        $model = $this->nativeOwner();
+        $installation = $this->withinBusiness(fn ($r) => app(MetaLoginBootstrap::class)->requestConnection($r, $model,
             '999', (string) Str::uuid7(), (string) Str::uuid()));
         $requests = app(ProviderRequestGuard::class);
         $configuration = new MetaAccessAdapter($http, 'v26.0', '777', 'synthetic-app-secret',
@@ -1069,14 +1060,14 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response(['data' => [$this->metaReaderRow()]])]);
         $this->configureMetaQueue($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/meta/'.$scope->sourceId.'/report';
+        $base = '/businesses/'.$this->business.'/providers/meta/'.$scope->sourceId.'/report';
         $period = ['start_date' => '2026-09-01', 'end_date' => '2026-09-01'];
         $status = $this->getJson($base.'?'.http_build_query($period))->assertOk()->assertJsonPath('timezone', 'UTC');
         $command = [...$period, 'command_id' => (string) Str::uuid(), 'expected_version' => 1, 'expected_generation' => 0,
             'deadline' => $status->json('deadline')];
         $this->postJson($base, [...$command, 'access_token' => 'injected'])->assertUnprocessable();
         $this->postJson($base, [...$command, 'deadline' => now()->addMinutes(10)->format(DATE_ATOM)])->assertUnprocessable();
-        $this->postJson('/workspaces/'.Str::uuid().'/providers/meta/'.$scope->sourceId.'/report', $command)->assertForbidden();
+        $this->postJson('/businesses/'.Str::uuid().'/providers/meta/'.$scope->sourceId.'/report', $command)->assertForbidden();
         $this->postJson($base, $command)->assertAccepted();
         $http->assertNothingSent();
         $payload = $this->owner()->table('jobs')->where('queue', 'bb2.provider.meta')->value('payload');
@@ -1095,14 +1086,14 @@ class ProviderAccessStoreTest extends TestCase
         $scope = $this->metaReaderScope();
         $proof = $this->evidence();
         $proof['privacy_purpose']['state'] = 'UNKNOWN';
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
             new ProviderCredentials(['access_token' => 'synthetic-native-token', 'account_id' => '123',
                 'account_timezone' => 'UTC', 'account_currency' => 'USD']), null, 'SYNTHETIC_AUTHORIZED', $proof, true));
         $http = new Factory;
         $http->preventStrayRequests();
         $http->fake();
         $this->configureMetaQueue($http);
-        $this->postJson('/workspaces/'.$this->workspace.'/providers/meta/'.$scope->sourceId.'/report',
+        $this->postJson('/businesses/'.$this->business.'/providers/meta/'.$scope->sourceId.'/report',
             ['start_date' => '2026-09-01', 'end_date' => '2026-09-01', 'command_id' => (string) Str::uuid(),
                 'expected_version' => 2, 'expected_generation' => 0, 'deadline' => now()->addMinutes(5)->format(DATE_ATOM)])->assertForbidden();
         $this->assertSame(0, $this->owner()->table('jobs')->where('queue', 'bb2.provider.meta')->count());
@@ -1119,7 +1110,7 @@ class ProviderAccessStoreTest extends TestCase
             ->push(['id' => '999', 'account_id' => '123', 'async_status' => 'Job Completed', 'async_percent_completion' => 100])
             ->push(['data' => [$this->metaReaderRow()]])]);
         $this->configureMetaQueue($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/meta/'.$scope->sourceId.'/report';
+        $base = '/businesses/'.$this->business.'/providers/meta/'.$scope->sourceId.'/report';
         $period = ['start_date' => '2026-09-01', 'end_date' => '2026-09-01', 'mode' => 'ASYNC'];
         $status = $this->getJson($base.'?'.http_build_query($period))->assertOk();
         $command = [...$period, 'command_id' => (string) Str::uuid(), 'expected_version' => 1,
@@ -1150,12 +1141,12 @@ class ProviderAccessStoreTest extends TestCase
         $this->configureMetaQueue($http);
         $fence = new MetaAsyncAcquisition(Cache::store());
         $deadline = new DateTimeImmutable('+5 minutes');
-        $create = fn () => $this->withinWorkspace(fn ($r) => app(MetaObservationReader::class)->startAsync($r, $scope, $this->metaQueueWindow(),
+        $create = fn () => $this->withinBusiness(fn ($r) => app(MetaObservationReader::class)->startAsync($r, $scope, $this->metaQueueWindow(),
             new ProviderReadBudget($scope, 'meta-create', 2, 0, 2, 10, new DateTimeImmutable('+30 seconds'), 1, 5),
             'v26.0', 'synthetic-app-secret', 1));
         $binding = [$scope->jsonSerialize(), 'synthetic-root'];
         try {
-            $this->withinWorkspace(function ($r) use ($fence, $binding, $deadline, $scope): void {
+            $this->withinBusiness(function ($r) use ($fence, $binding, $deadline, $scope): void {
                 $fence->acquire($binding, $deadline, fn () => app(MetaObservationReader::class)->startAsync($r, $scope, $this->metaQueueWindow(),
                     new ProviderReadBudget($scope, 'meta-create', 2, 0, 2, 10, new DateTimeImmutable('+30 seconds'), 1, 5),
                     'v26.0', 'synthetic-app-secret', 1));
@@ -1193,7 +1184,7 @@ class ProviderAccessStoreTest extends TestCase
             ->push(['id' => '999', 'account_id' => '123', 'async_status' => 'Job Completed', 'async_percent_completion' => 100])
             ->push(['data' => [$this->metaReaderRow()]])]);
         $this->configureMetaQueue($http);
-        $this->postJson('/workspaces/'.$this->workspace.'/providers/meta/'.$scope->sourceId.'/report',
+        $this->postJson('/businesses/'.$this->business.'/providers/meta/'.$scope->sourceId.'/report',
             ['start_date' => '2026-09-01', 'end_date' => '2026-09-01', 'mode' => 'ASYNC', 'command_id' => (string) Str::uuid(),
                 'expected_version' => 1, 'expected_generation' => 0, 'deadline' => now()->addMinutes(5)->format(DATE_ATOM)])->assertAccepted();
         $this->owner()->unprepared("CREATE FUNCTION bb2_synthetic_meta_async_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
@@ -1253,8 +1244,8 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame(1, $this->owner()->table('meta_read_attempts')->count());
         $this->assertSame(1, $this->owner()->table('provider_observation_streams')->value('progress_generation'));
         $this->assertSame($idleBefore, $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->value('idle_expires_at'));
-        $this->denied(fn () => $this->withinWorkspace(fn () => DB::table('meta_read_attempts')->get()), '42501');
-        $this->denied(fn () => $this->withinWorkspace(fn () => DB::table('meta_read_attempts')->delete()), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn () => DB::table('meta_read_attempts')->get()), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn () => DB::table('meta_read_attempts')->delete()), '42501');
     }
 
     public function test_meta_native_queue_respects_delay_even_with_early_delivery_and_keeps_failure_progress_unadvanced(): void
@@ -1302,7 +1293,7 @@ class ProviderAccessStoreTest extends TestCase
             ->push(['data' => [$this->metaReaderRow()]])]);
         $this->configureMetaQueue($http);
         $window = $this->metaQueueWindow();
-        $task = $this->withinWorkspace(fn ($r) => app(MetaObservationReader::class)->startAsync($r, $scope, $window,
+        $task = $this->withinBusiness(fn ($r) => app(MetaObservationReader::class)->startAsync($r, $scope, $window,
             new ProviderReadBudget($scope, 'meta-native-queue', 4, 0, 4, 10, new DateTimeImmutable('+30 seconds'), 1, 5),
             'v26.0', 'synthetic-app-secret', 1));
         $this->queueMetaRead($scope, $task);
@@ -1329,7 +1320,7 @@ class ProviderAccessStoreTest extends TestCase
             ['X-Ad-Account-Usage' => '{"reset_time_duration":40}'])]);
         $this->configureMetaQueue($http);
         $this->queueMetaRead($scope);
-        $this->withinWorkspace(function ($r) use ($google): void {
+        $this->withinBusiness(function ($r) use ($google): void {
             $o = $this->journalObservation($google, '10');
             Bus::dispatch(PersistObservationJob::capture($r, new ObservationBatch($google, [$o], 'COMPLETE', null, null),
                 'synthetic-range', (string) Str::uuid(), 0, 1, $o->provenance));
@@ -1398,7 +1389,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame('FAILED', $this->metaRead($scope, $http)['coverage']);
         $this->assertSame('FAILED', $this->metaRead($scope, $http, 'UTC', 'other-meta-stream')['coverage']);
         $http->assertSentCount(1);
-        $this->withinWorkspace(function ($r) use ($scope): void {
+        $this->withinBusiness(function ($r) use ($scope): void {
             $current = new MetaReadCooldown(Cache::store(), $r, $scope, 1, 'v26.0');
             $current->observe(5);
             $this->assertGreaterThanOrEqual(35, $current->remaining());
@@ -1432,7 +1423,7 @@ class ProviderAccessStoreTest extends TestCase
     {
         $http = $this->metaWebTransport();
         $this->configureMetaWeb($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/meta';
+        $base = '/businesses/'.$this->business.'/providers/meta';
         $before = $this->owner()->table('security_action_grants')->count();
         $index = $this->getJson($base)->assertOk()->assertJsonPath('availability', 'CONNECT_AVAILABLE');
         $this->assertSame($before, $this->owner()->table('security_action_grants')->count());
@@ -1471,7 +1462,7 @@ class ProviderAccessStoreTest extends TestCase
         $existing = $this->metaReaderScope();
         $http = $this->metaWebTransport();
         $this->configureMetaWeb($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/meta';
+        $base = '/businesses/'.$this->business.'/providers/meta';
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
         $url = $this->postJson($base.'/connect', ['intent' => $intent])->assertOk()->json('authorization_url');
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
@@ -1495,14 +1486,14 @@ class ProviderAccessStoreTest extends TestCase
         $http = new Factory;
         $http->preventStrayRequests();
         $this->configureMetaWeb($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/meta';
+        $base = '/businesses/'.$this->business.'/providers/meta';
         foreach ([1, 2] as $attempt) {
             $snapshot = $this->getJson($base);
             $this->assertSame(200, $snapshot->status(), $snapshot->getContent());
             $intent = $snapshot->json('connect_intent');
             $this->postJson($base.'/connect', ['intent' => $intent])->assertOk();
         }
-        $source = $this->owner()->table('source_registry')->where('workspace_id', $this->workspaceId)
+        $source = $this->owner()->table('source_registry')->where('business_id', $this->businessId)
             ->where('family', 'meta')->where('namespace', 'facebook_login_configuration')->sole();
         $this->assertSame('999', $source->declared_external_id);
         $this->assertSame('UNVERIFIED', $source->status);
@@ -1521,19 +1512,15 @@ class ProviderAccessStoreTest extends TestCase
         $http = new Factory;
         $http->preventStrayRequests();
         $this->configureMetaWeb($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/meta';
+        $base = '/businesses/'.$this->business.'/providers/meta';
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
         $this->postJson($base.'/connect', ['intent' => $intent])->assertOk();
         $source = $this->owner()->table('source_registry')->where('namespace', 'facebook_login_configuration')->sole();
-        $this->withinWorkspace(function (Request $request) use ($source): void {
-            app(GrantAuthority::class)->requestSourceGrant($request, $this->workspaceId, ['source_id' => $source->id,
-                'resource' => '999', 'operation' => 'discovery.read', 'purpose' => 'advertising_analysis',
-                'action' => 'source.manage', 'decision' => 'authorize', 'expires_at' => null, 'reason' => 'synthetic_explicit_login_revocation']);
-            $workspace = Workspace::findOrFail($this->workspaceId);
-            app(SourceRegistry::class)->command($request, $workspace, ['source_id' => $source->id, 'command_id' => (string) Str::uuid(),
-                'effect' => 'revoke', 'resource' => '999', 'operation' => 'discovery.read', 'purpose' => 'advertising_analysis',
-                'expected_version' => 1, 'reason' => 'synthetic_explicit_login_revocation']);
-        });
+        $this->postJson('/businesses/'.$this->business.'/sources', [
+            'source_id' => $source->id, 'command_id' => (string) Str::uuid7(), 'effect' => 'revoke',
+            'resource' => '999', 'operation' => 'discovery.read', 'purpose' => 'advertising_analysis',
+            'expected_version' => 1, 'reason' => 'synthetic_explicit_login_revocation',
+        ])->assertOk();
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
         $this->postJson($base.'/connect', ['intent' => $intent])->assertForbidden();
         $this->assertSame('REVOKED', $this->owner()->table('source_registry')->where('id', $source->id)->value('status'));
@@ -1548,7 +1535,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake();
         $this->configureMetaWeb($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/meta';
+        $base = '/businesses/'.$this->business.'/providers/meta';
         $before = $this->owner()->table('security_action_grants')->count();
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
         $this->postJson($base.'/connect', ['intent' => $intent, 'access_token' => 'synthetic-injected-token'])->assertUnprocessable();
@@ -1571,7 +1558,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake();
         $this->configureMetaWeb($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/meta';
+        $base = '/businesses/'.$this->business.'/providers/meta';
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
         $url = $this->postJson($base.'/connect', ['intent' => $intent])->assertOk()->json('authorization_url');
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
@@ -1591,7 +1578,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response(['error' => ['code' => 10, 'message' => 'synthetic-private-denial']], 400)]);
         $this->assertSame('FAILED', $this->metaRead($scope, $http)['coverage']);
-        $status = $this->withinWorkspace(fn ($r) => (new MetaAccessStatus)->snapshot($r, $scope));
+        $status = $this->withinBusiness(fn ($r) => (new MetaAccessStatus)->snapshot($r, $scope));
         $this->assertSame('RECONNECT_REQUIRED', $status['connection']);
         $this->assertSame('REVOKED', $status['axes']['provider_permission']);
         $this->assertSame('VERIFICATION_NEEDED', $status['effective']['state']);
@@ -1604,9 +1591,9 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame(1, $this->owner()->table('provider_observation_runs')->count());
         $this->assertSame(0, $this->owner()->table('provider_observation_entries')->count());
         // Current signed reconnect replaces this epoch; old native denials cannot poison its state.
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
             new ProviderCredentials(['access_token' => 'synthetic-reverified-token']), null, 'CONNECTED', $this->evidence(), true));
-        $status = $this->withinWorkspace(fn ($r) => (new MetaAccessStatus)->snapshot($r, $scope));
+        $status = $this->withinBusiness(fn ($r) => (new MetaAccessStatus)->snapshot($r, $scope));
         $this->assertSame(2, $status['version']);
         $this->assertSame('CONNECTED', $status['connection']);
     }
@@ -1615,14 +1602,14 @@ class ProviderAccessStoreTest extends TestCase
     {
         $http = $this->metaWebTransport();
         $this->configureMetaWeb($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/meta';
+        $base = '/businesses/'.$this->business.'/providers/meta';
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
         $url = $this->postJson($base.'/connect', ['intent' => $intent])->assertOk()->json('authorization_url');
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         $result = $this->get('/providers/meta/callback?'.http_build_query(['state' => $query['state'], 'code' => 'synthetic-code']))
             ->assertRedirect()->assertHeader('Referrer-Policy', 'no-referrer');
         $location = $result->headers->get('Location');
-        $this->assertStringStartsWith(route('workspaces.show', $this->workspace).'#meta-flow=', $location);
+        $this->assertStringStartsWith(NativeSourceOwner::landingUrl($this->nativeOwner()->reference()).'#meta-flow=', $location);
         $handle = substr($location, strpos($location, '#meta-flow=') + 11);
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/D', $handle);
         foreach (['synthetic-code', 'synthetic-native-token', $query['state']] as $secret) {
@@ -1643,7 +1630,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake();
         $this->app->instance(Factory::class, $http);
-        $base = '/workspaces/'.$this->workspace.'/providers/meta';
+        $base = '/businesses/'.$this->business.'/providers/meta';
         $command = ['command_id' => (string) Str::uuid(), 'expected_version' => 1];
         $this->postJson($base.'/'.$google->sourceId.'/disconnect', $command)->assertNotFound();
         $this->postJson($base.'/'.$scope->sourceId.'/disconnect', $command + ['remote_revoke' => true])->assertUnprocessable();
@@ -1667,11 +1654,11 @@ class ProviderAccessStoreTest extends TestCase
         $receipt = $this->googleRead($scope, $http);
         $http->assertSentCount(2);
         $this->assertSame(1, $receipt['generation']);
-        $history = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'google-integrated'));
+        $history = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'google-integrated'));
         $this->assertCount(1, $history);
         $this->assertSame('9007199254740993', $history[0]['observation']['spend']['native_value']);
         $this->assertSame('JOD', $history[0]['observation']['spend']['currency']);
-        $progress = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->progress($r, $scope, 'google-integrated', 1));
+        $progress = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->progress($r, $scope, 'google-integrated', 1));
         $this->assertSame('google.accepted_range', $progress->kind);
         $this->assertSame(1, $this->owner()->table('provider_observation_streams')->value('progress_generation'));
     }
@@ -1718,18 +1705,12 @@ class ProviderAccessStoreTest extends TestCase
 
     private function googleReaderScope(?array $proof = null, bool $connect = true): ProviderScope
     {
-        $scope = new ProviderScope($this->workspaceId, (string) Str::uuid7(), Provider::Google, '1234567890', 'report.read', 'advertising_analysis');
-        foreach (GrantAuthority::SOURCE_ACTIONS as $action) {
-            $this->grant($scope, $action);
-        }
-        $this->postJson('/workspaces/'.$this->workspace.'/sources', ['source_id' => $scope->sourceId, 'command_id' => (string) Str::uuid(),
-            'effect' => 'register', 'family' => 'google', 'namespace' => 'ad_account', 'external_id' => $scope->accountId,
-            'label' => 'Synthetic native Google account', 'resource' => $scope->accountId, 'operation' => $scope->operation,
-            'purpose' => $scope->purpose, 'expected_version' => 0, 'reason' => 'synthetic_registration'])->assertOk();
+        $scope = ProviderScope::forBusiness($this->businessId, (string) Str::uuid7(), Provider::Google, '1234567890', 'report.read', 'advertising_analysis');
+        $this->bootstrapScope($scope);
         if (! $connect) {
             return $scope;
         }
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 0,
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 0,
             new ProviderCredentials(['access_token' => 'synthetic-google-token', 'account_id' => $scope->accountId,
                 'account_timezone' => 'Asia/Amman', 'account_currency' => 'JOD',
                 'granted_scope' => GoogleOAuthClient::SCOPE, 'expires_at' => (string) (time() + 600)]),
@@ -1763,7 +1744,7 @@ class ProviderAccessStoreTest extends TestCase
         $reader = new GoogleObservationReader($http, app(ObservationJournal::class),
             app(ProviderAccessStore::class), app(ProviderRequestGuard::class));
 
-        return $this->withinWorkspace(fn ($r) => $reader->read($r, $scope,
+        return $this->withinBusiness(fn ($r) => $reader->read($r, $scope,
             new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native-timezone'),
             new ProviderReadBudget($scope, 'google-integrated', 4, 0, 4, 10, new DateTimeImmutable('+30 seconds'), 1, 5),
             'v25', '', 'google-integrated', (string) Str::uuid(), 0, 1));
@@ -1784,11 +1765,11 @@ class ProviderAccessStoreTest extends TestCase
             ->push($this->googleReaderMetadata())->push($changed)]);
         $this->googleRead($scope, $http);
         $reader = new GoogleObservationReader($http, app(ObservationJournal::class), app(ProviderAccessStore::class), app(ProviderRequestGuard::class));
-        $this->withinWorkspace(fn ($r) => $reader->read($r, $scope,
+        $this->withinBusiness(fn ($r) => $reader->read($r, $scope,
             new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native-timezone'),
             new ProviderReadBudget($scope, 'google-integrated', 4, 0, 4, 10, new DateTimeImmutable('+30 seconds'), 1, 5),
             'v25', '', 'google-integrated', (string) Str::uuid(), 1, 1));
-        $history = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'google-integrated'));
+        $history = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'google-integrated'));
         $this->assertCount(2, $history);
         $this->assertSame('PAUSED', $history[1]['observation']['native_facts']['campaign_status']['value']);
         $this->assertSame('ENABLED', $history[0]['observation']['native_facts']['campaign_status']['value']);
@@ -1804,20 +1785,20 @@ class ProviderAccessStoreTest extends TestCase
         $scope = $this->scopes['google'];
         $states = new GoogleOAuthState(Cache::store(), app(ProviderRequestGuard::class));
         $configuration = hash('sha256', 'synthetic-configuration');
-        $state = $this->withinWorkspace(fn ($r) => $states->issue($r, $scope, 0, $configuration));
+        $state = $this->withinBusiness(fn ($r) => $states->issue($r, $scope, 0, $configuration));
         $key = 'bb2.google.oauth.'.hash('sha256', $state);
         $ciphertext = Cache::get($key);
         $this->assertIsString($ciphertext);
         $this->assertStringNotContainsString($scope->sourceId, $ciphertext);
         $this->assertStringNotContainsString($configuration, $ciphertext);
         try {
-            $this->withinWorkspace(fn ($r) => $states->consume($r, $scope, 0, hash('sha256', 'another-configuration'), $state));
+            $this->withinBusiness(fn ($r) => $states->consume($r, $scope, 0, hash('sha256', 'another-configuration'), $state));
             $this->fail('A changed Google configuration must not consume callback state.');
         } catch (AuthorizationException) {
             $this->assertSame($ciphertext, Cache::get($key));
         }
         try {
-            $this->withinWorkspace(function ($r) use ($states, $scope, $configuration, $state): void {
+            $this->withinBusiness(function ($r) use ($states, $scope, $configuration, $state): void {
                 $states->consume($r, $scope, 0, $configuration, $state);
                 throw new \RuntimeException('Synthetic post-consumption provider failure.');
             });
@@ -1826,7 +1807,7 @@ class ProviderAccessStoreTest extends TestCase
         }
         $this->assertNull(Cache::get($key));
         try {
-            $this->withinWorkspace(fn ($r) => $states->consume($r, $scope, 0, $configuration, $state));
+            $this->withinBusiness(fn ($r) => $states->consume($r, $scope, 0, $configuration, $state));
             $this->fail('A callback state must never be replayed.');
         } catch (AuthorizationException) {
             $this->assertSame(0, $this->owner()->table('provider_access_events')->count());
@@ -1840,7 +1821,7 @@ class ProviderAccessStoreTest extends TestCase
         $configuration = hash('sha256', 'synthetic-configuration');
         $rolledBack = null;
         try {
-            $this->withinWorkspace(function ($r) use ($states, $scope, $configuration, &$rolledBack): void {
+            $this->withinBusiness(function ($r) use ($states, $scope, $configuration, &$rolledBack): void {
                 $rolledBack = $states->issue($r, $scope, 0, $configuration);
                 throw new \RuntimeException('Synthetic initiation rollback.');
             });
@@ -1849,10 +1830,10 @@ class ProviderAccessStoreTest extends TestCase
         }
         $this->assertNotNull($rolledBack);
         $this->assertNull(Cache::get('bb2.google.oauth.'.hash('sha256', $rolledBack)));
-        $state = $this->withinWorkspace(fn ($r) => $states->issue($r, $scope, 0, $configuration));
+        $state = $this->withinBusiness(fn ($r) => $states->issue($r, $scope, 0, $configuration));
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
             ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $states->consume($r, $scope, 0, $configuration, $state)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $states->consume($r, $scope, 0, $configuration, $state)), '42501');
         $this->assertIsString(Cache::get('bb2.google.oauth.'.hash('sha256', $state)));
         $this->assertSame(0, $this->owner()->table('provider_access_events')->count());
     }
@@ -1864,22 +1845,22 @@ class ProviderAccessStoreTest extends TestCase
         $configuration = hash('sha256', 'synthetic-configuration');
         $axes = array_fill_keys(EffectiveCapability::AXES, ['state' => 'UNKNOWN', 'provenance' => 'synthetic:unestablished']);
         $material = new ProviderAccessMaterial($scope, new ProviderCredentials(['access_token' => 'synthetic-pending-secret']), null, 'CONNECTED', $axes);
-        $handle = $this->withinWorkspace(fn ($r) => $pending->stage($r, $material, 0, $configuration));
+        $handle = $this->withinBusiness(fn ($r) => $pending->stage($r, $material, 0, $configuration));
         $ciphertext = Cache::get('bb2.google.pending.'.hash('sha256', $handle));
         $this->assertIsString($ciphertext);
         $this->assertStringNotContainsString('synthetic-pending-secret', $ciphertext);
-        $loaded = $this->withinWorkspace(fn ($r) => $pending->material($r, $scope, 0, $configuration, $handle));
+        $loaded = $this->withinBusiness(fn ($r) => $pending->material($r, $scope, 0, $configuration, $handle));
         $this->assertSame('synthetic-pending-secret', $loaded->credentials->value('access_token'));
         $this->assertNull($loaded->expiresAt);
         $this->assertSame($axes, $loaded->verification);
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
         try {
-            $this->withinWorkspace(fn ($r) => $pending->material($r, $scope, 0, hash('sha256', 'changed-configuration'), $handle));
+            $this->withinBusiness(fn ($r) => $pending->material($r, $scope, 0, hash('sha256', 'changed-configuration'), $handle));
             $this->fail('A pending acquisition cannot change its configuration binding.');
         } catch (AuthorizationException) {
             $this->assertSame($ciphertext, Cache::get('bb2.google.pending.'.hash('sha256', $handle)));
         }
-        $this->withinWorkspace(fn ($r) => $pending->discard($r, $scope, 0, $configuration, $handle));
+        $this->withinBusiness(fn ($r) => $pending->discard($r, $scope, 0, $configuration, $handle));
         $this->assertNull(Cache::get('bb2.google.pending.'.hash('sha256', $handle)));
     }
 
@@ -1891,7 +1872,7 @@ class ProviderAccessStoreTest extends TestCase
         $material = new ProviderAccessMaterial($scope, new ProviderCredentials(['access_token' => 'synthetic-pending-secret']), null, 'CONNECTED', []);
         $rolledBack = null;
         try {
-            $this->withinWorkspace(function ($r) use ($pending, $material, $configuration, &$rolledBack): void {
+            $this->withinBusiness(function ($r) use ($pending, $material, $configuration, &$rolledBack): void {
                 $rolledBack = $pending->stage($r, $material, 0, $configuration);
                 throw new \RuntimeException('Synthetic staging rollback.');
             });
@@ -1900,10 +1881,10 @@ class ProviderAccessStoreTest extends TestCase
         }
         $this->assertNotNull($rolledBack);
         $this->assertNull(Cache::get('bb2.google.pending.'.hash('sha256', $rolledBack)));
-        $handle = $this->withinWorkspace(fn ($r) => $pending->stage($r, $material, 0, $configuration));
+        $handle = $this->withinBusiness(fn ($r) => $pending->stage($r, $material, 0, $configuration));
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
             ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $pending->material($r, $scope, 0, $configuration, $handle)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $pending->material($r, $scope, 0, $configuration, $handle)), '42501');
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
     }
 
@@ -1918,17 +1899,17 @@ class ProviderAccessStoreTest extends TestCase
             ->push(['resourceNames' => ['customers/1234567890']])->push($this->googleReaderMetadata())
             ->push(['fieldMask' => 'campaign.id', 'results' => []])]);
         $flow = $this->googleCoordinator($http);
-        $url = $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $installation));
+        $url = $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $installation));
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
-        $handle = $this->withinWorkspace(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
+        $handle = $this->withinBusiness(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/D', $handle);
-        $discovery = $this->withinWorkspace(fn ($r) => $flow->discover($r, $installation, 0, $handle));
+        $discovery = $this->withinBusiness(fn ($r) => $flow->discover($r, $installation, 0, $handle));
         $this->assertSame('1234567890', $discovery->accounts[0]['id']);
         $command = (string) Str::uuid();
-        $receipt = $this->withinWorkspace(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 1));
+        $receipt = $this->withinBusiness(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 1));
         $this->assertSame(2, $receipt['version']);
         $this->assertNull(Cache::get('bb2.google.pending.'.hash('sha256', $handle)));
-        $replay = $this->withinWorkspace(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 1));
+        $replay = $this->withinBusiness(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 1));
         $this->assertSame($receipt, $replay);
         $http->assertSentCount(4);
         // Native connection must not inherit the fixture's policy approval.
@@ -1945,16 +1926,16 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response(['error' => 'invalid_grant'], 400)]);
         $flow = $this->googleCoordinator($http);
-        $url = $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $installation));
+        $url = $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $installation));
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         try {
-            $this->withinWorkspace(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
+            $this->withinBusiness(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
             $this->fail('Failed exchange cannot stage credentials.');
         } catch (GoogleRequestFailed $error) {
             $this->assertSame('google_reconnect_required', $error->reason);
         }
         try {
-            $this->withinWorkspace(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
+            $this->withinBusiness(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
             $this->fail('Failed callback cannot replay its state.');
         } catch (AuthorizationException) {
             $http->assertSentCount(1);
@@ -1969,12 +1950,12 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake();
         $flow = $this->googleCoordinator($http);
-        $url = $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $installation));
+        $url = $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $installation));
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         $rotated = $this->googleCoordinator($http, 'synthetic-rotated-secret');
         $this->assertNotSame($flow->configurationBinding(), $rotated->configurationBinding());
         try {
-            $this->withinWorkspace(fn ($r) => $rotated->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
+            $this->withinBusiness(fn ($r) => $rotated->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
             $this->fail('Rotated OAuth configuration must invalidate in-flight state.');
         } catch (AuthorizationException) {
             $http->assertNothingSent();
@@ -1987,12 +1968,12 @@ class ProviderAccessStoreTest extends TestCase
         $scope = $this->scopes['google'];
         $states = new GoogleOAuthState(Cache::store(), app(ProviderRequestGuard::class));
         $configuration = hash('sha256', 'synthetic-google-configuration');
-        $state = $this->withinWorkspace(fn ($r) => $states->issue($r, $scope, 0, $configuration));
-        $located = $this->withinWorkspace(fn ($r) => $states->locate($r, $configuration, $state));
-        $this->assertSame($this->workspace, $located['workspace']);
+        $state = $this->withinBusiness(fn ($r) => $states->issue($r, $scope, 0, $configuration));
+        $located = $this->withinBusiness(fn ($r) => $states->locate($r, $configuration, $state));
+        $this->assertSame($this->business, $located['business']);
         $this->assertSame($scope->jsonSerialize(), $located['scope']->jsonSerialize());
         try {
-            $this->withinWorkspace(function ($r) use ($states, $configuration, $state): void {
+            $this->withinBusiness(function ($r) use ($states, $configuration, $state): void {
                 $generation = $r->session()->get('a001_generation');
                 try {
                     $r->session()->put('a001_generation', (int) $generation + 1);
@@ -2007,7 +1988,7 @@ class ProviderAccessStoreTest extends TestCase
         }
         $this->travel(301)->seconds();
         try {
-            $this->withinWorkspace(fn ($r) => $states->locate($r, $configuration, $state));
+            $this->withinBusiness(fn ($r) => $states->locate($r, $configuration, $state));
             $this->fail('Expired correlation cannot route a callback.');
         } catch (AuthorizationException) {
             $this->assertSame(0, $this->owner()->table('provider_access')->count());
@@ -2024,7 +2005,7 @@ class ProviderAccessStoreTest extends TestCase
         $configuration = hash('sha256', 'synthetic-google-web-configuration');
         $data = ['pending' => 'synthetic-private-pending-reference', 'continuation' => ['kind' => 'google.manager_page',
             'payload' => 'synthetic-private-native-cursor'], 'login_customer_id' => '9876543210', 'manager_id' => '9876543210'];
-        $handle = $this->withinWorkspace(fn ($r) => $flow->issue($r, $scope, 0, $configuration, 'hierarchy', $data));
+        $handle = $this->withinBusiness(fn ($r) => $flow->issue($r, $scope, 0, $configuration, 'hierarchy', $data));
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/D', $handle);
         $key = 'bb2.google.web.hierarchy.'.hash('sha256', $handle);
         $cipher = Cache::get($key);
@@ -2032,12 +2013,12 @@ class ProviderAccessStoreTest extends TestCase
         foreach (['synthetic-private-native-cursor', 'synthetic-private-pending-reference', $scope->sourceId] as $private) {
             $this->assertStringNotContainsString($private, $cipher);
         }
-        $record = $this->withinWorkspace(fn ($r) => $flow->load($r, $configuration, 'hierarchy', $handle));
+        $record = $this->withinBusiness(fn ($r) => $flow->load($r, $configuration, 'hierarchy', $handle));
         $this->assertSame($scope->jsonSerialize(), $record['scope']->jsonSerialize());
         $this->assertSame($data, $record['data']);
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
             ->where('action', 'provider.connect')->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $flow->load($r, $configuration, 'hierarchy', $handle)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $flow->load($r, $configuration, 'hierarchy', $handle)), '42501');
         $this->assertSame($cipher, Cache::get($key));
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
     }
@@ -2048,10 +2029,10 @@ class ProviderAccessStoreTest extends TestCase
         $scope = $this->googleInstallationScope();
         $flow = new GoogleFlowState(Cache::store(), app(ProviderRequestGuard::class));
         $configuration = hash('sha256', 'synthetic-google-web-configuration');
-        $handle = $this->withinWorkspace(fn ($r) => $flow->issue($r, $scope, 0, $configuration, 'discovery', ['pending' => 'private']));
+        $handle = $this->withinBusiness(fn ($r) => $flow->issue($r, $scope, 0, $configuration, 'discovery', ['pending' => 'private']));
         foreach ([[$configuration, 'selection'], [hash('sha256', 'changed'), 'discovery']] as [$binding, $kind]) {
             try {
-                $this->withinWorkspace(fn ($r) => $flow->load($r, $binding, $kind, $handle));
+                $this->withinBusiness(fn ($r) => $flow->load($r, $binding, $kind, $handle));
                 $this->fail('Flow must reject changed configuration or kind.');
             } catch (AuthorizationException) {
                 $this->assertSame(0, $this->owner()->table('provider_access')->count());
@@ -2059,7 +2040,7 @@ class ProviderAccessStoreTest extends TestCase
         }
         $this->travel(301)->seconds();
         try {
-            $this->withinWorkspace(fn ($r) => $flow->load($r, $configuration, 'discovery', $handle));
+            $this->withinBusiness(fn ($r) => $flow->load($r, $configuration, 'discovery', $handle));
             $this->fail('Expired flow handle cannot restore a native cursor.');
         } catch (AuthorizationException) {
             $this->assertSame(0, $this->owner()->table('provider_access')->count());
@@ -2076,7 +2057,7 @@ class ProviderAccessStoreTest extends TestCase
         $configuration = hash('sha256', 'synthetic-google-web-configuration');
         $handle = null;
         try {
-            $this->withinWorkspace(function ($r) use ($flow, $scope, $configuration, &$handle): void {
+            $this->withinBusiness(function ($r) use ($flow, $scope, $configuration, &$handle): void {
                 $handle = $flow->issue($r, $scope, 0, $configuration, 'discovery', ['pending' => 'private']);
                 throw new \RuntimeException('Synthetic flow rollback.');
             });
@@ -2086,7 +2067,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertNotNull($handle);
         $this->assertNull(Cache::get('bb2.google.web.discovery.'.hash('sha256', $handle)));
         try {
-            $this->withinWorkspace(fn ($r) => $flow->issue($r, $scope, 0, $configuration, 'discovery', ['pending' => str_repeat('x', 65536)]));
+            $this->withinBusiness(fn ($r) => $flow->issue($r, $scope, 0, $configuration, 'discovery', ['pending' => str_repeat('x', 65536)]));
             $this->fail('Unbounded server correlation is forbidden.');
         } catch (\LogicException $error) {
             $this->assertStringContainsString('limit', $error->getMessage());
@@ -2103,7 +2084,7 @@ class ProviderAccessStoreTest extends TestCase
             ->push(['resourceNames' => ['customers/1234567890']])->push($this->googleReaderMetadata())
             ->push(['fieldMask' => 'campaign.id', 'results' => []])]);
         $this->configureGoogleHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google';
+        $base = '/businesses/'.$this->business.'/providers/google';
         $url = $this->postJson($base.'/connect', ['source_id' => $installation->sourceId, 'expected_version' => 0])
             ->assertOk()->json('authorization_url');
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
@@ -2133,7 +2114,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response($this->googleConnectionToken())]);
         $this->configureGoogleHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google';
+        $base = '/businesses/'.$this->business.'/providers/google';
         $this->postJson($base.'/connect', ['source_id' => $installation->sourceId, 'expected_version' => 0, 'access_token' => 'injected'])->assertUnprocessable();
         $url = $this->postJson($base.'/connect', ['source_id' => $installation->sourceId, 'expected_version' => 0])->assertOk()->json('authorization_url');
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
@@ -2142,7 +2123,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->assertNothingSent();
         config()->set('services.google_ads.client_secret', 'synthetic-client-secret');
         $callback = $this->getJson('/providers/google/callback?'.http_build_query(['state' => $query['state'], 'code' => 'synthetic-code']))->assertOk();
-        $this->getJson('/workspaces/'.Str::uuid().'/providers/google/discovery/'.$callback->json('discovery_handle'))->assertForbidden();
+        $this->getJson('/businesses/'.Str::uuid().'/providers/google/discovery/'.$callback->json('discovery_handle'))->assertForbidden();
         $http->assertSentCount(1);
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
     }
@@ -2154,7 +2135,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake();
         $this->configureGoogleHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google';
+        $base = '/businesses/'.$this->business.'/providers/google';
         $url = $this->postJson($base.'/connect', ['source_id' => $installation->sourceId, 'expected_version' => 0])->assertOk()->json('authorization_url');
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         $response = $this->getJson('/providers/google/callback?'.http_build_query(['state' => $query['state'], 'error' => 'access_denied',
@@ -2174,7 +2155,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->fake();
         $this->configureGoogleHttp($http);
         config()->set('services.google_ads.privacy_url', null);
-        $this->postJson('/workspaces/'.$this->workspace.'/providers/google/connect',
+        $this->postJson('/businesses/'.$this->business.'/providers/google/connect',
             ['source_id' => $installation->sourceId, 'expected_version' => 0])->assertStatus(503);
         $http->assertNothingSent();
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
@@ -2188,7 +2169,7 @@ class ProviderAccessStoreTest extends TestCase
             ->push(['resourceNames' => ['customers/1234567890']])->push($this->googleReaderMetadata())
             ->push(['fieldMask' => 'campaign.id', 'results' => []])]);
         $this->configureGoogleHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google';
+        $base = '/businesses/'.$this->business.'/providers/google';
         $before = $this->owner()->table('security_action_grants')->count();
         $index = $this->getJson($base)->assertOk()->assertJsonPath('availability', 'CONNECT_AVAILABLE');
         $this->assertSame($before, $this->owner()->table('security_action_grants')->count());
@@ -2216,12 +2197,11 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake();
         $this->configureGoogleHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google';
+        $base = '/businesses/'.$this->business.'/providers/google';
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
         $this->postJson($base.'/connect', ['intent' => $intent, 'source_id' => $this->scopes['google']->sourceId, 'expected_version' => 0])->assertUnprocessable();
-        $anotherOwner = User::factory()->create();
-        $this->owner()->table('workspace_ownerships')->where('workspace_id', $this->workspaceId)
-            ->update(['responsible_owner_user_id' => $anotherOwner->id]);
+        $qualification = $this->owner()->table('security_action_grants')->where('id', $this->businessReadGrant)->value('qualification_id');
+        \Tests\Support\BusinessAuthorityFixture::revokeQualification($qualification, $this->actor->id);
         $before = $this->owner()->table('security_action_grants')->count();
         $this->getJson($base)->assertForbidden();
         $this->postJson($base.'/connect', ['intent' => $intent])->assertForbidden();
@@ -2237,12 +2217,12 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response(array_diff_key($this->googleConnectionToken(), ['refresh_token' => true]))]);
         $this->configureGoogleHttp($http);
-        $url = $this->postJson('/workspaces/'.$this->workspace.'/providers/google/connect',
+        $url = $this->postJson('/businesses/'.$this->business.'/providers/google/connect',
             ['source_id' => $installation->sourceId, 'expected_version' => 0])->assertOk()->json('authorization_url');
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         $response = $this->get('/providers/google/callback?'.http_build_query(['state' => $query['state'], 'code' => 'synthetic-private-code']),
             ['Accept' => 'text/html'])->assertRedirect();
-        $this->assertSame(route('workspaces.show', $this->workspace).'#google-result=OFFLINE_GRANT_REQUIRED', $response->headers->get('Location'));
+        $this->assertSame(NativeSourceOwner::landingUrl($this->nativeOwner()->reference()).'#google-result=OFFLINE_GRANT_REQUIRED', $response->headers->get('Location'));
         $this->assertStringNotContainsString('synthetic-private-code', $response->headers->get('Location'));
         $this->assertStringNotContainsString('synthetic-new-access', $response->headers->get('Location'));
         $http->assertSentCount(1);
@@ -2273,7 +2253,7 @@ class ProviderAccessStoreTest extends TestCase
                 'results' => [$row($sub, true, '0'), $row($selected->accountId, false, '1')]])
             ->push($direct)->push($metadata)->push($this->googleReaderMetadata())->push(['fieldMask' => 'campaign.id', 'results' => []])]);
         $this->configureGoogleHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google';
+        $base = '/businesses/'.$this->business.'/providers/google';
         $url = $this->postJson($base.'/connect', ['source_id' => $installation->sourceId, 'expected_version' => 0])->assertOk()->json('authorization_url');
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         $callback = $this->getJson('/providers/google/callback?'.http_build_query(['state' => $query['state'], 'code' => 'synthetic-code']))->assertOk();
@@ -2281,7 +2261,7 @@ class ProviderAccessStoreTest extends TestCase
         $rootHandle = $directPage->json('accounts.0.hierarchy_handle');
         $this->assertIsString($rootHandle);
         $this->getJson($base.'/discovery/'.$rootHandle)->assertForbidden();
-        $this->getJson('/workspaces/'.Str::uuid().'/providers/google/hierarchy/'.$rootHandle)->assertForbidden();
+        $this->getJson('/businesses/'.Str::uuid().'/providers/google/hierarchy/'.$rootHandle)->assertForbidden();
         config()->set('services.google_ads.client_secret', 'synthetic-rotated-secret');
         $this->getJson($base.'/hierarchy/'.$rootHandle)->assertForbidden();
         $http->assertSentCount(2);
@@ -2325,7 +2305,7 @@ class ProviderAccessStoreTest extends TestCase
             ->push(['resourceNames' => ['customers/1234567890']])->push(['resourceNames' => ['customers/1234567890']])
             ->push($this->googleReaderMetadata())]);
         $this->configureGoogleHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google';
+        $base = '/businesses/'.$this->business.'/providers/google';
         $url = $this->postJson($base.'/connect', ['source_id' => $installation->sourceId, 'expected_version' => 0])->assertOk()->json('authorization_url');
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         $callback = $this->getJson('/providers/google/callback?'.http_build_query(['state' => $query['state'], 'code' => 'synthetic-code']))->assertOk();
@@ -2348,7 +2328,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake();
         $this->app->instance(Factory::class, $http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google';
+        $base = '/businesses/'.$this->business.'/providers/google';
         $page = $this->getJson($base)->assertOk()->assertJsonPath('availability', 'CONFIGURATION_REQUIRED')
             ->json('connections');
         $this->assertSame('CONNECTED', collect($page)->firstWhere('source_id', $scope->sourceId)['access']['connection']);
@@ -2369,7 +2349,7 @@ class ProviderAccessStoreTest extends TestCase
             $this->assertStringNotContainsString('synthetic-google-token', $body);
             $this->assertStringNotContainsString('synthetic-secret-token', $body);
         }
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
         $http->assertNothingSent();
     }
 
@@ -2380,7 +2360,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response(['error' => ['status' => 'PERMISSION_DENIED', 'message' => 'synthetic-private-denial']], 403)]);
         $this->assertSame('FAILED', $this->googleRead($scope, $http)['coverage']);
-        $snapshot = fn () => $this->withinWorkspace(fn ($r) => (new GoogleAccessStatus)->snapshot($r, $scope));
+        $snapshot = fn () => $this->withinBusiness(fn ($r) => (new GoogleAccessStatus)->snapshot($r, $scope));
         $status = $snapshot();
         $this->assertSame('VERIFICATION_NEEDED', $status['connection']);
         $this->assertSame('FAILED', $status['axes']['provider_permission']);
@@ -2391,7 +2371,7 @@ class ProviderAccessStoreTest extends TestCase
         } catch (AuthorizationException) {
             $http->assertSentCount(1);
         }
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
             new ProviderCredentials(['access_token' => 'synthetic-reverified-token']), new DateTimeImmutable('+10 minutes'), 'CONNECTED', $this->evidence(), true));
         $this->assertSame('CONNECTED', $snapshot()['connection']);
         $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->update(['credential_expires_at' => now()->subMinute()]);
@@ -2402,18 +2382,18 @@ class ProviderAccessStoreTest extends TestCase
     public function test_google_renewal_uses_expired_custody_reverifies_account_and_replays_without_http(): void
     {
         $scope = $this->googleReaderScope();
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
             new ProviderCredentials(['access_token' => 'synthetic-expired-access', 'refresh_token' => 'synthetic-old-refresh',
                 'oauth_client_id' => 'synthetic.apps.googleusercontent.com', 'granted_scope' => GoogleOAuthClient::SCOPE,
                 'account_id' => $scope->accountId, 'account_currency' => 'JOD', 'account_timezone' => 'Asia/Amman',
                 'expires_at' => (string) (time() - 60)]), new DateTimeImmutable('-1 minute'), 'CONNECTED', $this->evidence(), true));
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
         $http = new Factory;
         $http->preventStrayRequests();
         $http->fake(['*' => $http->sequence()->push($this->googleConnectionToken())->push($this->googleReaderMetadata())
             ->push(['fieldMask' => 'campaign.id', 'results' => []])]);
         $this->configureGoogleHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google/'.$scope->sourceId;
+        $base = '/businesses/'.$this->business.'/providers/google/'.$scope->sourceId;
         $command = ['command_id' => (string) Str::uuid(), 'expected_version' => 2];
         $this->postJson($base.'/renew', $command + ['refresh_token' => 'injected'])->assertUnprocessable();
         $first = $this->postJson($base.'/renew', $command)->assertOk()->assertJsonPath('receipt.version', 3)
@@ -2426,7 +2406,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame('synthetic-new-refresh', $stored['refresh_token']);
         $this->assertSame('JOD', $stored['account_currency']);
         $this->assertStringNotContainsString('synthetic-new-refresh', $first->getContent());
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
         $this->postJson($base.'/disconnect', ['command_id' => (string) Str::uuid(), 'expected_version' => 3])->assertOk();
         $this->postJson($base.'/renew', ['command_id' => (string) Str::uuid(), 'expected_version' => 4])->assertForbidden();
         $http->assertSentCount(3);
@@ -2439,7 +2419,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->configureGoogleHttp($http);
         config()->set('queue.default', 'database');
         config()->set('queue.connections.database.connection', 'pgsql');
-        $job = $this->withinWorkspace(function ($r) use ($scope) {
+        $job = $this->withinBusiness(function ($r) use ($scope) {
             $job = GoogleReadJob::capture($r, $scope,
                 new ReportWindow('2026-09-01', '2026-09-01', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native-timezone'),
                 'google-native-queue', (string) Str::uuid(), 0, 1);
@@ -2460,7 +2440,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame(1, $this->owner()->table('google_read_attempts')->count());
         $this->assertSame(1, $this->owner()->table('provider_observation_runs')->count());
         $this->assertSame($idleBefore, $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->value('idle_expires_at'));
-        $this->denied(fn () => $this->withinWorkspace(fn () => DB::table('google_read_attempts')->get()), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn () => DB::table('google_read_attempts')->get()), '42501');
     }
 
     public function test_tiktok_one_button_flow_selects_native_account_and_disconnects_only_local_custody(): void
@@ -2473,7 +2453,7 @@ class ProviderAccessStoreTest extends TestCase
             ->push(['code' => 0, 'data' => ['list' => [['advertiser_id' => '1234567890123456789', 'currency' => 'JOD', 'timezone' => 'Asia/Amman']]]])
             ->push(['code' => 0, 'data' => ['list' => []]])]);
         $this->configureTikTokHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/tiktok';
+        $base = '/businesses/'.$this->business.'/providers/tiktok';
         $before = $this->owner()->table('source_registry')->count();
         $index = $this->getJson($base)->assertOk()->assertJsonPath('availability', 'CONNECT_AVAILABLE');
         $this->assertSame($before, $this->owner()->table('source_registry')->count());
@@ -2520,9 +2500,9 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake();
         $this->configureTikTokHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/tiktok';
+        $base = '/businesses/'.$this->business.'/providers/tiktok';
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
-        $this->postJson('/workspaces/'.Str::uuid().'/providers/tiktok/connect', ['intent' => $intent])->assertForbidden();
+        $this->postJson('/businesses/'.Str::uuid().'/providers/tiktok/connect', ['intent' => $intent])->assertForbidden();
         $url = $this->postJson($base.'/connect', ['intent' => $intent])->assertOk()->json('authorization_url');
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         config()->set('services.tiktok_ads.app_secret', 'synthetic-rotated-secret');
@@ -2540,7 +2520,7 @@ class ProviderAccessStoreTest extends TestCase
         ], 'page_info' => ['page' => 1, 'total_page' => 1]]])]);
         $this->configureTikTokHttp($http);
         config()->set('queue.default', 'database');
-        $job = $this->withinWorkspace(function ($r) use ($scope) {
+        $job = $this->withinBusiness(function ($r) use ($scope) {
             $job = TikTokReadJob::capture($r, $scope,
                 new ReportWindow('2026-09-01', '2026-09-01', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
                 'tiktok-native-queue', (string) Str::uuid(), 0, 1);
@@ -2556,11 +2536,11 @@ class ProviderAccessStoreTest extends TestCase
         Queue::connection('database')->pop('bb2.provider.tiktok')->fire();
         $http->assertSentCount(1);
         $this->assertSame(1, $this->owner()->table('tiktok_read_attempts')->count());
-        $history = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'tiktok-native-queue'));
+        $history = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'tiktok-native-queue'));
         $this->assertSame('9007199254740993.001', $history[0]['observation']['spend']['native_value']);
         $this->assertSame('JOD', $history[0]['observation']['spend']['currency']);
         $this->assertNull($history[0]['observation']['spend']['major_units']);
-        $this->denied(fn () => $this->withinWorkspace(fn () => DB::table('tiktok_read_attempts')->get()), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn () => DB::table('tiktok_read_attempts')->get()), '42501');
     }
 
     public function test_google_native_retry_hint_blocks_other_streams_until_native_delay_expires(): void
@@ -2571,7 +2551,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->fake(['*' => $http->response(['error' => ['status' => 'RESOURCE_EXHAUSTED']], 429, ['Retry-After' => '40'])]);
         $this->assertSame('FAILED', $this->googleRead($scope, $http)['coverage']);
         $reader = new GoogleObservationReader($http, app(ObservationJournal::class), app(ProviderAccessStore::class), app(ProviderRequestGuard::class));
-        $attempt = $this->withinWorkspace(fn ($r) => $reader->attempt($r, $scope,
+        $attempt = $this->withinBusiness(fn ($r) => $reader->attempt($r, $scope,
             new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
             new ProviderReadBudget($scope, 'google-another-stream', 4, 0, 4, 10, new DateTimeImmutable('+30 seconds'), 1, 5),
             'v25', '', 'google-another-stream', (string) Str::uuid(), 0, 1));
@@ -2586,7 +2566,7 @@ class ProviderAccessStoreTest extends TestCase
         $scope = $this->googleReaderScope();
         $http = $this->googleReaderTransport();
         $this->configureGoogleHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google/'.$scope->sourceId.'/report';
+        $base = '/businesses/'.$this->business.'/providers/google/'.$scope->sourceId.'/report';
         $period = ['start_date' => '2026-09-01', 'end_date' => '2026-09-02'];
         $snapshot = $this->getJson($base.'?'.http_build_query($period))->assertOk()->assertJsonPath('generation', 0)->assertJsonPath('timezone', 'Asia/Amman');
         $command = [...$period, 'command_id' => (string) Str::uuid(), 'expected_version' => 1, 'expected_generation' => 0,
@@ -2612,7 +2592,7 @@ class ProviderAccessStoreTest extends TestCase
         $scope = $this->googleReaderScope();
         $http = $this->googleReaderTransport();
         $this->configureGoogleHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google/'.$scope->sourceId.'/report';
+        $base = '/businesses/'.$this->business.'/providers/google/'.$scope->sourceId.'/report';
         $period = ['start_date' => '2026-09-01', 'end_date' => '2026-09-02'];
         $status = $this->getJson($base.'?'.http_build_query($period))->assertOk();
         $this->assertNull($status->json('download'));
@@ -2643,13 +2623,13 @@ class ProviderAccessStoreTest extends TestCase
         }
         $this->getJson($url.'&metrics=clicks')->assertUnprocessable();
         // Download is historical source.read, independent of current live credentials/settings.
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->revoke($r, $scope, (string) Str::uuid(), 1));
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->revoke($r, $scope, (string) Str::uuid(), 1));
         config()->set('services.google_ads.developer_token', null);
         $this->assertSame($csv, $this->get($url)->assertOk()->getContent());
         $this->assertSame($selectedCsv, $this->get($selectedUrl)->assertOk()->getContent());
         $this->getJson($url.'&access_token=injected')->assertUnprocessable();
         $this->get(str_replace('/report/1/download', '/report/2/download', $url))->assertNotFound();
-        $this->get(str_replace($this->workspace, (string) Str::uuid(), $url))->assertForbidden();
+        $this->get(str_replace($this->business, (string) Str::uuid(), $url))->assertForbidden();
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
             ->where('action', 'source.read')->update(['status' => 'revoked']);
         $this->get($url)->assertNotFound();
@@ -2667,15 +2647,15 @@ class ProviderAccessStoreTest extends TestCase
         $this->configureGoogleHttp($http);
         $command = ['start_date' => '2026-09-01', 'end_date' => '2026-09-02', 'command_id' => (string) Str::uuid(), 'expected_version' => 1, 'expected_generation' => 0,
             'deadline' => now()->addMinutes(5)->format(DATE_ATOM)];
-        $this->postJson('/workspaces/'.Str::uuid().'/providers/google/'.$scope->sourceId.'/report', $command)->assertForbidden();
+        $this->postJson('/businesses/'.Str::uuid().'/providers/google/'.$scope->sourceId.'/report', $command)->assertForbidden();
         $proof = $this->evidence();
         $proof['privacy_purpose']['state'] = 'UNKNOWN';
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
             new ProviderCredentials(['access_token' => 'synthetic-private-access', 'account_id' => $scope->accountId,
                 'granted_scope' => GoogleOAuthClient::SCOPE, 'expires_at' => (string) (time() + 600), 'account_currency' => 'JOD', 'account_timezone' => 'Asia/Amman']),
             new DateTimeImmutable('+10 minutes'), 'SYNTHETIC_AUTHORIZED', $proof, true));
         $command['expected_version'] = 2;
-        $this->postJson('/workspaces/'.$this->workspace.'/providers/google/'.$scope->sourceId.'/report', $command)->assertForbidden();
+        $this->postJson('/businesses/'.$this->business.'/providers/google/'.$scope->sourceId.'/report', $command)->assertForbidden();
         $this->assertSame(0, $this->owner()->table('jobs')->where('queue', 'bb2.provider.google')->count());
         $http->assertNothingSent();
     }
@@ -2687,7 +2667,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response(['code' => 0, 'data' => ['list' => [], 'page_info' => ['page' => 1, 'total_page' => 0]]])]);
         $this->configureTikTokHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/tiktok/'.$scope->sourceId.'/report';
+        $base = '/businesses/'.$this->business.'/providers/tiktok/'.$scope->sourceId.'/report';
         $period = ['start_date' => '2026-09-01', 'end_date' => '2026-09-02'];
         $snapshot = $this->getJson($base.'?'.http_build_query($period))->assertOk()->assertJsonPath('generation', 0)->assertJsonPath('timezone', 'Asia/Amman');
         $command = [...$period, 'command_id' => (string) Str::uuid(), 'expected_version' => 1, 'expected_generation' => 0, 'deadline' => $snapshot->json('deadline')];
@@ -2706,14 +2686,9 @@ class ProviderAccessStoreTest extends TestCase
 
     private function tiktokReaderScope(): ProviderScope
     {
-        $scope = new ProviderScope($this->workspaceId, (string) Str::uuid7(), Provider::TikTok, '1234567890123456789', 'report.read', 'advertising_analysis');
-        foreach (GrantAuthority::SOURCE_ACTIONS as $action) {
-            $this->grant($scope, $action);
-        }
-        $this->postJson('/workspaces/'.$this->workspace.'/sources', ['source_id' => $scope->sourceId, 'command_id' => (string) Str::uuid(),
-            'effect' => 'register', 'family' => 'tiktok', 'namespace' => 'ad_account', 'external_id' => $scope->accountId, 'label' => 'Synthetic TikTok account',
-            'resource' => $scope->accountId, 'operation' => $scope->operation, 'purpose' => $scope->purpose, 'expected_version' => 0, 'reason' => 'synthetic_registration'])->assertOk();
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 0,
+        $scope = ProviderScope::forBusiness($this->businessId, (string) Str::uuid7(), Provider::TikTok, '1234567890123456789', 'report.read', 'advertising_analysis');
+        $this->bootstrapScope($scope);
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 0,
             new ProviderCredentials(['access_token' => 'synthetic-tiktok-token', 'app_id' => '5555555555555555555', 'token_kind' => 'ADVERTISER',
                 'account_id' => $scope->accountId, 'account_currency' => 'JOD', 'account_timezone' => 'Asia/Amman']), null, 'SYNTHETIC_AUTHORIZED', $this->evidence()));
 
@@ -2734,28 +2709,28 @@ class ProviderAccessStoreTest extends TestCase
         [$installation, $selected] = $this->snapchatScopes();
         $http = $this->snapchatTransport();
         $flow = $this->snapchatCoordinator($http);
-        $url = $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $installation));
+        $url = $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $installation));
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
-        $handle = $this->withinWorkspace(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-snap-code'));
+        $handle = $this->withinBusiness(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-snap-code'));
         $cipher = Cache::get('bb2.snapchat.pending.'.hash('sha256', $handle));
         $this->assertIsString($cipher);
         $this->assertStringNotContainsString('synthetic-snap-access', $cipher);
-        $discovered = $this->withinWorkspace(fn ($r) => $flow->discover($r, $installation, 0, $handle));
+        $discovered = $this->withinBusiness(fn ($r) => $flow->discover($r, $installation, 0, $handle));
         $this->assertSame($selected->accountId, $discovered->accounts[0]['id']);
         $this->assertSame('COMPLETE', $discovered->coverage);
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
         $command = (string) Str::uuid();
-        $receipt = $this->withinWorkspace(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 0));
+        $receipt = $this->withinBusiness(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 0));
         $this->assertSame(['version' => 1, 'local_state' => 'CREDENTIAL_STORED'], $receipt);
         $this->assertNull(Cache::get('bb2.snapchat.pending.'.hash('sha256', $handle)));
-        $this->assertSame($receipt, $this->withinWorkspace(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 0)));
+        $this->assertSame($receipt, $this->withinBusiness(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 0)));
         $http->assertSentCount(4);
         $stored = $this->owner()->table('provider_access')->where('source_id', $selected->sourceId)->first();
         $this->assertStringNotContainsString('synthetic-snap-access', $stored->encrypted_credentials);
         $envelope = json_decode(Crypt::decryptString($stored->encrypted_credentials), true, flags: JSON_THROW_ON_ERROR);
         $this->assertSame($selected->jsonSerialize(), $envelope['scope']);
         $this->assertSame('synthetic-snap-refresh', $envelope['credentials']['refresh_token']);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $selected)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $selected)), '42501');
         $this->assertSame(0, $this->owner()->table('provider_observation_runs')->count());
     }
 
@@ -2766,17 +2741,17 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response(['error' => 'invalid_grant', 'error_description' => 'synthetic-secret'], 400)]);
         $flow = $this->snapchatCoordinator($http);
-        $url = $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $installation));
+        $url = $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $installation));
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         try {
-            $this->withinWorkspace(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
+            $this->withinBusiness(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
             $this->fail('A denied Snapchat exchange cannot stage credentials.');
         } catch (SnapchatRequestFailed $error) {
             $this->assertSame('snapchat_reconnect_required', $error->reason);
         }
         $this->assertNull(Cache::get('bb2.snapchat.oauth.'.hash('sha256', $query['state'])));
         try {
-            $this->withinWorkspace(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'replayed-code'));
+            $this->withinBusiness(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'replayed-code'));
             $this->fail('Failed callback state must not replay.');
         } catch (AuthorizationException) {
             $http->assertSentCount(1);
@@ -2790,19 +2765,19 @@ class ProviderAccessStoreTest extends TestCase
         $http = new Factory;
         $http->preventStrayRequests();
         $flow = $this->snapchatCoordinator($http);
-        $url = $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $installation));
+        $url = $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $installation));
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         $rotated = $this->snapchatCoordinator($http, 'synthetic-rotated-secret');
         $this->assertNotSame($flow->configurationBinding(), $rotated->configurationBinding());
         try {
-            $this->withinWorkspace(fn ($r) => $rotated->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
+            $this->withinBusiness(fn ($r) => $rotated->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
             $this->fail('Changed configuration must invalidate state.');
         } catch (AuthorizationException) {
             $http->assertNothingSent();
         }
         $this->owner()->table('security_action_grants')->where('source_target_id', $installation->sourceId)->where('action', 'provider.connect')
             ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code')), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code')), '42501');
         $http->assertNothingSent();
         $this->assertIsString(Cache::get('bb2.snapchat.oauth.'.hash('sha256', $query['state'])));
     }
@@ -2812,13 +2787,13 @@ class ProviderAccessStoreTest extends TestCase
         [$installation, $selected] = $this->snapchatScopes();
         $http = $this->snapchatTransport();
         $flow = $this->snapchatCoordinator($http);
-        $url = $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $installation));
+        $url = $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $installation));
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
-        $handle = $this->withinWorkspace(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
+        $handle = $this->withinBusiness(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code'));
         $key = 'bb2.snapchat.pending.'.hash('sha256', $handle);
         $before = Cache::get($key);
         try {
-            $this->withinWorkspace(function ($r) use ($flow, $installation, $selected, $handle): void {
+            $this->withinBusiness(function ($r) use ($flow, $installation, $selected, $handle): void {
                 $flow->discover($r, $installation, 0, $handle);
                 $flow->select($r, $installation, 0, $handle, $selected, (string) Str::uuid(), 0);
                 throw new \RuntimeException('Synthetic Snapchat selection rollback.');
@@ -2836,7 +2811,7 @@ class ProviderAccessStoreTest extends TestCase
     {
         $http = $this->snapchatTransport();
         $this->configureSnapchatHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/snapchat';
+        $base = '/businesses/'.$this->business.'/providers/snapchat';
         $before = $this->owner()->table('source_registry')->count();
         $index = $this->getJson($base)->assertOk()->assertJsonPath('availability', 'CONNECT_AVAILABLE');
         $this->assertSame($before, $this->owner()->table('source_registry')->count());
@@ -2873,9 +2848,9 @@ class ProviderAccessStoreTest extends TestCase
         $http = new Factory;
         $http->preventStrayRequests();
         $this->configureSnapchatHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/snapchat';
+        $base = '/businesses/'.$this->business.'/providers/snapchat';
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
-        $this->postJson('/workspaces/'.Str::uuid().'/providers/snapchat/connect', ['intent' => $intent])->assertForbidden();
+        $this->postJson('/businesses/'.Str::uuid().'/providers/snapchat/connect', ['intent' => $intent])->assertForbidden();
         $url = $this->postJson($base.'/connect', ['intent' => $intent])->assertOk()->json('authorization_url');
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         config()->set('services.snapchat_ads.client_secret', 'synthetic-rotated-secret');
@@ -2897,7 +2872,7 @@ class ProviderAccessStoreTest extends TestCase
         $http = new Factory;
         $http->preventStrayRequests();
         $this->configureSnapchatHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/snapchat';
+        $base = '/businesses/'.$this->business.'/providers/snapchat';
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
         $url = $this->postJson($base.'/connect', ['intent' => $intent])->assertOk()->json('authorization_url');
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
@@ -2917,11 +2892,11 @@ class ProviderAccessStoreTest extends TestCase
         [$installation] = $this->snapchatScopes();
         $http = $this->snapchatTransport();
         $flow = $this->snapchatCoordinator($http);
-        $url = $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $installation));
+        $url = $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $installation));
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         $pending = null;
         try {
-            $this->withinWorkspace(function ($r) use ($flow, $installation, $query, &$pending): void {
+            $this->withinBusiness(function ($r) use ($flow, $installation, $query, &$pending): void {
                 $pending = $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code');
                 throw new \RuntimeException('Synthetic Snapchat callback rollback.');
             });
@@ -2940,14 +2915,8 @@ class ProviderAccessStoreTest extends TestCase
         $scopes = [];
         foreach ([['synthetic-snap-client', 'developer_app', 'discovery.read'],
             ['8b8e40af-fc64-455d-925b-ca80f7af6914', 'ad_account', 'report.read']] as [$id, $namespace, $operation]) {
-            $scope = new ProviderScope($this->workspaceId, (string) Str::uuid7(), Provider::Snapchat, $id, $operation, 'advertising_analysis');
-            foreach (GrantAuthority::SOURCE_ACTIONS as $action) {
-                $this->grant($scope, $action);
-            }
-            $this->postJson('/workspaces/'.$this->workspace.'/sources', ['source_id' => $scope->sourceId, 'command_id' => (string) Str::uuid(),
-                'effect' => 'register', 'family' => 'snapchat', 'namespace' => $namespace, 'external_id' => $id,
-                'label' => 'Synthetic Snapchat source', 'resource' => $id, 'operation' => $operation, 'purpose' => $scope->purpose,
-                'expected_version' => 0, 'reason' => 'synthetic_registration'])->assertOk();
+            $scope = ProviderScope::forBusiness($this->businessId, (string) Str::uuid7(), Provider::Snapchat, $id, $operation, 'advertising_analysis');
+            $this->bootstrapScope($scope);
             $scopes[] = $scope;
         }
 
@@ -2992,7 +2961,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response($this->snapchatReportPayload())]);
         $this->app->instance(Factory::class, $http);
-        $base = '/workspaces/'.$this->workspace.'/providers/snapchat/'.$scope->sourceId.'/report';
+        $base = '/businesses/'.$this->business.'/providers/snapchat/'.$scope->sourceId.'/report';
         $period = ['start_date' => '2026-09-01', 'end_date' => '2026-09-02'];
         $snapshot = $this->getJson($base.'?'.http_build_query($period))->assertOk()->assertJsonPath('generation', 0)->assertJsonPath('timezone', 'Asia/Amman');
         $command = [...$period, 'command_id' => (string) Str::uuid(), 'expected_version' => 1,
@@ -3011,14 +2980,14 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame(1, $this->owner()->table('snapchat_read_attempts')->count());
         $this->assertSame(0, $this->owner()->table('tiktok_read_attempts')->count());
         $stream = $this->owner()->table('provider_observation_streams')->where('source_id', $scope->sourceId)->value('stream');
-        $history = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->history($r, $scope, $stream));
+        $history = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->history($r, $scope, $stream));
         $this->assertSame('9007199254740993001', $history[0]['observation']['spend']['native_value']);
         $this->assertSame('9007199254740.993001', $history[0]['observation']['spend']['major_units']);
         $this->assertSame(6, $history[0]['observation']['spend']['decimal_scale']);
         $this->assertSame('JOD', $history[0]['observation']['spend']['currency']);
         $this->assertSame('7', $history[0]['observation']['native_facts']['swipes']['value']);
         $this->assertSame('HALF_OPEN_INSTANTS', $history[0]['observation']['window']['boundary']);
-        $this->denied(fn () => $this->withinWorkspace(fn () => DB::table('snapchat_read_attempts')->get()), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn () => DB::table('snapchat_read_attempts')->get()), '42501');
     }
 
     public function test_snapchat_paginated_queue_commits_all_campaigns_once_and_replay_sends_no_http(): void
@@ -3037,15 +3006,15 @@ class ProviderAccessStoreTest extends TestCase
         $capture = fn ($r) => Bus::dispatch(SnapchatReadJob::capture($r, $scope,
             new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
             'snapchat-paginated', $command, 0, 1, $deadline)->onConnection('database'));
-        $this->withinWorkspace($capture);
+        $this->withinBusiness($capture);
         Queue::connection('database')->pop('bb2.provider.snapchat')->fire();
         $this->travel(3)->seconds();
-        $this->withinWorkspace($capture);
+        $this->withinBusiness($capture);
         Queue::connection('database')->pop('bb2.provider.snapchat')->fire();
         $http->assertSentCount(2);
         $this->assertSame(1, $this->owner()->table('snapchat_read_attempts')->count());
         $this->assertSame(1, $this->owner()->table('provider_observation_streams')->value('progress_generation'));
-        $history = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'snapchat-paginated'));
+        $history = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'snapchat-paginated'));
         $this->assertCount(2, $history);
         $this->assertSame('9007199254740.993001', $history[0]['observation']['spend']['major_units']);
         $this->assertSame('COMPLETE', $this->owner()->table('provider_observation_runs')->value('coverage'));
@@ -3061,7 +3030,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->sequence()->push($first)->push($this->snapchatReportPayload())]);
         $this->app->instance(Factory::class, $http);
-        $this->withinWorkspace(fn ($r) => Bus::dispatch(SnapchatReadJob::capture($r, $scope,
+        $this->withinBusiness(fn ($r) => Bus::dispatch(SnapchatReadJob::capture($r, $scope,
             new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
             'snapchat-duplicate-page', (string) Str::uuid(), 0, 1)->onConnection('database')));
         Queue::connection('database')->pop('bb2.provider.snapchat')->fire();
@@ -3069,7 +3038,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame('FAILED', $this->owner()->table('provider_observation_runs')->value('coverage'));
         $this->assertSame('snapchat_duplicate_report_row', $this->owner()->table('provider_observation_runs')->value('failure'));
         $this->assertNull($this->owner()->table('provider_observation_streams')->value('progress_generation'));
-        $this->assertSame([], $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'snapchat-duplicate-page')));
+        $this->assertSame([], $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'snapchat-duplicate-page')));
         $this->assertSame(0, $this->owner()->table('jobs')->count());
     }
 
@@ -3081,15 +3050,15 @@ class ProviderAccessStoreTest extends TestCase
         $http = new Factory;
         $http->preventStrayRequests();
         $this->app->instance(Factory::class, $http);
-        $base = '/workspaces/'.$this->workspace.'/providers/snapchat/'.$scope->sourceId.'/report';
+        $base = '/businesses/'.$this->business.'/providers/snapchat/'.$scope->sourceId.'/report';
         $this->getJson($base.'?start_date=2026-09-01&end_date=2026-09-02')->assertForbidden();
         $this->assertSame(0, $this->owner()->table('jobs')->count());
         $http->assertNothingSent();
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
             new ProviderCredentials(['access_token' => 'synthetic-snap-access', 'account_id' => $scope->accountId,
                 'account_currency' => 'JOD', 'account_timezone' => 'Asia/Amman', 'expires_at' => (string) (time() + 600)]),
             new DateTimeImmutable('+10 minutes'), 'SYNTHETIC_AUTHORIZED', $this->evidence(), true));
-        $this->withinWorkspace(function ($r) use ($scope): void {
+        $this->withinBusiness(function ($r) use ($scope): void {
             Bus::dispatch(SnapchatReadJob::capture($r, $scope,
                 new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
                 'snapchat-revoked', (string) Str::uuid(), 0, 2)->onConnection('database'));
@@ -3109,7 +3078,7 @@ class ProviderAccessStoreTest extends TestCase
         $stream = 'snapchat-lock-probe';
         $namespace = static fn (string $source) => $owner->scalar(
             'SELECT builderad_observation_namespace(?,?::uuid,?,?,?,?,?)',
-            [$scope->workspaceId, $source, $scope->provider->value, $scope->accountId, $scope->operation, $scope->purpose, $stream],
+            [$scope->businessId, $source, $scope->provider->value, $scope->accountId, $scope->operation, $scope->purpose, $stream],
         );
         $key = 'bb2.observation.'.$namespace($scope->sourceId);
         $independent = 'bb2.observation.'.$namespace((string) Str::uuid7());
@@ -3162,7 +3131,7 @@ class ProviderAccessStoreTest extends TestCase
             return $http->response($this->snapchatReportPayload());
         }]);
         $this->app->instance(Factory::class, $http);
-        $this->withinWorkspace(fn ($request) => Bus::dispatch(SnapchatReadJob::capture($request, $scope,
+        $this->withinBusiness(fn ($request) => Bus::dispatch(SnapchatReadJob::capture($request, $scope,
             new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
             $stream, (string) Str::uuid(), 0, 1)->onConnection('database')));
 
@@ -3202,8 +3171,8 @@ class ProviderAccessStoreTest extends TestCase
         $capture = fn ($request, string $id) => Bus::dispatch(SnapchatReadJob::capture($request, $scope,
             new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
             $run, $id, 0, 1, $deadline)->onConnection('database'));
-        $this->withinWorkspace(fn ($request) => $capture($request, $command));
-        $this->withinWorkspace(fn ($request) => $capture($request, $stale ? (string) Str::uuid() : $command));
+        $this->withinBusiness(fn ($request) => $capture($request, $command));
+        $this->withinBusiness(fn ($request) => $capture($request, $stale ? (string) Str::uuid() : $command));
         $fixture = ['mode' => 'snapchat-execution', 'report' => $this->snapchatReportPayload()];
         $holder = $this->runtimeProcess([...$fixture, 'application_name' => $run.'-holder', 'release' => $release]);
         $waiter = $this->runtimeProcess([...$fixture, 'application_name' => $run.'-waiter']);
@@ -3287,7 +3256,7 @@ class ProviderAccessStoreTest extends TestCase
             return $http->response($this->snapchatReportPayload());
         }]);
         $this->app->instance(Factory::class, $http);
-        $this->withinWorkspace(fn ($request) => Bus::dispatch(SnapchatReadJob::capture($request, $scope,
+        $this->withinBusiness(fn ($request) => Bus::dispatch(SnapchatReadJob::capture($request, $scope,
             new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
             'snapchat-transport-exception', (string) Str::uuid(), 0, 1)->onConnection('database')));
         $pid = DB::scalar('SELECT pg_backend_pid()');
@@ -3313,7 +3282,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response($this->snapchatReportPayload())]);
         $this->app->instance(Factory::class, $http);
-        $this->withinWorkspace(function ($r) use ($scope): void {
+        $this->withinBusiness(function ($r) use ($scope): void {
             Bus::dispatch(SnapchatReadJob::capture($r, $scope,
                 new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
                 'snapchat-rollback', (string) Str::uuid(), 0, 1)->onConnection('database'));
@@ -3348,7 +3317,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->fake(['*' => $http->sequence()->push('synthetic-throttle', 429, ['Retry-After' => '45'])
             ->push($this->snapchatReportPayload())]);
         $this->app->instance(Factory::class, $http);
-        $this->withinWorkspace(fn ($request) => Bus::dispatch(SnapchatReadJob::capture($request, $scope,
+        $this->withinBusiness(fn ($request) => Bus::dispatch(SnapchatReadJob::capture($request, $scope,
             new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
             'snapchat-handoff-fault', (string) Str::uuid(), 0, 1)->onConnection('database')));
 
@@ -3396,7 +3365,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->fake(['*' => $http->sequence()->push('synthetic-throttle', 429, ['Retry-After' => '45'])
             ->push($this->snapchatReportPayload())]);
         $this->app->instance(Factory::class, $http);
-        $this->withinWorkspace(function ($r) use ($scope): void {
+        $this->withinBusiness(function ($r) use ($scope): void {
             Bus::dispatch(SnapchatReadJob::capture($r, $scope,
                 new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
                 'snapchat-throttle', (string) Str::uuid(), 0, 1)->onConnection('database'));
@@ -3423,7 +3392,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response('', 503, ['Retry-After' => '400'])]);
         $this->app->instance(Factory::class, $http);
-        $this->withinWorkspace(function ($r) use ($scope): void {
+        $this->withinBusiness(function ($r) use ($scope): void {
             Bus::dispatch(SnapchatReadJob::capture($r, $scope,
                 new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
                 'snapchat-deadline', (string) Str::uuid(), 0, 1)->onConnection('database'));
@@ -3438,7 +3407,7 @@ class ProviderAccessStoreTest extends TestCase
     private function snapchatReaderScope(?array $proof = null): ProviderScope
     {
         [, $scope] = $this->snapchatScopes();
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 0,
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 0,
             new ProviderCredentials(['access_token' => 'synthetic-snap-access', 'refresh_token' => 'synthetic-snap-refresh',
                 'client_id' => 'synthetic-snap-client', 'account_id' => $scope->accountId, 'account_currency' => 'JOD',
                 'account_timezone' => 'Asia/Amman', 'expires_at' => (string) (time() + 600)]),
@@ -3464,24 +3433,24 @@ class ProviderAccessStoreTest extends TestCase
         $advance = fn ($r) => app(SnapchatObservationReader::class)->asyncTicket($r, $scope, $window,
             new ProviderReadBudget($scope, 'snap-native-async', 1, 0, 1, 100, new DateTimeImmutable('+30 seconds'), 1, 5), $command, 1, $deadline);
         try {
-            $this->withinWorkspace(function ($r) use ($advance): void {
+            $this->withinBusiness(function ($r) use ($advance): void {
                 $this->assertSame('STARTED', $advance($r)['state']);
                 throw new \RuntimeException('synthetic-rollback-after-snap-create');
             });
         } catch (\RuntimeException $failure) {
             $this->assertSame('synthetic-rollback-after-snap-create', $failure->getMessage());
         }
-        $this->assertSame('RUNNING', $this->withinWorkspace($advance)['state']);
-        $completed = $this->withinWorkspace($advance);
+        $this->assertSame('RUNNING', $this->withinBusiness($advance)['state']);
+        $completed = $this->withinBusiness($advance);
         $this->assertSame($url, $completed['download_url']);
-        $this->assertSame($completed, $this->withinWorkspace($advance));
+        $this->assertSame($completed, $this->withinBusiness($advance));
         $http->assertSentCount(3);
         $this->assertSame(1, count(array_filter($http->recorded()->all(), fn ($record) => ($record[0]->data()['async'] ?? null) === 'true')));
         $this->assertSame(0, $this->owner()->table('provider_observation_runs')->count());
         $this->assertSame(0, $this->owner()->table('provider_observation_streams')->count());
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.read')
             ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinWorkspace($advance), '42501');
+        $this->denied(fn () => $this->withinBusiness($advance), '42501');
         $http->assertSentCount(3);
     }
 
@@ -3497,7 +3466,7 @@ class ProviderAccessStoreTest extends TestCase
         $window = new ReportWindow('2026-09-01T00:00:00+03:00', '2026-09-03T00:00:00+03:00', 'HALF_OPEN_INSTANTS', 'TOTAL', 'Asia/Amman', 'synthetic:native');
         foreach (['snapchat_malformed_response', 'snapchat_async_creation_uncertain'] as $reason) {
             try {
-                $this->withinWorkspace(fn ($r) => app(SnapchatObservationReader::class)->asyncTicket($r, $scope, $window,
+                $this->withinBusiness(fn ($r) => app(SnapchatObservationReader::class)->asyncTicket($r, $scope, $window,
                     new ProviderReadBudget($scope, 'snap-native-async', 1, 0, 1, 100, new DateTimeImmutable('+30 seconds'), 1, 5), $command, 1, $deadline));
                 $this->fail('Ambiguous creation must not automatically create another native report.');
             } catch (SnapchatRequestFailed $failure) {
@@ -3523,7 +3492,7 @@ class ProviderAccessStoreTest extends TestCase
         $deadline = now()->addMinutes(5)->toDateTimeImmutable();
         $window = new ReportWindow('2026-09-01T00:00:00+03:00', '2026-09-03T00:00:00+03:00', 'HALF_OPEN_INSTANTS', 'TOTAL', 'Asia/Amman', 'synthetic:native');
         $capture = fn ($r) => Bus::dispatch(SnapchatReadJob::capture($r, $scope, $window, 'snap-async-worker', $command, 0, 1, $deadline, asynchronous: true)->onConnection('database'));
-        $this->withinWorkspace($capture);
+        $this->withinBusiness($capture);
         Queue::connection('database')->pop('bb2.provider.snapchat')->fire();
         $this->assertSame('PENDING', $this->owner()->table('provider_observation_runs')->value('coverage'));
         $this->assertNull($this->owner()->table('provider_observation_streams')->value('progress_generation'));
@@ -3540,7 +3509,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertNull($this->owner()->table('provider_observation_streams')->value('progress_generation'));
         $this->assertSame(0, $this->owner()->table('provider_observation_entries')->count());
         $this->assertSame(0, $this->owner()->table('jobs')->count());
-        $this->withinWorkspace($capture);
+        $this->withinBusiness($capture);
         Queue::connection('database')->pop('bb2.provider.snapchat')->fire();
         $http->assertSentCount(3);
         $this->assertSame(1, count(array_filter($http->recorded()->all(), fn ($record) => ($record[0]->data()['async'] ?? null) === 'true')));
@@ -3561,7 +3530,7 @@ class ProviderAccessStoreTest extends TestCase
                 'id' => $scope->accountId, 'type' => 'AD_ACCOUNT', 'granularity' => 'TOTAL', 'stats' => ['impressions' => 0],
             ]]]])]);
         $this->configureSnapchatHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/snapchat/'.$scope->sourceId;
+        $base = '/businesses/'.$this->business.'/providers/snapchat/'.$scope->sourceId;
         $command = ['command_id' => (string) Str::uuid(), 'expected_version' => 2];
         $renewed = $this->postJson($base.'/renew', $command)->assertOk()->assertJsonPath('receipt.version', 3)
             ->assertJsonPath('access.connection', 'CONNECTED')->assertJsonPath('access.axes.privacy_purpose', 'UNKNOWN');
@@ -3584,7 +3553,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response(['error' => 'invalid_grant', 'error_description' => 'synthetic-private-error'], 400)]);
         $this->configureSnapchatHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/snapchat';
+        $base = '/businesses/'.$this->business.'/providers/snapchat';
         $denied = $this->postJson($base.'/'.$scope->sourceId.'/renew', ['command_id' => (string) Str::uuid(), 'expected_version' => 2])
             ->assertStatus(502)->assertJsonPath('reason', 'snapchat_reconnect_required');
         $denied->assertJsonPath('status', 'PROVIDER_ACTION_REQUIRED')->assertJsonMissingPath('receipt');
@@ -3605,25 +3574,25 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response(['error' => 'invalid_grant', 'error_description' => 'synthetic-private-error'], 400)]);
         $this->configureSnapchatHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/snapchat';
+        $base = '/businesses/'.$this->business.'/providers/snapchat';
         $command = ['command_id' => (string) Str::uuid(), 'expected_version' => 1];
         $this->postJson($base.'/'.$scope->sourceId.'/renew', $command)->assertStatus(502)
             ->assertJsonPath('reason', 'snapchat_reconnect_required');
         $connections = $this->getJson($base)->assertOk()->json('connections');
         $this->assertSame('REAUTHORIZATION_REQUIRED', collect($connections)->firstWhere('source_id', $scope->sourceId)['access']['connection']);
         $this->getJson($base.'/'.$scope->sourceId.'/report?start_date=2026-09-01&end_date=2026-09-02')->assertForbidden();
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
         $this->postJson($base.'/'.$scope->sourceId.'/renew', $command)->assertStatus(502)
             ->assertJsonPath('reason', 'snapchat_reconnect_required');
         $this->assertSame($old, $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->value('encrypted_credentials'));
         $this->assertSame(1, $this->owner()->table('snapchat_renewal_failures')->where('source_id', $scope->sourceId)->count());
-        $this->denied(fn () => $this->withinWorkspace(fn () => DB::table('snapchat_renewal_failures')->where('source_id', $scope->sourceId)->delete()), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn () => DB::table('snapchat_renewal_failures')->where('source_id', $scope->sourceId)->delete()), '42501');
         $record = fn ($r, $resource, $reason) => DB::selectOne('SELECT builderad_snapchat_renewal_failure(?, ?, ?::uuid, ?, ?, ?, ?, ?::uuid, ?)', [
-            $scope->workspaceId, SessionAuthority::sessionKey($r), $scope->sourceId, $resource,
+            $scope->businessId, SessionAuthority::sessionKey($r), $scope->sourceId, $resource,
             $scope->operation, $scope->purpose, 1, $command['command_id'], $reason,
         ]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $record($r, 'other-account', 'snapchat_reconnect_required')), '42501');
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $record($r, $scope->accountId, 'snapchat_access_denied')), '23505');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $record($r, 'other-account', 'snapchat_reconnect_required')), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $record($r, $scope->accountId, 'snapchat_access_denied')), '23505');
         $http->assertSentCount(1);
     }
 
@@ -3641,13 +3610,13 @@ class ProviderAccessStoreTest extends TestCase
                 'id' => $scope->accountId, 'type' => 'AD_ACCOUNT', 'granularity' => 'TOTAL', 'stats' => ['impressions' => 0],
             ]]]])]);
         $this->configureSnapchatHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/snapchat';
+        $base = '/businesses/'.$this->business.'/providers/snapchat';
         $command = ['command_id' => (string) Str::uuid(), 'expected_version' => 1];
         $failed = $this->postJson($base.'/'.$scope->sourceId.'/renew', $command)->assertStatus(502)
             ->assertJsonPath('reason', 'snapchat_access_denied')->assertJsonPath('access.connection', 'VERIFICATION_NEEDED')
             ->assertJsonPath('access.axes.provider_permission', 'FAILED')->assertJsonPath('access.axes.credential', 'VERIFICATION_NEEDED');
         $this->assertStringNotContainsString('synthetic-private-denial', $failed->getContent());
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
         $this->postJson($base.'/'.$scope->sourceId.'/renew', $command)->assertStatus(502);
         $http->assertSentCount(2);
         $this->postJson($base.'/'.$scope->sourceId.'/renew', ['command_id' => (string) Str::uuid(), 'expected_version' => 1])
@@ -3662,7 +3631,7 @@ class ProviderAccessStoreTest extends TestCase
     private function snapchatExpiredScope(): ProviderScope
     {
         $scope = $this->snapchatReaderScope();
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
             new ProviderCredentials(['access_token' => 'synthetic-old-snap-access', 'refresh_token' => 'synthetic-old-snap-refresh',
                 'client_id' => 'synthetic-snap-client', 'account_id' => $scope->accountId, 'account_currency' => 'JOD',
                 'account_timezone' => 'Asia/Amman', 'expires_at' => (string) (time() - 1)]),
@@ -3693,15 +3662,9 @@ class ProviderAccessStoreTest extends TestCase
 
     private function googleInstallationScope(): ProviderScope
     {
-        $scope = new ProviderScope($this->workspaceId, (string) Str::uuid7(), Provider::Google,
+        $scope = ProviderScope::forBusiness($this->businessId, (string) Str::uuid7(), Provider::Google,
             'synthetic.apps.googleusercontent.com', 'discovery.read', 'advertising_analysis');
-        foreach (GrantAuthority::SOURCE_ACTIONS as $action) {
-            $this->grant($scope, $action);
-        }
-        $this->postJson('/workspaces/'.$this->workspace.'/sources', ['source_id' => $scope->sourceId, 'command_id' => (string) Str::uuid(),
-            'effect' => 'register', 'family' => 'google', 'namespace' => 'oauth_client', 'external_id' => $scope->accountId,
-            'label' => 'Synthetic Google OAuth installation', 'resource' => $scope->accountId, 'operation' => $scope->operation,
-            'purpose' => $scope->purpose, 'expected_version' => 0, 'reason' => 'synthetic_registration'])->assertOk();
+        $this->bootstrapScope($scope);
 
         return $scope;
     }
@@ -3764,7 +3727,7 @@ class ProviderAccessStoreTest extends TestCase
 
     private function queueMetaRead(ProviderScope $scope, ?MetaReportTask $task = null): MetaReadJob
     {
-        return $this->withinWorkspace(function ($r) use ($scope, $task): MetaReadJob {
+        return $this->withinBusiness(function ($r) use ($scope, $task): MetaReadJob {
             $before = $this->owner()->table('jobs')->count();
             $job = MetaReadJob::capture($r, $scope, $this->metaQueueWindow(), 'meta-native-queue', (string) Str::uuid(), 0, 1, $task);
             Bus::dispatch($job);
@@ -3776,16 +3739,10 @@ class ProviderAccessStoreTest extends TestCase
 
     private function metaReaderScope(bool $storeCredentials = true): ProviderScope
     {
-        $scope = new ProviderScope($this->workspaceId, (string) Str::uuid7(), Provider::Meta, '123', 'report.read', 'advertising_analysis');
-        foreach (GrantAuthority::SOURCE_ACTIONS as $action) {
-            $this->grant($scope, $action);
-        }
-        $this->postJson('/workspaces/'.$this->workspace.'/sources', ['source_id' => $scope->sourceId, 'command_id' => (string) Str::uuid(),
-            'effect' => 'register', 'family' => 'meta', 'namespace' => 'ad_account', 'external_id' => '123', 'label' => 'Synthetic native Meta account',
-            'resource' => '123', 'operation' => $scope->operation, 'purpose' => $scope->purpose, 'expected_version' => 0,
-            'reason' => 'synthetic_registration'])->assertOk();
+        $scope = ProviderScope::forBusiness($this->businessId, (string) Str::uuid7(), Provider::Meta, '123', 'report.read', 'advertising_analysis');
+        $this->bootstrapScope($scope);
         if ($storeCredentials) {
-            $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 0,
+            $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 0,
                 new ProviderCredentials(['access_token' => 'synthetic-native-token', 'account_id' => '123',
                     'account_timezone' => 'UTC', 'account_currency' => 'USD']), null, 'SYNTHETIC_AUTHORIZED', $this->evidence()));
         }
@@ -3803,7 +3760,7 @@ class ProviderAccessStoreTest extends TestCase
     {
         $reader = new MetaObservationReader($http, app(ObservationJournal::class), app(ProviderAccessStore::class), app(ProviderRequestGuard::class));
 
-        return $this->withinWorkspace(fn ($r) => $reader->read($r, $scope,
+        return $this->withinBusiness(fn ($r) => $reader->read($r, $scope,
             new ReportWindow('2026-09-01', '2026-09-01', 'INCLUSIVE_DATES', 'DAY', $timezone, 'synthetic:verified-native-timezone'),
             new ProviderReadBudget($scope, 'meta-integrated', 4, 0, 4, 10, new DateTimeImmutable('+30 seconds'), 1, 5),
             'v26.0', 'synthetic-app-secret', $stream, (string) Str::uuid(), 0, 1));
@@ -3812,7 +3769,7 @@ class ProviderAccessStoreTest extends TestCase
     private function journal(ProviderScope $scope, string $command, int $generation, ?string $spend,
         ?NativeProgress $progress = null, string $coverage = 'COMPLETE'): array
     {
-        return $this->withinWorkspace(fn ($r) => $this->acceptJournal($r, $scope, $command, $generation, $spend, $progress, $coverage));
+        return $this->withinBusiness(fn ($r) => $this->acceptJournal($r, $scope, $command, $generation, $spend, $progress, $coverage));
     }
 
     private function acceptJournal(Request $r, ProviderScope $scope, string $command, int $generation, ?string $spend,
@@ -3838,7 +3795,7 @@ class ProviderAccessStoreTest extends TestCase
 
     private function store(ProviderScope $scope, string $command, string $token = 'synthetic-secret-token', ?array $evidence = null): array
     {
-        return $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, $command, 0,
+        return $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, $command, 0,
             new ProviderCredentials(['access_token' => $token]), null, 'SYNTHETIC_AUTHORIZED', $evidence ?? $this->evidence()));
     }
 
@@ -3936,7 +3893,7 @@ class ProviderAccessStoreTest extends TestCase
                 $configuration = hash('sha256', 'synthetic:redis:'.$scope->provider->value);
                 $issue = function () use ($scope, $states, $configuration, $redis, &$keys): array {
                     $state = $scope->provider === Provider::X ? 'synthetic-'.bin2hex(random_bytes(16)) : null;
-                    $state = $this->withinWorkspace(function ($r) use ($scope, $states, $configuration, $state) {
+                    $state = $this->withinBusiness(function ($r) use ($scope, $states, $configuration, $state) {
                         if ($scope->provider === Provider::X) {
                             $states->issue($r, $scope, 0, $configuration, new ProviderCredentials(['oauth_token' => $state, 'oauth_token_secret' => 'synthetic-temporary-secret']));
 
@@ -4022,7 +3979,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake();
         $this->configureGoogleHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google/'.$scope->sourceId.'/report';
+        $base = '/businesses/'.$this->business.'/providers/google/'.$scope->sourceId.'/report';
         $period = ['start_date' => '2026-09-01', 'end_date' => '2026-09-02'];
         $status = $this->getJson($base.'?'.http_build_query($period))->assertOk();
         $command = [...$period, 'command_id' => (string) Str::uuid(), 'expected_version' => 1, 'expected_generation' => 0, 'deadline' => $status->json('deadline')];
@@ -4058,7 +4015,7 @@ class ProviderAccessStoreTest extends TestCase
 
     public static function queueNegativeCases(): array
     {
-        return array_map(static fn ($case) => [$case], ['authority', 'epoch', 'workspace', 'source']);
+        return array_map(static fn ($case) => [$case], ['authority', 'epoch', 'business', 'source']);
     }
 
     #[DataProvider('queueNegativeCases')]
@@ -4069,7 +4026,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->preventStrayRequests();
         $http->fake();
         $this->configureGoogleHttp($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/google/'.$scope->sourceId.'/report';
+        $base = '/businesses/'.$this->business.'/providers/google/'.$scope->sourceId.'/report';
         $period = ['start_date' => '2026-09-01', 'end_date' => '2026-09-02'];
         $status = $this->getJson($base.'?'.http_build_query($period))->assertOk();
         $this->postJson($base, [...$period, 'command_id' => (string) Str::uuid(), 'expected_version' => 1,
@@ -4078,17 +4035,17 @@ class ProviderAccessStoreTest extends TestCase
             $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.read')
                 ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
         } elseif ($case === 'epoch') {
-            $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
+            $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
                 new ProviderCredentials(['access_token' => 'synthetic-rotated-token']), null, 'CONNECTED', $this->evidence(), true));
         } else {
             // Synthetic delivery tampering stays in disposable encrypted queue custody.
             $row = $this->owner()->table('jobs')->first();
             $payload = json_decode($row->payload, true);
             $job = unserialize(Crypt::decrypt($payload['data']['command']));
-            if ($case === 'workspace') {
-                (new \ReflectionProperty($job, 'workspacePublicId'))->setValue($job, (string) Str::uuid());
+            if ($case === 'business') {
+                (new \ReflectionProperty($job, 'businessPublicId'))->setValue($job, (string) Str::uuid());
             } else {
-                (new \ReflectionProperty($job, 'scope'))->setValue($job, new ProviderScope($scope->workspaceId, (string) Str::uuid7(), Provider::Google, $scope->accountId, $scope->operation, $scope->purpose));
+                (new \ReflectionProperty($job, 'scope'))->setValue($job, ProviderScope::forBusiness($scope->businessId, (string) Str::uuid7(), Provider::Google, $scope->accountId, $scope->operation, $scope->purpose));
             }
             $payload['data']['command'] = Crypt::encrypt(serialize($job));
             $this->owner()->table('jobs')->where('id', $row->id)->update(['payload' => json_encode($payload)]);
@@ -4112,9 +4069,9 @@ class ProviderAccessStoreTest extends TestCase
             }
             $this->assertSame('UNKNOWN', $service->apply($scope, $native)['privacy_purpose']['state']);
             $record = $this->admittedEvidence($scope);
-            foreach (['workspace_id', 'source_id', 'provider', 'account_id'] as $field) {
+            foreach (['business_id', 'source_id', 'provider', 'account_id'] as $field) {
                 $wrong = $record;
-                $wrong['scope'][$field] = $field === 'workspace_id' ? $scope->workspaceId + 1 : 'foreign';
+                $wrong['scope'][$field] = $field === 'business_id' ? $scope->businessId + 1 : 'foreign';
                 try {
                     $service->admit($scope, $wrong, 'synthetic-operator');
                     $this->fail('Wrong evidence scope cannot be admitted.');
@@ -4131,12 +4088,12 @@ class ProviderAccessStoreTest extends TestCase
                 $this->addToAssertionCount(1);
             }
             $service->admit($scope, $record, 'synthetic-operator');
-            $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 0,
+            $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 0,
                 new ProviderCredentials(['access_token' => 'synthetic-admission-token']), null, 'CONNECTED', $native));
             $stored = json_decode($this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->value('verification'), true);
             $this->assertSame('VERIFIED', $stored['provider_support']['state']);
             $this->assertSame('synthetic:reviewed:privacy_purpose', $stored['privacy_purpose']['provenance']);
-            $this->withinWorkspace(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1));
+            $this->withinBusiness(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1));
             $path = storage_path('app/private/bb2-reporting-evidence/'.hash('sha256', $scope->key('reporting-evidence')).'.enc');
             $original = file_get_contents($path);
             $expiredRecord = json_decode(Crypt::decryptString($original), true);
@@ -4144,7 +4101,7 @@ class ProviderAccessStoreTest extends TestCase
             file_put_contents($path, Crypt::encryptString(json_encode($expiredRecord)));
             $this->assertSame('UNKNOWN', $service->applicable($scope, $stored)['privacy_purpose']['state']);
             try {
-                $this->withinWorkspace(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1));
+                $this->withinBusiness(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1));
                 $this->fail('Expired admission cannot preserve current read eligibility.');
             } catch (AuthorizationException) {
                 $this->addToAssertionCount(1);
@@ -4160,14 +4117,14 @@ class ProviderAccessStoreTest extends TestCase
             config()->set('services.'.$scope->provider->value.'_ads.notice_revision', 'synthetic-rotation');
             $this->assertSame('UNKNOWN', $service->applicable($scope, $stored)['privacy_purpose']['state']);
             try {
-                $this->withinWorkspace(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1));
+                $this->withinBusiness(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1));
                 $this->fail('Rotated configuration cannot reuse evidence.');
             } catch (AuthorizationException) {
                 $this->addToAssertionCount(1);
             }
-            $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
+            $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
                 new ProviderCredentials(['access_token' => 'synthetic-reconnect-token']), null, 'CONNECTED', $native, true));
-            $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 2)), '42501');
+            $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 2)), '42501');
         }
     }
 
@@ -4191,7 +4148,7 @@ class ProviderAccessStoreTest extends TestCase
             file_put_contents($root.'/privacy.txt', 'synthetic:privacy_purpose');
             $this->artisan('bb2:admit-reporting-evidence', ['manifest' => $root.'/manifest.json', '--operator' => 'synthetic-operator',
                 '--support-artifact' => $root.'/support.txt', '--privacy-artifact' => $root.'/privacy.txt', '--attest-reviewed-approvals' => true])->assertSuccessful();
-            $base = '/workspaces/'.$this->workspace.'/providers/google';
+            $base = '/businesses/'.$this->business.'/providers/google';
             $url = $this->postJson($base.'/connect', ['source_id' => $installation->sourceId, 'expected_version' => 0])->assertOk()->json('authorization_url');
             parse_str(parse_url($url, PHP_URL_QUERY), $query);
             $callback = $this->getJson('/providers/google/callback?'.http_build_query(['state' => $query['state'], 'code' => 'synthetic-code']))->assertOk();
@@ -4199,8 +4156,8 @@ class ProviderAccessStoreTest extends TestCase
             $handle = $page->json('accounts.0.selection_handle');
             $this->postJson($base.'/select', ['selection' => $handle, 'provider_support' => 'VERIFIED'])->assertUnprocessable();
             $this->postJson($base.'/select', ['selection' => $handle])->assertOk()->assertJsonPath('receipt.version', 1);
-            $this->assertSame('VERIFIED', $this->withinWorkspace(fn ($r) => (new GoogleAccessStatus)->snapshot($r, $selected))['axes']['privacy_purpose']);
-            $this->assertNotSame('READY', $this->withinWorkspace(fn ($r) => (new GoogleAccessStatus)->snapshot($r, $selected))['effective']['state']);
+            $this->assertSame('VERIFIED', $this->withinBusiness(fn ($r) => (new GoogleAccessStatus)->snapshot($r, $selected))['axes']['privacy_purpose']);
+            $this->assertNotSame('READY', $this->withinBusiness(fn ($r) => (new GoogleAccessStatus)->snapshot($r, $selected))['effective']['state']);
             $report = $base.'/'.$selected->sourceId.'/report?'.http_build_query(['start_date' => '2026-09-01', 'end_date' => '2026-09-02']);
             $status = $this->getJson($report)->assertOk();
             $this->postJson($base.'/'.$selected->sourceId.'/report', ['start_date' => '2026-09-01', 'end_date' => '2026-09-02',
@@ -4212,7 +4169,7 @@ class ProviderAccessStoreTest extends TestCase
             config()->set('services.google_ads.notice_revision', 'synthetic-new-notice');
             $this->getJson($report)->assertForbidden();
             $this->postJson($base.'/'.$selected->sourceId.'/renew', ['command_id' => (string) Str::uuid(), 'expected_version' => 1])->assertOk();
-            $this->assertSame('UNKNOWN', $this->withinWorkspace(fn ($r) => (new GoogleAccessStatus)->snapshot($r, $selected))['axes']['privacy_purpose']);
+            $this->assertSame('UNKNOWN', $this->withinBusiness(fn ($r) => (new GoogleAccessStatus)->snapshot($r, $selected))['axes']['privacy_purpose']);
             $this->getJson($report)->assertForbidden();
             $http->assertSentCount(7);
         } finally {
@@ -4233,17 +4190,17 @@ class ProviderAccessStoreTest extends TestCase
     public function test_x_oauth_state_encrypts_temporary_secret_and_consumes_callback_once(): void
     {
         [$flow, $states, $http, $scope, $token] = $this->xOAuthFixture();
-        $url = $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $scope));
+        $url = $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $scope));
         $this->assertSame('https://api.x.com/oauth/authorize?oauth_token='.$token, $url);
         $cipher = Cache::get('bb2.x.oauth.'.hash('sha256', $token));
         $this->assertIsString($cipher);
         $this->assertStringNotContainsString('synthetic-temporary-secret', $cipher);
         $this->assertSame('synthetic-temporary-secret', json_decode(Crypt::decryptString($cipher), true)['credentials']['oauth_token_secret']);
-        $routing = $this->withinWorkspace(fn ($r) => $states->locate($r, $flow->configurationBinding(), $token));
-        $this->assertSame($this->workspace, $routing['workspace']);
+        $routing = $this->withinBusiness(fn ($r) => $states->locate($r, $flow->configurationBinding(), $token));
+        $this->assertSame($this->business, $routing['business']);
         $this->assertSame($scope->jsonSerialize(), $routing['scope']->jsonSerialize());
         $this->assertArrayNotHasKey('credentials', $routing);
-        $handle = $this->withinWorkspace(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
+        $handle = $this->withinBusiness(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/D', $handle);
         $this->assertStringNotContainsString('synthetic-user', $handle);
         $pending = new XPendingAccess(Cache::store(), app(ProviderRequestGuard::class));
@@ -4251,11 +4208,11 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertIsString($cipher);
         $this->assertStringNotContainsString('synthetic-user-secret', $cipher);
         $this->assertArrayNotHasKey('credential_expires_at', json_decode(Crypt::decryptString($cipher), true));
-        $tokens = $this->withinWorkspace(fn ($r) => $pending->credentials($r, $scope, 0, $flow->configurationBinding(), $handle));
+        $tokens = $this->withinBusiness(fn ($r) => $pending->credentials($r, $scope, 0, $flow->configurationBinding(), $handle));
         $this->assertSame('synthetic-user-token', $tokens->value('oauth_token'));
         $this->assertNull(Cache::get('bb2.x.oauth.'.hash('sha256', $token)));
         try {
-            $this->withinWorkspace(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
+            $this->withinBusiness(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
             $this->fail('Consumed X callback cannot replay.');
         } catch (AuthorizationException) {
             $http->assertSentCount(2);
@@ -4267,8 +4224,8 @@ class ProviderAccessStoreTest extends TestCase
     public function test_x_oauth_changed_context_scope_configuration_and_expired_state_prevent_exchange(): void
     {
         [$flow, $states, $http, $scope, $token] = $this->xOAuthFixture();
-        $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $scope));
-        $foreign = new ProviderScope($scope->workspaceId, (string) Str::uuid7(), Provider::X, $scope->accountId, $scope->operation, $scope->purpose);
+        $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $scope));
+        $foreign = ProviderScope::forBusiness($scope->businessId, (string) Str::uuid7(), Provider::X, $scope->accountId, $scope->operation, $scope->purpose);
         foreach ([
             fn ($r) => $states->locate($r, str_repeat('0', 64), $token),
             fn ($r) => $flow->callback($r, $foreign, 0, $token, 'synthetic-verifier'),
@@ -4288,7 +4245,7 @@ class ProviderAccessStoreTest extends TestCase
             },
         ] as $attempt) {
             try {
-                $this->withinWorkspace($attempt);
+                $this->withinBusiness($attempt);
                 $this->fail('Changed X context must fail.');
             } catch (AuthorizationException) {
                 $this->addToAssertionCount(1);
@@ -4298,7 +4255,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertIsString(Cache::get('bb2.x.oauth.'.hash('sha256', $token)));
         $this->travel(301)->seconds();
         try {
-            $this->withinWorkspace(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
+            $this->withinBusiness(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
             $this->fail('Expired X correlation must fail.');
         } catch (AuthorizationException) {
             $http->assertSentCount(1);
@@ -4308,16 +4265,16 @@ class ProviderAccessStoreTest extends TestCase
     public function test_x_oauth_exchange_failure_keeps_state_consumed_despite_database_rollback(): void
     {
         [$flow, $states, $http, $scope, $token] = $this->xOAuthFixture(401);
-        $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $scope));
+        $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $scope));
         try {
-            $this->withinWorkspace(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
+            $this->withinBusiness(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
             $this->fail('Denied exchange must fail.');
         } catch (\RuntimeException $error) {
             $this->assertSame('x_oauth_exchange_failed', $error->getMessage());
         }
         $this->assertNull(Cache::get('bb2.x.oauth.'.hash('sha256', $token)));
         try {
-            $this->withinWorkspace(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
+            $this->withinBusiness(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
             $this->fail('Failed exchange cannot replay.');
         } catch (AuthorizationException) {
             $http->assertSentCount(2);
@@ -4329,7 +4286,7 @@ class ProviderAccessStoreTest extends TestCase
     {
         [$flow, $states, $http, $scope, $token] = $this->xOAuthFixture();
         try {
-            $this->withinWorkspace(function ($r) use ($flow, $scope): void {
+            $this->withinBusiness(function ($r) use ($flow, $scope): void {
                 $flow->authorizationUrl($r, $scope);
                 throw new \RuntimeException('synthetic-rollback');
             });
@@ -4338,25 +4295,19 @@ class ProviderAccessStoreTest extends TestCase
         }
         $this->assertNull(Cache::get('bb2.x.oauth.'.hash('sha256', $token)));
         // Issue explicitly without another native token request, using the synthetic fixture pair.
-        $this->withinWorkspace(fn ($r) => $states->issue($r, $scope, 0, $flow->configurationBinding(),
+        $this->withinBusiness(fn ($r) => $states->issue($r, $scope, 0, $flow->configurationBinding(),
             new ProviderCredentials(['oauth_token' => $token, 'oauth_token_secret' => 'synthetic-temporary-secret'])));
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
             ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier')), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier')), '42501');
         $http->assertSentCount(1);
         $this->assertIsString(Cache::get('bb2.x.oauth.'.hash('sha256', $token)));
     }
 
     private function xOAuthFixture(int $exchangeStatus = 200, array $discoveryPages = []): array
     {
-        $scope = new ProviderScope($this->workspaceId, (string) Str::uuid7(), Provider::X, 'synthetic-x-key', 'discovery.read', 'advertising_analysis');
-        foreach (GrantAuthority::SOURCE_ACTIONS as $action) {
-            $this->grant($scope, $action);
-        }
-        $this->postJson('/workspaces/'.$this->workspace.'/sources', ['source_id' => $scope->sourceId, 'command_id' => (string) Str::uuid(),
-            'effect' => 'register', 'family' => 'x', 'namespace' => 'developer_app', 'external_id' => $scope->accountId,
-            'label' => 'Synthetic X OAuth', 'resource' => $scope->accountId, 'operation' => $scope->operation,
-            'purpose' => $scope->purpose, 'expected_version' => 0, 'reason' => 'synthetic_registration'])->assertOk();
+        $scope = ProviderScope::forBusiness($this->businessId, (string) Str::uuid7(), Provider::X, 'synthetic-x-key', 'discovery.read', 'advertising_analysis');
+        $this->bootstrapScope($scope);
         $token = 'synthetic-request-'.Str::uuid();
         $http = new Factory;
         $http->preventStrayRequests();
@@ -4379,10 +4330,10 @@ class ProviderAccessStoreTest extends TestCase
     public function test_x_pending_publication_and_discard_follow_database_commit(): void
     {
         [$flow, $states, $http, $scope, $token] = $this->xOAuthFixture();
-        $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $scope));
+        $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $scope));
         $handle = null;
         try {
-            $this->withinWorkspace(function ($r) use ($flow, $scope, $token, &$handle): void {
+            $this->withinBusiness(function ($r) use ($flow, $scope, $token, &$handle): void {
                 $handle = $flow->callback($r, $scope, 0, $token, 'synthetic-verifier');
                 throw new \RuntimeException('synthetic-rollback');
             });
@@ -4393,10 +4344,10 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertNull(Cache::get('bb2.x.pending.'.hash('sha256', $handle)));
         $this->assertNull(Cache::get('bb2.x.oauth.'.hash('sha256', $token)));
         $pending = new XPendingAccess(Cache::store(), app(ProviderRequestGuard::class));
-        $handle = $this->withinWorkspace(fn ($r) => $pending->stage($r, $scope, 0, $flow->configurationBinding(),
+        $handle = $this->withinBusiness(fn ($r) => $pending->stage($r, $scope, 0, $flow->configurationBinding(),
             new ProviderCredentials(['oauth_token' => 'synthetic-user-token', 'oauth_token_secret' => 'synthetic-user-secret'])));
         try {
-            $this->withinWorkspace(function ($r) use ($pending, $scope, $flow, $handle): void {
+            $this->withinBusiness(function ($r) use ($pending, $scope, $flow, $handle): void {
                 $pending->discard($r, $scope, 0, $flow->configurationBinding(), $handle);
                 throw new \RuntimeException('synthetic-discard-rollback');
             });
@@ -4404,7 +4355,7 @@ class ProviderAccessStoreTest extends TestCase
             $this->assertSame('synthetic-discard-rollback', $error->getMessage());
         }
         $this->assertIsString(Cache::get('bb2.x.pending.'.hash('sha256', $handle)));
-        $this->withinWorkspace(fn ($r) => $pending->discard($r, $scope, 0, $flow->configurationBinding(), $handle));
+        $this->withinBusiness(fn ($r) => $pending->discard($r, $scope, 0, $flow->configurationBinding(), $handle));
         $this->assertNull(Cache::get('bb2.x.pending.'.hash('sha256', $handle)));
         $http->assertSentCount(2);
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
@@ -4413,24 +4364,24 @@ class ProviderAccessStoreTest extends TestCase
     public function test_x_pending_context_expiry_and_revoked_authority_cannot_release_credentials(): void
     {
         [$flow, $states, $http, $scope, $token] = $this->xOAuthFixture();
-        $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $scope));
-        $handle = $this->withinWorkspace(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
+        $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $scope));
+        $handle = $this->withinBusiness(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
         $pending = new XPendingAccess(Cache::store(), app(ProviderRequestGuard::class));
         try {
-            $this->withinWorkspace(fn ($r) => $pending->credentials($r, $scope, 0, str_repeat('0', 64), $handle));
+            $this->withinBusiness(fn ($r) => $pending->credentials($r, $scope, 0, str_repeat('0', 64), $handle));
             $this->fail('Changed configuration cannot release tokens.');
         } catch (AuthorizationException) {
             $this->addToAssertionCount(1);
         }
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
             ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $pending->credentials($r, $scope, 0, $flow->configurationBinding(), $handle)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $pending->credentials($r, $scope, 0, $flow->configurationBinding(), $handle)), '42501');
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')->update(['expires_at' => null]);
         $cipher = Cache::get('bb2.x.pending.'.hash('sha256', $handle));
         $this->assertIsString($cipher);
         Cache::put('bb2.x.pending.'.hash('sha256', $handle), 'tampered-cipher', 300);
         try {
-            $this->withinWorkspace(fn ($r) => $pending->credentials($r, $scope, 0, $flow->configurationBinding(), $handle));
+            $this->withinBusiness(fn ($r) => $pending->credentials($r, $scope, 0, $flow->configurationBinding(), $handle));
             $this->fail('Tampered ciphertext cannot release tokens.');
         } catch (AuthorizationException) {
             $this->addToAssertionCount(1);
@@ -4438,7 +4389,7 @@ class ProviderAccessStoreTest extends TestCase
         Cache::put('bb2.x.pending.'.hash('sha256', $handle), $cipher, 600);
         $this->travel(301)->seconds();
         try {
-            $this->withinWorkspace(fn ($r) => $pending->credentials($r, $scope, 0, $flow->configurationBinding(), $handle));
+            $this->withinBusiness(fn ($r) => $pending->credentials($r, $scope, 0, $flow->configurationBinding(), $handle));
             $this->fail('Expired envelope cannot release tokens even when cache survives.');
         } catch (AuthorizationException) {
             $this->addToAssertionCount(1);
@@ -4458,19 +4409,19 @@ class ProviderAccessStoreTest extends TestCase
         [$flow, $states, $http, $scope, $token] = $this->xOAuthFixture(200, [$page, $last]);
         $sourceCount = $this->owner()->table('source_registry')->count();
         $grantCount = $this->owner()->table('security_action_grants')->count();
-        $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $scope));
-        $handle = $this->withinWorkspace(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
-        $first = $this->withinWorkspace(fn ($r) => $flow->discover($r, $scope, 0, $handle));
+        $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $scope));
+        $handle = $this->withinBusiness(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
+        $first = $this->withinBusiness(fn ($r) => $flow->discover($r, $scope, 0, $handle));
         $this->assertSame('PARTIAL', $first->coverage);
         $this->assertSame('abc123', $first->accounts[0]['id']);
         $this->assertNull($first->accounts[0]['native_role']);
-        $second = $this->withinWorkspace(fn ($r) => $flow->discover($r, $scope, 0, $handle, $first->continuation));
+        $second = $this->withinBusiness(fn ($r) => $flow->discover($r, $scope, 0, $handle, $first->continuation));
         $this->assertSame('COMPLETE', $second->coverage);
         $this->assertSame('def456', $second->accounts[0]['id']);
         $this->assertNull($second->continuation);
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
             ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $flow->discover($r, $scope, 0, $handle)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $flow->discover($r, $scope, 0, $handle)), '42501');
         $http->assertSentCount(4);
         $this->assertSame($sourceCount, $this->owner()->table('source_registry')->count());
         $this->assertSame($grantCount, $this->owner()->table('security_action_grants')->count());
@@ -4484,21 +4435,15 @@ class ProviderAccessStoreTest extends TestCase
             'data' => ['id' => 'abc123', 'deleted' => false, 'timezone' => 'Asia/Amman', 'timezone_switch_at' => '2026-01-01T21:00:00Z', 'approval_status' => 'PENDING']];
         $access = ['request' => ['params' => ['account_id' => 'abc123']], 'data' => ['user_id' => 'private-native-user', 'permissions' => ['CAMPAIGN_ANALYST']]];
         [$flow, $states, $http, $installation, $token] = $this->xOAuthFixture(200, [$account, $access]);
-        $selected = new ProviderScope($this->workspaceId, (string) Str::uuid7(), Provider::X, 'abc123', 'report.read', 'advertising_analysis');
-        foreach (GrantAuthority::SOURCE_ACTIONS as $action) {
-            $this->grant($selected, $action);
-        }
-        $this->postJson('/workspaces/'.$this->workspace.'/sources', ['source_id' => $selected->sourceId, 'command_id' => (string) Str::uuid(),
-            'effect' => 'register', 'family' => 'x', 'namespace' => 'ad_account', 'external_id' => $selected->accountId,
-            'label' => 'Synthetic selected X account', 'resource' => $selected->accountId, 'operation' => $selected->operation,
-            'purpose' => $selected->purpose, 'expected_version' => 0, 'reason' => 'synthetic_registration'])->assertOk();
-        $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $installation));
-        $handle = $this->withinWorkspace(fn ($r) => $flow->callback($r, $installation, 0, $token, 'synthetic-verifier'));
+        $selected = ProviderScope::forBusiness($this->businessId, (string) Str::uuid7(), Provider::X, 'abc123', 'report.read', 'advertising_analysis');
+        $this->bootstrapScope($selected);
+        $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $installation));
+        $handle = $this->withinBusiness(fn ($r) => $flow->callback($r, $installation, 0, $token, 'synthetic-verifier'));
         $command = (string) Str::uuid();
-        $receipt = $this->withinWorkspace(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 0));
+        $receipt = $this->withinBusiness(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 0));
         $this->assertSame(['version' => 1, 'local_state' => 'CREDENTIAL_STORED'], $receipt);
         $this->assertNull(Cache::get('bb2.x.pending.'.hash('sha256', $handle)));
-        $this->assertSame($receipt, $this->withinWorkspace(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 0)));
+        $this->assertSame($receipt, $this->withinBusiness(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 0)));
         $http->assertSentCount(4);
         $row = $this->owner()->table('provider_access')->where('source_id', $selected->sourceId)->first();
         $this->assertSame('CONNECTED', $row->native_state);
@@ -4510,7 +4455,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame('Asia/Amman', $envelope['credentials']['account_timezone']);
         $this->assertArrayNotHasKey('account_currency', $envelope['credentials']);
         $this->assertSame('UNKNOWN', json_decode($row->verification, true)['privacy_purpose']['state']);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $selected)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $selected)), '42501');
         $this->assertSame(1, $this->owner()->table('provider_access_events')->count());
         $this->assertSame(0, $this->owner()->table('provider_observation_runs')->count());
     }
@@ -4520,23 +4465,17 @@ class ProviderAccessStoreTest extends TestCase
         $account = ['request' => ['params' => ['account_id' => 'synthetic-account']],
             'data' => ['id' => 'synthetic-account', 'deleted' => false, 'timezone' => 'UTC']];
         // Use an alphanumeric synthetic ID compatible with the local X path validator.
-        $selected = new ProviderScope($this->workspaceId, (string) Str::uuid7(), Provider::X, 'rollback123', 'report.read', 'advertising_analysis');
-        foreach (GrantAuthority::SOURCE_ACTIONS as $action) {
-            $this->grant($selected, $action);
-        }
-        $this->postJson('/workspaces/'.$this->workspace.'/sources', ['source_id' => $selected->sourceId, 'command_id' => (string) Str::uuid(),
-            'effect' => 'register', 'family' => 'x', 'namespace' => 'ad_account', 'external_id' => $selected->accountId,
-            'label' => 'Synthetic rollback X account', 'resource' => $selected->accountId, 'operation' => $selected->operation,
-            'purpose' => $selected->purpose, 'expected_version' => 0, 'reason' => 'synthetic_registration'])->assertOk();
+        $selected = ProviderScope::forBusiness($this->businessId, (string) Str::uuid7(), Provider::X, 'rollback123', 'report.read', 'advertising_analysis');
+        $this->bootstrapScope($selected);
         $account['request']['params']['account_id'] = $selected->accountId;
         $account['data']['id'] = $selected->accountId;
         $access = ['request' => ['params' => ['account_id' => $selected->accountId]], 'data' => ['permissions' => ['CAMPAIGN_ANALYST']]];
         [$flow, $states, $http, $installation, $token] = $this->xOAuthFixture(200, [$account, $access, $account, $access]);
-        $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $installation));
-        $handle = $this->withinWorkspace(fn ($r) => $flow->callback($r, $installation, 0, $token, 'synthetic-verifier'));
+        $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $installation));
+        $handle = $this->withinBusiness(fn ($r) => $flow->callback($r, $installation, 0, $token, 'synthetic-verifier'));
         $command = (string) Str::uuid();
         try {
-            $this->withinWorkspace(function ($r) use ($flow, $installation, $handle, $selected, $command): void {
+            $this->withinBusiness(function ($r) use ($flow, $installation, $handle, $selected, $command): void {
                 $flow->select($r, $installation, 0, $handle, $selected, $command, 0);
                 throw new \RuntimeException('synthetic-selection-rollback');
             });
@@ -4547,7 +4486,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame(0, $this->owner()->table('provider_access_events')->count());
         $this->assertSame(0, $this->owner()->table('provider_access_receipts')->count());
         $this->assertIsString(Cache::get('bb2.x.pending.'.hash('sha256', $handle)));
-        $this->assertSame(1, $this->withinWorkspace(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 0))['version']);
+        $this->assertSame(1, $this->withinBusiness(fn ($r) => $flow->select($r, $installation, 0, $handle, $selected, $command, 0))['version']);
         $this->assertNull(Cache::get('bb2.x.pending.'.hash('sha256', $handle)));
         $this->assertSame(1, $this->owner()->table('provider_access_events')->count());
         $http->assertSentCount(6);
@@ -4555,16 +4494,10 @@ class ProviderAccessStoreTest extends TestCase
 
     private function xStatsFixture(): array
     {
-        $scope = new ProviderScope($this->workspaceId, (string) Str::uuid7(), Provider::X, 'abc123', 'report.read', 'advertising_analysis');
-        foreach (GrantAuthority::SOURCE_ACTIONS as $action) {
-            $this->grant($scope, $action);
-        }
-        $this->postJson('/workspaces/'.$this->workspace.'/sources', ['source_id' => $scope->sourceId, 'command_id' => (string) Str::uuid(),
-            'effect' => 'register', 'family' => 'x', 'namespace' => 'ad_account', 'external_id' => $scope->accountId,
-            'label' => 'Synthetic X report account', 'resource' => $scope->accountId, 'operation' => $scope->operation,
-            'purpose' => $scope->purpose, 'expected_version' => 0, 'reason' => 'synthetic_registration'])->assertOk();
+        $scope = ProviderScope::forBusiness($this->businessId, (string) Str::uuid7(), Provider::X, 'abc123', 'report.read', 'advertising_analysis');
+        $this->bootstrapScope($scope);
         // Explicit synthetic evidence proves mechanics only; real privacy approval remains unestablished.
-        $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 0,
+        $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 0,
             new ProviderCredentials(['oauth_token' => 'synthetic-token', 'oauth_token_secret' => 'synthetic-secret',
                 'account_id' => $scope->accountId, 'account_timezone' => 'Asia/Amman', 'timezone_switch_at' => 'NONE']), null, 'SYNTHETIC_AUTHORIZED', $this->evidence()));
         $report = new XCampaignReport($scope,
@@ -4601,14 +4534,14 @@ class ProviderAccessStoreTest extends TestCase
                 $proof = $this->evidence();
                 $proof['privacy_purpose'] = ['state' => 'UNKNOWN'];
                 $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->update(['verification' => json_encode($proof)]);
-                $this->denied(fn () => $this->withinWorkspace($read), '42501');
+                $this->denied(fn () => $this->withinBusiness($read), '42501');
                 $http->assertNothingSent();
                 $this->assertSame(1, $this->owner()->table('provider_observation_runs')->count());
 
                 continue;
             }
             try {
-                $receipt = $this->withinWorkspace(function ($r) use ($read, $case) {
+                $receipt = $this->withinBusiness(function ($r) use ($read, $case) {
                     $receipt = $read($r);
                     if ($case === 'rollback') {
                         throw new \RuntimeException('synthetic-journal-rollback');
@@ -4626,7 +4559,7 @@ class ProviderAccessStoreTest extends TestCase
                 $this->assertSame($case === 'complete' ? 1 : 0, $this->owner()->table($table)->count());
             }
         }
-        $history = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'x-integrated'));
+        $history = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'x-integrated'));
         $this->assertCount(1, $history);
         $this->assertSame('9007199254740993001', $history[0]['observation']['spend']['native_value']);
         $this->assertSame('JOD', $history[0]['observation']['spend']['currency']);
@@ -4651,7 +4584,7 @@ class ProviderAccessStoreTest extends TestCase
             return $job;
         };
         try {
-            $this->withinWorkspace(function ($r) use ($dispatch): void {
+            $this->withinBusiness(function ($r) use ($dispatch): void {
                 $dispatch($r);
                 throw new \RuntimeException('synthetic-dispatch-rollback');
             });
@@ -4659,7 +4592,7 @@ class ProviderAccessStoreTest extends TestCase
             $this->assertSame('synthetic-dispatch-rollback', $error->getMessage());
         }
         $this->assertSame(0, $this->owner()->table('jobs')->count());
-        $job = $this->withinWorkspace($dispatch);
+        $job = $this->withinBusiness($dispatch);
         $payload = $this->owner()->table('jobs')->value('payload');
         foreach (['synthetic-x-key', 'synthetic-x-app-secret', 'synthetic-token', 'synthetic-secret', $this->app['session']->driver()->getId()] as $private) {
             $this->assertStringNotContainsString($private, $payload);
@@ -4676,8 +4609,8 @@ class ProviderAccessStoreTest extends TestCase
         $row = $this->owner()->table('x_read_attempts')->first();
         $this->assertStringNotContainsString($command, $row->encrypted_result);
         $this->assertSame(1, json_decode(Crypt::decryptString($row->encrypted_result), true)['result']['receipt']['generation']);
-        $this->denied(fn () => $this->withinWorkspace(fn () => DB::table('x_read_attempts')->get()), '42501');
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(XReadExecution::class)->execute(
+        $this->denied(fn () => $this->withinBusiness(fn () => DB::table('x_read_attempts')->get()), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(XReadExecution::class)->execute(
             $r, $scope, 'x-native-queue', $command, 1, 0, str_repeat('a', 64), static fn () => throw new \RuntimeException('replay-must-not-read'))), '23505');
         config()->set('services.x_ads.consumer_secret', 'synthetic-rotated-secret');
         try {
@@ -4710,7 +4643,7 @@ class ProviderAccessStoreTest extends TestCase
                 new ProviderReadBudget($scope, 'x-atomic-execution', 2, 0, 2, 2, new DateTimeImmutable('+30 seconds'), 1, 5),
                 'x-atomic-execution', $command, 0, 1));
         try {
-            $this->withinWorkspace(function ($r) use ($run): void {
+            $this->withinBusiness(function ($r) use ($run): void {
                 $run($r);
                 throw new \RuntimeException('synthetic-execution-rollback');
             });
@@ -4721,9 +4654,9 @@ class ProviderAccessStoreTest extends TestCase
             $this->assertSame(0, $this->owner()->table($table)->count());
         }
         $http->assertSentCount(2);
-        $receipt = $this->withinWorkspace($run);
+        $receipt = $this->withinBusiness($run);
         $this->assertSame(1, $receipt['generation']);
-        $this->assertSame($receipt, $this->withinWorkspace($run));
+        $this->assertSame($receipt, $this->withinBusiness($run));
         $http->assertSentCount(4);
         $this->assertSame(1, $this->owner()->table('x_read_attempts')->count());
         $this->assertSame(1, $this->owner()->table('provider_observation_entries')->count());
@@ -4741,7 +4674,7 @@ class ProviderAccessStoreTest extends TestCase
         config()->set('services.x_ads', ['consumer_key' => 'synthetic-x-key', 'consumer_secret' => 'synthetic-x-app-secret']);
         config()->set('queue.default', 'database');
         config()->set('queue.connections.database.connection', 'pgsql');
-        $job = $this->withinWorkspace(function ($r) use ($report) {
+        $job = $this->withinBusiness(function ($r) use ($report) {
             $job = XReadJob::capture($r, $report, 'x-rate-queue', (string) Str::uuid(), 0, 1);
             Bus::dispatch($job);
 
@@ -4770,7 +4703,7 @@ class ProviderAccessStoreTest extends TestCase
         $reader = new XObservationReader($http, new XOAuthSigner('synthetic-x-key', 'synthetic-x-app-secret'),
             app(ObservationJournal::class), app(ProviderAccessStore::class), app(ProviderRequestGuard::class));
         try {
-            $this->withinWorkspace(fn ($r) => $reader->read($r, $report,
+            $this->withinBusiness(fn ($r) => $reader->read($r, $report,
                 new ProviderReadBudget($report->scope, 'x-other-stream', 2, 0, 2, 40, new DateTimeImmutable('+30 seconds'), 1, 5),
                 'x-other-stream', (string) Str::uuid(), 0, 1));
             $this->fail('Shared token cooldown must prevent other streams.');
@@ -4818,13 +4751,13 @@ class ProviderAccessStoreTest extends TestCase
         $last['data'][0]['id'] = 'def456';
         $last['request']['params']['cursor'] = 'private-native-cursor';
         [$flow, , $http, $scope, $token] = $this->xOAuthFixture(200, [$page, $last]);
-        $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $scope));
-        $pending = $this->withinWorkspace(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
-        $first = $this->withinWorkspace(fn ($r) => $flow->discover($r, $scope, 0, $pending));
+        $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $scope));
+        $pending = $this->withinBusiness(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
+        $first = $this->withinBusiness(fn ($r) => $flow->discover($r, $scope, 0, $pending));
         $store = new XDiscoveryContinuation(Cache::store(), app(ProviderRequestGuard::class));
         $rolledBack = null;
         try {
-            $this->withinWorkspace(function ($r) use ($store, $scope, $flow, $pending, $first, &$rolledBack): void {
+            $this->withinBusiness(function ($r) use ($store, $scope, $flow, $pending, $first, &$rolledBack): void {
                 $rolledBack = $store->stage($r, $scope, 0, $flow->configurationBinding(), $pending, $first->continuation);
                 throw new \RuntimeException('synthetic-continuation-rollback');
             });
@@ -4832,7 +4765,7 @@ class ProviderAccessStoreTest extends TestCase
             $this->assertSame('synthetic-continuation-rollback', $error->getMessage());
         }
         $this->assertNull(Cache::get('bb2.x.continuation.'.hash('sha256', $rolledBack)));
-        $handle = $this->withinWorkspace(fn ($r) => $store->stage($r, $scope, 0, $flow->configurationBinding(), $pending, $first->continuation));
+        $handle = $this->withinBusiness(fn ($r) => $store->stage($r, $scope, 0, $flow->configurationBinding(), $pending, $first->continuation));
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/D', $handle);
         $cipher = Cache::get('bb2.x.continuation.'.hash('sha256', $handle));
         foreach (['private-native-cursor', 'synthetic-user-token', 'synthetic-user-secret', $pending] as $private) {
@@ -4840,7 +4773,7 @@ class ProviderAccessStoreTest extends TestCase
         }
         foreach (['configuration', 'pending', 'epoch', 'session'] as $case) {
             try {
-                $this->withinWorkspace(function ($r) use ($store, $scope, $flow, $pending, $handle, $case) {
+                $this->withinBusiness(function ($r) use ($store, $scope, $flow, $pending, $handle, $case) {
                     if ($case === 'session') {
                         $session = new Store('changed-session', new ArraySessionHandler(120));
                         $session->setId(Str::random(40));
@@ -4857,8 +4790,8 @@ class ProviderAccessStoreTest extends TestCase
                 $this->addToAssertionCount(1);
             }
         }
-        $restored = $this->withinWorkspace(fn ($r) => $store->restore($r, $scope, 0, $flow->configurationBinding(), $pending, $handle));
-        $second = $this->withinWorkspace(fn ($r) => $flow->discover($r, $scope, 0, $pending, $restored));
+        $restored = $this->withinBusiness(fn ($r) => $store->restore($r, $scope, 0, $flow->configurationBinding(), $pending, $handle));
+        $second = $this->withinBusiness(fn ($r) => $flow->discover($r, $scope, 0, $pending, $restored));
         $this->assertSame('COMPLETE', $second->coverage);
         $this->assertSame('def456', $second->accounts[0]['id']);
         $http->assertSentCount(4);
@@ -4866,7 +4799,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame(0, $this->owner()->table('provider_observation_runs')->count());
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
             ->update(['expires_at' => now()->subMinute()]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $store->restore($r, $scope, 0, $flow->configurationBinding(), $pending, $handle)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $store->restore($r, $scope, 0, $flow->configurationBinding(), $pending, $handle)), '42501');
     }
 
     public function test_x_discovery_continuation_expiry_corruption_and_foreign_kind_never_restore(): void
@@ -4876,7 +4809,7 @@ class ProviderAccessStoreTest extends TestCase
         $store = new XDiscoveryContinuation(Cache::store(), app(ProviderRequestGuard::class));
         $pending = str_repeat('p', 43);
         $native = new NativeProgress('x.accounts.cursor', XAccountDiscovery::BASIS, '{"cursor":"private"}');
-        $handle = $this->withinWorkspace(fn ($r) => $store->stage($r, $scope, 0, $flow->configurationBinding(), $pending, $native));
+        $handle = $this->withinBusiness(fn ($r) => $store->stage($r, $scope, 0, $flow->configurationBinding(), $pending, $native));
         $key = 'bb2.x.continuation.'.hash('sha256', $handle);
         $original = Cache::get($key);
         foreach (['expired', 'corrupt', 'kind'] as $case) {
@@ -4889,7 +4822,7 @@ class ProviderAccessStoreTest extends TestCase
             }
             Cache::put($key, $case === 'corrupt' ? 'broken-cipher' : Crypt::encryptString(json_encode($envelope)), 600);
             try {
-                $this->withinWorkspace(fn ($r) => $store->restore($r, $scope, 0, $flow->configurationBinding(), $pending, $handle));
+                $this->withinBusiness(fn ($r) => $store->restore($r, $scope, 0, $flow->configurationBinding(), $pending, $handle));
                 $this->fail('Invalid continuation must deny.');
             } catch (AuthorizationException) {
                 $this->addToAssertionCount(1);
@@ -4906,9 +4839,9 @@ class ProviderAccessStoreTest extends TestCase
         $last['next_cursor'] = null;
         $last['request']['params']['cursor'] = 'private-project-cursor';
         [$flow, , $http, $scope, $token] = $this->xOAuthFixture(200, [$page, $last]);
-        $this->withinWorkspace(fn ($r) => $flow->authorizationUrl($r, $scope));
-        $pending = $this->withinWorkspace(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
-        $first = $this->withinWorkspace(fn ($r) => $flow->discoverPage($r, $scope, 0, $pending));
+        $this->withinBusiness(fn ($r) => $flow->authorizationUrl($r, $scope));
+        $pending = $this->withinBusiness(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier'));
+        $first = $this->withinBusiness(fn ($r) => $flow->discoverPage($r, $scope, 0, $pending));
         $this->assertSame(['accounts', 'basis', 'coverage', 'continuation'], array_keys($first));
         $this->assertSame('PARTIAL', $first['coverage']);
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/D', $first['continuation']);
@@ -4917,7 +4850,7 @@ class ProviderAccessStoreTest extends TestCase
         }
         foreach (['invalid', 'pending', 'session'] as $case) {
             try {
-                $this->withinWorkspace(function ($r) use ($flow, $scope, $pending, $first, $case) {
+                $this->withinBusiness(function ($r) use ($flow, $scope, $pending, $first, $case) {
                     if ($case === 'session') {
                         $session = new Store('changed-projection-session', new ArraySessionHandler(120));
                         $session->setId(Str::random(40));
@@ -4933,13 +4866,13 @@ class ProviderAccessStoreTest extends TestCase
             }
         }
         $http->assertSentCount(3);
-        $second = $this->withinWorkspace(fn ($r) => $flow->discoverPage($r, $scope, 0, $pending, $first['continuation']));
+        $second = $this->withinBusiness(fn ($r) => $flow->discoverPage($r, $scope, 0, $pending, $first['continuation']));
         $this->assertSame('COMPLETE', $second['coverage']);
         $this->assertNull($second['continuation']);
         $http->assertSentCount(4);
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
             ->update(['expires_at' => now()->subMinute()]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => $flow->discoverPage($r, $scope, 0, $pending, $first['continuation'])), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $flow->discoverPage($r, $scope, 0, $pending, $first['continuation'])), '42501');
         $http->assertSentCount(4);
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
         $this->assertSame(0, $this->owner()->table('provider_observation_runs')->count());
@@ -4947,35 +4880,33 @@ class ProviderAccessStoreTest extends TestCase
 
     public function test_x_explicit_bootstrap_uses_sole_grant_writer_and_separates_installation_from_selected_account(): void
     {
-        $model = new Workspace;
-        $model->setRawAttributes((array) $this->owner()->table('workspaces')->where('id', $this->workspaceId)->first(), true);
+        $model = $this->nativeOwner();
         $bootstrap = app(XSourceBootstrap::class);
         $installationId = (string) Str::uuid7();
         $command = (string) Str::uuid();
-        $installation = $this->withinWorkspace(fn ($r) => $bootstrap->requestConnection($r, $model, 'synthetic-x-key', $installationId, $command));
+        $installation = $this->withinBusiness(fn ($r) => $bootstrap->requestConnection($r, $model, 'synthetic-x-key', $installationId, $command));
         $this->assertSame('developer_app', $this->owner()->table('source_registry')->where('id', $installationId)->value('namespace'));
         $this->assertSame(['provider.connect', 'source.read', 'source.register'], $this->owner()->table('security_action_grants')
             ->where('source_target_id', $installationId)->orderBy('action')->pluck('action')->all());
-        $this->assertSame($installation->jsonSerialize(), $this->withinWorkspace(fn ($r) => $bootstrap->requestConnection($r, $model, 'synthetic-x-key', $installationId, $command))->jsonSerialize());
-        $selected = new ProviderScope($this->workspaceId, (string) Str::uuid7(), Provider::X, 'abc123', 'report.read', 'advertising_analysis');
+        $this->assertSame($installation->jsonSerialize(), $this->withinBusiness(fn ($r) => $bootstrap->requestConnection($r, $model, 'synthetic-x-key', $installationId, $command))->jsonSerialize());
+        $selected = ProviderScope::forBusiness($this->businessId, (string) Str::uuid7(), Provider::X, 'abc123', 'report.read', 'advertising_analysis');
         $selectCommand = (string) Str::uuid();
-        $this->withinWorkspace(fn ($r) => $bootstrap->requestAccount($r, $model, $selected, $selectCommand));
+        $this->withinBusiness(fn ($r) => $bootstrap->requestAccount($r, $model, $selected, $selectCommand));
         $this->assertSame('ad_account', $this->owner()->table('source_registry')->where('id', $selected->sourceId)->value('namespace'));
         $this->assertSame(['provider.connect', 'provider.read', 'source.read', 'source.register'], $this->owner()->table('security_action_grants')
             ->where('source_target_id', $selected->sourceId)->orderBy('action')->pluck('action')->all());
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $selected, 'provider.read', 0)), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $selected, 'provider.read', 0)), '42501');
         $this->assertSame(0, $this->owner()->table('provider_observation_runs')->count());
     }
 
     public function test_x_explicit_bootstrap_denies_stale_owner_and_preserves_independent_explicit_grants_after_source_rollback(): void
     {
-        $model = new Workspace;
-        $model->setRawAttributes((array) $this->owner()->table('workspaces')->where('id', $this->workspaceId)->first(), true);
+        $model = $this->nativeOwner();
         $bootstrap = app(XSourceBootstrap::class);
         $sourceId = (string) Str::uuid7();
         try {
-            $this->withinWorkspace(function ($r) use ($bootstrap, $model, $sourceId): void {
+            $this->withinBusiness(function ($r) use ($bootstrap, $model, $sourceId): void {
                 $bootstrap->requestConnection($r, $model, 'synthetic-x-key', $sourceId, (string) Str::uuid());
                 throw new \RuntimeException('synthetic-bootstrap-rollback');
             });
@@ -4986,7 +4917,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame(3, $this->owner()->table('security_action_grants')->where('source_target_id', $sourceId)->count());
         $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['authenticated_at' => now()->subHour()]);
         try {
-            $this->withinWorkspace(fn ($r) => $bootstrap->requestConnection($r, $model, 'synthetic-x-key', $sourceId, (string) Str::uuid()));
+            $this->withinBusiness(fn ($r) => $bootstrap->requestConnection($r, $model, 'synthetic-x-key', $sourceId, (string) Str::uuid()));
             $this->fail('Stale owner cannot create connection grants.');
         } catch (AuthorizationException|QueryException) {
             $this->addToAssertionCount(1);
@@ -5020,7 +4951,7 @@ class ProviderAccessStoreTest extends TestCase
         }
         $http->fake(['*' => $sequence]);
         $this->configureXWeb($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/x';
+        $base = '/businesses/'.$this->business.'/providers/x';
         $source = null;
         foreach ([1, 2] as $epoch) {
             $before = $this->owner()->table('source_registry')->count();
@@ -5070,7 +5001,7 @@ class ProviderAccessStoreTest extends TestCase
         $http = new Factory;
         $http->preventStrayRequests();
         $http->fake(['*' => $http->sequence()->push('oauth_token=synthetic-cancel-token&oauth_token_secret=synthetic-temporary-secret&oauth_callback_confirmed=true')]);
-        $base = '/workspaces/'.$this->workspace.'/providers/x';
+        $base = '/businesses/'.$this->business.'/providers/x';
         config()->set('services.x_ads', []);
         $this->getJson($base)->assertOk()->assertJsonPath('availability', 'CONFIGURATION_REQUIRED')->assertJsonPath('connect_intent', null);
         $this->configureXWeb($http);
@@ -5095,7 +5026,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->fake(['*' => $http->sequence()->push($metadata)->push($stats)]);
         $this->configureXWeb($http);
         config()->set('queue.default', 'database');
-        $base = '/workspaces/'.$this->workspace.'/providers/x/'.$scope->sourceId.'/report';
+        $base = '/businesses/'.$this->business.'/providers/x/'.$scope->sourceId.'/report';
         $period = ['start_date' => '2026-09-01', 'end_date' => '2026-09-01', 'campaign_ids' => ['campaign1'], 'placement' => 'ALL_ON_TWITTER'];
         $this->getJson($base.'?'.http_build_query($period + ['injected' => true]))->assertUnprocessable();
         $this->getJson($base.'?'.http_build_query(array_replace($period, ['campaign_ids' => ['campaign1', 'campaign1']])))->assertUnprocessable();
@@ -5127,7 +5058,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->fake(['*' => $http->sequence()->push(['data' => $row])->push(['data' => [$row]])->push(['data' => [$success]])->push($metadata)->push(gzencode(json_encode($stats)))]);
         $this->configureXWeb($http);
         config()->set('queue.default', 'database');
-        $base = '/workspaces/'.$this->workspace.'/providers/x/'.$scope->sourceId.'/report';
+        $base = '/businesses/'.$this->business.'/providers/x/'.$scope->sourceId.'/report';
         $period = ['start_date' => '2026-09-01', 'end_date' => '2026-09-30', 'campaign_ids' => ['campaign1'], 'placement' => 'ALL_ON_TWITTER', 'mode' => 'ASYNC'];
         $status = $this->getJson($base.'?'.http_build_query($period))->assertOk();
         $command = $period + ['command_id' => (string) Str::uuid(), 'expected_version' => 1, 'expected_generation' => 0, 'deadline' => $status->json('deadline')];
@@ -5167,7 +5098,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->fake(['*' => $http->sequence()->push(['request' => ['params' => ['account_id' => 'abc123']], 'data' => [['id' => 'campaign1', 'name' => 'Synthetic campaign']], 'next_cursor' => 'private-campaign-cursor'])
             ->push(['request' => ['params' => ['account_id' => 'abc123', 'cursor' => 'private-campaign-cursor']], 'data' => [['id' => 'campaign2', 'name' => 'Another campaign']], 'next_cursor' => null])]);
         $this->configureXWeb($http);
-        $base = '/workspaces/'.$this->workspace.'/providers/x/'.$scope->sourceId.'/campaigns';
+        $base = '/businesses/'.$this->business.'/providers/x/'.$scope->sourceId.'/campaigns';
         $page = $this->getJson($base)->assertOk()->assertJsonPath('campaigns.0.id', 'campaign1');
         $this->assertStringNotContainsString('private-campaign-cursor', $page->getContent());
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/D', $page->json('continuation'));
@@ -5198,14 +5129,14 @@ class ProviderAccessStoreTest extends TestCase
         $advance = fn ($ticket, $created) => $reader->advance($report, $credentials,
             new ProviderReadBudget($scope, 'async-acquire', 3, 0, 3, 40, new DateTimeImmutable('+45 seconds'), 1, 5), $ticket, $created);
         try {
-            $this->withinWorkspace(function () use ($fence, $binding, $deadline, $advance): void {
+            $this->withinBusiness(function () use ($fence, $binding, $deadline, $advance): void {
                 $fence->run($binding, $deadline, $advance);
                 throw new \RuntimeException('synthetic-rollback-after-native-create');
             });
         } catch (\RuntimeException $failure) {
             $this->assertSame('synthetic-rollback-after-native-create', $failure->getMessage());
         }
-        $this->withinWorkspace(fn () => $fence->run($binding, $deadline, $advance));
+        $this->withinBusiness(fn () => $fence->run($binding, $deadline, $advance));
         $http->assertSentCount(2);
         $this->assertSame('POST', $http->recorded()[0][0]->method());
         $this->assertSame('GET', $http->recorded()[1][0]->method());
@@ -5267,7 +5198,7 @@ class ProviderAccessStoreTest extends TestCase
             foreach ($cases as $case => [$fact, $expected]) {
                 $facts = array_fill_keys(EffectiveCapability::AXES, $fact);
                 $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->update(['verification' => json_encode($facts, JSON_THROW_ON_ERROR)]);
-                $snapshot = $this->withinWorkspace(fn ($r) => $status->snapshot($r, $scope));
+                $snapshot = $this->withinBusiness(fn ($r) => $status->snapshot($r, $scope));
                 foreach (EffectiveCapability::AXES as $axis) {
                     $this->assertSame($expected, $snapshot['axes'][$axis], $scope->provider->value.':'.$case.':'.$axis);
                 }
@@ -5278,11 +5209,11 @@ class ProviderAccessStoreTest extends TestCase
             $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->update(['verification' => json_encode($facts, JSON_THROW_ON_ERROR)]);
             $grants = $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.read');
             $this->assertSame(1, $grants->update(['status' => 'revoked', 'revoked_at' => now()]));
-            $snapshot = $this->withinWorkspace(fn ($r) => $status->snapshot($r, $scope));
+            $snapshot = $this->withinBusiness(fn ($r) => $status->snapshot($r, $scope));
             $this->assertTrue($snapshot['reporting']['can_report']);
-            $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1)), '42501');
-            $this->withinWorkspace(fn ($r) => app(ProviderAccessStore::class)->revoke($r, $scope, (string) Str::uuid(), 1));
-            $snapshot = $this->withinWorkspace(fn ($r) => $status->snapshot($r, $scope));
+            $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1)), '42501');
+            $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->revoke($r, $scope, (string) Str::uuid(), 1));
+            $snapshot = $this->withinBusiness(fn ($r) => $status->snapshot($r, $scope));
             $this->assertSame('REVOKED', $snapshot['axes']['credential']);
             $this->assertFalse($snapshot['reporting']['can_report']);
             $this->assertSame('local_access_revoked', $snapshot['effective']['reason']);
@@ -5296,20 +5227,20 @@ class ProviderAccessStoreTest extends TestCase
         $this->journal($scope, (string) Str::uuid(), 0, '10');
         foreach (['FAILED', 'PENDING', 'PARTIAL', 'UNKNOWN', 'COMPLETE'] as $index => $coverage) {
             $observations = $coverage === 'PARTIAL' ? [$this->journalObservation($scope, '12')] : [];
-            $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->accept($r,
+            $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->accept($r,
                 new ObservationBatch($scope, $observations, $coverage, null, $coverage === 'FAILED' ? 'synthetic_failed' : null),
                 'synthetic-range', (string) Str::uuid(), $index + 1, 1, $this->journalObservation($scope, '0')->provenance));
-            $view = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
+            $view = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
             $this->assertSame($index + 2, $view['generation']);
             $this->assertSame($coverage, $view['coverage']);
             $this->assertSame($coverage === 'PARTIAL' ? ['12'] : [], array_column(array_column($view['claims'], 'expenditure'), 'amount'));
             $this->assertSame('WITHHELD', $view['latest_request']['state']);
             $this->assertTrue($view['membership_complete']);
         }
-        $historical = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range', 1));
+        $historical = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range', 1));
         $this->assertSame('HISTORICAL', $historical['selection']);
         $this->assertSame('10', $historical['claims'][0]['expenditure']['amount']);
-        $missing = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'not-recorded'));
+        $missing = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'not-recorded'));
         $this->assertNull($missing['coverage']);
         $this->assertSame([], $missing['claims']);
     }
@@ -5323,9 +5254,9 @@ class ProviderAccessStoreTest extends TestCase
             $o = $this->journalObservation($scope, '10');
             $rows[] = new AdObservation($scope, 'campaign-'.$i, $o->window, $o->spend, $o->nativeFacts, $o->provenance, $o->readAt, null);
         }
-        $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->accept($r,
+        $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->accept($r,
             new ObservationBatch($scope, $rows, 'COMPLETE', null, null), 'synthetic-range', (string) Str::uuid(), 0, 1, $rows[0]->provenance));
-        $view = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
+        $view = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
         $this->assertCount(200, $view['claims']);
         $this->assertFalse($view['membership_complete']);
         $this->journal($scope, (string) Str::uuid(), 1, '11');
@@ -5333,7 +5264,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->journal($scope, (string) Str::uuid(), 3, '13');
         $before = $this->owner()->table('provider_observation_entries')->get()->toJson();
         DB::enableQueryLog();
-        $view = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
+        $view = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
         $queries = collect(DB::getQueryLog())->filter(fn ($q) => str_contains($q['query'], 'provider_observation_entries'));
         DB::disableQueryLog();
         $this->assertCount(1, $queries);
@@ -5356,14 +5287,14 @@ class ProviderAccessStoreTest extends TestCase
         $payload = ['coverage' => 'COMPLETE', 'failure' => null, 'provenance' => $o->provenance,
             'encrypted_progress' => null, 'progress_fingerprint' => null,
             'observations' => [['identity' => $o->identity(), 'content_hash' => $o->contentHash(), 'observation' => $stored]]];
-        $this->withinWorkspace(fn ($r) => DB::scalar('SELECT builderad_observation_accept(?, ?, ?::uuid, ?, ?, ?, ?, ?, ?::uuid, ?, ?, ?::jsonb)', [
-            $scope->workspaceId, SessionAuthority::sessionKey($r), $scope->sourceId, $scope->provider->value,
+        $this->withinBusiness(fn ($r) => DB::scalar('SELECT builderad_observation_accept(?, ?, ?::uuid, ?, ?, ?, ?, ?, ?::uuid, ?, ?, ?::jsonb)', [
+            $scope->businessId, SessionAuthority::sessionKey($r), $scope->sourceId, $scope->provider->value,
             $scope->accountId, $scope->operation, $scope->purpose, 'synthetic-range', (string) Str::uuid(), 0, 1,
             json_encode($payload, JSON_THROW_ON_ERROR),
         ]));
         $this->assertSame(1, $this->owner()->table('provider_observation_runs')->count());
         $this->expectException(\InvalidArgumentException::class);
-        $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
+        $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
     }
 
     public function test_shared_reality_authority_exact_scope_revocation_and_historical_read_without_live_grant(): void
@@ -5373,23 +5304,23 @@ class ProviderAccessStoreTest extends TestCase
         $this->journal($scope, (string) Str::uuid(), 0, '10');
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.read')
             ->update(['status' => 'revoked', 'revoked_at' => now()]);
-        $this->assertSame('10', $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'))['claims'][0]['expenditure']['amount']);
-        foreach ([new ProviderScope($scope->workspaceId + 1, $scope->sourceId, Provider::Meta, $scope->accountId, $scope->operation, $scope->purpose),
-            new ProviderScope($scope->workspaceId, (string) Str::uuid7(), Provider::Meta, $scope->accountId, $scope->operation, $scope->purpose),
-            new ProviderScope($scope->workspaceId, $scope->sourceId, Provider::Meta, 'wrong-account', $scope->operation, $scope->purpose),
-            new ProviderScope($scope->workspaceId, $scope->sourceId, Provider::Meta, $scope->accountId, $scope->operation, 'wrong_purpose')] as $wrong) {
-            $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $wrong, 'synthetic-range')), '42501');
+        $this->assertSame('10', $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'))['claims'][0]['expenditure']['amount']);
+        foreach ([ProviderScope::forBusiness($scope->businessId + 1, $scope->sourceId, Provider::Meta, $scope->accountId, $scope->operation, $scope->purpose),
+            ProviderScope::forBusiness($scope->businessId, (string) Str::uuid7(), Provider::Meta, $scope->accountId, $scope->operation, $scope->purpose),
+            ProviderScope::forBusiness($scope->businessId, $scope->sourceId, Provider::Meta, 'wrong-account', $scope->operation, $scope->purpose),
+            ProviderScope::forBusiness($scope->businessId, $scope->sourceId, Provider::Meta, $scope->accountId, $scope->operation, 'wrong_purpose')] as $wrong) {
+            $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $wrong, 'synthetic-range')), '42501');
         }
         try {
-            $wrong = new ProviderScope($scope->workspaceId, $scope->sourceId, Provider::Google, $scope->accountId, $scope->operation, $scope->purpose);
-            $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $wrong, 'synthetic-range'));
+            $wrong = ProviderScope::forBusiness($scope->businessId, $scope->sourceId, Provider::Google, $scope->accountId, $scope->operation, $scope->purpose);
+            $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $wrong, 'synthetic-range'));
             $this->fail('Wrong registered provider was released.');
         } catch (AuthorizationException) {
             $this->assertTrue(true);
         }
         $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'source.read')
             ->update(['status' => 'revoked', 'revoked_at' => now()]);
-        $this->denied(fn () => $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range')), '42501');
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range')), '42501');
     }
 
     public function test_shared_reality_authority_expiry_after_interpretation_denies_populated_empty_and_missing_results(): void
@@ -5429,7 +5360,7 @@ class ProviderAccessStoreTest extends TestCase
             $released = false;
             try {
                 $this->denied(function () use ($scope, $case, &$released): void {
-                    $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, $case === 'missing' ? 'not-recorded' : 'synthetic-range'));
+                    $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, $case === 'missing' ? 'not-recorded' : 'synthetic-range'));
                     $released = true;
                 }, '42501');
                 $this->assertTrue($double->interpreted, 'Initial authority/capture must pass before expiry.');
@@ -5520,7 +5451,7 @@ class ProviderAccessStoreTest extends TestCase
             $evidence['entry'] = $state;
             $evidence['live_connection'] = (array) $connection;
             $this->assertFileDoesNotExist($gate['release'], 'The worker can be released only after snapshot capture.');
-            $view = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
+            $view = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
             $this->assertTrue($worker->isSuccessful(), $worker->getErrorOutput());
             $this->assertStringStartsWith('ENTRY_READY'.PHP_EOL.'RESULT=', $worker->getOutput());
             $this->assertSame(1, $view['generation']);
@@ -5535,7 +5466,7 @@ class ProviderAccessStoreTest extends TestCase
             $evidence['ready_file'] = @file_get_contents($gate['ready']);
             file_put_contents($gateBase.'-evidence.json', json_encode($evidence, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
         }
-        $new = $this->withinWorkspace(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
+        $new = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'));
         $this->assertSame(2, $new['generation']);
         $this->assertSame(2, $new['claims'][0]['generation']);
         $this->assertSame('13', $new['claims'][0]['expenditure']['amount']);
@@ -5553,21 +5484,61 @@ class ProviderAccessStoreTest extends TestCase
         return $state;
     }
 
-    private function withinWorkspace(callable $callback): mixed
+    private function withinBusiness(callable $callback): mixed
     {
-        $request = Request::create('/workspaces/'.$this->workspace);
+        $request = Request::create('/businesses/'.$this->business);
         $request->setUserResolver(fn () => $this->actor);
         $request->setLaravelSession($this->app['session']->driver());
 
-        return app(WorkspaceContext::class)->run($this->actor, $this->workspace, fn () => $callback($request), $request);
+        return app(NativeSourceContext::class)->run($this->actor, $this->business, fn () => $callback($request), $request);
     }
 
-    private function grant(ProviderScope $scope, string $action): void
+    private function nativeOwner(): NativeSourceOwner
     {
-        $this->owner()->table('security_action_grants')->insert(['subject_user_id' => $this->actor->id, 'granted_by' => $this->actor->id,
-            'source' => 'source_owner_request', 'scope_kind' => 'source', 'workspace_id' => $scope->workspaceId, 'source_target_id' => $scope->sourceId,
-            'source_resource' => $scope->accountId, 'source_operation' => $scope->operation, 'source_purpose' => $scope->purpose,
-            'action' => $action, 'subject_generation' => 1, 'status' => 'active', 'reason' => 'synthetic_fixture', 'created_at' => now(), 'updated_at' => now()]);
+        return NativeSourceOwner::forBusiness($this->businessId, $this->business, $this->businessReadGrant);
+    }
+
+    private function bootstrapScope(ProviderScope $scope): void
+    {
+        $this->withinBusiness(fn (Request $request) => $this->nativeOwner()->bootstrap($request, $scope,
+            (string) Str::uuid(), $scope->operation === 'discovery.read' ? 'developer_app' : 'ad_account',
+            'Synthetic '.$scope->provider->value));
+    }
+
+    private function decideProviderRight(ProviderScope $scope, string $action, string $decision, ?string $expiresAt = null): string
+    {
+        return (string) $this->postJson('/businesses/'.$this->business.'/source-grants', [
+            'command_id' => (string) Str::uuid7(), 'source_id' => $scope->sourceId, 'resource' => $scope->accountId,
+            'operation' => $scope->operation, 'purpose' => $scope->purpose, 'action' => $action, 'decision' => $decision,
+            'expires_at' => $expiresAt, 'reason' => 'synthetic_provider_authority_test',
+        ])->assertOk()->json('receipt.grant_id');
+    }
+
+    private function replaceProviderRightWithExpiringGrant(ProviderScope $scope, string $action): string
+    {
+        $old = $this->decideProviderRight($scope, $action, 'revoke');
+        $deadline = $this->owner()->scalar("SELECT (date_trunc('second',clock_timestamp())+interval '4 seconds')::text");
+        $expiry = (new DateTimeImmutable($deadline))->format('Y-m-d\TH:i:s.uP');
+        $replacement = $this->decideProviderRight($scope, $action, 'authorize', $expiry);
+        $this->assertNotSame($old, $replacement);
+        $grant = $this->owner()->table('security_action_grants')->where('id', $replacement)->sole();
+        $this->assertNotNull($grant->expires_at);
+        $this->assertEquals(new DateTimeImmutable($deadline), new DateTimeImmutable($grant->expires_at));
+        $this->assertSame('active', $grant->status);
+
+        return $grant->expires_at;
+    }
+
+    private function awaitProviderRightExpiry(string $expiry): void
+    {
+        $deadline = microtime(true) + 7;
+        do {
+            if ((int) $this->owner()->scalar('SELECT CASE WHEN clock_timestamp()>=?::timestamptz THEN 1 ELSE 0 END', [$expiry]) === 1) {
+                return;
+            }
+            usleep(10000);
+        } while (microtime(true) < $deadline);
+        $this->fail('The actual database expiry was not reached.');
     }
 
     private function owner()

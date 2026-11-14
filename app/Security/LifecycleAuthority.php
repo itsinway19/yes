@@ -13,8 +13,6 @@ use Illuminate\Support\Str;
 
 final class LifecycleAuthority
 {
-    public function __construct(private readonly GrantAuthority $grants) {}
-
     public function registerPending(User $user): void
     {
         DB::connection('pgsql_authority')->table('principal_lifecycles')->insert([
@@ -161,7 +159,6 @@ final class LifecycleAuthority
                 'updated_at' => now(),
             ]);
             $this->audit($user->getKey(), 'advertiser_activated', 'primary_email_verified', $lifecycle->status, 'current', (int) $lifecycle->generation, $nextGeneration);
-            $this->grants->issueAdvertiserWorkspaceCreation($freshUser, $nextGeneration);
 
             return ['generation' => $nextGeneration, 'newly_verified' => $newlyVerified];
         });

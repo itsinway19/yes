@@ -6,7 +6,6 @@ use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderReportingEvidence;
 use App\Providers\Ads\ProviderScope;
 use App\Security\DisposableTestDatabaseGuard;
-use App\Security\GrantAuthority;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -29,59 +28,7 @@ require __DIR__.'/sources-spa-runtime.php';
 if ($mode === 'setup') {
     $email = 'g01-c02-'.Str::uuid().'@example.test';
     $user = User::factory()->create(['name' => 'Synthetic advertiser', 'email' => $email, 'password' => Hash::make('DisposableGoalsProof42!')]);
-    if (($argv[2] ?? '') === 'agency') {
-        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($user, 1);
-    }
     echo json_encode(['status' => 'completed', 'email' => $email, 'public_id' => $user->public_id]).PHP_EOL;
-} elseif ($mode === 'agency-prerequisites') {
-    $business = $db->table('businesses')->where('public_id', $argv[2])->sole();
-    $actor = $db->table('users')->where('public_id', $argv[3])->sole();
-    $workspace = $db->table('workspaces')->where('slug', $argv[4])->sole();
-    if ((int) $business->created_by === (int) $actor->id
-        || ! $db->table('workspace_ownerships')->where('workspace_id', $workspace->id)->where('responsible_owner_user_id', $actor->id)->exists()) {
-        throw new RuntimeException('Distinct synthetic client and agency owner required.');
-    }
-    // Only the pre-existing explicit qualifications and original report are fixtures.
-    // The browser creates/ends the relationship, qualifies use, issues, binds and reads.
-    $link = BusinessAuthorityFixture::root($business->id, $actor->id, 'business.link.manage');
-    $source = (string) Str::uuid7();
-    $resource = 'account-c03';
-    $db->table('source_registry')->insert(['id' => $source, 'workspace_id' => $workspace->id, 'family' => 'meta', 'namespace' => 'ad_account',
-        'declared_external_id' => $resource, 'label' => 'حساب إعلاني اصطناعي للوكالة', 'version' => 1, 'status' => 'UNVERIFIED']);
-    $db->table('source_capabilities')->insert(['workspace_id' => $workspace->id, 'source_id' => $source, 'resource' => $resource,
-        'operation' => 'report.read', 'purpose' => 'capture']);
-    $grants = [];
-    foreach (['source.read', 'source.manage'] as $action) {
-        $grants[$action] = $db->table('security_action_grants')->insertGetId([
-            'subject_user_id' => $actor->id, 'granted_by' => $actor->id, 'source' => 'source_owner_request', 'scope_kind' => 'source',
-            'workspace_id' => $workspace->id, 'source_target_id' => $source, 'source_resource' => $resource,
-            'source_operation' => 'report.read', 'source_purpose' => 'capture', 'action' => $action,
-            'subject_generation' => 1, 'status' => 'active', 'version' => 1, 'reason' => 'SYNTHETIC C03 INDEPENDENT SOURCE RIGHT',
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
-    }
-    $namespace = hash('sha256', 'c03:agency-report:'.$source);
-    $db->table('provider_observation_streams')->insert(['namespace' => $namespace, 'workspace_id' => $workspace->id, 'source_id' => $source,
-        'provider' => 'meta', 'resource' => $resource, 'operation' => 'report.read', 'purpose' => 'capture', 'stream' => 'campaign',
-        'generation' => 1, 'access_version' => 1]);
-    $db->table('provider_observation_runs')->insert(['namespace' => $namespace, 'generation' => 1, 'command_id' => (string) Str::uuid(),
-        'fingerprint' => hash('sha256', $namespace), 'coverage' => 'PARTIAL', 'provenance' => json_encode(['provider_reported' => true]),
-        'progress_advanced' => false, 'actor_user_id' => $actor->id, 'actor_generation' => 1]);
-    $db->table('provider_observation_entries')->insert(['namespace' => $namespace, 'generation' => 1,
-        'identity' => 'bb2:'.hash('sha256', 'row:'.$namespace), 'content_hash' => hash('sha256', 'value:'.$namespace),
-        'observation' => json_encode(['campaign_id' => 'agency-campaign-one', 'window' => ['start' => '2026-10-01', 'end' => '2026-10-31', 'boundary' => 'INCLUSIVE_DATES', 'grain' => 'TOTAL', 'timezone' => 'UTC'],
-            'spend' => new NativeAmount('17', 'SAR', 'meta.account_currency_major', 0, 'documented-account-currency-scale'),
-            'private_field' => 'C03_DO_NOT_DISCLOSE'], JSON_THROW_ON_ERROR), 'relation' => 'FIRST_OBSERVATION']);
-    echo json_encode(['status' => 'completed', 'workspace' => $workspace->public_id, 'link_grant' => $link->id,
-        'source' => $source, 'source_grants' => $grants]).PHP_EOL;
-} elseif ($mode === 'agency-context') {
-    $business = $db->table('businesses')->where('public_id', $argv[2])->sole();
-    $actor = $db->table('users')->where('public_id', $argv[3])->sole();
-    $workspace = $db->table('workspaces')->where('public_id', $argv[4])->sole();
-    $db->table('business_workspace_links')->where('business_id', $business->id)->where('workspace_id', $workspace->id)
-        ->where('kind', 'agency')->where('status', 'active')->sole();
-    $read = BusinessAuthorityFixture::root($business->id, $actor->id, 'business.context.read', agencyWorkspace: $workspace->id);
-    echo json_encode(['status' => 'completed', 'access' => $read->id]).PHP_EOL;
 } elseif ($mode === 'admit') {
     $business = $db->table('businesses')->where('public_id', $argv[2])->sole();
     $count = 0;

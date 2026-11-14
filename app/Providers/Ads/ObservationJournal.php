@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use LogicException;
 
-/** Internal durable acceptance boundary. Call inside exactly one signed Workspace transaction. */
+/** Internal durable acceptance boundary. Call inside exactly one signed Business transaction. */
 final class ObservationJournal
 {
     /** Qualified accepted knowledge; this owner checks current authority after pure interpretation, before release. */
@@ -25,7 +25,7 @@ final class ObservationJournal
         $authorize = static function () use ($request, $scope): void {
             app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'source.read');
             DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [
-                $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId,
+                $scope->businessId, SessionAuthority::sessionKey($request), $scope->sourceId,
                 $scope->accountId, $scope->operation, $scope->purpose,
             ]);
         };
@@ -36,7 +36,7 @@ final class ObservationJournal
                    r.generation, r.coverage, r.failure, r.recorded_at, r.provenance::text,
                    coalesce(e.entries, '[]'::jsonb)::text AS entries
             FROM source_registry sr
-            LEFT JOIN provider_observation_streams s ON s.workspace_id IS NOT DISTINCT FROM sr.workspace_id AND s.source_id=sr.id
+            LEFT JOIN provider_observation_streams s ON s.source_id=sr.id
                 AND s.provider=? AND s.resource=? AND s.operation=? AND s.purpose=? AND s.stream=?
             LEFT JOIN provider_observation_runs r ON r.namespace=s.namespace AND r.generation=coalesce(?::bigint,s.generation)
             LEFT JOIN LATERAL (
@@ -45,9 +45,9 @@ final class ObservationJournal
                       FROM provider_observation_entries WHERE namespace=r.namespace AND generation=r.generation
                       ORDER BY identity LIMIT ?) bounded
             ) e ON true
-            WHERE sr.workspace_id IS NOT DISTINCT FROM ?::bigint AND sr.id=?::uuid AND sr.namespace='ad_account'
+            WHERE sr.business_id = ?::bigint AND sr.id=?::uuid AND sr.namespace='ad_account'
             SQL, [$scope->provider->value, $scope->accountId, $scope->operation, $scope->purpose, $stream,
-            $generation, $limit + 1, $scope->workspaceId, $scope->sourceId]);
+            $generation, $limit + 1, $scope->businessId, $scope->sourceId]);
         if ($record === null || $record->family !== $scope->provider->value || $record->declared_external_id !== $scope->accountId) {
             throw new AuthorizationException('Exact registered advertising source scope required.');
         }
@@ -90,7 +90,7 @@ final class ObservationJournal
             'encrypted_progress' => $envelope === null ? null : Crypt::encryptString($envelope),
             'progress_fingerprint' => $envelope === null ? null : hash_hmac('sha256', $envelope, (string) config('app.key'))];
         $result = DB::scalar('SELECT builderad_observation_accept(?, ?, ?::uuid, ?, ?, ?, ?, ?, ?::uuid, ?, ?, ?::jsonb)', [
-            $batch->scope->workspaceId, SessionAuthority::sessionKey($request), $batch->scope->sourceId,
+            $batch->scope->businessId, SessionAuthority::sessionKey($request), $batch->scope->sourceId,
             $batch->scope->provider->value, $batch->scope->accountId, $batch->scope->operation, $batch->scope->purpose,
             $stream, $command, $expectedGeneration, $accessVersion, json_encode($payload, JSON_THROW_ON_ERROR),
         ]);
@@ -104,7 +104,7 @@ final class ObservationJournal
         $this->validateStream($stream);
         app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'provider.read');
         $cipher = DB::scalar('SELECT builderad_observation_progress(?, ?, ?::uuid, ?, ?, ?, ?, ?, ?)', [
-            $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->provider->value,
+            $scope->businessId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->provider->value,
             $scope->accountId, $scope->operation, $scope->purpose, $stream, $accessVersion]);
         if ($cipher === null) {
             return null;
@@ -132,9 +132,9 @@ final class ObservationJournal
         }
         app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'source.read');
         DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [
-            $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId,
+            $scope->businessId, SessionAuthority::sessionKey($request), $scope->sourceId,
             $scope->accountId, $scope->operation, $scope->purpose]);
-        $namespace = DB::table('provider_observation_streams')->where('workspace_id', $scope->workspaceId)
+        $namespace = DB::table('provider_observation_streams')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $scope->businessId))
             ->where('source_id', $scope->sourceId)->where('provider', $scope->provider->value)
             ->where('resource', $scope->accountId)->where('operation', $scope->operation)
             ->where('purpose', $scope->purpose)->where('stream', $stream)->value('namespace');
@@ -165,7 +165,7 @@ final class ObservationJournal
     private function requireTransaction(): void
     {
         if (DB::connection()->transactionLevel() !== 1) {
-            throw new LogicException('Observation acceptance requires its own Workspace transaction.');
+            throw new LogicException('Observation acceptance requires its own Business transaction.');
         }
     }
 }

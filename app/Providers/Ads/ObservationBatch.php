@@ -24,7 +24,7 @@ final readonly class ObservationBatch
         $identities = [];
         foreach ($observations as $observation) {
             if (! $observation instanceof AdObservation || $observation->scope->jsonSerialize() !== $scope->jsonSerialize()) {
-                throw new InvalidArgumentException('Observations cannot cross their provider/Workspace scope.');
+                throw new InvalidArgumentException('Observations cannot cross their provider/Business scope.');
             }
             $identity = $observation->identity();
             if (isset($identities[$identity])) {

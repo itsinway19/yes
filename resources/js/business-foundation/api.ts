@@ -2,8 +2,6 @@ import type { components, operations } from '../api/generated/application';
 import { api } from '../spa/api';
 export type Choices = components['schemas']['BusinessChoices'];
 export type SourceChoices = components['schemas']['NativeSourceChoices'];
-export type InternalTeamCommand = components['schemas']['InternalTeamCommand'];
-export type InternalTeamSurface = components['schemas']['InternalTeamSurface'];
 export type DirectTeamEnrollment = operations['enrollIndependentBusinessTeam']['requestBody']['content']['application/json'];
 export type PurposeStatementEnrollment = operations['enrollOwnBusinessPurposeStatements']['requestBody']['content']['application/json'];
 export async function enrollPurposeStatement(business: string, body: PurposeStatementEnrollment) {
@@ -14,24 +12,6 @@ export async function enrollPurposeStatement(business: string, body: PurposeStat
 export async function enrollDirectTeam(business: string, body: DirectTeamEnrollment) {
     const result = await api.POST('/api/businesses/{business}/direct-team', { params: { path: { business } }, body });
     if (!result.data) throw Error('Independent team enrollment receipt unavailable');
-    return result.data.data;
-}
-export async function internalTeamSurface(business: string, access: number): Promise<InternalTeamSurface> {
-    const result = await api.GET('/api/businesses/{business}/internal-team', { params: { path: { business }, query: { access } } });
-    if (!result.data) throw Error('Internal file team unavailable');
-    return result.data.data;
-}
-export async function writeInternalTeam(business: string, body: InternalTeamCommand) {
-    const result = await api.POST('/api/businesses/{business}/internal-team', { params: { path: { business } }, body });
-    if (!result.data) throw Error('Internal file custody receipt unavailable');
-    return result.data.data;
-}
-export type BusinessSources = components['schemas']['BusinessSources'];
-export async function businessSources(business: string, access: number, after?: number): Promise<BusinessSources> {
-    const result = await api.GET('/api/businesses/{business}/sources', {
-        params: { path: { business }, query: { access, ...(after ? { after } : {}) } },
-    });
-    if (!result.data) throw Error('Qualified Business sources unavailable');
     return result.data.data;
 }
 export type SourceSurface = components['schemas']['NativeSourceSurface'];
@@ -82,12 +62,6 @@ export async function writeLifecycle(business: string, body: LifecycleCommand) {
     return result.data.data;
 }
 export type BusinessHistory = components['schemas']['BusinessHistory'];
-export type LegacyHistory = components['schemas']['BusinessLegacyHistory'];
-export async function legacyHistory(business: string, access: number, kind: LegacyHistory['kind'], after?: string): Promise<LegacyHistory> {
-    const result = await api.GET('/api/businesses/{business}/legacy-history', { params: { path: { business }, query: { access, kind, ...(after ? { after } : {}) } } });
-    if (!result.data) throw Error('Qualified original history unavailable');
-    return result.data.data;
-}
 export async function businessHistory(business: string, access: number, kind: BusinessHistory['kind'], after?: string): Promise<BusinessHistory> {
     if (after && !Number.isSafeInteger(Number(after))) throw Error('History cursor is not safely representable');
     const result = await api.GET('/api/businesses/{business}/history', { params: { path: { business }, query: { access, kind, ...(after ? { after: Number(after) } : {}) } } });
@@ -100,7 +74,6 @@ export type WriteResult = components['schemas']['BusinessContextWriteResult']['d
 export type Selection = components['schemas']['BusinessAuthoritySelection'];
 export type CreateCommand = { command_id: string; name: string; business_type_id: number | null };
 export type ContextCommand = CreateCommand & { expected_context: number; authority_selection: Selection };
-export type LinkCommand = operations['writeIndependentBusinessRelationship']['requestBody']['content']['application/json'];
 export type GrantCommand = operations['writeIndependentBusinessGrant']['requestBody']['content']['application/json'];
 export type AgencyGrantCommand = components['schemas']['BusinessAgencyGrantCommand'];
 export type AgencyOptions = components['schemas']['BusinessAgencyOptions'];
@@ -150,11 +123,6 @@ export async function writeGrant(business: string, body: GrantCommand) {
     if (!result.data) throw Error('Delegation acknowledgement unavailable');
     return result.data.data;
 }
-export async function writeLink(business: string, body: LinkCommand) {
-    const result = await api.POST('/api/businesses/{business}/workspace-links', { params: { path: { business } }, body });
-    if (!result.data) throw Error('Relationship acknowledgement unavailable');
-    return result.data.data;
-}
 export type FactKind = 'markets' | 'intent' | 'preferences';
 export type Intent = components['schemas']['CurrentIntentValue'];
 export type Goals = components['schemas']['GoalValue'];
@@ -189,5 +157,19 @@ export async function create(body: CreateCommand): Promise<DraftResult> {
 export async function write(business: string, body: ContextCommand): Promise<WriteResult> {
     const result = await api.PUT('/api/businesses/{business}/context', { params: { path: { business } }, body });
     if (!result.data) throw Error('Business acknowledgement unavailable');
+    return result.data.data;
+}
+
+export type InternalTeamCommand = components['schemas']['InternalTeamCommand'];
+export type InternalTeamSurface = components['schemas']['InternalTeamSurface'];
+export async function internalTeamSurface(business: string, access: number): Promise<InternalTeamSurface> {
+    const result = await api.GET('/api/businesses/{business}/internal-team', { params: { path: { business }, query: { access } } });
+    if (!result.data) throw Error('Internal file team unavailable');
+    return result.data.data;
+}
+
+export async function writeInternalTeam(business: string, body: InternalTeamCommand) {
+    const result = await api.POST('/api/businesses/{business}/internal-team', { params: { path: { business } }, body });
+    if (!result.data) throw Error('Internal file custody receipt unavailable');
     return result.data.data;
 }

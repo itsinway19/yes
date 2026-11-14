@@ -428,12 +428,12 @@ final class MarketProcessingTest extends TestCase
         $f = $this->processingOriginals();
         $f['records'] = [$f['records'][0]];
         $c = $this->processingConsumer($f, ['geography']);
-        $marketSelection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+        $marketSelection = ['realm_kind' => 'direct', 'requirements' => [
             ['requirement_kind' => 'business', 'leaf_grant_id' => $c['business']['grant_refs']['business.markets.declare']],
         ]];
         $this->putJson('/api/businesses/'.$c['business']['business_public_id'].'/markets', ['command_id' => (string) Str::uuid(), 'codes' => ['SA'], 'expected_context' => 0, 'authority_selection' => $marketSelection])->assertOk();
         $body = $this->processingBody($f, $c, 'assess_business_feasibility');
-        $body['context_selection'] = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+        $body['context_selection'] = ['realm_kind' => 'direct', 'requirements' => [
             ['requirement_kind' => 'business', 'leaf_grant_id' => $c['business']['grant_refs']['business.context.read']],
         ]];
         $this->prepareProcessing($c, $body)->assertOk();
@@ -447,7 +447,7 @@ final class MarketProcessingTest extends TestCase
         $complete['command_id'] = (string) Str::uuid();
         $this->completeProcessing($c, $body['command_id'], $complete)->assertOk()->assertJsonPath('data.finding.status', 'outside_declared_market');
         $other = $this->processingConsumer($f, ['geography']);
-        $otherMarket = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+        $otherMarket = ['realm_kind' => 'direct', 'requirements' => [
             ['requirement_kind' => 'business', 'leaf_grant_id' => $other['business']['grant_refs']['business.markets.declare']],
         ]];
         $this->putJson('/api/businesses/'.$other['business']['business_public_id'].'/markets', ['command_id' => (string) Str::uuid(), 'codes' => ['SA'], 'expected_context' => 0, 'authority_selection' => $otherMarket])->assertOk();

@@ -23,7 +23,7 @@ final class SnapchatReadExecution
             throw new LogicException('Snapchat execution must own a signed exact report transaction.');
         }
         app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'provider.read');
-        $context = [$scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->accountId,
+        $context = [$scope->businessId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->accountId,
             $scope->purpose, $stream, $command, $accessVersion, $generation, $fingerprint];
         $ciphertext = DB::scalar('SELECT builderad_snapchat_attempt_begin(?, ?, ?::uuid, ?, ?, ?, ?::uuid, ?, ?, ?)', $context);
         $binding = [$scope->jsonSerialize(), $stream, $command, $accessVersion, $generation, $fingerprint];

@@ -15,9 +15,9 @@ final class InternalCustomerAdministrationController
     public function index(Request $request, PrincipalContext $context)
     {
         $input = $request->validate([
-            'kind' => ['sometimes', Rule::in(['users', 'workspaces'])],
+            'kind' => ['sometimes', Rule::in(['users', 'businesses'])],
             'search' => ['nullable', 'string', 'max:120'],
-            'status' => ['nullable', Rule::in(['pending', 'current', 'disabled', 'active', 'suspended', 'archived'])],
+            'status' => ['nullable', Rule::in(['pending', 'current', 'disabled', 'declared_draft', 'active', 'suspended', 'archived'])],
             'page' => ['sometimes', 'integer', 'between:1,100000'],
             'selected' => ['nullable', 'uuid'],
         ]);
@@ -48,10 +48,10 @@ final class InternalCustomerAdministrationController
     public function status(Request $request, PrincipalContext $context)
     {
         $input = $request->validate([
-            'command_id' => ['required', 'uuid'], 'kind' => ['required', Rule::in(['users', 'workspaces'])],
+            'command_id' => ['required', 'uuid'], 'kind' => ['required', Rule::in(['users', 'businesses'])],
             'target' => ['required', 'uuid'], 'decision' => ['required', Rule::in(['suspend', 'reactivate'])],
             'reason' => ['required', 'string', 'max:128'],
-            'expected_status' => ['required', Rule::in(['pending', 'current', 'disabled', 'active', 'suspended'])],
+            'expected_status' => ['required', Rule::in(['pending', 'current', 'disabled', 'declared_draft', 'active', 'suspended'])],
             'expected_revision' => ['required', 'integer', 'min:0'],
         ]);
         try {

@@ -95,7 +95,7 @@ const all = root => [root, ...root.children.flatMap(all)];
 const find = (root, property, value) => all(root).find(item => value === undefined ? property in item.props : item.props[property] === value);
 const visibleText = root => root.text + root.children.map(visibleText).join('');
 const flush = async () => { await Promise.resolve(); await nextTick(); await Promise.resolve(); await nextTick(); };
-const surface = (business = 'business-a', writable = true) => ({ business: { business_public_id: business }, authority_selection: { realm_kind: 'direct', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: 11 }] }, context_write_options: writable ? [{ grant_id: '12' }] : [], catalog: { countries: [{ code: 'SA', name_ar: 'السعودية', name_en: 'Saudi Arabia' }] } });
+const surface = (business = 'business-a', writable = true) => ({ business: { business_public_id: business }, authority_selection: { realm_kind: 'direct',  requirements: [{ requirement_kind: 'business', leaf_grant_id: 11 }] }, context_write_options: writable ? [{ grant_id: '12' }] : [], catalog: { countries: [{ code: 'SA', name_ar: 'السعودية', name_en: 'Saudi Arabia' }] } });
 function mount(initial = surface(), reset = true) {
     if (reset) { pending.clearActivityCommands(); activity.state.items = []; activity.state.reads = []; activity.state.writes = []; activity.state.pending = []; activity.state.deferred = []; activity.state.historyAvailable = true; language.locale.value = 'en'; }
     const selected = ref(initial), active = ref(true), root = node('root');

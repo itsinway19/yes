@@ -16,7 +16,6 @@ use App\Providers\Ads\X\XOAuthState;
 use App\Providers\Ads\X\XPendingAccess;
 use App\Providers\Ads\X\XRequestFailed;
 use App\Providers\Ads\X\XSourceBootstrap;
-use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Client\Factory;
@@ -36,10 +35,10 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 /** Explicit fresh-owner connection and selection; discovery alone never creates sources or grants. */
 final class XConnectionController extends Controller
 {
-    public function index(Request $request, string $workspace, NativeSourceContext $context, Factory $http): JsonResponse
+    public function index(Request $request, string $business, NativeSourceContext $context, Factory $http): JsonResponse
     {
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $http): array {
-            DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->workspaceId, SessionAuthority::sessionKey($request)]);
+        return $this->respond(fn () => $context->run($request->user(), $business, function (NativeSourceOwner $w) use ($request, $http): array {
+            DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->businessId, SessionAuthority::sessionKey($request)]);
             $connections = $w->sources('s')->join('source_capabilities as c', 'c.source_id', '=', 's.id')
                 ->where('s.family', 'x')->where('s.namespace', 'ad_account')
                 ->where('c.operation', 'report.read')->where('c.purpose', 'advertising_analysis')
@@ -60,7 +59,7 @@ final class XConnectionController extends Controller
             $fresh = app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user());
             $intent = null;
             if ($owner && $fresh) {
-                DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->workspaceId, SessionAuthority::sessionKey($request)]);
+                DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->businessId, SessionAuthority::sessionKey($request)]);
                 $existing = $w->sources()->where('family', 'x')
                     ->where('namespace', 'developer_app')->where('declared_external_id', config('services.x_ads.consumer_key'))->value('id');
                 $scope = $w->scope($existing ?? (string) Str::uuid7(), Provider::X,
@@ -75,7 +74,7 @@ final class XConnectionController extends Controller
         }, $request));
     }
 
-    public function connect(Request $request, string $workspace, NativeSourceContext $context, Factory $http): JsonResponse
+    public function connect(Request $request, string $business, NativeSourceContext $context, Factory $http): JsonResponse
     {
         if ($request->has('intent') && ($request->has('source_id') || $request->has('expected_version'))) {
             throw ValidationException::withMessages(['connection' => 'Choose one connection request format.']);
@@ -84,7 +83,7 @@ final class XConnectionController extends Controller
             'source_id' => ['required_without:intent', 'uuid'],
             'expected_version' => ['required_without:intent', 'integer', 'min:0']]);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $http, $input): array {
+        return $this->respond(fn () => $context->run($request->user(), $business, function (NativeSourceOwner $w) use ($request, $http, $input): array {
             [$coordinator, , $flows] = $this->configured($http);
             $version = $input['expected_version'] ?? 0;
             if (isset($input['intent'])) {
@@ -159,9 +158,9 @@ final class XConnectionController extends Controller
             ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
     }
 
-    public function discovery(Request $request, string $workspace, string $flow, NativeSourceContext $context, Factory $http): JsonResponse
+    public function discovery(Request $request, string $business, string $flow, NativeSourceContext $context, Factory $http): JsonResponse
     {
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $flow, $http): array {
+        return $this->respond(fn () => $context->run($request->user(), $business, function (NativeSourceOwner $w) use ($request, $flow, $http): array {
             [$coordinator, , $flows] = $this->configured($http);
             $record = $flows->load($request, $coordinator->configurationBinding(), 'discovery', $flow);
             $this->sameOwner($w, $record);
@@ -177,11 +176,11 @@ final class XConnectionController extends Controller
         }, $request));
     }
 
-    public function select(Request $request, string $workspace, NativeSourceContext $context, Factory $http): JsonResponse
+    public function select(Request $request, string $business, NativeSourceContext $context, Factory $http): JsonResponse
     {
         $input = $this->input($request, ['selection' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{43}$/D']]);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $input, $http): array {
+        return $this->respond(fn () => $context->run($request->user(), $business, function (NativeSourceOwner $w) use ($request, $input, $http): array {
             [$coordinator, , $flows] = $this->configured($http);
             $record = $flows->load($request, $coordinator->configurationBinding(), 'selection', $input['selection']);
             $this->sameOwner($w, $record);
@@ -200,18 +199,14 @@ final class XConnectionController extends Controller
         }, $request));
     }
 
-    public function disconnect(Request $request, string $workspace, string $source, NativeSourceContext $context): JsonResponse
+    public function disconnect(Request $request, string $business, string $source, NativeSourceContext $context): JsonResponse
     {
         $input = $this->input($request, ['command_id' => ['required', 'uuid'], 'expected_version' => ['required', 'integer', 'min:1']]);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $source, $input): array {
+        return $this->respond(fn () => $context->run($request->user(), $business, function (NativeSourceOwner $w) use ($request, $source, $input): array {
             // Local removal must remain available without working OAuth configuration or provider transport.
             $scope = $this->declared($request, $w, $source, 'ad_account', 'report.read');
-            if ($w->businessId === null) {
-                app(GrantAuthority::class)->requestSourceGrant($request, $w->workspaceId, ['source_id' => $scope->sourceId,
-                    'resource' => $scope->accountId, 'operation' => $scope->operation, 'purpose' => $scope->purpose,
-                    'action' => 'provider.revoke', 'decision' => 'authorize', 'expires_at' => null, 'reason' => 'explicit_x_local_disconnect']);
-            }
+
             $receipt = app(ProviderAccessStore::class)->revoke($request, $scope, $input['command_id'], (int) $input['expected_version']);
 
             return ['source_id' => $source, 'receipt' => $receipt, 'access' => (new XAccessStatus)->snapshot($request, $scope),
@@ -230,7 +225,7 @@ final class XConnectionController extends Controller
                 ->where('s.declared_external_id', $account['id'])->where('c.resource', $account['id'])
                 ->where('c.operation', 'report.read')->where('c.purpose', 'advertising_analysis')->get(['s.id', 's.label']);
             foreach ($targets as $target) {
-                $version = (int) (DB::table('provider_access')->where('workspace_id', $w->workspaceId)->where('source_id', $target->id)
+                $version = (int) (DB::table('provider_access')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $w->businessId))->where('source_id', $target->id)
                     ->where('provider', 'x')->where('resource', $account['id'])->where('operation', 'report.read')
                     ->where('purpose', 'advertising_analysis')->value('version') ?? 0);
                 $handle = $flows->issue($request, $record['scope'], $record['access_version'], $coordinator->configurationBinding(), 'selection',
@@ -250,35 +245,14 @@ final class XConnectionController extends Controller
         return $choices;
     }
 
-    private function authorizeSource(Request $request, NativeSourceOwner $workspace, ProviderScope $scope, bool $register,
+    private function authorizeSource(Request $request, NativeSourceOwner $business, ProviderScope $scope, bool $register,
         string $command, string $namespace): void
     {
-        if ($workspace->businessId !== null) {
-            $workspace->bootstrap($request, $scope, $command, $namespace, 'X '.$scope->accountId);
-
-            return;
-        }
-        DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$workspace->workspaceId, SessionAuthority::sessionKey($request)]);
-        $exists = $workspace->sources()->where('id', $scope->sourceId)
-            ->where('family', 'x')->where('namespace', $namespace)->where('declared_external_id', $scope->accountId)->exists();
-        if ($register && ! $exists) {
-            $bootstrap = app(XSourceBootstrap::class);
-            if ($namespace === 'developer_app') {
-                $bootstrap->requestConnection($request, $workspace->workspace(), $scope->accountId, $scope->sourceId, $command);
-            } else {
-                $bootstrap->requestAccount($request, $workspace->workspace(), $scope, $command);
-            }
-
-            return;
-        }
-        $actions = ['source.read', 'provider.connect'];
-        if ($scope->operation === 'report.read') {
-            $actions[] = 'provider.read';
-        }
-        foreach ($actions as $action) {
-            app(GrantAuthority::class)->requestSourceGrant($request, $workspace->workspaceId, ['source_id' => $scope->sourceId,
-                'resource' => $scope->accountId, 'operation' => $scope->operation, 'purpose' => $scope->purpose,
-                'action' => $action, 'decision' => 'authorize', 'expires_at' => null, 'reason' => 'explicit_x_connection']);
+        $bootstrap = app(XSourceBootstrap::class);
+        if ($namespace === 'developer_app') {
+            $bootstrap->requestConnection($request, $business, $scope->accountId, $scope->sourceId, $command);
+        } else {
+            $bootstrap->requestAccount($request, $business, $scope, $command);
         }
     }
 
@@ -316,21 +290,21 @@ final class XConnectionController extends Controller
         }
     }
 
-    private function declared(Request $request, NativeSourceOwner $workspace, string $source, string $namespace, string $operation): ProviderScope
+    private function declared(Request $request, NativeSourceOwner $business, string $source, string $namespace, string $operation): ProviderScope
     {
-        DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$workspace->workspaceId, SessionAuthority::sessionKey($request)]);
-        $identity = $workspace->sources()->where('id', $source)
+        DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$business->businessId, SessionAuthority::sessionKey($request)]);
+        $identity = $business->sources()->where('id', $source)
             ->where('family', 'x')->where('namespace', $namespace)->first();
         if (! $identity) {
             abort(404);
         }
 
-        return $workspace->scope($source, Provider::X, $identity->declared_external_id, $operation, 'advertising_analysis');
+        return $business->scope($source, Provider::X, $identity->declared_external_id, $operation, 'advertising_analysis');
     }
 
-    private function sameOwner(NativeSourceOwner $workspace, array $record): void
+    private function sameOwner(NativeSourceOwner $business, array $record): void
     {
-        $workspace->assertBound($record);
+        $business->assertBound($record);
     }
 
     private function input(Request $request, array $rules): array

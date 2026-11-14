@@ -23,7 +23,7 @@ final class CommercialMarketPreparationController
         $canPrepare = $grants->canPrepareCommercialMarket($request);
         $administration = $db->table('security_action_grants')->where('subject_user_id', $request->user()->id)
             ->where('subject_generation', $request->session()->get('a001_generation'))->where('scope_kind', 'commercial')
-            ->where('action', 'SA01CommercialGrantAdministrator')->whereNull('workspace_id')->whereNull('commercial_version_id')
+            ->where('action', 'SA01CommercialGrantAdministrator')->whereNull('business_id')->whereNull('commercial_version_id')
             ->where('status', 'active')->whereNull('revoked_at')->whereRaw('(expires_at IS NULL OR expires_at > clock_timestamp())')
             ->pluck('commercial_target_id')->all();
         abort_unless($canPrepare || count($administration), 403);
@@ -197,7 +197,7 @@ final class CommercialMarketPreparationController
             $existing = $db->table('security_action_grants')->where('subject_user_id', $operator->id)
                 ->where('subject_generation', $db->table('principal_lifecycles')->where('user_id', $operator->id)->value('generation'))
                 ->where('scope_kind', 'commercial')->where('action', $effect)->where('commercial_target_id', $input['market_id'])
-                ->whereNull('workspace_id')->whereNull('commercial_version_id')->where('status', 'active')->lockForUpdate()->first();
+                ->whereNull('business_id')->whereNull('commercial_version_id')->where('status', 'active')->lockForUpdate()->first();
             if ($existing) {
                 abort_unless($existing->reason === $input['reason'] && $db->scalar('SELECT ?::timestamptz IS NOT DISTINCT FROM ?::timestamptz',
                     [$existing->expires_at, $input['expires_at']]), 409, 'Existing authorization has different terms; revoke it explicitly before replacing it.');

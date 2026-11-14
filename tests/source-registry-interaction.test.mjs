@@ -49,7 +49,7 @@ test('registry retained unknown outcome and rename prompt follow locale without 
     const item = { id: 'source-localization', label: 'اسم المصدر الحقيقي', family: 'meta', namespace: 'account', declared_external_id: 'declared', version: 2, status: 'UNVERIFIED', ...scope, capability: { state: 'UNKNOWN', reason: 'provider_unverified', last_verified_at: null }, axes: { provider_permission: 'UNKNOWN' }, can_manage: true, scope_choices: [], next_repair: 'provider_verification_needed', audit_delivery: [] };
     const previousWindow = globalThis.window, prompts = []; globalThis.window = { prompt(question, initial) { prompts.push({ question, initial }); return 'Corrected native label'; } };
     runtime.calls = []; runtime.reads = []; runtime.send = async () => { throw Error('ACK lost'); }; locale.value = 'en';
-    const root = element('root'), app = renderer.createApp({ render: () => h(component, { workspaceId: 'workspace', candidateId: 'candidate', canRequestAuthority: false, sources: { state: 'SCOPED_SOURCES', items: [item], registration_authorities: [] } }) }); app.mount(root);
+    const root = element('root'), app = renderer.createApp({ render: () => h(component, { businessId: 'workspace', candidateId: 'candidate', canRequestAuthority: false, sources: { state: 'SCOPED_SOURCES', items: [item], registration_authorities: [] } }) }); app.mount(root);
     try {
         assert.match(text(root), /Sources and current permissions/); assert.match(text(root), /اسم المصدر الحقيقي/);
         nodes(root, node => node.tag === 'button' && text(node) === 'Correct label')[0].props.onClick(); await nextTick(); await nextTick();
@@ -74,14 +74,14 @@ test('mixed obligations preserve exact recovery authority and send only the sele
     let acknowledge; runtime.calls = []; runtime.reads = [];
     runtime.send = () => new Promise(resolve => { acknowledge = resolve; });
     const root = element('root'), app = renderer.createApp({ render: () => h(component, {
-        workspaceId: 'workspace', candidateId: 'candidate', canRequestAuthority: false,
+        businessId: 'workspace', candidateId: 'candidate', canRequestAuthority: false,
         sources: { state: 'SCOPED_SOURCES', items: [item], registration_authorities: [] },
     }) }); app.mount(root);
     try {
         const actions = nodes(root, node => node.tag === 'button'); assert.equal(actions.length, 1);
         assert.match(text(root), /لا توجد صلاحية استرداد مطابقة/); assert.match(text(root), /receipt-a/);
         actions[0].props.onClick(); await nextTick(); actions[0].props.onClick();
-        assert.deepEqual(runtime.calls, [{ workspace: 'workspace', effect: 'audit', source: 'b' }]);
+        assert.deepEqual(runtime.calls, [{ business: 'workspace', effect: 'audit', source: 'b' }]);
         assert.equal(actions[0].props.disabled, true); acknowledge({}); await nextTick(); await nextTick(); await nextTick();
         assert.deepEqual(runtime.reads, [['workspace', true]]);
         assert.equal(actions[0].props.disabled, false);

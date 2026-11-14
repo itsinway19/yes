@@ -10,7 +10,7 @@ use Illuminate\Http\Client\Factory;
 use InvalidArgumentException;
 use JsonException;
 
-/** Confidential web OAuth only. The caller must validate and consume session/Workspace-bound state first. */
+/** Confidential web OAuth only. The caller must validate and consume session/Business-bound state first. */
 final readonly class GoogleOAuthClient
 {
     public const SCOPE = 'https://www.googleapis.com/auth/adwords';

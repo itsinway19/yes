@@ -21,7 +21,7 @@ final class SnapchatAsyncReportTest extends TestCase
 
     private function scope(): ProviderScope
     {
-        return new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::Snapchat,
+        return ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::Snapchat,
             self::ACCOUNT, 'report.read', 'advertising_analysis');
     }
 

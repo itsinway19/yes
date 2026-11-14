@@ -16,7 +16,7 @@ final class XNativeWindowTest extends TestCase
 {
     private function report(string $start, string $end, string $now, string $switch = 'NONE', string $grain = 'TOTAL'): XCampaignReport
     {
-        return new XCampaignReport(new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::X, 'abc123', 'report.read', 'advertising_analysis'),
+        return new XCampaignReport(ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::X, 'abc123', 'report.read', 'advertising_analysis'),
             new ReportWindow($start, $end, 'INCLUSIVE_DATES', $grain, 'America/Los_Angeles', 'synthetic:native'),
             ['campaign1'], 'ALL_ON_TWITTER', false, new DateTimeImmutable($now), $switch);
     }
@@ -96,7 +96,7 @@ final class XNativeWindowTest extends TestCase
 
     public function test_historical_winter_uses_review_days_summer_offset(): void
     {
-        $scope = new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::X,
+        $scope = ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::X,
             'abc123', 'report.read', 'advertising_analysis');
         $report = new XCampaignReport($scope,
             new ReportWindow('2026-01-05', '2026-01-05', 'INCLUSIVE_DATES', 'TOTAL', 'America/Los_Angeles', 'synthetic:native'),

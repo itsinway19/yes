@@ -33,7 +33,7 @@ final class TikTokClientTest extends TestCase
         $http = new Factory;
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response($body, $status, ['Retry-After' => $retry])]);
-        $scope = new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::TikTok,
+        $scope = ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::TikTok,
             '1234567890123456789', 'report.read', 'advertising_analysis');
         $client = new TikTokClient($http, 'v1.3', static fn () => null, 'provider.read');
         try {

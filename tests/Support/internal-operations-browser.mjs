@@ -112,8 +112,8 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
         });
         await verify('B lost customer ACK survives reload without replay and an explicit identical retry resolves the original SQL command once', 'operations', async () => {
             const labels = messages.ar.customers;
-            await page.getByRole('button', { name: labels.workspaces, exact: true }).click(); await ready('[data-customers]');
-            const row = page.locator('.customer-row').filter({ hasText: 'نشاط b 1' }); await row.waitFor();
+            await page.getByRole('button', { name: labels.businesses, exact: true }).click(); await ready('[data-customers]');
+            const row = page.locator('.customer-row').filter({ hasText: 'Business b 1' }); await row.waitFor();
             await row.getByRole('button', { name: labels.suspend, exact: true }).click(); await page.locator('#customer-reason').fill('Lost customer acknowledgement fixture');
             const before = command('operations-inspect').customerEvents; let deliveries = 0;
             await page.route('**/internal/administration/customers/status', async route => { deliveries++; const response = await route.fetch(); assert.equal(response.status(), 200); await route.abort('failed'); });
@@ -129,12 +129,12 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
         });
         await verify('B customer acknowledged write stays known on readback failure and server rejects stale revision and invalid decisions', 'operations', async () => {
             const labels = messages.ar.customers, url = '/internal/administration/customers/status';
-            const directory = await get(page, '/internal/administration/customers?kind=workspaces');
-            const target = directory.body.data.rows.find(row => row.public_id === fixture.b.workspaces[0].public_id); assert.equal(target.status, 'suspended');
-            const body = { command_id: crypto.randomUUID(), kind: 'workspaces', target: target.public_id, decision: 'reactivate', reason: 'Explicit real conflict fixture', expected_status: 'active', expected_revision: 0 };
+            const directory = await get(page, '/internal/administration/customers?kind=businesses');
+            const target = directory.body.data.rows.find(row => row.public_id === fixture.b.businesses[0].business_public_id); assert.equal(target.status, 'suspended');
+            const body = { command_id: crypto.randomUUID(), kind: 'businesses', target: target.public_id, decision: 'reactivate', reason: 'Explicit real conflict fixture', expected_status: 'declared_draft', expected_revision: 0 };
             assert.equal((await post(page, url, body)).status, 409);
             assert.equal((await post(page, url, { ...body, decision: 'invented' })).status, 422);
-            const row = page.locator('.customer-row').filter({ hasText: 'نشاط b 1' }); await row.getByRole('button', { name: labels.reactivate, exact: true }).click();
+            const row = page.locator('.customer-row').filter({ hasText: 'Business b 1' }); await row.getByRole('button', { name: labels.reactivate, exact: true }).click();
             await page.locator('#customer-reason').fill('Known command readback failure');
             await page.route('**/internal/administration/customers?*', route => route.request().headers().accept === 'application/json' ? route.abort('failed') : route.continue());
             await page.locator('.customer-confirmation button[type=submit]').click(); await page.locator('[data-customer-ack]').waitFor(); await page.locator('[data-customer-readback]').waitFor();
@@ -191,13 +191,25 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             try {
                 await ownerPage.goto('http://localhost:8138/login'); await ownerPage.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready');
                 const signed = await post(ownerPage, '/login', { email: 'goals-b@example.test', password: 'DisposableGoalsProof42!' }); assert.equal(signed.status, 200);
-                await ownerPage.goto('http://localhost:8138/workspaces'); await ownerPage.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready');
-                const ownerDirectory = await get(ownerPage, '/workspaces');
-                if (ownerDirectory.body.data.reassessableWorkspaces.some(row => row.public_id === fixture.b.workspaces[0].public_id)) assert.equal((await post(ownerPage, `/workspaces/${fixture.b.workspaces[0].public_id}/reassess-owner-grant`)).status, 200);
+                const business = fixture.b.businesses[0], id = business.business_public_id;
+                const read = business.grant_refs['business.context.read'];
+                const select = grant => ({ realm_kind: 'direct', requirements: [{ requirement_kind: 'business', leaf_grant_id: grant }] });
+                await ownerPage.goto(`http://localhost:8138/businesses/${id}?access=${read}`);
+                await ownerPage.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready');
                 const foreignDocument = await meta(ownerPage), before = command('operations-inspect').services.length;
                 assert.equal((await post(page, '/internal/services', { name: 'Foreign document must not issue' }, { 'X-Builderad-Document': foreignDocument.receipt })).status, 409);
                 assert.equal(command('operations-inspect').services.length, before);
-                assert.equal((await post(ownerPage, `/workspaces/${fixture.b.workspaces[0].public_id}/services`, { service: service.public_id, purpose: 'Explicit isolated operations service scope' })).status, 200);
+                const mandate = await post(ownerPage, `/api/businesses/${id}/operating-mandate`, { command_id: crypto.randomUUID(), confirmed: true,
+                    capacity: 'responsible_business', authority_reference: 'Isolated operations responsibility', valid_until: new Date(Date.now() + 3600000).toISOString(),
+                    previous_grant: '0', authority_selection: select(read) });
+                assert.equal(mandate.status, 200);
+                const approval = await post(ownerPage, `/api/businesses/${id}/service-approval/enrollment`, { command_id: crypto.randomUUID(), confirmed: true,
+                    authority_reference: 'Isolated limited service approval', expires_at: new Date(Date.now() + 1800000).toISOString(),
+                    mandate_grant_id: String(mandate.body.data.grant_refs['business.data.use']), authority_selection: select(read) });
+                assert.equal(approval.status, 200);
+                assert.equal((await post(ownerPage, `/businesses/${id}/services`, { command_id: crypto.randomUUID(), service: service.public_id,
+                    purpose: 'Explicit isolated operations service scope', expected_revision: 0, business_revision: approval.body.data.revision,
+                    authority_selection: select(approval.body.data.grant_id) })).status, 200);
             } finally { await owner.close(); }
             await page.reload(); await ready('[data-services]'); assert.equal(await page.locator('[data-service-credential]').count(), 0);
             await page.getByRole('button', { name: 'اختيار للمنحة', exact: true }).click(); await page.locator('#grant-reason').fill('Explicit browser service read grant');

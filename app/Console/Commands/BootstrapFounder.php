@@ -45,7 +45,11 @@ final class BootstrapFounder extends Command
                     throw new \RuntimeException('Founder bootstrap has already been used.');
                 }
                 $user = User::on('pgsql_authority')->where('public_id', $this->argument('user'))
-                    ->lockForUpdate()->firstOrFail();
+                    ->firstOrFail();
+                // Resource/Business fences precede principal and credential locks.
+                // The database rechecks current responsibilities under those locks.
+                $authority->statement('SELECT builderad_founder_bootstrap_guard(?)', [$user->id]);
+                $user = User::on('pgsql_authority')->whereKey($user->id)->lockForUpdate()->firstOrFail();
                 $credentials = $authority->table('passkeys')->where('user_id', $user->id)->whereIn('credential_id', [
                     $this->argument('primary'), $this->argument('backup'),
                 ])->lockForUpdate()->get();
@@ -64,10 +68,6 @@ final class BootstrapFounder extends Command
                         throw new \RuntimeException('Each credential requires successful UV login evidence in the current lifecycle.');
                     }
                 }
-                if ($authority->scalar('SELECT builderad_lock_and_has_active_workspace_membership(?)', [$user->id])) {
-                    throw new \RuntimeException('Founder bootstrap cannot convert an active Workspace member.');
-                }
-
                 $generation = $lifecycles->bootstrapFounder($user);
                 $authority->table('internal_personnel')->insert([
                     'user_id' => $user->id,

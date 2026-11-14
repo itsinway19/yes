@@ -12,11 +12,11 @@ use Tests\TestCase;
 final class BusinessFinalBoundaryTest extends TestCase
 {
     private const TABLES = ['businesses', 'business_context_heads', 'business_current_intents', 'business_authority_fences',
-        'migration_cohort_control', 'migration_cohort_members', 'authority_qualification_receipts', 'business_workspace_links',
+        'authority_qualification_receipts',
         'business_command_receipts', 'business_goal_preferences', 'business_context_transitions', 'business_intent_transitions',
         'business_declared_markets', 'business_market_transitions', 'business_preference_transitions', 'business_branches',
         'client_data_boundaries', 'boundary_subjects', 'data_use_scopes', 'business_data_use_bindings', 'resource_right_fences',
-        'legacy_scope_mappings', 'object_purpose_business_context_refs', 'material_use_dependencies', 'material_lineage_manifests'];
+        'object_purpose_business_context_refs', 'material_use_dependencies', 'material_lineage_manifests'];
 
     public function test_installed_runtime_catalog_has_forced_rls_no_raw_or_public_privileges_and_statement_truncate_guards(): void
     {

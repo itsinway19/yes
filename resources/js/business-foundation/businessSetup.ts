@@ -75,8 +75,7 @@ export async function prepareSetup(draft: SetupDraft, catalog: WizardCatalog, at
 }
 
 const selection = (receipt: DraftResult, action: keyof DraftResult['grant_refs']): Selection => ({
-    realm_kind: 'direct', realm_workspace_public_id: null,
-    requirements: [{ requirement_kind: 'business', leaf_grant_id: Number(receipt.grant_refs[action]) }],
+    realm_kind: 'direct', requirements: [{ requirement_kind: 'business', leaf_grant_id: Number(receipt.grant_refs[action]) }],
 });
 
 export function setupDeclarations(plan: SetupPlan, receipt: DraftResult) {

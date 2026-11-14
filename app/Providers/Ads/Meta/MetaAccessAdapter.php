@@ -61,7 +61,7 @@ final readonly class MetaAccessAdapter implements ProviderAccessAdapter
             $this->configurationId, $currentAuthority, $this->tokenKind);
     }
 
-    /** Caller generates and binds one-use state to current session, Workspace, source and command. */
+    /** Caller generates and binds one-use state to current session, Business, source and command. */
     public function authorizationUrl(string $state): string
     {
         if (! preg_match('/^[A-Za-z0-9_-]{43,128}$/D', $state)) {

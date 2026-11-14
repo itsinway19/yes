@@ -48,50 +48,22 @@ class PreBaselineHardeningTest extends TestCase
         }
     }
 
-    public function test_runtime_user_delete_is_denied_and_preserves_user_and_membership(): void
+    public function test_runtime_user_delete_is_denied_and_preserves_business_creation(): void
     {
-        [$userId, $workspaceId] = $this->fixture();
-
+        $user = User::factory()->create();
+        $business = $this->actingAs($user)->postJson('/api/businesses', [
+            'command_id' => (string) Str::uuid7(), 'name' => 'Protected Business',
+        ])->assertCreated()->json('data');
         $this->assertFalse(DB::scalar("select has_table_privilege(current_user, 'users', 'DELETE')"));
-
         try {
-            DB::table('users')->where('id', $userId)->delete();
-            $this->fail('The runtime role must not be able to delete a User.');
-        } catch (QueryException) {
-            $this->addToAssertionCount(1);
+            DB::table('users')->where('id', $user->id)->delete();
+            $this->fail('Runtime can delete a user.');
+        } catch (QueryException $error) {
+            $this->assertSame('42501', $error->getCode());
         }
-
         $owner = DB::connection('pgsql_migrations');
-        $this->assertTrue($owner->table('users')->where('id', $userId)->exists());
-        $this->assertTrue($owner->table('workspace_memberships')
-            ->where('workspace_id', $workspaceId)
-            ->where('user_id', $userId)
-            ->exists());
-    }
-
-    public function test_user_membership_foreign_key_restricts_owner_side_user_deletion(): void
-    {
-        [$userId, $workspaceId] = $this->fixture();
-        $owner = DB::connection('pgsql_migrations');
-
-        $deleteRule = $owner->table('information_schema.referential_constraints')
-            ->where('constraint_schema', 'public')
-            ->where('constraint_name', 'workspace_memberships_user_id_foreign')
-            ->value('delete_rule');
-        $this->assertSame('RESTRICT', $deleteRule);
-
-        try {
-            $owner->table('users')->where('id', $userId)->delete();
-            $this->fail('The User foreign key must fail closed while a membership exists.');
-        } catch (QueryException) {
-            $this->addToAssertionCount(1);
-        }
-
-        $this->assertTrue($owner->table('users')->where('id', $userId)->exists());
-        $this->assertTrue($owner->table('workspace_memberships')
-            ->where('workspace_id', $workspaceId)
-            ->where('user_id', $userId)
-            ->exists());
+        $this->assertTrue($owner->table('users')->where('id', $user->id)->exists());
+        $this->assertTrue($owner->table('businesses')->where('public_id', $business['business_public_id'])->where('created_by', $user->id)->exists());
     }
 
     public function test_default_database_seeder_creates_no_application_credentials_and_factories_remain_usable(): void
@@ -105,160 +77,16 @@ class PreBaselineHardeningTest extends TestCase
         $this->assertTrue($owner->table('users')->where('id', $user->getKey())->exists());
     }
 
-    public function test_workspace_public_id_catalog_invariant_is_database_owned_uuidv7(): void
+    public function test_current_business_writer_assigns_distinct_database_qualified_uuidv7_identifiers(): void
     {
-        $owner = DB::connection('pgsql_migrations');
-        $column = $owner->table('information_schema.columns')
-            ->where('table_schema', 'public')
-            ->where('table_name', 'workspaces')
-            ->where('column_name', 'public_id')
-            ->first(['data_type', 'is_nullable', 'column_default']);
-
-        $this->assertSame('uuid', $column->data_type);
-        $this->assertSame('NO', $column->is_nullable);
-        $this->assertSame('uuidv7()', $column->column_default);
-        $this->assertTrue($owner->scalar(<<<'SQL'
-            select exists (
-                select 1
-                from pg_index index
-                join pg_class table_relation on table_relation.oid = index.indrelid
-                join pg_namespace namespace on namespace.oid = table_relation.relnamespace
-                where namespace.nspname = 'public'
-                  and table_relation.relname = 'workspaces'
-                  and index.indisunique
-                  and index.indkey::text = (
-                      select attnum::text
-                      from pg_attribute
-                      where attrelid = 'public.workspaces'::regclass
-                        and attname = 'public_id'
-                  )
-            )
-            SQL));
-    }
-
-    public function test_owner_direct_workspace_insert_omitting_public_id_gets_uuidv7(): void
-    {
-        $owner = DB::connection('pgsql_migrations');
-
-        try {
-            $workspaceId = $owner->table('workspaces')->insertGetId([
-                'name' => 'Database UUIDv7',
-                'slug' => 'database-uuidv7-'.Str::lower(Str::random(8)),
-                'status' => 'active',
-                'currency_code' => null,
-                'timezone' => 'UTC',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        } catch (QueryException) {
-            $this->fail('A direct owner insert that omits public_id must receive the PostgreSQL default.');
+        $this->actingAs(User::factory()->create());
+        $ids = [];
+        foreach (['First Business', 'Second Business'] as $name) {
+            $ids[] = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid7(), 'name' => $name])->assertCreated()->json('data.business_public_id');
         }
-
-        $identity = $owner->table('workspaces')
-            ->where('id', $workspaceId)
-            ->selectRaw('public_id, uuid_extract_version(public_id) as version')
-            ->first();
-
-        $this->assertNotNull($identity->public_id);
-        $this->assertSame(7, $identity->version);
-    }
-
-    public function test_workspace_membership_foreign_key_restricts_owner_side_workspace_deletion(): void
-    {
-        [$userId, $workspaceId] = $this->fixture();
+        $this->assertNotSame(...$ids);
         $owner = DB::connection('pgsql_migrations');
-
-        $deleteRule = $owner->table('information_schema.referential_constraints')
-            ->where('constraint_schema', 'public')
-            ->where('constraint_name', 'workspace_memberships_workspace_id_foreign')
-            ->value('delete_rule');
-        $this->assertSame('RESTRICT', $deleteRule);
-
-        try {
-            $owner->table('workspaces')->where('id', $workspaceId)->delete();
-            $this->fail('A Workspace with a membership must not be physically deleted.');
-        } catch (QueryException) {
-            $this->addToAssertionCount(1);
-        }
-
-        $this->assertTrue($owner->table('workspaces')->where('id', $workspaceId)->exists());
-        $this->assertTrue($owner->table('workspace_memberships')
-            ->where('workspace_id', $workspaceId)
-            ->where('user_id', $userId)
-            ->exists());
-    }
-
-    public function test_workspace_public_id_accepts_uuidv7_and_rejects_uuidv4(): void
-    {
-        $owner = DB::connection('pgsql_migrations');
-        $constraint = $owner->table('pg_constraint')
-            ->where('conname', 'workspaces_public_id_uuidv7_check')
-            ->selectRaw('pg_get_constraintdef(oid) as definition')
-            ->first();
-
-        $this->assertNotNull($constraint);
-        $this->assertStringContainsString('uuid_extract_version(public_id) = 7', $constraint->definition);
-
-        $this->assertTrue($owner->table('workspaces')->insert([
-            'public_id' => (string) Str::uuid7(),
-            'name' => 'Explicit UUIDv7',
-            'slug' => 'explicit-v7-'.Str::lower(Str::random(8)),
-            'status' => 'active',
-            'currency_code' => null,
-            'timezone' => 'UTC',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]));
-
-        try {
-            $owner->table('workspaces')->insert([
-                'public_id' => (string) Str::uuid(),
-                'name' => 'Explicit UUIDv4',
-                'slug' => 'explicit-v4-'.Str::lower(Str::random(8)),
-                'status' => 'active',
-                'currency_code' => null,
-                'timezone' => 'UTC',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-            $this->fail('An explicitly supplied UUIDv4 must violate the Workspace UUIDv7 invariant.');
-        } catch (QueryException) {
-            $this->addToAssertionCount(1);
-        }
-    }
-
-    /** @return array{0: int, 1: int} */
-    private function fixture(): array
-    {
-        $owner = DB::connection('pgsql_migrations');
-        $userId = $owner->table('users')->insertGetId([
-            'public_id' => (string) Str::uuid7(),
-            'name' => 'Lifecycle User',
-            'email' => Str::random(12).'@example.test',
-            'email_verified_at' => now(),
-            'password' => bcrypt('test-only-password'),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        $workspaceId = $owner->table('workspaces')->insertGetId([
-            'public_id' => (string) Str::uuid7(),
-            'name' => 'Lifecycle Workspace',
-            'slug' => 'lifecycle-'.Str::lower(Str::random(8)),
-            'status' => 'active',
-            'currency_code' => null,
-            'timezone' => 'UTC',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        $owner->table('workspace_memberships')->insert([
-            'workspace_id' => $workspaceId,
-            'user_id' => $userId,
-            'role' => 'owner',
-            'status' => 'active',
-            'created_at' => now(),
-            'revoked_at' => null,
-        ]);
-
-        return [$userId, $workspaceId];
+        $this->assertSame(2, $owner->table('businesses')->whereIn('public_id', $ids)->whereRaw('uuid_extract_version(public_id)=7')->count());
+        $this->assertTrue($owner->scalar("SELECT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.businesses'::regclass AND conname='businesses_public_id_check' AND convalidated)"));
     }
 }

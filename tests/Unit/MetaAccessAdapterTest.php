@@ -19,7 +19,7 @@ class MetaAccessAdapterTest extends TestCase
 {
     private function scope(): ProviderScope
     {
-        return new ProviderScope(1, '019a0022-0000-7000-8000-000000000001', Provider::Meta,
+        return ProviderScope::forBusiness(1, '019a0022-0000-7000-8000-000000000001', Provider::Meta,
             '123', 'report.read', 'advertising_analysis');
     }
 

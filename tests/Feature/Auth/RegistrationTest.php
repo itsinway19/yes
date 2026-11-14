@@ -50,7 +50,7 @@ class RegistrationTest extends TestCase
         $this->assertTrue($user->hasVerifiedEmail());
         $this->assertSame('current', DB::table('principal_lifecycles')->where('user_id', $user->id)->value('status'));
         $this->assertSame($proof['attempt_id'], app(RegistrationEmailProof::class)->businessAttempt($user));
-        $this->assertDatabaseCount('workspaces', 0);
+        $this->assertNull(DB::connection('pgsql_migrations')->scalar("SELECT to_regclass('public.workspaces')"));
         $response->assertOk()->assertJsonPath('redirect', '/businesses/new')->assertJsonPath('transition.epoch', 1);
     }
 
@@ -149,19 +149,12 @@ class RegistrationTest extends TestCase
         $this->assertNull(app(RegistrationEmailProof::class)->businessAttempt($user));
     }
 
-    public function test_populated720_registration_upgrade_preserves_identity_and_factors_and_refuses_rollback(): void
+    public function test_current_installation_preserves_registration_identity_and_factors_and_refuses_rollback(): void
     {
         $this->usePersistentTestSessions();
         $reset = app(DisposableDatabaseReset::class);
-        $reset->clear();
+        $migrationName = '0001_01_01_000000_business_native_baseline.php';
         try {
-            $migrationName = '0001_01_01_000730_create_registration_email_proofs.php';
-            $paths = array_values(array_filter(glob(database_path('migrations/*.php')),
-                fn ($path) => strcmp(basename($path), $migrationName) < 0));
-            $this->assertSame(0, Artisan::call('migrate', [
-                '--database' => 'pgsql_migrations', '--path' => $paths, '--realpath' => true, '--force' => true,
-            ]));
-
             $current = User::factory()->create(['email' => 'upgrade-current@example.test']);
             User::factory()->unverified()->create(['email' => 'upgrade-pending@example.test']);
             $this->actingAs($current);
@@ -187,9 +180,7 @@ class RegistrationTest extends TestCase
             };
             $before = $snapshot();
             $reset->assertInstalledCatalog();
-            $this->assertNull($owner->scalar("SELECT to_regclass('public.registration_email_proofs')"));
-            $upgrade = ['--database' => 'pgsql_migrations', '--path' => [database_path('migrations/'.$migrationName)],
-                '--realpath' => true, '--force' => true];
+            $upgrade = ['--database' => 'pgsql_migrations', '--force' => true];
             $this->assertSame(0, Artisan::call('migrate', $upgrade));
             $this->assertSame($before, $snapshot());
             $reset->assertInstalledCatalog();

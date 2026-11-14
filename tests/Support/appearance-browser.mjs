@@ -70,7 +70,7 @@ try {
         // token. Exercise its token fallback with an HTTP client lacking that header.
         const csrfRejection = await page.context().request.post(url+appearancePath, { headers: { Accept: 'application/json', 'X-CSRF-TOKEN': 'invalid', 'X-Builderad-Document': receipt }, data: { revision: 0, primary: '#ffffff', secondary: '#000000' } });
         assert.equal(csrfRejection.status(), 419, 'Real runtime token fallback must enforce CSRF');
-        await advertiser.goto(url+'/workspaces'); await ready(advertiser); assert.equal(await rootColor(advertiser), '#155f53');
+        await advertiser.goto(url+'/businesses'); await ready(advertiser); assert.equal(await rootColor(advertiser), '#155f53');
     });
     await check('Isolated interactive preview, validation, contrast and focus', async () => {
         await page.locator('#appearance-primary').fill('#ffff00'); await page.locator('#appearance-secondary').fill('#7c3aed');
@@ -86,7 +86,7 @@ try {
         await publish(page, '#ffff00');
         assert.equal(await rootColor(advertiser), '#155f53');
         await advertiser.reload(); await ready(advertiser); assert.equal(await rootColor(advertiser), '#ffff00');
-        const second = await session('advertiser'); await second.goto(url+'/workspaces'); await ready(second); assert.equal(await rootColor(second), '#ffff00');
+        const second = await session('advertiser'); await second.goto(url+'/businesses'); await ready(second); assert.equal(await rootColor(second), '#ffff00');
         assert.equal(await second.locator('#published-appearance').count(), 1);
     });
     await check('Concurrent stale editor cannot silently overwrite publication', async () => {

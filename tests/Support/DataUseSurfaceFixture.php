@@ -15,10 +15,17 @@ final class DataUseSurfaceFixture
         app(DisposableTestDatabaseGuard::class)->assertSafe();
         $db = DB::connection('pgsql_migrations');
         if ($source === null) {
-            $workspace = $db->table('workspaces')->insertGetId(['name' => 'Synthetic data custody', 'slug' => 'data-custody-'.Str::uuid(),
-                'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
+            $session = new \Illuminate\Session\Store('data-source-fixture', new \Illuminate\Session\ArraySessionHandler(120));
+            $session->start();
+            $request = \Illuminate\Http\Request::create('/api/businesses');
+            $request->setLaravelSession($session);
+            $request->setUserResolver(fn () => $actor);
+            app(\App\Security\SessionAuthority::class)->issue($request, $actor);
+            $session->save();
+            $business = app(\App\Foundation\Business\BusinessScope::class)->create($request, (string) Str::uuid7(), 'Synthetic data custody', null);
+            $businessId = $db->table('businesses')->where('public_id', $business['business_public_id'])->value('id');
             $source = (string) Str::uuid7();
-            $db->table('source_registry')->insert(['id' => $source, 'workspace_id' => $workspace, 'family' => 'business', 'namespace' => 'test.synthetic',
+            $db->table('source_registry')->insert(['id' => $source, 'business_id' => $businessId, 'custody_kind' => 'business_native', 'family' => 'business', 'namespace' => 'test.synthetic',
                 'declared_external_id' => 'private-source-identifier', 'label' => 'Private source display name', 'version' => 1, 'status' => 'UNVERIFIED']);
             BusinessAuthorityFixture::insert('resource_right_fences', ['fence_id' => (string) Str::uuid7(), 'kind' => 'source',
                 'source_id' => $source, 'boundary_id' => null, 'rights_epoch' => 0, 'adoption_state' => 'v2_adopted'], $actor->id);

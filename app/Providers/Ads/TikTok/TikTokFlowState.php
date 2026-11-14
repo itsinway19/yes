@@ -28,7 +28,7 @@ final readonly class TikTokFlowState
     public function issueConnectIntent(Request $request, ProviderScope $scope, string $configuration, array $data): string
     {
         if (DB::connection()->transactionLevel() !== 1 || $scope->operation !== 'discovery.read') {
-            throw new LogicException('TikTok intent requires the signed Workspace transaction.');
+            throw new LogicException('TikTok intent requires the signed Business transaction.');
         }
 
         return $this->publish($request, $scope, 0, $configuration, 'connect', $data);
@@ -65,7 +65,7 @@ final readonly class TikTokFlowState
     public function loadConnectIntent(Request $request, string $configuration, #[\SensitiveParameter] string $handle): array
     {
         if (DB::connection()->transactionLevel() !== 1) {
-            throw new LogicException('TikTok intent requires the signed Workspace transaction.');
+            throw new LogicException('TikTok intent requires the signed Business transaction.');
         }
 
         return $this->restore($request, $configuration, 'connect', $handle);

@@ -48,8 +48,8 @@ final class XReadJob implements ShouldBeEncrypted, ShouldQueue
     public int $timeout = 60;
 
     private function __construct(private int $actorId, private int $actorGeneration,
-        #[\SensitiveParameter] private string $sessionId, /* Serialized field retained for existing queued organizational work; holds the exact native owner public ID. */
-        private string $workspacePublicId,
+        #[\SensitiveParameter] private string $sessionId, /* Exact Business locator; the worker requalifies current Source authority. */
+        private string $businessPublicId,
         private XCampaignReport $report, private string $stream, private string $command,
         private int $generation, private int $accessVersion, private DateTimeImmutable $deadline, private string $configuration)
     {
@@ -113,7 +113,7 @@ final class XReadJob implements ShouldBeEncrypted, ShouldQueue
             throw new AuthorizationException('X queued signing configuration changed.');
         }
         $actor = User::findOrFail($this->actorId);
-        $request = Request::create(($this->report->scope->businessId === null ? '/workspaces/' : '/businesses/').$this->workspacePublicId);
+        $request = Request::create('/businesses/'.$this->businessPublicId);
         $request->setUserResolver(fn () => $actor);
         $session = new Store('bb2-x-worker', new ArraySessionHandler(120));
         $session->setId($this->sessionId);
@@ -121,7 +121,7 @@ final class XReadJob implements ShouldBeEncrypted, ShouldQueue
         $request->setLaravelSession($session);
         DB::transaction(function () use ($request, $actor, $principals, $http, $execution, $journal, $custody, $requests, $settings): void {
             $principals->activate($actor);
-            NativeSourceQueueContext::restore($request, $this->report->scope, $this->workspacePublicId, $this->actorGeneration);
+            NativeSourceQueueContext::restore($request, $this->report->scope, $this->businessPublicId, $this->actorGeneration);
             $fingerprint = hash('sha256', json_encode([$this->report->binding(), $this->configuration,
                 $this->deadline->format(DATE_ATOM), $this->rootCommand, $this->number, $this->ticket], JSON_THROW_ON_ERROR));
             $result = $execution->execute($request, $this->report->scope, $this->stream, $this->command,

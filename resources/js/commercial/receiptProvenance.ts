@@ -8,7 +8,7 @@ export async function matchesOriginalReceipt(command: CommercialCommand, receipt
         catalog: ['RecordOrVerifyApprovedMarketReference', 'market_id', 'catalog_reference_id', 'catalog_identity', 'catalog_version', 'approval_reference', 'source_sha256', 'reason_code'],
         configuration: ['ConfigureCommercialMarketVersion', 'market_id', 'configuration_id', 'catalog_reference_id', 'denomination_code', 'reason_code'],
         assignability: ['MarketAssignability', 'market_id', 'configuration_id', 'expected_revision', 'reason_code'],
-        register: ['RegisterCommercialScope', 'scope_id', 'workspace_public_id', 'market_id', 'configuration_id', 'catalog_reference_id', 'denomination_code', 'reason_code'],
+        register: ['RegisterCommercialScope', 'scope_id', 'business_public_id', 'market_id', 'configuration_id', 'catalog_reference_id', 'denomination_code', 'reason_code'],
     };
     const [label, ...fields] = signatures[command.kind];
     const input = body as unknown as Record<string, unknown>;

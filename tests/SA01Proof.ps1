@@ -134,7 +134,7 @@ ALTER ROLE builderad_authority SET lock_timeout='3s';
     }
     if ($MigrationDurabilityProof) {
         & $php tests/Support/MigrationDurabilityProof.php
-        Assert-Exit 'fresh populated forward and repeated catalog durability'
+        Assert-Exit 'fresh install, populated baseline repeat and repeated catalog durability'
     } elseif ($CompleteRegression) {
         & $php -d memory_limit=1024M artisan test --compact "--log-junit=storage/framework/testing/remediation-full.xml"
         Assert-Exit 'single-process complete regression'

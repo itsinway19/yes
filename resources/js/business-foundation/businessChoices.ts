@@ -4,7 +4,7 @@ import { owned, stamp } from '../spa/transport';
 
 export type BusinessChoice = Choices['items'][number];
 export const businessChoiceKey = (choice: BusinessChoice) => JSON.stringify([
-    choice.business_public_id, choice.read_grant_id, choice.realm_kind, choice.realm_workspace_public_id,
+    choice.business_public_id, choice.read_grant_id, choice.realm_kind,
 ]);
 export const businessChoiceDestination = (choice: BusinessChoice) => ({
     path: `/businesses/${encodeURIComponent(choice.business_public_id)}`,

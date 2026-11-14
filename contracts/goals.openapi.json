@@ -209,7 +209,7 @@
       "GoalsContext": {
         "type": "object",
         "properties": {
-          "workspace": {
+          "beneficiary": {
             "type": "object",
             "properties": {
               "public_id": {
@@ -325,7 +325,7 @@
           }
         },
         "required": [
-          "workspace",
+          "beneficiary",
           "preferences",
           "business",
           "catalog",

@@ -124,6 +124,10 @@ class CommercialMarketPreparationTest extends TestCase
 
     public function test_founder_creates_and_manages_market_without_any_delegation(): void
     {
+        $beneficiary = User::factory()->create();
+        $this->actingAs($beneficiary)->postJson('/api/businesses', [
+            'command_id' => (string) Str::uuid7(), 'name' => 'Founder beneficiary',
+        ])->assertCreated();
         $founder = $this->staff('founder');
         $this->actingAsInternal($founder)->withCredentials();
         $page = $this->getJson('/internal/administration/commercial-markets')->assertOk();
@@ -149,13 +153,9 @@ class CommercialMarketPreparationTest extends TestCase
             'configuration_id' => $configuration, 'expected_revision' => 1, 'reason_code' => 'founder_enable'])->assertOk();
         $this->getJson('/internal/commercial')->assertOk()->assertJsonPath('data.founderAccess', true)->assertJsonCount(1, 'data.markets');
         $this->assertSame(4, $db->table('commercial_command_results')->count());
-        $beneficiary = User::factory()->create();
-        $workspace = $db->table('workspaces')->insertGetId(['name' => 'Founder beneficiary', 'slug' => 'founder-'.Str::uuid7(), 'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
-        $db->table('workspace_memberships')->insert(['workspace_id' => $workspace, 'user_id' => $beneficiary->id, 'role' => 'owner', 'status' => 'active', 'created_at' => now()]);
-        $db->table('workspace_ownerships')->insert(['workspace_id' => $workspace, 'responsible_owner_user_id' => $beneficiary->id, 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
         $page = $this->getJson('/internal/commercial')->assertOk();
         $scope = (array) collect($page->json('data')['targets'])->firstWhere('action', 'RegisterCommercialScope');
-        $registration = ['command_id' => (string) Str::uuid7(), 'scope_id' => $scope['target_id'], 'workspace_public_id' => $scope['workspace_public_id'],
+        $registration = ['command_id' => (string) Str::uuid7(), 'scope_id' => $scope['target_id'], 'business_public_id' => $scope['business_public_id'],
             'market_id' => $market, 'configuration_id' => $configuration, 'catalog_reference_id' => $reference, 'denomination_code' => 'SAR', 'reason_code' => 'founder_registration'];
         $this->postJson('/internal/commercial/registrations', $registration)->assertOk();
         $this->getJson('/internal/commercial/receipts/'.$registration['command_id'])->assertOk();
@@ -477,7 +477,7 @@ class CommercialMarketPreparationTest extends TestCase
         $path = '/internal/administration/commercial-markets';
         $this->get($path)->assertOk()->assertViewIs('spa');
         $this->getJson($path, ['X-Builderad-Witness' => '1'])->assertOk()->assertJsonMissingPath('data');
-        foreach (['commercial_markets', 'commercial_market_configuration_versions', 'commercial_catalog_references', 'builderad_sa01_founder_workspaces'] as $projection) {
+        foreach (['commercial_markets', 'commercial_market_configuration_versions', 'commercial_catalog_references', 'builderad_sa01_founder_businesses'] as $projection) {
             $this->assertFalse(collect($queries)->contains(fn ($sql) => str_contains($sql, $projection)), $projection);
         }
         $this->assertFalse(collect($queries)->contains(fn ($sql) => str_contains($sql, 'security_commercial_market_approvals')));

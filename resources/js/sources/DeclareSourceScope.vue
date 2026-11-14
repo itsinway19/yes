@@ -11,8 +11,8 @@ type Scope = { resource: string; operation: string; purpose: string };
 type Command = { command_id: string; source_id: string; effect: 'declare_scope'; expected_version: number;
     resource: string; operation: string; purpose: string; reason: 'owner_scope_declaration' };
 type Pending = { context: string; payload: string };
-const prefix = 'builderad.bb1.declare_scope.pending.v1:';
-const props = defineProps<{ workspaceId: string; sourceId: string; version: number; choices: Scope[] }>();
+const prefix = 'builderad.bb1.declare_scope.pending.v2:';
+const props = defineProps<{ businessId: string; sourceId: string; version: number; choices: Scope[] }>();
 
 const selected = ref('');
 const busy = ref(false);
@@ -36,7 +36,7 @@ function currentIdentity(): { user: number; session: string } | null {
 
 function currentKey(): string | null {
     const identity = currentIdentity();
-    return identity ? `${prefix}${identity.user}:${identity.session}:` + encodeURIComponent(props.workspaceId)
+    return identity ? `${prefix}${identity.user}:${bootstrap.identity.binding.lifecycle}:${identity.session}:` + encodeURIComponent(props.businessId)
         + ':' + encodeURIComponent(props.sourceId) : null;
 }
 
@@ -49,7 +49,7 @@ function restore() {
         message.value = 'تعذّر التحقق من سياق الجلسة الحالي. أعد تحميل الصفحة قبل إعلان نطاق.';
         return;
     }
-    const ownerPrefix = `${prefix}${identity.user}:${identity.session}:`;
+    const ownerPrefix = `${prefix}${identity.user}:${bootstrap.identity.binding.lifecycle}:${identity.session}:`;
     const key = currentKey()!;
     try {
         const storage = globalThis.sessionStorage;
@@ -77,7 +77,7 @@ function restore() {
     }
 }
 onMounted(restore);
-watch(() => [currentIdentity()?.user, currentIdentity()?.session, props.workspaceId, props.sourceId], restore);
+watch(() => [currentIdentity()?.user, currentIdentity()?.session, props.businessId, props.sourceId], restore);
 watch(() => [props.version, JSON.stringify(props.choices)], () => {
     if (!pending.value) {
         selected.value = '';
@@ -95,7 +95,7 @@ watch(selected, () => {
 });
 
 function refresh() {
-    if (active) void read(props.workspaceId, true);
+    if (active) void read(props.businessId, true);
 }
 function clearPending(key: string): boolean {
     try {
@@ -112,7 +112,7 @@ async function sendOriginal(record: Pending, wasUncertain: boolean) {
     errors.value = {};
     message.value = '';
     try {
-        await sources.command(props.workspaceId, command, cancellation.signal);
+        await sources.command(props.businessId, command, cancellation.signal);
         if (!active) return;
         const cleared = clearPending(key);
         if (context.value === key) {

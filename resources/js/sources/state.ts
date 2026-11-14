@@ -1,29 +1,16 @@
-import { publish, status, type PresentationAdmission } from '../spa/presentation';
 import { shallowRef } from 'vue';
-import type { RouteLocationNormalized } from 'vue-router';
-import type { components } from '../api/generated/application';
-import { query } from '../spa/query';
-import { stamp, owned, scope, onClose } from '../spa/transport';
 import { sources } from './api';
-
-export const current = shallowRef<components['schemas']['WorkspaceSourcesResource']>();
-let serial = 0;
-export function clear() { serial++; current.value = undefined; void query.cancelQueries({ queryKey: [scope, 'workspace-sources'] }); }
-export async function read(workspace: string, passive = false, admission?: PresentationAdmission) {
-    const captured = stamp(), attempt = ++serial;
-    const queryKey = [scope, 'workspace-sources', workspace];
-    try {
-        await query.cancelQueries({ queryKey });
-        const value = await query.fetchQuery({ queryKey, queryFn: ({ signal }) => sources.read(workspace, passive ? { 'X-Builderad-Passive': '1' } : {}, admission ? AbortSignal.any([signal, admission.signal]) : signal) });
-        if ((admission?.signal.aborted || !owned(captured)) || attempt !== serial) return;
-        if (!('data' in value) || value.data.workspace.public_id !== workspace) throw Error('Unowned Source resource');
-        const witness = await sources.read(workspace, { 'X-Builderad-Witness': '1' }, admission?.signal);
-        if ((admission?.signal.aborted || !owned(captured)) || attempt !== serial) return;
-        if (!witness.visibility.protected || JSON.stringify(witness.visibility) !== JSON.stringify(value.visibility)) throw Error('Source presentation changed');
-        publish(admission, () => { current.value = value; status.value = 'ready'; }); return value.data;
-    } catch (error) { if (admission) throw error;
-        if (owned(captured) && attempt === serial && status.value !== 'closed') status.value = 'unavailable';
-    }
+import { onClose, owned, stamp } from '../spa/transport';
+export const current = shallowRef<Awaited<ReturnType<typeof sources.read>>>();
+let attempt = 0;
+export async function read(business: string, passive = false) {
+    const serial = ++attempt, identity = stamp();
+    const result = await sources.read(business, passive ? { 'X-Builderad-Passive': '1' } : {});
+    if (!owned(identity) || serial !== attempt) return;
+    const witness = await sources.read(business, { 'X-Builderad-Witness': '1' });
+    if (!owned(identity) || serial !== attempt) return;
+    if (!('data' in result) || result.data.business.public_id !== business || !result.visibility.protected || result.visibility.path !== `/businesses/${business}/source-registry` || JSON.stringify(result.visibility) !== JSON.stringify(witness.visibility)) throw Error('Source registry witness changed');
+    current.value = result;
+    return result.data;
 }
-export const load = (route: RouteLocationNormalized, passive: boolean, admission?: PresentationAdmission) => read(String(route.params.workspace), passive, admission);
-onClose(() => { clear(); });
+onClose(() => { attempt++; current.value = undefined; });

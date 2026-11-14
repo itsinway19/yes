@@ -306,56 +306,6 @@ final class ContentManagementTest extends TestCase
             ->where('event', 'content_page_unpublished')->count());
     }
 
-    public function test_content_grant_backfill_is_founder_only_and_does_not_revive_revocation(): void
-    {
-        $founder = $this->administrator();
-        $db = DB::connection('pgsql_migrations');
-        $grants = $db->table('security_action_grants')->where('subject_user_id', $founder->id);
-        (clone $grants)->whereIn('action', ['content.read', 'content.edit'])->delete();
-        (clone $grants)->where('action', 'content.publish')->update([
-            'status' => 'revoked', 'revoked_at' => now(), 'updated_at' => now(),
-        ]);
-        $migration = require database_path('migrations/0001_01_01_000800_separate_content_authority.php');
-        $runtimeConnection = DB::getDefaultConnection();
-        DB::setDefaultConnection('pgsql_migrations');
-        try {
-            $migration->up();
-        } finally {
-            DB::setDefaultConnection($runtimeConnection);
-        }
-        $this->assertSame(1, (clone $grants)->where('action', 'content.read')->where('status', 'active')->count());
-        $this->assertSame(1, (clone $grants)->where('action', 'content.edit')->where('status', 'active')->count());
-        $this->assertSame(0, (clone $grants)->where('action', 'content.publish')->where('status', 'active')->count());
-        DB::setDefaultConnection('pgsql_migrations');
-        try {
-            $migration->up();
-        } finally {
-            DB::setDefaultConnection($runtimeConnection);
-        }
-        $this->assertSame(1, (clone $grants)->where('action', 'content.read')->count());
-
-        $employee = User::factory()->create();
-        $db->table('principal_lifecycles')->where('user_id', $employee->id)
-            ->update(['principal_class' => 'staff']);
-        $db->table('internal_personnel')->insert([
-            'user_id' => $employee->id, 'kind' => 'employee', 'status' => 'active',
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
-        $db->table('security_action_grants')->insert([
-            'subject_user_id' => $employee->id, 'granted_by' => $founder->id,
-            'source' => 'human', 'action' => 'staff.view', 'scope_kind' => 'platform',
-            'subject_generation' => 1, 'reason' => 'content migration boundary',
-            'status' => 'active', 'version' => 1, 'created_at' => now(), 'updated_at' => now(),
-        ]);
-        DB::setDefaultConnection('pgsql_migrations');
-        try {
-            $migration->up();
-        } finally {
-            DB::setDefaultConnection($runtimeConnection);
-        }
-        $this->assertSame(0, $db->table('security_action_grants')->where('subject_user_id', $employee->id)
-            ->where('action', 'like', 'content.%')->count());
-    }
 
     public function test_content_grant_read_lock_serializes_with_revocation(): void
     {
@@ -705,26 +655,4 @@ final class ContentManagementTest extends TestCase
         }
     }
 
-    public function test_populated_780_content_upgrades_to_revision_owned_publication_fields(): void
-    {
-        $admin = $this->administrator();
-        $this->postJson('/internal/administration/content/pages',
-            $this->pagePayload('legacy-page', 'Legacy page', 'Legacy body'))->assertOk();
-        $page = DB::table('content_pages')->first();
-        $this->postJson('/internal/administration/content/pages/'.$page->public_id.'/publish',
-            ['revision' => 1])->assertOk();
-        $owner = DB::connection('pgsql_migrations');
-        $folder = database_path('migration-sql/0001_01_01_000790_correct_content_publication');
-        $owner->transaction(function () use ($owner, $folder, $page): void {
-            $owner->unprepared(file_get_contents($folder.'/teardown.sql'));
-            $this->assertFalse($owner->getSchemaBuilder()->hasColumn('content_page_revisions', 'slug_ar'));
-            $owner->unprepared(file_get_contents($folder.'/upgrade.sql'));
-            $revision = $owner->table('content_page_revisions')->where('page_id', $page->id)->first();
-            $this->assertSame('legacy-page', $revision->slug_ar);
-            $this->assertSame('legacy-page', $revision->slug_en);
-            $owner->statement('SET LOCAL ROLE builderad_scope_executor');
-            $this->assertTrue((bool) $owner->scalar(
-                'SELECT builderad_private.legacy_catalog_digest() = builderad_private.legacy_installation_digest()'));
-        });
-    }
 }

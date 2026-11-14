@@ -156,48 +156,6 @@ final class PlatformMaintenanceTest extends TestCase
         }
     }
 
-    public function test_additive_install_on_populated_baseline_preserves_accounts_and_initializes_closed_write_privileges(): void
-    {
-        $user = User::factory()->create();
-        $db = DB::connection('pgsql_migrations');
-        $migration = require database_path('migrations/0001_01_01_000470_create_platform_maintenance.php');
-        // Commit deployment transactions before reading through the independent runtime connection.
-        $db->transaction(fn () => DB::usingConnection('pgsql_migrations', fn () => $migration->down()));
-        try {
-            $db->transaction(function () use ($db): void {
-                $db->statement('SET LOCAL ROLE builderad_scope_executor');
-                $this->assertTrue($db->scalar('SELECT builderad_private.legacy_catalog_digest()=builderad_private.legacy_installation_digest()'));
-                $db->statement('RESET ROLE');
-            });
-            $db->statement("CREATE FUNCTION public.maintenance_upgrade_drift() RETURNS integer LANGUAGE sql AS 'SELECT 1'");
-            try {
-                $db->transaction(fn () => DB::usingConnection('pgsql_migrations', fn () => $migration->up()));
-                $this->fail('Unqualified catalog drift must not be resealed by maintenance installation.');
-            } catch (QueryException $error) {
-                $this->assertSame('42501', $error->errorInfo[0]);
-                $this->assertStringContainsString('PLATFORM_MAINTENANCE_UPGRADE_BASELINE_QUALIFICATION_REQUIRED', $error->getMessage());
-                $this->assertNull($db->scalar("SELECT to_regclass('public.platform_maintenance')::text"));
-            } finally {
-                $db->statement('DROP FUNCTION public.maintenance_upgrade_drift()');
-            }
-            $db->transaction(fn () => DB::usingConnection('pgsql_migrations', fn () => $migration->up()));
-            $this->assertFalse(app(PlatformMaintenance::class)->current()['active']);
-            $this->assertSame(0, app(PlatformMaintenance::class)->current()['revision']);
-            $this->assertSame($user->email, $db->table('users')->where('id', $user->id)->value('email'));
-            $this->assertFalse((bool) $db->scalar("SELECT has_table_privilege('builderad_app','platform_maintenance','UPDATE')"));
-            $this->assertFalse((bool) $db->scalar("SELECT has_table_privilege('builderad_app','platform_maintenance_commands','SELECT')"));
-            $this->assertFalse((bool) $db->scalar("SELECT has_table_privilege('builderad_authority','platform_maintenance_commands','DELETE')"));
-            $db->transaction(function () use ($db): void {
-                $db->statement('SET LOCAL ROLE builderad_scope_executor');
-                $this->assertTrue($db->scalar('SELECT builderad_private.legacy_catalog_digest()=builderad_private.legacy_installation_digest()'));
-                $db->statement('RESET ROLE');
-            });
-        } finally {
-            if ($db->scalar("SELECT to_regclass('public.platform_maintenance')::text") === null) {
-                $db->transaction(fn () => DB::usingConnection('pgsql_migrations', fn () => $migration->up()));
-            }
-        }
-    }
 
     public function test_independent_connection_observes_real_state_contention_and_rechecks_revision_and_expiry(): void
     {

@@ -49,21 +49,17 @@ class LifecycleActivationTest extends TestCase
             'status' => 'current',
             'generation' => 1,
         ]);
-        $this->assertDatabaseHas('security_action_grants', [
-            'subject_user_id' => $user->id,
-            'source' => 'system_registration',
-            'action' => 'workspace.create',
-            'subject_generation' => 1,
-        ], 'pgsql_migrations');
+        $this->assertSame(0, DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $user->id)->count());
         // Verification advances the lifecycle. Enter the new native document
         // instead of submitting the old pending document's signed receipt.
         $this->useIdentityDocument('/profile');
         $this->get('/dashboard')->assertRedirect(route('business-foundation.index-page', ['entry' => 1]));
-        $this->get('/organizations/new')->assertRedirect('/businesses/new');
+        $this->get('/organizations/new')->assertNotFound();
+        $this->get('/businesses/new')->assertOk();
 
         $this->get($url)->assertRedirect();
         $this->assertSame(1, (int) DB::table('principal_lifecycles')->where('user_id', $user->id)->value('generation'));
-        $this->assertSame(1, DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $user->id)->count());
+        $this->assertSame(0, DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $user->id)->count());
     }
 
     public function test_database_rejects_lifecycle_generation_regression_and_same_generation_reactivation(): void

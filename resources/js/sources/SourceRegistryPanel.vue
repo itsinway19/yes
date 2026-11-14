@@ -14,21 +14,21 @@ type Item = Scope & { id: string; family: string; namespace: string; declared_ex
     version: number; status: string; identity_verification: string; axes: Record<string, string>;
     capability: { state: string; reason: string; last_verified_at: string | null }; can_manage: boolean; scope_choices: Scope[];
     next_repair: string; audit_delivery: (Scope & { id: string; command_id: string; receipt_version: number; state: string; attempts: number; can_recover: boolean; recovery_reason: string | null })[] };
-type Authority = { source_target_id: string; source_resource: string; source_operation: string; source_purpose: string };
-const props = defineProps<{ workspaceId: string; candidateId: string; canRequestAuthority: boolean;
-    sources: { state: string; items: Item[]; registration_authorities: Authority[] } }>();
-const grant = reactive({ source_id: props.candidateId, resource: '', operation: '', purpose: '', action: 'source.register',
+const props = defineProps<{ businessId: string; candidateId: string; canRequestAuthority: boolean;
+    sources: { state: string; items: Item[] } }>();
+const grant = reactive({ command_id: crypto.randomUUID(), source_id: '', resource: '', operation: '', purpose: '', action: 'source.read',
     decision: 'authorize', reason: 'owner_explicit_request', expires_at: '' });
-const registration = reactive({ command_id: crypto.randomUUID(), source_id: '', resource: '', operation: '', purpose: '',
+const registration = reactive({ command_id: crypto.randomUUID(), source_id: props.candidateId, resource: '', operation: '', purpose: '',
     effect: 'register', expected_version: 0, reason: 'owner_declared_identity', family: 'meta', namespace: '', external_id: '', label: '' });
 const busy = ref(false);
 const failure = ref('');
 type Fields = { errors: Record<string, string>; processing: boolean };
 const grantFields = reactive<Fields>({ errors: {}, processing: false });
 const registrationFields = reactive<Fields>({ errors: {}, processing: false });
-const saved = restore<{ grant: typeof grant; registration: typeof registration }>(props.workspaceId, 'registry');
+const saved = restore<{ grant: typeof grant; registration: typeof registration }>({ kind: 'business', publicId: props.businessId }, 'registry');
 if (saved) { Object.assign(grant, saved.grant); Object.assign(registration, saved.registration); }
-onBeforeUnmount(() => remember(props.workspaceId, 'registry', { grant: { ...grant }, registration: { ...registration } }));
+if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(grant.command_id)) grant.command_id = crypto.randomUUID();
+onBeforeUnmount(() => remember({ kind: 'business', publicId: props.businessId }, 'registry', { grant: { ...grant }, registration: { ...registration } }));
 async function run(command: Parameters<typeof submit>[0], fields?: Fields) {
     if (busy.value) return;
     const captured = stamp(); busy.value = true; failure.value = '';
@@ -36,21 +36,25 @@ async function run(command: Parameters<typeof submit>[0], fields?: Fields) {
     try {
         await submit(command);
         if (!owned(captured)) return;
-        await read(props.workspaceId, true);
+        await read(props.businessId, true);
         if (!owned(captured)) return;
-        if (command.effect === 'registry' && command.body.effect === 'register') registration.command_id = crypto.randomUUID();
+        if (command.effect === 'grant') grant.command_id = crypto.randomUUID();
+        if (command.effect === 'registry' && command.body.effect === 'register' && props.candidateId !== registration.source_id) {
+            registration.command_id = crypto.randomUUID();
+            registration.source_id = props.candidateId;
+        }
     } catch (error) {
         if (!owned(captured)) return;
         if (fields && error instanceof TransportError) fields.errors = Object.fromEntries(Object.entries(error.body.errors ?? {}).map(([field, messages]) => [field, messages[0]]));
+        if (command.effect === 'grant' && error instanceof TransportError && error.status === 409) grant.command_id = crypto.randomUUID();
         failure.value = error instanceof TransportError ? 'رفض الخادم الطلب أو تغيرت الصلاحية. احتفظ بالمسودة وراجع الحالة الحالية.' : 'نتيجة الأمر غير مؤكدة. أعد إرسال الأمر الأصلي المحفوظ فقط.';
     } finally { busy.value = false; if (fields) fields.processing = false; }
 }
 function requestGrant() {
-    void run({ workspace: props.workspaceId, effect: 'grant', body: { ...grant, expires_at: grant.expires_at || null } as SourceAuthorityCommand }, grantFields);
+    void run({ business: props.businessId, effect: 'grant', body: { ...grant, expires_at: grant.expires_at || null } as SourceAuthorityCommand }, grantFields);
 }
-function registerSource(authority: Authority) {
-    Object.assign(registration, { source_id: authority.source_target_id, resource: authority.source_resource, operation: authority.source_operation, purpose: authority.source_purpose });
-    void run({ workspace: props.workspaceId, effect: 'registry', body: { ...registration, effect: 'register' } }, registrationFields);
+function registerSource() {
+    void run({ business: props.businessId, effect: 'registry', body: { ...registration, effect: 'register' } }, registrationFields);
 }
 function manage(item: Item, effect: 'rename' | 'revoke') {
     const label = effect === 'rename' ? window.prompt(providerCopy('الاسم المعلن الجديد'), item.label) : undefined;
@@ -58,9 +62,9 @@ function manage(item: Item, effect: 'rename' | 'revoke') {
     const common = { command_id: crypto.randomUUID(), source_id: item.id, resource: item.resource, operation: item.operation, purpose: item.purpose,
         expected_version: item.version, reason: effect === 'revoke' ? 'owner_source_revocation' : 'owner_label_correction' };
     const body: SourceCommand = effect === 'rename' ? { ...common, effect, label: label! } : { ...common, effect };
-    void run({ workspace: props.workspaceId, effect: 'registry', body });
+    void run({ business: props.businessId, effect: 'registry', body });
 }
-function recover(obligation: string) { void run({ workspace: props.workspaceId, effect: 'audit', source: obligation }); }
+function recover(obligation: string) { void run({ business: props.businessId, effect: 'audit', source: obligation }); }
 </script>
 
 <template>
@@ -78,16 +82,19 @@ function recover(obligation: string) { void run({ workspace: props.workspaceId, 
             <p v-for="(message, field) in grantFields.errors" :key="field" role="alert" class="text-sm text-red-700">{{ message }}</p>
             <button :disabled="busy || grantFields.processing" class="rounded ba-brand-button px-4 py-2 disabled:opacity-50">{{ providerCopy('تأكيد القرار الصريح') }}</button>
         </form>
-        <form v-if="canRequestAuthority && sources.registration_authorities.length" class="mt-6 grid gap-3 sm:grid-cols-2" @submit.prevent>
+        <form v-if="canRequestAuthority" class="mt-6 grid gap-3 sm:grid-cols-2" @submit.prevent="registerSource">
             <h3 class="font-medium sm:col-span-2">{{ providerCopy('تسجيل الهوية المعلنة') }}</h3>
             <label>{{ providerCopy('العائلة') }}<input v-model="registration.family" required list="source-families" class="mt-1 w-full rounded border-slate-300" /><datalist id="source-families"><option v-for="f in ['meta','google','snapchat','tiktok','x','business']" :key="f">{{ f }}</option></datalist></label>
             <label>{{ providerCopy('نطاق المعرّف') }}<input v-model="registration.namespace" required maxlength="80" class="mt-1 w-full rounded border-slate-300" /></label>
             <label>{{ providerCopy('معرّف الحساب المعلن') }}<input v-model="registration.external_id" required maxlength="180" class="mt-1 w-full rounded border-slate-300" /></label>
             <label>{{ providerCopy('الاسم المعلن') }}<input v-model="registration.label" required maxlength="120" class="mt-1 w-full rounded border-slate-300" /></label>
+            <label>{{ providerCopy('المورد') }}<input v-model="registration.resource" required maxlength="180" class="mt-1 w-full rounded border-slate-300" /></label>
+            <label>{{ providerCopy('العملية (رمز)') }}<input v-model="registration.operation" required dir="ltr" class="mt-1 w-full rounded border-slate-300" /></label>
+            <label>{{ providerCopy('الغرض (رمز)') }}<input v-model="registration.purpose" required dir="ltr" class="mt-1 w-full rounded border-slate-300" /></label>
             <p v-for="(message, field) in registrationFields.errors" :key="field" role="alert" class="text-sm text-red-700">{{ message }}</p>
-            <button v-for="a in sources.registration_authorities" :key="a.source_target_id + a.source_operation + a.source_purpose" type="button" :data-register-source="a.source_target_id" :disabled="busy || registrationFields.processing" class="rounded ba-brand-button px-4 py-2 disabled:opacity-50" @click="registerSource(a)">{{ providerCopy('تسجيل غير متحقق:') }} {{ a.source_resource }} / {{ a.source_operation }} / {{ a.source_purpose }}<span class="block" dir="ltr">{{ a.source_target_id }}</span></button>
+            <button type="submit" :disabled="busy || registrationFields.processing" class="rounded ba-brand-button px-4 py-2 disabled:opacity-50">{{ providerCopy('تسجيل الهوية المعلنة') }}</button>
         </form>
-        <p v-if="!sources.items.length" class="mt-5 text-sm text-slate-600">{{ providerCopy('لا توجد مصادر قابلة للعرض بصلاحية المصدر الحالية. منح عرض المساحة وحده لا يكفي.') }}</p>
+        <p v-if="!sources.items.length" class="mt-5 text-sm text-slate-600">{{ providerCopy('لا توجد مصادر قابلة للعرض بصلاحية المصدر الحالية.') }}</p>
         <article v-for="item in sources.items" :key="item.id + item.resource + item.operation + item.purpose" class="mt-5 border-t border-slate-200 pt-5">
             <h3 class="font-medium flex items-center gap-3"><ProviderBrand v-if="/^(meta|google|snapchat|tiktok|x)$/.test(item.family)" :provider="item.family" :size="32" />{{ item.label }} — {{ item.family }}</h3>
             <p dir="ltr" class="mt-1 break-all text-xs">{{ item.id }}</p>
@@ -97,7 +104,7 @@ function recover(obligation: string) { void run({ workspace: props.workspaceId, 
             <p class="mt-2 text-sm">{{ providerCopy('الإجراء التالي:') }} {{ providerCopy(item.next_repair === 'source_revoked' ? 'المصدر مسحوب؛ لا يسمح بالاستخدام المحمي' : 'يلزم تحقق المزوّد المستقل قبل الاستخدام') }}</p>
             <dl class="mt-3 grid gap-1 text-xs" dir="ltr"><div v-for="(state, axis) in item.axes" :key="axis">{{ axis }}: {{ state }}</div></dl>
             <div v-if="item.can_manage" class="mt-3 flex gap-4"><button :disabled="busy" class="text-sm text-[var(--ba-primary-ink)] underline" @click="manage(item, 'rename')">{{ providerCopy('تصحيح الاسم') }}</button><button :disabled="busy" class="text-sm text-red-700 underline" @click="manage(item, 'revoke')">{{ providerCopy('سحب المصدر') }}</button></div>
-            <DeclareSourceScope v-if="sources.items.findIndex(s => s.id === item.id) === sources.items.indexOf(item)" :workspace-id="workspaceId" :source-id="item.id" :version="item.version" :choices="item.scope_choices" />
+            <DeclareSourceScope :business-id="businessId" v-if="sources.items.findIndex(s => s.id === item.id) === sources.items.indexOf(item)" :source-id="item.id" :version="item.version" :choices="item.scope_choices" />
             <ul class="mt-3 text-xs"><li v-for="d in item.audit_delivery" :key="d.id" class="mt-2">{{ providerCopy('تسليم التدقيق:') }} <span dir="ltr">{{ d.state }}</span>
                 <p dir="ltr" class="mt-1 break-all">{{ d.resource }} / {{ d.operation }} / {{ d.purpose }} — {{ d.command_id }} (v{{ d.receipt_version }})</p>
                 <button v-if="d.can_recover" :disabled="busy" class="ms-3 text-[var(--ba-primary-ink)] underline" @click="recover(d.id)">{{ providerCopy('إعادة تسليم الالتزام نفسه') }}</button>

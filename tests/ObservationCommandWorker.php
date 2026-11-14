@@ -47,12 +47,11 @@ if (isset($fixture['entry_external_gate'])) {
 try {
     $result = DB::transaction(function () use ($fixture) {
         app(PrincipalContext::class)->activate(User::findOrFail($fixture['actor']));
-        DB::selectOne('SELECT builderad_v2_legacy_enter((SELECT public_id FROM workspaces WHERE id=?))', [$fixture['scope']['workspace_id']]);
-        DB::selectOne('SELECT builderad_select_workspace_context(?)', [$fixture['scope']['workspace_id']]);
-        $s = $fixture['scope'];
+        $scope = App\Providers\Ads\ProviderScope::fromArray($fixture['scope']);
+        $s = $scope->jsonSerialize();
 
         return DB::scalar('SELECT builderad_observation_accept(?, ?, ?::uuid, ?, ?, ?, ?, ?, ?::uuid, ?, ?, ?::jsonb)', [
-            $s['workspace_id'], $fixture['session'], $s['source_id'], $s['provider'], $s['account_id'], $s['operation'], $s['purpose'],
+            $s['business_id'], $fixture['session'], $s['source_id'], $s['provider'], $s['account_id'], $s['operation'], $s['purpose'],
             'synthetic-range', $fixture['command'], $fixture['generation'], 1, json_encode($fixture['payload'], JSON_THROW_ON_ERROR),
         ]);
     });

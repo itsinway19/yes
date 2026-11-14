@@ -21,7 +21,7 @@ const Team = (await import(moduleUrl(source))).default;
 const api = await import(apiUrl), drafts = await import(draftsUrl), transport = await import(transportUrl);
 const language = await import(localeUrl);
 const business = '11111111-1111-7111-8111-111111111111', agency = '22222222-2222-7222-8222-222222222222', employee = '33333333-3333-7333-8333-333333333333';
-const selection = { realm_kind: 'direct', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: 51 }] };
+const selection = { realm_kind: 'direct',  requirements: [{ requirement_kind: 'business', leaf_grant_id: 51 }] };
 const surface = (target = business, mode = 'mandate') => ({ business: { business_public_id: target }, authority_selection: structuredClone(selection),
     agency_task: { can_mandate: mode === 'mandate', can_assign: mode === 'assign', agency_business_public_id: mode === 'assign' ? agency : null } });
 const projection = (effect = 'mandate') => ({ business_public_id: business, agency_business_public_id: agency, effect,

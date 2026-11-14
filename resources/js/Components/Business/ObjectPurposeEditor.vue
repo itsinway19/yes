@@ -3,16 +3,16 @@ import { useRoute } from 'vue-router';
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useBusinessCopy } from '@/localization/businessCopy';
 import { locale } from '@/spa/locale';
-import { forget, remember, restore, unresolved, submitPurpose, retryPurpose, refreshPurpose } from '@/object-purpose/commands';
+import { forget, remember, restore, unresolved, submitPurpose, retryPurpose } from '@/object-purpose/commands';
 import type { PurposeWriter } from '@/object-purpose/commands';
 import type { PurposeAcknowledgement, PurposeCommand } from '@/object-purpose/api';
 import type { PurposeItem, PurposeObject, PurposeSnapshot, PurposeIntent } from '@/types/object-purpose';
-const props = defineProps<{ workspaceId: string; businessMode?: boolean; historyOnly?: boolean; commandWriter?: PurposeWriter; refreshResource?: () => Promise<void>; purpose: PurposeItem | null; contextVersion: number; dtmTransitionVersion: number; currentIntent: { value: PurposeIntent | null; version: number } | null }>();
+const props = defineProps<{ businessScope: string; businessMode?: boolean; historyOnly?: boolean; commandWriter: PurposeWriter; refreshResource: () => Promise<void>; purpose: PurposeItem | null; contextVersion: number; dtmTransitionVersion: number; currentIntent: { value: PurposeIntent | null; version: number } | null }>();
 const { t } = useBusinessCopy(locale);
 const emit = defineEmits<{ saved: [reply: PurposeAcknowledgement] }>();
 const route = useRoute();
-const workspaceKey = props.workspaceId, purposeKey = props.purpose?.purpose_id ?? null;
-const pending = computed(() => unresolved(workspaceKey, purposeKey));
+const businessKey = props.businessScope, purposeKey = props.purpose?.purpose_id ?? null;
+const pending = computed(() => unresolved(businessKey, purposeKey));
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const object = (): PurposeObject => ({ provider: props.businessMode ? '' : 'meta', account_namespace: props.businessMode ? '' : 'meta_ads_account', account_id: '', object_kind: props.businessMode ? '' : 'campaign', object_id: '', incarnation: null });
 const last = () => props.purpose?.history.at(-1);
@@ -36,7 +36,7 @@ let commandId: string | null = null;
 let savedSuccessfully = false, initialSignature = JSON.stringify(draft);
 const reset = () => { for (const key of Object.keys(flags) as Flag[]) flags[key] = false; };
 type Draft = { baseline: PurposeItem | null; draft: typeof draft; flags: typeof flags; intentReference: typeof intentReference.value; commandId: string | null; changed: boolean; reviewed: boolean; initialSignature: string; contextVersion: number; dtmTransitionVersion: number; dirty: boolean };
-const retained = restore<Draft>(workspaceKey, purposeKey);
+const retained = restore<Draft>(businessKey, purposeKey);
 if (retained?.dirty) {
     baseline.value = retained.baseline; saved = retained.baseline?.history.at(-1)?.snapshot;
     Object.assign(draft, retained.draft); Object.assign(flags, retained.flags); intentReference.value = retained.intentReference;
@@ -63,7 +63,7 @@ const flagLabels = computed<Record<Flag,string>>(() => ({ meaning: t('purposeCon
     identity: t('purposeConfirmIdentity'), standing: t('purposeConfirmStanding'), dtm: t('purposeConfirmDtm'), intent: t('purposeConfirmIntent'), historical: t('purposeConfirmHistorical'), transition: t('purposeConfirmTransition') }));
 const nullable = (v: string) => v.trim() === '' ? null : v;
 const codes = (v: string) => v.split(',').map(code => code.trim()).filter(Boolean);
-async function review() { if (props.refreshResource) { await props.refreshResource(); reviewed.value = true; changed.value = true; } else void refreshPurpose(route, { onSuccess: () => { reviewed.value = true; changed.value = true; } }); }
+async function review() { await props.refreshResource(); reviewed.value = true; changed.value = true; }
 function adopt() {
     baseline.value = clone(props.purpose);
     changed.value = reviewed.value = false; reset(); commandId = null; errors.value = {};
@@ -94,18 +94,18 @@ function save() {
         correction_reason: draft.operation === 'correct' && baseline.value ? nullable(draft.reason) : null,
         withdrawal_reason: withdrawing.value ? nullable(draft.reason) : null, confirmations: clone(flags) };
     processing.value = true;
-    void submitPurpose(props.workspaceId, clone(command) as PurposeCommand, callbacks(), props.commandWriter);
+    void submitPurpose(props.businessScope, clone(command) as PurposeCommand, callbacks(), props.commandWriter);
 }
 function callbacks() {
     return { onError: (value: Record<string, string>) => { errors.value = value; reset(); },
         onHttpException: (response: { status: number }) => { if ([403,409,422].includes(response.status)) { changed.value = true; reviewed.value = false; reset(); return false; } },
         onNetworkError: () => { errors.value = { declaration: t('purposeStale') }; return false; },
-        onSuccess: (reply: PurposeAcknowledgement) => { reset(); commandId = null; savedSuccessfully = true; settling.value = true; forget(workspaceKey, purposeKey); emit('saved', reply); }, onFinish: () => { processing.value = false; },
+        onSuccess: (reply: PurposeAcknowledgement) => { reset(); commandId = null; savedSuccessfully = true; settling.value = true; forget(businessKey, purposeKey); emit('saved', reply); }, onFinish: () => { processing.value = false; },
     };
 }
-function retry() { if (!pending.value || pending.value.busy) return; processing.value = true; void retryPurpose(workspaceKey, purposeKey, callbacks()); }
+function retry() { if (!pending.value || pending.value.busy) return; processing.value = true; void retryPurpose(businessKey, purposeKey, callbacks()); }
 defineExpose({ hasUnsaved: () => !savedSuccessfully && (dirty.value || !!pending.value), pending: () => processing.value || !!pending.value?.busy });
-onBeforeUnmount(() => { if (!savedSuccessfully) remember(workspaceKey, purposeKey, { baseline: baseline.value, draft, flags, intentReference: intentReference.value, commandId, changed: changed.value, reviewed: reviewed.value, initialSignature, contextVersion: props.contextVersion, dtmTransitionVersion: props.dtmTransitionVersion, dirty: dirty.value || !!pending.value }); });
+onBeforeUnmount(() => { if (!savedSuccessfully) remember(businessKey, purposeKey, { baseline: baseline.value, draft, flags, intentReference: intentReference.value, commandId, changed: changed.value, reviewed: reviewed.value, initialSignature, contextVersion: props.contextVersion, dtmTransitionVersion: props.dtmTransitionVersion, dirty: dirty.value || !!pending.value }); });
 </script>
 <template>
 <form data-purpose="form" :data-purpose-version="baseline?.head_version ?? 0" class="biz-form grid gap-4 mt-8" @submit.prevent="save">

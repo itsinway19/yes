@@ -142,7 +142,7 @@ final class BusinessIntentOptionsTest extends BusinessIntentOptionsTestCase
         $this->assertSame($prior, DB::scalar('SHOW TimeZone'));
     }
 
-    public function test_missing_or_different_postgresql_reference_requires_explicit_refresh(): void
+    public function test_missing_or_different_postgresql_reference_fails_closed_until_restored(): void
     {
         $owner = DB::connection('pgsql_migrations');
         $reference = (array) $owner->table('current_intent_timezone_catalog')->sole();
@@ -166,9 +166,6 @@ final class BusinessIntentOptionsTest extends BusinessIntentOptionsTestCase
         } finally {
             $owner->table('current_intent_timezone_catalog')->updateOrInsert(['id' => 1], $reference);
         }
-        $owner->transaction(fn () => $owner->unprepared(file_get_contents(database_path(
-            'migration-sql/0001_01_01_000740_install_current_intent_timezone_catalog/refresh.sql',
-        ))));
         $this->assertContains('UTC', app(BusinessContext::class)->currentIntentTimezones());
     }
 

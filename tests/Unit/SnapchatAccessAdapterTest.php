@@ -22,7 +22,7 @@ final class SnapchatAccessAdapterTest extends TestCase
 
     private function scope(string $account = self::ACCOUNT): ProviderScope
     {
-        return new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::Snapchat,
+        return ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::Snapchat,
             $account, 'report.read', 'advertising_analysis');
     }
 
@@ -167,7 +167,7 @@ final class SnapchatAccessAdapterTest extends TestCase
         $http->assertSentCount(1);
     }
 
-    public function test_discovery_continuation_cannot_cross_workspace_or_token_snapshot(): void
+    public function test_discovery_continuation_cannot_cross_business_or_token_snapshot(): void
     {
         $http = new Factory;
         $http->preventStrayRequests();
@@ -186,7 +186,7 @@ final class SnapchatAccessAdapterTest extends TestCase
         $last = $adapter->discover($this->scope(), $this->credentials(), $next);
         $this->assertCount(1, $last->accounts);
         $this->assertSame('COMPLETE', $last->coverage);
-        $foreign = new ProviderScope(8, $this->scope()->sourceId, Provider::Snapchat, self::ACCOUNT, 'report.read', 'advertising_analysis');
+        $foreign = ProviderScope::forBusiness(8, $this->scope()->sourceId, Provider::Snapchat, self::ACCOUNT, 'report.read', 'advertising_analysis');
         $this->expectException(InvalidArgumentException::class);
         $adapter->discover($foreign, $this->credentials(), $next);
     }

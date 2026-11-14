@@ -52,8 +52,7 @@ final class BusinessMaterialPublishTest extends TestCase
         $version = $db->scalar("SELECT encode(sha256(convert_to(?::jsonb::text,'UTF8')),'hex')", [json_encode($payload)]);
         $ref = ['namespace' => 'test.fixture_report', 'key' => (string) Str::uuid7(), 'version' => $version];
         $outSource = (string) Str::uuid7();
-        $workspace = $db->table('workspaces')->first();
-        $db->table('source_registry')->insert(['id' => $outSource, 'workspace_id' => $workspace->id, 'family' => 'test', 'namespace' => 'test.fixture_report', 'declared_external_id' => $ref['key'], 'label' => 'SYNTHETIC OUTPUT CUSTODY', 'version' => 1, 'status' => 'UNVERIFIED']);
+        $db->table('source_registry')->insert(['id' => $outSource, 'custody_kind' => 'business_native', 'business_id' => $f['business'], 'family' => 'test', 'namespace' => 'test.fixture_report', 'declared_external_id' => $ref['key'], 'label' => 'SYNTHETIC OUTPUT CUSTODY', 'version' => 1, 'status' => 'UNVERIFIED']);
         Fixture::insert('resource_right_fences', ['fence_id' => (string) Str::uuid7(), 'kind' => 'source', 'source_id' => $outSource, 'boundary_id' => null, 'rights_epoch' => 0, 'adoption_state' => 'v2_adopted'], $f['user']->id);
         $selector = ['native_namespaces' => [$ref['namespace']], 'native_keys' => [$ref['key']], 'field_keys' => ['summary'], 'partition_ref' => null];
         $scope = (string) Str::uuid7();
@@ -97,7 +96,7 @@ final class BusinessMaterialPublishTest extends TestCase
 
         return ['grant' => $grant, 'body' => ['command_id' => (string) Str::uuid(), 'material_refs' => $mixed ? [$f['ref'], $f['body']['material_refs'][0]] : [$f['ref']], 'operation' => 'process',
             'purpose' => 'market_research', 'recipient_ref' => $f['user']->public_id,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => $requirements]]];
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => $requirements]]];
     }
 
     public function test_mixed_inputs_form_a_sealed_two_generation_chain_with_current_deep_processing_and_independent_display(): void
@@ -139,7 +138,7 @@ final class BusinessMaterialPublishTest extends TestCase
         $display = Fixture::root($d2['output_scope'], $viewer->id, 'data_use.display', kind: 'data_use');
         $this->actingAs($viewer);
         $body = ['command_id' => (string) Str::uuid(), 'material_refs' => [$d2['ref']], 'operation' => 'display', 'purpose' => 'market_research', 'recipient_ref' => $viewer->public_id,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $business->id], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $display->id]]]];
         $this->postJson($url, $body)->assertOk()->assertJsonCount(1, 'data.materials');
         DB::connection('pgsql_migrations')->table('builderad_private.test_registered_producer')->where('artifact_key', $d1['ref']['key'])->update(['policy_current' => false]);
@@ -270,7 +269,7 @@ final class BusinessMaterialPublishTest extends TestCase
         $business = Fixture::root($f['business'], $viewer->id, 'business.data.use');
         $display = Fixture::root($f['output_scope'], $viewer->id, 'data_use.display', kind: 'data_use');
         $this->actingAs($viewer);
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+        $selection = ['realm_kind' => 'direct', 'requirements' => [
             ['requirement_kind' => 'business', 'leaf_grant_id' => $business->id], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $display->id]]];
         $body = ['command_id' => (string) Str::uuid(), 'material_refs' => [$f['ref']], 'operation' => 'display', 'purpose' => 'market_research', 'recipient_ref' => $viewer->public_id, 'authority_selection' => $selection];
         $url = '/api/businesses/'.$f['a']['business_public_id'].'/materials/read';
@@ -308,7 +307,7 @@ final class BusinessMaterialPublishTest extends TestCase
         $f = $this->prepared();
         $this->publish($f)->assertOk();
         $body = ['command_id' => (string) Str::uuid(), 'material_refs' => [$f['ref']], 'operation' => 'display', 'purpose' => 'market_research', 'recipient_ref' => $f['user']->public_id,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 $f['body']['authority_selection']['requirements'][0], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $f['outputGrant']->id]]]];
         $url = '/api/businesses/'.$f['a']['business_public_id'].'/materials/read';
         $this->postJson($url, $body)->assertOk();

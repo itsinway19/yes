@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use Illuminate\Filesystem\Filesystem;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Process\Process;
 use Tests\Support\MigrationInputIntegrity;
 
 final class MigrationInputIntegrityTest extends TestCase
@@ -208,12 +209,122 @@ final class MigrationInputIntegrityTest extends TestCase
     {
         $directory = $this->root().'/storage/framework/testing/migration-integrity-'.bin2hex(random_bytes(8));
         $this->temporary[] = $directory;
-        (new Filesystem)->copyDirectory($this->root().'/database', $directory);
-        $guard = new MigrationInputIntegrity($this->root(), $directory);
-        $sha = $guard->trustedSha();
-        $lock = $this->manifest();
+        mkdir($directory.'/database/migrations', 0777, true);
+        mkdir($directory.'/database/sql', 0777, true);
+        mkdir($directory.'/tests/Fixtures', 0777, true);
+        $lock = ['baseline' => 'fixture-baseline', 'historical' => [], 'readers' => [], 'inputs' => []];
+        foreach (['0001_01_01_000640_add_business_native_source_custody.php' => [],
+            '0001_01_01_000710_correct_expenditure_preparation_and_selection.php' => ['sql/expenditure_summary.sql']] as $name => $inputs) {
+            $source = $inputs === [] ? "<?php DB::statement('SELECT 1');" : "<?php DB::unprepared(file_get_contents(database_path('sql/expenditure_summary.sql')));";
+            file_put_contents($directory.'/database/migrations/'.$name, $source);
+            $lock['historical'][$name] = MigrationInputIntegrity::digest($source);
+            $lock['readers'][$name] = $inputs;
+        }
+        file_put_contents($directory.'/database/sql/expenditure_summary.sql', 'SELECT 1;');
+        $lock['inputs']['sql/expenditure_summary.sql'] = MigrationInputIntegrity::digest('SELECT 1;');
+        file_put_contents($directory.'/tests/Fixtures/migration-inputs.lock.json', json_encode($lock, JSON_THROW_ON_ERROR));
+        $this->commitFixture($directory);
+        $sha = trim((new Process(['git', 'rev-parse', 'HEAD'], $directory))->mustRun()->getOutput());
+        $directory .= '/database';
+        $guard = new MigrationInputIntegrity(dirname($directory), $directory);
         $this->assertSame([], $guard->verify($lock, $sha), 'The unmodified candidate must first qualify against Git.');
 
         return [$directory, $guard, $sha, $lock];
+    }
+
+    private function commitFixture(string $directory): void
+    {
+        foreach ([['init', '--quiet'], ['add', '.'], ['-c', 'user.name=Integrity fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '--quiet', '-m', 'Accepted baseline']] as $arguments) {
+            (new Process(['git', ...$arguments], $directory))->mustRun();
+        }
+    }
+
+    public function test_exact_external_approval_accepts_the_one_time_rebaseline_for_pr_and_first_push(): void
+    {
+        [$database, $guard, $sha, $lock] = $this->candidate();
+        $lock['baseline'] = 'workspace-retirement-clean-postgresql-v1';
+        // Use the real authorized predecessor, while candidate sources are isolated fixtures.
+        $guard = new MigrationInputIntegrity($this->root(), $database);
+        $from = 'd5d93ed73f20f5e81972e8b5d19cb5cb95db3fe4';
+        $approval = hash('sha256', json_encode(['from_sha' => $from, 'manifest' => $lock], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+        $previous = getenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL');
+        $actions = getenv('GITHUB_ACTIONS');
+        $trusted = getenv('BUILDERAD_MIGRATION_TRUSTED_SHA');
+        try {
+            putenv('GITHUB_ACTIONS=true');
+            putenv('BUILDERAD_MIGRATION_TRUSTED_SHA='.$from);
+            putenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL='.$approval);
+            // Historical legacy shared readers must not be admitted as new baseline readers.
+            $this->assertNotEmpty($guard->verify($lock, $from));
+            $name = '0001_01_01_000710_correct_expenditure_preparation_and_selection.php';
+            $source = "<?php DB::statement('SELECT 2');";
+            file_put_contents($database.'/migrations/'.$name, $source);
+            $lock['historical'][$name] = MigrationInputIntegrity::digest($source);
+            $lock['readers'][$name] = [];
+            $lock['inputs'] = [];
+            $approval = hash('sha256', json_encode(['from_sha' => $from, 'manifest' => $lock], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+            putenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL='.$approval);
+            foreach (['pull_request.base.sha', 'push.before'] as $event) {
+                $this->assertSame([], $guard->verify($lock, $guard->trustedSha()), $event);
+            }
+            putenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL');
+            $this->assertNotEmpty($guard->verify($lock, $from), 'Candidate cannot approve itself.');
+            putenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL='.str_repeat('0', 64));
+            $this->assertNotEmpty($guard->verify($lock, $from));
+            putenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL='.$approval);
+            $otherSha = trim((new Process(['git', 'rev-parse', $from.'^'], $this->root()))->mustRun()->getOutput());
+            $this->assertNotEmpty($guard->verify($lock, $otherSha), 'Approval is bound to the authorized predecessor.');
+            $lock['readers'][$name] = ['sql/expenditure_summary.sql'];
+            $this->assertNotEmpty($guard->verify($lock, $from), 'Manifest changes invalidate approval.');
+        } finally {
+            $previous === false ? putenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL') : putenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL='.$previous);
+            $actions === false ? putenv('GITHUB_ACTIONS') : putenv('GITHUB_ACTIONS='.$actions);
+            $trusted === false ? putenv('BUILDERAD_MIGRATION_TRUSTED_SHA') : putenv('BUILDERAD_MIGRATION_TRUSTED_SHA='.$trusted);
+        }
+    }
+
+    public function test_after_merge_the_new_baseline_is_immutable_without_transition_approval(): void
+    {
+        [$database, $guard, $sha, $lock] = $this->candidate();
+        $lock['baseline'] = 'workspace-retirement-clean-postgresql-v1';
+        file_put_contents(dirname($database).'/tests/Fixtures/migration-inputs.lock.json', json_encode($lock, JSON_THROW_ON_ERROR));
+        $this->commitFixture(dirname($database));
+        $sha = trim((new Process(['git', 'rev-parse', 'HEAD'], dirname($database)))->mustRun()->getOutput());
+        $this->assertSame([], $guard->verify($lock, $sha));
+        $input = 'sql/expenditure_summary.sql';
+        file_put_contents($database.'/'.$input, 'SELECT 2;');
+        $lock['inputs'][$input] = MigrationInputIntegrity::digest('SELECT 2;');
+        $this->assertNotEmpty($guard->verify($lock, $sha));
+    }
+
+    public function test_even_an_approved_manifest_cannot_hide_a_reader_or_misstate_actual_input_bytes(): void
+    {
+        [$database, $unused, $sha, $lock] = $this->candidate();
+        $name = '0001_01_01_000710_correct_expenditure_preparation_and_selection.php';
+        $input = 'migration-sql/'.pathinfo($name, PATHINFO_FILENAME).'/definition.sql';
+        mkdir(dirname($database.'/'.$input), 0777, true);
+        file_put_contents($database.'/'.$input, 'SELECT 1;');
+        $source = "<?php DB::unprepared(file_get_contents(database_path('".$input."')));";
+        file_put_contents($database.'/migrations/'.$name, $source);
+        $lock['baseline'] = 'workspace-retirement-clean-postgresql-v1';
+        $lock['historical'][$name] = MigrationInputIntegrity::digest($source);
+        $lock['readers'][$name] = [$input];
+        $lock['inputs'] = [$input => MigrationInputIntegrity::digest('SELECT 1;')];
+        $guard = new MigrationInputIntegrity($this->root(), $database);
+        $previous = getenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL');
+        try {
+            putenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL='.MigrationInputIntegrity::rebaselineApproval($lock));
+            $this->assertSame([], $guard->verify($lock, MigrationInputIntegrity::REBASELINE_FROM));
+            $hidden = $lock;
+            $hidden['readers'][$name] = [];
+            $hidden['inputs'] = [];
+            putenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL='.MigrationInputIntegrity::rebaselineApproval($hidden));
+            $this->assertNotEmpty($guard->verify($hidden, MigrationInputIntegrity::REBASELINE_FROM));
+            putenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL='.MigrationInputIntegrity::rebaselineApproval($lock));
+            file_put_contents($database.'/'.$input, 'SELECT 2;');
+            $this->assertNotEmpty($guard->verify($lock, MigrationInputIntegrity::REBASELINE_FROM));
+        } finally {
+            $previous === false ? putenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL') : putenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL='.$previous);
+        }
     }
 }

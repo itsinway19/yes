@@ -58,6 +58,10 @@ jobs:
       # PR target identity comes from GitHub's event, never the candidate manifest.
       # On protected-main pushes, compare with the server-provided previous commit.
       BUILDERAD_MIGRATION_TRUSTED_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      # Owner/reviewer configures this repository variable after reviewing the exact
+      # workspace-retirement manifest digest. Missing approval fails closed for
+      # that fixed predecessor only; subsequent trusted baselines remain immutable.
+      BUILDERAD_MIGRATION_REBASELINE_APPROVAL: ${{ vars.BUILDERAD_MIGRATION_REBASELINE_APPROVAL }}
 
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0

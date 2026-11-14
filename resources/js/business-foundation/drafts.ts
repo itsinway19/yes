@@ -1,6 +1,6 @@
 import { onClose, scope, TransportError } from '../spa/transport';
 import { hasPendingDataLicense } from './dataLicenseJourney';
-import type { ContextCommand, FactCommand, FactKind, Goals, LinkCommand, GrantCommand, ResourceCommand, BindingCommand, InternalTeamCommand, LifecycleCommand } from './api';
+import type { ContextCommand, FactCommand, FactKind, Goals, GrantCommand, ResourceCommand, BindingCommand, LifecycleCommand } from './api';
 type DeliveryState = { uncertain?: boolean; blocked?: boolean };
 // Delivery uncertainty is document state, not authority. A first validation
 // rejection is definitive; a canonical typed CAS rejection follows receipt lookup.
@@ -19,14 +19,9 @@ export type FactFields = { codes: string[]; goals: Goals; clearing: boolean; dir
 export type FactDraft = DeliveryState & { kind: FactKind; fields: FactFields; baseline: string; context: number; intent: number; preferences: number;
     selected: string; pending?: FactCommand; notice: string; confirmed: boolean; blocked: boolean; flags: Record<string, boolean> };
 export const factDrafts = new Map<string, FactDraft>();
-export type LinkDraft = DeliveryState & { workspace: string; kind: 'collaboration' | 'agency'; selected: string; version: number; linkRef: string | null;
-    pending?: LinkCommand; notice: string; confirmed: boolean; blocked: boolean };
-export const linkDrafts = new Map<string, LinkDraft>();
 export type DelegationDraft = DeliveryState & { selected: string; recipient: string; agency: string; expires: string; delegable: boolean;
     pending?: GrantCommand; notice: string; confirmed: boolean; blocked: boolean };
 export const delegationDrafts = new Map<string, DelegationDraft>();
-export type InternalTeamDraft = { workspace: string; recipient: string; confirmed: boolean; pending?: InternalTeamCommand; uncertain?: boolean; notice: string };
-export const internalTeamDrafts = new Map<string, InternalTeamDraft>();
 export const directTeamDrafts = new Map<string, { confirmed: boolean; pending?: import('./api').DirectTeamEnrollment; blocked: boolean; notice: string }>();
 export type AgencyTeamDraft = { mode: 'mandate' | 'assign'; agency: string; recipient: string; action: string; expires: string;
     confirmed: boolean; pending?: import('./api').AgencyGrantCommand; uncertain: boolean; blocked: boolean;
@@ -62,7 +57,11 @@ export function hasPendingBusinessDraft(business: string) {
     const prefix = businessDraftPrefix(business);
     if ([...teamMembersDrafts].some(([resource, draft]) => resource.startsWith(prefix) && draft.assignment
         && (!!agencyTeamDrafts.get(draft.assignment.resource)?.pending || !!delegationDrafts.get(`${draft.assignment.resource}:delegations:1`)?.pending))) return true;
-    return [drafts, factDrafts, linkDrafts, delegationDrafts, internalTeamDrafts, directTeamDrafts, agencyTeamDrafts, teamMembersDrafts, businessMandatesDrafts, purposeEnrollmentDrafts, dataUseDrafts, lifecycleDrafts]
+    return [internalTeamDrafts, drafts, factDrafts, delegationDrafts, directTeamDrafts, agencyTeamDrafts, teamMembersDrafts, businessMandatesDrafts, purposeEnrollmentDrafts, dataUseDrafts, lifecycleDrafts]
         .some(store => [...store].some(([resource, draft]) => resource.startsWith(prefix) && !!draft.pending));
 }
-onClose(() => { drafts.clear(); lifecycleDrafts.clear(); factDrafts.clear(); linkDrafts.clear(); delegationDrafts.clear(); internalTeamDrafts.clear(); directTeamDrafts.clear(); agencyTeamDrafts.clear(); teamMembersDrafts.clear(); businessMandatesDrafts.clear(); purposeEnrollmentDrafts.clear(); boundaryDrafts.clear(); sourceDrafts.clear(); dataUseDrafts.clear(); creation.clear(); });
+onClose(() => { drafts.clear(); lifecycleDrafts.clear(); factDrafts.clear(); delegationDrafts.clear(); directTeamDrafts.clear(); agencyTeamDrafts.clear(); teamMembersDrafts.clear(); businessMandatesDrafts.clear(); purposeEnrollmentDrafts.clear(); boundaryDrafts.clear(); sourceDrafts.clear(); dataUseDrafts.clear(); creation.clear(); });
+
+export type InternalTeamDraft = { recipient:string; confirmed:boolean; pending?: import('./api').InternalTeamCommand; uncertain?:boolean; notice:string };
+export const internalTeamDrafts = new Map<string,InternalTeamDraft>();
+onClose(()=>internalTeamDrafts.clear());

@@ -13,7 +13,7 @@ final class CustomerDiscoveryPracticeTest extends TestCase
 
     private function businessSelection(int $grant): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
+        return ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
     }
 
     private function scenario(): array
@@ -30,7 +30,7 @@ final class CustomerDiscoveryPracticeTest extends TestCase
         $right = $this->knowledgeRight($consumer['user'], $originals['source'], $ref['key'], 'market.knowledge', 'display', ['finding', 'practice_basis']);
         $base = '/api/businesses/'.$consumer['business']['business_public_id'];
         $this->postJson($base.'/data-use-bindings', ['command_id' => (string) Str::uuid(), 'data_use_scope_id' => $right['scope_id'], 'effect' => 'add', 'expected_relation' => 0,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $consumer['business']['grant_refs']['business.link.manage']], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $right['grant_id']],
             ]],
         ])->assertOk();
@@ -43,7 +43,7 @@ final class CustomerDiscoveryPracticeTest extends TestCase
         $body = ['command_id' => (string) Str::uuid(), 'practice_id' => $practice['practice_id'], 'expected_revision' => 1, 'material_ref' => $ref, 'purpose' => 'market_research',
             'relation' => ['basis' => 'business_declared', 'applicability' => 'related', 'rationale' => 'تصريحي: الموضوع متعلق بشراء الأجهزة الجديدة'],
             'question' => ['geography' => null, 'period' => null, 'offering' => null], 'read_selection' => $read,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $consumer['read']->id], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $right['grant_id']],
             ]]];
 

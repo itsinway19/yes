@@ -2,8 +2,6 @@
 
 namespace App\Business;
 
-use App\Models\Workspace;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 final class BusinessContext
@@ -49,24 +47,5 @@ final class BusinessContext
             'countries' => $this->countries(),
             'goals' => AdvertiserGoalPreferences::catalog(),
         ];
-    }
-
-    public function originalHistoryProjection(Request $request, Workspace $workspace): array
-    {
-        $current = DB::table('workspaces')->where('id', $workspace->id)->first(['current_intent', 'business_context_version']);
-        abort_unless($current, 403);
-        $version = (int) $current->business_context_version;
-        $intent = $current->current_intent === null ? null : json_decode($current->current_intent, true, flags: JSON_THROW_ON_ERROR);
-        $typeId = DB::table('workspaces')->where('id', $workspace->id)->value('business_type_id');
-        $type = $typeId ? DB::table('business_types')->where('id', $typeId)
-            ->first(['id', 'key', 'name_ar', 'name_en', 'active']) : null;
-
-        $markets = DB::table('business_target_markets as m')->join('country_references as c', 'c.code', '=', 'm.country_code')
-            ->where('m.workspace_id', $workspace->id)->orderByRaw('c.code COLLATE "C"')->get(['c.code', 'c.name_ar', 'c.name_en'])
-            ->map(fn ($row) => (array) $row)->all();
-
-        return ['type' => $type, 'version' => $version, 'currentIntent' => ['state' => $intent === null ? 'NOT_DECLARED' : 'PRESENT', 'value' => $intent, 'version' => $version],
-            'canManage' => false,
-            'targetMarketsDeclared' => $markets !== [], 'targetMarkets' => $markets];
     }
 }

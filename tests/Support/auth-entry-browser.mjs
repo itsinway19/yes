@@ -209,33 +209,38 @@ export async function runAuthEntryCases({ browser, check, meta, get, post, comma
             return { sourceUrlRetained: true, mountedDraftRetained: true, sourceInert: true, cancelledTargetCannotPublish: true,
                 resourceAndWitnessRequests: requests.map(row => ({ status: row.status, ms: row.finished - row.start, bytes: row.bytes })), beforeAfterSpeedup: 'NOT_MEASURED' };
         });
-        await check('A actual Back/Forward and passive resource admission preserve only the qualified original history', 'auth', async () => {
-            const first=fixture.a.workspaces[0].public_id,second=fixture.a.workspaces[1].public_id;
-            const target=id=>`/workspaces/${id}/commercial-history`;
-            const historyReady=()=>page.waitForFunction(()=>document.getElementById('application-spa')?.dataset.state==='ready'&&document.querySelector('[data-commercial-history]'));
-            const push=url=>page.evaluate(url=>document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(url),url);
-            await login('a',target(first));await historyReady();
-            const original=await page.locator('[data-commercial-history]').innerText(),mark=result.wire.length;
-            await push(target(first)+'?kind=intent');await historyReady();
-            assert.equal(new URL(page.url()).search,'?kind=intent');
-            await push(target(second));await historyReady();
-            let once=true;const key='passive-original-history';
-            await page.route(`**${target(first)}?kind=intent`,async route=>{
-                if(once){once=false;await route.continue({headers:{...route.request().headers(),'X-Proof-Hold':key}});}else await route.continue();
+        await check('A actual Back and passive resource admission restore only the qualified Business history', 'auth', async () => {
+            const [first, second] = fixture.a.businesses;
+            const path = business => `/businesses/${business.business_public_id}`;
+            const destination = business => `${path(business)}?access=${business.grant_refs['business.context.read']}&section=settings&settings=history`;
+            const history = page.locator('[data-business-history]');
+            const historyReady = () => history.waitFor({ state: 'visible' });
+            const push = url => page.evaluate(url => document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(url), url);
+            await login('a', destination(first)); await historyReady();
+            const original = await history.innerText(), mark = result.wire.length;
+            await push(destination(second)); await historyReady();
+            let once = true;
+            const key = 'passive-business-history', firstRoute = url => url.pathname === path(first);
+            await page.route(firstRoute, async route => {
+                if (once) {
+                    once = false;
+                    await route.continue({ headers: { ...route.request().headers(), 'X-Proof-Hold': key } });
+                } else await route.continue();
             });
             try {
-                await page.evaluate(()=>history.back());await until(()=>held.has(key));
-                assert.equal(new URL(page.url()).pathname,target(first));
-                assert.equal(await page.locator('[data-spa-private]:visible').count(),0);
-                held.get(key).deliver();held.delete(key);await historyReady();
-                await page.unroute(`**${target(first)}?kind=intent`);
-                await page.goBack();await historyReady();
-                assert.equal(await page.locator('[data-commercial-history]').innerText(),original);
-                assert.equal(await page.locator('[data-commercial-history] form').count(),0);
-                assert.equal(result.wire.slice(mark).filter(row=>row.method==='POST'&&row.path.startsWith('/workspaces/')).length,0);
+                await page.evaluate(() => window.history.back()); await until(() => held.has(key));
+                assert.equal(new URL(page.url()).pathname, path(first));
+                assert.equal(await page.locator('[data-spa-private]:visible').count(), 0);
+                held.get(key).deliver(); held.delete(key); await historyReady();
+                assert.equal(await history.innerText(), original);
+                assert.equal(await history.locator('form').count(), 0);
+                assert.equal(result.wire.slice(mark).filter(row => row.method === 'POST' && row.path.includes('/businesses/')).length, 0);
                 await logout();
-                return {sameRecordHistorySelection:true,actualBack:true,hiddenBeforeAdmission:true,readOnly:true,navigationWrites:0,draftBehavior:'Business operating browser cases cover retained editing drafts'};
-            } finally {if(held.has(key)){held.get(key).deliver();held.delete(key);}await page.unroute(`**${target(first)}?kind=intent`);}
+                return { sameBusinessHistory: true, actualBack: true, hiddenBeforeAdmission: true, readOnly: true, navigationWrites: 0 };
+            } finally {
+                if (held.has(key)) { held.get(key).deliver(); held.delete(key); }
+                await page.unroute(firstRoute);
+            }
         });
         await check('A actual virtual resident UV passkey enrollment and native passkey login retain server verification and consumed-document denial', 'auth', async () => {
             const cdp = await context.newCDPSession(page); await cdp.send('WebAuthn.enable');

@@ -12,7 +12,7 @@ final class BusinessActivityTest extends TestCase
 {
     private function selection(int $grant): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
+        return ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
     }
 
     private function value(string $kind = 'sale'): array

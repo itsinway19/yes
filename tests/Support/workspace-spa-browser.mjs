@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import Ajv2020 from 'ajv/dist/2020.js';
 
 // Keep the official historical selection name. Its operational journeys now
-// exercise the sole Business product; Workspace resources are qualified JSON.
+// exercise Business and verify retired routes reject requests.
 export async function runWorkspaceCases({ browser, check, login, meta, result, fixture, command, get, post }) {
     const origin='http://localhost:8138';
     const spec=JSON.parse(await readFile('contracts/application.openapi.json','utf8'));
@@ -15,21 +15,20 @@ export async function runWorkspaceCases({ browser, check, login, meta, result, f
     const ready=async(selector='[data-business-surface]')=>page.waitForFunction(selector=>document.querySelector('[data-application-spa]')?.dataset.state==='ready'&&!!document.querySelector(selector),selector);
     const push=async path=>{await page.evaluate(path=>document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(path),path);await ready();};
     const list=async()=>{const response=await get(page,'/api/businesses');assert.equal(response.status,200);validate('BusinessChoicesResult',response.body);return response.body.data.items;};
-    const historicalList=async()=>{const response=await get(page,'/workspaces');assert.equal(response.status,200);validate('WorkspaceIndexResource',response.body);return response.body;};
     const raw=async(path,method,body,extra={})=>{const identity=await meta(page);const response=await context.request.fetch(origin+path,{method,headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':identity.csrf,'X-Builderad-Document':identity.receipt,'X-Builderad-Transition':identity.transition,...extra},data:body,maxRedirects:0});return{status:response.status(),body:await response.json()};};
     const language=async wanted=>{const menu=page.locator('.advertiser-account-menu');if(await menu.getAttribute('open')===null)await menu.locator(':scope > summary').click();await page.locator('[data-application="locale"]').click();await page.waitForFunction(wanted=>document.documentElement.lang===wanted,wanted);await ready();if(await menu.getAttribute('open')!==null)await menu.locator(':scope > summary').click();};
     let apiCreated,created;
     try{
-        await check('retired Workspace entrances redirect to Business while qualified historical JSON remains isolated','spa',async()=>{
-            await login(page,'application');const before=await meta(page);
-            await page.goto(origin+'/workspaces');await page.waitForURL(origin+'/businesses');await ready();
-            const after=await meta(page);assert.equal(after.binding.principal,before.binding.principal);assert.notEqual(after.binding.generation,before.binding.generation);
-            const rows=await historicalList();assert.equal(rows.data.canCreateWorkspace,false);assert.ok(rows.data.workspaces.some(row=>row.public_id===fixture.a.workspaces[0].public_id));assert.ok(rows.data.workspaces.every(row=>!fixture.b.workspaces.some(foreign=>foreign.public_id===row.public_id)));
-            for(const path of ['/organizations','/workspaces'])assert.equal((await post(page,path,{name:'Retired parallel creation'})).status,410);
-            const response=await context.request.get(origin+'/organizations/new',{maxRedirects:0});assert.equal(response.status(),302);assert.equal(new URL(response.headers().location,origin).pathname,'/businesses/new');
-            const witness=await get(page,'/workspaces',{'X-Builderad-Witness':'1'});assert.equal(witness.status,200);validate('GoalsWitness',witness.body);assert.equal('data' in witness.body,false);assert.deepEqual(witness.body.visibility,rows.visibility);
-            assert.equal((await get(page,`/workspaces/${fixture.b.workspaces[0].public_id}`)).status,403);assert.equal((await context.request.get(origin+'/contracts/application.openapi.json')).status(),404);
-            return{htmlDestination:'/businesses',retiredCreation:410,qualifiedHistoricalRows:rows.data.workspaces.length,foreignHistory:403,witnessEquivalent:true};
+        await check('Retired Workspace routes are absent and Business remains accessible','spa',async()=>{
+            await login(page,'application');
+            for (const retired of ['/workspaces','/organizations/new',`/workspaces/${fixture.b.businesses[0].business_public_id}`]) {
+                assert.equal((await context.request.get(origin+retired,{maxRedirects:0})).status(),404);
+            }
+            for (const retired of ['/organizations','/workspaces']) {
+                assert.equal((await post(page,retired,{name:'Retired parallel creation'})).status,404);
+            }
+            assert.ok((await list()).some(row=>row.business_public_id===fixture.a.businesses[0].business_public_id));
+            return {retiredRoutes:404,businessAccessible:true};
         });
         await check('Business HTTP contracts preserve 200 201 403 409 419 422 and exact atomic creation replay','spa',async()=>{
             const before=await list(),body={command_id:crypto.randomUUID(),name:'Business API creation'};
@@ -78,13 +77,13 @@ export async function runWorkspaceCases({ browser, check, login, meta, result, f
             const saved=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/businesses/${created.business_public_id}/context`&&response.request().method()==='PUT');await page.locator('form').filter({has:page.locator('#bf-name')}).locator('button.bf-primary').click();
             assert.equal((await saved).status(),200);await page.locator('[data-business-saved]').waitFor();
             const surface=await get(page,`/api/businesses/${created.business_public_id}/surface?access=${created.grant_refs['business.context.read']}`);assert.equal(surface.status,200);validate('BusinessSurfaceResult',surface.body);assert.equal(surface.body.data.business.name,'Business edited in active UI');
-            const stale={command_id:crypto.randomUUID(),name:'Stale replacement',business_type_id:surface.body.data.business.business_type_id,expected_context:surface.body.data.business.versions.context-1,authority_selection:{realm_kind:'direct',realm_workspace_public_id:null,requirements:[{requirement_kind:'business',leaf_grant_id:Number(created.grant_refs['business.context.manage'])}]}};
+            const stale={command_id:crypto.randomUUID(),name:'Stale replacement',business_type_id:surface.body.data.business.business_type_id,expected_context:surface.body.data.business.versions.context-1,authority_selection:{realm_kind:'direct',requirements:[{requirement_kind:'business',leaf_grant_id:Number(created.grant_refs['business.context.manage'])}]}};
             assert.equal((await raw(`/api/businesses/${created.business_public_id}/context`,'PUT',stale)).status,409);assert.equal((await get(page,`/api/businesses/${created.business_public_id}/surface?access=${created.grant_refs['business.context.read']}`)).body.data.business.name,'Business edited in active UI');
             return{realUIEdit:true,staleCAS:409,acceptedNamePreserved:true};
         });
         await check('revoked session cannot restore Business choices or consume historical JSON with its old receipt','spa',async()=>{
             await push('/businesses');const identity=await meta(page);command('revoke');await page.reload();await page.waitForURL(origin+'/login');
-            for(const path of ['/api/businesses','/workspaces']){
+            for(const path of ['/api/businesses']){
                 const response=await context.request.get(origin+path,{headers:{Accept:'application/json','X-Builderad-Document':identity.receipt},maxRedirects:0});assert.ok([401,409].includes(response.status()));
             }
             assert.equal(await page.locator('[data-business-list]').count(),0);assert.equal(await page.locator('[data-workspaces="index"]').count(),0);

@@ -12,12 +12,12 @@ const json = schema => ({ content: { 'application/json': { schema } } });
 const error = description => ({ description, ...json(ref('Error')) });
 const failures = {
     401: error('No current authenticated session. A stale document may instead be rejected with identityConflict 409 before auth.'),
-    403: error('Unverified principal, absent Workspace scope or withdrawn grant. No write effect.'),
+    403: error('Unverified principal, absent Business scope or withdrawn grant. No write effect.'),
     409: error('CAS mismatch: preserve draft and explicitly review current version. identityConflict=true instead closes the document; never adopt it as a CAS conflict.'),
     419: error('CSRF rejection, including a transport session that no longer contains the CSRF token. No write effect.'),
     422: { description: 'Invalid exact JSON value/version shape, size or domain selection; errors.value contains validation messages.', ...json(ref('ValidationError')) },
 };
-const parameters = [{ name: 'workspace', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }];
+const parameters = [{ name: 'business', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }];
 const headers = {
     'X-Builderad-Identity': { description: 'Server document evidence, verified by the web transport. Not independent authority.', schema: text },
     'Cache-Control': { schema: text },
@@ -47,7 +47,7 @@ export const spec = {
             Visibility: object({ protected: { type: 'boolean' }, path: text, context: text }),
             GoalsWitness: object({ visibility: ref('Visibility') }),
             GoalsContext: object({
-                workspace: object({ public_id: { type: 'string', format: 'uuid' }, name: text }), preferences: ref('Preferences'),
+                beneficiary: object({ public_id: { type: 'string', format: 'uuid' }, name: text }), preferences: ref('Preferences'),
                 business: object({ type: { anyOf: [object({ name_ar: text, name_en: text }, ['name_ar', 'name_en'], true), { type: 'null' }] }, canManage: { type: 'boolean' } }, ['type', 'canManage'], true),
                 catalog: list(object({ id: text, name_ar: text, name_en: text, description_ar: text, description_en: text, results: list(object({ id: text, name_ar: text, name_en: text })) })),
                 visibility: ref('Visibility'),

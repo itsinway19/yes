@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
-/** Server orchestration only. Routes must provide signed Workspace transactions and explicit source grants. */
+/** Server orchestration only. Routes must provide signed Business transactions and explicit source grants. */
 final readonly class GoogleAuthorizationCoordinator
 {
     public function __construct(private Factory $http, private GoogleAccessAdapter $configuration,
@@ -84,14 +84,14 @@ final readonly class GoogleAuthorizationCoordinator
         if ($selected->provider !== Provider::Google || ! $selected->sameCustodyAs($installation)
             || $selected->sourceId === $installation->sourceId || $selected->operation !== 'report.read'
             || $selected->purpose !== $installation->purpose) {
-            throw new InvalidArgumentException('Selected Google account requires its own exact Workspace/source/report scope.');
+            throw new InvalidArgumentException('Selected Google account requires its own exact Business/source/report scope.');
         }
-        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$selected->workspaceId,
+        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$selected->businessId,
             SessionAuthority::sessionKey($request), $selected->sourceId, $selected->accountId, $selected->operation, $selected->purpose]);
         if (DB::table('source_registry')->where('id', $selected->sourceId)->value('namespace') !== 'ad_account') {
             throw new AuthorizationException('Selection must bind an explicitly declared advertising account source.');
         }
-        $previous = DB::table('provider_access_receipts')->where('workspace_id', $selected->workspaceId)
+        $previous = DB::table('provider_access_receipts')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $selected->businessId))
             ->where('source_id', $selected->sourceId)->where('provider', 'google')->where('resource', $selected->accountId)
             ->where('operation', $selected->operation)->where('purpose', $selected->purpose)->where('command_id', $command)->value('result');
         if ($previous !== null) {
@@ -122,7 +122,7 @@ final readonly class GoogleAuthorizationCoordinator
         if ($scope->provider !== Provider::Google || $scope->operation !== 'report.read') {
             throw new InvalidArgumentException('Google renewal requires its exact report source.');
         }
-        $previous = DB::table('provider_access_receipts')->where('workspace_id', $scope->workspaceId)
+        $previous = DB::table('provider_access_receipts')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $scope->businessId))
             ->where('source_id', $scope->sourceId)->where('provider', 'google')->where('resource', $scope->accountId)
             ->where('operation', $scope->operation)->where('purpose', $scope->purpose)->where('command_id', $command)->value('result');
         if ($previous !== null) {
@@ -156,7 +156,7 @@ final readonly class GoogleAuthorizationCoordinator
             || $scope->operation !== 'discovery.read' || $scope->purpose !== 'advertising_analysis') {
             throw new InvalidArgumentException('Google discovery must bind its exact configured OAuth client.');
         }
-        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$scope->workspaceId,
+        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$scope->businessId,
             SessionAuthority::sessionKey($request), $scope->sourceId, $scope->accountId, $scope->operation, $scope->purpose]);
         if (DB::table('source_registry')->where('id', $scope->sourceId)->value('namespace') !== 'oauth_client') {
             throw new AuthorizationException('Google OAuth requires an explicitly declared client source.');

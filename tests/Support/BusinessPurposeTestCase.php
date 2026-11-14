@@ -31,7 +31,7 @@ abstract class BusinessPurposeTestCase extends TestCase
 
     protected function selection(int|string $grant): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (int) $grant]]];
+        return ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (int) $grant]]];
     }
 
     protected function request(): Request

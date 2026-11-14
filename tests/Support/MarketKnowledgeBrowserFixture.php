@@ -89,7 +89,7 @@ if ($mode === 'setup') {
         'policy_id' => 'synthetic.knowledge.browser', 'policy_version' => 1, 'evidence_ref' => 'PRIVATE_LICENCE_REF_MUST_NOT_BE_DISCLOSED', 'evidence_digest' => hash('sha256', 'synthetic browser only'),
         'allowed_operations' => ['ingest', 'correct', 'retained_read', 'process', 'display', 'forward', 'retain'], 'allowed_purposes' => ['market_research'],
         'allowed_fields' => ['subject', 'geography', 'currency', 'price', 'inclusions', 'product', 'service', 'metric', 'value', 'comparison_basis', 'finding'], 'valid_until' => null]);
-    $selection = static fn (array $rights) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => array_map(fn ($right) => ['requirement_kind' => 'data_use', 'leaf_grant_id' => $right['grant_id']], $rights)];
+    $selection = static fn (array $rights) => ['realm_kind' => 'direct', 'requirements' => array_map(fn ($right) => ['requirement_kind' => 'data_use', 'leaf_grant_id' => $right['grant_id']], $rights)];
     $operatorRight = static fn (string $key, string $resource, string $operation, array $fields) => json_decode($db->scalar('SELECT builderad_v2_market_knowledge_enroll(?::uuid,?::uuid,1,?,?::jsonb)', [
         (string) Str::uuid(), $source, $resource, json_encode(['scope_id' => (string) Str::uuid7(), 'subject_ref' => $operator->public_id, 'subject_generation' => 1, 'operation' => $operation, 'purpose' => 'market_research',
             'selection' => ['native_namespaces' => [$resource], 'native_keys' => [$key], 'field_keys' => $fields, 'partition_ref' => null], 'valid_until' => null, 'evidence_ref' => 'test:synthetic-browser-licence', 'evidence_digest' => hash('sha256', 'synthetic')], JSON_THROW_ON_ERROR),
@@ -159,7 +159,7 @@ if ($mode === 'setup') {
         'selection' => ['native_namespaces' => ['market.evidence'], 'native_keys' => [$record['key']], 'field_keys' => array_keys($payload['fields']), 'partition_ref' => null],
         'valid_until' => null, 'evidence_ref' => 'test:synthetic-correction', 'evidence_digest' => hash('sha256', 'synthetic')]);
     app(MarketEvidence::class)->write($r, $record['key'], (string) Str::uuid(), $right['scope_id'], 1, json_decode(json_encode($payload, JSON_THROW_ON_ERROR)),
-        ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'data_use', 'leaf_grant_id' => $right['grant_id']]]]);
+        ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'data_use', 'leaf_grant_id' => $right['grant_id']]]]);
 } elseif (in_array($mode, ['g3-retention-withdraw', 'g3-forward-withdraw'], true)) {
     $state = json_decode(file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
     $g3 = $state['g3'];

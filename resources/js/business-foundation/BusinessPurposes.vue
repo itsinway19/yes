@@ -62,7 +62,7 @@ function time(value: string) { return new Date(value).toLocaleString(locale.valu
             <p v-if="loading" role="status">{{ t('جارٍ التحقق من الأغراض…', 'Checking purposes…') }}</p>
             <p v-else-if="failed" role="alert">{{ t('تعذرت القراءة بالحق الحالي. لم نعتبر ذلك غيابًا للتصريحات.', 'Current access could not qualify this read; declarations were not assumed absent.') }}</p>
             <template v-else-if="page">
-                <p>{{ t('يعرض التصريحات الجديدة الخاصة بهذا النشاط. التاريخ الأصلي المستورد متاح في سجله ولا يصبح تصريحًا حاليًا تلقائيًا.', 'Shows this Business’s new declarations. Qualified original history remains in its own history and is not automatically current.') }}</p>
+                <p>{{ t('يعرض التصريحات الجديدة الخاصة بهذا النشاط. التاريخ الأصلي المستورد متاح في سجله ولا يصبح تصريحًا حاليًا تلقائيًا.', 'Shows this Business’s new declarations. ') }}</p>
                 <p v-if="!page.projection.items.length" data-purpose-empty>{{ t('لا أغراض جديدة مصرّح بها لهذا النشاط.', 'No new purposes declared for this Business.') }}</p>
                 <button v-if="grant && !editing" type="button" class="bf-primary" data-purpose-create @click="edit(null)">{{ t('تصريح غرض جديد', 'Declare a purpose') }}</button>
                 <p v-else-if="!grant">{{ t('عرض فقط؛ التصريح يحتاج حقًا مستقلًا مؤهلًا.', 'Read only; declaring requires independent qualified authority.') }}</p>
@@ -76,7 +76,7 @@ function time(value: string) { return new Date(value).toLocaleString(locale.valu
                     <p v-else>{{ t('يعرض تصريح الغرض المنطبق حاليًا؛ السجل الخاص غير متاح بهذا الحق.', 'Shows the currently applicable purpose statement; private history is unavailable with this access.') }}</p>
                     <button v-if="grant && !editing" type="button" class="bf-secondary" data-purpose-edit @click="edit(item)">{{ t('مراجعة أو تصحيح أو سحب', 'Review, correct or withdraw') }}</button>
                 </article>
-                <ObjectPurposeEditor v-if="editing && grant" :key="`${scopeKey}:${selected?.purpose_id ?? 'new'}`" :workspace-id="scopeKey" business-mode :purpose="selected" :context-version="page.projection.current_context_version" :dtm-transition-version="page.projection.latest_dtm_event_context_version" :current-intent="{ value: surface.business.current_intent, version: surface.business.versions.intent }" :command-writer="commandWriter" :refresh-resource="read" @saved="read" />
+                <ObjectPurposeEditor v-if="editing && grant && commandWriter" :key="`${scopeKey}:${selected?.purpose_id ?? 'new'}`" :business-scope="scopeKey" business-mode :purpose="selected" :context-version="page.projection.current_context_version" :dtm-transition-version="page.projection.latest_dtm_event_context_version" :current-intent="{ value: surface.business.current_intent, version: surface.business.versions.intent }" :command-writer="commandWriter" :refresh-resource="read" @saved="read" />
             </template>
         </template>
     </details>

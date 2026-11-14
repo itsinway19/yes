@@ -2,28 +2,29 @@ import { status } from '../spa/presentation';
 import { shallowReactive } from 'vue';
 import { bootstrap, onClose, TransportError } from '../spa/transport';
 import { sources, providers } from './api';
-import type { SourceCommand, SourceAuthorityCommand } from './client';
+import type { SourceCommand, SourceAuthorityCommand, ServiceApprovalCommand, ServiceApprovalEnrollmentCommand } from './client';
 import type { Provider, VersionCommand } from './providers';
 import { ownerKey, type NativeSourceReference } from './nativeOwner';
 
-type ProviderCommand = ({ workspace: string; business?: never } | { business: string; workspace?: never }) & (
+type ProviderCommand = { business: string } & (
     { effect: 'select'; provider: Provider; body: { selection: string } }
     | { effect: 'disconnect'; provider: Provider; source: string; body: VersionCommand }
     | { effect: 'renew'; provider: 'google' | 'snapchat'; source: string; body: VersionCommand }
 );
-type Command = ProviderCommand | ({ workspace: string; business?: never } & (
-    { effect: 'registry'; body: SourceCommand }
+type Command = ProviderCommand | ({ business: string } & (
+    { effect: 'service-enrollment'; body: ServiceApprovalEnrollmentCommand }
+    | { effect: 'registry'; body: SourceCommand }
     | { effect: 'grant'; body: SourceAuthorityCommand }
-    | { effect: 'service'; body: { service: string; purpose: string } }
-    | { effect: 'revoke-service'; source: string }
+    | { effect: 'service'; body: ServiceApprovalCommand }
+    | { effect: 'revoke-service'; source: string; body: ServiceApprovalCommand }
     | { effect: 'audit'; source: string }
 ));
 export type PendingCommand = { key: string; command: Command; busy: boolean; uncertain: boolean; message: string };
 export const pending = shallowReactive(new Map<string, PendingCommand>());
 const drafts = new Map<string, unknown>();
-const prefix = 'builderad.sources.pending.v1:';
+const prefix = 'builderad.sources.pending.v2:';
 const binding = bootstrap.identity.binding;
-const storageKey = prefix + binding.principal + ':' + binding.context;
+const storageKey = prefix + binding.principal + ':' + binding.lifecycle + ':' + binding.context;
 function persist() {
     sessionStorage.setItem(storageKey, JSON.stringify({ pending: [...pending.values()], drafts: [...drafts] }));
 }
@@ -33,27 +34,26 @@ try {
     }
     const saved = JSON.parse(sessionStorage.getItem(storageKey) ?? 'null');
     for (const item of saved?.pending ?? []) {
-        if (item.command && (typeof item.command.workspace === 'string') !== (typeof item.command.business === 'string')
-            && (typeof item.command.business !== 'string' || ['select', 'disconnect', 'renew'].includes(item.command.effect))
+        if (item.command && typeof item.command.business === 'string' && !('workspace' in item.command)
             && item.key === keyFor(item.command)) {
             pending.set(item.key, { ...item, busy: false, uncertain: true });
         }
     }
     for (const [key, value] of saved?.drafts ?? []) drafts.set(key, value);
 } catch { pending.clear(); drafts.clear(); }
-export const draftKey = (workspace: NativeSourceReference, feature: string) => JSON.stringify([ownerKey(workspace), feature]);
-export function remember(workspace: NativeSourceReference, feature: string, value: unknown) {
+export const draftKey = (business: NativeSourceReference, feature: string) => JSON.stringify([ownerKey(business), feature]);
+export function remember(business: NativeSourceReference, feature: string, value: unknown) {
     if (status.value === 'closed') return false;
-    drafts.set(draftKey(workspace, feature), JSON.parse(JSON.stringify(value)));
+    drafts.set(draftKey(business, feature), JSON.parse(JSON.stringify(value)));
     try { persist(); return true; } catch { return false; }
 }
-export function restore<Value>(workspace: NativeSourceReference, feature: string): Value | undefined {
-    const value = drafts.get(draftKey(workspace, feature)); return value === undefined ? undefined : structuredClone(value) as Value;
+export function restore<Value>(business: NativeSourceReference, feature: string): Value | undefined {
+    const value = drafts.get(draftKey(business, feature)); return value === undefined ? undefined : structuredClone(value) as Value;
 }
 function reference(command: Command): NativeSourceReference {
-    return command.business !== undefined ? { kind: 'business', publicId: command.business } : command.workspace;
+    return { kind: 'business', publicId: command.business };
 }
-export const commandsFor = (workspace: NativeSourceReference, provider?: Provider) => [...pending.values()].filter(value => ownerKey(reference(value.command)) === ownerKey(workspace)
+export const commandsFor = (business: NativeSourceReference, provider?: Provider) => [...pending.values()].filter(value => ownerKey(reference(value.command)) === ownerKey(business)
     && (provider === undefined ? !('provider' in value.command) : 'provider' in value.command && value.command.provider === provider));
 function keyFor(command: Command) {
     return JSON.stringify([ownerKey(reference(command)), 'provider' in command ? command.provider : 'registry', command.effect,
@@ -66,11 +66,12 @@ async function send(command: Command, signal?: AbortSignal) {
         : providers.select(command.provider, owner, command.body.selection, signal);
     if (command.effect === 'disconnect') return providers.disconnect(command.provider, owner, command.source, command.body, signal);
     if (command.effect === 'renew') return providers.renew(command.provider, owner, command.source, command.body, signal);
-    if (command.effect === 'registry') return sources.command(command.workspace, command.body, signal);
-    if (command.effect === 'grant') return sources.grant(command.workspace, command.body, signal);
-    if (command.effect === 'service') return sources.authorizeService(command.workspace, command.body, signal);
-    if (command.effect === 'revoke-service') return sources.revokeService(command.workspace, command.source, signal);
-    return sources.recover(command.workspace, command.source, signal);
+    if (command.effect === 'service-enrollment') return sources.enrollServiceApproval(command.business, command.body, signal);
+    if (command.effect === 'registry') return sources.command(command.business, command.body, signal);
+    if (command.effect === 'grant') return sources.grant(command.business, command.body, signal);
+    if (command.effect === 'service') return sources.authorizeService(command.business, command.body, signal);
+    if (command.effect === 'revoke-service') return sources.revokeService(command.business, command.source, command.body, signal);
+    return sources.recover(command.business, command.source, signal);
 }
 export async function retry(value: PendingCommand, signal?: AbortSignal) {
     if (value.busy || status.value === 'closed') throw Error('Source command unavailable');
@@ -94,6 +95,7 @@ export async function retry(value: PendingCommand, signal?: AbortSignal) {
     }
 }
 export function submit(command: Command, signal?: AbortSignal) {
+    if (!command || 'workspace' in command || typeof command.business !== 'string') throw Error('Retired source command');
     const key = keyFor(command);
     if (pending.has(key)) throw Error('Resolve the original Source command before replacing it');
     return retry({ key, command: JSON.parse(JSON.stringify(command)) as Command, busy: false, uncertain: false, message: '' }, signal);

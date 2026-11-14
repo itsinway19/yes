@@ -1,6 +1,6 @@
 <?php
 
-use App\Foundation\Tenancy\PrincipalContext;
+use App\Providers\Ads\NativeSourceContext;
 use App\Models\User;
 use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderRequestGuard;
@@ -91,7 +91,7 @@ config()->set('cache.prefix', $fixture['prefix']);
 Cache::forgetDriver('redis');
 app()->forgetInstance('redis');
 $s = $fixture['scope'];
-$scope = new ProviderScope($s['workspace_id'], $s['source_id'], Provider::from($s['provider']), $s['account_id'], $s['operation'], $s['purpose']);
+$scope = ProviderScope::fromArray($s);
 $actor = User::findOrFail($fixture['actor']);
 $request = Request::create('/');
 $request->setUserResolver(fn () => $actor);
@@ -103,15 +103,12 @@ $family = ['meta' => 'Meta', 'google' => 'Google', 'snapchat' => 'Snapchat', 'ti
 $class = 'App\\Providers\\Ads\\'.$family.'\\'.$family.'OAuthState';
 $states = new $class(Cache::store('redis'), app(ProviderRequestGuard::class));
 try {
-    DB::transaction(function () use ($actor, $scope, $request, $states, $fixture): void {
-        app(PrincipalContext::class)->activate($actor);
-        DB::selectOne('SELECT builderad_v2_legacy_enter((SELECT public_id FROM workspaces WHERE id=?))', [$scope->workspaceId]);
-        DB::selectOne('SELECT builderad_select_workspace_context(?)', [$scope->workspaceId]);
+    app(NativeSourceContext::class)->run($actor, $fixture['business'], function () use ($scope, $request, $states, $fixture): void {
         $states->consume($request, $scope, 0, $fixture['configuration'], $fixture['state']);
         if (($fixture['rollback'] ?? false) === true) {
             throw new RuntimeException('synthetic rollback after consumption');
         }
-    });
+    }, $request);
     echo 'CONSUMED'.PHP_EOL;
 } catch (Throwable $error) {
     echo ($error instanceof RuntimeException && $error->getMessage() === 'synthetic rollback after consumption' ? 'CONSUMED_THEN_ROLLED_BACK' : 'DENIED').PHP_EOL;

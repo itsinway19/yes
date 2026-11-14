@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Security\DisposableTestDatabaseGuard;
-use App\Security\GrantAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -177,18 +176,18 @@ final class MaterialLineageTest extends TestCase
     public function test_registered_observation_resolver_uses_exact_native_key_and_preserves_partial_coverage_without_progress_access(): void
     {
         $u = User::factory()->create();
-        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($u, 1);
-        $this->actingAs($u)->legacyWorkspace(['name' => 'Native metadata fixture', 'slug' => 'native-metadata'])->assertRedirect();
+        $business = $this->actingAs($u)->postJson('/api/businesses', ['command_id' => (string) Str::uuid7(),
+            'name' => 'Native metadata fixture'])->assertCreated()->json('data');
         $db = DB::connection('pgsql_migrations');
-        $w = $db->table('workspaces')->where('slug', 'native-metadata')->value('id');
+        $businessId = $db->table('businesses')->where('public_id', $business['business_public_id'])->value('id');
         $source = (string) Str::uuid7();
         $ns = hash('sha256', 'test:native-entry-stream');
         $identity = 'bb2:'.hash('sha256', 'test:native-entry');
         $hash = hash('sha256', 'synthetic immutable observation content');
-        $db->table('source_registry')->insert(['id' => $source, 'workspace_id' => $w, 'family' => 'meta', 'namespace' => 'test.native',
+        $db->table('source_registry')->insert(['id' => $source, 'business_id' => $businessId, 'custody_kind' => 'business_native', 'family' => 'meta', 'namespace' => 'test.native',
             'declared_external_id' => 'synthetic', 'label' => 'Fixture', 'version' => 1, 'status' => 'UNVERIFIED']);
-        $db->table('source_capabilities')->insert(['workspace_id' => $w, 'source_id' => $source, 'resource' => 'account-1', 'operation' => 'report.read', 'purpose' => 'review']);
-        $db->table('provider_observation_streams')->insert(['namespace' => $ns, 'workspace_id' => $w, 'source_id' => $source, 'provider' => 'meta',
+        $db->table('source_capabilities')->insert(['source_id' => $source, 'resource' => 'account-1', 'operation' => 'report.read', 'purpose' => 'review']);
+        $db->table('provider_observation_streams')->insert(['namespace' => $ns, 'source_id' => $source, 'provider' => 'meta',
             'resource' => 'account-1', 'operation' => 'report.read', 'purpose' => 'review', 'stream' => 'campaign', 'generation' => 1, 'access_version' => 1,
             'encrypted_progress' => 'test-only-progress-must-not-be-readable', 'progress_generation' => 1]);
         $db->table('provider_observation_runs')->insert(['namespace' => $ns, 'generation' => 1, 'command_id' => (string) Str::uuid(), 'fingerprint' => hash('sha256', 'fixture-run'),

@@ -15,31 +15,31 @@ export function commercialContracts({ ref, text, uuid, object, list, nullable, r
     const market = object({ id: uuid, label: text, country_code: nullable(text), configuration_id: nullable(uuid), revision: integer });
     const configuration = object({ id: uuid, market_id: uuid, version: integer, catalog_reference_id: nullable(uuid), denomination_code: nullable(text), recorded_at: text });
     const catalog = object({ id: uuid, market_id: uuid, catalog_identity: uuid, catalog_version: text, approval_reference: text, source_sha256: text, recorded_at: text });
-    const target = object({ action: text, target_id: uuid, version_id: nullable(uuid), workspace_public_id: nullable(uuid), label: nullable(text) }, ['action', 'target_id', 'version_id', 'workspace_public_id']);
+    const target = object({ action: text, target_id: uuid, version_id: nullable(uuid), business_public_id: nullable(uuid), label: nullable(text) }, ['action', 'target_id', 'version_id', 'business_public_id']);
     const envelopeFields = { command_id: uuid, reason_code: text };
     const marketResult = object({ market_id: uuid, label: text });
     const configurationResult = object({ market_id: uuid, configuration_id: uuid, version: integer, catalog_reference_id: nullable(uuid), denomination_code: nullable(text) });
     const catalogResult = object({ catalog_reference_id: uuid, market_id: uuid, catalog_identity: uuid, catalog_version: text });
     const assignabilityResult = object({ market_id: uuid, configuration_id: nullable(uuid), revision: integer });
-    const registrationResult = object({ scope_id: uuid, workspace_public_id: uuid, market_id: uuid, configuration_id: uuid, catalog_reference_id: uuid, catalog_identity: uuid, catalog_version: text, configuration_version: integer, denomination_code: text, formation_state: { const: 'CONTEXT_RECORDED' }, agreement_state: { const: 'UNKNOWN' }, amount_state: { const: 'UNKNOWN' } });
+    const registrationResult = object({ scope_id: uuid, business_public_id: uuid, market_id: uuid, configuration_id: uuid, catalog_reference_id: uuid, catalog_identity: uuid, catalog_version: text, configuration_version: integer, denomination_code: text, formation_state: { const: 'CONTEXT_RECORDED' }, agreement_state: { const: 'UNKNOWN' }, amount_state: { const: 'UNKNOWN' } });
     const effectResult = { oneOf: [marketResult, configurationResult, catalogResult, assignabilityResult, registrationResult] };
     const identifier = name => [{ in: 'path', name, required: true, schema: uuid }];
     return {
         schemas: {
             CommercialOperationsData: object({ markets: list(market), configurations: list(configuration), catalogReferences: list(catalog),
                 countryOptions: countries, currencyOptions: list(text), currencyNames: names, targets: list(target), newMarketTargets: list(target),
-                obligations: list(object({ id: uuid, command_id: uuid, target_id: uuid, state: text, attempts: integer, acknowledgment_id: nullable(uuid), workspace_public_id: nullable(uuid) })),
+                obligations: list(object({ id: uuid, command_id: uuid, target_id: uuid, state: text, attempts: integer, acknowledgment_id: nullable(uuid), business_public_id: nullable(uuid) })),
                 founderAccess: flag, newCatalogReferenceId: uuid, newConfigurationId: uuid, result: nullable({ type: 'object', additionalProperties: true }), freshAuthentication: flag }),
             CommercialOperationsResource: envelope('CommercialOperationsData'),
             CommercialMarketCommand: object({ ...envelopeFields, market_id: uuid, label: text }),
             CommercialCatalogCommand: object({ ...envelopeFields, market_id: uuid, catalog_reference_id: uuid, catalog_identity: uuid, catalog_version: text, approval_reference: text, source_sha256: text }),
             CommercialConfigurationCommand: object({ ...envelopeFields, market_id: uuid, configuration_id: uuid, catalog_reference_id: nullable(uuid), denomination_code: nullable(text) }, ['command_id', 'reason_code', 'market_id', 'configuration_id']),
             CommercialAssignabilityCommand: object({ ...envelopeFields, market_id: uuid, configuration_id: nullable(uuid), expected_revision: { type: 'integer', minimum: 1 } }, ['command_id', 'reason_code', 'market_id', 'expected_revision']),
-            CommercialRegistrationCommand: object({ ...envelopeFields, scope_id: uuid, workspace_public_id: uuid, market_id: uuid, configuration_id: uuid, catalog_reference_id: uuid, denomination_code: text }),
+            CommercialRegistrationCommand: object({ ...envelopeFields, scope_id: uuid, business_public_id: uuid, market_id: uuid, configuration_id: uuid, catalog_reference_id: uuid, denomination_code: text }),
             CommercialEffectResult: effectResult,
-            CommercialCommandReceipt: object({ command_id: uuid, effect: text, target_id: uuid, workspace_id: nullable(integer), request_fingerprint: text, result: text, actor_user_id: integer, actor_generation: integer, reason_code: text, policy_version: text, decided_at: text, recorded_at: text }),
-            CommercialGrantCommand: object({ grantee: uuid, effect: text, target_id: uuid, workspace_id: nullable(integer), version_id: nullable(uuid), reason_code: text, expires_at: nullable(text) }, ['grantee', 'effect', 'target_id', 'reason_code']),
-            CommercialContextResult: object({ state: { const: 'CONTEXT_RECORDED' }, context: object({ scope_id: uuid, market_id: uuid, market_label: text, configuration_id: uuid, catalog_identity: uuid, catalog_version: text, denomination_code: text, decided_at: text, effective_at: text, recorded_at: text, workspace_public_id: uuid }), agreement_state: { const: 'UNKNOWN' }, amount_state: { const: 'UNKNOWN' } }),
+            CommercialCommandReceipt: object({ command_id: uuid, effect: text, target_id: uuid, business_id: nullable(integer), request_fingerprint: text, result: text, actor_user_id: integer, actor_generation: integer, reason_code: text, policy_version: text, decided_at: text, recorded_at: text }),
+            CommercialGrantCommand: object({ grantee: uuid, effect: text, target_id: uuid, business_id: nullable(integer), version_id: nullable(uuid), reason_code: text, expires_at: nullable(text) }, ['grantee', 'effect', 'target_id', 'reason_code']),
+            CommercialContextResult: object({ state: { const: 'CONTEXT_RECORDED' }, context: object({ scope_id: uuid, market_id: uuid, market_label: text, configuration_id: uuid, catalog_identity: uuid, catalog_version: text, denomination_code: text, decided_at: text, effective_at: text, recorded_at: text, business_public_id: uuid }), agreement_state: { const: 'UNKNOWN' }, amount_state: { const: 'UNKNOWN' } }),
             CommercialPreparationData: object({ canPrepare: flag, intentId: nullable(uuid), intentBinding: nullable(text),
                 people: list(object({ public_id: uuid, name: text, kind: text })), approvals: list(approval),
                 countryOptions: countries, currencyOptions: list(text), currencyNames: names, freshAuthentication: flag,
@@ -62,7 +62,7 @@ export function commercialContracts({ ref, text, uuid, object, list, nullable, r
             '/internal/commercial/assignability': { post: command('setCommercialAssignability', ref('CommercialAssignabilityCommand'), assignabilityResult) },
             '/internal/commercial/registrations': { post: command('registerCommercialScope', ref('CommercialRegistrationCommand'), registrationResult) },
             '/internal/commercial/receipts/{command}': { get: { operationId: 'readCommercialCommandReceipt', security, parameters: identifier('command'), responses: { 200: response(ref('CommercialCommandReceipt')), ...errors } } },
-            '/internal/commercial/workspace-reference': { get: { operationId: 'readCommercialWorkspaceReference', security, parameters: ['scope_id', 'workspace_public_id'].map(name => ({ in: 'query', name, required: true, schema: uuid })), responses: { 200: response(nullable(object({ public_id: uuid, name: text, slug: text }))), ...errors } } },
+            '/internal/commercial/business-reference': { get: { operationId: 'readCommercialBusinessReference', security, parameters: ['scope_id', 'business_public_id'].map(name => ({ in: 'query', name, required: true, schema: uuid })), responses: { 200: response(nullable(object({ public_id: uuid, name: text, slug: text }))), ...errors } } },
             '/internal/commercial/contexts/{scope}': { get: { operationId: 'readInternalCommercialContext', security, parameters: identifier('scope'), responses: { 200: response(ref('CommercialContextResult')), ...errors } } },
             '/internal/commercial/audit/{obligation}/recover': { post: command('recoverCommercialAudit', null, object({ obligation_id: uuid, state: { enum: ['acknowledged', 'failed'] }, acknowledgment_id: nullable(uuid) }), identifier('obligation')) },
             '/internal/commercial/grants': { post: command('issueCommercialGrant', ref('CommercialGrantCommand'), object({ grant_id: integer })) },

@@ -61,7 +61,7 @@ const renderer = createRenderer({
 const editor = await compile('Components/Business/ObjectPurposeEditor.vue');
 function mount(overrides = {}, component = editor.component) {
  state.posts = []; state.forms = []; state.visits = []; state.page.locale = 'en';
- const props = reactive(component === editor.component ? { workspaceId: 'business', purpose: null, contextVersion: 7, dtmTransitionVersion: 0, currentIntent: null, ...overrides } : { ...overrides });
+ const props = reactive(component === editor.component ? { businessScope: 'business', commandWriter: body=>Promise.resolve(body), refreshResource: async()=>{globalThis.__purposeTest.visits.push({only:['native-business-purposes'],onSuccess:()=>{}});}, purpose: null, contextVersion: 7, dtmTransitionVersion: 0, currentIntent: null, ...overrides } : { ...overrides });
  const root = element('root'); const app = renderer.createApp({ render: () => h(component, props) });
  app.config.globalProperties.route = globalThis.route; app.mount(root);
  return { root, props, stop: () => app.unmount() };
@@ -149,23 +149,6 @@ test('explicit end removal clears standing confirmation and must be reconfirmed 
  await confirm(v); await check(v,'confirm-transition'); submit(v); assert.equal(state.posts.length,1); assert.equal(state.posts[0].payload.effective_until,null); v.stop();
 });
 const layout = moduleUrl(`import { h } from ${JSON.stringify(import.meta.resolve('vue'))}; export default {render(){return h('main',this.$slots.default?.());}};`);
-const purposePage = await compile('object-purpose/PurposeView.vue',{'@/Components/Business/ObjectPurposeEditor.vue':editor.url});
-test('current DTM labels warn only for actual drift and historical references stay historical in both languages',async()=>{
- for (const mode of ['current_alignment','current_dependency','historical_attestation']) {
-  const snapshot=retainedSnapshot(); snapshot.dtm={mode,version:7,countries:['SA'],subset:[],statement:'Exact retained relationship'};
-  const item=retainedPurpose(snapshot); item.dtm_standing=mode==='historical_attestation'?'HISTORICAL_ATTESTATION':'CURRENT_REFERENCE_AT_READ';
-  const v=mount({workspace:{public_id:'business',name:'Real workspace'},canReviseHistory:false,projection:{state:'DECLARED',items:[item],current_context_version:7,latest_dtm_event_context_version:7,effective_at:'2026-10-07T00:00:00Z',known_at:'2026-10-07T00:00:00Z'},selectedPurpose:'purpose-1',business:{currentIntent:{value:null,version:7}}},purposePage.component);
-  assert.doesNotMatch(text(v.root),/current relationship requires revalidation/);
-  if(mode==='historical_attestation') assert.match(text(v.root),/Historical attestation; not a current claim/);
-  else {
-   assert.match(text(v.root),mode==='current_alignment'?/Current market alignment claim/:/Current market dependency/);
-   v.props.projection.items[0].relationship_revalidation_required=true; await nextTick(); assert.match(text(v.root),/current relationship requires revalidation/);
-   v.props.projection.items[0].relationship_revalidation_required=false; await nextTick();
-  }
-  state.page.locale='ar'; await nextTick(); assert.doesNotMatch(text(v.root),/العلاقة بالحاضر تحتاج إعادة تحقق/); v.stop();
- }
-});
-
 test('a retained database timestamp is resubmitted as the same timezone-qualified instant without losing precision',async()=>{
  const purpose=retainedPurpose(); purpose.history[0].effective_until='2030-01-01 00:00:00.123456+00';
  const v=mount({purpose}); await input(v,'operation','correct'); await input(v,'meaning','B'); await input(v,'reason','Wording correction only');

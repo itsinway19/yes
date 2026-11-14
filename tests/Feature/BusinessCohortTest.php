@@ -51,13 +51,13 @@ final class BusinessCohortTest extends TestCase
         $this->assertSame(1, $hold['epoch']);
         $this->assertSame('RECOVERY_HOLD', $hold['mode']);
         $this->assertSame($hold, $this->transition($command, $cohort, 'V2_ACTIVE', 0, 'RECOVERY_HOLD'));
-        $this->denied(fn () => app(BusinessScope::class)->read($r, $a['business_public_id'], ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        $this->denied(fn () => app(BusinessScope::class)->read($r, $a['business_public_id'], ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs']['business.context.read']]]]));
         $this->denied(fn () => $this->transition((string) Str::uuid(), $cohort, 'RECOVERY_HOLD', 1, 'LEGACY_ACTIVE'));
         $this->denied(fn () => $this->transition((string) Str::uuid(), $cohort, 'RECOVERY_HOLD', 0, 'V2_ACTIVE'), '40001');
         $live = $this->transition((string) Str::uuid(), $cohort, 'RECOVERY_HOLD', 1, 'V2_ACTIVE');
         $this->assertSame(2, $live['epoch']);
-        $this->assertSame('Recovery customer', app(BusinessScope::class)->read($r, $a['business_public_id'], ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        $this->assertSame('Recovery customer', app(BusinessScope::class)->read($r, $a['business_public_id'], ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs']['business.context.read']]]])['name']);
         $this->assertSame(2, DB::connection('pgsql_migrations')->table('business_command_receipts')->where('action', 'maintenance.cohort.transition')->count());
     }

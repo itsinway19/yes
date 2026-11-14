@@ -28,7 +28,7 @@ async function fetchScopes(after?: number) {
         const value = await dataUseChoices(after);
         if (disposed || !owned(captured) || serial !== attempt) return;
         const realm = props.surface.authority_selection;
-        const matching = value.scopes.filter(row => row.authority_selection.realm_kind === realm.realm_kind && row.authority_selection.realm_workspace_public_id === realm.realm_workspace_public_id);
+        const matching = value.scopes.filter(row => row.authority_selection.realm_kind === realm.realm_kind);
         choices.value = after ? [...choices.value, ...matching] : matching; next.value = value.next_cursor;
     } catch { if (!disposed && owned(captured) && serial === attempt) draft.notice = t('تعذر تأهيل نطاقات الاستعمال. لم نفسّر ذلك كغياب للبيانات أو كإذن بديل.', 'Data-use scopes could not be qualified. No absence of data or replacement permission was inferred.'); }
     finally { if (!disposed && owned(captured) && serial === attempt) loading.value = false; }

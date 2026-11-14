@@ -31,10 +31,10 @@ export async function runClosureCases(h){
       // Capture its actual signed receipt, then use the same browser context's
       // real cookie jar for requests which must not adopt the new identity.
       const oldHeaders={Accept:'application/json','X-Builderad-Document':identity.receipt,'X-CSRF-TOKEN':switched.body.identity.csrf};
-      const oldRead=await context.request.get(`http://localhost:8138/workspaces/${workspace}/commercial-history`,{headers:oldHeaders});
+      const oldRead=await context.request.get('http://localhost:8138'+target(mode,workspace),{headers:oldHeaders});
       assert.equal(oldRead.status(),409);assert.equal(command('inspect').effects,before.effects);
       await second.goto('http://localhost:8138'+target(mode,foreign));await ready(second,mode);
-      assert.equal((await meta(second)).binding.principal,fixture.b.user);assert.equal((await get(second,`/workspaces/${workspace}/commercial-history`)).status,403);
+      assert.equal((await meta(second)).binding.principal,fixture.b.user);assert.equal((await get(second,target(mode,workspace))).status,403);
       return {oldRead:oldRead.status(),newPrincipal:(await meta(second)).binding.principal,cookieBefore,cookieAfter:await cookies(context),server:command('inspect').transitions.filter(t=>t.lineage_id===identity.binding.lineage),note:'Two real pages sharing browser cookies. Captured old receipt tested using that actual cookie jar; native recovery can replace the old tab. Not real mobile suspension evidence.'};
      }
      const key=scenario+'-'+mode,renewing=post(page,'/identity/renew',undefined,{'X-Proof-Hold':key});await until(()=>held.has(key));
@@ -74,7 +74,7 @@ export async function runClosureCases(h){
     const afterRenew=command('inspect').sessions.find(s=>s.session_key_hash===entry.identity.binding.credential);
     assert.equal(afterRenew.idle_expires_at,entry.session.idle_expires_at);assert.equal(afterRenew.absolute_expires_at,entry.session.absolute_expires_at);
     const jar=await cookies(entry.context);assert.deepEqual(jar,entry.jar,'Read-only renewal must not replace cookies or extend their expiry');
-    const next=await get(entry.page,`/workspaces/${workspace}/commercial-history`);assert.equal(next.status,200);
+    const next=await get(entry.page,target(entry.mode,workspace));assert.equal(next.status,200);
      await entry.page.bringToFront();await ready(entry.page,entry.mode);
     const credential=jar.find(c=>c.httpOnly&&c.name.endsWith('-session'));
     details.push({mode:entry.mode,elapsedMilliseconds:Date.now()-entry.started,configuredShortLifetime:shortLifetime,cookie:credential,publication:entry.publication.cookies,serverDate:entry.publication.serverDate,browserClockAdjustmentSeconds:credential.expires-Date.parse(entry.session.absolute_expires_at)/1000,canonicalBefore:entry.session,canonicalAfterRenewal:afterRenew,nextProtectedRequest:next.status});

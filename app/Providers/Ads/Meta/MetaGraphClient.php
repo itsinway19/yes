@@ -32,7 +32,7 @@ final class MetaGraphClient
             throw new InvalidArgumentException('Only documented Meta access/reporting operations are allowed.');
         }
         // Required trusted server guard runs at every request, including a later page or poll.
-        // The integration layer must recheck signed Workspace/source/session authority here.
+        // The integration layer must recheck signed Business/source/session authority here.
         ($this->currentAuthority)($budget->scope, $this->action);
         $sharedDelay = $this->sharedCooldown?->remaining();
         if ($sharedDelay !== null && $sharedDelay > 0) {

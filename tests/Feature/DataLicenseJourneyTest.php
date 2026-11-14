@@ -27,7 +27,7 @@ final class DataLicenseJourneyTest extends TestCase
         return $this->postJson('/api/businesses/'.$f['business']['business_public_id'].'/operating-mandate', [
             'command_id' => (string) Str::uuid(), 'confirmed' => true, 'capacity' => 'responsible_business',
             'authority_reference' => 'Explicit synthetic Business responsibility', 'valid_until' => now()->addHour()->toIso8601String(), 'previous_grant' => '0',
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => (int) $f['business']['grant_refs']['business.context.read']],
             ]],
         ])->assertOk()->json('data');
@@ -39,7 +39,7 @@ final class DataLicenseJourneyTest extends TestCase
         $mandate = $this->mandate($f);
         $recipient = User::factory()->create();
         $base = '/api/businesses/'.$f['business']['business_public_id'];
-        $context = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+        $context = ['realm_kind' => 'direct', 'requirements' => [
             ['requirement_kind' => 'business', 'leaf_grant_id' => (int) $f['business']['grant_refs']['business.context.read']],
         ]];
         $team = $this->postJson($base.'/direct-team', ['command_id' => (string) Str::uuid(), 'authority_selection' => $context])->assertOk()->json('data.grant_refs');
@@ -48,21 +48,21 @@ final class DataLicenseJourneyTest extends TestCase
         $readGrant = $this->postJson($base.'/grants', ['command_id' => (string) Str::uuid(), 'effect' => 'issue',
             'grantee_public_id' => $recipient->public_id, 'action' => 'business.context.read', 'parent_grant_id' => $readRoot,
             'grant_id' => null, 'expected_grant' => 0, 'expires_at' => null, 'delegable' => false,
-            'realm_workspace_public_id' => null, 'authority_selection' => $context])->assertOk()->json('data.grant_id');
-        $businessSelection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => $context])->assertOk()->json('data.grant_id');
+        $businessSelection = ['realm_kind' => 'direct', 'requirements' => [
             ['requirement_kind' => 'business', 'leaf_grant_id' => (int) $mandate['grant_refs']['business.data.use']],
         ]];
         $this->postJson($base.'/grants', ['command_id' => (string) Str::uuid(), 'effect' => 'issue', 'grantee_public_id' => $recipient->public_id,
             'action' => 'business.data.use', 'parent_grant_id' => (int) $mandate['grant_refs']['business.data.use'], 'grant_id' => null,
             'expected_grant' => 0, 'expires_at' => now()->addMinutes(30)->toIso8601String(), 'delegable' => false,
-            'realm_workspace_public_id' => null, 'authority_selection' => $businessSelection])->assertOk();
+            'authority_selection' => $businessSelection])->assertOk();
         $journey = $this->getJson($base.'/data-use-journey?access='.$f['business']['grant_refs']['business.context.read'])->assertOk()->json('data');
         $dataset = $journey['sources'][0]['datasets'][0];
         $license = ['command_id' => (string) Str::uuid(), 'license_id' => (string) Str::uuid7(), 'effect' => 'issue', 'expected_revision' => 0,
             'declaration' => ['source_id' => $f['source'], 'resource' => '123', 'operation' => 'retained_read', 'purpose' => 'advertising_performance',
                 'selection' => $dataset['selection'], 'recipient_public_id' => $f['user']->public_id, 'valid_until' => now()->addHour()->toIso8601String(),
                 'capacity' => 'data_holder', 'holder_name' => 'Synthetic holder', 'authority_reference' => 'Explicit synthetic licence authority', 'confirmed' => true, 'requires_review' => false],
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => (int) $f['business']['grant_refs']['business.context.read']],
                 ['requirement_kind' => 'native_source', 'leaf_grant_id' => (int) $f['custody']['grant_refs']['source.manage']],
             ]]];
@@ -117,7 +117,7 @@ final class DataLicenseJourneyTest extends TestCase
         $before = $owner->table('security_action_grants')->orderBy('id')->get()->toArray();
         $body = ['command_id' => (string) Str::uuid(), 'confirmed' => true, 'capacity' => 'responsible_business',
             'authority_reference' => 'Explicit responsibility for this synthetic Business', 'valid_until' => now()->addHour()->toIso8601String(), 'previous_grant' => '0',
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => (int) $f['business']['grant_refs']['business.context.read']],
             ]]];
         $path = '/api/businesses/'.$f['business']['business_public_id'].'/operating-mandate';
@@ -130,7 +130,7 @@ final class DataLicenseJourneyTest extends TestCase
         $this->assertSame(count($before) + 2, $owner->table('security_action_grants')->count());
         $this->assertEquals($before, $owner->table('security_action_grants')->where('id', '<=', end($before)->id)->orderBy('id')->get()->toArray());
         $this->assertSame($receipt, $this->postJson($path, $body)->assertOk()->json('data'));
-        $this->assertSame(0, $owner->table('workspaces')->count());
+        $this->assertNull($owner->scalar("SELECT to_regclass('public.workspaces')"));
         $body['command_id'] = (string) Str::uuid();
         $this->postJson($path, $body)->assertConflict();
         $this->actingAs(User::factory()->create());
@@ -145,86 +145,21 @@ final class DataLicenseJourneyTest extends TestCase
         $base = '/api/businesses/'.$f['business']['business_public_id'].'/grants';
         $access = (int) $f['business']['grant_refs']['business.context.read'];
         $use = (int) $mandate['grant_refs']['business.data.use'];
-        $selection = static fn (int $grant) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        $selection = static fn (int $grant) => ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
         $issue = ['command_id' => (string) Str::uuid(), 'effect' => 'issue', 'grantee_public_id' => $recipient->public_id,
             'action' => 'business.data.use', 'parent_grant_id' => $use, 'grant_id' => null, 'expected_grant' => 0,
             'expires_at' => now()->addMinutes(15)->toIso8601String(), 'delegable' => false,
-            'realm_workspace_public_id' => null, 'authority_selection' => $selection($use)];
+            'authority_selection' => $selection($use)];
         $this->postJson($base, $issue)->assertOk();
         $this->postJson($base, ['command_id' => (string) Str::uuid(), 'effect' => 'revoke', 'grantee_public_id' => $f['user']->public_id,
             'action' => 'business.context.read', 'parent_grant_id' => null, 'grant_id' => $access, 'expected_grant' => 1,
-            'expires_at' => null, 'delegable' => false, 'realm_workspace_public_id' => null,
+            'expires_at' => null, 'delegable' => false,
             'authority_selection' => $selection($access)])->assertOk();
         $this->postJson($base, [...$issue, 'command_id' => (string) Str::uuid()])->assertForbidden();
         $this->assertSame(1, DB::connection('pgsql_migrations')->table('security_action_grants')->where('parent_grant_id', $use)->count());
     }
 
-    public function test690_upgrades_populated680_and_rejects_unsealed_input_without_rewriting_history(): void
-    {
-        $this->usePersistentTestSessions();
-        $reset = app(DisposableDatabaseReset::class);
-        $reset->clear();
-        try {
-            $paths = array_values(array_filter(glob(database_path('migrations/*.php')),
-                fn ($file) => strcmp(basename($file), '0001_01_01_000690_preserve_agency_relationship_incarnation.php') < 0));
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $paths, '--realpath' => true, '--force' => true]));
-            $fixture = $this->nativeMaterial();
-            $this->mandate($fixture);
-            $owner = DB::connection('pgsql_migrations');
-            $before = [];
-            foreach (['businesses', 'workspace_memberships', 'source_registry', 'provider_observation_entries', 'security_action_grants', 'authority_qualification_receipts',
-                'client_data_boundaries', 'data_use_scopes', 'business_command_receipts'] as $table) {
-                $before[$table] = $owner->scalar("SELECT jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text)::text FROM {$table} r");
-            }
-            $signature = 'builderad_private.verify_scope_path(text,text,bigint,text,jsonb,text,bigint[],bigint[],boolean)';
-            $definition = $owner->scalar('SELECT pg_get_functiondef(?::regprocedure)', [$signature]);
-            $anchor = 'AND(relationship.revision=1 OR q.valid_from>=relationship.valid_from)';
-            $this->assertSame(1, substr_count($definition, $anchor));
-            $owner->statement('GRANT CREATE ON SCHEMA builderad_private TO builderad_scope_executor');
-            $owner->transaction(function () use ($owner, $definition, $anchor): void {
-                $owner->statement('SET LOCAL ROLE builderad_scope_executor');
-                $owner->unprepared(str_replace($anchor, '', $definition));
-            });
-            $owner->statement('REVOKE CREATE ON SCHEMA builderad_private FROM builderad_scope_executor');
-            try {
-                Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]);
-                $this->fail('Unsealed agency verifier was accepted.');
-            } catch (QueryException $error) {
-                $this->assertSame('42501', $error->getCode());
-                $this->assertStringContainsString('AGENCY_INCARNATION_BASELINE_REQUIRED', $error->getMessage());
-            }
-            $this->assertFalse($owner->table('migrations')->where('migration', '0001_01_01_000690_preserve_agency_relationship_incarnation')->exists());
-            // A disposable historical fixture explicitly seals the demonstrated680 regression.
-            $owner->unprepared(file_get_contents(database_path('sql/market_evidence/catalog_seal.sql')));
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations',
-                '--path' => ['database/migrations/0001_01_01_000690_preserve_agency_relationship_incarnation.php'], '--force' => true]));
-            $this->assertSame($definition, $owner->scalar('SELECT pg_get_functiondef(?::regprocedure)', [$signature]));
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-            $forward = file_get_contents(database_path('migration-sql/0001_01_01_000770_business_workspace_authority_closure/authority.sql'));
-            $this->assertSame(1, preg_match('/CREATE OR REPLACE FUNCTION builderad_private\.verify_scope_path\(.*?AS \$\$(.*?)\$\$;/s', $forward, $expectedDefinition));
-            $this->assertSame(str_replace("\r\n", "\n", $expectedDefinition[1]), str_replace("\r\n", "\n", $owner->scalar('SELECT prosrc FROM pg_proc WHERE oid=?::regprocedure', [$signature])));
-            foreach (['workspace_memberships', 'security_action_grants'] as $table) {
-                $this->assertSame('timestamp(6) with time zone', $owner->scalar("SELECT format_type(atttypid,atttypmod) FROM pg_attribute WHERE attrelid=?::regclass AND attname='created_at'", [$table]));
-            }
-            foreach ($before as $table => $rows) {
-                $image = $table === 'authority_qualification_receipts' ? "to_jsonb(r)-'agency_business_id'-'agency_membership_grant_id'" : 'to_jsonb(r)';
-                $this->assertSame($rows, $owner->scalar("SELECT jsonb_agg({$image} ORDER BY ({$image})::text)::text FROM {$table} r"), $table);
-                if ($table === 'authority_qualification_receipts') {
-                    $this->assertSame(0, $owner->table($table)->whereNotNull('agency_business_id')->count());
-                    $this->assertSame(0, $owner->table($table)->whereNotNull('agency_membership_grant_id')->count());
-                }
-            }
-            $this->assertFalse((bool) $owner->scalar("SELECT has_schema_privilege('builderad_scope_executor','builderad_private','CREATE')"));
-            foreach (['builderad_app', 'builderad_authority', 'public'] as $role) {
-                $this->assertFalse((bool) $owner->scalar("SELECT has_function_privilege(?,?,'EXECUTE')", [$role, $signature]));
-            }
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-        } finally {
-            DB::disconnect('pgsql');
-            $reset->install();
-        }
-    }
 
     #[DataProvider('providers')]
     public function test_source_to_operating_mandate_licence_actual_read_and_withdrawal_needs_no_synthetic_authority_roots(Provider $provider): void
@@ -241,11 +176,11 @@ final class DataLicenseJourneyTest extends TestCase
             'declaration' => ['source_id' => $source['source_id'], 'resource' => $source['resource'], 'operation' => 'retained_read', 'purpose' => 'advertising_performance',
                 'selection' => $dataset['selection'], 'recipient_public_id' => $f['user']->public_id, 'valid_until' => now()->addHour()->toIso8601String(),
                 'capacity' => 'data_holder', 'holder_name' => 'Synthetic responsible business', 'authority_reference' => 'Explicit synthetic data authority statement', 'confirmed' => true, 'requires_review' => false],
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $access], ['requirement_kind' => 'native_source', 'leaf_grant_id' => (int) $source['manager_grant_id']],
             ]]];
         $issued = $this->postJson($base.'/data-use-licenses', $licenseBody)->assertOk()->json('data');
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+        $selection = ['realm_kind' => 'direct', 'requirements' => [
             ['requirement_kind' => 'business', 'leaf_grant_id' => (int) $mandate['grant_refs']['business.link.manage']],
             ['requirement_kind' => 'client_data', 'leaf_grant_id' => (int) $issued['boundary_grant_id']],
         ]];
@@ -268,6 +203,6 @@ final class DataLicenseJourneyTest extends TestCase
         $this->postJson($base.'/data-use-licenses', [...$licenseBody, 'command_id' => (string) Str::uuid(), 'effect' => 'withdraw', 'expected_revision' => 1, 'declaration' => (object) []])->assertOk();
         $this->postJson($base.'/materials/read', $read)->assertForbidden();
         $this->getJson($base.'/data-use-journey?access='.$access)->assertOk()->assertJsonPath('data.licenses.0.status', 'withdrawn');
-        $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
+        $this->assertNull(DB::connection('pgsql_migrations')->scalar("SELECT to_regclass('public.workspaces')"));
     }
 }

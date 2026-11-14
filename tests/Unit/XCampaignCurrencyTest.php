@@ -19,7 +19,7 @@ final class XCampaignCurrencyTest extends TestCase
 {
     private function report(string $account = 'abc123'): XCampaignReport
     {
-        return new XCampaignReport(new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::X, $account, 'report.read', 'advertising_analysis'),
+        return new XCampaignReport(ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::X, $account, 'report.read', 'advertising_analysis'),
             new ReportWindow('2026-09-01', '2026-09-01', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'), ['campaign1', 'campaign2'], 'ALL_ON_TWITTER', false, null, 'NONE');
     }
 

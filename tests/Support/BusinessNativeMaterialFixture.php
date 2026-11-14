@@ -48,7 +48,7 @@ trait BusinessNativeMaterialFixture
                 'family' => $provider->value, 'namespace' => 'ad_account', 'external_id' => '123', 'label' => 'Synthetic source',
                 'resource' => '123', 'operation' => 'report.read', 'purpose' => 'advertising_analysis',
                 'expected_version' => 0, 'reason' => 'explicit_synthetic_selection',
-            ], ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            ], ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => (int) $business['grant_refs']['business.context.read']],
             ]]
         ));
@@ -74,12 +74,12 @@ trait BusinessNativeMaterialFixture
                 new ObservationBatch($scope, $observations, $records > 1 || $datasets > 1 ? 'COMPLETE' : 'PARTIAL', null, null),
                 $dataset === 0 ? 'synthetic-material' : 'synthetic-material-'.$dataset, (string) Str::uuid(), 0, 1, $provenance));
         }
-        $entry = $owner->table('provider_observation_entries')->orderBy('namespace')->orderBy('identity')->first();
+        $entry = $owner->table('provider_observation_entries as e')->join('provider_observation_streams as stream', 'stream.namespace', '=', 'e.namespace')->where('stream.source_id', $source)->orderBy('e.namespace')->orderBy('e.identity')->first(['e.*']);
         $key = $owner->scalar('SELECT jsonb_build_object(\'namespace\',?::text,\'generation\',?::bigint,\'identity\',?::text)::text', [$entry->namespace, $entry->generation, $entry->identity]);
         $ref = ['namespace' => 'provider_observation_entry', 'key' => $key, 'version' => $entry->content_hash];
         $native = (int) $custody['grant_refs']['source.read'];
         $body = ['command_id' => (string) Str::uuid(), 'material_refs' => [$ref], 'operation' => $operation, 'purpose' => 'market_research',
-            'recipient_ref' => $user->public_id, 'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'recipient_ref' => $user->public_id, 'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => (int) $business['grant_refs']['business.context.read']],
                 ['requirement_kind' => 'native_source', 'leaf_grant_id' => $native],
             ]]];
@@ -102,7 +102,7 @@ trait BusinessNativeMaterialFixture
         $use = BusinessAuthorityFixture::root($useScope, $user->id, 'data_use.'.$operation, kind: 'data_use');
         $manager = BusinessAuthorityFixture::root($id, $user->id, 'business.link.manage');
         $data = BusinessAuthorityFixture::root($id, $user->id, 'business.data.use');
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+        $selection = ['realm_kind' => 'direct', 'requirements' => [
             ['requirement_kind' => 'business', 'leaf_grant_id' => $manager->id],
             ['requirement_kind' => 'client_data', 'leaf_grant_id' => $boundary['grant_id']],
         ]];

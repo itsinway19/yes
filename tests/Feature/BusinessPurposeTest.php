@@ -26,7 +26,7 @@ final class BusinessPurposeTest extends TestCase
         $id = DB::connection('pgsql_migrations')->table('businesses')->where('public_id', $business['business_public_id'])->value('id');
         $grant = BusinessAuthorityFixture::root($id, $actor->id, 'business.purpose.declare');
 
-        return [$business, ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant->id]]], $actor];
+        return [$business, ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant->id]]], $actor];
     }
 
     private function url(array $b): string
@@ -57,7 +57,7 @@ final class BusinessPurposeTest extends TestCase
         $this->assertApplicationContract('BusinessPurposesResult', $read->json());
         $owner = DB::connection('pgsql_migrations');
         $row = $owner->table('object_purpose_revisions')->where('revision_id', $result['revision_id'])->first();
-        $this->assertNull($row->workspace_id);
+        $this->assertObjectNotHasProperty('workspace_id', $row);
         $this->assertNotNull($row->business_id);
         $this->assertSame(1, $owner->table('object_purpose_revisions')->where('purpose_id', $result['purpose_id'])->count());
         $this->assertSame('v2', $owner->table('object_purpose_business_context_refs')->where('native_revision_id', $result['revision_id'])->value('reference_origin'));

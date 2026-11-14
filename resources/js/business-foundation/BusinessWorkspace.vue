@@ -139,7 +139,7 @@ const selectedBusiness = computed<BusinessChoice | undefined>(() => {
         state: props.surface.business.state, read_grant_id: String(read.leaf_grant_id),
         realm_kind: props.surface.authority_selection.realm_kind,
         agency_business_public_id: props.surface.agency_business_public_id,
-        realm_workspace_public_id: props.surface.authority_selection.realm_workspace_public_id };
+        };
 });
 const inquiryActive = computed(() => active.value === 'settings' && settingsView.value === 'data');
 const destinations = computed(() => [

@@ -27,7 +27,7 @@ final class CommercialAuditDelivery
                 throw new AuthorizationException('Unavailable audit obligation.');
             }
             DB::selectOne('SELECT builderad_sa01_require(?,?,?,NULL)', [
-                'RetryOrRecoverExistingAuditDelivery', $origin->target_id, $origin->workspace_id,
+                'RetryOrRecoverExistingAuditDelivery', $origin->target_id, $origin->business_id,
             ]);
             $state = 'acknowledged';
             $ack = null;

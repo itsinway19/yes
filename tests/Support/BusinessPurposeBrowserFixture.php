@@ -36,5 +36,5 @@ if ($mode === 'purpose-setup') {
     }
     $label = $mode === 'purpose-revoke-read' ? 'read' : 'write';
     $scope->grant($creatorRequest, $out['business'], (string) Str::uuid(), 'revoke', $recipient->public_id, $out[$label]['action'], null,
-        (int) $out[$label]['leaf'], 1, null, false, null, $select((int) $out[$label]['issuer']));
+        (int) $out[$label]['leaf'], 1, null, false, $select((int) $out[$label]['issuer']));
 }

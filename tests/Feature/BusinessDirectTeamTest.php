@@ -16,7 +16,7 @@ final class BusinessDirectTeamTest extends TestCase
 
     private function selection(int|string $grant): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        return ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (int) $grant]]];
     }
 
@@ -31,7 +31,7 @@ final class BusinessDirectTeamTest extends TestCase
         return ['command_id' => (string) Str::uuid(), 'authority_selection' => $this->selection($roots[$action]),
             'effect' => 'issue', 'grantee_public_id' => $recipient->public_id, 'action' => $action,
             'parent_grant_id' => (int) $roots[$action], 'grant_id' => null, 'expected_grant' => 0,
-            'expires_at' => null, 'delegable' => false, 'realm_workspace_public_id' => null];
+            'expires_at' => null, 'delegable' => false];
     }
 
     public function test_creator_can_add_staff_to_the_same_business_without_any_workspace_and_surrender_is_exact(): void
@@ -69,7 +69,7 @@ final class BusinessDirectTeamTest extends TestCase
             'name' => 'Edited by employee', 'business_type_id' => null, 'expected_context' => 0];
         $this->putJson($base.'/context', $write)->assertOk();
         $this->getJson($base.'/history?access='.$grants['business.context.read'].'&kind=context')->assertForbidden();
-        $this->getJson($base.'/legacy-history?access='.$grants['business.context.read'].'&kind=context')->assertForbidden();
+        $this->getJson($base.'/legacy-history?access='.$grants['business.context.read'].'&kind=context')->assertNotFound();
         $this->getJson($base.'/inquiry-evidence/eligibility?access='.$grants['business.context.read'])->assertForbidden();
         $this->getJson('/api/businesses/'.$foreign['business_public_id'].'/surface?access='.$grants['business.context.read'])->assertForbidden();
         $this->postJson($base.'/direct-team', ['command_id' => (string) Str::uuid(), 'authority_selection' => $this->selection($grants['business.context.read'])])->assertForbidden();
@@ -80,7 +80,7 @@ final class BusinessDirectTeamTest extends TestCase
         $this->getJson($base.'/surface?access='.$grants['business.context.read'])->assertForbidden();
         $this->actingAs($creator)->getJson($base.'/surface?access='.$file['grant_refs']['business.context.read'])
             ->assertOk()->assertJsonPath('data.business.name', 'Edited by employee')->assertJsonPath('data.private_history_available', true);
-        $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
+        $this->assertFalse(DB::connection('pgsql_migrations')->getSchemaBuilder()->hasTable('workspaces'));
     }
 
     public function test_direct_team_cannot_expand_rights_or_realm_and_revoking_parent_invalidates_staff(): void
@@ -93,7 +93,7 @@ final class BusinessDirectTeamTest extends TestCase
             'authority_selection' => $this->selection($file['grant_refs']['business.context.read'])])->assertOk()->json('data.grant_refs');
         $body = $this->issue($roots, $employee, 'business.context.read');
         $this->postJson($base.'/grants', [...$body, 'delegable' => true])->assertForbidden();
-        $this->postJson($base.'/grants', [...$body, 'realm_workspace_public_id' => (string) Str::uuid7()])->assertForbidden();
+        $this->postJson($base.'/grants', [...$body, 'realm_workspace_public_id' => (string) Str::uuid7()])->assertUnprocessable();
         $this->postJson($base.'/grants', [...$body, 'action' => 'business.data.use'])->assertForbidden();
         $staff = $this->postJson($base.'/grants', $body)->assertOk()->json('data.grant_id');
         $this->postJson($base.'/grants', [...$body, 'command_id' => (string) Str::uuid(), 'effect' => 'revoke',
@@ -102,34 +102,4 @@ final class BusinessDirectTeamTest extends TestCase
         $this->actingAs($employee)->getJson($base.'/surface?access='.$staff)->assertForbidden();
     }
 
-    public function test_populated_upgrade_preserves_existing_facts_rights_and_history_without_auto_enrollment(): void
-    {
-        $reset = app(DisposableDatabaseReset::class);
-        $reset->clear();
-        try {
-            $paths = array_values(array_filter(glob(database_path('migrations/*.php')), fn ($path) => strcmp(basename($path), '0001_01_01_000570_business_declaration_team.php') < 0));
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $paths, '--realpath' => true, '--force' => true]));
-            $creator = User::factory()->create();
-            $file = $this->file($creator);
-            $db = DB::connection('pgsql_migrations');
-            $tables = ['businesses', 'business_context_heads', 'business_workspace_links', 'authority_qualification_receipts', 'security_action_grants', 'business_command_receipts'];
-            $before = [];
-            foreach ($tables as $table) {
-                $before[$table] = $db->scalar("SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]')::text FROM {$table} r");
-            }
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-            foreach ($tables as $table) {
-                $image = $table === 'authority_qualification_receipts'
-                    ? "to_jsonb(r)-ARRAY['agency_business_id','agency_membership_grant_id']" : 'to_jsonb(r)';
-                $this->assertSame($before[$table], $db->scalar("SELECT coalesce(jsonb_agg({$image} ORDER BY ({$image})::text),'[]')::text FROM {$table} r"));
-            }
-            $this->assertSame(0, $db->table('authority_qualification_receipts')->whereNotNull('agency_business_id')->orWhereNotNull('agency_membership_grant_id')->count(), 'Upgrade must not infer any agency or employee eligibility for historical qualifications.');
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-            $this->getJson('/api/businesses/'.$file['business_public_id'].'/surface?access='.$file['grant_refs']['business.context.read'])
-                ->assertOk()->assertJsonPath('data.direct_team_enrollment_available', true)->assertJsonPath('data.private_history_available', true);
-        } finally {
-            $reset->clear();
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-        }
-    }
 }

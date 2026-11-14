@@ -47,7 +47,7 @@ trait MarketEvidenceFixture
 
     private function marketSelection(array $right): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        return ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'data_use', 'leaf_grant_id' => $right['grant_id']]]];
     }
 

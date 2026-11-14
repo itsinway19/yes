@@ -25,7 +25,7 @@ class MetaLoginSettingsTest extends TestCase
         $this->assertStringNotContainsString('synthetic-installation-secret', print_r($settings, true));
         $this->assertSame('999', $adapter->configurationId());
         try {
-            $adapter->acquire(new ProviderScope(1, '019a0022-0000-7000-8000-000000000001', Provider::Meta,
+            $adapter->acquire(ProviderScope::forBusiness(1, '019a0022-0000-7000-8000-000000000001', Provider::Meta,
                 '999', 'discovery.read', 'advertising_analysis'), new ProviderCredentials(['code' => 'synthetic-code']), '{}');
             $this->fail('Unbound transport must fail before HTTP.');
         } catch (LogicException $error) {

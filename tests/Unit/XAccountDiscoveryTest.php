@@ -18,7 +18,7 @@ final class XAccountDiscoveryTest extends TestCase
 {
     private function budget(string $key = 'synthetic-key'): ProviderReadBudget
     {
-        return new ProviderReadBudget(new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::X,
+        return new ProviderReadBudget(ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::X,
             $key, 'discovery.read', 'advertising_analysis'), 'x-discovery', 4, 0, 4, 800, new DateTimeImmutable('+30 seconds'), 1, 5);
     }
 

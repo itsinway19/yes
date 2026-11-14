@@ -3,9 +3,7 @@
 namespace App\Providers\Ads;
 
 use App\Foundation\Tenancy\PrincipalContext;
-use App\Foundation\Tenancy\WorkspaceContext;
 use App\Models\User;
-use App\Models\Workspace;
 use App\Security\SessionAuthority;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -14,14 +12,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use LogicException;
 
-/** Reuses the actual Business or Workspace admission; never creates an owner. */
+/** Reuses the actual Business admission; never creates an owner. */
 final readonly class NativeSourceContext
 {
-    public function __construct(private PrincipalContext $principals, private WorkspaceContext $workspaces) {}
+    public function __construct(private PrincipalContext $principals) {}
 
     public function run(User $actor, string $publicId, Closure $callback, Request $request): mixed
     {
-        return $this->execute($actor, $publicId, $request->route()?->hasParameter('business') === true, $callback, $request);
+        return $this->execute($actor, $publicId, $callback, $request);
     }
 
     public function runForReference(Request $request, array $reference, Closure $callback): mixed
@@ -31,9 +29,8 @@ final readonly class NativeSourceContext
             throw new AuthorizationException('Typed native callback routing required.');
         }
         $route = NativeSourceOwner::referenceFrom($reference, $scope);
-        $business = $scope->businessId !== null;
 
-        return $this->execute($request->user(), $route[$business ? 'business' : 'workspace'], $business,
+        return $this->execute($request->user(), $route['business'],
             function (NativeSourceOwner $owner) use ($reference, $callback): mixed {
                 $owner->assertBound($reference);
 
@@ -41,7 +38,7 @@ final readonly class NativeSourceContext
             }, $request);
     }
 
-    private function execute(User $actor, string $publicId, bool $business, Closure $callback, Request $request): mixed
+    private function execute(User $actor, string $publicId, Closure $callback, Request $request): mixed
     {
         $invoke = function (NativeSourceOwner $owner) use ($request, $callback): mixed {
             if ($request->attributes->has(NativeSourceOwner::REQUEST_ATTRIBUTE)) {
@@ -54,9 +51,6 @@ final readonly class NativeSourceContext
                 $request->attributes->remove(NativeSourceOwner::REQUEST_ATTRIBUTE);
             }
         };
-        if (! $business) {
-            return $this->workspaces->run($actor, $publicId, fn (Workspace $workspace) => $invoke(NativeSourceOwner::fromWorkspace($workspace)), $request);
-        }
         if (DB::connection()->transactionLevel() !== 0 || ! $actor->exists || ! Str::isUuid($publicId)
             || $request->user()?->getAuthIdentifier() !== $actor->id) {
             throw new AuthorizationException('A clean exact Business Source context is required.');

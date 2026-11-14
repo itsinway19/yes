@@ -9,6 +9,8 @@ use App\Http\Controllers\Auth\PasskeySessionController;
 use App\Http\Controllers\BusinessActivityController;
 use App\Http\Controllers\BusinessFindingController;
 use App\Http\Controllers\BusinessFoundationController;
+use App\Http\Controllers\BusinessServiceController;
+use App\Http\Controllers\BusinessSourceController;
 use App\Http\Controllers\BusinessSurfaceController;
 use App\Http\Controllers\CommercialController;
 use App\Http\Controllers\CommercialMarketPreparationController;
@@ -22,31 +24,22 @@ use App\Http\Controllers\InternalContentController;
 use App\Http\Controllers\InternalCustomerAdministrationController;
 use App\Http\Controllers\InternalServiceController;
 use App\Http\Controllers\KnowledgeConsumerController;
-use App\Http\Controllers\LegacyPurposeHistoryController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MarketKnowledgeController;
 use App\Http\Controllers\MarketOperationsController;
 use App\Http\Controllers\MarketProcessingController;
 use App\Http\Controllers\MetaConnectionController;
 use App\Http\Controllers\MetaReportController;
-use App\Http\Controllers\OrganizationTeamController;
 use App\Http\Controllers\PasskeyManagementController;
 use App\Http\Controllers\PlatformMaintenanceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicContentController;
-use App\Http\Controllers\RetiredWorkspaceCommercialController;
-use App\Http\Controllers\RetiredWorkspaceCreationController;
 use App\Http\Controllers\SecurityDevicesController;
 use App\Http\Controllers\SnapchatConnectionController;
 use App\Http\Controllers\SnapchatReportController;
 use App\Http\Controllers\StaffOnboardingController;
 use App\Http\Controllers\TikTokConnectionController;
 use App\Http\Controllers\TikTokReportController;
-use App\Http\Controllers\WorkspaceCommercialHistoryController;
-use App\Http\Controllers\WorkspaceController;
-use App\Http\Controllers\WorkspaceFoundationController;
-use App\Http\Controllers\WorkspaceServiceController;
-use App\Http\Controllers\WorkspaceSourceController;
 use App\Http\Controllers\XConnectionController;
 use App\Http\Controllers\XReportController;
 use App\Http\Middleware\EnsureCurrentPrincipal;
@@ -85,7 +78,6 @@ Route::post('/internal/locale', LocaleController::class)->name('internal.locale.
 Route::redirect('/dashboard', '/businesses?entry=1')
     ->middleware(['auth', EnsureCurrentPrincipal::class])->name('dashboard');
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
-    Route::get('/workspaces/{workspace}/commercial-history', WorkspaceCommercialHistoryController::class)->whereUuid('workspace')->name('workspaces.commercial-history');
     Route::get('/api/businesses/{business}/inquiry-evidence/eligibility', [InquiryEvidenceController::class, 'eligibility'])->whereUuid('business')->name('business-foundation.inquiry-evidence.eligibility');
     Route::get('/api/businesses/{business}/inquiry-evidence', [InquiryEvidenceController::class, 'index'])->whereUuid('business')->name('business-foundation.inquiry-evidence.index');
     Route::get('/api/businesses/{business}/inquiry-evidence/{declaration}/history', [InquiryEvidenceController::class, 'history'])->whereUuid('business')->whereUuid('declaration')->name('business-foundation.inquiry-evidence.history');
@@ -99,52 +91,6 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
     Route::post('/api/businesses/{business}/market-findings/capture', [BusinessFindingController::class, 'capture'])->whereUuid('business')->name('business-foundation.market-findings.capture');
     Route::post('/api/businesses/{business}/market-analysis/prepare', [MarketProcessingController::class, 'prepare'])->whereUuid('business')->name('business-foundation.market-processing.prepare');
     Route::post('/api/businesses/{business}/market-analysis/{run}/complete', [MarketProcessingController::class, 'complete'])->whereUuid('business')->whereUuid('run')->name('business-foundation.market-processing.complete');
-    Route::get('/workspaces/{workspace}/goals', RetiredWorkspaceCommercialController::class)
-        ->whereUuid('workspace')->name('workspaces.goals.edit');
-    Route::get('/workspaces/{workspace}/goals/review', RetiredWorkspaceCommercialController::class)
-        ->whereUuid('workspace')->name('workspaces.goals.review');
-    Route::get('/workspaces/{workspace}/goals/context', RetiredWorkspaceCommercialController::class)
-        ->whereUuid('workspace')->name('workspaces.goals.context');
-    Route::post('/workspaces/{workspace}/goals', RetiredWorkspaceCommercialController::class)
-        ->whereUuid('workspace')->name('workspaces.goals.update');
-    Route::get('/workspaces/{workspace}/object-purposes', RetiredWorkspaceCommercialController::class)
-        ->whereUuid('workspace')->name('workspaces.object-purposes.index');
-    Route::get('/workspaces/{workspace}/object-purposes/context', RetiredWorkspaceCommercialController::class)
-        ->whereUuid('workspace')->name('workspaces.object-purposes.application.index');
-    Route::get('/workspaces/{workspace}/object-purposes/{purpose}/context', RetiredWorkspaceCommercialController::class)
-        ->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.object-purposes.application.show');
-    Route::get('/workspaces/{workspace}/object-purposes/{purpose}', RetiredWorkspaceCommercialController::class)
-        ->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.object-purposes.show');
-    Route::post('/workspaces/{workspace}/object-purposes', RetiredWorkspaceCommercialController::class)
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.object-purposes.store');
-    Route::post('/workspaces/{workspace}/object-purposes/{purpose}/revisions', RetiredWorkspaceCommercialController::class)
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.object-purposes.revise');
-    Route::get('/workspaces/{workspace}/purpose-history', [LegacyPurposeHistoryController::class, 'index'])
-        ->whereUuid('workspace')->name('workspaces.purpose-history.index');
-    Route::get('/workspaces/{workspace}/purpose-history/context', [LegacyPurposeHistoryController::class, 'applicationIndex'])
-        ->whereUuid('workspace')->name('workspaces.purpose-history.application.index');
-    Route::get('/workspaces/{workspace}/purpose-history/{purpose}/context', [LegacyPurposeHistoryController::class, 'applicationShow'])
-        ->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.purpose-history.application.show');
-    Route::get('/workspaces/{workspace}/purpose-history/{purpose}', [LegacyPurposeHistoryController::class, 'show'])
-        ->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.purpose-history.show');
-    Route::post('/workspaces/{workspace}/purpose-history/{purpose}/revisions', [LegacyPurposeHistoryController::class, 'revise'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('purpose')->name('workspaces.purpose-history.revise');
-    Route::redirect('/organizations/new', '/businesses/new')->name('organizations.create');
-    Route::post('/organizations', RetiredWorkspaceCreationController::class)->name('organizations.store');
-    Route::get('/api/organizations/{organization}/team', [OrganizationTeamController::class, 'index'])->whereUuid('organization')->name('organization-team.index');
-    Route::post('/api/organizations/{organization}/team', [OrganizationTeamController::class, 'store'])->whereUuid('organization')->name('organization-team.store');
-    Route::redirect('/business/start', '/businesses/new')->name('business.start');
-    Route::post('/business/start', fn () => response()->json(['message' => 'This workspace business-creation workflow is retired. Register an organization or create an independent Business.'], 410))->name('business.start.store');
-    Route::get('/workspaces/{workspace}/business', RetiredWorkspaceCommercialController::class)
-        ->whereUuid('workspace')->name('workspaces.business.edit');
-    Route::post('/workspaces/{workspace}/business', RetiredWorkspaceCommercialController::class)
-        ->whereUuid('workspace')->name('workspaces.business.update');
-    Route::post('/workspaces/{workspace}/business/target-markets', RetiredWorkspaceCommercialController::class)
-        ->whereUuid('workspace')->name('workspaces.business.target-markets.update');
-    Route::post('/workspaces/{workspace}/business/current-intent', RetiredWorkspaceCommercialController::class)
-        ->whereUuid('workspace')->name('workspaces.business.current-intent.update');
-    Route::post('/workspaces/{workspace}/business/authority', RetiredWorkspaceCommercialController::class)
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.business.authority');
 });
 
 Route::middleware(['auth', EnsurePendingStaffEnrollment::class])->group(function () {
@@ -159,7 +105,13 @@ Route::middleware(['auth', EnsurePendingStaffEnrollment::class.':true'])->group(
 
 Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
     // Business-native custody uses the same qualified provider controllers.
-    Route::post('/businesses/{business}/source-audit/{obligation}/recover', [WorkspaceSourceController::class, 'recoverBusiness'])
+    Route::get('/businesses/{business}/source-registry', [BusinessSourceController::class, 'index'])->whereUuid('business')->name('businesses.providers.registry');
+    Route::post('/businesses/{business}/services', [BusinessServiceController::class, 'approve'])->whereUuid('business')->middleware(EnsureFreshAuthentication::class)->name('businesses.providers.services.approve');
+    Route::delete('/businesses/{business}/services/{service}', [BusinessServiceController::class, 'revoke'])->whereUuid(['business', 'service'])->middleware(EnsureFreshAuthentication::class)->name('businesses.providers.services.revoke');
+    Route::post('/api/businesses/{business}/service-approval/enrollment', [BusinessServiceController::class, 'enroll'])->whereUuid('business')->middleware(EnsureFreshAuthentication::class)->name('business-foundation.services.enroll');
+    Route::post('/businesses/{business}/sources', [BusinessSourceController::class, 'command'])->whereUuid('business')->middleware(EnsureFreshAuthentication::class)->name('businesses.providers.registry.command');
+    Route::post('/businesses/{business}/source-grants', [BusinessSourceController::class, 'grant'])->whereUuid('business')->middleware(EnsureFreshAuthentication::class)->name('businesses.providers.registry.grant');
+    Route::post('/businesses/{business}/source-audit/{obligation}/recover', [BusinessSourceController::class, 'recoverBusiness'])
         ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->whereUuid('obligation')->name('businesses.providers.audit.recover');
     Route::get('/businesses/{business}/providers/x/{source}/campaigns', [XReportController::class, 'campaigns'])
         ->whereUuid('business')->whereUuid('source')->name('businesses.providers.x.campaigns');
@@ -242,115 +194,10 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->group(function () {
     Route::post('/businesses/{business}/providers/meta/{source}/disconnect', [MetaConnectionController::class, 'disconnect'])
         ->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->whereUuid('source')->name('businesses.providers.meta.disconnect');
     Route::get('/providers/x/callback', [XConnectionController::class, 'callback'])->name('providers.x.callback');
-    Route::get('/workspaces/{workspace}/providers/x/{source}/campaigns', [XReportController::class, 'campaigns'])
-        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.x.campaigns');
-    Route::get('/workspaces/{workspace}/providers/x/{source}/report', [XReportController::class, 'status'])
-        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.x.report.status');
-    Route::post('/workspaces/{workspace}/providers/x/{source}/report', [XReportController::class, 'store'])
-        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.x.report.store');
-    Route::get('/workspaces/{workspace}/providers/x', [XConnectionController::class, 'index'])
-        ->whereUuid('workspace')->name('workspaces.providers.x.index');
-    Route::get('/workspaces/{workspace}/providers/x/discovery/{flow}', [XConnectionController::class, 'discovery'])
-        ->whereUuid('workspace')->where('flow', '[A-Za-z0-9_-]{43}')->name('workspaces.providers.x.discovery');
-    Route::post('/workspaces/{workspace}/providers/x/connect', [XConnectionController::class, 'connect'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.x.connect');
-    Route::post('/workspaces/{workspace}/providers/x/select', [XConnectionController::class, 'select'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.x.select');
-    Route::post('/workspaces/{workspace}/providers/x/{source}/disconnect', [XConnectionController::class, 'disconnect'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.x.disconnect');
     Route::get('/providers/snapchat/callback', [SnapchatConnectionController::class, 'callback'])->name('providers.snapchat.callback');
-    Route::get('/workspaces/{workspace}/providers/snapchat/{source}/report', [SnapchatReportController::class, 'status'])
-        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.snapchat.report.status');
-    Route::post('/workspaces/{workspace}/providers/snapchat/{source}/report', [SnapchatReportController::class, 'store'])
-        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.snapchat.report.store');
-    Route::get('/workspaces/{workspace}/providers/snapchat', [SnapchatConnectionController::class, 'index'])
-        ->whereUuid('workspace')->name('workspaces.providers.snapchat.index');
-    Route::get('/workspaces/{workspace}/providers/snapchat/discovery/{flow}', [SnapchatConnectionController::class, 'discovery'])
-        ->whereUuid('workspace')->where('flow', '[A-Za-z0-9_-]{43}')->name('workspaces.providers.snapchat.discovery');
-    Route::post('/workspaces/{workspace}/providers/snapchat/connect', [SnapchatConnectionController::class, 'connect'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.snapchat.connect');
-    Route::post('/workspaces/{workspace}/providers/snapchat/select', [SnapchatConnectionController::class, 'select'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.snapchat.select');
-    Route::post('/workspaces/{workspace}/providers/snapchat/{source}/disconnect', [SnapchatConnectionController::class, 'disconnect'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.snapchat.disconnect');
-    Route::post('/workspaces/{workspace}/providers/snapchat/{source}/renew', [SnapchatConnectionController::class, 'renew'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.snapchat.renew');
     Route::get('/providers/google/callback', [GoogleConnectionController::class, 'callback'])->name('providers.google.callback');
     Route::get('/providers/tiktok/callback', [TikTokConnectionController::class, 'callback'])->name('providers.tiktok.callback');
-    Route::get('/workspaces/{workspace}/providers/tiktok/{source}/report', [TikTokReportController::class, 'status'])
-        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.tiktok.report.status');
-    Route::post('/workspaces/{workspace}/providers/tiktok/{source}/report', [TikTokReportController::class, 'store'])
-        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.tiktok.report.store');
-    Route::get('/workspaces/{workspace}/providers/tiktok', [TikTokConnectionController::class, 'index'])
-        ->whereUuid('workspace')->name('workspaces.providers.tiktok.index');
-    Route::get('/workspaces/{workspace}/providers/tiktok/discovery/{flow}', [TikTokConnectionController::class, 'discovery'])
-        ->whereUuid('workspace')->where('flow', '[A-Za-z0-9_-]{43}')->name('workspaces.providers.tiktok.discovery');
-    Route::post('/workspaces/{workspace}/providers/tiktok/connect', [TikTokConnectionController::class, 'connect'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.tiktok.connect');
-    Route::post('/workspaces/{workspace}/providers/tiktok/select', [TikTokConnectionController::class, 'select'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.tiktok.select');
-    Route::post('/workspaces/{workspace}/providers/tiktok/{source}/disconnect', [TikTokConnectionController::class, 'disconnect'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.tiktok.disconnect');
-    Route::get('/workspaces/{workspace}/providers/google/{source}/report', [GoogleReportController::class, 'status'])
-        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.google.report.status');
-    Route::get('/workspaces/{workspace}/providers/meta/{source}/report', [MetaReportController::class, 'status'])
-        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.meta.report.status');
-    Route::post('/workspaces/{workspace}/providers/meta/{source}/report', [MetaReportController::class, 'store'])
-        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.meta.report.store');
-    Route::get('/workspaces/{workspace}/providers/google/{source}/report/{generation}/download', [GoogleReportController::class, 'download'])
-        ->whereUuid('workspace')->whereUuid('source')->where('generation', '[1-9][0-9]{0,17}')->name('workspaces.providers.google.report.download');
-    Route::post('/workspaces/{workspace}/providers/google/{source}/report', [GoogleReportController::class, 'store'])
-        ->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.google.report.store');
-    Route::get('/workspaces/{workspace}/providers/google', [GoogleConnectionController::class, 'index'])
-        ->whereUuid('workspace')->name('workspaces.providers.google.index');
-    Route::get('/workspaces/{workspace}/providers/google/discovery/{flow}', [GoogleConnectionController::class, 'discovery'])
-        ->whereUuid('workspace')->where('flow', '[A-Za-z0-9_-]{43}')->name('workspaces.providers.google.discovery');
-    Route::get('/workspaces/{workspace}/providers/google/hierarchy/{flow}', [GoogleConnectionController::class, 'hierarchy'])
-        ->whereUuid('workspace')->where('flow', '[A-Za-z0-9_-]{43}')->name('workspaces.providers.google.hierarchy');
-    Route::post('/workspaces/{workspace}/providers/google/connect', [GoogleConnectionController::class, 'connect'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.google.connect');
-    Route::post('/workspaces/{workspace}/providers/google/select', [GoogleConnectionController::class, 'select'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.google.select');
-    Route::post('/workspaces/{workspace}/providers/google/{source}/disconnect', [GoogleConnectionController::class, 'disconnect'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.google.disconnect');
-    Route::post('/workspaces/{workspace}/providers/google/{source}/renew', [GoogleConnectionController::class, 'renew'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.google.renew');
     Route::get('/providers/meta/callback', [MetaConnectionController::class, 'callback'])->name('providers.meta.callback');
-    Route::get('/workspaces/{workspace}/providers/meta', [MetaConnectionController::class, 'index'])
-        ->whereUuid('workspace')->name('workspaces.providers.meta.index');
-    Route::get('/workspaces/{workspace}/providers/meta/discovery/{flow}', [MetaConnectionController::class, 'discovery'])
-        ->whereUuid('workspace')->where('flow', '[A-Za-z0-9_-]{43}')->name('workspaces.providers.meta.discovery');
-    Route::post('/workspaces/{workspace}/providers/meta/connect', [MetaConnectionController::class, 'connect'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.meta.connect');
-    Route::post('/workspaces/{workspace}/providers/meta/select', [MetaConnectionController::class, 'select'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->name('workspaces.providers.meta.select');
-    Route::post('/workspaces/{workspace}/providers/meta/{source}/disconnect', [MetaConnectionController::class, 'disconnect'])
-        ->middleware(EnsureFreshAuthentication::class)->whereUuid('workspace')->whereUuid('source')->name('workspaces.providers.meta.disconnect');
-    Route::get('/workspaces', [WorkspaceController::class, 'index'])->name('workspaces.index');
-    Route::post('/workspaces', RetiredWorkspaceCreationController::class)->name('workspaces.store');
-    Route::post('/workspaces/{workspace}/reassess-owner-grant', [WorkspaceController::class, 'reassessOwnerGrant'])
-        ->middleware(EnsureFreshAuthentication::class)
-        ->whereUuid('workspace')->name('workspaces.reassess-owner-grant');
-    Route::get('/workspaces/{workspace}', [WorkspaceController::class, 'show'])
-        ->whereUuid('workspace')->name('workspaces.show');
-    Route::post('/workspaces/{workspace}/services', [WorkspaceServiceController::class, 'store'])
-        ->middleware(EnsureFreshAuthentication::class)
-        ->whereUuid('workspace')->name('workspaces.services.store');
-    Route::delete('/workspaces/{workspace}/services/{service}', [WorkspaceServiceController::class, 'destroy'])
-        ->middleware(EnsureFreshAuthentication::class)
-        ->whereUuid('workspace')->whereUuid('service')->name('workspaces.services.destroy');
-    Route::get('/workspaces/{workspace}/foundation', WorkspaceFoundationController::class)
-        ->whereUuid('workspace')
-        ->name('workspaces.foundation');
-
-    Route::middleware(EnsureFreshAuthentication::class)->group(function () {
-        Route::post('/workspaces/{workspace}/source-grants', [WorkspaceSourceController::class, 'grant'])
-            ->whereUuid('workspace')->name('workspaces.sources.grant');
-        Route::post('/workspaces/{workspace}/sources', [WorkspaceSourceController::class, 'command'])
-            ->whereUuid('workspace')->name('workspaces.sources.command');
-        Route::post('/workspaces/{workspace}/source-audit/{obligation}/recover', [WorkspaceSourceController::class, 'recover'])
-            ->whereUuid('workspace')->whereUuid('obligation')->name('workspaces.sources.recover');
-    });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -505,7 +352,7 @@ Route::middleware(['auth:internal', EnsureCurrentPrincipal::class, RequireConten
 
 Route::middleware(['auth:internal', EnsureCurrentPrincipal::class])->prefix('internal/commercial')->name('internal.commercial.')->group(function () {
     Route::get('/', [CommercialController::class, 'index'])->name('index');
-    Route::get('/workspace-reference', [CommercialController::class, 'workspace'])->name('workspace');
+    Route::get('/business-reference', [CommercialController::class, 'business'])->name('business');
     Route::get('/receipts/{command}', [CommercialController::class, 'receipt'])->whereUuid('command')->name('receipt');
     Route::get('/contexts/{scope}', [CommercialController::class, 'context'])->whereUuid('scope')->name('context');
     Route::middleware(EnsureFreshAuthentication::class)->group(function () {
@@ -556,7 +403,6 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->prefix('api/business
     Route::get('/{business}/purposes', [BusinessFoundationController::class, 'purposes'])->whereUuid('business')->name('business-foundation.purposes');
     Route::post('/{business}/purposes', [BusinessFoundationController::class, 'writePurpose'])->whereUuid('business')->name('business-foundation.write-purpose');
     Route::get('/{business}/history', [BusinessFoundationController::class, 'history'])->whereUuid('business')->name('business-foundation.history');
-    Route::get('/{business}/legacy-history', [BusinessFoundationController::class, 'legacyHistory'])->whereUuid('business')->name('business-foundation.legacy-history');
     Route::post('/', [BusinessFoundationController::class, 'store'])->name('business-foundation.store');
     Route::post('/{business}/read', [BusinessFoundationController::class, 'show'])->whereUuid('business')->name('business-foundation.show');
     Route::put('/{business}/context', [BusinessFoundationController::class, 'context'])->whereUuid('business')->name('business-foundation.context');
@@ -584,7 +430,6 @@ Route::middleware(['auth', EnsureCurrentPrincipal::class])->prefix('api/business
     Route::post('/{business}/agency-mandates', [BusinessFoundationController::class, 'withdrawAgencyMandates'])->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('business-foundation.agency-withdraw');
     Route::post('/{business}/purpose-enrollment', [BusinessFoundationController::class, 'enrollPurposeStatement'])->middleware(EnsureFreshAuthentication::class)->whereUuid('business')->name('business-foundation.purpose-enrollment');
     Route::get('/{business}/internal-team', [BusinessFoundationController::class, 'internalTeamSurface'])->whereUuid('business')->name('business-foundation.internal-team-surface');
-    Route::post('/{business}/workspace-links', [BusinessFoundationController::class, 'link'])->whereUuid('business')->name('business-foundation.link');
 });
 Route::post('/api/data-rights/commands', [BusinessFoundationController::class, 'resourceRight'])
     ->middleware(['auth', EnsureCurrentPrincipal::class])->name('business-foundation.resource-right');

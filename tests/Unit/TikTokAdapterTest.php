@@ -20,7 +20,7 @@ final class TikTokAdapterTest extends TestCase
 {
     private function scope(string $operation = 'report.read'): ProviderScope
     {
-        return new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::TikTok, '1234567890123456789', $operation, 'advertising_analysis');
+        return ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::TikTok, '1234567890123456789', $operation, 'advertising_analysis');
     }
 
     private function credentials(): ProviderCredentials

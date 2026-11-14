@@ -7,7 +7,7 @@ export type Eligibility = components['schemas']['InquiryEvidenceEligibility'];
 export type EvidenceRead = components['schemas']['InquiryEvidenceRead'];
 export type Receipt = components['schemas']['InquiryEvidenceReceipt'];
 export type Action = 'business.inquiry_evidence.record' | 'business.inquiry_evidence.correct' | 'business.inquiry_evidence.read';
-export const selection = (grant: string): components['schemas']['InquiryAuthoritySelection'] => ({realm_kind:'direct',realm_workspace_public_id:null,requirements:[{requirement_kind:'business',leaf_grant_id:grant}]});
+export const selection = (grant: string): components['schemas']['InquiryAuthoritySelection'] => ({realm_kind:'direct',requirements:[{requirement_kind:'business',leaf_grant_id:grant}]});
 export async function eligibility(business: string, access: string): Promise<Eligibility> {
  const r=await api.GET('/api/businesses/{business}/inquiry-evidence/eligibility',{params:{path:{business},query:{access}}});
  if(!r.data) throw Error('Eligibility unavailable'); return r.data.data;

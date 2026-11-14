@@ -19,7 +19,7 @@ final class MarketKnowledgeConsumersTest extends TestCase
 
         return $this->postJson('/api/businesses/'.$consumer['business']['business_public_id'].'/knowledge/'.$kind, [
             'command_id' => (string) Str::uuid(), 'material_ref' => $ref, 'purpose' => 'market_research',
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $consumer['read']->id], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $consumer['right']['grant_id']],
             ]],
         ]);

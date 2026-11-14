@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
-/** Fetch and atomic acceptance inside the caller's signed Workspace transaction. */
+/** Fetch and atomic acceptance inside the caller's signed Business transaction. */
 final readonly class SnapchatObservationReader
 {
     public function __construct(private Factory $http, private ObservationJournal $journal,

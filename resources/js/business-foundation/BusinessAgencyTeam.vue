@@ -102,7 +102,7 @@ async function inspect() {
             || result.scope !== 'current_declaration_agency_only' || !uuid(result.recipient.public_id)
             || !Number.isSafeInteger(result.recipient.membership_grant_id) || result.recipient.membership_grant_id <= 0
             || result.options.length > 30 || result.options.some(option => !labels[option.action] || !Number.isSafeInteger(option.parent_grant_id) || option.parent_grant_id <= 0
-                || option.authority_selection.realm_kind !== 'direct' || option.authority_selection.realm_workspace_public_id !== null
+                || option.authority_selection.realm_kind !== 'direct'
                 || option.authority_selection.requirements.length !== 1 || option.authority_selection.requirements[0].requirement_kind !== 'business'
                 || option.authority_selection.requirements[0].leaf_grant_id !== option.parent_grant_id
                 || option.max_expires_at !== null && !Number.isFinite(Date.parse(option.max_expires_at)))) throw Error('Agency discovery identity mismatch');

@@ -26,7 +26,7 @@ trait MarketKnowledgeFixture
 
     private function captureBody(User $operator, array $originals, string $purpose = 'market_research'): array
     {
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => []];
+        $selection = ['realm_kind' => 'direct', 'requirements' => []];
         foreach ($originals['records'] as $record) {
             $right = json_decode(DB::connection('pgsql_migrations')->scalar('SELECT builderad_v2_market_knowledge_enroll(?::uuid,?::uuid,1,?,?::jsonb)', [
                 (string) Str::uuid(), $record['source'], 'market.evidence', json_encode([
@@ -88,7 +88,7 @@ trait MarketKnowledgeFixture
     private function knowledgePublication(User $operator, array $originals, array $capture): array
     {
         $purpose = $capture['purpose'];
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => []];
+        $selection = ['realm_kind' => 'direct', 'requirements' => []];
         foreach ($originals['records'] as $record) {
             foreach (['forward', 'retain'] as $operation) {
                 $right = $this->knowledgeRight($operator, $record['source'], $record['evidence'], 'market.evidence', $operation, array_keys($record['payload']['fields']), $purpose);
@@ -124,7 +124,7 @@ trait MarketKnowledgeFixture
         $right = $this->knowledgeRight($user, $shared['originals']['source'], $shared['ref']['key'], 'market.knowledge', 'display', ['finding'], $purpose);
         $this->postJson('/api/businesses/'.$business['business_public_id'].'/data-use-bindings', [
             'command_id' => (string) Str::uuid(), 'data_use_scope_id' => $right['scope_id'], 'effect' => 'add', 'expected_relation' => 0,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $business['grant_refs']['business.link.manage']], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $right['grant_id']],
             ]],
         ])->assertOk();
@@ -138,7 +138,7 @@ trait MarketKnowledgeFixture
 
         return $this->postJson('/api/businesses/'.$consumer['business']['business_public_id'].'/materials/read', [
             'command_id' => (string) Str::uuid(), 'material_refs' => [$ref], 'operation' => 'display', 'purpose' => $purpose, 'recipient_ref' => $consumer['user']->public_id,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $consumer['read']->id], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $consumer['right']['grant_id']],
             ]],
         ]);

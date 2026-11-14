@@ -18,7 +18,7 @@ class SharedRealityInterpretationTest extends TestCase
     private function observation(Provider $provider = Provider::Meta, ?string $value = '12.34', ?string $currency = 'TRY', ?int $scale = 0,
         string $start = '2026-09-01', string $end = '2026-09-30', string $grain = 'TOTAL', ?ReportWindow $window = null): AdObservation
     {
-        return new AdObservation(new ProviderScope(1, '0199aabb-1234-7123-8123-123456789abc', $provider, 'account-1', 'report.read', 'advertising_analysis'),
+        return new AdObservation(ProviderScope::forBusiness(1, '0199aabb-1234-7123-8123-123456789abc', $provider, 'account-1', 'report.read', 'advertising_analysis'),
             'campaign-1', $window ?? new ReportWindow($start, $end, 'INCLUSIVE_DATES', $grain, 'Europe/Istanbul', 'synthetic:account-local'),
             new NativeAmount($value, $currency, 'synthetic:reported-expenditure', $scale, $scale === null ? null : 'synthetic:documented-scale'),
             ['conversions' => ['value' => '8', 'unit' => 'native_attribution', 'meaning' => 'Provider attribution, not accepted business outcome', 'basis' => 'PROVIDER_REPORTED']],
@@ -117,7 +117,7 @@ class SharedRealityInterpretationTest extends TestCase
     public function test_business_observations_keep_their_custody_and_cannot_be_read_as_another_business(): void
     {
         $original = $this->observation();
-        $scope = ProviderScope::forBusiness(1, $original->scope->sourceId, Provider::Meta, 'account-1', 'report.read', 'advertising_analysis');
+        $scope = ProviderScope::forBusiness(2, $original->scope->sourceId, Provider::Meta, 'account-1', 'report.read', 'advertising_analysis');
         $observation = new AdObservation($scope, $original->campaignId, $original->window, $original->spend,
             $original->nativeFacts, $original->provenance, $original->readAt, $original->freshUntil);
         $projection = $this->projection($observation);
@@ -129,8 +129,8 @@ class SharedRealityInterpretationTest extends TestCase
         $this->assertSame($original->contentHash(), $observation->contentHash());
 
         // Change only the outer journal context: the existing entry must not
-        // acquire another Business's identity, even if both Workspaces are NULL.
-        $projection['scope']['business_id'] = 2;
+        // acquire another Business's identity.
+        $projection['scope']['business_id'] = 3;
         $this->expectException(InvalidArgumentException::class);
         $this->view($projection);
     }
@@ -236,7 +236,7 @@ class SharedRealityInterpretationTest extends TestCase
     {
         $p = $this->projection();
         switch ($case) {
-            case 'scope': $p['entries'][0]['observation']['scope']['workspace_id'] = 2;
+            case 'scope': $p['entries'][0]['observation']['scope']['business_id'] = 2;
                 break;
             case 'identity': $p['entries'][0]['identity'] = 'bb2:'.str_repeat('f', 64);
                 break;
@@ -250,7 +250,7 @@ class SharedRealityInterpretationTest extends TestCase
                 break;
             case 'generation': $p['entries'][0]['generation'] = 2;
                 break;
-            case 'scope_type': $p['entries'][0]['observation']['scope']['workspace_id'] = '1';
+            case 'scope_type': $p['entries'][0]['observation']['scope']['business_id'] = '1';
                 break;
             case 'unit_type': $p['entries'][0]['observation']['spend']['native_unit'] = 1;
                 break;

@@ -19,7 +19,7 @@ final readonly class MetaFlowState
         string $kind, array $data): string
     {
         if (DB::connection()->transactionLevel() !== 1) {
-            throw new LogicException('Meta web state requires the signed Workspace transaction.');
+            throw new LogicException('Meta web state requires the signed Business transaction.');
         }
         $binding = MetaCacheBinding::context($this->cache, $request, $scope, $accessVersion, $configuration);
         $handle = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');

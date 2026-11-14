@@ -41,11 +41,11 @@ final class ProviderAccessStore
         $this->requireTransaction();
         app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'provider.read');
         $cipher = DB::scalar('SELECT builderad_provider_credential(?, ?, ?::uuid, ?, ?, ?, ?)', [
-            $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->provider->value,
+            $scope->businessId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->provider->value,
             $scope->accountId, $scope->operation, $scope->purpose,
         ]);
 
-        $verification = DB::table('provider_access')->where('workspace_id', $scope->workspaceId)->where('source_id', $scope->sourceId)
+        $verification = DB::table('provider_access')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $scope->businessId))->where('source_id', $scope->sourceId)
             ->where('provider', $scope->provider->value)->where('resource', $scope->accountId)->where('operation', $scope->operation)->where('purpose', $scope->purpose)->value('verification');
         app(ProviderReportingEvidence::class)->requireApplicable($scope, json_decode($verification, true, flags: JSON_THROW_ON_ERROR));
 
@@ -61,7 +61,7 @@ final class ProviderAccessStore
         }
         app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'provider.connect');
         $cipher = DB::scalar('SELECT builderad_google_connection_credential(?, ?, ?::uuid, ?, ?, ?, ?)', [
-            $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId,
+            $scope->businessId, SessionAuthority::sessionKey($request), $scope->sourceId,
             $scope->accountId, $scope->operation, $scope->purpose, $version,
         ]);
 
@@ -77,7 +77,7 @@ final class ProviderAccessStore
         }
         app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'provider.connect');
         $cipher = DB::scalar('SELECT builderad_snapchat_connection_credential(?, ?, ?::uuid, ?, ?, ?, ?)', [
-            $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId,
+            $scope->businessId, SessionAuthority::sessionKey($request), $scope->sourceId,
             $scope->accountId, $scope->operation, $scope->purpose, $version,
         ]);
 
@@ -104,7 +104,7 @@ final class ProviderAccessStore
     {
         app(ProviderRequestGuard::class)->requireCustody($request, $scope, $effect === 'revoke' ? 'provider.revoke' : 'provider.connect');
         $result = DB::scalar('SELECT builderad_provider_access_command(?, ?, ?::uuid, ?, ?, ?, ?, ?::uuid, ?, ?, ?::jsonb)', [
-            $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->provider->value,
+            $scope->businessId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->provider->value,
             $scope->accountId, $scope->operation, $scope->purpose, $command, $version, $effect,
             json_encode($payload, JSON_THROW_ON_ERROR),
         ]);
@@ -115,7 +115,7 @@ final class ProviderAccessStore
     private function requireTransaction(): void
     {
         if (DB::connection()->transactionLevel() !== 1) {
-            throw new LogicException('Provider access requires its own Workspace transaction.');
+            throw new LogicException('Provider access requires its own Business transaction.');
         }
     }
 }

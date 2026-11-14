@@ -13,17 +13,16 @@ final class PrincipalContext
         $connection = DB::connection();
 
         if ($connection->transactionLevel() !== 1) {
-            throw new LogicException('Principal context requires the owned workspace transaction.');
+            throw new LogicException('Principal context requires the owned principal transaction.');
         }
 
         $context = $connection->selectOne(<<<'SQL'
             select
                 current_setting('app.authorization_phase', true) as phase,
-                current_setting('app.principal_user_id', true) as principal,
-                current_setting('app.workspace_id', true) as workspace
+                current_setting('app.principal_user_id', true) as principal
             SQL);
 
-        foreach ([$context->phase, $context->principal, $context->workspace] as $value) {
+        foreach ([$context->phase, $context->principal] as $value) {
             if ($value !== null && $value !== '') {
                 throw new LogicException('Principal context requires a clean authorization transaction.');
             }

@@ -51,7 +51,7 @@ final class BusinessSurfaceTest extends TestCase
         $witness = $this->withHeader('X-Builderad-Witness', '1')->getJson($url)->assertOk();
         $this->assertSame($page->json('visibility'), $witness->json('visibility'));
         $this->assertArrayNotHasKey('data', $witness->json());
-        $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
+        $this->assertNull(DB::connection('pgsql_migrations')->scalar("SELECT to_regclass('public.workspaces')"));
     }
 
     public function test_selected_path_cannot_open_another_business_or_use_an_edit_grant_for_reading(): void
@@ -79,7 +79,7 @@ final class BusinessSurfaceTest extends TestCase
         $this->actingAs(User::factory()->create());
         $a = $this->draft('Facts for activity A');
         $b = $this->draft('Facts for activity B');
-        $selection = fn (array $business, string $action) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        $selection = fn (array $business, string $action) => ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $business['grant_refs'][$action]]]];
         $market = $this->putJson('/api/businesses/'.$a['business_public_id'].'/markets', ['command_id' => (string) Str::uuid(), 'codes' => ['SA', 'JO'],
             'expected_context' => 0, 'authority_selection' => $selection($a, 'business.markets.declare')])->assertOk();
@@ -102,7 +102,7 @@ final class BusinessSurfaceTest extends TestCase
             ->assertJsonPath('data.business.current_intent', null)->assertJsonPath('data.business.preferences', null)
             ->assertJsonPath('data.business.declared_markets', [])->assertJsonPath('data.business.versions.context', 0)
             ->assertJsonPath('data.business.versions.intent', 0)->assertJsonPath('data.business.versions.preferences', 0);
-        $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
+        $this->assertNull(DB::connection('pgsql_migrations')->scalar("SELECT to_regclass('public.workspaces')"));
     }
 
     public function test_fact_options_withdraw_independently_and_context_management_does_not_authorize_declaration(): void
@@ -110,12 +110,12 @@ final class BusinessSurfaceTest extends TestCase
         $actor = User::factory()->create();
         $this->actingAs($actor);
         $a = $this->draft('Independent declaration rights');
-        $selection = fn (string $action) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        $selection = fn (string $action) => ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs'][$action]]]];
         $withdrawal = ['command_id' => (string) Str::uuid(), 'effect' => 'revoke',
             'grantee_public_id' => $actor->public_id, 'action' => 'business.markets.declare', 'parent_grant_id' => null,
             'grant_id' => $a['grant_refs']['business.markets.declare'], 'expected_grant' => 1, 'expires_at' => null, 'delegable' => false,
-            'realm_workspace_public_id' => null, 'authority_selection' => $selection('business.context.read')];
+            'authority_selection' => $selection('business.context.read')];
         $this->postJson('/api/businesses/'.$a['business_public_id'].'/grants', $withdrawal)->assertForbidden();
         $this->postJson('/api/businesses/'.$a['business_public_id'].'/grants', [...$withdrawal,
             'command_id' => (string) Str::uuid(), 'authority_selection' => $selection('business.markets.declare')])->assertOk();
@@ -137,7 +137,7 @@ final class BusinessSurfaceTest extends TestCase
         $this->getJson($url)->assertOk();
         $this->postJson('/api/businesses/'.$a['business_public_id'].'/lifecycle', [
             'command_id' => (string) Str::uuid(), 'effect' => 'archive', 'target_ref' => null, 'payload' => (object) [], 'expected_revision' => 0,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs']['business.draft.archive']],
             ]],
         ])->assertOk();
@@ -154,7 +154,7 @@ final class BusinessSurfaceTest extends TestCase
         $before = $this->getJson($url)->assertOk()->json('visibility');
         $this->putJson('/api/businesses/'.$a['business_public_id'].'/context', [
             'command_id' => (string) Str::uuid(), 'name' => 'Name after update', 'business_type_id' => null, 'expected_context' => 0,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs']['business.context.manage']],
             ]],
         ])->assertOk();
@@ -184,16 +184,15 @@ final class BusinessSurfaceTest extends TestCase
     {
         $actor = User::factory()->create();
         $other = User::factory()->create();
-        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($actor, 1);
+        app(GrantAuthority::class)->issueFounderBootstrapGrants($actor, 1);
         $authority = app(GrantAuthority::class);
         $this->assertSame(0, DB::table('security_action_grants')->count());
-        $this->assertTrue($authority->has($actor, 1, 'workspace.create'));
-        $this->assertFalse($authority->has($other, 1, 'workspace.create'));
-        $this->assertFalse($authority->has($actor, 1, 'workspace.create', 'business', 1));
+        $this->assertTrue($authority->has($actor, 1, 'staff.view'));
+        $this->assertFalse($authority->has($other, 1, 'staff.view'));
         $this->assertSame(0, DB::table('security_action_grants')->count());
         DB::transaction(function () use ($actor, $other, $authority): void {
             app(PrincipalContext::class)->activate($other);
-            $this->assertFalse($authority->has($actor, 1, 'workspace.create'));
+            $this->assertFalse($authority->has($actor, 1, 'staff.view'));
         });
     }
 }

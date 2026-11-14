@@ -28,7 +28,7 @@ abstract class BusinessIntentOptionsTestCase extends TestCase
     protected function command(?array $value, int $version = 0): array
     {
         return ['command_id' => (string) Str::uuid(), 'value' => $value, 'expected_context' => $version, 'expected_intent' => $version,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+            'authority_selection' => ['realm_kind' => 'direct',
                 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (int) $this->currentBusiness['grant_refs']['business.intent.declare']]]],
             'confirmations' => $value === null ? ['declaration' => true] : ['declaration' => true, 'business_wide' => true, 'outcome' => true, 'acceptance_clear' => true,
                 'clarification_required' => ($value['outcome']['clarification'] ?? null) !== null, 'quantity' => true, 'horizon' => true]];

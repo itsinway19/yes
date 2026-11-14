@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use LogicException;
 
-/** Owns the clean transaction; Business identity never comes from WorkspaceContext. */
+/** Owns the transaction and qualifies the selected Business authority. */
 final class BusinessScope
 {
     public function __construct(private readonly PrincipalContext $principals) {}
@@ -153,6 +153,9 @@ final class BusinessScope
             // Decoration is in-memory only: no authority-sensitive I/O after that check.
             $surface['catalog'] = $this->decorateCatalog($surface['catalog']);
             $surface['commercial'] = app(RegisterCommercialScope::class)->businessProjection($business);
+            $surface['service_approval'] = $this->decode(DB::scalar('SELECT builderad_business_service_approval(?,?::uuid,?)', [
+                SessionAuthority::sessionKey($request), $business, $readGrant,
+            ]));
 
             return $surface;
         });
@@ -162,14 +165,6 @@ final class BusinessScope
     {
         return $this->run($request, fn () => $this->decode(DB::scalar(
             'SELECT builderad_v2_business_history(?,?::uuid,?,?,?)',
-            [SessionAuthority::sessionKey($request), $business, $readGrant, $kind, $after],
-        )));
-    }
-
-    public function legacyHistory(Request $request, string $business, int $readGrant, string $kind, ?string $after = null): array
-    {
-        return $this->run($request, fn () => $this->decode(DB::scalar(
-            'SELECT builderad_v2_business_legacy_history(?,?::uuid,?,?,?::uuid)',
             [SessionAuthority::sessionKey($request), $business, $readGrant, $kind, $after],
         )));
     }
@@ -234,12 +229,12 @@ final class BusinessScope
         )));
     }
 
-    public function internalTeam(Request $request, string $business, string $command, ?string $workspace, string $effect, ?string $recipient, int $expected, array $selection): array
+    public function internalTeam(Request $request, string $business, string $command, string $effect, ?string $recipient, int $expected, array $selection): array
     {
-        return $this->run($request, function () use ($request, $business, $command, $workspace, $effect, $recipient, $expected, $selection): array {
+        return $this->run($request, function () use ($request, $business, $command, $effect, $recipient, $expected, $selection): array {
             $result = $this->decode(DB::scalar(
-                'SELECT builderad_v2_internal_team_command(?,?::uuid,?::uuid,?::uuid,?,?::uuid,?,?::jsonb)',
-                [SessionAuthority::sessionKey($request), $business, $command, $workspace, $effect, $recipient, $expected, json_encode($selection, JSON_THROW_ON_ERROR)],
+                'SELECT builderad_v2_internal_team_command(?,?::uuid,?::uuid,?,?::uuid,?,?::jsonb)',
+                [SessionAuthority::sessionKey($request), $business, $command, $effect, $recipient, $expected, json_encode($selection, JSON_THROW_ON_ERROR)],
             ));
             if ($result['grant_refs'] === []) {
                 $result['grant_refs'] = (object) [];
@@ -261,14 +256,6 @@ final class BusinessScope
         return $this->run($request, fn () => $this->decode(DB::scalar(
             'SELECT builderad_v2_business_read(?,?::uuid,?::jsonb)',
             [SessionAuthority::sessionKey($request), $business, json_encode($selection, JSON_THROW_ON_ERROR)],
-        )));
-    }
-
-    public function link(Request $request, string $business, string $workspace, string $command, string $effect, int $expected, array $selection, string $kind = 'collaboration'): array
-    {
-        return $this->run($request, fn () => $this->decode(DB::scalar(
-            'SELECT builderad_v2_business_link_command(?,?::uuid,?::uuid,?::uuid,?,?,?::jsonb,?)',
-            [SessionAuthority::sessionKey($request), $business, $workspace, $command, $effect, $expected, json_encode($selection, JSON_THROW_ON_ERROR), $kind],
         )));
     }
 
@@ -304,12 +291,12 @@ final class BusinessScope
         )));
     }
 
-    public function grant(Request $request, string $business, string $command, string $effect, string $recipient, string $action, ?int $parent, ?int $grant, int $expected, ?string $expires, bool $delegable, ?string $realm, array $selection): array
+    public function grant(Request $request, string $business, string $command, string $effect, string $recipient, string $action, ?int $parent, ?int $grant, int $expected, ?string $expires, bool $delegable, array $selection): array
     {
         return $this->run($request, fn () => $this->decode(DB::scalar(
-            'SELECT builderad_v2_business_grant_command(?,?::uuid,?::uuid,?,?::uuid,?,?,?,?,?::timestamptz,?,?::uuid,?::jsonb)',
+            'SELECT builderad_v2_business_grant_command(?,?::uuid,?::uuid,?,?::uuid,?,?,?,?,?::timestamptz,?,?::jsonb)',
             [SessionAuthority::sessionKey($request), $business, $command, $effect, $recipient, $action, $parent, $grant,
-                $expected, $expires, $delegable ? 'true' : 'false', $realm, json_encode($selection, JSON_THROW_ON_ERROR)],
+                $expected, $expires, $delegable ? 'true' : 'false', json_encode($selection, JSON_THROW_ON_ERROR)],
         )));
     }
 

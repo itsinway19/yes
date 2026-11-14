@@ -24,9 +24,9 @@ final class BusinessMaterialUseTest extends TestCase
 
     public function test_actual_source_adoption_and_exact_native_right_withdrawal_control_material_use_without_silent_recovery(): void
     {
-        $f = $this->original(adoptViaCommand: true);
+        $f = $this->original();
         $this->read($f)->assertOk();
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        $selection = ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'native_source', 'leaf_grant_id' => $f['manager']]]];
         $right = ['command_id' => (string) Str::uuid(), 'target_kind' => 'source', 'target_ref' => $f['source'], 'effect' => 'revoke',
             'payload' => ['grant_id' => (string) $f['native']], 'expected_revision' => 1, 'authority_selection' => $selection];
@@ -108,57 +108,6 @@ final class BusinessMaterialUseTest extends TestCase
         $this->assertSame(0, DB::connection('pgsql_migrations')->table('business_command_receipts')->where('action', 'like', 'material.%')->count());
     }
 
-    public function test_two_businesses_can_use_one_native_original_without_sharing_client_boundaries_or_revocation(): void
-    {
-        $f = $this->original();
-        $db = DB::connection('pgsql_migrations');
-        $a = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Second material client'])->assertCreated()->json('data');
-        $workspace = $db->table('workspaces')->sole();
-        foreach ([$f['a'], $a] as $draft) {
-            $this->postJson('/api/businesses/'.$draft['business_public_id'].'/workspace-links', [
-                'command_id' => (string) Str::uuid(), 'workspace_public_id' => $workspace->public_id,
-                'effect' => 'add', 'expected_revision' => 0, 'authority_selection' => [
-                    'realm_kind' => 'direct', 'realm_workspace_public_id' => null,
-                    'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $draft['grant_refs']['business.link.manage']]],
-                ],
-            ])->assertForbidden();
-        }
-        // Shared native custody needs independent scoped rights, not a retired Business/Workspace link.
-        $this->assertSame(0, $db->table('business_workspace_links')->where('workspace_id', $workspace->id)->count());
-        $business = $db->table('businesses')->where('public_id', $a['business_public_id'])->value('id');
-        $businessGrant = Fixture::root($business, $f['user']->id, 'business.data.use');
-        $boundary = Fixture::boundary($f['user']->id);
-        Fixture::insert('boundary_subjects', ['membership_id' => (string) Str::uuid7(), 'boundary_id' => $boundary['boundary_id'], 'business_id' => $business, 'branch_id' => null, 'status' => 'active', 'revision' => 1], $f['user']->id);
-        $scope = (array) $db->table('data_use_scopes')->where('scope_id', $f['scope'])->first();
-        $scope['scope_id'] = (string) Str::uuid7();
-        $scope['boundary_id'] = $boundary['boundary_id'];
-        $scope['selection'] = json_decode($scope['selection'], true, flags: JSON_THROW_ON_ERROR);
-        $hash = $db->transaction(function () use ($db, $scope) {
-            $db->statement('SET LOCAL ROLE builderad_scope_executor');
-
-            return $db->scalar("SELECT encode(builderad_private.data_scope_digest(?::uuid,?::uuid,?,?,?,?::jsonb),'hex')", [$scope['boundary_id'], $scope['source_id'], $scope['resource'], $scope['operation'], $scope['purpose'], json_encode($scope['selection'])]);
-        });
-        $scope['scope_digest'] = '\\x'.$hash;
-        Fixture::insert('data_use_scopes', $scope, $f['user']->id);
-        $use = Fixture::root($scope['scope_id'], $f['user']->id, 'data_use.retained_read', kind: 'data_use');
-        Fixture::insert('business_data_use_bindings', ['binding_id' => (string) Str::uuid7(), 'business_id' => $business, 'data_use_scope_id' => $scope['scope_id'], 'status' => 'active', 'revision' => 1, 'qualification_ref' => $use->qualification_id], $f['user']->id);
-        $second = $f;
-        $second['a'] = $a;
-        $second['body']['command_id'] = (string) Str::uuid();
-        $second['body']['authority_selection']['requirements'][0]['leaf_grant_id'] = $businessGrant->id;
-        $second['body']['authority_selection']['requirements'][1]['leaf_grant_id'] = $use->id;
-        $this->read($f)->assertOk();
-        $this->read($second)->assertOk()->assertJsonPath('data.materials.0.data_use_scope_id', $scope['scope_id']);
-        // Business B cannot borrow A's independently qualified scope even for identical source bytes.
-        $borrowed = $second['body'];
-        $borrowed['command_id'] = (string) Str::uuid();
-        $borrowed['authority_selection']['requirements'][1]['leaf_grant_id'] = $f['use']->id;
-        $this->read($second, $borrowed)->assertForbidden();
-        Fixture::revokeQualification($f['use']->qualification_id, $f['user']->id);
-        $this->read($f)->assertForbidden();
-        $this->read($second)->assertOk();
-    }
-
     public function test_processing_needs_its_own_current_operation_scope_and_cannot_replace_display_or_infer_draft_rights(): void
     {
         $f = $this->original('process');
@@ -208,7 +157,7 @@ final class BusinessMaterialUseTest extends TestCase
             'purpose' => $body['purpose'], 'recipient' => $body['recipient_ref'], 'selection' => $body['authority_selection'], 'release' => $release];
         if ($mode === 'source_freshness') {
             $input = array_merge($input, ['operation' => 'resource', 'kind' => 'source', 'target' => $f['source'], 'effect' => 'revoke', 'expected' => 1, 'payload' => ['grant_id' => $f['native']],
-                'selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'native_source', 'leaf_grant_id' => $f['native']]]]]);
+                'selection' => ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'native_source', 'leaf_grant_id' => $f['native']]]]]);
         }
         file_put_contents($path, json_encode($input, JSON_THROW_ON_ERROR));
         $worker = new Process([PHP_BINARY, base_path('tests/BusinessScopeCommandWorker.php'), $path], base_path());

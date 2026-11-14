@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
-/** Server orchestration only. Routes must provide signed Workspace transactions and explicit source grants. */
+/** Server orchestration only. Routes must provide signed Business transactions and explicit source grants. */
 final readonly class SnapchatAuthorizationCoordinator
 {
     public function __construct(private Factory $http, private SnapchatAccessAdapter $configuration,
@@ -71,14 +71,14 @@ final readonly class SnapchatAuthorizationCoordinator
         if ($selected->provider !== Provider::Snapchat || ! $selected->sameCustodyAs($installation)
             || $selected->sourceId === $installation->sourceId || $selected->operation !== 'report.read'
             || $selected->purpose !== $installation->purpose) {
-            throw new InvalidArgumentException('Selected Snapchat account requires its own exact Workspace/source/report scope.');
+            throw new InvalidArgumentException('Selected Snapchat account requires its own exact Business/source/report scope.');
         }
-        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$selected->workspaceId,
+        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$selected->businessId,
             SessionAuthority::sessionKey($request), $selected->sourceId, $selected->accountId, $selected->operation, $selected->purpose]);
         if (DB::table('source_registry')->where('id', $selected->sourceId)->value('namespace') !== 'ad_account') {
             throw new AuthorizationException('Selection must bind an explicitly declared advertising account source.');
         }
-        $previous = DB::table('provider_access_receipts')->where('workspace_id', $selected->workspaceId)
+        $previous = DB::table('provider_access_receipts')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $selected->businessId))
             ->where('source_id', $selected->sourceId)->where('provider', 'snapchat')->where('resource', $selected->accountId)
             ->where('operation', $selected->operation)->where('purpose', $selected->purpose)->where('command_id', $command)->value('result');
         if ($previous !== null) {
@@ -108,7 +108,7 @@ final readonly class SnapchatAuthorizationCoordinator
         if ($scope->provider !== Provider::Snapchat || $scope->operation !== 'report.read' || $scope->purpose !== 'advertising_analysis') {
             throw new InvalidArgumentException('Snapchat renewal requires its exact report source.');
         }
-        $previous = DB::table('provider_access_receipts')->where('workspace_id', $scope->workspaceId)
+        $previous = DB::table('provider_access_receipts')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $scope->businessId))
             ->where('source_id', $scope->sourceId)->where('provider', 'snapchat')->where('resource', $scope->accountId)
             ->where('operation', $scope->operation)->where('purpose', $scope->purpose)->where('command_id', $command)->value('result');
         if ($previous !== null) {
@@ -121,7 +121,7 @@ final readonly class SnapchatAuthorizationCoordinator
             return $receipt;
         }
         $credentials = $this->custody->snapchatConnectionCredentials($request, $scope, $version);
-        $failure = DB::table('snapchat_renewal_failures')->where('workspace_id', $scope->workspaceId)
+        $failure = DB::table('snapchat_renewal_failures')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $scope->businessId))
             ->where('source_id', $scope->sourceId)->where('resource', $scope->accountId)
             ->where('operation', $scope->operation)->where('purpose', $scope->purpose)->where('command_id', $command)->first();
         if ($failure !== null) {
@@ -136,7 +136,7 @@ final readonly class SnapchatAuthorizationCoordinator
             $renewed = $this->adapter($request, $scope, $version)->renew($scope, $credentials, '{}');
         } catch (SnapchatRequestFailed $error) {
             DB::selectOne('SELECT builderad_snapchat_renewal_failure(?, ?, ?::uuid, ?, ?, ?, ?, ?::uuid, ?)', [
-                $scope->workspaceId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->accountId,
+                $scope->businessId, SessionAuthority::sessionKey($request), $scope->sourceId, $scope->accountId,
                 $scope->operation, $scope->purpose, $version, $command, $error->reason,
             ]);
 
@@ -159,7 +159,7 @@ final readonly class SnapchatAuthorizationCoordinator
             || $scope->operation !== 'discovery.read' || $scope->purpose !== 'advertising_analysis') {
             throw new InvalidArgumentException('Snapchat discovery must bind its exact configured OAuth client.');
         }
-        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$scope->workspaceId,
+        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$scope->businessId,
             SessionAuthority::sessionKey($request), $scope->sourceId, $scope->accountId, $scope->operation, $scope->purpose]);
         if (DB::table('source_registry')->where('id', $scope->sourceId)->value('namespace') !== 'developer_app') {
             throw new AuthorizationException('Snapchat OAuth requires an explicitly declared client source.');

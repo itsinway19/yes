@@ -42,11 +42,11 @@ test('Business provider operations route directly and preserve the original effe
 
 test('Google offline recovery forwards true without changing the existing Laravel request format', async () => {
     const { client, requests } = fake();
-    await client.connectGoogle('workspace', { intent: handle, recover_offline_grant: true });
-    assert.equal(requests[0].url.pathname, '/workspaces/workspace/providers/google/connect');
+    await client.connectGoogle({kind:'business',publicId:'business'}, { intent: handle, recover_offline_grant: true });
+    assert.equal(requests[0].url.pathname, '/businesses/business/providers/google/connect');
     assert.equal(requests[0].method, 'POST');
     assert.deepEqual(requests[0].body, { intent: handle, recover_offline_grant: true });
-    await client.connectGoogle('workspace', { intent: handle });
+    await client.connectGoogle({kind:'business',publicId:'business'}, { intent: handle });
     assert.deepEqual(requests[1].body, { intent: handle });
 });
 
@@ -64,10 +64,10 @@ test('Snapchat renewal retains the real 200 success and 502 action-required resp
         const command = await request.json();
         return Response.json(command.expected_version === 2 ? success : denied, { status: command.expected_version === 2 ? 200 : 502 });
     });
-    const path = '/workspaces/{workspace}/providers/snapchat/{source}/renew';
-    const positive = await client.POST(path, { params: { path: { workspace: 'workspace', source: 'source' } }, body: { command_id: 'success', expected_version: 2 } });
+    const path = '/businesses/{business}/providers/snapchat/{source}/renew';
+    const positive = await client.POST(path, { params: { path: { business: 'business', source: 'source' } }, body: { command_id: 'success', expected_version: 2 } });
     assert.deepEqual(positive.data, success);
-    const negative = await client.POST(path, { params: { path: { workspace: 'workspace', source: 'source' } }, body: { command_id: 'denied', expected_version: 3 } });
+    const negative = await client.POST(path, { params: { path: { business: 'business', source: 'source' } }, body: { command_id: 'denied', expected_version: 3 } });
     assert.deepEqual(negative.error, denied);
     assert.equal(negative.data, undefined);
 });
@@ -80,18 +80,18 @@ test('every generated provider HTTP operation matches an existing runtime-regist
         for (const method of Object.keys(operations)) assert.ok(routes.some(route => route.uri === path.slice(1) && route.method.split('|').includes(method.toUpperCase())), `${method} ${path}`);
     }
     for (const provider of providers) {
-        assert.ok(spec.paths[`/workspaces/{workspace}/providers/${provider}`]);
-        assert.ok(spec.paths[`/workspaces/{workspace}/providers/${provider}/{source}/report`].post.responses[202]);
+        assert.ok(spec.paths[`/businesses/{business}/providers/${provider}`]);
+        assert.ok(spec.paths[`/businesses/{business}/providers/${provider}/{source}/report`].post.responses[202]);
     }
-    assert.equal(spec.paths['/workspaces/{workspace}/providers/meta/{source}/renew'], undefined);
+    assert.equal(spec.paths['/businesses/{business}/providers/meta/{source}/renew'], undefined);
     assert.equal(spec.paths['/providers/meta/callback'], undefined);
 });
 
 test('provider snapshots default to passive hydration, retain explicit refresh activity and caller cancellation', async () => {
     const { client, requests } = fake(), caller = new AbortController();
     for (const provider of providers) {
-        await client.snapshot(provider, 'workspace', caller.signal);
-        await client.snapshot(provider, 'workspace', caller.signal, false);
+        await client.snapshot(provider, {kind:'business',publicId:'business'}, caller.signal);
+        await client.snapshot(provider, {kind:'business',publicId:'business'}, caller.signal, false);
     }
     caller.abort();
     for (const [index, request] of requests.entries()) {
@@ -106,15 +106,15 @@ test('all five provider connect/discover/select/disconnect operations retain the
     for (const provider of providers) {
         const { client, requests, result } = fake();
         result.data = { authorization_url: 'https://provider.example/oauth' };
-        assert.equal((await client.connect(provider, 'workspace', handle)).authorization_url, 'https://provider.example/oauth');
-        if (provider === 'google') await client.googlePage('workspace', 'discovery', handle);
-        else await client.discover(provider, 'workspace', handle);
-        if (provider === 'meta') await client.selectMeta('workspace', handle);
-        else await client.select(provider, 'workspace', handle);
-        await client.disconnect(provider, 'workspace', 'source', version);
+        assert.equal((await client.connect(provider, {kind:'business',publicId:'business'}, handle)).authorization_url, 'https://provider.example/oauth');
+        if (provider === 'google') await client.googlePage({kind:'business',publicId:'business'}, 'discovery', handle);
+        else await client.discover(provider, {kind:'business',publicId:'business'}, handle);
+        if (provider === 'meta') await client.selectMeta({kind:'business',publicId:'business'}, handle);
+        else await client.select(provider, {kind:'business',publicId:'business'}, handle);
+        await client.disconnect(provider, {kind:'business',publicId:'business'}, 'source', version);
         assert.deepEqual(requests.map(request => [request.method, request.url.pathname]), [
-            ['POST', `/workspaces/workspace/providers/${provider}/connect`], ['GET', `/workspaces/workspace/providers/${provider}/discovery/${handle}`],
-            ['POST', `/workspaces/workspace/providers/${provider}/select`], ['POST', `/workspaces/workspace/providers/${provider}/source/disconnect`],
+            ['POST', `/businesses/business/providers/${provider}/connect`], ['GET', `/businesses/business/providers/${provider}/discovery/${handle}`],
+            ['POST', `/businesses/business/providers/${provider}/select`], ['POST', `/businesses/business/providers/${provider}/source/disconnect`],
         ]);
         assert.deepEqual(requests.map(request => request.body), [{ intent: handle }, null, { selection: handle }, version]);
         assert.ok(requests.every(request => request.url.origin === 'https://builderad.test'));
@@ -123,14 +123,14 @@ test('all five provider connect/discover/select/disconnect operations retain the
 
 test('only supported renewals, Google hierarchy and X campaign continuations have typed operations', async () => {
     const { client, requests } = fake();
-    await client.renew('google', 'workspace', 'source', version);
-    await client.renew('snapchat', 'workspace', 'source', version);
-    await client.googlePage('workspace', 'hierarchy', handle);
-    await client.campaigns('workspace', 'source');
-    await client.campaigns('workspace', 'source', handle);
+    await client.renew('google', {kind:'business',publicId:'business'}, 'source', version);
+    await client.renew('snapchat', {kind:'business',publicId:'business'}, 'source', version);
+    await client.googlePage({kind:'business',publicId:'business'}, 'hierarchy', handle);
+    await client.campaigns({kind:'business',publicId:'business'}, 'source');
+    await client.campaigns({kind:'business',publicId:'business'}, 'source', handle);
     assert.deepEqual(requests.map(request => request.url.pathname), [
-        '/workspaces/workspace/providers/google/source/renew', '/workspaces/workspace/providers/snapchat/source/renew',
-        `/workspaces/workspace/providers/google/hierarchy/${handle}`, '/workspaces/workspace/providers/x/source/campaigns', '/workspaces/workspace/providers/x/source/campaigns',
+        '/businesses/business/providers/google/source/renew', '/businesses/business/providers/snapchat/source/renew',
+        `/businesses/business/providers/google/hierarchy/${handle}`, '/businesses/business/providers/x/source/campaigns', '/businesses/business/providers/x/source/campaigns',
     ]);
     assert.equal(requests[3].url.search, '');
     assert.equal(requests[4].url.searchParams.get('continuation'), handle);
@@ -138,7 +138,7 @@ test('only supported renewals, Google hierarchy and X campaign continuations hav
 
 test('X status preserves campaign arrays through actual PHP query parsing, separate placement and mode', () => {
     const { client, requests } = fake();
-    return client.reportStatus({ workspace: 'workspace', source: 'source' }, { provider: 'x', period: { ...period, campaign_ids: ['campaign1', 'campaign2'], placement: 'SPOTLIGHT', mode: 'ASYNC' } }).then(() => {
+    return client.reportStatus({ business: {kind:'business',publicId:'business'}, source: 'source' }, { provider: 'x', period: { ...period, campaign_ids: ['campaign1', 'campaign2'], placement: 'SPOTLIGHT', mode: 'ASYNC' } }).then(() => {
         const url = requests[0].url;
         const parsed = JSON.parse(execFileSync(process.env.BUILDERAD_PHP ?? (process.platform === 'win32' ? 'C:\\tools\\php85\\php.exe' : 'php'), ['-r', 'parse_str($argv[1], $query); echo json_encode($query,JSON_THROW_ON_ERROR);', url.search.slice(1)], { encoding: 'utf8' }));
         assert.deepEqual(parsed, { ...period, campaign_ids: ['campaign1', 'campaign2'], placement: 'SPOTLIGHT', mode: 'ASYNC' });
@@ -147,7 +147,7 @@ test('X status preserves campaign arrays through actual PHP query parsing, separ
 
 test('report status and queue retain each provider period and exact original generation/deadline command', async () => {
     for (const provider of providers) {
-        const { client, requests } = fake(), scope = { workspace: 'workspace', source: 'source' };
+        const { client, requests } = fake(), scope = { business: {kind:'business',publicId:'business'}, source: 'source' };
         const extra = provider === 'x' ? { campaign_ids: ['campaign1'], placement: 'TREND', mode: 'SYNC' } : provider === 'meta' ? { mode: 'ASYNC' } : {};
         const command = { ...report, ...extra };
         await client.reportStatus(scope, { provider, period: { ...period, ...extra } });
@@ -155,11 +155,11 @@ test('report status and queue retain each provider period and exact original gen
         assert.equal(requests[0].method, 'GET');
         assert.equal(requests[1].method, 'POST');
         assert.deepEqual(requests[1].body, command);
-        assert.equal(requests[1].url.pathname, `/workspaces/workspace/providers/${provider}/source/report`);
+        assert.equal(requests[1].url.pathname, `/businesses/business/providers/${provider}/source/report`);
     }
     const attempts = [];
     const client = providerOperations(createApplicationClient('https://builderad.test', async request => { attempts.push(await request.json()); throw Error('unknown delivery'); }));
-    await assert.rejects(client.report({ workspace: 'workspace', source: 'source' }, { provider: 'google', command: report }), /unknown delivery/);
+    await assert.rejects(client.report({ business: {kind:'business',publicId:'business'}, source: 'source' }, { provider: 'google', command: report }), /unknown delivery/);
     assert.deepEqual(attempts, [report]);
 });
 

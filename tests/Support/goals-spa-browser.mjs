@@ -51,9 +51,11 @@ function command(mode,who='a',...args){
  assert.equal(child.status,0,child.stderr||child.stdout);
  try{return JSON.parse(child.stdout.trim());}catch{throw Error('Fixture '+mode+' did not return JSON: '+child.stdout+' '+child.stderr);}
 }
-const workspace=fixture.a.workspaces[0].public_id,other=fixture.a.workspaces[1].public_id,foreign=fixture.b.workspaces[0].public_id;
-const lifecycleBusiness = new Map(Object.values(fixture).filter(actor=>actor?.workspaces&&actor?.businesses)
- .flatMap(actor=>actor.workspaces.map((workspace,index)=>[workspace.public_id,actor.businesses[index]])));
+const workspace = fixture.a.businesses[0].business_public_id;
+const other = fixture.a.businesses[1].business_public_id;
+const foreign = fixture.b.businesses[0].business_public_id;
+const lifecycleBusiness = new Map(Object.values(fixture)
+    .flatMap(actor => (actor?.businesses ?? []).map(business => [business.business_public_id, business])));
 const target=(mode,id=workspace,review=false)=>{
  const business=lifecycleBusiness.get(id);assert.ok(business,'The active lifecycle Business fixture is required');
  return `/businesses/${business.business_public_id}?access=${business.grant_refs['business.context.read']}`;
@@ -80,10 +82,10 @@ const ready=(page,mode)=>page.waitForFunction(()=>document.querySelector('[data-
 async function login(page,mode,who='a'){
  await page.goto('http://localhost:8138/login');
  const response=await post(page,'/login',{email:`goals-${who}@example.test`,password:'DisposableGoalsProof42!'});assert.equal(response.status,200,JSON.stringify(response));
- await page.goto('http://localhost:8138'+target(mode,fixture[who].workspaces[0].public_id));await ready(page,mode);
+ await page.goto('http://localhost:8138'+target(mode,fixture[who].businesses[0].business_public_id));await ready(page,mode);
 }
 async function visit(page,mode,url){
- await page.evaluate(url=>__goalsSpa.router.push(url),url);
+ await page.evaluate(url=>document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(url),url);
  await page.waitForURL('http://localhost:8138'+url);await ready(page,mode);
 }
 async function check(name,mode,fn){

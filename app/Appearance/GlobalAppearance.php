@@ -4,7 +4,7 @@ namespace App\Appearance;
 
 use Illuminate\Support\Facades\DB;
 
-/** One public visual identity; never an identity or Workspace authority input. */
+/** Owns the public visual identity. */
 final class GlobalAppearance
 {
     public const DEFAULTS = ['primary' => '#155f53', 'secondary' => '#334b73'];

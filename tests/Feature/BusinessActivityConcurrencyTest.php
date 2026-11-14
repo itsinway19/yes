@@ -29,7 +29,7 @@ final class BusinessActivityConcurrencyTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
         $business = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Concurrent practices'])->assertCreated()->json('data');
-        $selection = fn ($grant) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
+        $selection = fn ($grant) => ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
         $body = ['command_id' => (string) Str::uuid(), 'practice_id' => (string) Str::uuid7(), 'operation' => 'create', 'expected_revision' => 0,
             'value' => ['name' => 'بيع الأجهزة', 'description' => '', 'kind' => 'sale', 'sectors' => [], 'specializations' => [], 'offering' => null, 'commercial_model' => null, 'channels' => [],
                 'target_markets' => ['status' => 'unspecified', 'areas' => []], 'fulfillment' => ['status' => 'unspecified', 'areas' => []]],

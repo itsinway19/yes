@@ -35,74 +35,6 @@ final class ExpenditureSummaryTest extends TestCase
         $this->assertSame($expected, $actual);
     }
 
-    public function test700_preserves_populated_history_and_rejects_unsealed_composition_without_upgrading_display_consent(): void
-    {
-        $this->usePersistentTestSessions();
-        $reset = app(DisposableDatabaseReset::class);
-        $reset->clear();
-        try {
-            $paths = array_values(array_filter(glob(database_path('migrations/*.php')), fn ($file) => strcmp(basename($file), '0001_01_01_000700_register_bounded_expenditure_summary.php') < 0));
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $paths, '--realpath' => true, '--force' => true]));
-            $f = $this->nativeMaterial(operation: 'display');
-            $base = '/api/businesses/'.$f['business']['business_public_id'];
-            $this->postJson($base.'/materials/read', $f['body'])->assertOk();
-            $owner = DB::connection('pgsql_migrations');
-            $before = [];
-            foreach (['businesses', 'source_registry', 'provider_observation_entries', 'security_action_grants', 'authority_qualification_receipts', 'client_data_boundaries', 'data_use_scopes', 'business_command_receipts'] as $table) {
-                $before[$table] = $owner->scalar("SELECT jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text)::text FROM {$table} r");
-            }
-            $signature = 'builderad_private.registered_producer(jsonb)';
-            $definition = $owner->scalar('SELECT pg_get_functiondef(?::regprocedure)', [$signature]);
-            $replace = function (string $sql) use ($owner): void {
-                $owner->statement('GRANT CREATE ON SCHEMA builderad_private TO builderad_scope_executor');
-                $owner->transaction(function () use ($owner, $sql): void {
-                    $owner->statement('SET LOCAL ROLE builderad_scope_executor');
-                    $owner->unprepared($sql);
-                });
-                $owner->statement('REVOKE CREATE ON SCHEMA builderad_private FROM builderad_scope_executor');
-            };
-            $replace(str_replace('no registered canonical producer', 'unsealed synthetic producer', $definition));
-            try {
-                Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]);
-                $this->fail('Unsealed producer composition was accepted.');
-            } catch (QueryException $error) {
-                $this->assertSame('42501', $error->getCode());
-                $this->assertStringContainsString('EXPENDITURE_SUMMARY_BASELINE_REQUIRED', $error->getMessage());
-            }
-            $replace($definition);
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-            foreach ($before as $table => $rows) {
-                // Preserve every pre750 field and separately prove no agency authority was inferred.
-                $image = $table === 'authority_qualification_receipts' ? "to_jsonb(r)-ARRAY['agency_business_id','agency_membership_grant_id']" : 'to_jsonb(r)';
-                $this->assertSame($rows, $owner->scalar("SELECT jsonb_agg({$image} ORDER BY ({$image})::text)::text FROM {$table} r"), $table);
-            }
-            $this->assertSame(0, $owner->table('authority_qualification_receipts')->whereNotNull('agency_business_id')->count());
-            $this->assertSame(0, $owner->table('authority_qualification_receipts')->whereNotNull('agency_membership_grant_id')->count());
-            foreach (['business.expenditure_summary', 'market.business_finding', 'market.knowledge'] as $namespace) {
-                $this->assertStringContainsString($namespace, $owner->scalar('SELECT pg_get_functiondef(?::regprocedure)', [$signature]));
-            }
-            foreach (['builderad_app', 'builderad_authority', 'public'] as $role) {
-                $this->assertFalse((bool) $owner->scalar("SELECT has_table_privilege(?,'business_expenditure_summaries','SELECT')", [$role]));
-                $this->assertFalse((bool) $owner->scalar("SELECT has_function_privilege(?,'builderad_private.business_source_basis_current(bigint,bigint)','EXECUTE')", [$role]));
-            }
-            $this->assertFalse((bool) $owner->scalar("SELECT has_function_privilege('builderad_owner','builderad_private.guard_effect()','EXECUTE')"));
-            $this->assertFalse((bool) $owner->scalar("SELECT has_schema_privilege('builderad_scope_executor','builderad_private','CREATE')"));
-            $this->assertTrue((bool) $owner->scalar("SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE oid='business_expenditure_summaries'::regclass"));
-            $this->postJson($base.'/materials/read', $f['body'])->assertOk();
-            $selection = $f['body']['authority_selection'];
-            $selection['requirements'][] = ['requirement_kind' => 'client_data', 'leaf_grant_id' => $f['boundary']['grant_id']];
-            $selection['requirements'][] = ['requirement_kind' => 'business', 'leaf_grant_id' => $f['manager']->id];
-            $this->postJson($base.'/expenditure-summaries', ['command_id' => (string) Str::uuid(), 'summary_id' => (string) Str::uuid7(), 'input_ref' => $f['ref'],
-                'input_license_id' => $f['useScope'], 'read_command_id' => $f['body']['command_id'], 'confirmed' => true,
-                'valid_until' => now()->addMinutes(10)->toIso8601String(), 'consent' => ['derive' => true, 'deliver_summary' => true, 'retain_payload' => false],
-                'authority_selection' => $selection])->assertForbidden();
-            $this->assertSame(0, $owner->table('business_expenditure_summaries')->count());
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-        } finally {
-            DB::disconnect('pgsql');
-            $reset->install();
-        }
-    }
 
     #[DataProvider('providers')]
     public function test_declared_summary_reaches_named_recipient_without_source_rights_and_stops_on_withdrawal(Provider $provider): void
@@ -110,7 +42,7 @@ final class ExpenditureSummaryTest extends TestCase
         $f = $this->nativeMaterial($provider, licensed: false, records: $provider === Provider::Meta ? 2 : 1);
         $base = '/api/businesses/'.$f['business']['business_public_id'];
         $access = (int) $f['business']['grant_refs']['business.context.read'];
-        $realm = static fn (array $requirements) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => $requirements];
+        $realm = static fn (array $requirements) => ['realm_kind' => 'direct', 'requirements' => $requirements];
         $req = static fn (string $kind, int|string $id) => ['requirement_kind' => $kind, 'leaf_grant_id' => (int) $id];
         $mandate = $this->postJson($base.'/operating-mandate', ['command_id' => (string) Str::uuid(), 'confirmed' => true,
             'capacity' => 'responsible_business', 'authority_reference' => 'Explicit synthetic responsible Business authority',
@@ -174,7 +106,7 @@ final class ExpenditureSummaryTest extends TestCase
         $delegate = function (string $action, int|string $parent) use ($recipient, $base, $realm, $req): int {
             return (int) $this->postJson($base.'/grants', ['command_id' => (string) Str::uuid(), 'effect' => 'issue', 'grantee_public_id' => $recipient->public_id,
                 'action' => $action, 'parent_grant_id' => (int) $parent, 'grant_id' => null, 'expected_grant' => 0, 'expires_at' => now()->addMinutes(20)->toIso8601String(),
-                'delegable' => false, 'realm_workspace_public_id' => null, 'authority_selection' => $realm([$req('business', $parent)])])->assertOk()->json('data.grant_id');
+                'delegable' => false, 'authority_selection' => $realm([$req('business', $parent)])])->assertOk()->json('data.grant_id');
         };
         $recipientRead = $delegate('business.context.read', $roots['business.context.read']);
         $recipientUse = $delegate('business.data.use', $mandate['business.data.use']);

@@ -20,7 +20,7 @@ class MetaObservationAdapterTest extends TestCase
 {
     private function scope(string $account = '123'): ProviderScope
     {
-        return new ProviderScope(1, '019a0022-0000-7000-8000-000000000001', Provider::Meta,
+        return ProviderScope::forBusiness(1, '019a0022-0000-7000-8000-000000000001', Provider::Meta,
             $account, 'report.read', 'advertising_analysis');
     }
 
@@ -179,7 +179,7 @@ class MetaObservationAdapterTest extends TestCase
         $http->assertSentCount(4);
     }
 
-    public function test_async_task_cannot_cross_workspace_scope_or_survive_documented_lifetime(): void
+    public function test_async_task_cannot_cross_business_scope_or_survive_documented_lifetime(): void
     {
         $http = new Factory;
         $http->preventStrayRequests();

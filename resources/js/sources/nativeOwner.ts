@@ -1,22 +1,17 @@
-/** Resource routing only; the server qualifies every operation independently. */
-export type NativeSourceReference = string | { kind: 'business'; publicId: string };
-export type NativeSourceProps = { workspaceId: string; businessId?: never } | { businessId: string; workspaceId?: never };
-
-export function nativeSourceReference(props: { workspaceId?: string; businessId?: string }): NativeSourceReference {
-    if (!!props.workspaceId === !!props.businessId) throw Error('One exact source owner is required');
-    return props.businessId ? { kind: 'business', publicId: props.businessId } : props.workspaceId!;
+/** Routing references confer no authority; the server qualifies each operation. */
+export type NativeSourceReference = { kind: 'business'; publicId: string };
+export type NativeSourceProps = { businessId: string };
+export function nativeSourceReference(props: { businessId?: string }): NativeSourceReference {
+    if (!props.businessId || 'workspaceId' in props) throw Error('One exact Business source owner is required');
+    return { kind: 'business', publicId: props.businessId };
 }
 export function ownerKey(owner: NativeSourceReference): string {
-    return typeof owner === 'string' ? owner : `business:${owner.publicId}`;
+    if (!owner || typeof owner !== 'object' || owner.kind !== 'business' || typeof owner.publicId !== 'string') throw Error('Retired source owner');
+    return `business:${owner.publicId}`;
 }
-export function commandOwner(owner: NativeSourceReference): { workspace: string; business?: never } | { business: string; workspace?: never } {
-    return typeof owner === 'string' ? { workspace: owner } : { business: owner.publicId };
+export function commandOwner(owner: NativeSourceReference): { business: string } {
+    ownerKey(owner); return { business: owner.publicId };
 }
 export function providerRoute(owner: NativeSourceReference) {
-    const id = typeof owner === 'string' ? owner : owner.publicId;
-    return {
-        root: typeof owner === 'string' ? '/workspaces/{workspace}' as const : '/businesses/{business}' as const,
-        // Only the parameter named in the selected template is serialized.
-        path: { workspace: id, business: id },
-    };
+    ownerKey(owner); return { root: '/businesses/{business}' as const, path: { business: owner.publicId } };
 }
