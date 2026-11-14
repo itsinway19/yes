@@ -87,7 +87,7 @@ function time(value: string) { return new Date(value).toLocaleString(locale.valu
             <p v-if="loading" role="status">{{ t('جارٍ تأهيل قراءة التاريخ…', 'Qualifying history access…') }}</p>
             <p v-else-if="failed" role="alert" data-history-unavailable>{{ t('تعذرت قراءة السجل بحق الوصول الحالي. لم نعتبر ذلك سجلًا فارغًا.', 'History is unavailable under the current access path. This was not interpreted as empty history.') }}</p>
             <template v-else-if="page">
-                <p v-else>{{ t('يعرض هذا السجل انتقالات التصريحات الجديدة فقط، بترتيب إصدارات مالكها.', 'This history contains new declaration transitions only, ordered by their owner revision.') }}</p>
+                <p>{{ t('يعرض هذا السجل انتقالات التصريحات الجديدة فقط، بترتيب إصدارات مالكها.', 'This history contains new declaration transitions only, ordered by their owner revision.') }}</p>
                 <p v-if="!page.entries.length" data-history-empty>{{ t('لا انتقالات محفوظة لهذا النوع في الصفحة المطلوبة. هذا لا يثبت غياب سجل قديم أو نتيجة تجارية.', 'No saved transitions for this kind on the requested page. This proves neither absence of legacy history nor a commercial outcome.') }}</p>
                 <ol v-else class="bf-history-list" data-history-entries>
                     <li v-for="entry in page.entries" :key="entry.event_id">

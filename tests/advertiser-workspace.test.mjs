@@ -90,6 +90,9 @@ const layout = await component('resources/js/business-foundation/AdvertiserWorks
 const inquiryUrl = moduleUrl(`import {defineComponent,h,ref,onMounted,onBeforeUnmount} from ${JSON.stringify(vue)};export const events=[];export default defineComponent({props:['active','business'],setup(p){const draft=ref('');onMounted(()=>events.push(['mount',p.business]));onBeforeUnmount(()=>events.push(['unmount',p.business]));return()=>h('section',{'data-test-inquiry':p.business,'data-active':p.active},[h('input',{'data-draft':true,value:draft.value,onInput:e=>draft.value=e.target.value})]);}});`);
 const { events } = await import(inquiryUrl);
 const childPorts = Object.fromEntries(['BusinessEditor', 'BusinessLifecycle', 'BusinessFacts', 'BusinessDelegation', 'BusinessAgencyTeam', 'BusinessTeamMembers', 'BusinessMandates', 'BusinessDataUse', 'BusinessPurposes', 'BusinessHistory', 'BusinessLegacyHistory'].map(name => [`./${name}.vue`, plainUrl]));
+childPorts['./BusinessHistory.vue'] = (await component('resources/js/business-foundation/BusinessHistory.vue', {
+    './api': moduleUrl('export const businessHistory=async()=>{throw Error("Unexpected history read")};'),
+})).url;
 childPorts['./InternalClientFileTeam.vue'] = plainUrl;
 const businessSourcesPanelUrl = moduleUrl(`import {h} from ${JSON.stringify(vue)};export default {props:['surface'],setup(p){return()=>h('section',{'data-test-business-sources':p.surface.business.business_public_id},'Current scoped sources')}};`);
 childPorts['./BusinessSources.vue'] = businessSourcesPanelUrl;
