@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 
-/** Caller owns the signed Workspace transaction; only a complete verified stats read is accepted. */
+/** Caller owns the signed Business transaction; only a complete verified stats read is accepted. */
 final readonly class XObservationReader
 {
     public function __construct(private Factory $http, private XOAuthSigner $signer, private ObservationJournal $journal,

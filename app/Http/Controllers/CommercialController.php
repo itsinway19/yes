@@ -31,17 +31,17 @@ final class CommercialController
             ->where('scope_kind', 'commercial')->where('status', 'active')->whereNull('revoked_at')
             ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->get(['action', 'commercial_target_id as target_id', 'commercial_version_id as version_id',
-                DB::raw('builderad_workspace_public_by_id(workspace_id) AS workspace_public_id')]);
+                DB::raw('builderad_commercial_business_public_by_id(business_id) AS business_public_id')]);
         if ($founder) {
             $scopeIds = $request->session()->get('commercial_founder_scope_ids', []);
-            foreach ($registry['founderWorkspaces'] as $workspace) {
-                $scope = $workspace->scope_id ?? ($scopeIds[$workspace->workspace_public_id] ??= (string) Str::uuid7());
+            foreach ($registry['founderBusinesses'] as $business) {
+                $scope = $business->scope_id ?? ($scopeIds[$business->business_public_id] ??= (string) Str::uuid7());
                 $targets->push((object) ['action' => 'RegisterCommercialScope', 'target_id' => $scope,
-                    'version_id' => null, 'workspace_public_id' => $workspace->workspace_public_id]);
+                    'version_id' => null, 'business_public_id' => $business->business_public_id]);
             }
             $request->session()->put('commercial_founder_scope_ids', $scopeIds);
         }
-        unset($registry['founderWorkspaces']);
+        unset($registry['founderBusinesses']);
         $referenceId = $request->session()->get('commercial_founder_reference_id');
         if (! $referenceId || collect($registry['catalogReferences'])->contains('id', $referenceId)) {
             $referenceId = (string) Str::uuid7();
@@ -50,7 +50,7 @@ final class CommercialController
         $obligations = DB::table('commercial_audit_obligations as o')
             ->join('commercial_audit_delivery as d', 'd.obligation_id', '=', 'o.id')
             ->get(['o.id', 'o.command_id', 'o.target_id', 'd.state', 'd.attempts', 'd.acknowledgment_id',
-                DB::raw('builderad_workspace_public_by_id(o.workspace_id) AS workspace_public_id')]);
+                DB::raw('builderad_commercial_business_public_by_id(o.business_id) AS business_public_id')]);
 
         $data = [
             ...$registry, 'countryOptions' => config('commercial.countries'), 'currencyOptions' => config('commercial.currencies'), 'currencyNames' => config('commercial.currency_names'), 'targets' => $targets, 'obligations' => $obligations,
@@ -104,7 +104,7 @@ final class CommercialController
     public function register(Request $request, RegisterCommercialScope $registration)
     {
         $input = $request->validate([...$this->envelope(), 'scope_id' => ['required', 'uuid'],
-            'workspace_public_id' => ['required', 'uuid'], 'market_id' => ['required', 'uuid'],
+            'business_public_id' => ['required', 'uuid'], 'market_id' => ['required', 'uuid'],
             'configuration_id' => ['required', 'uuid'], 'catalog_reference_id' => ['required', 'uuid'],
             'denomination_code' => ['required', 'regex:/^[A-Z]{3}$/']]);
 
@@ -119,11 +119,11 @@ final class CommercialController
         return response()->json($receipt);
     }
 
-    public function workspace(Request $request, RegisterCommercialScope $registration)
+    public function business(Request $request, RegisterCommercialScope $registration)
     {
-        $input = $request->validate(['scope_id' => ['required', 'uuid'], 'workspace_public_id' => ['required', 'uuid']]);
+        $input = $request->validate(['scope_id' => ['required', 'uuid'], 'business_public_id' => ['required', 'uuid']]);
 
-        return response()->json($registration->workspaceReference($request, $input['scope_id'], $input['workspace_public_id']));
+        return response()->json($registration->businessReference($request, $input['scope_id'], $input['business_public_id']));
     }
 
     public function context(Request $request, string $scope, RegisterCommercialScope $registration)
@@ -142,14 +142,14 @@ final class CommercialController
     public function grant(Request $request, GrantAuthority $grants)
     {
         $input = $request->validate(['grantee' => ['required', 'uuid'], 'effect' => ['required', 'string'],
-            'target_id' => ['required', 'uuid'], 'workspace_id' => ['nullable', 'integer', 'min:1'],
+            'target_id' => ['required', 'uuid'], 'business_id' => ['nullable', 'integer', 'min:1'],
             'version_id' => ['nullable', 'uuid'], 'reason_code' => ['required', 'regex:/^[a-z][a-z0-9_.-]{2,63}$/'],
             'expires_at' => ['nullable', 'date', 'after:now']]);
         $target = User::on('pgsql_authority')->where('public_id', $input['grantee'])->first();
         abort_unless($target, 403);
 
         return response()->json(['grant_id' => $grants->issueCommercialGrant($request, $target, $input['effect'], $input['target_id'],
-            $input['workspace_id'] ?? null, $input['version_id'] ?? null, $input['reason_code'], $input['expires_at'] ?? null)]);
+            $input['business_id'] ?? null, $input['version_id'] ?? null, $input['reason_code'], $input['expires_at'] ?? null)]);
     }
 
     public function revokeGrant(Request $request, int $grant, GrantAuthority $grants)

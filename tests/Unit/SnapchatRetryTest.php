@@ -21,7 +21,7 @@ final class SnapchatRetryTest extends TestCase
         $http = new Factory;
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response('synthetic-private-throttle-body', 429, ['Retry-After' => '240'])]);
-        $scope = new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::Snapchat,
+        $scope = ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::Snapchat,
             'synthetic-client', 'discovery.read', 'advertising_analysis');
         try {
             (new SnapchatClient($http, static fn () => null, 'provider.connect'))->get('me/organizations', ['with_ad_accounts' => 'true'],
@@ -55,7 +55,7 @@ final class SnapchatRetryTest extends TestCase
             $http = new Factory;
             $http->preventStrayRequests();
             $http->fake(['*' => $http->response('', 503, ['Retry-After' => $header])]);
-            $scope = new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::Snapchat,
+            $scope = ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::Snapchat,
                 'synthetic-client', 'discovery.read', 'advertising_analysis');
             try {
                 (new SnapchatClient($http, static fn () => null, 'provider.connect'))->get('me/organizations', ['with_ad_accounts' => 'true'],

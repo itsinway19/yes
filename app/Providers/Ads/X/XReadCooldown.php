@@ -14,7 +14,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Crypt;
 use LogicException;
 
-/** Encrypted Workspace-local native quota hints, shared across streams; never grants authority. */
+/** Encrypted Business-local native quota hints, shared across streams; never grants authority. */
 final readonly class XReadCooldown
 {
     private string $tokenBinding;
@@ -26,7 +26,8 @@ final readonly class XReadCooldown
             || $scope->provider !== Provider::X || $scope->operation !== 'report.read' || $credentials->value('account_id') !== $scope->accountId) {
             throw new LogicException('X cooldown requires the exact selected account and atomic shared cache.');
         }
-        $this->tokenBinding = hash_hmac('sha256', json_encode([$scope->workspaceId, $credentials->value('oauth_token'), $credentials->value('oauth_token_secret')], JSON_THROW_ON_ERROR), (string) config('app.key'));
+        // Keep the established Business token-binding bytes; null is a cryptographic format marker.
+        $this->tokenBinding = hash_hmac('sha256', json_encode([null, $credentials->value('oauth_token'), $credentials->value('oauth_token_secret')], JSON_THROW_ON_ERROR), (string) config('app.key'));
     }
 
     private function key(string $endpoint, string $level): string

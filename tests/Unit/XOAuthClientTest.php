@@ -17,7 +17,7 @@ final class XOAuthClientTest extends TestCase
 {
     private function budget(): ProviderReadBudget
     {
-        return new ProviderReadBudget(new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::X,
+        return new ProviderReadBudget(ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::X,
             'synthetic-key', 'discovery.read', 'advertising_analysis'), 'oauth-test', 2, 0, 2, 20, new DateTimeImmutable('+30 seconds'), 1, 5);
     }
 
@@ -96,7 +96,7 @@ final class XOAuthClientTest extends TestCase
         $http = new Factory;
         $http->preventStrayRequests();
         $client = $this->client($http);
-        $budget = new ProviderReadBudget(new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::X,
+        $budget = new ProviderReadBudget(ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::X,
             'foreign-key', 'discovery.read', 'advertising_analysis'), 'oauth-test', 2, 0, 2, 20, new DateTimeImmutable('+30 seconds'), 1, 5);
         try {
             $client->requestToken($budget);

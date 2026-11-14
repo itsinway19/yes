@@ -22,8 +22,8 @@ class BusinessPurposeAuthorityTest extends BusinessPurposeTestCase
         $command['declaration']['intent'] = ['version' => 2, 'value' => $value, 'statement' => 'Explicit relationship to the retained business-wide booking intent'];
         $command['confirmations']['intent'] = true;
         $this->assertSame(1, $this->write($command)['version']);
-        $workspace = DB::connection('pgsql_migrations')->table('business_context_heads')->sole();
-        $this->assertSame(2, $workspace->context_version);
+        $context = DB::connection('pgsql_migrations')->table('business_context_heads')->sole();
+        $this->assertSame(2, $context->context_version);
         $this->assertSame(1, DB::connection('pgsql_migrations')->table('business_intent_transitions')->count());
     }
 
@@ -96,14 +96,14 @@ class BusinessPurposeAuthorityTest extends BusinessPurposeTestCase
         } catch (QueryException $error) {
             $this->assertSame('42501', $error->errorInfo[0]);
         }
-        $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
+        $this->assertNull(DB::connection('pgsql_migrations')->scalar("SELECT to_regclass('public.workspaces')"));
     }
 
     public function test_retained_journal_and_receipts_are_immutable(): void
     {
         $this->write(self::command());
         foreach (['object_purpose_revisions', 'object_purpose_command_receipts'] as $table) {
-            foreach (['UPDATE '.$table.' SET workspace_id=workspace_id', 'DELETE FROM '.$table] as $sql) {
+            foreach (['UPDATE '.$table.' SET business_id=business_id', 'DELETE FROM '.$table] as $sql) {
                 try {
                     DB::connection('pgsql_migrations')->statement($sql);
                     $this->fail('Immutable history changed');

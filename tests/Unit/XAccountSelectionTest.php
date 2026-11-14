@@ -16,7 +16,7 @@ final class XAccountSelectionTest extends TestCase
 {
     private function budget(): ProviderReadBudget
     {
-        return new ProviderReadBudget(new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::X,
+        return new ProviderReadBudget(ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::X,
             'abc123', 'report.read', 'advertising_analysis'), 'selection', 2, 0, 2, 2, new DateTimeImmutable('+30 seconds'), 1, 5);
     }
 

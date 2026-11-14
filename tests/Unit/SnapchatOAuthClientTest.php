@@ -17,7 +17,7 @@ final class SnapchatOAuthClientTest extends TestCase
 {
     private function budget(Provider $provider = Provider::Snapchat): ProviderReadBudget
     {
-        return new ProviderReadBudget(new ProviderScope(7, '11111111-1111-7111-8111-111111111111', $provider,
+        return new ProviderReadBudget(ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', $provider,
             'synthetic-snap-client', 'discovery.read', 'advertising_analysis'), 'snap-oauth', 2, 0, 2, 5,
             new DateTimeImmutable('+30 seconds'), 1, 5);
     }

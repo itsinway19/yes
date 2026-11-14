@@ -27,7 +27,7 @@ final class ClientVisibility
             ->where('subject_user_id', $request->user()->getAuthIdentifier())
             ->where('subject_generation', $generation)->where('status', 'active')
             ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->orderBy('id')->get(['id', 'version', 'action', 'scope_kind', 'workspace_id', 'expires_at']);
+            ->orderBy('id')->get(['id', 'version', 'action', 'scope_kind', 'business_id', 'expires_at']);
 
         return ['protected' => true, 'path' => $path, 'context' => hash_hmac('sha256', json_encode([
             $path, $request->user()->getAuthIdentifier(), $request->session()->getId(),

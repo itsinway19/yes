@@ -64,7 +64,7 @@ final class MarketKnowledgeAuthorityTest extends TestCase
             ['SELECT builderad_v2_market_knowledge_withdraw(?::uuid,?::uuid,1,1,?)', [(string) Str::uuid(), (string) Str::uuid7(), 'SYNTHETIC attempted runtime withdrawal']],
             ['SELECT builderad_v2_market_knowledge_enroll(?::uuid,?::uuid,1,?,?::jsonb)', [(string) Str::uuid(), (string) Str::uuid7(), 'market.evidence', '{}']],
             ['SELECT * FROM market_knowledge_captures', []],
-            ['SELECT builderad_v2_market_knowledge_capture(?,?::uuid,?,?::jsonb,?,?::jsonb)', ['forged', (string) Str::uuid(), 'compare_offers', json_encode(array_fill(0, 2, ['namespace' => 'market.evidence', 'key' => (string) Str::uuid7(), 'version' => str_repeat('a', 64)])), 'market_research', json_encode(['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'data_use', 'leaf_grant_id' => 1234567]]])]],
+            ['SELECT builderad_v2_market_knowledge_capture(?,?::uuid,?,?::jsonb,?,?::jsonb)', ['forged', (string) Str::uuid(), 'compare_offers', json_encode(array_fill(0, 2, ['namespace' => 'market.evidence', 'key' => (string) Str::uuid7(), 'version' => str_repeat('a', 64)])), 'market_research', json_encode(['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'data_use', 'leaf_grant_id' => 1234567]]])]],
         ] as [$sql, $bindings]) {
             try {
                 DB::select($sql, $bindings);

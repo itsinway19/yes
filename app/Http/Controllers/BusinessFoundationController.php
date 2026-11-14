@@ -87,17 +87,6 @@ final class BusinessFoundationController
         return $this->respond(fn () => $scope->history($request, $business, (int) $input['access'], $input['kind'], (int) ($input['after'] ?? 0)));
     }
 
-    public function legacyHistory(Request $request, string $business, BusinessScope $scope): JsonResponse
-    {
-        $input = $request->validate([
-            'access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX],
-            'kind' => ['required', 'in:context,markets,intent,preferences,object_purpose'],
-            'after' => ['sometimes', 'uuid'],
-        ]);
-
-        return $this->respond(fn () => $scope->legacyHistory($request, $business, (int) $input['access'], $input['kind'], $input['after'] ?? null));
-    }
-
     public function purposes(Request $request, string $business, BusinessScope $scope): JsonResponse
     {
         $input = $request->validate(['access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX], 'purpose' => ['sometimes', 'uuid'],
@@ -152,21 +141,6 @@ final class BusinessFoundationController
         return $this->respond(fn () => $scope->read($request, $business, $input['authority_selection']));
     }
 
-    public function link(Request $request, string $business, BusinessScope $scope): JsonResponse
-    {
-        $this->exactJsonKeys($request, ['command_id', 'workspace_public_id', 'kind', 'effect', 'expected_revision', 'authority_selection'], 80000);
-        $input = $request->validate([
-            'command_id' => ['required', 'uuid'], 'workspace_public_id' => ['required', 'uuid'],
-            'kind' => ['sometimes', 'required', 'in:collaboration,agency'],
-            'effect' => ['required', 'in:add,end'], 'expected_revision' => ['required', 'integer', 'min:0'],
-            'authority_selection' => ['required', 'array'],
-        ]);
-
-        return $this->respond(fn () => $scope->link($request, $business, $input['workspace_public_id'],
-            $input['command_id'], $input['effect'], $input['expected_revision'], $input['authority_selection'], $input['kind'] ?? 'collaboration'));
-    }
-
-    /** Optional fields stay optional; unexpected fields never acquire a meaning by being silently discarded. */
     private function exactJsonKeys(Request $request, array $allowed, int $limit): void
     {
         $invalid = fn () => ValidationException::withMessages(['command' => 'invalid_business_command']);
@@ -313,17 +287,17 @@ final class BusinessFoundationController
 
     public function grant(Request $request, string $business, BusinessScope $scope): JsonResponse
     {
-        $raw = $this->commandBody($request, ['effect', 'grantee_public_id', 'action', 'parent_grant_id', 'grant_id', 'expected_grant', 'expires_at', 'delegable', 'realm_workspace_public_id'], 80000);
+        $raw = $this->commandBody($request, ['effect', 'grantee_public_id', 'action', 'parent_grant_id', 'grant_id', 'expected_grant', 'expires_at', 'delegable'], 80000);
         abort_unless(in_array($raw->effect, ['issue', 'revoke'], true) && is_string($raw->action) && strlen($raw->action) <= 80
             && is_string($raw->grantee_public_id) && Str::isUuid($raw->grantee_public_id)
             && ($raw->parent_grant_id === null || (is_int($raw->parent_grant_id) && $raw->parent_grant_id > 0))
             && ($raw->grant_id === null || (is_int($raw->grant_id) && $raw->grant_id > 0)) && is_bool($raw->delegable)
-            && ($raw->realm_workspace_public_id === null || (is_string($raw->realm_workspace_public_id) && Str::isUuid($raw->realm_workspace_public_id)))
+
             && ($raw->expires_at === null || (is_string($raw->expires_at) && preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/D', $raw->expires_at))), 422);
 
         return $this->respond(fn () => $scope->grant($request, $business, $raw->command_id, $raw->effect, $raw->grantee_public_id,
             $raw->action, $raw->parent_grant_id, $raw->grant_id, $raw->expected_grant, $raw->expires_at, $raw->delegable,
-            $raw->realm_workspace_public_id, $this->selection($raw)));
+            $this->selection($raw)));
     }
 
     public function agencyOptions(Request $request, string $business, BusinessScope $scope): JsonResponse
@@ -358,12 +332,11 @@ final class BusinessFoundationController
 
     public function internalTeam(Request $request, string $business, BusinessScope $scope): JsonResponse
     {
-        $raw = $this->commandBody($request, ['workspace_public_id', 'effect', 'recipient_public_id', 'expected_revision'], 80000);
-        abort_unless(($raw->workspace_public_id === null || (is_string($raw->workspace_public_id) && Str::isUuid($raw->workspace_public_id)))
-            && in_array($raw->effect, ['enroll', 'appoint', 'remove', 'end'], true)
+        $raw = $this->commandBody($request, ['effect', 'recipient_public_id', 'expected_revision'], 80000);
+        abort_unless(in_array($raw->effect, ['appoint', 'remove'], true)
             && ($raw->recipient_public_id === null || (is_string($raw->recipient_public_id) && Str::isUuid($raw->recipient_public_id))), 422);
 
-        return $this->respond(fn () => $scope->internalTeam($request, $business, $raw->command_id, $raw->workspace_public_id,
+        return $this->respond(fn () => $scope->internalTeam($request, $business, $raw->command_id,
             $raw->effect, $raw->recipient_public_id, $raw->expected_revision, $this->selection($raw)));
     }
 

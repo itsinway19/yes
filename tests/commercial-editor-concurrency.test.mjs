@@ -64,9 +64,9 @@ const projection = () => ({ markets: [{ id: marketId, label: 'Synthetic', countr
 async function mountEditor({ retained = [], principal = 7 } = {}) {
     sessionStorage.values = new Map(retained);
     const key = 'commercialEditor' + crypto.randomUUID().replaceAll('-', '');
-    const props = shallowReactive(projection()), runtime = { writes: [], writer: async () => ({ saved: true }), reader: async () => props, context: async () => ({ marker: 'current' }), workspace: async () => ({ name: 'Readable beneficiary', public_id: 'workspace' }), receipt: async () => ({}), revision: 0, callbacks: new Set() };
+    const props = shallowReactive(projection()), runtime = { writes: [], writer: async () => ({ saved: true }), reader: async () => props, context: async () => ({ marker: 'current' }), business: async () => ({ name: 'Readable beneficiary', public_id: 'business' }), receipt: async () => ({}), revision: 0, callbacks: new Set() };
     globalThis[key] = runtime;
-    const state = moduleUrl(`const runtime=globalThis.${key};export async function writeCommercial(command){runtime.writes.push(structuredClone(command));return runtime.writer(command)}export const readOperations=()=>runtime.reader(),readCommercialContext=()=>runtime.context(),readCommercialWorkspace=(...args)=>runtime.workspace(...args),readCommercialReceipt=(...args)=>runtime.receipt(...args),recoverCommercialAudit=async()=>({});`);
+    const state = moduleUrl(`const runtime=globalThis.${key};export async function writeCommercial(command){runtime.writes.push(structuredClone(command));return runtime.writer(command)}export const readOperations=()=>runtime.reader(),readCommercialContext=()=>runtime.context(),readCommercialBusiness=(...args)=>runtime.business(...args),readCommercialReceipt=(...args)=>runtime.receipt(...args),recoverCommercialAudit=async()=>({});`);
     const transport = moduleUrl(`const runtime=globalThis.${key};export const bootstrap={identity:{binding:{principal:${principal}}}},close=()=>{runtime.revision++;runtime.callbacks.forEach(callback=>callback())},onClose=callback=>{runtime.callbacks.add(callback);return runtime.callbacks},owned=value=>value===runtime.revision,stamp=()=>runtime.revision,logout=async()=>{};export class TransportError extends Error{constructor(status){super();this.status=status;this.body={}}}`);
     const shell = moduleUrl(`import {h} from ${JSON.stringify(vue)};export default{setup(props,{slots}){return()=>h('main',{},[slots.header?.(),slots.default?.()])}}`);
     const receipt = moduleUrl(ts.transpileModule(await readFile(new URL('../resources/js/commercial/receiptProvenance.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText);
@@ -138,7 +138,7 @@ test('exact catalog grant choices cannot become typed or cross-market identities
     const view = await mountEditor();
     try {
         view.props.founderAccess = false;
-        view.props.targets = [referenceId, configurationId].map(version_id => ({ action: 'RecordOrVerifyApprovedMarketReference', target_id: marketId, version_id, workspace_public_id: null }));
+        view.props.targets = [referenceId, configurationId].map(version_id => ({ action: 'RecordOrVerifyApprovedMarketReference', target_id: marketId, version_id, business_public_id: null }));
         view.props.catalogReferences = []; await flush(); await open(view, 'catalog');
         const control = byId(view, 'commercial-catalog_reference_id'); assert.equal(control.tag, 'select');
         await select(control, configurationId); await submit(formOf(view));
@@ -238,15 +238,15 @@ test('changed market selection cannot submit hidden prior configuration and remo
     } finally { view.stop(); }
 });
 
-test('scope selection uses exact scope/workspace and canonical configuration with independent denomination', async () => {
+test('scope selection uses exact scope/business and canonical configuration with independent denomination', async () => {
     const view = await mountEditor();
     try {
-        view.props.targets = [{ action: 'RegisterCommercialScope', target_id: 'scope', workspace_public_id: 'workspace', version_id: null }];
+        view.props.targets = [{ action: 'RegisterCommercialScope', target_id: 'scope', business_public_id: 'business', version_id: null }];
         view.props.configurations = [{ ...view.props.configurations[0], denomination_code: 'JOD' }]; await flush();
         await open(view, 'register');
-        await select(byId(view, 'scope-select'), 'scope|workspace'); await submit(formOf(view));
+        await select(byId(view, 'scope-select'), 'scope|business'); await submit(formOf(view));
         const body = view.runtime.writes[0].body;
-        assert.equal(body.scope_id, 'scope'); assert.equal(body.workspace_public_id, 'workspace');
+        assert.equal(body.scope_id, 'scope'); assert.equal(body.business_public_id, 'business');
         assert.equal(body.configuration_id, configurationId); assert.equal(body.catalog_reference_id, referenceId); assert.equal(body.denomination_code, 'JOD');
     } finally { view.stop(); }
 });
@@ -382,7 +382,7 @@ test('uncertain result remains outside disclosures; programmatic selection and h
         await click(buttonWith(view, 'Retry the unchanged original request')); assert.deepEqual(view.runtime.writes[1], original);
         view.runtime.writer = async () => { throw new view.transport.TransportError(403); };
         await click(buttonWith(view, 'Retry the unchanged original request'));
-        assert.deepEqual(JSON.parse(sessionStorage.values.get('commercial-command:v1:7')).payload, original.body);
+        assert.deepEqual(JSON.parse(sessionStorage.values.get('commercial-command:v2:7:undefined')).payload, original.body);
         assert.equal(view.runtime.writes.length, 3); assert.equal(view.runtime.revision, 1);
     } finally { view.stop(); }
 });
@@ -392,7 +392,7 @@ test('new-market choices exclude every recorded identity including stale project
     try {
         view.props.founderAccess = false;
         const fresh = '00000000-0000-4000-8000-000000000099';
-        view.props.newMarketTargets = [marketId, fresh].map(target_id => ({ action: 'ConfigureCommercialMarket', target_id, version_id: null, workspace_public_id: null }));
+        view.props.newMarketTargets = [marketId, fresh].map(target_id => ({ action: 'ConfigureCommercialMarket', target_id, version_id: null, business_public_id: null }));
         view.props.targets = view.props.newMarketTargets; await flush(); await open(view, 'market');
         const choices = byId(view, 'commercial-market_id');
         assert.equal(choices.options.some(option => option._value === marketId), false);

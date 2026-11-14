@@ -27,11 +27,11 @@ const ports = {
     './providerCopy': copyUrl,
     '../spa/locale': languageUrl,
     './api': moduleUrl(`export const sources = { command: async (workspace, command, signal) => {
-        const args = ['/workspaces/' + workspace + '/sources', command, { signal, headers: { Accept: 'application/json' } }];
+        const args = ['/businesses/' + workspace + '/sources', command, { signal, headers: { Accept: 'application/json' } }];
         globalThis.__bb1Transport.requests.push(args);
         return (await globalThis.__bb1Transport.send(...args)).data;
     } };`),
-    './state': moduleUrl(`export const read = (workspace, passive) => globalThis.__bb1Transport.reloads.push({ workspace, passive });`),
+    './state': moduleUrl(`export const read = (business, passive) => globalThis.__bb1Transport.reloads.push({ business, passive });`),
     '../spa/transport': moduleUrl(`export const bootstrap = { identity: { binding: {
         get principal() { return globalThis.__bb1Page.auth.user?.id; },
         get context() { return globalThis.__bb1Page.auth.sessionContextId; }
@@ -68,7 +68,7 @@ const scope = { resource: 'server-account', operation: 'discovery.read', purpose
 function mount(component = declaration.component, overrides = {}, retainStorage = false) {
     transport.requests = []; transport.reloads = []; transport.posts = []; transport.send = async () => ({ data: {} });
     if (!retainStorage) stored.clear();
-    const props = reactive({ workspaceId: 'workspace', sourceId: 'source', version: 7, choices: [scope], ...overrides });
+    const props = reactive({ businessId: 'workspace', sourceId: 'source', version: 7, choices: [scope], ...overrides });
     const root = element('root');
     const app = renderer.createApp({ render: () => h(component, props) }); app.mount(root);
     return { root, props, unmount: () => app.unmount() };
@@ -134,12 +134,12 @@ test('server choices only, native selection/submission, bounded payload, loading
     assert.equal(transport.requests.length, 1);
     assert.equal(nodes(view.root, n => n.tag === 'button' && /جارٍ حسم الطلب الأصلي/.test(text(n)))[0].props.disabled, true);
     const [url, payload, config] = transport.requests[0];
-    assert.equal(url, '/workspaces/workspace/sources');
+    assert.equal(url, '/businesses/workspace/sources');
     assert.deepEqual(Object.keys(payload).sort(), ['command_id', 'effect', 'expected_version', 'operation', 'purpose', 'reason', 'resource', 'source_id']);
     assert.deepEqual({ ...payload, command_id: 'key' }, { command_id: 'key', source_id: 'source', effect: 'declare_scope', expected_version: 7, ...scope, reason: 'owner_scope_declaration' });
     assert.equal(config.headers.Accept, 'application/json');
     resolve({ data: { version: 8 } }); await pending; await nextTick();
-    assert.equal(transport.reloads.length, 1); assert.deepEqual(transport.reloads[0], { workspace: 'workspace', passive: true });
+    assert.equal(transport.reloads.length, 1); assert.deepEqual(transport.reloads[0], { business: 'workspace', passive: true });
     assert.match(text(view.root), /تم إعلان النطاق محلياً/); assert.match(text(view.root), /غير متحقق/);
     submit(view.root); assert.equal(transport.requests.length, 1);
     view.props.version = 8; view.props.choices = []; await nextTick();
@@ -256,7 +256,7 @@ test('editing cannot silently discard or mutate an uncertain command', async () 
 test('pending command is isolated by workspace and source and cannot cross a new session or actor', async () => {
     const view = mount(); await select(view.root); transport.send = async () => { throw new Error('lost response'); };
     await submit(view.root); await nextTick(); const original = structuredClone(transport.requests[0][1]); view.unmount();
-    for (const overrides of [{ workspaceId: 'workspace-B' }, { sourceId: 'source-B' }]) {
+    for (const overrides of [{ businessId: 'workspace-B' }, { sourceId: 'source-B' }]) {
         const other = mount(declaration.component, overrides, true);
         await nextTick(); assert.doesNotMatch(text(other.root), /إعادة إرسال الطلب الأصلي/); other.unmount();
     }

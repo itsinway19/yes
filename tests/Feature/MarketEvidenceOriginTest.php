@@ -3,13 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\ApplicationContractAssertions;
 use Tests\Support\BusinessAuthorityFixture as Fixture;
-use Tests\Support\DisposableDatabaseReset;
 use Tests\Support\MarketEvidenceFixture;
 use Tests\TestCase;
 
@@ -40,7 +37,7 @@ final class MarketEvidenceOriginTest extends TestCase
 
         return $this->postJson('/api/businesses/'.$consumer['business']['business_public_id'].'/data-use-bindings', [
             'command_id' => (string) Str::uuid(), 'data_use_scope_id' => $consumer['right']['scope_id'], 'effect' => $effect, 'expected_relation' => $expected,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => $requirements],
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => $requirements],
         ]);
     }
 
@@ -48,7 +45,7 @@ final class MarketEvidenceOriginTest extends TestCase
     {
         return $this->postJson('/api/businesses/'.$consumer['business']['business_public_id'].'/materials/read', $body ?? [
             'command_id' => (string) Str::uuid(), 'material_refs' => [$ref], 'operation' => $consumer['right']['operation'] ?? 'retained_read', 'purpose' => 'market_research', 'recipient_ref' => $consumer['user']->public_id,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $consumer['read']->id], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $consumer['right']['grant_id']],
             ]],
         ]);
@@ -78,9 +75,10 @@ final class MarketEvidenceOriginTest extends TestCase
         $result->assertJsonPath('data.material_ref.namespace', 'market.evidence')->assertJsonPath('data.versions.evidence', 1);
         $owner = DB::connection('pgsql_migrations');
         $this->assertSame(0, $owner->table('businesses')->count());
-        $this->assertSame(0, $owner->table('workspaces')->count());
+        $this->assertNull($owner->scalar("SELECT to_regclass('public.workspaces')"));
         $this->assertSame(1, $owner->table('market_evidence_revisions')->count());
-        $this->assertNull($owner->table('source_registry')->where('id', $source)->value('workspace_id'));
+        $this->assertFalse($owner->getSchemaBuilder()->hasColumn('source_registry', 'workspace_id'));
+        $this->assertNull($owner->table('source_registry')->where('id', $source)->value('business_id'));
         $this->assertSame('builderad_app', DB::scalar('SELECT session_user'));
     }
 
@@ -221,7 +219,7 @@ final class MarketEvidenceOriginTest extends TestCase
             ->assertJsonPath('data.materials.0.evidence.source_ref', $f['source']);
         $this->assertApplicationContract('BusinessMaterialReadResult', $read->json());
         $body = ['command_id' => (string) Str::uuid(), 'material_refs' => [$f['ref']], 'operation' => 'retained_read', 'purpose' => 'other-purpose',
-            'recipient_ref' => $a['user']->public_id, 'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+            'recipient_ref' => $a['user']->public_id, 'authority_selection' => ['realm_kind' => 'direct',
                 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $a['read']->id], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $a['right']['grant_id']]]]];
         $this->readOriginal($a, $f['ref'], $body)->assertForbidden();
         $body['purpose'] = 'market_research';
@@ -306,7 +304,7 @@ final class MarketEvidenceOriginTest extends TestCase
             $this->binding($a, 'add', 0)->assertOk();
             $body = ['command_id' => (string) Str::uuid(), 'material_refs' => [$f['ref']], 'operation' => $operation,
                 'purpose' => 'market_research', 'recipient_ref' => $a['user']->public_id,
-                'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+                'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                     ['requirement_kind' => 'business', 'leaf_grant_id' => $a['read']->id], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $a['right']['grant_id']],
                 ]]];
             foreach ([false, true] as $replay) {
@@ -325,64 +323,5 @@ final class MarketEvidenceOriginTest extends TestCase
             $this->assertSame(1, $owner->table('business_command_receipts')->where('command_id', $body['command_id'])->count());
         }
         $this->assertSame(1, $owner->table('market_evidence_revisions')->where('evidence_id', $f['evidence'])->count());
-    }
-
-    public function test_installed_d1_metadata_upgrade_redacts_an_existing_read_replay_without_changing_internal_lineage_or_rights(): void
-    {
-        $reset = app(DisposableDatabaseReset::class);
-        $reset->clear();
-        try {
-            $paths = array_values(array_filter(glob(database_path('migrations/*.php')),
-                fn ($path) => strcmp(basename($path), '0001_01_01_000440_qualify_market_evidence_read_metadata.php') < 0));
-            // Current HTTP admission requires its operational singleton even on this historical domain schema.
-            $paths[] = database_path('migrations/0001_01_01_000470_create_platform_maintenance.php');
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $paths, '--realpath' => true, '--force' => true]));
-            $payload = $this->offer();
-            $secret = 'RETAIN_INTERNAL_TRACE_REDACT_DELIVERY';
-            $payload['provenance'] = ['private_note' => ['value' => $secret], 'source_ref' => $secret];
-            $f = $this->original($payload);
-            $a = $this->consumer($f['source'], $f['evidence']);
-            $this->binding($a, 'add', 0)->assertOk();
-            $body = ['command_id' => (string) Str::uuid(), 'material_refs' => [$f['ref']], 'operation' => 'retained_read',
-                'purpose' => 'market_research', 'recipient_ref' => $a['user']->public_id,
-                'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
-                    ['requirement_kind' => 'business', 'leaf_grant_id' => $a['read']->id], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $a['right']['grant_id']],
-                ]]];
-            $before = $this->readOriginal($a, $f['ref'], $body)->assertOk();
-            $this->assertStringContainsString($secret, $before->getContent(), 'The installed pre-fix D1 reader must reproduce the disclosure.');
-            $owner = DB::connection('pgsql_migrations');
-            $grants = $owner->table('security_action_grants')->orderBy('id')->get()->toJson();
-            $revisions = $owner->scalar('SELECT jsonb_agg(to_jsonb(r) ORDER BY evidence_id,revision)::text FROM market_evidence_revisions r');
-            $receipt = $owner->scalar('SELECT to_jsonb(r)::text FROM business_command_receipts r WHERE command_id=?::uuid', [$body['command_id']]);
-            $permissions = $owner->selectOne("SELECT proowner,proacl::text,proconfig::text FROM pg_proc WHERE oid='builderad_v2_scoped_material_read(text,uuid,uuid,jsonb,text,text,uuid,jsonb)'::regprocedure");
-            $owner->unprepared("CREATE FUNCTION public.market_read_upgrade_test_drift() RETURNS integer LANGUAGE sql AS 'SELECT 1'");
-            try {
-                Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]);
-                $this->fail('Unqualified catalog drift was promoted by the metadata fix.');
-            } catch (QueryException $error) {
-                $this->assertSame('42501', $error->errorInfo[0]);
-                $this->assertStringContainsString('MARKET_READ_UPGRADE_BASELINE_QUALIFICATION_REQUIRED', $error->getMessage());
-            } finally {
-                $owner->statement('DROP FUNCTION public.market_read_upgrade_test_drift()');
-            }
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-            $after = $this->readOriginal($a, $f['ref'], $body)->assertOk()->assertJsonPath('data.materials.0.fields', ['price' => 0]);
-            $this->assertStringNotContainsString($secret, $after->getContent());
-            $after->assertJsonPath('data.materials.0.provenance', ['kind' => 'market_evidence_revision', 'revision' => 1, 'source_ref' => $f['source']]);
-            $this->assertSame($before->json('data.dependency_digest'), $after->json('data.dependency_digest'));
-            $this->assertSame($receipt, $owner->scalar('SELECT to_jsonb(r)::text FROM business_command_receipts r WHERE command_id=?::uuid', [$body['command_id']]));
-            $this->assertSame($grants, $owner->table('security_action_grants')->orderBy('id')->get()->toJson());
-            $this->assertSame($revisions, $owner->scalar('SELECT jsonb_agg(to_jsonb(r) ORDER BY evidence_id,revision)::text FROM market_evidence_revisions r'));
-            $this->assertEquals($permissions, $owner->selectOne("SELECT proowner,proacl::text,proconfig::text FROM pg_proc WHERE oid='builderad_v2_scoped_material_read(text,uuid,uuid,jsonb,text,text,uuid,jsonb)'::regprocedure"));
-            $owner->transaction(function () use ($owner): void {
-                $owner->statement('SET LOCAL ROLE builderad_scope_executor');
-                $this->assertTrue($owner->scalar('SELECT builderad_private.legacy_catalog_digest()=builderad_private.legacy_installation_digest()'));
-            });
-            $this->assertFalse($owner->scalar("SELECT has_schema_privilege('builderad_scope_executor','public','CREATE')"));
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-            $this->assertSame(1, $owner->table('migrations')->where('migration', '0001_01_01_000440_qualify_market_evidence_read_metadata')->count());
-        } finally {
-            $reset->install();
-        }
     }
 }

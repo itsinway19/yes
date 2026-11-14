@@ -17,10 +17,10 @@ use PHPUnit\Framework\TestCase;
 
 class ProviderObservationContractTest extends TestCase
 {
-    private function scope(Provider $provider = Provider::Meta, int $workspace = 1, string $account = 'account-1',
+    private function scope(Provider $provider = Provider::Meta, int $business = 1, string $account = 'account-1',
         string $source = '0199aabb-1234-7123-8123-123456789abc', string $operation = 'report.read', string $purpose = 'advertising_analysis'): ProviderScope
     {
-        return new ProviderScope($workspace, $source, $provider, $account, $operation, $purpose);
+        return ProviderScope::forBusiness($business, $source, $provider, $account, $operation, $purpose);
     }
 
     private function observation(?ProviderScope $scope = null, string $spend = '12.34', ?DateTimeImmutable $readAt = null): AdObservation
@@ -70,7 +70,7 @@ class ProviderObservationContractTest extends TestCase
         }
         $this->assertCount(5, array_unique($keys));
         $base = $this->scope()->key('stream');
-        foreach ([$this->scope(workspace: 2), $this->scope(account: 'account-2'),
+        foreach ([$this->scope(business: 2), $this->scope(account: 'account-2'),
             $this->scope(source: '0199aabb-1234-7123-8123-123456789abd'),
             $this->scope(operation: 'discovery.read'), $this->scope(purpose: 'other_purpose')] as $other) {
             $this->assertNotSame($base, $other->key('stream'));
@@ -133,9 +133,9 @@ class ProviderObservationContractTest extends TestCase
         new ObservationBatch($this->scope(), [$this->observation()], 'COMPLETE', 'unfinished', null);
     }
 
-    public function test_workspace_and_sibling_observations_cannot_enter_another_batch(): void
+    public function test_business_and_sibling_observations_cannot_enter_another_batch(): void
     {
-        foreach ([$this->scope(workspace: 2), $this->scope(Provider::Google)] as $other) {
+        foreach ([$this->scope(business: 2), $this->scope(Provider::Google)] as $other) {
             try {
                 new ObservationBatch($this->scope(), [$this->observation($other)], 'COMPLETE', null, null);
                 $this->fail('Cross-scope observation accepted.');

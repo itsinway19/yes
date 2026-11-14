@@ -5,19 +5,17 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Security\SessionAuthority;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
 use Tests\Support\BusinessAuthorityFixture;
-use Tests\Support\DisposableDatabaseReset;
 use Tests\TestCase;
 
 final class BusinessAgencyOwnershipTest extends TestCase
 {
     private function selection(int|string $grant): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        return ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (int) $grant]]];
     }
 
@@ -40,7 +38,7 @@ final class BusinessAgencyOwnershipTest extends TestCase
             'command_id' => (string) Str::uuid(), 'authority_selection' => $this->selection($business['team']['business.context.read']),
             'effect' => 'issue', 'grantee_public_id' => $employee->public_id, 'action' => 'business.context.read',
             'parent_grant_id' => (int) $business['team']['business.context.read'], 'grant_id' => null,
-            'expected_grant' => 0, 'expires_at' => null, 'delegable' => false, 'realm_workspace_public_id' => null,
+            'expected_grant' => 0, 'expires_at' => null, 'delegable' => false,
         ])->assertOk()->json('data.grant_id');
     }
 
@@ -59,7 +57,7 @@ final class BusinessAgencyOwnershipTest extends TestCase
             'command_id' => (string) Str::uuid(), 'authority_selection' => $this->selection($parent),
             'effect' => 'revoke', 'grantee_public_id' => $recipient->public_id, 'action' => 'business.context.read',
             'parent_grant_id' => null, 'grant_id' => $grant, 'expected_grant' => 1,
-            'expires_at' => null, 'delegable' => false, 'realm_workspace_public_id' => null,
+            'expires_at' => null, 'delegable' => false,
         ])->assertOk();
     }
 
@@ -150,17 +148,17 @@ final class BusinessAgencyOwnershipTest extends TestCase
         $db = DB::connection('pgsql_migrations');
         $agencyId = $db->table('businesses')->where('public_id', $agency['business_public_id'])->value('id');
         $cohort = $db->table('migration_cohort_members')->where('business_id', $agencyId)->value('cohort_id');
-        $db->scalar("SELECT builderad_v2_cohort_transition(?::uuid,?::uuid,'V2_ACTIVE',0,'RECOVERY_HOLD',NULL,decode(?,'hex'))", [(string) Str::uuid(), $cohort, hash('sha256', 'agency-hold')]);
+        $db->scalar("SELECT builderad_v2_cohort_transition(?::uuid,?::uuid,'V2_ACTIVE',0,'RECOVERY_HOLD',decode(?,'hex'))", [(string) Str::uuid(), $cohort, hash('sha256', 'agency-hold')]);
         $this->getJson($base.'/surface?access='.$assignment)->assertForbidden();
         $this->getJson($base.'/surface?access='.$independent)->assertOk();
         $this->actingAs($agencyOwner)->getJson($base.'/agency-options?access='.$mandate.'&agency='.$agency['business_public_id'].'&recipient='.$employee->public_id)->assertForbidden();
-        $db->scalar("SELECT builderad_v2_cohort_transition(?::uuid,?::uuid,'RECOVERY_HOLD',1,'V2_ACTIVE',NULL,decode(?,'hex'))", [(string) Str::uuid(), $cohort, hash('sha256', 'agency-resume')]);
+        $db->scalar("SELECT builderad_v2_cohort_transition(?::uuid,?::uuid,'RECOVERY_HOLD',1,'V2_ACTIVE',decode(?,'hex'))", [(string) Str::uuid(), $cohort, hash('sha256', 'agency-resume')]);
         $this->actingAs($employee)->getJson($base.'/surface?access='.$assignment)->assertOk();
         $this->revoke($clientOwner, $client, $agencyOwner, $client['team']['business.context.read'], $mandate);
         $this->actingAs($employee)->getJson($base.'/surface?access='.$assignment)->assertForbidden();
         $this->getJson($base.'/surface?access='.$independent)->assertOk();
         $db = DB::connection('pgsql_migrations');
-        $this->assertSame(0, $db->table('workspaces')->count());
+        $this->assertNull($db->scalar("SELECT to_regclass('public.workspaces')"));
         $this->assertSame(0, $db->table('security_action_grants')->whereIn('scope_kind', ['source', 'client_data', 'data_use'])->count());
         $this->assertSame('active', $db->table('security_action_grants')->where('id', $assignment)->value('status'), 'Withdrawal denies the path without rewriting descendant history.');
     }
@@ -183,7 +181,7 @@ final class BusinessAgencyOwnershipTest extends TestCase
         $this->postJson($base.'/grants', ['command_id' => (string) Str::uuid(), 'authority_selection' => $this->selection($mandate),
             'effect' => 'issue', 'grantee_public_id' => $outsider->public_id, 'action' => 'business.context.read',
             'parent_grant_id' => $mandate, 'grant_id' => null, 'expected_grant' => 0, 'expires_at' => $body['expires_at'],
-            'delegable' => false, 'realm_workspace_public_id' => null])->assertForbidden();
+            'delegable' => false])->assertForbidden();
         $this->revoke($manager, $agency, $employee, $agency['team']['business.context.read'], $membership);
         $this->actingAs($employee)->getJson($base.'/surface?access='.$assignment)->assertForbidden();
         $replacement = $this->employee($manager, $agency, $employee);
@@ -216,6 +214,19 @@ final class BusinessAgencyOwnershipTest extends TestCase
         $this->actingAs($manager)->postJson($base.'/agency-grants', [...$assignment, 'membership_grant_id' => $foreignMembership])->assertForbidden();
         $this->postJson($base.'/agency-grants', [...$assignment, 'expires_at' => now()->subMinute()->toIso8601String()])->assertForbidden();
         $this->postJson($base.'/agency-grants', [...$assignment, 'agency_business_public_id' => $foreign['business_public_id']])->assertForbidden();
+        $db = DB::connection('pgsql_migrations');
+        $basis = (array) $db->table('security_action_grants')->where('id', $membership)->sole();
+        $future = json_decode($db->scalar('SELECT to_jsonb(q)::text FROM authority_qualification_receipts q WHERE qualification_id=?::uuid', [$basis['qualification_id']]), true, flags: JSON_THROW_ON_ERROR);
+        $future['qualification_id'] = (string) Str::uuid7();
+        $future['valid_from'] = now()->addHour()->toIso8601String();
+        $future['valid_until'] = now()->addHours(2)->toIso8601String();
+        BusinessAuthorityFixture::insert('authority_qualification_receipts', $future, $manager->id);
+        $basis['id'] = (int) $db->scalar("SELECT nextval('security_action_grants_id_seq')");
+        $basis['qualification_id'] = $future['qualification_id'];
+        $futureBasis = BusinessAuthorityFixture::insert('security_action_grants', $basis, $manager->id);
+        $beforeFuture = $db->table('business_command_receipts')->count();
+        $this->postJson($base.'/agency-grants', [...$assignment, 'membership_grant_id' => $futureBasis->id])->assertForbidden();
+        $this->assertSame($beforeFuture, $db->table('business_command_receipts')->count());
         $issued = $this->postJson($base.'/agency-grants', $assignment)->assertOk()->json('data.grant_id');
         $this->postJson($base.'/agency-grants', [...$assignment, 'expires_at' => now()->addMinutes(30)->toIso8601String()])->assertConflict();
         $db = DB::connection('pgsql_migrations');
@@ -361,43 +372,5 @@ final class BusinessAgencyOwnershipTest extends TestCase
         $this->putJson($base.'/context', ['command_id' => (string) Str::uuid(), 'authority_selection' => $this->selection($assignments['business.context.manage']),
             'name' => 'Denied after whole mandate withdrawal', 'business_type_id' => null, 'expected_context' => 0])->assertForbidden();
         $this->getJson($base.'/surface?access='.$independent)->assertOk();
-    }
-
-    public function test_populated_upgrade_preserves_every_original_qualification_and_creates_no_agency_mapping(): void
-    {
-        $reset = app(DisposableDatabaseReset::class);
-        $reset->clear();
-        try {
-            $paths = array_values(array_filter(glob(database_path('migrations/*.php')), fn ($path) => strcmp(basename($path), '0001_01_01_000750_business_agency_ownership.php') < 0));
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $paths, '--realpath' => true, '--force' => true]));
-            $owner = User::factory()->create();
-            $employee = User::factory()->create();
-            $business = $this->business($owner, 'Existing business');
-            $grant = $this->employee($owner, $business, $employee);
-            $db = DB::connection('pgsql_migrations');
-            $tables = ['businesses', 'business_context_heads', 'security_action_grants', 'authority_qualification_receipts', 'business_command_receipts', 'business_workspace_links', 'workspaces'];
-            $before = [];
-            foreach ($tables as $table) {
-                $before[$table] = json_decode($db->scalar("SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]')::text FROM {$table} r"), true, flags: JSON_THROW_ON_ERROR);
-            }
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-            foreach ($tables as $table) {
-                if ($table === 'authority_qualification_receipts') {
-                    $before[$table] = array_map(fn ($row) => [...$row, 'agency_business_id' => null, 'agency_membership_grant_id' => null], $before[$table]);
-                }
-                $actual = json_decode($db->scalar("SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]')::text FROM {$table} r"), true, flags: JSON_THROW_ON_ERROR);
-                foreach ($before[$table] as $index => $row) {
-                    ksort($row);
-                    ksort($actual[$index]);
-                    $this->assertSame($row, $actual[$index], $table);
-                }
-                $this->assertCount(count($before[$table]), $actual, $table);
-            }
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-            $reset->assertInstalledCatalog();
-            $this->actingAs($employee)->getJson('/api/businesses/'.$business['business_public_id'].'/surface?access='.$grant)->assertOk();
-        } finally {
-            $reset->install();
-        }
     }
 }

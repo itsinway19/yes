@@ -5,9 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Security\GrantAuthority;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Tests\Support\DisposableDatabaseReset;
 use Tests\Support\MarketProcessingFixture;
 use Tests\TestCase;
 
@@ -102,66 +100,6 @@ final class MarketOperationsTest extends TestCase
         foreach ([$a, $b] as $consumer) {
             $this->assertStringNotContainsString($consumer['business']['business_public_id'], json_encode($after));
             $this->assertStringNotContainsString($consumer['user']->public_id, json_encode($after));
-        }
-    }
-
-    public function test_populated_470_upgrade_preserves_private_results_and_rejects_unqualified_catalog_drift(): void
-    {
-        $reset = app(DisposableDatabaseReset::class);
-        $reset->clear();
-        try {
-            $paths = array_values(array_filter(glob(database_path('migrations/*.php')), fn ($p) => strcmp(basename($p), '0001_01_01_000480_create_market_operations.php') < 0));
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $paths, '--realpath' => true, '--force' => true]));
-            $originals = $this->processingOriginals();
-            $consumer = $this->processingConsumer($originals);
-            $body = $this->processingBody($originals, $consumer);
-            $this->prepareProcessing($consumer, $body)->assertOk();
-            $this->completeProcessing($consumer, $body['command_id'])->assertOk();
-            $db = DB::connection('pgsql_migrations');
-            $before = [];
-            foreach (['market_evidence_revisions', 'market_processing_runs', 'security_action_grants', 'business_command_receipts', 'platform_maintenance'] as $table) {
-                $before[$table] = $db->scalar("SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]')::text FROM ".$table.' t');
-            }
-            $db->unprepared("CREATE FUNCTION public.market_ops_upgrade_drift() RETURNS integer LANGUAGE sql AS 'SELECT 1'");
-            try {
-                Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]);
-                $this->fail('Unqualified drift must not be promoted into the operations installation.');
-            } catch (QueryException $error) {
-                $this->assertSame('42501', $error->errorInfo[0]);
-                $this->assertStringContainsString('MARKET_OPERATIONS_UPGRADE_BASELINE_QUALIFICATION_REQUIRED', $error->getMessage());
-                $this->assertNull($db->scalar("SELECT to_regprocedure('builderad_v2_market_operations_read(text,uuid)')::text"));
-            } finally {
-                $db->statement('DROP FUNCTION public.market_ops_upgrade_drift()');
-            }
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-            foreach ($before as $table => $snapshot) {
-                $this->assertSame($snapshot, $db->scalar("SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]')::text FROM ".$table.' t'));
-            }
-            $db->transaction(function () use ($db): void {
-                $db->statement('SET LOCAL ROLE builderad_scope_executor');
-                $this->assertTrue($db->scalar('SELECT builderad_private.legacy_catalog_digest()=builderad_private.legacy_installation_digest()'));
-            });
-            $this->assertFalse($db->scalar("SELECT has_table_privilege('builderad_app','market_source_custody','SELECT')"));
-            $this->assertFalse($db->scalar("SELECT has_schema_privilege('builderad_scope_executor','public','CREATE')"));
-            $this->assertSame('builderad_owner', $db->scalar("SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE oid='builderad_private.market_operator(text,text,boolean)'::regprocedure"));
-            foreach (['market_knowledge_captures', 'market_business_finding_captures', 'market_knowledge_completion_tickets'] as $table) {
-                $this->assertSame(0, $db->table($table)->count(), 'An upgrade must not seed knowledge or execution rights.');
-                $this->assertTrue($db->scalar('SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE oid=?::regclass', [$table]));
-                $this->assertFalse($db->scalar("SELECT has_table_privilege('builderad_app',?,'SELECT,INSERT,UPDATE,DELETE')", [$table]));
-                $this->assertSame('builderad_owner', $db->scalar('SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid=?::regclass', [$table]));
-            }
-            $this->assertFalse($db->scalar("SELECT has_schema_privilege('builderad_scope_executor','builderad_private','CREATE')"));
-            $this->assertFalse($db->scalar("SELECT has_function_privilege('builderad_owner','builderad_private.guard_effect()','EXECUTE')"));
-            foreach (['builderad_app', 'builderad_authority'] as $role) {
-                $this->assertFalse($db->scalar("SELECT has_function_privilege(?,p.oid,'EXECUTE') FROM pg_proc p WHERE p.proname='builderad_v2_market_knowledge_enroll'", [$role]));
-                $this->assertFalse($db->scalar("SELECT has_function_privilege(?,p.oid,'EXECUTE') FROM pg_proc p WHERE p.proname='builderad_v2_market_knowledge_withdraw'", [$role]));
-            }
-            $this->assertNotNull($db->scalar("SELECT to_regclass('market_knowledge_operations_order')::text"));
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-            $this->actingAsInternal($this->observer());
-            $this->getJson(self::PATH)->assertOk()->assertJsonCount(1, 'data.sources')->assertJsonCount(0, 'data.shared_knowledge')->assertJsonCount(5, 'data.methods');
-        } finally {
-            $reset->install();
         }
     }
 

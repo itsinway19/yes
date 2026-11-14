@@ -20,14 +20,14 @@ final class BusinessDelegationSurfaceTest extends TestCase
 
     private function selection(int $grant): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
+        return ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
     }
 
     private function grant(array $business, User $recipient, int $parent, bool $delegable = false): array
     {
         return ['command_id' => (string) Str::uuid(), 'effect' => 'issue', 'grantee_public_id' => $recipient->public_id,
             'action' => 'business.context.read', 'parent_grant_id' => $parent, 'grant_id' => null, 'expected_grant' => 0,
-            'expires_at' => null, 'delegable' => $delegable, 'realm_workspace_public_id' => null, 'authority_selection' => $this->selection($parent)];
+            'expires_at' => null, 'delegable' => $delegable, 'authority_selection' => $this->selection($parent)];
     }
 
     public function test_surface_shows_only_current_own_parent_paths_and_their_direct_issued_rights(): void

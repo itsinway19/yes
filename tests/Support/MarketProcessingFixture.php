@@ -54,13 +54,13 @@ trait MarketProcessingFixture
         $business = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'SYNTHETIC D2 consumer'])->assertCreated()->json('data');
         $id = DB::connection('pgsql_migrations')->table('businesses')->where('public_id', $business['business_public_id'])->value('id');
         $data = BusinessAuthorityFixture::root($id, $user->id, 'business.data.use');
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $data->id]]];
+        $selection = ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $data->id]]];
         $rights = [];
         foreach ($originals['records'] as $record) {
             $right = $this->marketRight($user, $record['source'] ?? $originals['source'], $record['evidence'], 'process', $fields ?? array_keys($record['payload']['fields']));
             $this->postJson('/api/businesses/'.$business['business_public_id'].'/data-use-bindings', [
                 'command_id' => (string) Str::uuid(), 'data_use_scope_id' => $right['scope_id'], 'effect' => 'add', 'expected_relation' => 0,
-                'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+                'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                     ['requirement_kind' => 'business', 'leaf_grant_id' => $business['grant_refs']['business.link.manage']], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $right['grant_id']],
                 ]],
             ])->assertOk();

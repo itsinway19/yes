@@ -2,8 +2,6 @@
 
 namespace Tests;
 
-use App\Http\Controllers\WorkspaceController;
-use App\Http\Middleware\EnsureCurrentPrincipal;
 use App\Security\DisposableTestDatabaseGuard;
 use App\Security\IdentityReceipt;
 use App\Security\IdentityTransition;
@@ -14,28 +12,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Testing\TestResponse;
 use Tests\Support\DisposableDatabaseReset;
 
 abstract class TestCase extends BaseTestCase
 {
-    /**
-     * Explicit legacy-resource setup. This route exists only inside a marked
-     * disposable test application and calls the original protected provisioner
-     * with the normal web/auth/document middleware. Public creation is tested
-     * separately as retired; no intercepted request or fabricated response.
-     */
-    protected function legacyWorkspace(array $data): TestResponse
-    {
-        app(DisposableTestDatabaseGuard::class)->assertSafe();
-        Route::post('/__fixture/legacy-workspaces', [WorkspaceController::class, 'store'])
-            ->middleware(['web', 'auth', EnsureCurrentPrincipal::class])
-            ->name('test.legacy-workspace.provision');
-
-        return $this->post('/__fixture/legacy-workspaces', $data);
-    }
-
     private static bool $databasePrepared = false;
 
     private bool $ownedIdentityFixture = false;
@@ -183,7 +163,7 @@ abstract class TestCase extends BaseTestCase
         DB::connection('pgsql_migrations')->statement('UPDATE platform_maintenance SET revision=0, active=false, message_ar=DEFAULT, message_en=DEFAULT, retry_after=DEFAULT, changed_at=DEFAULT WHERE id=1');
         DB::connection('pgsql')->disconnect();
         DB::connection('pgsql_migrations')->statement(
-            'TRUNCATE TABLE material_lineage_manifests, builderad_private.invocations, migration_cohort_control, jobs, failed_jobs, service_audit_events, service_workspace_scopes, service_action_grants, service_identities, workspace_ownerships, security_action_grants, internal_personnel, passkeys, security_sessions, security_audit_events, principal_lifecycles, workspace_memberships, workspaces, password_reset_tokens, users RESTART IDENTITY CASCADE'
+            'TRUNCATE TABLE material_lineage_manifests, builderad_private.invocations, migration_cohort_control, jobs, failed_jobs, service_audit_events, service_business_scopes, service_action_grants, service_identities, security_action_grants, internal_personnel, passkeys, security_sessions, security_audit_events, principal_lifecycles, password_reset_tokens, users RESTART IDENTITY CASCADE'
         );
         DB::connection('pgsql_migrations')->statement(
             'TRUNCATE TABLE content_navigation_links, content_navigation_sections, content_article_revisions, content_articles, content_page_revisions, content_pages, content_categories, content_footer_settings RESTART IDENTITY CASCADE'

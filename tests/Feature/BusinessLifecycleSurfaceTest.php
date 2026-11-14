@@ -3,12 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\ApplicationContractAssertions;
 use Tests\Support\BusinessAuthorityFixture as Fixture;
-use Tests\Support\DisposableDatabaseReset;
 use Tests\TestCase;
 
 final class BusinessLifecycleSurfaceTest extends TestCase
@@ -27,7 +25,7 @@ final class BusinessLifecycleSurfaceTest extends TestCase
 
     private function selection(int $grant): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        return ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
     }
 
@@ -92,51 +90,5 @@ final class BusinessLifecycleSurfaceTest extends TestCase
         $this->getJson($this->url($sibling))->assertOk()->assertJsonPath('data.business.state', 'declared_draft');
         $this->getJson('/api/businesses')->assertOk()->assertJsonCount(1, 'data.items');
         $this->assertSame(1, DB::connection('pgsql_migrations')->table('business_command_receipts')->where('command_id', $body['command_id'])->count());
-    }
-
-    public function test_populated640_upgrade_preserves_businesses_grants_and_receipts_and_is_repeatable(): void
-    {
-        $reset = app(DisposableDatabaseReset::class);
-        $reset->clear();
-        try {
-            $paths = array_values(array_filter(glob(database_path('migrations/*.php')),
-                fn ($path) => strcmp(basename($path), '0001_01_01_000650_expose_qualified_draft_archive.php') < 0));
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--path' => $paths, '--realpath' => true, '--force' => true]));
-            $db = DB::connection('pgsql_migrations');
-            $db->statement('GRANT CREATE ON SCHEMA public,builderad_private TO builderad_scope_executor');
-            $db->transaction(function () use ($db): void {
-                $db->statement('SET LOCAL ROLE builderad_scope_executor');
-                $db->unprepared(str_replace('CREATE FUNCTION ', 'CREATE OR REPLACE FUNCTION ', file_get_contents(base_path('tests/Fixtures/business-surface-640.sql'))));
-            });
-            $db->statement('REVOKE CREATE ON SCHEMA public,builderad_private FROM builderad_scope_executor');
-            $db->unprepared(file_get_contents(database_path('sql/market_evidence/catalog_seal.sql')));
-            $this->actingAs(User::factory()->create());
-            $draft = $this->draft('Historical populated draft');
-            $this->assertArrayNotHasKey('lifecycle', $this->getJson($this->url($draft))->assertOk()->json('data'));
-            $before = $this->rows();
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-            $this->assertSame($before, $this->rows());
-            $this->assertSame(0, $db->table('authority_qualification_receipts')->whereNotNull('agency_business_id')->count());
-            $this->assertSame(0, $db->table('authority_qualification_receipts')->whereNotNull('agency_membership_grant_id')->count());
-            $response = $this->getJson($this->url($draft))->assertOk()->assertJsonPath('data.lifecycle.revision', 0);
-            $this->assertApplicationContract('BusinessSurfaceResult', $response->json());
-            $this->assertSame((string) $draft['grant_refs']['business.draft.archive'], $response->json('data.lifecycle.archive_options.0.grant_id'));
-            $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
-        } finally {
-            $reset->install();
-        }
-    }
-
-    private function rows(): array
-    {
-        $db = DB::connection('pgsql_migrations');
-        $rows = [];
-        foreach (['businesses', 'security_action_grants', 'authority_qualification_receipts', 'business_command_receipts'] as $table) {
-            // Migration750 adds nullable agency references; every historical field stays identical.
-            $image = $table === 'authority_qualification_receipts' ? "to_jsonb(r)-ARRAY['agency_business_id','agency_membership_grant_id']" : 'to_jsonb(r)';
-            $rows[$table] = $db->scalar("SELECT coalesce(jsonb_agg({$image} ORDER BY ({$image})::text),'[]')::text FROM {$table} r");
-        }
-
-        return $rows;
     }
 }

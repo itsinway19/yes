@@ -37,7 +37,7 @@ const choice = async locator => {
 };
 const expiry = new Date(Date.now() + 2 * 3600_000).toISOString().slice(0, 16);
 const command = () => crypto.randomUUID();
-const direct = (...requirements) => ({ realm_kind: 'direct', realm_workspace_public_id: null, requirements });
+const direct = (...requirements) => ({ realm_kind: 'direct', requirements });
 const path = (kind, id) => ({ requirement_kind: kind, leaf_grant_id: Number(id) });
 const urlFor = (business, access) => origin + '/businesses/' + business + '?access=' + access + '&section=sources';
 const replyFor = (page, pathname) => page.waitForResponse(r => new URL(r.url()).pathname === pathname && r.request().method() === 'POST');
@@ -50,7 +50,7 @@ async function login(page, user) {
 }
 async function qualifiedGrant(page, base, action, parent, recipient, expires_at = null, realm = null) {
     const body = { command_id: command(), effect: 'issue', action, grantee_public_id: recipient, parent_grant_id: Number(parent),
-        grant_id: null, expected_grant: 0, expires_at, delegable: false, realm_workspace_public_id: realm?.realm_workspace_public_id ?? null, authority_selection: realm ? {...realm,requirements:[path('business',parent)]} : direct(path('business', parent)) };
+        grant_id: null, expected_grant: 0, expires_at, delegable: false, authority_selection: realm ? {...realm,requirements:[path('business',parent)]} : direct(path('business', parent)) };
     const reply = await send(page, base + '/grants', body);
     assert.equal(reply.status, 200, JSON.stringify(reply.body));
     return { body, id: reply.body.data.grant_id };
@@ -214,10 +214,6 @@ async function exerciseSummary(browser, page, business, access, team, realm = di
     await page.locator('[data-summary-publish]').waitFor({state:'detached'});
     await page.setViewportSize({width:1280,height:900});
     const beneficiary=fixture('setup');
-    if(realm.realm_kind==='agency'){
-        const teamPath='/api/organizations/'+realm.realm_workspace_public_id+'/team';const members=await send(page,teamPath);
-        assert.equal(members.status,200);assert.equal(Number.isSafeInteger(members.body.data.revision),true);const added=await send(page,teamPath,{command_id:command(),effect:'add',recipient_public_id:beneficiary.public_id,expected_revision:members.body.data.revision});assert.equal(added.status,200,JSON.stringify(added.body));
-    }
     const childExpiry=new Date(Date.now()+10*60000).toISOString();
     const read=await qualifiedGrant(page,base,'business.context.read',team.readRoot,beneficiary.public_id,childExpiry,realm);
     const child=await qualifiedGrant(page,base,'business.data.use',use,beneficiary.public_id,childExpiry,realm);
@@ -261,103 +257,6 @@ async function exerciseSummary(browser, page, business, access, team, realm = di
     }finally{await recipientPage.close();}
     inventory=(await send(page,base+'/data-use-journey?access='+access)).body.data;
     return {command_id:command(),material_refs:[summary.artifact_ref],operation:'display',purpose:'advertising_performance',recipient_ref:inventory.actor_public_id,authority_selection:{...realm,requirements:[path('business',use),path('data_use',summary.use_grant_id)]}};
-}
-async function exerciseAgency(browser, clientPage) {
-    const client = await send(clientPage, '/api/businesses', { command_id: command(), name: 'نشاط عميل مستقل للوكالة' });
-    assert.equal(client.status, 201);
-    const business = client.body.data.business_public_id;
-    const base = '/api/businesses/' + business;
-    const identity = fixture('setup', 'agency');
-    const actor = await browser.newPage({ locale: 'ar-JO', timezoneId: 'UTC' });
-    actor.on('pageerror',error=>evidence.pageErrors.push('agency: '+error.message));
-    const rival = await browser.newPage({ locale: 'ar-JO', timezoneId: 'UTC' });
-    try {
-        await login(actor, identity);
-        const slug = 'agency-' + command();
-        const workspaceCreate = await send(actor, '/workspaces', { name: 'وكالة اختبار مستقلة', slug });
-        assert.equal(workspaceCreate.status, 0);
-        const seeds = fixture('agency-prerequisites', business, identity.public_id, slug);
-        const link = { command_id: command(), workspace_public_id: seeds.workspace, kind: 'agency', effect: 'add', expected_revision: 0,
-            authority_selection: direct(path('business', seeds.link_grant)) };
-        assert.equal((await send(actor, base + '/workspace-links', link)).status, 200);
-        const { access } = fixture('agency-context', business, identity.public_id, seeds.workspace);
-        const agency = { realm_kind: 'agency', realm_workspace_public_id: seeds.workspace, requirements: [path('business', access)] };
-        const adopted = await send(actor, '/api/data-rights/commands', { command_id: command(), target_kind: 'source', target_ref: seeds.source,
-            effect: 'adopt', payload: {}, expected_revision: 1, authority_selection: direct(path('native_source', seeds.source_grants['source.manage'])) });
-        assert.equal(adopted.status, 200, JSON.stringify(adopted.body));
-
-        const mandatePath = base + '/operating-mandate';
-        const mandateBody = { command_id: command(), confirmed: true, capacity: 'responsible_business',
-            authority_reference: 'Synthetic independent client mandate', valid_until: new Date(expiry + 'Z').toISOString(), previous_grant: '0', authority_selection: agency };
-        assert.equal((await send(actor, mandatePath, mandateBody)).status, 403);
-        await actor.goto(urlFor(business, access));
-        await ready(actor, '[data-operating-mandate]');
-        const mandate = actor.locator('[data-operating-mandate]');
-        await mandate.locator('summary').click();
-        await mandate.locator('#mandate-capacity').selectOption('client_mandate');
-        await mandate.locator('[data-mandate-reference]').fill('تفويض صريح من العميل الاصطناعي');
-        await mandate.locator('[data-mandate-expiry]').fill(expiry);
-        await mandate.locator('[data-mandate-confirm]').check();
-        const qualified = replyFor(actor, mandatePath);
-        await mandate.locator('[data-license-qualify]').click();
-        assert.equal((await qualified).status(), 200);
-        await mandate.waitFor({ state: 'detached' });
-
-        await choice(actor.locator('[data-license-source]'));
-        await choice(actor.locator('[data-license-dataset]'));
-        await choice(actor.locator('[data-license-purpose]'));
-        await actor.locator('#license-capacity').selectOption('authorized_representative');
-        await actor.locator('[data-license-holder]').fill('العميل الاصطناعي المستقل');
-        await actor.locator('[data-license-reference]').fill('تصريح العميل الاصطناعي للإنفاق المحدد');
-        await actor.locator('[data-license-expiry]').fill(expiry);
-        const issue = actor.locator('[data-license-issue]');
-        await actor.locator('[data-license-review-needed]').check();
-        await actor.locator('[data-license-review-state]').waitFor();
-        assert.equal(await issue.isDisabled(), true);
-        assert.equal(fixture('inspect', business).licenses, 0);
-        await actor.locator('[data-license-review-needed]').uncheck();
-        await actor.locator('[data-license-confirm]').check();
-        const issued = replyFor(actor, base + '/data-use-licenses');
-        await issue.click();
-        assert.equal((await issued).status(), 200);
-        for (const [button, endpoint] of [['cover', '/api/data-rights/commands'], ['bind', base + '/data-use-bindings']]) {
-            await choice(actor.locator('[data-license-source]'));
-            await choice(actor.locator('[data-license-current]'));
-            await choice(actor.locator('[data-license-binding]'));
-            const effect = replyFor(actor, endpoint);
-            await actor.locator('[data-license-' + button + ']').click();
-            assert.equal((await effect).status(), 200);
-            await actor.locator('[data-license-reconcile]').waitFor({ state: 'detached' });
-        }
-        await choice(actor.locator('[data-license-source]'));
-        await choice(actor.locator('[data-license-current]'));
-        await choice(actor.locator('[data-license-use]'));
-        const read = replyFor(actor, base + '/materials/read');
-        await actor.locator('[data-license-read]').click();
-        const response = await read;
-        assert.equal(response.status(), 200);
-        const original = response.request().postDataJSON();
-        assert.doesNotMatch(await response.text(), /C03_DO_NOT_DISCLOSE/);
-        await actor.locator('[data-native-amount]').filter({ hasText: /^17$/ }).waitFor();
-        const summaryRead=await exerciseSummary(browser,actor,business,access,{readRoot:access},agency);
-        assert.equal((await send(actor,base+'/materials/read',summaryRead)).status,200);
-
-        await login(rival, fixture('setup', 'agency'));
-        assert.equal((await send(rival, '/workspaces', { name: 'وكالة أخرى', slug: 'agency-' + command() })).status, 0);
-        const journey = base + '/data-use-journey?access=' + access;
-        assert.equal((await send(rival, journey)).status, 403);
-        assert.equal((await send(rival, base + '/materials/read', { ...original, command_id: command() })).status, 403);
-        assert.equal((await send(actor, base + '/workspace-links', { ...link, command_id: command(), effect: 'end', expected_revision: 1 })).status, 200);
-        assert.equal((await send(actor, base + '/materials/read', original)).status, 403);
-        assert.equal((await send(actor,base+'/materials/read',summaryRead)).status,403);
-        assert.equal((await send(actor, base + '/workspace-links', { ...link, command_id: command(), expected_revision: 2 })).status, 200);
-        assert.equal((await send(actor, journey)).status, 403);
-        assert.equal((await send(actor, base + '/materials/read', { ...original, command_id: command() })).status, 403);
-        assert.equal((await send(actor,base+'/materials/read',{...summaryRead,command_id:command()})).status,403);
-    } finally {
-        await rival.close();
-        await actor.close();
-    }
 }
 const browser = await chromium.launch({ headless: true, executablePath: 'C:/Users/stoma/AppData/Local/ms-playwright/chromium-1208/chrome-win64/chrome.exe' });
 let page;
@@ -511,12 +410,10 @@ try {
     evidence.cases.push({ name: 'Mobile RTL and withdrawal denies replay of former authorised material read', status: 'PASS' });
     await exerciseSummary(browser,page,business,access,summaryTeam);
     evidence.cases.push({name:'Explicit process, finite summary consent, lost prepare reply, registered publication and source-free recipient read/reload/revocation',status:'PASS'});
-    await exerciseAgency(browser, page);
-    evidence.cases.push({ name: 'Independent client and qualified agency browser, rival denial and relationship replacement', status: 'PASS' });
     assert.deepEqual(evidence.pageErrors, []);
 } catch (error) {
     evidence.failure = String(error.stack ?? error);
-    if (page && !page.isClosed()) await page.screenshot({ path: join(run, 'data-licence-browser-failure.png'), fullPage: true }).catch(() => {});
+    if (process.env.GOALS_SPA_CAPTURE_IMAGES === '1' && page && !page.isClosed()) await page.screenshot({ path: join(run, 'data-licence-browser-failure.png'), fullPage: true }).catch(() => {});
     throw error;
 } finally {
     await browser.close();

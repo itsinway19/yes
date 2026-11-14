@@ -29,8 +29,8 @@ final class PersistObservationJob implements ShouldBeEncrypted, ShouldQueue
         private int $actorId,
         private int $actorGeneration,
         #[\SensitiveParameter] private string $sessionId,
-        /* Serialized field retained for existing queued organizational work; holds the exact native owner public ID. */
-        private string $workspacePublicId,
+        /* Exact Business locator; the worker requalifies current Source authority. */
+        private string $businessPublicId,
         private ObservationBatch $batch,
         private string $stream,
         private string $command,
@@ -44,19 +44,19 @@ final class PersistObservationJob implements ShouldBeEncrypted, ShouldQueue
         $this->afterCommit();
     }
 
-    /** Capturing work requires exact current authority inside the original signed Workspace transaction. */
+    /** Capturing work requires exact current authority inside the original signed Business transaction. */
     public static function capture(Request $request, ObservationBatch $batch, string $stream, string $command,
         int $generation, int $accessVersion, array $provenance, ?NativeProgress $progress = null): self
     {
         if (DB::connection()->transactionLevel() !== 1 || ! $request->user()) {
-            throw new LogicException('Provider work must be captured inside its authorized Workspace transaction.');
+            throw new LogicException('Provider work must be captured inside its authorized Business transaction.');
         }
         $s = $batch->scope;
         app(ProviderRequestGuard::class)->requireCustody($request, $s, 'provider.read');
         DB::scalar('SELECT builderad_provider_credential(?, ?, ?::uuid, ?, ?, ?, ?)', [
-            $s->workspaceId, SessionAuthority::sessionKey($request), $s->sourceId, $s->provider->value,
+            $s->businessId, SessionAuthority::sessionKey($request), $s->sourceId, $s->provider->value,
             $s->accountId, $s->operation, $s->purpose]);
-        $currentVersion = DB::table('provider_access')->where('workspace_id', $s->workspaceId)->where('source_id', $s->sourceId)
+        $currentVersion = DB::table('provider_access')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $s->businessId))->where('source_id', $s->sourceId)
             ->where('provider', $s->provider->value)->where('resource', $s->accountId)->where('operation', $s->operation)
             ->where('purpose', $s->purpose)->value('version');
         if ((int) $currentVersion !== $accessVersion || ($progress !== null && $batch->coverage !== 'COMPLETE')) {
@@ -90,7 +90,7 @@ final class PersistObservationJob implements ShouldBeEncrypted, ShouldQueue
             throw new ReadBudgetExhausted('deadline_exhausted');
         }
         $actor = User::findOrFail($this->actorId);
-        $request = Request::create(($this->batch->scope->businessId === null ? '/workspaces/' : '/businesses/').$this->workspacePublicId);
+        $request = Request::create('/businesses/'.$this->businessPublicId);
         $request->setUserResolver(fn () => $actor);
         $session = new Store('bb2-worker', new ArraySessionHandler(120));
         $session->setId($this->sessionId);
@@ -103,7 +103,7 @@ final class PersistObservationJob implements ShouldBeEncrypted, ShouldQueue
         // Background acceptance must not touch/extend the human session's idle lifetime.
         DB::transaction(function () use ($request, $journal, $principals, $actor): void {
             $principals->activate($actor);
-            NativeSourceQueueContext::restore($request, $this->batch->scope, $this->workspacePublicId, $this->actorGeneration);
+            NativeSourceQueueContext::restore($request, $this->batch->scope, $this->businessPublicId, $this->actorGeneration);
             $progress = $this->nativeProgress === null ? null : new NativeProgress(
                 $this->nativeProgress['kind'], $this->nativeProgress['basis'], $this->nativeProgress['payload']);
             $journal->accept($request, $this->batch, $this->stream, $this->command, $this->generation,

@@ -30,7 +30,7 @@ async function fetchChoices(after?: number) {
         const result = await businessChoices(after);
         if (disposed || !owned(captured) || serial !== choiceSerial) return;
         const realm = props.surface.authority_selection;
-        const matching = result.items.filter(item => item.realm_kind === realm.realm_kind && item.realm_workspace_public_id === realm.realm_workspace_public_id && Number.isSafeInteger(Number(item.read_grant_id)));
+        const matching = result.items.filter(item => item.realm_kind === realm.realm_kind && Number.isSafeInteger(Number(item.read_grant_id)));
         choices.value = after ? [...choices.value, ...matching] : matching; next.value = result.next_cursor;
         if (draft.choice && chosen.value) await choose(false);
     } catch { if (!disposed && owned(captured) && serial === choiceSerial) draft.notice = t('تعذر تحميل خيارات الأنشطة. لم نستنتج عدم وجودها أو نمنح حقًا بديلًا.', 'Business choices could not be loaded. Absence or replacement authority has not been inferred.'); }

@@ -12,15 +12,13 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
     check = (name, mode, execute) => {
         const group = /registry|service authorization/.test(name) ? 'registry' : /report requests|queued reports/.test(name) ? 'reports'
             : /offline grant/.test(name) ? 'recovery' : /renewal preserve/.test(name) ? 'renew' : /disconnections/.test(name) ? 'disconnect'
-                : /superseded|account switch|expired-session|csrf is|revoked authority/.test(name) ? 'lifecycle' : 'shell';
+                : /superseded|account switch|expired-session|csrf is|CSRF errors|revoked authority/.test(name) ? 'lifecycle' : 'shell';
         return stages.includes('all') || stages.includes(group) || (stages.includes('remaining') && group !== 'shell') ? runCheck(name, mode, execute) : Promise.resolve();
     };
     const sourceBusiness=stage==='all'||!fixture.a.source_business?command('source-fresh'):fixture.a.source_business;
     const workspace=sourceBusiness.business_public_id,other=fixture.a.businesses[1].business_public_id,foreign=fixture.b.businesses[0].business_public_id;
     const base=`/businesses/${workspace}`,home=`${base}?access=${sourceBusiness.grant_refs['business.context.read']}&section=sources`;
-    const historicalBase=`/workspaces/${fixture.a.workspaces[0].public_id}`;
-    const otherHome=target('application',fixture.a.workspaces[1].public_id),foreignHome=target('application',fixture.b.workspaces[0].public_id);
-    command('source-restore-owner');
+    const otherHome=target('application',other),foreignHome=target('application',foreign);
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } }), page = await context.newPage();
     page.setDefaultTimeout(15000); page.on('dialog', dialog => dialog.accept());
     page.on('crash', () => result.errors.push({ mode: 'sources', message: 'Source browser page crashed' }));
@@ -28,7 +26,7 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
     context.on('response', response => { if (response.url().includes('/build/') && response.status() === 200) result.assets.push({ url: response.url(), status: 200 }); });
     const spec = JSON.parse(await readFile('contracts/application.openapi.json', 'utf8'));
     const validate = name => new Ajv({ strict: false, validateFormats: false }).compile({ ...spec, $ref: `#/components/schemas/${name}` });
-    const sourceSchema = validate('WorkspaceSourcesResource');
+    const sourceSchema = validate('BusinessSourceRegistryResource');
     const ready = () => page.waitForFunction(workspace => document.querySelector('[data-business-public]')?.getAttribute('data-business-public')===workspace && document.getElementById('application-spa')?.dataset.state==='ready' && !!document.querySelector('[data-business-source-inventory]'),workspace);
     const visit = async url => { await page.evaluate(url => document.getElementById('application-spa').__vue_app__.config.globalProperties.$router.push(url), url); await page.waitForURL('http://localhost:8138' + url); };
     const panel = provider => page.locator(`dialog[open] section[aria-labelledby="${provider}-connection-heading"]`);
@@ -78,39 +76,38 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
     }
     try {
         if (stage !== 'all' && stage !== 'shell') { await login(page, 'application'); await visit(home); await ready(); }
-        await check('canonical Source shell is the current Business-native inventory with independent historical JSON custody','sources',async()=>{
+        await check('canonical Source shell is the current Business-native inventory','sources',async()=>{
             await login(page,'application');const before=await meta(page);await visit(home);await ready();
             assert.equal((await meta(page)).binding.generation,before.binding.generation);
             await visit('/businesses');await page.locator('[data-business-list]').waitFor();await visit(home);await ready();
-            const resource=await get(page,historicalBase,{'X-Builderad-Passive':'1'});assert.equal(resource.status,200);assert.ok(sourceSchema(resource.body),JSON.stringify(sourceSchema.errors));
+            const resource=await get(page,base+'/source-registry',{'X-Builderad-Passive':'1'});assert.equal(resource.status,200);assert.ok(sourceSchema(resource.body),JSON.stringify(sourceSchema.errors));
             assert.equal((await get(page,foreignHome)).status,403);assert.equal((await get(page,base+'/providers/meta',{'X-Builderad-Passive':'1'})).status,200);
             const language=async wanted=>{const menu=page.locator('.advertiser-account-menu');if(await menu.getAttribute('open')===null)await menu.locator(':scope > summary').click();await page.locator('[data-application="locale"]').click();await page.waitForFunction(wanted=>document.documentElement.lang===wanted,wanted);await ready();if(await menu.getAttribute('open')!==null)await menu.locator(':scope > summary').click();};
             await language('en');assert.equal(await page.locator('[data-business-public]').count(),1);await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await language('ar');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.setViewportSize({width:1280,height:900});
-            return{sameDocument:true,locales:['ar','en'],foreignBusiness:403,historicalJSONContract:true,overflow:false,publicWorkspacePage:false,screenshots:false};
+            return{sameDocument:true,locales:['ar','en'],foreignBusiness:403,businessSourceContract:true,overflow:false,publicWorkspacePage:false,screenshots:false};
         });
         for (const provider of ['meta', 'google', 'tiktok', 'snapchat', 'x']) await check(`${provider} real SPA connection, synthetic native OAuth, discovery and exact account selection`, 'sources', () => connectAccount(provider));
-        await check('historical registry grants registration scope correction recovery and revocation retain real Laravel effects','sources',async()=>{
-            const source=crypto.randomUUID(),scope={source_id:source,resource:'synthetic-resource',operation:'report.read',purpose:'advertising_analysis',reason:'synthetic_browser_fixture'};
-            const authorize=async(action,operation='report.read')=>{const response=await post(page,historicalBase+'/source-grants',{...scope,operation,action,decision:'authorize',expires_at:null});assert.equal(response.status,200);};
-            for(const action of ['source.register','source.read','source.manage','source.audit.recover'])await authorize(action);
-            const registration={...scope,command_id:crypto.randomUUID(),effect:'register',expected_version:0,family:'business',namespace:'account',external_id:'synthetic-local-'+source,label:'Synthetic local Source'};
-            const registered=await post(page,historicalBase+'/sources',registration);assert.equal(registered.status,200);assert.equal(registered.body.registration_state,'UNVERIFIED');
-            const replay=await post(page,historicalBase+'/sources',registration);assert.equal(replay.status,200);assert.deepEqual(replay.body,registered.body);
-            for(const action of ['source.manage','source.read','source.audit.recover'])await authorize(action,'discovery.read');
-            const declared=await post(page,historicalBase+'/sources',{...scope,operation:'discovery.read',command_id:crypto.randomUUID(),effect:'declare_scope',expected_version:1});assert.equal(declared.status,200);
-            const recovered=await post(page,historicalBase+'/source-audit/'+registered.body.obligation_id+'/recover',{});assert.equal(recovered.status,200);
-            const renamed=await post(page,historicalBase+'/sources',{...scope,command_id:crypto.randomUUID(),effect:'rename',expected_version:2,label:'Synthetic corrected Source'});assert.equal(renamed.status,200);
-            const revoked=await post(page,historicalBase+'/sources',{...scope,command_id:crypto.randomUUID(),effect:'revoke',expected_version:3});assert.equal(revoked.status,200);
-            const projection=await get(page,historicalBase);assert.equal(projection.status,200);const item=projection.body.data.sources.items.find(item=>item.id===source||item.source_id===source);assert.ok(item);assert.equal(item.capability.state,'REVOKED');
+        await check('Business registry preserves registration replay, audit recovery and versioned retirement','sources',async()=>{
+            const candidates = await get(page, base+'/source-registry');
+            assert.equal(candidates.status, 200);
+            const source = candidates.body.data.sourceCandidateId;
+            const scope={source_id:source,resource:'synthetic-resource',operation:'inventory.read',purpose:'inventory_review',reason:'synthetic_browser_fixture'};
+            const registration={...scope,command_id:crypto.randomUUID(),effect:'register',expected_version:0,family:'inventory',namespace:'catalog',external_id:'synthetic-local-'+source,label:'Synthetic local Source'};
+            const registered=await post(page,base+'/sources',registration);
+            assert.equal(registered.status,200);
+            assert.equal(registered.body.registration_state,'UNVERIFIED');
+            const replay=await post(page,base+'/sources',registration);
+            assert.equal(replay.status,200);
+            assert.deepEqual(replay.body,registered.body);
+            assert.equal((await post(page,base+'/source-audit/'+registered.body.obligation_id+'/recover',{})).status,200);
+            assert.equal((await post(page,base+'/sources',{...scope,command_id:crypto.randomUUID(),effect:'rename',expected_version:1,label:'Corrected Source'})).status,200);
+            assert.equal((await post(page,base+'/sources',{...scope,command_id:crypto.randomUUID(),effect:'revoke',expected_version:2})).status,200);
+            const projection=await get(page,base+'/source-registry');
+            assert.equal(projection.status,200);
+            assert.ok(sourceSchema(projection.body),JSON.stringify(sourceSchema.errors));
+            assert.equal(projection.body.data.sources.items.find(item=>item.id===source)?.capability.state,'REVOKED');
             assert.equal(JSON.stringify(projection.body).includes('synthetic-web-token'),false);
-            return{surface:'qualified historical JSON only',register:200,declareScope:200,recover:200,rename:200,revoke:200,registrationUnverified:true,exactReplay:true};
-        });
-        await check('historical service authorization and revocation remain qualified JSON effects without credentials','sources',async()=>{
-            const service=command('source-service');const authorized=await post(page,historicalBase+'/services',{service:service.public_id,purpose:'Synthetic explicit Source service purpose'});assert.equal(authorized.status,200);
-            const before=await get(page,historicalBase);assert.equal(before.status,200);assert.ok(JSON.stringify(before.body).includes(service.public_id));assert.equal(JSON.stringify(before.body).includes('credential_hash'),false);
-            const identity=await meta(page);const response=await context.request.delete('http://localhost:8138'+historicalBase+'/services/'+service.public_id,{headers:{Accept:'application/json','X-CSRF-TOKEN':identity.csrf,'X-Builderad-Document':identity.receipt,'X-Builderad-Transition':identity.transition},maxRedirects:0});assert.equal(response.status(),200);
-            const after=await get(page,historicalBase);assert.equal(after.status,200);assert.equal(JSON.stringify(after.body).includes(service.public_id),false);
-            return{surface:'qualified historical JSON only',authorize:200,revoke:200,identityCreation:'isolated fixture only',credentialExposed:false};
+            return {exactReplay:true,registrationUnverified:true,recovered:true,retired:true};
         });
         await check('report requests travel through Laravel with original unknown command retained and no automatic replay', 'sources', async () => {
             const jobsBefore = command('source-inspect').jobs;
@@ -158,7 +155,7 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
             const before = command('source-inspect'); assert.equal(before.jobs - jobsBefore, 6);
             return { providers: 5, queueAcknowledgement: 202, googleDeliveries: 2, originalGeneration: original.expected_generation, automaticReplay: false, liveProviderEvidence: false };
         });
-        await check('revoked authority, validation and CSRF errors remain real server failures', 'sources', async () => {
+        await check('validation, command conflict and CSRF errors remain real server failures', 'sources', async () => {
             const snapshot = await snapshots('google'), source = snapshot.connections[0].source_id;
             assert.equal((await post(page, `${base}/providers/google/select`, { selection: 'invalid' })).status, 422);
             assert.equal((await post(page, `${base}/providers/google/${source}/disconnect`, { command_id: crypto.randomUUID(), expected_version: 999 })).status, 409);
@@ -166,12 +163,7 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
             const identity = await meta(page);
             const csrf = await context.request.post('http://localhost:8138' + base + '/providers/google/connect', { headers: { Accept: 'application/json', 'X-Builderad-Document': identity.receipt, 'X-CSRF-TOKEN': 'wrong' }, data: { intent: 'invalid' }, maxRedirects: 0 });
             assert.equal(csrf.status(), 419);
-            command('source-deny-owner'); assert.equal((await get(page, home)).status, 403);
-            assert.equal((await post(page, `${base}/providers/google/${source}/disconnect`, { command_id: crypto.randomUUID(), expected_version: snapshot.connections[0].access.version })).status, 403);
-            await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))); await page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'unavailable');
-            assert.equal(await page.locator('[data-business-public]').count(), 0);
-            command('source-restore-owner');await page.reload();await ready();
-            return { statuses: [403, 409, 419, 422], ordinaryPermissionDenialDoesNotAuthenticate: true };
+            return { statuses: [409, 419, 422] };
         });
         await check('queued reports execute canonical workers and their real result status returns to the SPA', 'sources', async () => {
             const execution = command('source-run-reports'); assert.ok(execution.handled >= 6);
@@ -305,9 +297,30 @@ export async function runSourceCases({ browser, check, login, meta, get, post, c
                 return { closed: true, oldResource: denied.status, expectedError: failure === 'csrf' ? 419 : 401, csrfDoesNotRevokeServerSession: failure === 'csrf' };
             } finally { await isolated.close(); }
         });
+        await check('revoked authority conceals a previously admitted Source document and denies effects','sources',async()=>{
+            const isolated = await browser.newContext(), current = await isolated.newPage();
+            try {
+                await login(current, 'application');
+                await current.goto('http://localhost:8138'+home);
+                await current.locator('[data-business-source-inventory]').waitFor();
+                const before = await get(current, base+'/providers/google');
+                assert.equal(before.status, 200);
+                const connection = before.body.connections[0];
+                assert.ok(connection);
+                command('source-deny-owner');
+                assert.equal((await get(current, home)).status, 403);
+                assert.equal((await post(current, `${base}/providers/google/${connection.source_id}/disconnect`, {
+                    command_id: crypto.randomUUID(), expected_version: connection.access.version,
+                })).status, 403);
+                await current.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+                await current.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'unavailable');
+                assert.equal(await current.locator('[data-business-public]').count(), 0);
+                return { withdrawnBasis: true, effectDenied: true, staleDocumentConcealed: true };
+            } finally { await isolated.close(); }
+        });
         if (stage === 'all') {
             assert.deepEqual(handoffs.map(value => value.provider), ['meta', 'google', 'tiktok', 'snapchat', 'x', 'meta', 'tiktok', 'x', 'google', 'google']);
             assert.equal(handoffs.find(value => value.provider === 'google').prompt, null);
         }
-    } finally { command('source-restore-owner'); command('source-snap-restore'); command('source-google-offline-restore'); await context.close(); }
+    } finally { command('source-snap-restore'); command('source-google-offline-restore'); await context.close(); }
 }

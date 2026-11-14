@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Tests\Support\BusinessAuthorityFixture;
 
 if (getenv('GOALS_SPA_ONLY') !== 'sources') {
     throw new RuntimeException('Source proof only');
@@ -35,20 +36,14 @@ if ($mode === 'source-fresh') {
 $sourceBusiness = $fixture[$who]['source_business'] ?? null;
 $sourceBusinessId = $sourceBusiness ? $db->table('businesses')->where('public_id', $sourceBusiness['business_public_id'])->value('id') : null;
 $ownedSources = fn () => $db->table('source_registry')->where('custody_kind', 'business_native')->where('business_id', $sourceBusinessId);
-if (in_array($mode, ['source-deny-owner', 'source-restore-owner'], true)) {
-    $denied = $mode === 'source-deny-owner';
-    $db->table('security_action_grants')->where('id', $sourceBusiness['grant_refs']['business.context.read'])
-        ->update(['status' => $denied ? 'revoked' : 'active', 'revoked_at' => $denied ? now() : null]);
-    echo json_encode(['owner_denied' => $denied]).PHP_EOL;
+if ($mode === 'source-deny-owner') {
+    $qualification = $db->table('security_action_grants')
+        ->where('id', $sourceBusiness['grant_refs']['business.context.read'])->value('qualification_id');
+    BusinessAuthorityFixture::revokeQualification($qualification, $user);
+    echo json_encode(['owner_denied' => true]).PHP_EOL;
     exit;
 }
 require __DIR__.'/sources-spa-runtime.php';
-if ($mode === 'source-service') {
-    $id = $db->table('service_identities')->insertGetId(['name' => 'Synthetic Source service', 'status' => 'enabled',
-        'credential_hash' => hash('sha256', Str::random(64)), 'version' => 1, 'created_by' => $user, 'created_at' => now(), 'updated_at' => now()]);
-    echo json_encode(['public_id' => $db->table('service_identities')->where('id', $id)->value('public_id')], JSON_THROW_ON_ERROR).PHP_EOL;
-    exit;
-}
 if ($mode === 'source-admit') {
     $count = 0;
     foreach ($ownedSources()->where('namespace', 'ad_account')->get() as $source) {

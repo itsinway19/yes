@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
+import BusinessServiceApproval from './BusinessServiceApproval.vue';
+import BusinessSourceRegistry from './BusinessSourceRegistry.vue';
 import AdvertisingAccounts from '../sources/AdvertisingAccounts.vue';
 import BusinessDataLicenses from './BusinessDataLicenses.vue';
 import BusinessTaskRow from './BusinessTaskRow.vue';
@@ -39,6 +41,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload));
         <p class="workspace-intro">{{ t('حالة كل منصة والإجراء المتاح لحسابها. افتح التفاصيل لمراجعة الربط والصلاحية.', 'Each platform’s state and available account action. Open its details to review connection and access.') }}</p>
         </template>
         <div v-show="task === 'accounts'"><AdvertisingAccounts :key="business" :business-id="business" :can-manage="true" /></div>
+        <BusinessServiceApproval v-if="task === 'accounts'" :surface="surface" @refresh="$emit('refresh')" /><BusinessSourceRegistry v-if="task === 'accounts'" :business-id="business" />
         <section v-if="task === 'accounts'" class="business-task-list">
             <BusinessTaskRow ref="licensesTask" task="source-licenses" :title="t('السماح باستعمال بيانات المصدر', 'Allow source data use')" :description="t('حدد البيانات والغرض والمستفيد والمدة قبل استعمالها في نشاطك.', 'Define the data, purpose, recipient and period before using it in this business.')" :action="t('مراجعة أذونات البيانات', 'Review data permissions')" @select="openTask('licenses')" />
         </section>

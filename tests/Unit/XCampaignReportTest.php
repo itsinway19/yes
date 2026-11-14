@@ -13,7 +13,7 @@ final class XCampaignReportTest extends TestCase
 {
     private function request(string $placement = 'ALL_ON_TWITTER', array $ids = ['campaign1']): XCampaignReport
     {
-        return new XCampaignReport(new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::X,
+        return new XCampaignReport(ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::X,
             '18ce54d4x5t', 'report.read', 'advertising_analysis'),
             new ReportWindow('2026-03-08', '2026-03-08', 'INCLUSIVE_DATES', 'TOTAL', 'America/Los_Angeles', 'synthetic:native'), $ids, $placement, false, new \DateTimeImmutable('2026-07-01T12:00:00Z'), 'NONE');
     }
@@ -124,7 +124,7 @@ final class XCampaignReportTest extends TestCase
                 $this->addToAssertionCount(1);
             }
         }
-        $scope = new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::X, '18ce54d4x5t', 'report.read', 'advertising_analysis');
+        $scope = ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::X, '18ce54d4x5t', 'report.read', 'advertising_analysis');
         $this->expectException(\InvalidArgumentException::class);
         new XCampaignReport($scope, new ReportWindow('2026-09-01', '2026-09-08', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'), ['campaign1'], 'ALL_ON_TWITTER', false, null, 'NONE');
     }

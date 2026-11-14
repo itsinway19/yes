@@ -7,11 +7,11 @@ import { customers, changeCustomerStatus, readCustomers, type CustomerCommand } 
 import { bootstrap, close, logout, onClose, owned, stamp, TransportError } from '../spa/transport';
 import { confirmDeparture } from '../spa/presentation';
 
-type Kind = 'users' | 'workspaces';
+type Kind = 'users' | 'businesses';
 type Decision = 'suspend' | 'reactivate';
-type Row = { public_id: string; name: string; status: string; revision: number; email?: string; email_verified_at?: string | null; workspace_count?: number; can_reactivate?: boolean; business_type_ar?: string | null; business_type_en?: string | null; owner_name?: string | null; owner_email?: string | null; market_label?: string | null; member_count?: number };
+type Row = { public_id: string; name: string; status: string; revision: number; email?: string; email_verified_at?: string | null; business_count?: number; can_reactivate?: boolean; creator_name?: string | null };
 type History = { decision: Decision; reason: string; occurred_at: string; actor_name: string };
-type Details = { public_id?: string; name: string; email?: string; workspaces?: { public_id: string; name: string; status: string; role: string }[]; members?: { name: string; email: string; role: string; status: string }[]; history: History[] };
+type Details = { public_id?: string; name: string; email?: string; businesses?: { public_id: string; name: string; status: string; role: string }[]; history: History[] };
 type Payload = CustomerCommand;
 const props = computed(() => customers.value! as { filters: { kind: Kind; search: string; status: string; page: number }; rows: Row[]; total: number; details: Details | null; freshAuthentication: boolean });
 const router = useRouter(), currentRoute = useRoute();
@@ -32,7 +32,7 @@ const error = ref('');
 const success = ref('');
 const reasonInput = ref<HTMLInputElement | null>(null);
 const result = ref<HTMLDivElement | null>(null);
-const draftKey = `builderad.customer-status.v1.${bootstrap.identity.binding.principal}`;
+const draftKey = `builderad.customer-status.v2.${bootstrap.identity.binding.principal}.${bootstrap.identity.binding.lifecycle}`;
 const reauthenticating = ref(false);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function saveDraft(): boolean {
@@ -48,8 +48,8 @@ try {
     if (stored && stored.length <= 4096) {
         const draft = JSON.parse(stored);
         const payload = draft?.payload;
-        const validStatuses = payload?.kind === 'users' ? ['pending', 'current', 'disabled'] : ['active', 'suspended'];
-        if (draft.version === 1 && payload && ['users', 'workspaces'].includes(payload.kind) && ['suspend', 'reactivate'].includes(payload.decision)
+        const validStatuses = payload?.kind === 'users' ? ['pending', 'current', 'disabled'] : ['declared_draft', 'active', 'suspended'];
+        if (draft.version === 1 && payload && ['users', 'businesses'].includes(payload.kind) && ['suspend', 'reactivate'].includes(payload.decision)
             && typeof payload.command_id === 'string' && uuid.test(payload.command_id) && typeof payload.target === 'string' && uuid.test(payload.target)
             && typeof payload.reason === 'string' && payload.reason.trim().length > 0 && payload.reason.length <= 128
             && Number.isSafeInteger(payload.expected_revision) && payload.expected_revision >= 0 && validStatuses.includes(payload.expected_status)
@@ -63,12 +63,12 @@ try {
 } catch { error.value = t('customers.storageError'); }
 const locked = computed(() => busy.value || uncertain.value || refreshFailed.value);
 const pages = computed(() => Math.max(1, Math.ceil(props.value.total / 25)));
-const statusChoices = computed(() => props.value.filters.kind === 'users' ? ['pending', 'current', 'disabled'] : ['active', 'suspended', 'archived']);
+const statusChoices = computed(() => props.value.filters.kind === 'users' ? ['pending', 'current', 'disabled'] : ['declared_draft', 'active', 'suspended', 'archived']);
 function statusLabel(value: string) { return t(`customers.status.${value}`, t('customers.unknownStatus')); }
 function roleLabel(value: string) { return t(`customers.role.${value}`, t('customers.member')); }
 function decisionFor(row: Row): Decision | null {
     if (props.value.filters.kind === 'users') return row.status === 'pending' || row.status === 'current' ? 'suspend' : row.status === 'disabled' && row.can_reactivate ? 'reactivate' : null;
-    return row.status === 'active' ? 'suspend' : row.status === 'suspended' ? 'reactivate' : null;
+    return ['declared_draft', 'active'].includes(row.status) ? 'suspend' : row.status === 'suspended' ? 'reactivate' : null;
 }
 function load(kind = props.value.filters.kind, page = 1, selected?: string, applyFilters = false) {
     if (locked.value) return;
@@ -156,20 +156,20 @@ function date(value: string) {
             <p v-if="acknowledged" role="status" data-customer-ack>{{ locale === 'ar' ? 'وصل إقرار نجاح الأمر من الخادم.' : 'The server acknowledged command success.' }}</p>
             <div v-if="refreshFailed" role="alert" data-customer-readback>{{ locale === 'ar' ? 'تعذر تحديث العرض. إقرار الأمر مستقل عن هذه القراءة.' : 'Readback failed. The command acknowledgement is separate.' }} <button type="button" @click="review">{{ locale === 'ar' ? 'تحديث القراءة فقط' : 'Refresh read only' }}</button></div>
             <nav class="customer-tabs" :aria-label="t('customers.categories')">
-                <button v-for="kind in (['users', 'workspaces'] as const)" :key="kind" type="button" class="customer-tab" :aria-current="filters.kind === kind ? 'page' : undefined" :disabled="locked || navigating" @click="load(kind)">{{ t(`customers.${kind}`) }}</button>
+                <button v-for="kind in (['users', 'businesses'] as const)" :key="kind" type="button" class="customer-tab" :aria-current="filters.kind === kind ? 'page' : undefined" :disabled="locked || navigating" @click="load(kind)">{{ t(`customers.${kind}`) }}</button>
             </nav>
             <div v-if="!freshAuthentication || uncertain" class="customer-notice"><p>{{ t(uncertain ? 'customers.reauthenticateUncertain' : 'customers.freshRequired') }}</p><button type="button" class="admin-action" :disabled="busy || reauthenticating" @click="signInAgain">{{ t('customers.login') }}</button></div>
             <div ref="result" tabindex="-1" class="customer-result"><p v-if="error" role="alert" class="admin-error admin-action-error">{{ error }}</p><p v-if="success" role="status" class="admin-success">{{ success }}</p></div>
             <section v-if="confirmation" class="customer-confirmation" aria-labelledby="customer-confirm-title">
                 <h2 id="customer-confirm-title">{{ t(`customers.${confirmation.decision}`) }} — {{ confirmation.row.name }}</h2>
-                <p class="admin-description">{{ t(confirmation.kind === 'users' ? confirmation.decision === 'suspend' ? 'customers.suspendUserHelp' : 'customers.reactivateUserHelp' : confirmation.decision === 'suspend' ? 'customers.suspendWorkspaceHelp' : 'customers.reactivateWorkspaceHelp') }}</p>
+                <p class="admin-description">{{ t(confirmation.kind === 'users' ? confirmation.decision === 'suspend' ? 'customers.suspendUserHelp' : 'customers.reactivateUserHelp' : confirmation.decision === 'suspend' ? 'customers.suspendBusinessHelp' : 'customers.reactivateBusinessHelp') }}</p>
                 <form class="admin-form" @submit.prevent="submit">
                     <div class="admin-field"><label for="customer-reason">{{ t('customers.reason') }}</label><input id="customer-reason" ref="reasonInput" v-model="reason" required maxlength="128" :readonly="!!frozen" :disabled="busy" autocomplete="off" /></div>
                     <div class="customer-actions"><button type="submit" class="admin-action" :class="confirmation.decision === 'suspend' ? 'admin-action-danger' : 'admin-action-primary'" :disabled="busy || !freshAuthentication || !reason.trim()">{{ t(busy ? 'customers.saving' : uncertain ? 'customers.retry' : 'customers.confirm') }}</button><button v-if="!uncertain" type="button" class="admin-action" :disabled="busy" @click="confirmation = null">{{ t('customers.cancel') }}</button></div>
                 </form>
             </section>
             <form class="customer-filters admin-form" @submit.prevent="load(filters.kind, 1, undefined, true)">
-                <div class="admin-field"><label for="customer-search">{{ t(filters.kind === 'users' ? 'customers.searchUsers' : 'customers.searchWorkspaces') }}</label><input id="customer-search" v-model="search" type="search" maxlength="120" :disabled="locked" /></div>
+                <div class="admin-field"><label for="customer-search">{{ t(filters.kind === 'users' ? 'customers.searchUsers' : 'customers.searchBusinesses') }}</label><input id="customer-search" v-model="search" type="search" maxlength="120" :disabled="locked" /></div>
                 <div class="admin-field"><label for="customer-status">{{ t('customers.statusFilter') }}</label><select id="customer-status" v-model="status" :disabled="locked"><option value="">{{ t('customers.allStatuses') }}</option><option v-for="choice in statusChoices" :key="choice" :value="choice">{{ statusLabel(choice) }}</option></select></div>
                 <button type="submit" class="admin-action admin-action-primary" :disabled="locked || navigating">{{ t(navigating ? 'customers.loading' : 'customers.search') }}</button>
             </form>
@@ -178,12 +178,12 @@ function date(value: string) {
                 <div class="customer-column-headings" aria-hidden="true"><span>{{ locale === 'ar' ? 'السجل' : 'Record' }}</span><span>{{ locale === 'ar' ? 'الحالة والارتباطات' : 'Status and relationships' }}</span><span>{{ locale === 'ar' ? 'الإجراءات' : 'Actions' }}</span></div>
                 <ul class="customer-list">
                     <li v-for="row in rows" :key="row.public_id" class="customer-row">
-                        <div class="customer-identity"><h3>{{ row.name }}</h3><template v-if="filters.kind === 'users'"><bdi class="admin-email" dir="ltr">{{ row.email }}</bdi><p class="customer-meta">{{ t(row.email_verified_at ? 'customers.emailVerified' : 'customers.emailPending') }}</p></template><template v-else><p class="customer-meta">{{ (locale === 'ar' ? row.business_type_ar : row.business_type_en) || t('customers.businessNotSet') }}</p><p class="customer-meta">{{ t('customers.owner') }}: {{ row.owner_name || t('customers.ownerUnavailable') }}</p><p class="customer-meta">{{ t('customers.market') }}: {{ row.market_label || t('customers.marketNotSet') }}</p></template></div>
-                        <div class="customer-state"><span class="admin-status" :class="`admin-status-${row.status}`">{{ statusLabel(row.status) }}</span><p class="customer-meta">{{ t(filters.kind === 'users' ? 'customers.workspaceCount' : 'customers.memberCount', { count: filters.kind === 'users' ? row.workspace_count : row.member_count }) }}</p><p v-if="filters.kind === 'users' && row.status === 'disabled' && !row.can_reactivate" class="customer-meta">{{ t('customers.reactivationUnavailable') }}</p></div>
+                        <div class="customer-identity"><h3>{{ row.name }}</h3><template v-if="filters.kind === 'users'"><bdi class="admin-email" dir="ltr">{{ row.email }}</bdi><p class="customer-meta">{{ t(row.email_verified_at ? 'customers.emailVerified' : 'customers.emailPending') }}</p></template><p v-else class="customer-meta">{{ t('customers.creator') }}: {{ row.creator_name || t('customers.ownerUnavailable') }}</p></div>
+                        <div class="customer-state"><span class="admin-status" :class="`admin-status-${row.status}`">{{ statusLabel(row.status) }}</span><p v-if="filters.kind === 'users'" class="customer-meta">{{ t('customers.businessCount', { count: row.business_count }) }}</p><p v-if="filters.kind === 'users' && row.status === 'disabled' && !row.can_reactivate" class="customer-meta">{{ t('customers.reactivationUnavailable') }}</p></div>
                         <div class="customer-actions"><button :id="`customer-toggle-${row.public_id}`" type="button" class="admin-action" :aria-expanded="details?.public_id === row.public_id" :aria-controls="`customer-details-${row.public_id}`" :disabled="locked || navigating" @click="toggleDetails(row)">{{ t(details?.public_id === row.public_id ? 'customers.closeDetails' : 'customers.details') }}</button><button v-if="decisionFor(row)" type="button" class="admin-action" :class="decisionFor(row) === 'suspend' ? 'admin-action-danger' : ''" :disabled="locked || navigating || !freshAuthentication" @click="confirm(row)">{{ t(`customers.${decisionFor(row)}`) }}</button></div>
                         <section v-if="details?.public_id === row.public_id" :id="`customer-details-${row.public_id}`" class="customer-inline-details" :aria-labelledby="`customer-toggle-${row.public_id}`">
-                            <h3 class="customer-subheading">{{ t(filters.kind === 'users' ? 'customers.linkedWorkspaces' : 'customers.members') }}</h3>
-                            <ul class="customer-detail-list"><li v-for="space in details.workspaces ?? []" :key="space.public_id"><strong>{{ space.name }}</strong><span>{{ roleLabel(space.role) }} · {{ statusLabel(space.status) }}</span></li><li v-for="(member, index) in details.members ?? []" :key="index"><div><strong>{{ member.name }}</strong><bdi dir="ltr" class="admin-email">{{ member.email }}</bdi></div><span>{{ roleLabel(member.role) }} · {{ statusLabel(member.status) }}</span></li><li v-if="!(details.workspaces?.length || details.members?.length)" class="admin-empty">{{ t('customers.noRelated') }}</li></ul>
+                            <template v-if="filters.kind === 'users'"><h3 class="customer-subheading">{{ t('customers.createdBusinesses') }}</h3>
+                            <ul class="customer-detail-list"><li v-for="business in details.businesses ?? []" :key="business.public_id"><strong>{{ business.name }}</strong><span>{{ roleLabel(business.role) }} · {{ statusLabel(business.status) }}</span></li><li v-if="!details.businesses?.length" class="admin-empty">{{ t('customers.noRelated') }}</li></ul></template>
                             <h3 class="customer-subheading">{{ t('customers.history') }}</h3>
                             <ol class="customer-history"><li v-for="(entry, index) in details.history" :key="index"><div><strong>{{ t(`customers.${entry.decision}`) }}</strong><time :datetime="entry.occurred_at">{{ date(entry.occurred_at) }}</time></div><p>{{ entry.reason }}</p><span>{{ t('customers.performedBy') }}: {{ entry.actor_name }}</span></li><li v-if="!details.history.length" class="admin-empty">{{ t('customers.noHistory') }}</li></ol>
                         </section>

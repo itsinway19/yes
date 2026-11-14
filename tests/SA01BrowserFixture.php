@@ -3,8 +3,10 @@
 // Explicit disposable browser fixture. Not loaded by application routing or production code.
 use App\Commercial\ApprovedCatalogReference;
 use App\Commercial\MarketRegistry;
+use App\Foundation\Business\BusinessScope;
 use App\Models\User;
 use App\Security\DisposableTestDatabaseGuard;
+use App\Security\IdentityTransition;
 use App\Security\SessionAuthority;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Cookie\CookieValuePrefix;
@@ -20,7 +22,7 @@ $app->make(Kernel::class)->bootstrap();
 app(DisposableTestDatabaseGuard::class)->assertSafe();
 $runRoot = $argv[1];
 $owner = DB::connection('pgsql_migrations');
-$owner->statement('TRUNCATE TABLE users, workspaces, commercial_markets, commercial_scopes, commercial_command_results, security_commercial_audit_custody, security_commercial_mandate_executions RESTART IDENTITY CASCADE');
+$owner->statement('TRUNCATE TABLE users, commercial_markets, commercial_scopes, commercial_command_results, security_commercial_audit_custody, security_commercial_mandate_executions RESTART IDENTITY CASCADE');
 $operator = User::factory()->create(['name' => 'Synthetic SA-01 operator']);
 $issuer = User::factory()->create(['name' => 'Synthetic distinct grant issuer']);
 $founder = User::factory()->create(['name' => 'Synthetic Founder']);
@@ -38,10 +40,10 @@ foreach ([1, 2] as $factor) {
     $owner->table('passkeys')->insert(['user_id' => $founder->id, 'name' => 'Synthetic independent factor '.$factor,
         'credential_id' => 'synthetic-founder-'.$factor, 'credential' => '{}', 'created_at' => now(), 'updated_at' => now()]);
 }
-$grant = function (User $user, string $effect, string $target, ?int $workspace = null, ?string $version = null) use ($owner, $issuer): void {
+$grant = function (User $user, string $effect, string $target, ?int $business = null, ?string $version = null) use ($owner, $issuer): void {
     $owner->table('security_action_grants')->insert(['subject_user_id' => $user->id, 'granted_by' => $issuer->id,
         'source' => 'human', 'action' => $effect, 'scope_kind' => 'commercial', 'commercial_target_id' => $target,
-        'commercial_version_id' => $version, 'workspace_id' => $workspace, 'subject_generation' => 1,
+        'commercial_version_id' => $version, 'business_id' => $business, 'subject_generation' => 1,
         'reason' => 'synthetic_browser_fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
 };
 $sessionFixture = function (User $user, bool $internal) use ($app): array {
@@ -57,10 +59,22 @@ $sessionFixture = function (User $user, bool $internal) use ($app): array {
     $request->setUserResolver(fn () => $user);
     Auth::guard($internal ? 'internal' : 'web')->login($user);
     app(SessionAuthority::class)->issue($request, $user, $internal ? 'internal_passkey' : 'password');
+    $boundary = $internal ? 'internal' : 'advertiser';
+    $lineage = app(IdentityTransition::class)->create($boundary);
+    DB::connection('pgsql_authority')->table('browser_identity_transitions')->where('lineage_id', $lineage)->update([
+        'epoch' => 1, 'current_session_key_hash' => SessionAuthority::sessionKey($request),
+        'principal_id' => $user->id, 'status' => 'active', 'kind' => 'login', 'last_nonce' => bin2hex(random_bytes(32)), 'updated_at' => now(),
+    ]);
+    $session->put(['builderad.identity_lineage' => $lineage, 'builderad.identity_epoch' => 1,
+        'builderad.identity_cookie_lease' => time() + (int) config('session.lifetime') * 60]);
     $session->save();
-    $cookie = Crypt::encryptString(CookieValuePrefix::create($session->getName(), app('encrypter')->getKey()).$session->getId());
+    $cookies = [];
+    foreach ([$session->getName() => $session->getId(), $session->getName().'-lineage' => $lineage] as $name => $value) {
+        $cookies[] = ['name' => $name, 'value' => Crypt::encryptString(CookieValuePrefix::create($name, app('encrypter')->getKey()).$value),
+            'path' => $internal ? '/internal' : '/'];
+    }
 
-    return [$request, ['name' => $session->getName(), 'value' => $cookie, 'path' => $internal ? '/internal' : '/']];
+    return [$request, $cookies];
 };
 [$request, $internalCookie] = $sessionFixture($operator, true);
 // Explicit disposable operator permissions for BB2 setup projections; no real account is altered.
@@ -92,43 +106,39 @@ foreach (['Saudi Arabia' => 'SAR', 'Jordan' => 'JOD'] as $label => $denomination
         }
     });
     $beneficiary = User::factory()->create(['name' => 'Synthetic '.$label.' beneficiary']);
-    $workspace = $owner->table('workspaces')->insertGetId(['name' => 'Synthetic '.$label.' Workspace', 'slug' => 'synthetic-'.$market,
-        'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
-    $owner->table('workspace_memberships')->insert(['workspace_id' => $workspace, 'user_id' => $beneficiary->id, 'role' => 'owner', 'status' => 'active', 'created_at' => now()]);
-    $owner->table('workspace_ownerships')->insert(['workspace_id' => $workspace, 'responsible_owner_user_id' => $beneficiary->id, 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
-    $owner->table('security_action_grants')->insert(['subject_user_id' => $beneficiary->id, 'source' => 'system_workspace_creation',
-        'action' => 'workspace.view', 'scope_kind' => 'workspace', 'workspace_id' => $workspace, 'subject_generation' => 1,
-        'reason' => 'synthetic_browser_fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+    [$beneficiaryRequest, $beneficiaryCookies] = $sessionFixture($beneficiary, false);
+    $draft = app(BusinessScope::class)->create($beneficiaryRequest, (string) Str::uuid7(), 'Synthetic '.$label.' Business', null);
+    $businessPublic = $draft['business_public_id'];
+    $business = $owner->table('businesses')->where('public_id', $businessPublic)->value('id');
     $scope = (string) Str::uuid7();
     // An unused exact identity exercises the reference writer's authority-bound selection.
     $grant($operator, 'RecordOrVerifyApprovedMarketReference', $market, null, (string) Str::uuid7());
     foreach (['RegisterCommercialScope', 'RecordBeneficiaryBinding', 'ReadCommercialContextInternal', 'ReadCommercialRegistrationReceipt', 'ReadCommercialAuditDeliveryState', 'RetryOrRecoverExistingAuditDelivery'] as $effect) {
-        $grant($operator, $effect, $scope, $workspace);
+        $grant($operator, $effect, $scope, $business);
     }
-    $grant($operator, 'AssignCommercialMarket', $scope, $workspace, $configuration);
-    $grant($beneficiary, 'ReadCommercialContextAdvertiser', $scope, $workspace);
-    $workspacePublic = $owner->table('workspaces')->where('id', $workspace)->value('public_id');
-    $public[$label] = ['market' => $market, 'configuration' => $configuration, 'catalog' => $catalog, 'scope' => $scope, 'workspace' => $workspacePublic];
+    $grant($operator, 'AssignCommercialMarket', $scope, $business, $configuration);
+    $grant($beneficiary, 'ReadCommercialContextAdvertiser', $scope, $business);
+    $public[$label] = ['market' => $market, 'configuration' => $configuration, 'catalog' => $catalog, 'scope' => $scope, 'business' => $businessPublic];
     if ($label === 'Saudi Arabia') {
-        $advertiser = $beneficiary;
+        $advertiserCookies = $beneficiaryCookies;
+        $advertiserDestination = '/businesses/'.$businessPublic.'?access='.$draft['grant_refs']['business.context.read'];
     }
 }
-[, $advertiserCookie] = $sessionFixture($advertiser, false);
 [, $founderCookie] = $sessionFixture($founder, true);
 [, $administratorCookie] = $sessionFixture($issuer, true);
 $token = bin2hex(random_bytes(16));
-file_put_contents($runRoot.'/browser-cookies.json', json_encode(['internal' => $internalCookie, 'advertiser' => $advertiserCookie, 'founder' => $founderCookie, 'administrator' => $administratorCookie], JSON_THROW_ON_ERROR));
+file_put_contents($runRoot.'/browser-cookies.json', json_encode(['internal' => $internalCookie, 'advertiser' => $advertiserCookies, 'founder' => $founderCookie, 'administrator' => $administratorCookie], JSON_THROW_ON_ERROR));
 $router = <<<'PHP'
 <?php
 // Disposable-only cookie delivery for sessions issued by the real SessionAuthority fixture.
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $run = __DIR__;
 $token = trim(file_get_contents($run.'/browser-token'));
-foreach (['internal' => '/internal/commercial', 'advertiser' => '/workspaces/', 'founder' => '/internal/administration/commercial-markets', 'administrator' => '/internal/administration/commercial-markets'] as $kind => $destination) {
+foreach (['internal' => '/internal/commercial', 'advertiser' => trim(file_get_contents($run.'/browser-business-destination')), 'founder' => '/internal/administration/commercial-markets', 'administrator' => '/internal/administration/commercial-markets'] as $kind => $destination) {
     if ($path === '/__sa01/'.$token.'/'.$kind) {
-        $cookie = json_decode(file_get_contents($run.'/browser-cookies.json'), true)[$kind];
-        setcookie($cookie['name'], $cookie['value'], ['path' => $cookie['path'], 'httponly' => true, 'samesite' => 'Lax']);
-        if ($kind === 'advertiser') { $destination .= trim(file_get_contents($run.'/browser-workspace')); }
+        foreach (json_decode(file_get_contents($run.'/browser-cookies.json'), true)[$kind] as $cookie) {
+            setcookie($cookie['name'], $cookie['value'], ['path' => $cookie['path'], 'httponly' => true, 'samesite' => 'Lax']);
+        }
         header('Location: '.$destination); exit;
     }
 }
@@ -138,7 +148,7 @@ require getcwd().'/public/index.php';
 PHP;
 file_put_contents($runRoot.'/browser-router.php', $router);
 file_put_contents($runRoot.'/browser-token', $token);
-file_put_contents($runRoot.'/browser-workspace', $public['Saudi Arabia']['workspace']);
+file_put_contents($runRoot.'/browser-business-destination', $advertiserDestination);
 echo json_encode(['fixtures' => $public, 'internal_url' => 'http://127.0.0.1:8765/__sa01/'.$token.'/internal',
     'founder_url' => 'http://127.0.0.1:8765/__sa01/'.$token.'/founder', 'administrator_url' => 'http://127.0.0.1:8765/__sa01/'.$token.'/administrator',
     'advertiser_url' => 'http://127.0.0.1:8765/__sa01/'.$token.'/advertiser'], JSON_THROW_ON_ERROR).PHP_EOL;

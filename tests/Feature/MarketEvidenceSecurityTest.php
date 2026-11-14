@@ -46,7 +46,7 @@ final class MarketEvidenceSecurityTest extends TestCase
 
     public function test_market_genesis_never_uses_the_legacy_unadopted_source_bypass(): void
     {
-        $this->denied('pgsql_migrations', "INSERT INTO source_registry(id,workspace_id,family,namespace,declared_external_id,label,version,status,custody_kind) VALUES(?::uuid,NULL,'synthetic','test','forged','forged',1,'UNVERIFIED','platform_market')", [(string) Str::uuid7()]);
+        $this->denied('pgsql_migrations', "INSERT INTO source_registry(id,family,namespace,declared_external_id,label,version,status,custody_kind) VALUES(?::uuid,'synthetic','test','forged','forged',1,'UNVERIFIED','platform_market')", [(string) Str::uuid7()]);
         $this->assertSame(0, DB::connection('pgsql_migrations')->table('source_registry')->count());
     }
 

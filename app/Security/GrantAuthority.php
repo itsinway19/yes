@@ -103,7 +103,7 @@ final class GrantAuthority
         return $request->user() && DB::connection('pgsql_authority')->table('security_action_grants')
             ->where('subject_user_id', $request->user()->id)->where('subject_generation', $request->session()->get('a001_generation'))
             ->where('scope_kind', 'commercial')->where('action', CommercialEffects::ADMINISTRATOR)
-            ->whereNull('workspace_id')->whereNull('commercial_version_id')->where('status', 'active')->whereNull('revoked_at')
+            ->whereNull('business_id')->whereNull('commercial_version_id')->where('status', 'active')->whereNull('revoked_at')
             ->whereRaw('(expires_at IS NULL OR expires_at > clock_timestamp())')->exists();
     }
 
@@ -123,7 +123,7 @@ final class GrantAuthority
             ->where('g.id', $approval->grant_id)->where('g.subject_user_id', $approval->administrator_id)
             ->where('g.subject_generation', $approval->administrator_generation)->whereColumn('p.generation', 'g.subject_generation')
             ->where('p.status', 'current')->where('g.action', CommercialEffects::ADMINISTRATOR)
-            ->where('g.commercial_target_id', $approval->target_id)->whereNull('g.workspace_id')->whereNull('g.commercial_version_id')
+            ->where('g.commercial_target_id', $approval->target_id)->whereNull('g.business_id')->whereNull('g.commercial_version_id')
             ->where('g.status', 'active')->whereNull('g.revoked_at')->whereRaw('g.expires_at > clock_timestamp()')->sharedLock()->first()) {
             throw new AuthorizationException('Approval authority expired or was revoked; retry cannot restore it.');
         }
@@ -158,89 +158,17 @@ final class GrantAuthority
         'provider.connect', 'provider.read', 'provider.revoke'];
 
     /** Explicit fresh Owner request only. Source facts never issue their own grants. */
-    public function requestSourceGrant(Request $request, int $workspaceId, array $input): void
-    {
-        if (DB::connection()->transactionLevel() !== 1 ||
-            ! in_array($input['action'], self::SOURCE_ACTIONS, true)) {
-            throw new AuthorizationException('Guarded exact source grant request required.');
-        }
-        DB::selectOne('SELECT builderad_v2_legacy_source_grant_guard(?::uuid)', [$input['source_id']]);
-        $evidence = fn () => DB::selectOne('SELECT * FROM builderad_source_owner_evidence(?, ?)', [
-            $workspaceId, SessionAuthority::sessionKey($request),
-        ]);
-        $owner = $evidence();
-        if (! $owner || (int) $owner->actor_id !== $request->user()->id ||
-            (int) $owner->generation !== (int) $request->session()->get('a001_generation', 0)) {
-            throw new AuthorizationException('Exact current responsible Owner required.');
-        }
-        DB::connection('pgsql_authority')->transaction(function () use ($request, $workspaceId, $input, $owner, $evidence): void {
-            $db = DB::connection('pgsql_authority');
-            // The parent already holds this source admission before its Workspace/identity locks.
-            // The child also holds admission until commit; no adoption can interleave its DML.
-            $db->selectOne('SELECT builderad_v2_native_source_authority_enter(?::uuid)', [$input['source_id']]);
-            $key = json_encode([$owner->actor_id, $owner->generation, $workspaceId, $input['source_id'],
-                $input['resource'], $input['operation'], $input['purpose'], $input['action']], JSON_THROW_ON_ERROR);
-            $db->selectOne('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', ['bb1.grant.'.$key]);
-            $query = $db->table('security_action_grants')->where('subject_user_id', $owner->actor_id)
-                ->where('subject_generation', $owner->generation)->where('scope_kind', 'source')
-                ->where('workspace_id', $workspaceId)->where('source_target_id', $input['source_id'])
-                ->where('source_resource', $input['resource'])->where('source_operation', $input['operation'])
-                ->where('source_purpose', $input['purpose'])->where('action', $input['action'])->where('status', 'active');
-            $existing = (clone $query)->lockForUpdate()->first();
-            if ($input['decision'] === 'revoke') {
-                if ($existing) {
-                    $query->update(['status' => 'revoked', 'revoked_at' => DB::raw('clock_timestamp()'),
-                        'version' => (int) $existing->version + 1, 'updated_at' => DB::raw('clock_timestamp()')]);
-                }
-            } elseif ($existing) {
-                if ($existing->revoked_at !== null || ($existing->expires_at !== null &&
-                    ! $db->scalar('SELECT ?::timestamptz > clock_timestamp()', [$existing->expires_at]))) {
-                    throw new AuthorizationException('Expired source grant must be explicitly revoked before reissue.');
-                }
-            } else {
-                if ($input['expires_at'] !== null && ! $db->scalar('SELECT ?::timestamptz > clock_timestamp()', [$input['expires_at']])) {
-                    throw new AuthorizationException('Future grant expiry required.');
-                }
-                $db->table('security_action_grants')->insert([
-                    'subject_user_id' => $owner->actor_id, 'subject_generation' => $owner->generation,
-                    'granted_by' => $owner->actor_id, 'source' => 'source_owner_request', 'scope_kind' => 'source',
-                    'workspace_id' => $workspaceId, 'source_target_id' => $input['source_id'],
-                    'source_resource' => $input['resource'], 'source_operation' => $input['operation'],
-                    'source_purpose' => $input['purpose'], 'action' => $input['action'], 'reason' => $input['reason'],
-                    'status' => 'active', 'version' => 1, 'expires_at' => $input['expires_at'],
-                    'created_at' => DB::raw('clock_timestamp()'), 'updated_at' => DB::raw('clock_timestamp()'),
-                ]);
-            }
-            if (($input['decision'] === 'revoke' && $existing) || ($input['decision'] === 'authorize' && ! $existing)) {
-                $db->table('security_audit_events')->insert([
-                    'actor_user_id' => $request->user()->id, 'subject_user_id' => $owner->actor_id, 'workspace_id' => $workspaceId,
-                    'event' => 'source_grant_'.$input['decision'], 'reason' => $input['action'].':'.$input['source_id'],
-                    'prior_status' => $existing?->status, 'new_status' => $input['decision'] === 'revoke' ? 'revoked' : 'active',
-                    'new_generation' => $owner->generation, 'occurred_at' => DB::raw('clock_timestamp()'),
-                ]);
-            }
-            // Locks above can wait. Database clock and signed Owner evidence fence actual grant commit.
-            $current = $evidence();
-            if (! $current || (int) $current->generation !== (int) $owner->generation ||
-                ($input['decision'] === 'authorize' && $input['expires_at'] !== null &&
-                    ! $db->scalar('SELECT ?::timestamptz > clock_timestamp()', [$input['expires_at']]))) {
-                throw new AuthorizationException('Source grant evidence expired before effect.');
-            }
-        });
-    }
-
-    /** A-003 is the sole writer, including commercial administration. No STAFF_ACTION inheritance. */
     public function issueCommercialGrant(Request $request, User $target, string $effect,
-        string $targetId, ?int $workspaceId, ?string $versionId, string $reason, ?string $expiresAt = null): int
+        string $targetId, ?int $businessId, ?string $versionId, string $reason, ?string $expiresAt = null): int
     {
         $this->assertCommercialExecutor($request);
 
         return DB::connection('pgsql_authority')->transaction(fn () => $this->issueCommercialGrantLocally(
-            $request, $target, $effect, $targetId, $workspaceId, $versionId, $reason, $expiresAt));
+            $request, $target, $effect, $targetId, $businessId, $versionId, $reason, $expiresAt));
     }
 
     private function issueCommercialGrantLocally(Request $request, User $target, string $effect,
-        string $targetId, ?int $workspaceId, ?string $versionId, string $reason, ?string $expiresAt): int
+        string $targetId, ?int $businessId, ?string $versionId, string $reason, ?string $expiresAt): int
     {
         $db = DB::connection('pgsql_authority');
         $this->assertCommercialExecutor($request);
@@ -249,20 +177,20 @@ final class GrantAuthority
         }
         $marketEffects = ['ReadCommercialMarketRegistry', 'ConfigureCommercialMarket', 'EnableCommercialMarket', 'DisableCommercialMarket'];
         $resultEffects = ['ReadCommercialRegistrationReceipt', 'ReadCommercialAuditDeliveryState', 'RetryOrRecoverExistingAuditDelivery'];
-        if ((in_array($effect, $marketEffects, true) && ($workspaceId !== null || $versionId !== null)) ||
-            ($effect === 'RecordOrVerifyApprovedMarketReference' && ($workspaceId !== null || $versionId === null)) ||
-            ($effect === 'AssignCommercialMarket' && ($workspaceId === null || $versionId === null)) ||
+        if ((in_array($effect, $marketEffects, true) && ($businessId !== null || $versionId !== null)) ||
+            ($effect === 'RecordOrVerifyApprovedMarketReference' && ($businessId !== null || $versionId === null)) ||
+            ($effect === 'AssignCommercialMarket' && ($businessId === null || $versionId === null)) ||
             (in_array($effect, $resultEffects, true) && $versionId !== null) ||
             (! in_array($effect, [...$marketEffects, ...$resultEffects, 'RecordOrVerifyApprovedMarketReference', 'AssignCommercialMarket'], true) &&
-                ($workspaceId === null || $versionId !== null))) {
+                ($businessId === null || $versionId !== null))) {
             throw new AuthorizationException('Exact effect target shape required.');
         }
-        $this->requireCommercialAdministration($request, $targetId, $workspaceId, $versionId);
+        $this->requireCommercialAdministration($request, $targetId, $businessId, $versionId);
         $lifecycle = $this->commercialGrantee($target, $effect);
         $existing = $db->table('security_action_grants')->where('subject_user_id', $target->id)
             ->where('subject_generation', $lifecycle->generation)->where('scope_kind', 'commercial')
             ->where('action', $effect)->where('commercial_target_id', $targetId)
-            ->where('workspace_id', $workspaceId)->where('commercial_version_id', $versionId)
+            ->where('business_id', $businessId)->where('commercial_version_id', $versionId)
             ->where('status', 'active')->lockForUpdate()->first();
         if ($existing) {
             if ($existing->expires_at !== null && $existing->expires_at <= now()) {
@@ -270,18 +198,18 @@ final class GrantAuthority
             }
 
             $this->assertCommercialExecutor($request);
-            $this->requireCommercialAdministration($request, $targetId, $workspaceId, $versionId);
+            $this->requireCommercialAdministration($request, $targetId, $businessId, $versionId);
 
             return (int) $existing->id;
         }
 
         $this->assertCommercialExecutor($request);
-        $this->requireCommercialAdministration($request, $targetId, $workspaceId, $versionId);
-        $grantId = $this->writeCommercialGrant($request, $target, $effect, $targetId, $workspaceId,
+        $this->requireCommercialAdministration($request, $targetId, $businessId, $versionId);
+        $grantId = $this->writeCommercialGrant($request, $target, $effect, $targetId, $businessId,
             $versionId, $reason, (int) $lifecycle->generation, $expiresAt);
         // Recheck on the authority DB clock after grantee/uniqueness/audit waits.
         $this->assertCommercialExecutor($request);
-        $this->requireCommercialAdministration($request, $targetId, $workspaceId, $versionId);
+        $this->requireCommercialAdministration($request, $targetId, $businessId, $versionId);
 
         return $grantId;
     }
@@ -303,11 +231,11 @@ final class GrantAuthority
             throw new AuthorizationException('Operational commercial revocation target denied.');
         }
         $this->requireCommercialAdministration($request, $grant->commercial_target_id,
-            $grant->workspace_id, $grant->commercial_version_id);
+            $grant->business_id, $grant->commercial_version_id);
         $this->writeCommercialRevocation($request, $grant);
         $this->assertCommercialExecutor($request);
         $this->requireCommercialAdministration($request, $grant->commercial_target_id,
-            $grant->workspace_id, $grant->commercial_version_id);
+            $grant->business_id, $grant->commercial_version_id);
     }
 
     /** Only an exact trusted Owner mandate may assign/revoke exceptional administration. */
@@ -353,14 +281,14 @@ final class GrantAuthority
         if ($mandate['action'] === 'assign') {
             $this->requireCurrentCommercialMandate($request, $mandate);
             $grantId = $this->writeCommercialGrant($request, $target, CommercialEffects::ADMINISTRATOR,
-                $mandate['target_id'], $mandate['workspace_id'] ?? null, $mandate['version_id'] ?? null,
+                $mandate['target_id'], $mandate['business_id'] ?? null, $mandate['version_id'] ?? null,
                 $mandate['approval_reference'], (int) $lifecycle->generation, $mandate['grant_expires_at'] ?? null);
         } else {
             $grant = $db->table('security_action_grants')->where('id', $mandate['grant_id'] ?? 0)
                 ->where('action', CommercialEffects::ADMINISTRATOR)->where('scope_kind', 'commercial')
                 ->where('subject_user_id', $target->id)->where('subject_generation', $lifecycle->generation)
                 ->where('commercial_target_id', $mandate['target_id'])
-                ->where('workspace_id', $mandate['workspace_id'] ?? null)
+                ->where('business_id', $mandate['business_id'] ?? null)
                 ->where('commercial_version_id', $mandate['version_id'] ?? null)->lockForUpdate()->first();
             if (! $grant) {
                 throw new AuthorizationException('Exact exceptional revocation target required.');
@@ -398,7 +326,7 @@ final class GrantAuthority
         }
     }
 
-    private function requireCommercialAdministration(Request $request, string $targetId, ?int $workspaceId, ?string $versionId): void
+    private function requireCommercialAdministration(Request $request, string $targetId, ?int $businessId, ?string $versionId): void
     {
         if ($this->canPrepareCommercialMarket($request)) {
             $this->requireCommercialFounder($request);
@@ -408,7 +336,7 @@ final class GrantAuthority
         $grant = DB::connection('pgsql_authority')->table('security_action_grants')
             ->where('subject_user_id', $request->user()->id)->where('subject_generation', $request->session()->get('a001_generation'))
             ->where('scope_kind', 'commercial')->where('action', CommercialEffects::ADMINISTRATOR)
-            ->where('commercial_target_id', $targetId)->where('workspace_id', $workspaceId)
+            ->where('commercial_target_id', $targetId)->where('business_id', $businessId)
             ->where('commercial_version_id', $versionId)->where('status', 'active')->whereNull('revoked_at')
             ->whereRaw('(expires_at IS NULL OR expires_at > clock_timestamp())')->sharedLock()->first();
         if (! $grant) {
@@ -432,12 +360,12 @@ final class GrantAuthority
     }
 
     private function writeCommercialGrant(Request $request, User $target, string $effect, string $targetId,
-        ?int $workspaceId, ?string $versionId, string $reason, int $generation, ?string $expiresAt): int
+        ?int $businessId, ?string $versionId, string $reason, int $generation, ?string $expiresAt): int
     {
         $grantId = DB::connection('pgsql_authority')->table('security_action_grants')->insertGetId([
             'subject_user_id' => $target->id, 'granted_by' => $request->user()->id, 'source' => 'human',
             'action' => $effect, 'scope_kind' => 'commercial', 'commercial_target_id' => $targetId,
-            'commercial_version_id' => $versionId, 'workspace_id' => $workspaceId,
+            'commercial_version_id' => $versionId, 'business_id' => $businessId,
             'subject_generation' => $generation, 'reason' => $reason, 'expires_at' => $expiresAt,
             'status' => 'active', 'version' => 1, 'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -460,107 +388,6 @@ final class GrantAuthority
     }
 
     /** @return array<int, array{public_id: string, name: string, slug: string}> */
-    public function reassessableOwnerWorkspaces(Request $request): array
-    {
-        return array_map(
-            static fn (object $workspace): array => [
-                'public_id' => $workspace->public_id,
-                'name' => $workspace->name,
-                'slug' => $workspace->slug,
-            ],
-            DB::select('SELECT * FROM builderad_owner_reassessment_candidates(?, ?)', [
-                $request->user()->id, SessionAuthority::sessionKey($request),
-            ]),
-        );
-    }
-
-    public function reassessOwnerWorkspaceGrants(Request $request, string $workspacePublicId): void
-    {
-        if (DB::connection()->transactionLevel() !== 1) {
-            throw new LogicException('Owner grant reassessment requires the guarded outer transaction.');
-        }
-        $this->principals->activate($request->user());
-        $evidence = DB::selectOne('SELECT * FROM builderad_owner_reassessment_evidence(?, ?, ?::uuid)', [
-            $request->user()->id,
-            SessionAuthority::sessionKey($request),
-            $workspacePublicId,
-        ]);
-        if (! $evidence) {
-            throw new AuthorizationException('Current Owner reassessment evidence is required.');
-        }
-
-        DB::connection('pgsql_authority')->transaction(function () use ($request, $evidence): void {
-            $generation = (int) $request->session()->get('a001_generation', 0);
-            $this->issueReassessedOwnerGrant($request, (int) $evidence->workspace_id,
-                $generation, (int) $evidence->prior_generation,
-                'workspace.view', $evidence->view_expires_at, true);
-            if (in_array($evidence->restore_service_scope, [true, 1, '1', 't'], true)) {
-                $this->issueReassessedOwnerGrant($request, (int) $evidence->workspace_id,
-                    $generation, (int) $evidence->prior_generation,
-                    'service.scope', $evidence->scope_expires_at, false);
-            }
-        });
-    }
-
-    private function issueReassessedOwnerGrant(Request $request, int $workspaceId, int $generation,
-        int $priorGeneration, string $action, ?string $expiresAt, bool $required): void
-    {
-        $query = DB::connection('pgsql_authority')->table('security_action_grants')
-            ->where('subject_user_id', $request->user()->id)
-            ->where('workspace_id', $workspaceId)
-            ->where('subject_generation', $generation)
-            ->where('action', $action);
-        $existing = (clone $query)->lockForUpdate()->first();
-        if ($existing) {
-            if ($existing->status !== 'active' || $existing->revoked_at !== null ||
-                ($existing->expires_at !== null && $existing->expires_at <= now())) {
-                if ($required) {
-                    throw new AuthorizationException('Revoked Workspace grant cannot be restored.');
-                }
-
-                return;
-            }
-
-            return;
-        }
-
-        $inserted = DB::connection('pgsql_authority')->table('security_action_grants')->insertOrIgnore([
-            'subject_user_id' => $request->user()->id,
-            'granted_by' => null,
-            'source' => 'system_owner_reassessment',
-            'action' => $action,
-            'scope_kind' => 'workspace',
-            'workspace_id' => $workspaceId,
-            'subject_generation' => $generation,
-            'reason' => 'verified_owner_continuity_after_email_change',
-            'status' => 'active',
-            'version' => 1,
-            'expires_at' => $expiresAt,
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
-        if (! $inserted) {
-            $current = (clone $query)->lockForUpdate()->first();
-            if (! $current || $current->status !== 'active' || $current->revoked_at !== null) {
-                throw new AuthorizationException('Workspace grant conflict denied.');
-            }
-
-            return;
-        }
-
-        DB::connection('pgsql_authority')->table('security_audit_events')->insert([
-            'actor_user_id' => $request->user()->id,
-            'subject_user_id' => $request->user()->id,
-            'workspace_id' => $workspaceId,
-            'event' => 'workspace_owner_grant_reassessed',
-            'reason' => $action,
-            'prior_status' => 'active',
-            'new_status' => 'active',
-            'prior_generation' => $priorGeneration,
-            'new_generation' => $generation,
-            'occurred_at' => now(),
-        ]);
-    }
-
     public function issueFounderBootstrapGrants(User $founder, int $generation): void
     {
         foreach (array_diff(self::STAFF_ACTIONS, ['market.knowledge.observe', 'market.knowledge.capture', 'market.knowledge.publish']) as $action) {
@@ -570,7 +397,7 @@ final class GrantAuthority
                 'source' => 'founder_bootstrap',
                 'action' => $action,
                 'scope_kind' => 'platform',
-                'workspace_id' => null,
+                'business_id' => null,
                 'subject_generation' => $generation,
                 'reason' => 'trusted_local_founder_bootstrap',
                 'status' => 'active',
@@ -617,7 +444,7 @@ final class GrantAuthority
             'source' => 'human',
             'action' => $action,
             'scope_kind' => 'platform',
-            'workspace_id' => null,
+            'business_id' => null,
             'subject_generation' => $lifecycle->generation,
             'reason' => $reason,
             'status' => 'active',
@@ -682,41 +509,41 @@ final class GrantAuthority
         ]);
     }
 
-    public function issueServiceWorkspaceView(Request $request, string $servicePublicId, string $workspacePublicId, string $reason): void
+    public function issueServiceBusinessView(Request $request, string $servicePublicId, string $businessPublicId, string $reason): void
     {
         $this->assertServiceManager($request);
-        $service = DB::connection('pgsql_authority')->table('service_identities')->where('public_id', $servicePublicId)
+        $authority = DB::connection('pgsql_authority');
+        $target = $authority->selectOne('SELECT * FROM builderad_service_grant_target(?::uuid,?::uuid)', [$businessPublicId, $servicePublicId]);
+        $service = $authority->table('service_identities')->where('public_id', $servicePublicId)
             ->where('status', 'enabled')->sharedLock()->first();
-        $workspaceId = DB::scalar('SELECT builderad_workspace_id_by_public(?)', [$workspacePublicId]);
-        if (! $service || ! $workspaceId) {
-            throw new AuthorizationException('An enabled service and active Workspace are required.');
-        }
-        $scope = DB::connection('pgsql_authority')->table('service_workspace_scopes')
-            ->where('service_identity_id', $service->id)
-            ->where('workspace_id', $workspaceId)->where('status', 'active')
-            ->sharedLock()->first();
-        if (! $scope) {
-            throw new AuthorizationException('Responsible Owner approval is required before a service grant.');
+        if (! $service || ! $target) {
+            throw new AuthorizationException('An enabled service and active Business are required.');
         }
         $existing = DB::connection('pgsql_authority')->table('service_action_grants')
             ->where('service_identity_id', $service->id)
-            ->where('workspace_id', $workspaceId)
-            ->where('action', 'workspace.view')->where('status', 'active')
+            ->where('business_id', $target->business_id)
+            ->where('consent_version', $target->consent_version)
+            ->where('action', 'business.metadata.read')->where('status', 'active')
             ->lockForUpdate()->first();
         if ($existing) {
+            if ($existing->expires_at !== null && $existing->expires_at <= now()) {
+                throw new AuthorizationException('Expired service grant cannot be revived implicitly.');
+            }
+
             return;
         }
         DB::connection('pgsql_authority')->table('service_action_grants')->insert([
             'service_identity_id' => $service->id,
-            'workspace_id' => $workspaceId,
-            'action' => 'workspace.view',
+            'business_id' => $target->business_id,
+            'consent_version' => $target->consent_version,
+            'action' => 'business.metadata.read',
             'granted_by' => $request->user()->id,
             'reason' => $reason,
             'status' => 'active',
             'version' => 1,
             'created_at' => now(), 'updated_at' => now(),
         ]);
-        $this->auditServiceGrant($request, $service->id, (int) $workspaceId,
+        $this->auditServiceGrant($request, $service->id, (int) $target->business_id,
             'service_grant_issued', $reason, null, 'active', null, 1);
     }
 
@@ -736,7 +563,7 @@ final class GrantAuthority
             'status' => 'revoked', 'revoked_at' => now(),
             'version' => $version, 'updated_at' => now(),
         ]);
-        $this->auditServiceGrant($request, $grant->service_identity_id, $grant->workspace_id,
+        $this->auditServiceGrant($request, $grant->service_identity_id, $grant->business_id,
             'service_grant_revoked', 'explicit_service_grant_revocation',
             'active', 'revoked', (int) $grant->version, $version);
     }
@@ -749,14 +576,14 @@ final class GrantAuthority
         }
     }
 
-    private function auditServiceGrant(Request $request, int $serviceId, int $workspaceId,
+    private function auditServiceGrant(Request $request, int $serviceId, int $businessId,
         string $event, string $reason, ?string $before, string $after,
         ?int $priorVersion, int $newVersion): void
     {
         DB::connection('pgsql_authority')->table('service_audit_events')->insert([
             'actor_user_id' => $request->user()->id,
             'service_identity_id' => $serviceId,
-            'workspace_id' => $workspaceId,
+            'business_id' => $businessId,
             'event' => $event,
             'reason' => $reason,
             'prior_status' => $before,
@@ -767,34 +594,12 @@ final class GrantAuthority
         ]);
     }
 
-    public function issueAdvertiserWorkspaceCreation(User $user, int $generation): void
+    public function has(User $actor, int $generation, string $action): bool
     {
-        DB::connection('pgsql_authority')->table('security_action_grants')->insert([
-            'subject_user_id' => $user->id,
-            'granted_by' => null,
-            'source' => 'system_registration',
-            'action' => 'workspace.create',
-            'scope_kind' => 'platform',
-            'workspace_id' => null,
-            'subject_generation' => $generation,
-            'reason' => 'verified_advertiser_registration',
-            'status' => 'active',
-            'version' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-    }
-
-    /** Native platform/Workspace preflight only; Business rights use the protected scope verifier. */
-    public function has(User $actor, int $generation, string $action, string $scope = 'platform', ?int $workspaceId = null): bool
-    {
-        if (! in_array($scope, ['platform', 'workspace'], true)) {
-            return false;
-        }
         if (DB::connection('pgsql_authority')->transactionLevel() === 0) {
             $runtime = DB::connection();
             if ($runtime->transactionLevel() === 0) {
-                return $runtime->transaction(fn () => $this->has($actor, $generation, $action, $scope, $workspaceId), 1);
+                return $runtime->transaction(fn () => $this->has($actor, $generation, $action), 1);
             }
             $context = $runtime->selectOne('SELECT actor_user_id FROM builderad_signed_context()');
             if (! $context) {
@@ -810,13 +615,7 @@ final class GrantAuthority
         if (! $lifecycle || ! $actor->hasVerifiedEmail()) {
             return false;
         }
-        if ($lifecycle->principal_class === 'advertiser') {
-            $allowedAdvertiserAction = ($action === 'workspace.create' && $scope === 'platform' && $workspaceId === null) ||
-                (in_array($action, ['workspace.view', 'service.scope'], true) && $scope === 'workspace' && $workspaceId !== null);
-            if (! $allowedAdvertiserAction) {
-                return false;
-            }
-        } elseif ($lifecycle->principal_class !== 'staff' ||
+        if ($lifecycle->principal_class !== 'staff' ||
             ! $connection->table('internal_personnel')->where('user_id', $actor->id)
                 ->where('status', 'active')->sharedLock()->first()) {
             return false;
@@ -826,15 +625,11 @@ final class GrantAuthority
             ->where('subject_user_id', $actor->id)
             ->where('subject_generation', $generation)
             ->where('action', $action)
-            ->where('scope_kind', $scope)
+            ->where('scope_kind', 'platform')
             ->where('status', 'active')
             ->whereNull('revoked_at')
             ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()));
-        if ($scope === 'workspace') {
-            $query->where('workspace_id', $workspaceId);
-        } else {
-            $query->whereNull('workspace_id');
-        }
+        $query->whereNull('business_id');
 
         return (bool) $query->sharedLock()->first();
     }

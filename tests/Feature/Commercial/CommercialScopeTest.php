@@ -5,7 +5,6 @@ namespace Tests\Feature\Commercial;
 use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
 use App\Security\CommercialAuditCustody;
-use App\Security\GrantAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -14,6 +13,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Symfony\Component\Process\Process;
 use Tests\Support\ApplicationContractAssertions;
+use Tests\Support\BusinessAuthorityFixture;
 use Tests\Support\RowLockReadiness;
 use Tests\TestCase;
 
@@ -21,22 +21,34 @@ class CommercialScopeTest extends TestCase
 {
     use ApplicationContractAssertions;
 
-    public function test_native_workspace_commercial_context_never_becomes_business_coverage_or_data_authority(): void
+    public function test_commercial_binding_requires_exact_advertiser_read_and_preserves_independent_rights(): void
     {
-        [$beneficiary, $workspace] = $this->workspace();
-        $this->actingAsInternal($this->operator);
+        [$beneficiary, $business, $read] = $this->beneficiary();
         $market = $this->market('Synthetic commercial boundary', 'JOD');
-        $input = $this->registration($market, $workspace);
+        $input = $this->registration($market, $business);
         $this->postJson('/internal/commercial/registrations', $input)->assertOk();
-        $workspaceId = $this->owner()->table('workspaces')->where('public_id', $workspace)->value('id');
-        $this->grant($beneficiary, 'ReadCommercialContextAdvertiser', $input['scope_id'], $workspaceId);
-        $this->actingAs($beneficiary)->getJson('/workspaces/'.$workspace)->assertOk()->assertJsonPath('data.commercial.context.scope_id', $input['scope_id']);
-        $business = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Independent commercial beneficiary'])->assertCreated()->json('data');
-        $url = '/api/businesses/'.$business['business_public_id'].'/surface?access='.$business['grant_refs']['business.context.read'];
-        $this->getJson($url)->assertOk()->assertJsonPath('data.commercial.context', null)->assertJsonPath('data.commercial.coverage_state', 'UNKNOWN');
+        $surface = '/api/businesses/'.$business.'/surface?access='.$read;
+        $this->actingAs($beneficiary)->getJson($surface)->assertOk()->assertJsonPath('data.commercial.context', null);
+        $businessId = $this->owner()->table('businesses')->where('public_id', $business)->value('id');
+        $this->grant($beneficiary, 'ReadCommercialContextAdvertiser', $input['scope_id'], $businessId);
+        $this->getJson($surface)->assertOk()->assertJsonPath('data.commercial.context.scope_id', $input['scope_id'])
+            ->assertJsonPath('data.commercial.coverage_state', 'UNKNOWN')->assertJsonPath('data.commercial.entitlement_state', 'UNKNOWN');
+        $this->assertSame(0, $this->owner()->table('business_data_use_bindings')->count());
+        DB::transaction(function () use ($beneficiary, $input): void {
+            app(PrincipalContext::class)->activate($beneficiary);
+            $this->assertSame($input['scope_id'], DB::table('commercial_market_assignments')->value('scope_id'));
+            $this->assertSame(0, DB::table('commercial_audit_obligations')->count());
+        });
         $stranger = User::factory()->create();
-        $this->grant($stranger, 'ReadCommercialContextAdvertiser', $input['scope_id'], $workspaceId);
-        $this->actingAs($stranger)->getJson($url)->assertForbidden();
+        $this->grant($stranger, 'ReadCommercialContextAdvertiser', $input['scope_id'], $businessId);
+        $this->actingAs($stranger)->getJson($surface)->assertForbidden();
+        $qualification = $this->owner()->table('security_action_grants')->where('id', $read)->value('qualification_id');
+        BusinessAuthorityFixture::revokeQualification($qualification, $beneficiary->id);
+        $this->actingAs($beneficiary)->getJson($surface)->assertForbidden();
+        DB::transaction(function () use ($beneficiary): void {
+            app(PrincipalContext::class)->activate($beneficiary);
+            $this->assertSame(0, DB::table('commercial_market_assignments')->count());
+        });
     }
 
     public function test_spa_commercial_projection_and_receipt_provenance_match_real_sql_commands(): void
@@ -74,20 +86,20 @@ class CommercialScopeTest extends TestCase
 
     public function test_review_source_commercial_contract_preserves_absence_and_exact_market_uuid(): void
     {
-        [$beneficiary, $workspace] = $this->workspace();
-        $absent = $this->actingAs($beneficiary)->getJson('/workspaces/'.$workspace)->assertOk()
+        [$beneficiary, $workspace, $read] = $this->beneficiary();
+        $absent = $this->actingAs($beneficiary)->getJson('/api/businesses/'.$workspace.'/surface?access='.$read)->assertOk()
             ->assertJsonPath('data.commercial.context', null)->json();
-        $this->assertApplicationContract('WorkspaceSourcesResource', $absent);
+        $this->assertApplicationContract('BusinessSurfaceResult', $absent);
         $this->actingAsInternal($this->operator);
         $market = $this->market('Synthetic contract market', 'JOD');
         $input = $this->registration($market, $workspace);
         $this->postJson('/internal/commercial/registrations', $input)->assertOk();
-        $workspaceId = $this->owner()->table('workspaces')->where('public_id', $workspace)->value('id');
+        $workspaceId = $this->owner()->table('businesses')->where('public_id', $workspace)->value('id');
         $this->grant($beneficiary, 'ReadCommercialContextAdvertiser', $input['scope_id'], $workspaceId);
-        $present = $this->actingAs($beneficiary)->getJson('/workspaces/'.$workspace)->assertOk()
+        $present = $this->actingAs($beneficiary)->getJson('/api/businesses/'.$workspace.'/surface?access='.$read)->assertOk()
             ->assertJsonPath('data.commercial.context.market_id', $market['market'])->json();
         $this->assertIsString($present['data']['commercial']['context']['market_id']);
-        $this->assertApplicationContract('WorkspaceSourcesResource', $present);
+        $this->assertApplicationContract('BusinessSurfaceResult', $present);
     }
 
     private User $operator;
@@ -156,26 +168,20 @@ class CommercialScopeTest extends TestCase
     {
         foreach ([[], ['SA', 'AE']] as $index => $codes) {
             $advertiser = User::factory()->create();
-            app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($advertiser, 1);
-            $this->actingAs($advertiser)->legacyWorkspace(['name' => 'DTM independent Commercial', 'slug' => 'commercial-dtm-'.$index])->assertRedirect();
-            $workspace = $this->owner()->table('workspaces')->where('slug', 'commercial-dtm-'.$index)->first();
-            $file = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Independent declared markets'])->assertCreated()->json('data');
+            $file = $this->actingAs($advertiser)->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Independent declared markets'])->assertCreated()->json('data');
             $businessId = $this->owner()->table('businesses')->where('public_id', $file['business_public_id'])->value('id');
-            $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.markets.declare']]]];
+            $selection = ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.markets.declare']]]];
             if ($codes !== []) {
                 $this->putJson('/api/businesses/'.$file['business_public_id'].'/markets', ['command_id' => (string) Str::uuid(), 'codes' => $codes, 'expected_context' => 0, 'authority_selection' => $selection])->assertOk();
             }
-            $snapshot = function () use ($workspace, $businessId): array {
-                return [(array) $this->owner()->table('workspaces')->find($workspace->id),
-                    $this->owner()->table('business_target_markets')->where('workspace_id', $workspace->id)->orderBy('country_code')->get()->toArray(),
-                    $this->owner()->table('business_target_market_events')->where('workspace_id', $workspace->id)->orderBy('id')->get()->toArray(),
-                    $this->owner()->table('business_declared_markets')->where('business_id', $businessId)->orderBy('country_code')->get()->toArray(),
+            $snapshot = function () use ($businessId): array {
+                return [$this->owner()->table('business_declared_markets')->where('business_id', $businessId)->orderBy('country_code')->get()->toArray(),
                     $this->owner()->table('business_market_transitions')->where('business_id', $businessId)->orderBy('event_id')->get()->toArray()];
             };
             $before = $snapshot();
             $this->actingAsInternal($this->operator)->withCredentials();
             $market = $this->market('Synthetic Jordan', 'JOD');
-            $input = $this->registration($market, $workspace->public_id);
+            $input = $this->registration($market, $file['business_public_id']);
             $this->postJson('/internal/commercial/registrations', $input)->assertOk();
             $this->assertSame($market['market'], $this->owner()->table('commercial_market_assignments')->where('scope_id', $input['scope_id'])->value('market_id'));
             $this->assertEquals($before, $snapshot());
@@ -189,7 +195,6 @@ class CommercialScopeTest extends TestCase
             foreach ($commercialTables as $table) {
                 $this->assertEquals($commercialBefore[$table], $this->owner()->table($table)->get()->toArray(), $table);
             }
-            $this->assertSame(0, $this->owner()->table('business_target_markets')->where('workspace_id', $workspace->id)->count());
             $this->assertSame(0, $this->owner()->table('business_declared_markets')->where('business_id', $businessId)->count());
         }
     }
@@ -197,18 +202,17 @@ class CommercialScopeTest extends TestCase
     public function test_non_ecommerce_service_reference_uses_the_same_commercial_foundation(): void
     {
         $market = $this->market('Synthetic service reference market', 'SAR');
-        [$beneficiary, $workspace] = $this->workspace();
-        $this->owner()->table('workspaces')->where('public_id', $workspace)->update(['name' => 'Synthetic offline consultation business']);
+        [$beneficiary, $workspace, $read] = $this->beneficiary();
         $input = $this->registration($market, $workspace);
         // This exact shared request has no product, SKU, cart, checkout, order or payment fact.
         $this->postJson('/internal/commercial/registrations', $input)->assertOk()
             ->assertJsonPath('scope_id', $input['scope_id'])->assertJsonPath('agreement_state', 'UNKNOWN')
             ->assertJsonPath('amount_state', 'UNKNOWN');
-        $workspaceId = $this->owner()->table('workspaces')->where('public_id', $workspace)->value('id');
+        $workspaceId = $this->owner()->table('businesses')->where('public_id', $workspace)->value('id');
         $this->grant($beneficiary, 'ReadCommercialContextAdvertiser', $input['scope_id'], $workspaceId);
-        $this->actingAs($beneficiary)->getJson('/workspaces/'.$workspace)->assertOk()->assertJson(fn (AssertableJson $page) => $page
-            ->where('data.commercial.state', 'CONTEXT_RECORDED')->where('data.commercial.context.scope_id', $input['scope_id'])
-            ->where('data.commercial.agreement_state', 'UNKNOWN')->where('data.commercial.amount_state', 'UNKNOWN')->etc());
+        $this->actingAs($beneficiary)->getJson('/api/businesses/'.$workspace.'/surface?access='.$read)->assertOk()->assertJson(fn (AssertableJson $page) => $page
+            ->where('data.commercial.context_state', 'CONTEXT_RECORDED')->where('data.commercial.context.scope_id', $input['scope_id'])
+            ->where('data.commercial.entitlement_state', 'UNKNOWN')->where('data.commercial.amount_state', 'UNKNOWN')->etc());
     }
 
     public function test_registration_retry_receipt_conflict_and_competing_initial_association(): void
@@ -219,7 +223,7 @@ class CommercialScopeTest extends TestCase
         $this->postJson('/internal/commercial/registrations', array_reverse($input, true))->assertOk()->assertExactJson($first);
         $this->postJson('/internal/commercial/registrations', [...$input, 'reason_code' => 'changed'])->assertConflict();
         $this->postJson('/internal/commercial/registrations', [...$input, 'command_id' => $this->id()])->assertConflict();
-        $competing = $this->registration($sa, $input['workspace_public_id']);
+        $competing = $this->registration($sa, $input['business_public_id']);
         $this->postJson('/internal/commercial/registrations', $competing)->assertConflict();
         $this->getJson('/internal/commercial/receipts/'.$input['command_id'])->assertOk()->assertJsonPath('target_id', $input['scope_id']);
         $this->assertSame(1, $this->owner()->table('commercial_scopes')->count());
@@ -228,30 +232,33 @@ class CommercialScopeTest extends TestCase
         $this->assertSame(1, $this->owner()->table('commercial_audit_obligations')->where('command_id', $input['command_id'])->count());
     }
 
-    public function test_advertiser_membership_is_not_commercial_read_and_workspace_facts_never_select_market(): void
+    public function test_business_read_is_independent_from_commercial_authority_and_market_selection(): void
     {
         $sa = $this->market('Saudi Arabia', 'SAR');
-        $input = $this->registration($sa);
+        [$beneficiary, $business, $read] = $this->beneficiary();
+        $input = $this->registration($sa, $business);
+        $surface = '/api/businesses/'.$business.'/surface?access='.$read;
         $this->postJson('/internal/commercial/registrations', $input)->assertOk();
-        $workspace = $this->owner()->table('workspaces')->where('public_id', $input['workspace_public_id'])->first();
-        $beneficiary = User::on('pgsql_authority')->findOrFail($this->owner()->table('workspace_ownerships')->where('workspace_id', $workspace->id)->value('responsible_owner_user_id'));
-        $this->actingAs($beneficiary)->getJson('/workspaces/'.$workspace->public_id)->assertOk()
-            ->assertJson(fn (AssertableJson $page) => $page->where('data.commercial.state', 'UNAVAILABLE')->where('data.commercial.context', null)->etc());
+        $workspace = $this->owner()->table('businesses')->where('public_id', $input['business_public_id'])->first();
+        $this->actingAs($beneficiary)->getJson($surface)->assertOk()
+            ->assertJson(fn (AssertableJson $page) => $page->where('data.commercial.context_state', 'QUALIFIED_BUSINESS_BINDING_UNAVAILABLE')->where('data.commercial.context', null)->etc());
         $this->grant($beneficiary, 'ReadCommercialContextAdvertiser', $input['scope_id'], $workspace->id);
-        $this->owner()->table('workspaces')->where('id', $workspace->id)->update(['currency_code' => 'USD', 'timezone' => 'Asia/Tokyo']);
         $this->withHeader('Accept-Language', 'en')->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
-            ->getJson('/workspaces/'.$workspace->public_id.'?locale=en')->assertOk()->assertJson(fn (AssertableJson $page) => $page
+            ->getJson($surface)->assertOk()->assertJson(fn (AssertableJson $page) => $page
             ->where('data.commercial.context.market_id', $sa['market'])->where('data.commercial.context.denomination_code', 'SAR')
             ->where('data.commercial.context.configuration_id', $sa['configuration'])->where('data.commercial.amount_state', 'UNKNOWN')
             ->missing('data.commercial.context.actor_user_id')->missing('data.commercial.context.audit')->etc());
-        [$other, $otherWorkspace] = $this->workspace();
-        $this->actingAs($other)->getJson('/workspaces/'.$workspace->public_id)->assertForbidden();
-        $this->getJson('/workspaces/'.$otherWorkspace)->assertOk()->assertJson(fn (AssertableJson $page) => $page->where('data.commercial.context', null)->etc());
+        [$other, $otherWorkspace, $otherRead] = $this->beneficiary();
+        $this->actingAs($other)->getJson($surface)->assertForbidden();
+        $this->getJson('/api/businesses/'.$otherWorkspace.'/surface?access='.$otherRead)->assertOk()->assertJson(fn (AssertableJson $page) => $page->where('data.commercial.context', null)->etc());
         $this->grant($other, 'ReadCommercialContextAdvertiser', $input['scope_id'], $workspace->id);
-        // Exact grant without membership still cannot reveal the other beneficiary.
-        DB::transaction(function () use ($other): void {
+        // The commercial grant alone cannot reveal the other Business.
+        $this->getJson($surface)->assertForbidden();
+        DB::transaction(function () use ($other, $business): void {
             app(PrincipalContext::class)->activate($other);
             $this->assertSame(0, DB::table('commercial_market_assignments')->count());
+            $this->assertSame(0, DB::table('commercial_beneficiary_bindings')->count());
+            $this->assertNull(DB::selectOne('SELECT * FROM builderad_commercial_advertiser_context(?::uuid)', [$business]));
             $this->assertSame(0, DB::table('commercial_audit_obligations')->count());
         });
     }
@@ -421,7 +428,7 @@ class CommercialScopeTest extends TestCase
             DB::transaction(function () use ($input, $sa, $contender, $ownerContender): void {
                 app(PrincipalContext::class)->activate($this->operator);
                 $result = json_decode(DB::scalar('SELECT builderad_register_commercial_scope(?,?,?,?,?,?,?,?)', [
-                    $input['command_id'], $input['scope_id'], $input['workspace_public_id'], $input['market_id'],
+                    $input['command_id'], $input['scope_id'], $input['business_public_id'], $input['market_id'],
                     $input['configuration_id'], $input['catalog_reference_id'], $input['denomination_code'], $input['reason_code'],
                 ]), true);
                 $this->assertSame($input['scope_id'], $result['scope_id']);
@@ -457,8 +464,8 @@ class CommercialScopeTest extends TestCase
         $this->postCommand('configurations', ['market_id' => $sa['market'], 'configuration_id' => $this->id(),
             'catalog_reference_id' => $reference, 'denomination_code' => 'SAR'])->assertUnprocessable();
         $input = $this->registration($sa);
-        [, $otherWorkspace] = $this->workspace();
-        $this->postJson('/internal/commercial/registrations', [...$input, 'workspace_public_id' => $otherWorkspace])->assertForbidden();
+        [, $otherWorkspace] = $this->beneficiary();
+        $this->postJson('/internal/commercial/registrations', [...$input, 'business_public_id' => $otherWorkspace])->assertForbidden();
         $this->postJson('/internal/commercial/registrations', [...$input, 'denomination_code' => 'USD'])->assertUnprocessable();
         $this->assertSame(0, $this->owner()->table('commercial_scopes')->count());
     }
@@ -470,10 +477,10 @@ class CommercialScopeTest extends TestCase
         $this->postJson('/internal/commercial/registrations', $input)->assertOk();
         $reader = $this->staff();
         $this->actingAsInternal($reader)->getJson('/internal/commercial/contexts/'.$input['scope_id'])->assertForbidden();
-        $workspace = $this->owner()->table('workspaces')->where('public_id', $input['workspace_public_id'])->value('id');
+        $workspace = $this->owner()->table('businesses')->where('public_id', $input['business_public_id'])->value('id');
         $this->grant($reader, 'ReadCommercialContextInternal', $input['scope_id'], $workspace);
         $this->getJson('/internal/commercial/contexts/'.$input['scope_id'])->assertOk()
-            ->assertJsonPath('context.configuration_id', $sa['configuration'])->assertJsonPath('context.workspace_public_id', $input['workspace_public_id']);
+            ->assertJsonPath('context.configuration_id', $sa['configuration'])->assertJsonPath('context.business_public_id', $input['business_public_id']);
         $this->getJson('/internal/commercial/contexts/'.$this->id())->assertForbidden();
         $this->getJson('/internal/commercial/receipts/'.$input['command_id'])->assertForbidden();
         $this->owner()->table('security_action_grants')->where('subject_user_id', $reader->id)
@@ -485,17 +492,15 @@ class CommercialScopeTest extends TestCase
     {
         $sa = $this->market('Saudi Arabia', 'SAR');
         $input = $this->registration($sa);
-        $workspace = $this->owner()->table('workspaces')->where('public_id', $input['workspace_public_id'])->value('id');
-        $ownerId = $this->owner()->table('workspace_ownerships')->where('workspace_id', $workspace)->value('responsible_owner_user_id');
+        $workspace = $this->owner()->table('businesses')->where('public_id', $input['business_public_id'])->value('id');
+        $ownerId = $this->owner()->table('businesses')->where('id', $workspace)->value('created_by');
         $other = DB::build(config('database.connections.pgsql_migrations'));
         try {
-            DB::transaction(function () use ($input, $workspace, $ownerId, $other): void {
+            DB::transaction(function () use ($input, $ownerId, $other): void {
                 app(PrincipalContext::class)->activate($this->operator);
                 $this->registerSql($input);
-                foreach ([['workspace_ownerships', 'workspace_id', $workspace, ['version' => 2]],
-                    ['principal_lifecycles', 'user_id', $ownerId, ['status' => 'disabled', 'generation' => 2]],
-                    ['users', 'id', $ownerId, ['email_verified_at' => null]],
-                    ['workspace_memberships', 'workspace_id', $workspace, ['status' => 'revoked', 'revoked_at' => now()]]] as [$table, $key, $value, $change]) {
+                foreach ([['principal_lifecycles', 'user_id', $ownerId, ['status' => 'disabled', 'generation' => 2]],
+                    ['users', 'id', $ownerId, ['email_verified_at' => null]]] as [$table, $key, $value, $change]) {
                     $this->assertSqlDenied(fn () => $other->transaction(function () use ($other, $table, $key, $value, $change): void {
                         $other->statement("SET LOCAL lock_timeout = '150ms'");
                         $other->table($table)->where($key, $value)->update($change);
@@ -503,15 +508,13 @@ class CommercialScopeTest extends TestCase
                 }
             });
             $this->assertSame(1, $this->owner()->table('commercial_scopes')->count());
-            foreach (['ownership', 'lifecycle', 'identity', 'membership'] as $qualification) {
+            foreach (['lifecycle', 'identity'] as $qualification) {
                 $next = $this->registration($sa);
-                $nextWorkspace = $this->owner()->table('workspaces')->where('public_id', $next['workspace_public_id'])->value('id');
-                $nextOwner = $this->owner()->table('workspace_ownerships')->where('workspace_id', $nextWorkspace)->value('responsible_owner_user_id');
+                $nextWorkspace = $this->owner()->table('businesses')->where('public_id', $next['business_public_id'])->value('id');
+                $nextOwner = $this->owner()->table('businesses')->where('id', $nextWorkspace)->value('created_by');
                 match ($qualification) {
-                    'ownership' => $other->table('workspace_ownerships')->where('workspace_id', $nextWorkspace)->update(['version' => 0]),
                     'lifecycle' => $other->table('principal_lifecycles')->where('user_id', $nextOwner)->update(['status' => 'disabled', 'generation' => 2]),
                     'identity' => $other->table('users')->where('id', $nextOwner)->update(['email_verified_at' => null]),
-                    'membership' => $other->table('workspace_memberships')->where('workspace_id', $nextWorkspace)->update(['status' => 'revoked', 'revoked_at' => now()]),
                 };
                 $this->postJson('/internal/commercial/registrations', $next)->assertForbidden();
                 $this->assertFalse($this->owner()->table('commercial_scopes')->where('id', $next['scope_id'])->exists());
@@ -784,7 +787,7 @@ class CommercialScopeTest extends TestCase
     private function registerSql(array $input): mixed
     {
         return DB::scalar('SELECT builderad_register_commercial_scope(?,?,?,?,?,?,?,?)', [
-            $input['command_id'], $input['scope_id'], $input['workspace_public_id'], $input['market_id'],
+            $input['command_id'], $input['scope_id'], $input['business_public_id'], $input['market_id'],
             $input['configuration_id'], $input['catalog_reference_id'], $input['denomination_code'], $input['reason_code']]);
     }
 
@@ -878,9 +881,9 @@ class CommercialScopeTest extends TestCase
     private function registration(array $market, ?string $workspacePublicId = null): array
     {
         if ($workspacePublicId === null) {
-            [, $workspacePublicId] = $this->workspace();
+            [, $workspacePublicId] = $this->beneficiary();
         }
-        $workspace = $this->owner()->table('workspaces')->where('public_id', $workspacePublicId)->value('id');
+        $workspace = $this->owner()->table('businesses')->where('public_id', $workspacePublicId)->value('id');
         $scope = $this->id();
         foreach (['RegisterCommercialScope', 'RecordBeneficiaryBinding', 'ReadCommercialContextInternal', 'ReadCommercialRegistrationReceipt', 'ReadCommercialAuditDeliveryState', 'RetryOrRecoverExistingAuditDelivery'] as $effect) {
             $this->grant($this->operator, $effect, $scope, $workspace);
@@ -888,19 +891,19 @@ class CommercialScopeTest extends TestCase
         $this->grant($this->operator, 'AssignCommercialMarket', $scope, $workspace, $market['configuration']);
 
         return ['command_id' => $this->id(), 'reason_code' => 'synthetic_registration', 'scope_id' => $scope,
-            'workspace_public_id' => $workspacePublicId, 'market_id' => $market['market'],
+            'business_public_id' => $workspacePublicId, 'market_id' => $market['market'],
             'configuration_id' => $market['configuration'], 'catalog_reference_id' => $market['catalog'], 'denomination_code' => $market['denomination']];
     }
 
-    private function workspace(): array
+    private function beneficiary(): array
     {
         $user = User::factory()->create();
-        $workspace = $this->owner()->table('workspaces')->insertGetId(['name' => 'Synthetic beneficiary', 'slug' => 'synthetic-'.$this->id(), 'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
-        $this->owner()->table('workspace_memberships')->insert(['workspace_id' => $workspace, 'user_id' => $user->id, 'role' => 'owner', 'status' => 'active', 'created_at' => now()]);
-        $this->owner()->table('workspace_ownerships')->insert(['workspace_id' => $workspace, 'responsible_owner_user_id' => $user->id, 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
-        $this->owner()->table('security_action_grants')->insert(['subject_user_id' => $user->id, 'source' => 'system_workspace_creation', 'action' => 'workspace.view', 'scope_kind' => 'workspace', 'workspace_id' => $workspace, 'subject_generation' => 1, 'reason' => 'synthetic_fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $business = $this->actingAs($user)->postJson('/api/businesses', [
+            'command_id' => $this->id(), 'name' => 'Synthetic beneficiary',
+        ])->assertCreated()->json('data');
+        $this->actingAsInternal($this->operator)->withCredentials();
 
-        return [$user, $this->owner()->table('workspaces')->where('id', $workspace)->value('public_id')];
+        return [$user, $business['business_public_id'], $business['grant_refs']['business.context.read']];
     }
 
     private function staff(): User
@@ -917,7 +920,7 @@ class CommercialScopeTest extends TestCase
     {
         $issuer = $user->id === $this->operator->id ? $this->staff()->id : $this->operator->id;
         $this->owner()->table('security_action_grants')->insert(['subject_user_id' => $user->id, 'granted_by' => $issuer, 'source' => 'human',
-            'action' => $effect, 'scope_kind' => 'commercial', 'commercial_target_id' => $target, 'workspace_id' => $workspace,
+            'action' => $effect, 'scope_kind' => 'commercial', 'commercial_target_id' => $target, 'business_id' => $workspace,
             'commercial_version_id' => $version, 'subject_generation' => 1, 'reason' => 'synthetic_fixture', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
     }
 

@@ -53,7 +53,7 @@ class MetaRateLimitTest extends TestCase
         $http = new Factory;
         $http->fake(['*' => $http->response(['error' => ['code' => 80000, 'error_subcode' => 2446079,
             'message' => 'synthetic-private-token']], 400, ['X-Ad-Account-Usage' => '{"reset_time_duration":100}'])]);
-        $scope = new ProviderScope(1, '019a0022-0000-7000-8000-000000000001', Provider::Meta, '123', 'report.read', 'advertising_analysis');
+        $scope = ProviderScope::forBusiness(1, '019a0022-0000-7000-8000-000000000001', Provider::Meta, '123', 'report.read', 'advertising_analysis');
         $budget = new ProviderReadBudget($scope, 'meta-test', 2, 0, 2, 10, new DateTimeImmutable('+30 seconds'), 1, 5);
         try {
             (new MetaGraphClient($http, 'v26.0', 'synthetic-app-secret', static fn () => null, 'provider.read'))
@@ -85,7 +85,7 @@ class MetaRateLimitTest extends TestCase
         $http->fake(['*' => $http->sequence()->push(['data' => []], 200,
             ['X-Ad-Account-Usage' => '{"acc_id_util_pct":9.67,"reset_time_duration":100}'])
             ->push(['data' => []], 200, ['X-Ad-Account-Usage' => '{"acc_id_util_pct":100,"reset_time_duration":100}'])]);
-        $scope = new ProviderScope(1, '019a0022-0000-7000-8000-000000000001', Provider::Meta, '123', 'report.read', 'advertising_analysis');
+        $scope = ProviderScope::forBusiness(1, '019a0022-0000-7000-8000-000000000001', Provider::Meta, '123', 'report.read', 'advertising_analysis');
         $budget = new ProviderReadBudget($scope, 'meta-test', 4, 0, 4, 10, new DateTimeImmutable('+30 seconds'), 1, 5);
         $checks = 0;
         $client = new MetaGraphClient($http, 'v26.0', 'synthetic-secret', function () use (&$checks): void {

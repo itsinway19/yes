@@ -21,8 +21,8 @@ for (const [name, url] of Object.entries({ vue, '../spa/transport': transportUrl
 const Component = (await import(moduleUrl(source))).default;
 const api = await import(apiUrl), drafts = await import(draftsUrl), transport = await import(transportUrl);
 const own = '11111111-1111-7111-8111-111111111111', employee = '22222222-2222-7222-8222-222222222222', client = '33333333-3333-7333-8333-333333333333';
-const selection = { realm_kind: 'direct', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: 51 }] };
-const choice = (agency = own, target = client) => ({ business_public_id: target, name: 'Qualified client', state: 'active', read_grant_id: '51', realm_kind: 'direct', realm_workspace_public_id: null, agency_business_public_id: agency });
+const selection = { realm_kind: 'direct',  requirements: [{ requirement_kind: 'business', leaf_grant_id: 51 }] };
+const choice = (agency = own, target = client) => ({ business_public_id: target, name: 'Qualified client', state: 'active', read_grant_id: '51', realm_kind: 'direct',  agency_business_public_id: agency });
 const page = (items = [], next_cursor = null) => ({ actor_public_id: own, items, next_cursor, scope: { principal_generation: 1, authority_fingerprint: 'qualified' } });
 const surface = (allowed = true, target = client) => ({ business: { business_public_id: target, name: 'Qualified client' }, authority_selection: structuredClone(selection), agency_task: { can_assign: allowed, can_mandate: false, agency_business_public_id: own }, agency_business_public_id: own,
     delegation: { options: [{ grant_id: '51', can_issue: false }], issued: [] } });

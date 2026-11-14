@@ -15,7 +15,7 @@ final class BusinessPreferenceVariantsTest extends TestCase
         $this->actingAs(User::factory()->create());
         $file = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Independent preference owner'])->assertCreated()->json('data');
         $base = '/api/businesses/'.$file['business_public_id'].'/preferences';
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.preferences.manage']]]];
+        $selection = ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.preferences.manage']]]];
         $revision = 0;
         foreach (AdvertiserGoalPreferences::catalog() as $goal) {
             foreach ([[], ...array_map(fn ($result) => [$result['id']], $goal['results'])] as $results) {
@@ -41,9 +41,10 @@ final class BusinessPreferenceVariantsTest extends TestCase
         }
         $this->assertEquals($before, $db->table('business_goal_preferences')->sole());
         $this->assertSame($events, $db->table('business_preference_transitions')->count());
-        foreach (['workspaces', 'advertiser_goal_preferences', 'advertiser_goal_preference_events', 'object_purposes'] as $table) {
-            $this->assertSame(0, $db->table($table)->count(), $table);
+        foreach (['workspaces', 'advertiser_goal_preferences', 'advertiser_goal_preference_events'] as $table) {
+            $this->assertNull($db->scalar('SELECT to_regclass(?)', ['public.'.$table]), $table);
         }
+        $this->assertSame(0, $db->table('object_purposes')->count());
         $this->assertSame(0, $db->table('business_context_heads')->value('context_version'));
         $this->assertSame(0, $db->table('business_current_intents')->value('intent_revision'));
     }

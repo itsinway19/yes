@@ -17,7 +17,7 @@ type Connection = { source_id: string; label: string; declared_account_id: strin
 type Snapshot = ProviderSnapshot;
 type Account = { account_id: string; label: string; existing_source_label: string | null; selection_handle: string | null; hierarchy_handle: string | null; manager: boolean | null };
 type Page = { accounts: Account[]; continuation: string | null; coverage: string };
-const props = defineProps<{ workspaceId?: string; businessId?: string; canManage: boolean }>();
+const props = defineProps<{ businessId?: string; canManage: boolean }>();
 const owner = nativeSourceReference(props);
 const emit = defineEmits<{ summary: [summary: ProviderSummary] }>();
 const snapshot = ref<Snapshot | null>(null);
@@ -185,7 +185,7 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
 
 <template>
     <section :dir="locale === 'ar' ? 'rtl' : 'ltr'" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="google-connection-heading" :aria-busy="busy">
-        <PendingCommands :workspace-id="workspaceId" :business-id="businessId" provider="google" @settled="refresh()" />
+        <PendingCommands :business-id="businessId" provider="google" @settled="refresh()" />
         <fieldset class="min-w-0 border-0 p-0" :disabled="commandsFor(owner, 'google').length > 0">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -215,7 +215,7 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
                     <p class="font-medium text-slate-900">{{ connection.label }}</p>
                     <p dir="ltr" class="mt-1 text-xs text-slate-500">{{ connection.declared_account_id }}</p>
                     <p class="mt-2 text-sm text-slate-600">{{ providerCopy(connectionLabel(connection.access.connection)) }}</p>
-                    <ProviderReportRequest provider="google" :workspace-id="workspaceId" :business-id="businessId" :source-id="connection.source_id" :version="connection.access.version"
+                    <ProviderReportRequest provider="google" :business-id="businessId" :source-id="connection.source_id" :version="connection.access.version"
                         :allowed="canManage && connection.access.reporting?.can_report === true" />
                     <button v-if="canManage && snapshot.availability === 'CONNECT_AVAILABLE' && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED'" type="button" :disabled="busy" data-source-renew @click="renew(connection)" class="mt-3 me-4 text-sm font-medium text-[var(--ba-primary-ink)] underline disabled:opacity-50">{{ providerCopy("تجديد الربط والتحقق من الحساب") }}</button>
                     <button v-if="canManage && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED' && disconnectTarget !== connection.source_id" type="button" :disabled="busy" data-source-disconnect @click="disconnectTarget = connection.source_id" class="mt-3 text-sm font-medium text-red-700 underline disabled:opacity-50">{{ providerCopy("فصل الحساب محليًا") }}</button>

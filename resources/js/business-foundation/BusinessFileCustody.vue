@@ -10,7 +10,7 @@ const emit = defineEmits<{ refresh: []; pendingChange: [pending: boolean]; admin
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const business = props.surface.business.business_public_id, basis = JSON.stringify(props.surface.authority_selection), admission = stamp();
 const resource = `${key(business, props.surface.authority_selection)}:business-file-custody:2`;
-const draft = reactive<InternalTeamDraft>(internalTeamDrafts.get(resource) ?? { workspace: '', recipient: '', confirmed: false, notice: '' });
+const draft = reactive<InternalTeamDraft>(internalTeamDrafts.get(resource) ?? { recipient: '', confirmed: false, notice: '' });
 draft.uncertain ||= !!draft.pending;
 internalTeamDrafts.set(resource, draft);
 type CustodySurface = InternalTeamSurface & { can_appoint: boolean; custodians: NonNullable<InternalTeamSurface['custodians']>; versions: NonNullable<InternalTeamSurface['versions']> };
@@ -46,7 +46,7 @@ async function send() {
     if (!editable.value) return;
     if (!draft.pending) {
         if (!draft.confirmed || !selected.value || !data.value) return;
-        draft.pending = { command_id: crypto.randomUUID(), workspace_public_id: null, effect: mode.value, recipient_public_id: selected.value.public_id,
+        draft.pending = { command_id: crypto.randomUUID(), effect: mode.value, recipient_public_id: selected.value.public_id,
             expected_revision: data.value.versions.authority_epoch, authority_selection: JSON.parse(basis) };
     }
     const command = JSON.parse(JSON.stringify(draft.pending)) as InternalTeamCommand, captured = stamp(), attempt = generation, uncertain = !!draft.uncertain;
@@ -54,8 +54,8 @@ async function send() {
     try {
         const result = await writeInternalTeam(business, command);
         if (attempt !== generation || !owned(captured) || !currentContext()) return;
-        if (result.business_public_id !== business || result.workspace_public_id !== null || result.recipient_public_id !== command.recipient_public_id
-            || result.link_ref !== null || result.state !== 'active' || !('authority_epoch' in result.versions)
+        if (result.business_public_id !== business || result.recipient_public_id !== command.recipient_public_id
+            || result.state !== 'active' || !('authority_epoch' in result.versions)
             || !Number.isSafeInteger(result.versions.authority_epoch) || result.versions.authority_epoch < 0) throw Error('Custody acknowledgement mismatch');
         draft.pending = undefined; draft.uncertain = false; draft.recipient = ''; mode.value = 'appoint';
         draft.notice = t('تم تأكيد العملية. نتحقق من المسؤوليات المسجلة حاليًا.', 'Operation confirmed. Checking the currently recorded responsibilities.');

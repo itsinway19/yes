@@ -3,413 +3,208 @@ param([switch] $Stop, [switch] $Status)
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-
+if ($Stop -and $Status) { throw 'Choose Start (no switches), -Status, or -Stop.' }
 $root = Split-Path -Parent $PSScriptRoot
-Set-Location -LiteralPath $root
-$envPath = Join-Path $root '.env'
-$statePath = Join-Path $root 'storage/app/content-preview/stable-preview.json'
-$previewRoot = Split-Path -Parent $statePath
+$previewRoot = Join-Path $root 'storage/app/retirement-preview'
+$envPath = Join-Path $previewRoot 'private/environment.json'
+$tokenPath = Join-Path $previewRoot 'private/probe-token'
+$statePath = Join-Path $previewRoot 'stable-preview.json'
 $logsDir = Join-Path $previewRoot 'logs'
-$hostAddress = '127.0.0.1'
-$database = 'builderad_test'
-$dbPort = 5432
-$redisPort = 6398
-$appPort = 8037
-$appUrl = "http://localhost:$appPort"
-$router = Join-Path $root 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php'
-$php = if ($env:BUILDERAD_PHP) { $env:BUILDERAD_PHP } else { 'C:\tools\php85\php.exe' }
-$redisServer = if ($env:BUILDERAD_REDIS_SERVER) { $env:BUILDERAD_REDIS_SERVER } else { 'C:\Program Files\Redis\redis-server.exe' }
-$redisConf = Join-Path $previewRoot 'redis/redis.conf'
-$redisLog = Join-Path $logsDir 'redis.log'
-
-# Laravel's immutable dotenv keeps variables already present in the process. Another worktree or
-# an earlier test run can therefore export DB_PORT=5433, REDIS_PORT=6379 or CACHE_STORE=array into
-# this shell. The launcher owns that namespace: inherited values are removed, then these pinned
-# preview values are applied to both .env and the child process.
-$ownedPrefixes = '^(APP_|DB_|SESSION_|CACHE_|REDIS_|QUEUE_)'
-$pinned = [ordered]@{
-    APP_URL = $appUrl
-    APP_ENV = 'local'
-    DB_CONNECTION = 'pgsql'
-    DB_HOST = $hostAddress
-    DB_PORT = "$dbPort"
-    DB_DATABASE = $database
-    DB_USERNAME = 'builderad_app'
-    DB_OWNER_CONNECTION = 'pgsql_migrations'
-    DB_OWNER_DATABASE = $database
-    DB_OWNER_USERNAME = 'builderad_owner'
-    DB_AUTHORITY_USERNAME = 'builderad_authority'
-    SESSION_DRIVER = 'redis'
-    SESSION_STORE = 'redis'
-    SESSION_CONNECTION = 'default'
-    SESSION_SECURE_COOKIE = 'false'
-    CACHE_STORE = 'redis'
-    REDIS_CLIENT = 'predis'
-    REDIS_HOST = $hostAddress
-    REDIS_PORT = "$redisPort"
-    REDIS_DB = '0'
-    REDIS_CACHE_DB = '1'
-}
-
-function Read-DotEnv([string] $Path) {
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Missing local environment file: $Path" }
-    $map = @{}
-    foreach ($line in [IO.File]::ReadAllLines($Path)) {
-        if ($line -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$') {
-            $value = $Matches[2].Trim()
-            if ($value.Length -ge 2 -and (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'")))) {
-                $value = $value.Substring(1, $value.Length - 2)
-            }
-            $map[$Matches[1]] = $value
-        }
-    }
-    return $map
-}
-
-function Set-DotEnv([string] $Path, [string] $Key, [string] $Value) {
-    $lines = [Collections.Generic.List[string]]::new()
-    foreach ($line in [IO.File]::ReadAllLines($Path)) { $lines.Add($line) }
-    $pattern = '^\s*' + [regex]::Escape($Key) + '\s*='
-    $found = $false
-    for ($i = 0; $i -lt $lines.Count; $i++) {
-        if ($lines[$i] -match $pattern) { $lines[$i] = "$Key=$Value"; $found = $true }
-    }
-    if (-not $found) { $lines.Add("$Key=$Value") }
-    [IO.File]::WriteAllLines($Path, $lines, [Text.UTF8Encoding]::new($false))
-}
-
-function Reset-PreviewEnvironment([hashtable] $Values) {
-    foreach ($name in @([Environment]::GetEnvironmentVariables('Process').Keys)) {
-        if ([string] $name -match $ownedPrefixes) { Remove-Item -Path "Env:$name" -ErrorAction SilentlyContinue }
-    }
-    foreach ($key in $Values.Keys) { Set-Item -Path "Env:$key" -Value $Values[$key] }
-}
+$router = Join-Path $PSScriptRoot 'stable-preview-router.php'
+$legacyRouter = Join-Path $previewRoot 'router.php'
+$redisConf = Join-Path $previewRoot 'redis.conf'
+$php = 'C:\tools\php85\php.exe'
+$redisServer = 'C:\Program Files\Redis\redis-server.exe'
+$appPort = 8038
+$redisPort = 16408
+$appUrl = 'http://localhost:8038'
 
 function Get-ProcessInfo([int] $Id) {
     if ($Id -le 0) { return $null }
-    try { Get-CimInstance Win32_Process -Filter "ProcessId=$Id" -ErrorAction Stop } catch { return $null }
+    # A metadata-access failure must not be reported as a stopped process.
+    @(Get-CimInstance Win32_Process -Filter "ProcessId=$Id" -ErrorAction Stop) | Select-Object -First 1
 }
-
-function Test-PreviewCommand([string] $CommandLine) {
-    $command = $CommandLine.Replace('/', '\')
-    return ($command -like "*-S *:$appPort *" -or $command -like "*--port=$appPort*")
-}
-
-function Get-PreviewServerProcesses {
-    $expectedRoot = $root.Replace('/', '\')
-    $candidates = @{}
-    foreach ($process in (Get-CimInstance Win32_Process -Filter "Name='php.exe'" -ErrorAction SilentlyContinue)) {
-        if ($process.CommandLine -and (Test-PreviewCommand $process.CommandLine)) { $candidates[[int] $process.ProcessId] = $process }
-    }
-    $owned = @{}
-    foreach ($id in @($candidates.Keys)) {
-        if ($candidates[$id].CommandLine.Replace('/', '\') -like "*$expectedRoot*") { $owned[$id] = $candidates[$id] }
-    }
-    # `php artisan serve` starts a child that binds the port and names this worktree's router file.
-    foreach ($id in @($owned.Keys)) {
-        $parentId = [int] $owned[$id].ParentProcessId
-        if ($candidates.ContainsKey($parentId)) { $owned[$parentId] = $candidates[$parentId] }
-    }
-    $owned.Values
-}
-
-function Assert-PreviewServer([int] $Id) {
-    $process = Get-ProcessInfo $Id
-    if ($null -eq $process -or $process.Name -ine 'php.exe' -or -not $process.CommandLine) {
-        throw "Cannot verify Laravel preview process $Id; leaving it untouched."
-    }
-    $ownedIds = @(Get-PreviewServerProcesses | ForEach-Object { [int] $_.ProcessId })
-    if ($ownedIds -notcontains $Id) {
-        throw "Process $Id does not match this worktree's Laravel preview on port $appPort; leaving it untouched."
-    }
-    return $process
-}
-
 function Test-Port([int] $Port) {
     $client = [Net.Sockets.TcpClient]::new()
-    try { $pending = $client.ConnectAsync('127.0.0.1', $Port); return $pending.Wait(800) -and $client.Connected }
-    catch { return $false }
-    finally { $client.Dispose() }
+    try { return $client.ConnectAsync('127.0.0.1', $Port).Wait(800) -and $client.Connected }
+    catch { return $false } finally { $client.Dispose() }
 }
-
-function Get-RedisPreviewProcesses {
-    if (-not (Test-Path -LiteralPath $redisConf -PathType Leaf)) { return @() }
-    $expected = $redisConf.Replace('/', '\')
-    @(Get-CimInstance Win32_Process -Filter "Name='redis-server.exe'" -ErrorAction SilentlyContinue | Where-Object {
-        $_.CommandLine -and $_.CommandLine.Replace('/', '\') -like "*$expected*"
-    })
+function Test-PreviewCommand($Process) {
+    if ($null -eq $Process -or $Process.Name -ine 'php.exe' -or -not $Process.CommandLine -or
+        -not $Process.ExecutablePath -or $Process.ExecutablePath.Replace('/', '\') -ine $php) { return $false }
+    $command = $Process.CommandLine.Replace('/', '\').Replace('"', '')
+    foreach ($path in @($router, $legacyRouter)) {
+        $expected = "$php -S 127.0.0.1:$appPort -t $(Join-Path $root 'public') $path"
+        if ($command -eq $expected) { return $true }
+    }
+    return $false
 }
-
-function Assert-RedisPreview([int] $Id) {
+function Get-PreviewServerProcesses {
+    @(Get-CimInstance Win32_Process -Filter "Name='php.exe'" -ErrorAction Stop | Where-Object { Test-PreviewCommand $_ })
+}
+function Assert-PreviewServer([int] $Id, [string] $Created = '') {
     $process = Get-ProcessInfo $Id
-    $expected = $redisConf.Replace('/', '\')
-    if ($null -eq $process -or $process.Name -ine 'redis-server.exe' -or -not $process.CommandLine -or
-        $process.CommandLine.Replace('/', '\') -notlike "*$expected*") {
-        throw "Redis process $Id does not belong to this preview; leaving it untouched."
+    if (-not (Test-PreviewCommand $process) -or ($Created -and $process.CreationDate.ToUniversalTime().ToString('o') -ne $Created)) {
+        throw "Process $Id does not match this preview's executable, exact root/router/port and creation identity; left untouched."
     }
     return $process
 }
-
-function Test-RedisAuthentication([string] $Password) {
-    $client = [Net.Sockets.TcpClient]::new()
+function Get-RedisPreviewProcesses {
+    $expected = $redisConf.Replace('/', '\')
+    @(Get-CimInstance Win32_Process -Filter "Name='redis-server.exe'" -ErrorAction Stop | Where-Object {
+        $_.ExecutablePath -and $_.ExecutablePath.Replace('/', '\') -ieq $redisServer -and
+        $_.CommandLine -and $_.CommandLine.Replace('/', '\').Replace('"', '') -eq "$redisServer $expected"
+    })
+}
+function Read-Settings {
+    if (-not (Test-Path -LiteralPath $envPath -PathType Leaf)) { throw "Missing private local preview settings: $envPath" }
+    try { $values = Get-Content -LiteralPath $envPath -Raw | ConvertFrom-Json -AsHashtable }
+    catch { throw 'The private preview configuration is invalid; its contents were not rendered.' }
+    $required = @{ APP_URL=$appUrl; DB_HOST='127.0.0.1'; DB_PORT='5432'; DB_DATABASE='builderad_dev'; DB_OWNER_DATABASE='builderad_dev'; DB_USERNAME='builderad_app'; DB_AUTHORITY_USERNAME='builderad_authority'; DB_OWNER_USERNAME='builderad_owner'; REDIS_HOST='127.0.0.1'; REDIS_PORT="$redisPort"; QUEUE_CONNECTION='sync' }
+    foreach ($key in $required.Keys) { if ($values[$key] -ne $required[$key]) { throw "Private setting $key does not match the approved preview. No settings were rewritten." } }
+    foreach ($key in @('APP_KEY','PASSKEYS_USER_HANDLE_SECRET','DB_PASSWORD','DB_AUTHORITY_PASSWORD','DB_OWNER_PASSWORD')) {
+        if ([string]::IsNullOrWhiteSpace($values[$key])) { throw "Required original private setting $key is missing; no replacement was generated." }
+    }
+    return $values
+}
+function Reset-PreviewEnvironment([hashtable] $Values) {
+    foreach ($name in @([Environment]::GetEnvironmentVariables('Process').Keys)) {
+        if ([string] $name -match '^(APP_|DB_|PASSKEYS_|SESSION_|CACHE_|REDIS_|QUEUE_|MAIL_|PG|LARAVEL_STORAGE_PATH$)') { Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue }
+    }
+    foreach ($key in $Values.Keys) { Set-Item -LiteralPath "Env:$key" -Value ([string] $Values[$key]) }
+}
+function Get-HttpRuntime {
+    if (-not (Test-Path -LiteralPath $tokenPath -PathType Leaf)) { throw 'Local HTTP verification credential is missing.' }
+    $token = [IO.File]::ReadAllText($tokenPath)
     try {
-        if (-not $client.ConnectAsync('127.0.0.1', $redisPort).Wait(2000) -or -not $client.Connected) { return $false }
-        $stream = $client.GetStream()
-        $stream.ReadTimeout = 2000
-        $stream.WriteTimeout = 2000
-        $writer = [IO.StreamWriter]::new($stream, [Text.Encoding]::ASCII, 1024, $true)
-        $writer.NewLine = "`r`n"; $writer.AutoFlush = $true
-        $reader = [IO.StreamReader]::new($stream, [Text.Encoding]::ASCII, $false, 1024, $true)
-        if ($Password) {
-            $writer.WriteLine("AUTH $Password")
-            if ($reader.ReadLine() -ne '+OK') { return $false }
-        }
-        $writer.WriteLine('PING')
-        return $reader.ReadLine() -eq '+PONG'
+        $response = Invoke-WebRequest -Uri "$appUrl/__builderad_local_preview_status" -Headers @{ 'X-Builderad-Preview-Probe'=$token } -TimeoutSec 10 -UseBasicParsing -SkipHttpErrorCheck
     } catch {
-        return $false
-    } finally {
-        $client.Dispose()
+        $error = [InvalidOperationException]::new('The actual HTTP process is not ready for verification.')
+        $error.Data['ProbeTransportFailure']=$true
+        throw $error
+    }
+    if ($response.StatusCode -ne 200) { throw 'HTTP verification rejected this process/configuration; it was not reused.' }
+    try { $runtime = $response.Content | ConvertFrom-Json } catch { throw 'Invalid local HTTP verification response; process not reused.' }
+    if (-not $runtime.verified -or $runtime.protocol -ne 'stable-preview-v1' -or $runtime.root -ne $root -or $runtime.public -ne (Join-Path $root 'public')) {
+        throw 'The HTTP process does not match the approved root, configuration, database roles, Redis stores and Passkey origin.'
+    }
+    $process = Assert-PreviewServer ([int] $runtime.pid)
+    $runtime | Add-Member -NotePropertyName router -NotePropertyValue $(if ($process.CommandLine.Replace('/', '\').Contains($router)) { $router } else { $legacyRouter })
+    return $runtime
+}
+function Wait-HttpRuntime($Process) {
+    # TCP acceptance precedes Laravel readiness on a cold start. Retain the
+    # launcher's bounded readiness loop; never retry a rejected configuration.
+    $deadline=[DateTime]::UtcNow.AddSeconds(30)
+    do {
+        if ($Process.HasExited) { throw 'The newly started PHP process exited before HTTP verification.' }
+        try { return Get-HttpRuntime } catch {
+            if (-not $_.Exception.Data.Contains('ProbeTransportFailure') -or [DateTime]::UtcNow -ge $deadline) { throw }
+            Start-Sleep -Milliseconds 250
+        }
+    } while ([DateTime]::UtcNow -lt $deadline)
+    throw 'Laravel did not become HTTP-ready within the startup window.'
+}
+function Assert-LoginPages {
+    foreach ($path in @('/login','/internal/login')) {
+        $page = Invoke-WebRequest -Uri ($appUrl+$path) -Headers @{ Accept='text/html' } -TimeoutSec 10 -UseBasicParsing
+        if ($page.StatusCode -ne 200 -or $page.Content -notmatch '(?i)<!doctype html>' -or $page.Content -notmatch 'application-bootstrap' -or
+            $page.Content -match '(?i)Fatal error|Failed opening required|Warning: require') { throw "The actual login document $path is invalid; HTTP status alone was not accepted." }
     }
 }
-
-function Ensure-RedisPreview([string] $Password) {
-    if (Test-RedisAuthentication $Password) { return }
-    $owned = @(Get-RedisPreviewProcesses)
-    if ($owned.Count -gt 0) {
-        throw 'The preview Redis process is running but does not accept the local credential. Stop it before restarting the preview.'
-    }
-    if (Test-Port $redisPort) {
-        throw "Port $redisPort is occupied by a Redis instance outside this preview; leaving it untouched."
-    }
-    if (-not (Test-Path -LiteralPath $redisServer -PathType Leaf)) { throw "Redis server not found: $redisServer" }
-    if (-not (Test-Path -LiteralPath $redisConf -PathType Leaf)) { throw "Preview Redis configuration not found: $redisConf" }
-    Start-Process -FilePath $redisServer -ArgumentList "`"$redisConf`"" -WorkingDirectory (Split-Path -Parent $redisConf) `
-        -WindowStyle Hidden -RedirectStandardOutput (Join-Path $logsDir 'redis.out.log') `
-        -RedirectStandardError (Join-Path $logsDir 'redis.err.log') | Out-Null
-    for ($i = 0; $i -lt 40; $i++) {
-        if (Test-RedisAuthentication $Password) { return }
-        Start-Sleep -Milliseconds 250
-    }
-    throw "Redis preview did not become ready on port $redisPort. See $redisLog."
+function Save-State($Runtime, [bool] $RedisOwned) {
+    $server = Assert-PreviewServer ([int] $Runtime.pid)
+    $redis = Get-ProcessInfo ([int] $Runtime.redis.pid)
+    [ordered]@{ Root=$root; Url=$appUrl; Database='builderad_dev'; DatabasePort=5432; ServerPid=[int] $Runtime.pid;
+        ServerCreated=$server.CreationDate.ToUniversalTime().ToString('o'); RedisPid=[int] $Runtime.redis.pid;
+        RedisCreated=$(if ($redis) { $redis.CreationDate.ToUniversalTime().ToString('o') } else { '' }); RedisStartedByLauncher=$RedisOwned;
+        Router=$Runtime.router; LastVerifiedAt=(Get-Date).ToUniversalTime().ToString('o') } | ConvertTo-Json | Set-Content -LiteralPath $statePath -Encoding utf8
 }
-
-function Stop-RedisPreview {
-    foreach ($process in @(Get-RedisPreviewProcesses)) {
-        $id = [int] $process.ProcessId
-        Assert-RedisPreview $id | Out-Null
-        Stop-Process -Id $id -ErrorAction Stop
-    }
-    for ($i = 0; $i -lt 40 -and (Test-Port $redisPort); $i++) { Start-Sleep -Milliseconds 250 }
-    if (Test-Port $redisPort) { throw "Redis preview did not release port $redisPort." }
-}
-
-function Get-ProbeFailureHint([string] $Code) {
-    switch ($Code) {
-        'postgres_target' { 'Laravel is not pointed at builderad_test on port 5432.' }
-        'postgres_app_connect' { 'The runtime role builderad_app cannot connect to builderad_test:5432.' }
-        'postgres_authority_connect' { 'The authority role builderad_authority cannot connect to builderad_test:5432.' }
-        'postgres_owner_connect' { 'The migration role builderad_owner cannot connect to builderad_test:5432.' }
-        'postgres_app_identity' { 'The runtime connection does not resolve to builderad_app on builderad_test:5432.' }
-        'postgres_authority_identity' { 'The authority connection does not resolve to builderad_authority on builderad_test:5432.' }
-        'postgres_owner_identity' { 'The migration connection does not resolve to builderad_owner on builderad_test:5432.' }
-        'redis_connection' { "The preview Redis on 127.0.0.1:$redisPort did not answer PING." }
-        'session_config' { 'Session is not configured with driver=redis and store=redis.' }
-        'session_handler' { 'The session handler is not CacheBasedSessionHandler.' }
-        'session_store' { 'The session cache store is not a RedisStore.' }
-        'session_roundtrip' { 'A session value could not be written and read back through Redis.' }
-        'cache_config' { 'The default cache store is not redis backed by a RedisStore.' }
-        'cache_store' { 'The default cache store is not a RedisStore.' }
-        default { "The Laravel runtime probe reported $Code." }
-    }
-}
-
-function Invoke-RuntimeProbe {
-    $probe = @'
-require "vendor/autoload.php";
-$app = require "bootstrap/app.php";
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-$fail = function (string $code): void {
-    echo "STABLE_PREVIEW_PROBE_FAILED ".$code.PHP_EOL;
-    exit(3);
-};
-if (config("database.connections.pgsql.database") !== "builderad_test"
-    || (string) config("database.connections.pgsql.port") !== "5432") { $fail("postgres_target"); }
-foreach (["pgsql" => ["builderad_app", "postgres_app"], "pgsql_authority" => ["builderad_authority", "postgres_authority"], "pgsql_migrations" => ["builderad_owner", "postgres_owner"]] as $name => $expected) {
-    try {
-        $row = Illuminate\Support\Facades\DB::connection($name)->selectOne("select current_user as identity,current_database() as database,inet_server_port() as port");
-    } catch (Throwable $error) {
-        $fail($expected[1]."_connect");
-    }
-    if ($row->identity !== $expected[0] || $row->database !== "builderad_test" || (int) $row->port !== 5432) { $fail($expected[1]."_identity"); }
-}
-try {
-    app("redis")->connection("default")->ping();
-    app("redis")->connection("cache")->ping();
-} catch (Throwable $error) { $fail("redis_connection"); }
-if (config("session.driver") !== "redis" || config("session.store") !== "redis") { $fail("session_config"); }
-$handler = app("session")->driver()->getHandler();
-if (! $handler instanceof Illuminate\Session\CacheBasedSessionHandler) { $fail("session_handler"); }
-if (! $handler->getCache()->getStore() instanceof Illuminate\Cache\RedisStore) { $fail("session_store"); }
-if (config("cache.default") !== "redis" || ! Illuminate\Support\Facades\Cache::store()->getStore() instanceof Illuminate\Cache\RedisStore) { $fail("cache_config"); }
-$id = "preview-check-".bin2hex(random_bytes(12));
-$payload = "stable-preview";
-try {
-    if (! $handler->write($id, $payload) || $handler->read($id) !== $payload) { $fail("session_roundtrip"); }
-} finally {
-    $handler->destroy($id);
-}
-echo "STABLE_PREVIEW_RUNTIME_OK".PHP_EOL;
-'@
-    $output = & $php -d display_errors=0 -d error_reporting=0 -r $probe 2>&1
-    $exit = $LASTEXITCODE
-    $text = ($output | Out-String).Trim()
-    if ($exit -eq 0 -and $text -eq 'STABLE_PREVIEW_RUNTIME_OK') { return }
-    if ($text -match 'STABLE_PREVIEW_PROBE_FAILED\s+([a-z_]+)') {
-        $code = $Matches[1]
-        throw ((Get-ProbeFailureHint $code) + " Probe code: $code. No credentials were printed.")
-    }
-    throw "The Laravel runtime probe could not run (exit $exit). Run 'php artisan config:clear' and retry. No credentials were printed."
-}
-
 function Show-PreviewStatus {
-    $servers = @(Get-PreviewServerProcesses)
-    $redis = @(Get-RedisPreviewProcesses)
-    $state = if (Test-Path -LiteralPath $statePath -PathType Leaf) { Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json } else { $null }
-    Write-Host "Worktree: $root"
-    Write-Host "Laravel: $(if ($servers.Count -and (Test-Port $appPort)) { "running on $appUrl (pid $($servers.ProcessId -join ','))" } else { 'stopped' })"
-    Write-Host "Redis: $(if ($redis.Count -and (Test-Port $redisPort)) { "running on 127.0.0.1:$redisPort (pid $($redis.ProcessId -join ','))" } else { "stopped (port $redisPort)" })"
-    Write-Host "PostgreSQL (shared, untouched): ${database}:$dbPort"
-    if ($null -ne $state -and $state.PSObject.Properties.Name -contains 'StartedAt') { Write-Host "Last start: $($state.StartedAt)" }
-    if ($null -ne $state -and $state.PSObject.Properties.Name -contains 'StoppedAt') { Write-Host "Last stop: $($state.StoppedAt)" }
-}
-
-function Stop-PreviewServer {
-    $servers = @(Get-PreviewServerProcesses)
-    if (-not $servers.Count) {
-        if (Test-Port $appPort) { throw "Port $appPort is occupied by a process outside this worktree; leaving it untouched." }
-        Stop-RedisPreview
-        Write-Host 'Laravel preview is already stopped.'
-        return
-    }
-    foreach ($server in $servers) {
-        $id = [int] $server.ProcessId
-        Assert-PreviewServer $id | Out-Null
-        Stop-Process -Id $id -ErrorAction Stop
-    }
-    for ($i=0; $i -lt 40 -and (Test-Port $appPort); $i++) { Start-Sleep -Milliseconds 250 }
-    if (Test-Port $appPort) { throw "Laravel did not release port $appPort." }
-    $state = if (Test-Path -LiteralPath $statePath -PathType Leaf) { Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json } else { [pscustomobject]@{ Root=$root; Url=$appUrl; Database=$database; DatabasePort=$dbPort; RedisHost=$hostAddress; RedisPort=$redisPort; AppPort=$appPort; ServerPid=0 } }
-    if ([IO.Path]::GetFullPath($state.Root) -ne [IO.Path]::GetFullPath($root)) { throw 'Preview state belongs to another worktree.' }
-    $state | Add-Member -NotePropertyName ServerPid -NotePropertyValue 0 -Force
-    $state | Add-Member -NotePropertyName StoppedAt -NotePropertyValue (Get-Date).ToString('o') -Force
-    $state | ConvertTo-Json | Set-Content -LiteralPath $statePath -Encoding utf8
-    Stop-RedisPreview
-    Write-Host 'Laravel and the preview Redis stopped. PostgreSQL was left untouched; database data was untouched.'
-}
-
-$initialRedisPids = @(Get-RedisPreviewProcesses | ForEach-Object { [int] $_.ProcessId })
-$initialServerPids = @(Get-PreviewServerProcesses | ForEach-Object { [int] $_.ProcessId })
-$startedServerId = 0
-try {
-    if (-not (Test-Path -LiteralPath $php -PathType Leaf)) { throw "PHP executable not found: $php" }
-    if (-not (Test-Path -LiteralPath $router -PathType Leaf)) { throw "Laravel router not found: $router" }
-    if ($Stop) { Stop-PreviewServer; exit 0 }
-    if ($Status) { Show-PreviewStatus; exit 0 }
-
-    New-Item -ItemType Directory -Force -Path $logsDir | Out-Null
-    $envMap = Read-DotEnv $envPath
-    foreach ($key in $pinned.Keys) {
-        if (-not $envMap.ContainsKey($key) -or $envMap[$key] -ne $pinned[$key]) {
-            Set-DotEnv $envPath $key $pinned[$key]
-        }
-    }
-    $envMap = Read-DotEnv $envPath
-    foreach ($key in @('APP_KEY','DB_PASSWORD','DB_OWNER_PASSWORD','DB_AUTHORITY_PASSWORD')) {
-        if (-not $envMap.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($envMap[$key])) { throw "Required local setting $key is missing from .env." }
-    }
-    Reset-PreviewEnvironment $envMap
-
-    # A cached configuration keeps a previous target even after .env is corrected.
-    $clear = & $php artisan config:clear --no-interaction 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "Could not clear the Laravel configuration cache: $(($clear | Out-String).Trim())" }
-    Ensure-RedisPreview $(if ($envMap.ContainsKey('REDIS_PASSWORD')) { [string] $envMap['REDIS_PASSWORD'] } else { '' })
-    Invoke-RuntimeProbe
-
-    $reused = @()
+    $report = [ordered]@{ Expected=[ordered]@{ Root=$root; Public=(Join-Path $root 'public'); Url=$appUrl; Database='builderad_dev'; DatabaseHost='127.0.0.1'; DatabasePort=5432; RedisPort=$redisPort };
+        Laravel='stopped'; Verified=$null; Redis=$(if (Test-Port $redisPort) { "TCP reachable on $redisPort; process/configuration not yet verified" } else { 'stopped' }); Worker='not required by expected queue=sync; runtime not yet verified' }
     if (Test-Port $appPort) {
-        $reused = @(Get-PreviewServerProcesses)
-        if (-not $reused.Count) {
-            throw "Port $appPort is occupied by a process outside this worktree (for example another tree's preview). It was left untouched; use another port or stop that service."
-        }
-        foreach ($server in $reused) { Assert-PreviewServer ([int] $server.ProcessId) | Out-Null }
+        try {
+            $runtime = Get-HttpRuntime
+            $report.Laravel = 'running and HTTP-verified'
+            $report.Verified = $runtime
+            $report.Redis = 'PING and process identity verified by HTTP'
+            $report.Worker = if ($runtime.queue -eq 'sync') { 'not required (verified queue=sync)' } else { 'not managed' }
+        } catch { $report.Laravel='occupied but UNVERIFIED; untouched' }
+    } elseif (@(Get-PreviewServerProcesses).Count) { $report.Laravel='owned process present but HTTP unavailable; UNVERIFIED' }
+    $report | ConvertTo-Json -Depth 8
+}
+function Stop-PreviewServer {
+    $redisStopped=$false
+    $servers = @(Get-PreviewServerProcesses)
+    if (Test-Port $appPort) {
+        # An authenticated response identifies the actual listener; a saved PID alone cannot.
+        $runtime = Get-HttpRuntime
+        $actual = Assert-PreviewServer ([int] $runtime.pid)
+        if ($servers.Count -ne 1 -or [int] $servers[0].ProcessId -ne [int] $actual.ProcessId) { throw 'Ambiguous preview process ownership; nothing stopped.' }
+    } elseif ($servers.Count) { throw 'A preview process exists but its HTTP identity is unavailable; left untouched.' }
+    $state = if (Test-Path -LiteralPath $statePath) { Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json -AsHashtable } else { @{} }
+    foreach ($server in $servers) {
+        $created = $server.CreationDate.ToUniversalTime().ToString('o')
+        Assert-PreviewServer ([int] $server.ProcessId) $created | Out-Null
+        Stop-Process -Id ([int] $server.ProcessId) -ErrorAction Stop
     }
+    for ($i=0; $i -lt 30 -and (Test-Port $appPort); $i++) { Start-Sleep -Milliseconds 100 }
+    if (Test-Port $appPort) { throw 'The preview port did not close; no other process was stopped.' }
+    # Existing Redis is reused but not claimed as owned. Only a Redis started by this launcher,
+    # whose PID, creation time and exact config path still match, may be stopped here.
+    if ($state.ContainsKey('RedisStartedByLauncher') -and $state.RedisStartedByLauncher) {
+        $owned = @(Get-RedisPreviewProcesses | Where-Object { [int] $_.ProcessId -eq [int] $state.RedisPid -and $_.CreationDate.ToUniversalTime().ToString('o') -eq $state.RedisCreated })
+        if ($owned.Count -eq 1) { Stop-Process -Id ([int] $owned[0].ProcessId) -ErrorAction Stop; $redisStopped=$true }
+        else { Write-Warning 'Recorded Redis ownership could not be verified; Redis was left untouched.' }
+    }
+    if ($state.Count) { $state.ServerPid=0; $state.StoppedAt=(Get-Date).ToUniversalTime().ToString('o'); $state | ConvertTo-Json | Set-Content -LiteralPath $statePath -Encoding utf8 }
+    Write-Output "STABLE_PREVIEW_STOPPED; verified Laravel stopped; launcher-started Redis stopped=$redisStopped; pre-existing/shared Redis and PostgreSQL untouched."
+}
 
-    if ($reused.Count) {
-        # The same worktree already serves this port (launcher or an interactive `artisan serve`).
-        # Reuse it instead of starting a second server; the runtime probe above already confirmed
-        # exactly what it would serve.
-        $process = $null
-        $ready = $false
-        for ($i=0; $i -lt 20; $i++) {
-            try {
-                $advertiser = Invoke-WebRequest -Uri "$appUrl/login" -Headers @{ Accept='text/html' } -TimeoutSec 3 -UseBasicParsing
-                $admin = Invoke-WebRequest -Uri "$appUrl/internal/login" -Headers @{ Accept='text/html' } -TimeoutSec 3 -UseBasicParsing
-                if ($advertiser.StatusCode -eq 200 -and $admin.StatusCode -eq 200) { $ready = $true; break }
-            } catch { }
-            Start-Sleep -Milliseconds 300
+try {
+    if ($Status) { Show-PreviewStatus; exit 0 }
+    if ($Stop) { Stop-PreviewServer; exit 0 }
+    $values = Read-Settings
+    if (Test-Port $appPort) {
+        $runtime = Get-HttpRuntime
+        Assert-LoginPages
+        $redisOwned=$false
+        if (Test-Path -LiteralPath $statePath) {
+            $state=Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json -AsHashtable
+            $redisOwned=$state.ContainsKey('RedisStartedByLauncher') -and $state.RedisStartedByLauncher -and [int] $state.RedisPid -eq [int] $runtime.redis.pid
         }
-        if (-not $ready) { throw "The preview server owned by this worktree on port $appPort did not serve both login pages. Run the launcher with -Stop, then start it again." }
-        $state = [ordered]@{ Root=$root; Url=$appUrl; Database=$database; DatabasePort=$dbPort; RedisHost=$hostAddress; RedisPort=$redisPort; AppPort=$appPort; ServerPid=[int] $reused[0].ProcessId; StartedAt=(Get-Date).ToString('o'); Reused=$true }
-        $state | ConvertTo-Json | Set-Content -LiteralPath $statePath -Encoding utf8
-        Write-Host 'STABLE_PREVIEW_READY'
-        Write-Host "Laravel: $appUrl reused the existing server for this worktree (pid $($reused.ProcessId -join ',')); both login pages returned HTTP 200."
-        Write-Host "PostgreSQL: ${database}:$dbPort; builderad_app, builderad_authority and builderad_owner verified independently."
-        Write-Host "Redis: 127.0.0.1:$redisPort; PING plus session/cache RedisStore write-read verified."
+        Save-State $runtime $redisOwned
+        Write-Output "STABLE_PREVIEW_READY; existing HTTP process verified and reused: $appUrl; builderad_dev:5432"
         exit 0
     }
-
-    $stdout = Join-Path $logsDir 'stable-server.out.log'
-    $stderr = Join-Path $logsDir 'stable-server.err.log'
-    $process = Start-Process -FilePath $php -ArgumentList @('-S', "${hostAddress}:$appPort", "`"$router`"") `
-        -WorkingDirectory (Join-Path $root 'public') -WindowStyle Hidden -PassThru `
-        -RedirectStandardOutput $stdout -RedirectStandardError $stderr
-    $startedServerId = [int] $process.Id
-    $ready = $false
-    for ($i=0; $i -lt 40; $i++) {
-        try {
-            $advertiser = Invoke-WebRequest -Uri "$appUrl/login" -Headers @{ Accept='text/html' } -TimeoutSec 3 -UseBasicParsing
-            $admin = Invoke-WebRequest -Uri "$appUrl/internal/login" -Headers @{ Accept='text/html' } -TimeoutSec 3 -UseBasicParsing
-            if ($advertiser.StatusCode -eq 200 -and $admin.StatusCode -eq 200) { $ready = $true; break }
-        } catch { }
-        if ($process.HasExited) { break }
-        Start-Sleep -Milliseconds 300
-    }
-    if (-not $ready) { throw "Login page verification failed. See $stderr; the preview was not marked ready." }
-    $state = [ordered]@{ Root=$root; Url=$appUrl; Database=$database; DatabasePort=$dbPort; RedisHost=$hostAddress; RedisPort=$redisPort; AppPort=$appPort; ServerPid=$process.Id; StartedAt=(Get-Date).ToString('o') }
-    $state | ConvertTo-Json | Set-Content -LiteralPath $statePath -Encoding utf8
-    Write-Host 'STABLE_PREVIEW_READY'
-    Write-Host "Laravel: $appUrl (advertiser/admin login HTTP 200)"
-    Write-Host "PostgreSQL: ${database}:$dbPort; builderad_app, builderad_authority and builderad_owner verified independently."
-    Write-Host "Redis: 127.0.0.1:$redisPort; PING plus session/cache RedisStore write-read verified."
-} catch {
-    $failure = $_.Exception.Message
-    if ($startedServerId -gt 0) {
-        foreach ($server in @(Get-PreviewServerProcesses)) {
-            if ($initialServerPids -contains [int] $server.ProcessId) { continue }
-            try {
-                Assert-PreviewServer ([int] $server.ProcessId) | Out-Null
-                Stop-Process -Id ([int] $server.ProcessId) -ErrorAction Stop
-            } catch { }
+    if (@(Get-PreviewServerProcesses).Count) { throw 'An owned PHP process exists without a responsive listener; inspect it before starting another.' }
+    foreach ($file in @($php,$router,$redisServer,$redisConf,$tokenPath)) { if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Required preview file missing: $file" } }
+    Reset-PreviewEnvironment $values
+    New-Item -ItemType Directory -Force -Path $logsDir | Out-Null
+    $startedRedis=$null
+    $startedServer=$null
+    try {
+        if (-not (Test-Port $redisPort)) {
+            if (@(Get-RedisPreviewProcesses).Count) { throw 'Existing Redis process is not ready; it was left untouched.' }
+            $startedRedis=Start-Process -FilePath $redisServer -ArgumentList "`"$redisConf`"" -WorkingDirectory $previewRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $logsDir 'redis.out.log') -RedirectStandardError (Join-Path $logsDir 'redis.err.log')
+            for ($i=0; $i -lt 30 -and -not (Test-Port $redisPort); $i++) { Start-Sleep -Milliseconds 100 }
+            if (-not (Test-Port $redisPort)) { throw 'Existing preview Redis configuration did not start.' }
         }
+        $startedServer=Start-Process -FilePath $php -ArgumentList @('-S',"127.0.0.1:$appPort",'-t',"`"$(Join-Path $root 'public')`"","`"$router`"") -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $logsDir 'server.out.log') -RedirectStandardError (Join-Path $logsDir 'server.err.log')
+        for ($i=0; $i -lt 30 -and -not (Test-Port $appPort); $i++) { Start-Sleep -Milliseconds 100 }
+        $runtime=Wait-HttpRuntime $startedServer
+        if ([int] $runtime.pid -ne $startedServer.Id) { throw 'The responding HTTP process is not the process just started.' }
+        Assert-LoginPages
+        Save-State $runtime ($null -ne $startedRedis)
+        Write-Output "STABLE_PREVIEW_READY; HTTP PID $($runtime.pid); $appUrl; builderad_dev:5432; three PostgreSQL roles and Redis-backed sessions verified."
+    } catch {
+        if ($null -ne $startedServer) { $process=Get-ProcessInfo $startedServer.Id; if (Test-PreviewCommand $process) { Stop-Process -Id $startedServer.Id } }
+        if ($null -ne $startedRedis) { foreach ($process in @(Get-RedisPreviewProcesses | Where-Object { [int] $_.ProcessId -eq $startedRedis.Id })) { Stop-Process -Id ([int] $process.ProcessId) } }
+        throw
     }
-    foreach ($redis in @(Get-RedisPreviewProcesses)) {
-        if ($initialRedisPids -contains [int] $redis.ProcessId) { continue }
-        try {
-            Assert-RedisPreview ([int] $redis.ProcessId) | Out-Null
-            Stop-Process -Id ([int] $redis.ProcessId) -ErrorAction Stop
-        } catch { }
-    }
-    Write-Error $failure
+} catch {
+    # Never render subprocess/configuration contents, database exceptions or secret values.
+    Write-Error $_.Exception.Message
     exit 1
 }

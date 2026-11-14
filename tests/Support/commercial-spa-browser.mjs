@@ -157,8 +157,8 @@ export async function runCommercialCases({ page, ready, check, get, post, comman
         await nextCommand();
         await page.locator('[data-operation="register"]').click();
         const resource = await get(page, '/internal/commercial');
-        const target = resource.body.data.targets.find(target => target.action === 'RegisterCommercialScope' && target.workspace_public_id === fixture.b.workspaces[0].public_id); assert.ok(target);
-        await page.locator('#scope-select').selectOption(target.target_id + '|' + target.workspace_public_id);
+        const target = resource.body.data.targets.find(target => target.action === 'RegisterCommercialScope' && target.business_public_id === fixture.b.businesses[0].business_public_id); assert.ok(target);
+        await page.locator('#scope-select').selectOption(target.target_id + '|' + target.business_public_id);
         const registered = await uiCommand('/internal/commercial/registrations', () => page.getByRole('button', { name: 'تسجيل المستفيد', exact: true }).click());
         const body = await registered.json(); assert.equal(body.market_id, market); assert.equal(body.configuration_id, configuration);
         registeredScope = target.target_id;

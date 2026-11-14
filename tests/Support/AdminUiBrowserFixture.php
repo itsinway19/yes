@@ -46,7 +46,7 @@ foreach (($argv[1] ?? '') === 'employee' ? ['employee'] : ['founder', 'advertise
     Auth::forgetGuards();
     $session = $app['session']->driver();
     $session->start();
-    $request = Request::create($internal ? '/internal/administration/appearance' : '/workspaces', 'GET');
+    $request = Request::create($internal ? '/internal/administration/appearance' : '/businesses', 'GET');
     $request->setLaravelSession($session);
     $request->setUserResolver(fn () => $user);
     Auth::guard($internal ? 'internal' : 'web')->login($user);

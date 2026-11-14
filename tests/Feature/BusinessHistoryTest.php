@@ -24,7 +24,7 @@ final class BusinessHistoryTest extends TestCase
 
     private function selection(array $business, string $action): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        return ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $business['grant_refs'][$action]]]];
     }
 
@@ -61,7 +61,8 @@ final class BusinessHistoryTest extends TestCase
         foreach (['context' => ['1', '1', 'Corrected activity'], 'markets' => ['2', '2', null], 'intent' => ['1', '3', null], 'preferences' => ['1', null, null]] as $kind => [$version, $context]) {
             $result = $this->getJson($this->url($a, $kind))->assertOk()->assertJsonCount(1, 'data.entries')
                 ->assertJsonPath('data.entries.0.version', $version)->assertJsonPath('data.entries.0.context_version', $context)
-                ->assertJsonPath('data.has_imported_baseline', false)->assertJsonPath('data.legacy_history', 'not_included');
+                ->assertJsonPath('data.history_scope', 'native_business_transitions')
+                ->assertJsonMissingPath('data.has_imported_baseline')->assertJsonMissingPath('data.legacy_history');
             $this->assertApplicationContract('BusinessHistoryResult', $result->json());
             foreach (['actor_id', 'command_id', 'workspace_id', 'qualification_id'] as $private) {
                 $this->assertStringNotContainsString($private, $result->getContent());

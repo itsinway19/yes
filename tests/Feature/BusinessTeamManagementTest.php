@@ -16,7 +16,7 @@ final class BusinessTeamManagementTest extends TestCase
     private function setupTeam(User $owner): array
     {
         $b = $this->actingAs($owner)->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Shop team'])->assertCreated()->json('data');
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (int) $b['grant_refs']['business.context.read']]]];
+        $selection = ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (int) $b['grant_refs']['business.context.read']]]];
         $this->postJson('/api/businesses/'.$b['business_public_id'].'/direct-team', ['command_id' => (string) Str::uuid(), 'authority_selection' => $selection])->assertOk();
 
         return [$b, $selection];
@@ -89,7 +89,7 @@ final class BusinessTeamManagementTest extends TestCase
         $this->actingAs($owner)->getJson($base.'?access='.$read)->assertOk()->assertJsonPath('data.members', []);
         $this->postJson($base, [...$body, 'command_id' => (string) Str::uuid()])->assertOk();
         $this->actingAs($employee)->getJson('/api/businesses/'.$b['business_public_id'].'/surface?access='.$staffRead)->assertForbidden();
-        $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
+        $this->assertFalse(DB::connection('pgsql_migrations')->getSchemaBuilder()->hasTable('workspaces'));
         $this->assertSame(0, DB::connection('pgsql_migrations')->table('security_action_grants')->whereIn('scope_kind', ['source', 'client_data', 'data_use'])->count());
     }
 

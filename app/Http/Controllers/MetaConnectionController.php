@@ -17,9 +17,7 @@ use App\Providers\Ads\NativeSourceOwner;
 use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderAccessStore;
 use App\Providers\Ads\ProviderRequestGuard;
-use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
-use App\Sources\SourceRegistry;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\JsonResponse;
@@ -32,13 +30,13 @@ use Illuminate\Validation\ValidationException;
 use LogicException;
 use Symfony\Component\HttpFoundation\ParameterBag;
 
-/** Meta web API only. All effects retain the signed Workspace and exact A003/BB1 boundaries. */
+/** Meta web API only. All effects retain the signed Business and exact A003/BB1 boundaries. */
 final class MetaConnectionController extends Controller
 {
-    public function index(Request $request, string $workspace, NativeSourceContext $context, Factory $http): JsonResponse
+    public function index(Request $request, string $business, NativeSourceContext $context, Factory $http): JsonResponse
     {
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $http): array {
-            DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->workspaceId, SessionAuthority::sessionKey($request)]);
+        return $this->respond(fn () => $context->run($request->user(), $business, function (NativeSourceOwner $w) use ($request, $http): array {
+            DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->businessId, SessionAuthority::sessionKey($request)]);
             $sources = $w->sources('s')->join('source_capabilities as c', 'c.source_id', '=', 's.id')
                 ->where('s.family', 'meta')->where('s.namespace', 'ad_account')
                 ->where('c.operation', 'report.read')->where('c.purpose', 'advertising_analysis')
@@ -56,7 +54,7 @@ final class MetaConnectionController extends Controller
             $fresh = app(SessionAuthority::class)->hasFreshAuthentication($request, $request->user());
             $intent = null;
             if ($owner && $fresh) {
-                DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->workspaceId, SessionAuthority::sessionKey($request)]);
+                DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->businessId, SessionAuthority::sessionKey($request)]);
                 $existing = $w->sources()->where('family', 'meta')
                     ->where('namespace', 'facebook_login_configuration')->where('declared_external_id', $settings->configurationId)->value('id');
                 $scope = $w->scope($existing ?? (string) Str::uuid7(), Provider::Meta, $settings->configurationId,
@@ -70,14 +68,14 @@ final class MetaConnectionController extends Controller
         }, $request));
     }
 
-    public function connect(Request $request, string $workspace, NativeSourceContext $context, Factory $http): JsonResponse
+    public function connect(Request $request, string $business, NativeSourceContext $context, Factory $http): JsonResponse
     {
         $input = $this->input($request, ['intent' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{43}$/D']]);
 
-        return $this->respond(function () use ($request, $workspace, $context, $http, $input): array {
+        return $this->respond(function () use ($request, $business, $context, $http, $input): array {
             [$settings, , $coordinator, , $flows] = $this->configured($http);
 
-            return $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $input, $settings, $coordinator, $flows): array {
+            return $context->run($request->user(), $business, function (NativeSourceOwner $w) use ($request, $input, $settings, $coordinator, $flows): array {
                 $intent = $flows->load($request, $coordinator->configurationBinding(), 'connect', $input['intent']);
                 $this->sameOwner($w, $intent);
                 $scope = $intent['scope'];
@@ -141,19 +139,19 @@ final class MetaConnectionController extends Controller
             ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
     }
 
-    public function discovery(Request $request, string $workspace, string $flow, NativeSourceContext $context, Factory $http): JsonResponse
+    public function discovery(Request $request, string $business, string $flow, NativeSourceContext $context, Factory $http): JsonResponse
     {
-        return $this->respond(function () use ($request, $workspace, $flow, $context, $http): array {
+        return $this->respond(function () use ($request, $business, $flow, $context, $http): array {
             [, , $coordinator, , $flows] = $this->configured($http);
 
-            return $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $flow, $coordinator, $flows): array {
+            return $context->run($request->user(), $business, function (NativeSourceOwner $w) use ($request, $flow, $coordinator, $flows): array {
                 $record = $flows->load($request, $coordinator->configurationBinding(), 'discovery', $flow);
                 $this->sameOwner($w, $record);
                 $cursor = $record['data']['cursor'];
                 $native = $cursor === null ? null : new NativeProgress($cursor['kind'], $cursor['basis'], $cursor['payload']);
                 $page = $coordinator->discover($request, $record['scope'], $record['access_version'], $record['data']['pending'], $native);
                 $choices = [];
-                DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->workspaceId, SessionAuthority::sessionKey($request)]);
+                DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->businessId, SessionAuthority::sessionKey($request)]);
                 foreach ($page->accounts as $account) {
                     $existing = $w->sources('s')->join('source_capabilities as c', 's.id', '=', 'c.source_id')
                         ->where('s.family', 'meta')->where('s.namespace', 'ad_account')
@@ -180,35 +178,20 @@ final class MetaConnectionController extends Controller
         });
     }
 
-    public function select(Request $request, string $workspace, NativeSourceContext $context, Factory $http): JsonResponse
+    public function select(Request $request, string $business, NativeSourceContext $context, Factory $http): JsonResponse
     {
         $input = $this->input($request, ['selection' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{43}$/D']]);
 
-        return $this->respond(function () use ($request, $workspace, $context, $http, $input): array {
+        return $this->respond(function () use ($request, $business, $context, $http, $input): array {
             [, , $coordinator, , $flows] = $this->configured($http);
 
-            return $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $coordinator, $flows, $input): array {
+            return $context->run($request->user(), $business, function (NativeSourceOwner $w) use ($request, $coordinator, $flows, $input): array {
                 $record = $flows->load($request, $coordinator->configurationBinding(), 'selection', $input['selection']);
                 $this->sameOwner($w, $record);
                 $d = $record['data'];
                 $selected = $w->scope($d['source_id'], Provider::Meta, $d['account_id'], 'report.read', 'advertising_analysis');
-                if ($w->businessId !== null) {
-                    $w->bootstrap($request, $selected, $d['command'], 'ad_account', 'Meta account '.$selected->accountId);
-                } else {
-                    $actions = $d['register'] ? ['source.register', 'source.read', 'provider.connect', 'provider.read']
-                        : ['source.read', 'provider.connect', 'provider.read'];
-                    foreach ($actions as $action) {
-                        app(GrantAuthority::class)->requestSourceGrant($request, $w->workspaceId, ['source_id' => $selected->sourceId,
-                            'resource' => $selected->accountId, 'operation' => $selected->operation, 'purpose' => $selected->purpose,
-                            'action' => $action, 'decision' => 'authorize', 'expires_at' => null, 'reason' => 'explicit_meta_account_selection']);
-                    }
-                    if ($d['register']) {
-                        app(SourceRegistry::class)->command($request, $w->workspace(), ['source_id' => $selected->sourceId, 'command_id' => $d['command'],
-                            'effect' => 'register', 'family' => 'meta', 'namespace' => 'ad_account', 'external_id' => $selected->accountId,
-                            'label' => 'Meta account '.$selected->accountId, 'resource' => $selected->accountId, 'operation' => $selected->operation,
-                            'purpose' => $selected->purpose, 'expected_version' => 0, 'reason' => 'explicit_meta_account_selection']);
-                    }
-                }
+                $w->bootstrap($request, $selected, $d['command'], 'ad_account', 'Meta account '.$selected->accountId);
+
                 $receipt = $coordinator->select($request, $record['scope'], $record['access_version'], $d['pending'], $selected, $d['command'], $d['access_version']);
 
                 return ['source_id' => $selected->sourceId, 'receipt' => $receipt, 'access' => (new MetaAccessStatus)->snapshot($request, $selected)];
@@ -216,23 +199,19 @@ final class MetaConnectionController extends Controller
         });
     }
 
-    public function disconnect(Request $request, string $workspace, string $source, NativeSourceContext $context): JsonResponse
+    public function disconnect(Request $request, string $business, string $source, NativeSourceContext $context): JsonResponse
     {
         $input = $this->input($request, ['command_id' => ['required', 'uuid'], 'expected_version' => ['required', 'integer', 'min:1']]);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $source, $input): array {
+        return $this->respond(fn () => $context->run($request->user(), $business, function (NativeSourceOwner $w) use ($request, $source, $input): array {
             // Local custody revocation remains available when Meta configuration or transport is unavailable.
-            DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->workspaceId, SessionAuthority::sessionKey($request)]);
+            DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$w->businessId, SessionAuthority::sessionKey($request)]);
             $declared = $w->sources('s')->join('source_capabilities as c', 'c.source_id', '=', 's.id')
                 ->where('s.id', $source)->where('s.family', 'meta')->where('s.namespace', 'ad_account')
                 ->where('c.operation', 'report.read')->where('c.purpose', 'advertising_analysis')->first(['c.resource']);
             abort_if($declared === null, 404);
             $scope = $w->scope($source, Provider::Meta, $declared->resource, 'report.read', 'advertising_analysis');
-            if ($w->businessId === null) {
-                app(GrantAuthority::class)->requestSourceGrant($request, $w->workspaceId, ['source_id' => $scope->sourceId,
-                    'resource' => $scope->accountId, 'operation' => $scope->operation, 'purpose' => $scope->purpose,
-                    'action' => 'provider.revoke', 'decision' => 'authorize', 'expires_at' => null, 'reason' => 'explicit_meta_local_disconnect']);
-            }
+
             $receipt = app(ProviderAccessStore::class)->revoke($request, $scope, $input['command_id'], (int) $input['expected_version']);
 
             return ['source_id' => $source, 'receipt' => $receipt, 'access' => (new MetaAccessStatus)->snapshot($request, $scope)];
@@ -264,9 +243,9 @@ final class MetaConnectionController extends Controller
         }
     }
 
-    private function sameOwner(NativeSourceOwner $workspace, array $record): void
+    private function sameOwner(NativeSourceOwner $business, array $record): void
     {
-        $workspace->assertBound($record);
+        $business->assertBound($record);
     }
 
     private function input(Request $request, array $rules): array

@@ -67,7 +67,7 @@ final class InquiryEvidenceController
     {
         $input = $request->validate(['access' => ['required', 'regex:/^[1-9][0-9]{0,17}$/']]);
 
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (string) $input['access']]]];
+        return ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (string) $input['access']]]];
     }
 
     private function body(Request $request, array $extra): array

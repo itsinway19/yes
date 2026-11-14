@@ -21,7 +21,7 @@ final class SnapchatReportDownloadTest extends TestCase
 
     private function scope(): ProviderScope
     {
-        return new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::Snapchat, self::ACCOUNT, 'report.read', 'advertising_analysis');
+        return ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::Snapchat, self::ACCOUNT, 'report.read', 'advertising_analysis');
     }
 
     private function window(): ReportWindow

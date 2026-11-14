@@ -1,4 +1,4 @@
-param([string] $Filter = 'BusinessFoundationTest|WorkspaceCreationTest|InternalAuthorityTest|ProviderCallbackIngressTest')
+param([string] $Filter = 'BusinessFoundationTest|WorkspaceCreationTest|WorkspaceRetirementTest|InternalAuthorityTest|ProviderCallbackIngressTest')
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 $taskPgBin = 'C:\Program Files\PostgreSQL\18\bin'

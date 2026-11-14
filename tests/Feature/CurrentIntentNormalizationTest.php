@@ -50,7 +50,7 @@ class CurrentIntentNormalizationTest extends TestCase
     {
         $this->actingAs(User::factory()->create());
         $file = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Independent normalization subject'])->assertCreated()->json('data');
-        $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
+        $this->assertNull(DB::connection('pgsql_migrations')->scalar("SELECT to_regclass('public.workspaces')"));
 
         return (object) ['current_intent' => DB::connection('pgsql_migrations')->table('business_current_intents')->value('value')];
     }

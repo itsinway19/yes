@@ -9,60 +9,24 @@ use Illuminate\Support\Str;
 /** Explicit synthetic qualification graph; never installed as a runtime root-issuer policy. */
 final class BusinessAuthorityFixture
 {
-    /** Previously admitted organizational relationship, never a new product writer. */
-    public static function legacyWorkspaceLink(int|string $business, int $workspace, object $authority, int $actor, string $kind = 'agency'): object
-    {
-        app(DisposableTestDatabaseGuard::class)->assertSafe();
-        if (! in_array($kind, ['agency', 'collaboration'], true) || (int) $authority->business_id !== (int) $business || $authority->action !== 'business.link.manage' || (int) $authority->subject_user_id !== $actor) {
-            throw new \LogicException('Exact synthetic historical relationship issuer required.');
-        }
-        $db = DB::connection('pgsql_migrations');
-        if ($db->table('business_workspace_links')->where('business_id', $business)->where('workspace_id', $workspace)->where('kind', $kind)->where('status', 'active')->exists()) {
-            throw new \LogicException('Historical active relationship must be ended before its replacement fixture.');
-        }
-        $version = (int) $db->table('business_workspace_links')->where('business_id', $business)->where('workspace_id', $workspace)->where('kind', $kind)->max('revision');
-
-        return self::insert('business_workspace_links', ['link_id' => (string) Str::uuid7(), 'business_id' => (int) $business, 'workspace_id' => $workspace, 'kind' => $kind,
-            'status' => 'active', 'revision' => $version + 1, 'valid_from' => $db->scalar('SELECT clock_timestamp()::text'), 'valid_until' => null, 'authority_ref' => $authority->qualification_id], $actor);
-    }
-
-    /** Previously issued child: verification/revocation remain production paths. */
-    public static function legacyAgencyGrant(object $parent, int $recipient, int $workspace, int $actor): object
-    {
-        app(DisposableTestDatabaseGuard::class)->assertSafe();
-        $db = DB::connection('pgsql_migrations');
-        $qualification = json_decode($db->scalar('SELECT to_jsonb(q)::text FROM authority_qualification_receipts q WHERE qualification_id=?::uuid', [$parent->qualification_id]), true, flags: JSON_THROW_ON_ERROR);
-        $qualification['qualification_id'] = (string) Str::uuid7();
-        $qualification['policy_id'] = 'bounded_parent_delegation';
-        $qualification['issuer_kind'] = 'existing_grant';
-        $qualification['issuer_grant_id'] = $parent->id;
-        $qualification['subject_user_id'] = $recipient;
-        $qualification['allowed_actions'] = [$parent->action];
-        $qualification['evidence_ref'] = 'synthetic:historical-agency-child';
-        $issuedAt = $db->scalar('SELECT clock_timestamp()::text');
-        $qualification['valid_from'] = $issuedAt;
-        $q = self::insert('authority_qualification_receipts', $qualification, $actor);
-
-        return self::insert('security_action_grants', [...(array) $parent, 'id' => (int) $db->scalar("SELECT nextval('security_action_grants_id_seq')"),
-            'subject_user_id' => $recipient, 'subject_generation' => $db->table('principal_lifecycles')->where('user_id', $recipient)->value('generation'),
-            'granted_by' => $actor, 'source' => 'qualified_delegation', 'qualification_id' => $q->qualification_id, 'parent_grant_id' => $parent->id,
-            'created_at' => $issuedAt, 'updated_at' => $issuedAt, 'delegable' => false, 'delegation_realm_kind' => 'agency', 'delegation_workspace_id' => $workspace], $actor);
-    }
-
     public static function insert(string $table, array $values, int $actor): object
     {
         app(DisposableTestDatabaseGuard::class)->assertSafe();
-        if (! in_array($table, ['authority_qualification_receipts', 'security_action_grants', 'business_workspace_links',
-            'business_command_receipts', 'client_data_boundaries', 'resource_right_fences', 'boundary_subjects', 'data_use_scopes', 'business_data_use_bindings'], true)) {
+        if (! in_array($table, ['authority_qualification_receipts', 'security_action_grants',
+            'business_command_receipts', 'client_data_boundaries', 'resource_right_fences', 'boundary_subjects', 'data_use_scopes', 'business_data_use_bindings', 'source_registry', 'source_capabilities'], true)) {
             throw new \LogicException('Unregistered synthetic fixture relation.');
         }
         $owner = DB::connection('pgsql_migrations');
         // jsonb_populate_record fills omitted columns with NULL, bypassing table
-        // defaults. Keep the old client fixture explicit on the D1 schema while
-        // still allowing the populated pre-D1 upgrade test to run unchanged.
-        if ($table === 'data_use_scopes' && ! array_key_exists('rights_domain', $values)
-            && $owner->scalar("SELECT EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid='data_use_scopes'::regclass AND attname='rights_domain' AND NOT attisdropped)")) {
+        // defaults, so synthetic client licences supply their domain explicitly.
+        if ($table === 'data_use_scopes' && ! array_key_exists('rights_domain', $values)) {
             $values['rights_domain'] = 'client';
+        }
+        if ($table === 'source_registry') {
+            $values += ['created_at' => now()->toIso8601String(), 'scope_lock_marker' => false];
+        }
+        if ($table === 'source_capabilities') {
+            $values += ['declared_at' => now()->toIso8601String()];
         }
 
         return $owner->transaction(function () use ($owner, $table, $values, $actor): object {
@@ -77,7 +41,7 @@ final class BusinessAuthorityFixture
         });
     }
 
-    public static function root(int|string $business, int $actor, string $action, bool $delegable = true, string $kind = 'business', ?string $validUntil = null, ?int $agencyWorkspace = null): object
+    public static function root(int|string $business, int $actor, string $action, bool $delegable = true, string $kind = 'business', ?string $validUntil = null): object
     {
         $owner = DB::connection('pgsql_migrations');
         $q = self::insert('authority_qualification_receipts', [
@@ -86,7 +50,7 @@ final class BusinessAuthorityFixture
             'target_kind' => $kind, 'target_ref' => $kind === 'business' ? $owner->table('businesses')->where('id', $business)->value('public_id') : $business,
             'allowed_actions' => '{'.$action.'}', 'evidence_ref' => 'test:synthetic-qualified-root',
             'evidence_digest' => '\\x'.hash('sha256', 'synthetic-qualified-root'), 'status' => 'active', 'revision' => 1,
-            'valid_from' => $agencyWorkspace === null ? now()->subSecond()->toIso8601String() : $owner->scalar('SELECT clock_timestamp()::text'),
+            'valid_from' => now()->subSecond()->toIso8601String(),
             'valid_until' => $validUntil,
             'provenance' => 'SYNTHETIC TEST ONLY; not evidence of an authorized production issuer',
         ], $actor);
@@ -99,10 +63,10 @@ final class BusinessAuthorityFixture
             } => $business,
             'subject_generation' => $owner->table('principal_lifecycles')->where('user_id', $actor)->value('generation'),
             'reason' => 'SYNTHETIC TEST ROOT', 'status' => 'active', 'version' => 1,
-            'created_at' => $agencyWorkspace === null ? now()->toIso8601String() : $owner->scalar('SELECT clock_timestamp()::text'),
+            'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(), 'runtime_lock_marker' => false,
             'qualification_id' => $q->qualification_id, 'parent_grant_id' => null, 'delegable' => $delegable,
-            'delegation_realm_kind' => $agencyWorkspace === null ? 'direct' : 'agency', 'delegation_workspace_id' => $agencyWorkspace,
+            'delegation_realm_kind' => 'direct',
         ], $actor);
     }
 
@@ -127,7 +91,7 @@ final class BusinessAuthorityFixture
             'scope_kind' => 'client_data', 'boundary_id' => $id, 'subject_generation' => $owner->table('principal_lifecycles')->where('user_id', $actor)->value('generation'),
             'reason' => 'SYNTHETIC BOUNDARY', 'status' => 'active', 'version' => 1, 'created_at' => now()->toIso8601String(), 'updated_at' => now()->toIso8601String(),
             'runtime_lock_marker' => false, 'qualification_id' => $q->qualification_id, 'parent_grant_id' => null,
-            'delegable' => true, 'delegation_realm_kind' => 'direct', 'delegation_workspace_id' => null], $actor);
+            'delegable' => true, 'delegation_realm_kind' => 'direct'], $actor);
 
         return ['boundary_id' => $id, 'grant_id' => $g->id, 'fence_id' => $f->fence_id];
     }

@@ -24,6 +24,21 @@ $store->put('a001_generation', 1);
 $request = Request::create('/internal/administration/maintenance', 'POST');
 $request->setLaravelSession($store);
 $request->setUserResolver(fn () => $user);
+if (isset($f['ready'])) {
+    $authority = DB::connection('pgsql_authority');
+    file_put_contents($f['ready'], json_encode(['pid' => (int) $authority->scalar('SELECT pg_backend_pid()')], JSON_THROW_ON_ERROR), LOCK_EX);
+    $deadline = microtime(true) + 15;
+    do {
+        clearstatcache(true, $f['release']);
+        if (is_file($f['release'])) {
+            break;
+        }
+        if (microtime(true) >= $deadline) {
+            throw new RuntimeException('Maintenance command release not observed.');
+        }
+        usleep(10000);
+    } while (true);
+}
 try {
     $result = DB::transaction(function () use ($request, $user, $f) {
         app(PrincipalContext::class)->activate($user);

@@ -32,7 +32,7 @@ final class BusinessActivityBrowserHarness extends TestCase
         $link = $db->table('security_action_grants')->where('business_id', $id)->where('subject_user_id', $consumer->id)->where('action', 'business.link.manage')->where('status', 'active')->sole()->id;
         $right = $this->knowledgeRight($consumer, $originals['source'], $ref['key'], 'market.knowledge', 'display', ['finding', 'practice_basis']);
         $this->postJson('/api/businesses/'.$business.'/data-use-bindings', ['command_id' => (string) Str::uuid(), 'data_use_scope_id' => $right['scope_id'], 'effect' => 'add', 'expected_relation' => 0,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $link], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $right['grant_id']],
             ]],
         ])->assertOk();

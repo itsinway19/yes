@@ -5,8 +5,20 @@ import { readFile } from 'node:fs/promises';
 import ts from 'typescript';
 import { ref } from 'vue';
 import { createApplicationClient } from '../resources/js/api/application.ts';
+import Ajv from 'ajv/dist/2020.js';
+import { spec } from '../scripts/application-openapi.mjs';
 
 const moduleUrl = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
+test('customer directory contract accepts only the actual creator and history projections', () => {
+    const validate = new Ajv({ strict: false, validateFormats: false }).compile({ ...spec, $ref: '#/components/schemas/InternalCustomersData' });
+    const id = '9465e77a-c79a-4001-931f-98ed673397d9';
+    const common = { filters: { kind: 'businesses', search: '', status: '', page: 1 }, freshAuthentication: false, total: 1 };
+    assert.equal(validate({ ...common, rows: [{ public_id: id, name: 'Business', status: 'active', revision: 2,
+        creator_name: 'Creator', creator_email: 'creator@example.test' }], details: { public_id: id, name: 'Business', history: [] } }), true, JSON.stringify(validate.errors));
+    assert.equal(validate({ ...common, filters: { ...common.filters, kind: 'users' }, rows: [{ public_id: id, name: 'User',
+        status: 'current', revision: 1, email: 'user@example.test', email_verified_at: null, business_count: 1, can_reactivate: false }],
+        details: { public_id: id, name: 'User', email: 'user@example.test', businesses: [{ public_id: id, name: 'Business', status: 'active', role: 'creator' }], history: [] } }), true, JSON.stringify(validate.errors));
+});
 async function compile(file, ports) {
     let source = ts.transpileModule(await readFile(new URL('../resources/js/internal-operations/' + file, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
     for (const [name, target] of Object.entries(withPresentationPorts({ vue: import.meta.resolve('vue'), 'openapi-fetch': import.meta.resolve('openapi-fetch'), ...ports }))) source = source.replaceAll(`from '${name}'`, 'from ' + JSON.stringify(target));
@@ -78,7 +90,7 @@ test('customer witness must bind the exact Laravel query URI, including spaces a
 
 test('customer command retains the original immutable idempotency payload and does not retry transport failure', async () => {
     const calls = [], view = await stateFixture(async (url, options) => { calls.push({ url, ...options }); throw Error('ACK lost'); }, 'customerState.ts');
-    const command = Object.freeze({ command_id: crypto.randomUUID(), kind: 'workspaces', target: crypto.randomUUID(), decision: 'suspend', reason: 'Explicit reason', expected_status: 'active', expected_revision: 0 });
+    const command = Object.freeze({ command_id: crypto.randomUUID(), kind: 'businesses', target: crypto.randomUUID(), decision: 'suspend', reason: 'Explicit reason', expected_status: 'active', expected_revision: 0 });
     try {
         await assert.rejects(view.state.changeCustomerStatus(command), /ACK lost/);
         assert.equal(calls.length, 1); assert.equal(calls[0].body, command);

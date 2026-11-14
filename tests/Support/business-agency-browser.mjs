@@ -9,7 +9,7 @@ export async function businessAgencyBrowserProof({ browser, run, origin, fixture
         const f = JSON.parse(await readFile(path.join(run, 'business-agency-browser-fixture.json'), 'utf8'));
         const contexts = [];
         const inspectedStates = [];
-        const selection = grant => ({ realm_kind: 'direct', realm_workspace_public_id: null,
+        const selection = grant => ({ realm_kind: 'direct',
             requirements: [{ requirement_kind: 'business', leaf_grant_id: Number(grant) }] });
         const expiry = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
         const localExpiry = (() => { const date = new Date(expiry); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); })();
@@ -194,9 +194,9 @@ export async function businessAgencyBrowserProof({ browser, run, origin, fixture
             ]);
             assert.equal(appointed.status(), 200);
             const custodyCommand = appointed.request().postDataJSON(), custodyReceipt = (await appointed.json()).data;
-            assert.equal(custodyCommand.workspace_public_id, null); assert.equal(custodyCommand.effect, 'appoint');
+            assert.equal(Object.hasOwn(custodyCommand, 'workspace_public_id'), false); assert.equal(custodyCommand.effect, 'appoint');
             assert.equal(custodyCommand.recipient_public_id, f.actors.employee.public_id);
-            assert.equal(custodyReceipt.workspace_public_id, null); assert.equal(custodyReceipt.link_ref, null);
+            assert.equal(Object.hasOwn(custodyReceipt, 'workspace_public_id'), false);
             assert.ok(Number.isSafeInteger(custodyReceipt.versions.authority_epoch));
             const custodyRead = custodyReceipt.grant_refs['business.context.read']; assert.ok(custodyRead);
             await waitReady(client);
@@ -204,7 +204,7 @@ export async function businessAgencyBrowserProof({ browser, run, origin, fixture
                 command_id: crypto.randomUUID(), authority_selection: selection(f.client.grant_refs['business.context.read']),
                 effect: 'revoke', grantee_public_id: f.actors.client.public_id, action: 'business.context.read',
                 parent_grant_id: null, grant_id: Number(f.client.grant_refs['business.context.read']), expected_grant: 1,
-                expires_at: null, delegable: false, realm_workspace_public_id: null,
+                expires_at: null, delegable: false,
             });
             assert.equal(surrendered.status, 200);
             assert.equal((await sendFrom(client, `/api/businesses/${f.client.business_public_id}/surface?access=${f.client.grant_refs['business.context.read']}`)).status, 403);

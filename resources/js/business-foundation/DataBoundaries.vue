@@ -45,7 +45,7 @@ async function refresh() {
         </template>
         <BoundaryEditor v-else-if="data && 'boundary' in data" :key="`${key(data.boundary.boundary_id, data.authority_selection)}:boundary`" :surface="data" :refreshing="refreshing" @refresh="refresh" />
         <p v-if="refreshing" role="status" data-boundary-rechecking>{{ t('جارٍ التحقق من التغطية الحالية…', 'Checking current coverage…') }}</p>
-        <details class="advertiser-context-note"><summary>{{ t('ماذا يعني ربط النطاق بنشاط؟', 'What does attaching a boundary to a business mean?') }}</summary><p>{{ t('يحدد الربط النشاط الذي يغطيه نطاق البيانات. لا يمنح وحده قراءة المصدر أو تحليله أو تصديره، ولا تعني عضوية مساحة التعاون ملكية بيانات العميل.', 'Attachment identifies the business covered by a data boundary. It grants no source reading, analysis or export authority, and workspace membership does not establish client-data ownership.') }}</p></details>
+        <details class="advertiser-context-note"><summary>{{ t('ماذا يعني ربط النطاق بنشاط؟', 'What does attaching a boundary to a business mean?') }}</summary><p>{{ t('يحدد الربط النشاط الذي يغطيه نطاق البيانات. لا يمنح وحده قراءة المصدر أو تحليله أو تصديره. كذلك لا يمنح ارتباط الموظف أو تفويض الوكالة ضمن النشاط تلقائيًا ملكية بيانات العميل أو صلاحية قراءة مصادره واستعمالها.', 'Attachment identifies the business covered by a data boundary. It alone grants no source reading, analysis or export authority. Staff membership or agency delegation within a business does not automatically establish client-data ownership or permission to read or use its sources.') }}</p></details>
         </AdvertiserWorkspaceLayout>
     </div>
 </template>

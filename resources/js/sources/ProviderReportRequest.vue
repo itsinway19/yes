@@ -8,7 +8,7 @@ import { remember, restore } from './commands';
 import type { ReportPeriod, ReportCommand } from './providers';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
-const props = defineProps<{ workspaceId?: string; businessId?: string; sourceId: string; version: number; allowed: boolean; provider: 'meta' | 'google' | 'tiktok' | 'snapchat' | 'x' }>();
+const props = defineProps<{ businessId?: string; sourceId: string; version: number; allowed: boolean; provider: 'meta' | 'google' | 'tiktok' | 'snapchat' | 'x' }>();
 const owner = nativeSourceReference(props);
 type Status = { generation: number; timezone: string; deadline: string; download?: { generation: number; url: string } | null; last_run: { coverage: string; recorded_at: string } | null };
 type Command = { campaign_ids?: string[]; placement?: string; mode?: string; start_date: string; end_date: string; command_id: string; expected_version: number; expected_generation: number; deadline: string };
@@ -45,7 +45,7 @@ const error = ref('');
 const message = ref('');
 const cancellation = new AbortController();
 let active = true;
-const base = `${typeof owner === 'string' ? '/workspaces/' : '/businesses/'}${encodeURIComponent(typeof owner === 'string' ? owner : owner.publicId)}/providers/${props.provider}/${encodeURIComponent(props.sourceId)}/report`;
+const base = `/businesses/${encodeURIComponent(owner.publicId)}/providers/${props.provider}/${encodeURIComponent(props.sourceId)}/report`;
 const key = () => `${props.version}:${start.value}:${end.value}:${campaignIds.value}:${placement.value}:${mode.value}`;
 
 watch([start, end, campaignIds, placement, mode, () => props.version], () => {
@@ -72,7 +72,7 @@ async function fetchStatus() {
             ? { provider: 'x', period: { start_date: start.value, end_date: end.value, campaign_ids: campaignIds.value.split(/[\s,]+/).filter(Boolean), placement: placement.value, mode: mode.value } }
         : props.provider === 'meta' ? { provider: 'meta', period: { start_date: start.value, end_date: end.value, mode: mode.value } }
             : { provider: props.provider, period: { start_date: start.value, end_date: end.value } };
-    return providers.reportStatus({ workspace: owner, source: props.sourceId, signal: cancellation.signal }, selection);
+    return providers.reportStatus({ business: owner, source: props.sourceId, signal: cancellation.signal }, selection);
 }
 
 async function loadCampaigns(continuation: string | null = null) {
@@ -124,7 +124,7 @@ async function submit() {
             ? { provider: 'x', command: { ...pending, campaign_ids: pending.campaign_ids!, placement: pending.placement as 'ALL_ON_TWITTER' | 'SPOTLIGHT' | 'TREND', mode: pending.mode as 'SYNC' | 'ASYNC' } }
             : props.provider === 'meta' ? { provider: 'meta', command: { ...pending, mode: pending.mode as 'SYNC' | 'ASYNC' } }
                 : { provider: props.provider, command: pending };
-        await providers.report({ workspace: owner, source: props.sourceId, signal: cancellation.signal }, selection);
+        await providers.report({ business: owner, source: props.sourceId, signal: cancellation.signal }, selection);
         if (!active || view !== key()) return;
         submittedGeneration.value = pending.expected_generation; submittedDeadline.value = pending.deadline; command.value = null; waiting.value = true;
         saveDraft();

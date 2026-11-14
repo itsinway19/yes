@@ -24,7 +24,7 @@ trait InquiryEvidenceFixture
 
     protected function selection(string|int $grant): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (string) $grant]]];
+        return ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (string) $grant]]];
     }
 
     protected function fixture(): array

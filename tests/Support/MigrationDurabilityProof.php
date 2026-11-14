@@ -1,7 +1,13 @@
 <?php
 
+use App\Foundation\Business\BusinessScope;
+use App\Models\User;
 use App\Security\DisposableTestDatabaseGuard;
+use App\Security\SessionAuthority;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Http\Request;
+use Illuminate\Session\ArraySessionHandler;
+use Illuminate\Session\Store;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -34,40 +40,29 @@ $catalog = static function () use ($owner): array {
 $fresh = $catalog();
 file_put_contents(storage_path('framework/testing/remediation-fresh-catalog.json'), json_encode($fresh, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
 echo "EMPTY_TO_HEAD=PASS\n";
-$reset->clear();
-if (Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true, '--path' => [
-    'database/migrations/0001_01_01_000000_create_users_table.php',
-    'database/migrations/0001_01_01_000010_create_workspace_foundation.php',
-]]) !== 0) {
-    throw new RuntimeException('Historical boundary installation failed.');
+$user = User::factory()->create();
+$session = new Store('migration-durability', new ArraySessionHandler(120));
+$session->start();
+$request = Request::create('/api/businesses', 'POST');
+$request->setUserResolver(fn () => $user);
+$request->setLaravelSession($session);
+app(SessionAuthority::class)->issue($request, $user);
+$draft = app(BusinessScope::class)->create($request, (string) Str::uuid7(), 'Synthetic populated Business', null);
+if (! isset($draft['business_public_id'])) {
+    throw new RuntimeException('The Business fixture did not commit.');
 }
-$users = [];
-for ($i = 0; $i < 4; $i++) {
-    $users[] = $owner->table('users')->insertGetId(['public_id' => (string) Str::uuid7(), 'name' => 'Synthetic legacy '.$i,
-        'email' => 'legacy'.$i.'@example.test', 'email_verified_at' => $i === 3 ? null : '2026-10-01 00:00:00+00',
-        'password' => password_hash('synthetic-password', PASSWORD_BCRYPT, ['cost' => 4]),
-        'created_at' => '2026-10-01 00:00:00+00', 'updated_at' => '2026-10-01 00:00:00+00']);
-}
-$workspaces = [];
-for ($i = 0; $i < 2; $i++) {
-    $workspaces[] = $owner->table('workspaces')->insertGetId(['name' => 'Synthetic populated '.$i, 'slug' => 'synthetic-populated-'.$i,
-        'status' => 'active', 'currency_code' => 'SAR', 'timezone' => 'UTC']);
-}
-foreach ([[0, 0, 'owner'], [0, 1, 'member'], [0, 2, 'admin'], [1, 1, 'owner'], [1, 3, 'member']] as [$workspace, $user, $role]) {
-    $owner->table('workspace_memberships')->insert(['workspace_id' => $workspaces[$workspace], 'user_id' => $users[$user], 'role' => $role, 'status' => 'active']);
-}
-$owner->table('password_reset_tokens')->insert(['email' => 'legacy0@example.test', 'token' => password_hash('synthetic-token', PASSWORD_BCRYPT, ['cost' => 4]), 'created_at' => '2026-10-01 00:00:00+00']);
 $preserved = [];
-foreach (['users', 'workspaces', 'workspace_memberships', 'password_reset_tokens'] as $table) {
-    $preserved[$table] = $owner->table($table)->get()->map(fn ($row) => (array) $row)->all();
+$rows = fn (string $table) => $owner->select("SELECT to_jsonb(r)::text AS value FROM public.{$table} r ORDER BY value");
+foreach (['users', 'businesses', 'business_context_heads', 'security_action_grants', 'business_command_receipts'] as $table) {
+    $preserved[$table] = $rows($table);
 }
 if (Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]) !== 0) {
-    throw new RuntimeException('Populated forward migration failed.');
+    throw new RuntimeException('Repeated migration on the populated Business installation failed.');
 }
-foreach ($preserved as $table => $rows) {
-    $actual = $owner->table($table)->get(array_keys($rows[0]))->map(fn ($row) => (array) $row)->all();
-    if ($rows !== $actual) {
-        throw new RuntimeException('Historical facts changed: '.$table);
+$reset->assertInstalledCatalog();
+foreach ($preserved as $table => $expected) {
+    if ($expected != $rows($table)) {
+        throw new RuntimeException('Business facts changed on repeated migration: '.$table);
     }
 }
 $forward = $catalog();
@@ -76,7 +71,7 @@ if ($fresh != $forward) {
     $different = array_keys(array_filter($fresh, fn ($rows, $key) => $rows != $forward[$key], ARRAY_FILTER_USE_BOTH));
     throw new RuntimeException('Final catalog differs: '.implode(', ', $different));
 }
-echo 'POPULATED_000010_TO_HEAD=PASS; PRESERVED='.json_encode(array_map('count', $preserved), JSON_THROW_ON_ERROR)."\n";
+echo 'POPULATED_BASELINE_REPEAT=PASS; PRESERVED='.json_encode(array_map('count', $preserved), JSON_THROW_ON_ERROR)."\n";
 echo 'FINAL_CATALOG_EQUALITY=PASS; GROUPS=7; MIGRATIONS='.$owner->table('migrations')->count()."\n";
 $reset->install();
 if ($catalog() != $fresh) {

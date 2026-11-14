@@ -9,7 +9,7 @@ const english: Record<string, string> = {
     'معرّف المصدر': 'Source ID', 'المورد': 'Resource', 'العملية (رمز)': 'Operation code', 'الغرض (رمز)': 'Purpose code', 'الفعل': 'Action', 'القرار': 'Decision',
     'منح الصلاحية المحددة': 'Grant the specified permission', 'سحب الصلاحية المحددة': 'Withdraw the specified permission', 'تأكيد القرار الصريح': 'Confirm the explicit decision',
     'تسجيل الهوية المعلنة': 'Register the declared identity', 'العائلة': 'Family', 'نطاق المعرّف': 'Identifier namespace', 'معرّف الحساب المعلن': 'Declared account ID', 'الاسم المعلن': 'Declared label',
-    'تسجيل غير متحقق:': 'Unverified registration:', 'لا توجد مصادر قابلة للعرض بصلاحية المصدر الحالية. منح عرض المساحة وحده لا يكفي.': 'No sources are visible under the current source permission. Workspace view permission alone is insufficient.',
+    'تسجيل غير متحقق:': 'Unverified registration:', 'لا توجد مصادر قابلة للعرض بصلاحية المصدر الحالية.': 'No sources are visible under the current source permission.',
     'هوية معلنة غير متحققة:': 'Unverified declared identity:', 'الإجراء التالي:': 'Next action:', 'المصدر مسحوب؛ لا يسمح بالاستخدام المحمي': 'Source revoked; protected use is not permitted',
     'يلزم تحقق المزوّد المستقل قبل الاستخدام': 'Independent provider verification is required before use', 'تصحيح الاسم': 'Correct label', 'سحب المصدر': 'Revoke source', 'الاسم المعلن الجديد': 'New declared label',
     'تسليم التدقيق:': 'Audit delivery:', 'إعادة تسليم الالتزام نفسه': 'Redeliver the same obligation', 'يلزم تجديد المصادقة لإعادة التسليم.': 'Fresh authentication is required for redelivery.',

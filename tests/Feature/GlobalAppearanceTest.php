@@ -89,27 +89,23 @@ class GlobalAppearanceTest extends TestCase
         $this->assertSame($before, $db->table('principal_lifecycles')->orderBy('user_id')->get()->toJson());
         $this->assertSame($grants, $db->table('security_action_grants')->orderBy('id')->get()->toJson());
         foreach ([User::factory()->create(), User::factory()->create()] as $advertiser) {
-            $this->actingAs($advertiser)->get('/workspaces')->assertRedirect('/businesses');
+            $this->actingAs($advertiser)->get('/workspaces')->assertNotFound();
             $this->get('/businesses')->assertOk()->assertViewIs('spa')
                 ->assertSee('--ba-brand-primary:#ffffff;', false)->assertSee('--ba-secondary-text:#ffffff;', false)
                 ->assertSee('--ba-brand-secondary:#012345;', false);
         }
-        $this->getJson('/workspaces')->assertOk()->assertJsonMissingPath('appearance')->assertJsonMissingPath('data.appearance');
+        $this->getJson('/businesses')->assertOk()->assertJsonMissingPath('appearance')->assertJsonMissingPath('data.appearance');
     }
 
-    public function test_missing_relation_defaults_allow_unmigrated_preview_and_additive_migration_preserves_accounts(): void
+    public function test_missing_relation_defaults_allow_unmigrated_preview(): void
     {
         $db = DB::connection('pgsql_migrations');
         $user = User::factory()->create();
-        $migration = require database_path('migrations/0001_01_01_000400_create_global_appearance.php');
         $db->statement('ALTER TABLE global_appearance RENAME TO global_appearance_upgrade_fixture');
         try {
             $this->assertSame(0, app(GlobalAppearance::class)->current()['revision']);
-            DB::usingConnection('pgsql_migrations', fn () => $migration->up());
-            $this->assertSame(0, app(GlobalAppearance::class)->current()['revision']);
             $this->assertSame($user->email, $db->table('users')->where('id', $user->id)->value('email'));
         } finally {
-            $db->statement('DROP TABLE IF EXISTS global_appearance');
             $db->statement('ALTER TABLE global_appearance_upgrade_fixture RENAME TO global_appearance');
         }
     }

@@ -16,7 +16,7 @@ type Access = { reporting?: { can_report: boolean; why_not: string | null }; ver
 type Connection = { source_id: string; label: string; declared_account_id: string; access: Access };
 type Snapshot = ProviderSnapshot;
 type Account = { account_id: string; label: string; selection_handle: string };
-const props = defineProps<{ workspaceId?: string; businessId?: string; canManage: boolean }>();
+const props = defineProps<{ businessId?: string; canManage: boolean }>();
 const owner = nativeSourceReference(props);
 const emit = defineEmits<{ summary: [summary: ProviderSummary] }>();
 const snapshot = ref<Snapshot | null>(null);
@@ -121,7 +121,7 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
 
 <template>
     <section :dir="locale === 'ar' ? 'rtl' : 'ltr'" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="tiktok-connection-heading" :aria-busy="busy">
-        <PendingCommands :workspace-id="workspaceId" :business-id="businessId" provider="tiktok" @settled="refresh()" />
+        <PendingCommands :business-id="businessId" provider="tiktok" @settled="refresh()" />
         <fieldset class="min-w-0 border-0 p-0" :disabled="commandsFor(owner, 'tiktok').length > 0">
         <h2 id="tiktok-connection-heading" class="text-xl font-semibold text-slate-900 flex items-center gap-3"><ProviderBrand provider="tiktok" :size="40" />{{ providerCopy("ربط TikTok Ads") }}</h2>
         <p class="mt-2 text-sm leading-7 text-slate-600">{{ providerCopy("ابدأ التفويض عبر منصة TikTok الرسمية، ثم اختر حساب المعلن لهذا الربط.") }}</p>
@@ -145,7 +145,7 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
                 <li v-for="connection in snapshot.connections" :key="connection.source_id" class="py-4">
                     <p class="font-medium">{{ connection.label }}</p><p dir="ltr" class="text-xs text-slate-500">{{ connection.declared_account_id }}</p>
                     <p class="mt-2 text-sm text-slate-600">{{ stateLabel(connection.access.connection) }}</p>
-                    <ProviderReportRequest provider="tiktok" :workspace-id="workspaceId" :business-id="businessId" :source-id="connection.source_id" :version="connection.access.version"
+                    <ProviderReportRequest provider="tiktok" :business-id="businessId" :source-id="connection.source_id" :version="connection.access.version"
                         :allowed="canManage && connection.access.reporting?.can_report === true" />
                     <button v-if="canManage && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED'" type="button" :disabled="busy" data-source-disconnect @click="confirming = connection.source_id" class="mt-3 text-sm text-red-700 underline">{{ providerCopy("فصل المصدر محليًا") }}</button>
                     <div v-if="confirming === connection.source_id" class="mt-3 rounded-lg bg-slate-50 p-4 text-sm leading-7"><p>{{ providerCopy("سيُفصل هذا المصدر وتُزال بيانات تفويضه المحلية. لا يُلغى تفويض TikTok ولا الربط بالمصادر الأخرى.") }}</p><button type="button" :disabled="busy" data-source-confirm-disconnect @click="disconnect(connection)" class="me-4 text-red-700 underline">{{ providerCopy("تأكيد الفصل المحلي") }}</button><button type="button" :disabled="busy" @click="confirming = null" class="text-slate-600 underline">{{ providerCopy("إلغاء") }}</button></div>

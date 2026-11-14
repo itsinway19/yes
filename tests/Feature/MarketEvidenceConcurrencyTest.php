@@ -60,7 +60,7 @@ final class MarketEvidenceConcurrencyTest extends TestCase
             $businessRight = Fixture::root($businessId, $user->id, 'business.data.use');
             $link = Fixture::root($businessId, $user->id, 'business.link.manage');
             $process = $this->marketRight($user, $source, $evidence, $mode === 'retained_expiry' ? 'retained_read' : 'process', ['price']);
-            $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            $selection = ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $link->id], ['requirement_kind' => 'data_use', 'leaf_grant_id' => $process['grant_id']],
             ]];
             $this->postJson('/api/businesses/'.$business['business_public_id'].'/data-use-bindings', ['command_id' => (string) Str::uuid(),

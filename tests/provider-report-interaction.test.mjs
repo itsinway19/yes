@@ -18,15 +18,15 @@ const ports = {
     './providerCopy': moduleUrl('export const providerCopy=value=>value;'),
     '../spa/locale': moduleUrl(`import {ref} from ${JSON.stringify(import.meta.resolve('vue'))};export const locale=ref('ar');`),
     './api': moduleUrl(`const runtime = globalThis.__bb2ReportTransport;
-        const url = (target, provider) => '/workspaces/' + target.workspace + '/providers/' + provider + '/' + target.source + '/report';
+        const url = (target, provider) => '/businesses/' + target.business.publicId + '/providers/' + provider + '/' + target.source + '/report';
         export const providers = {
             reportStatus: async (target, selection) => { const args = [url(target, selection.provider), { params: selection.period, signal: target.signal }]; runtime.gets.push(args); return runtime.get(...args); },
             report: async (target, selection) => { const args = [url(target, selection.provider), selection.command, { signal: target.signal }]; runtime.posts.push(args); return runtime.post(...args); },
             campaigns: async () => ({ campaigns: [], continuation: null })
         };`),
     './commands': moduleUrl(`const drafts = globalThis.__reportDrafts;
-        export const remember = (workspace, feature, value) => { drafts.set(workspace + feature, JSON.parse(JSON.stringify(value))); return true; };
-        export const restore = (workspace, feature) => structuredClone(drafts.get(workspace + feature));`),
+        export const remember = (workspace, feature, value) => { drafts.set(workspace.publicId + feature, JSON.parse(JSON.stringify(value))); return true; };
+        export const restore = (workspace, feature) => structuredClone(drafts.get(workspace.publicId + feature));`),
     '../spa/transport': moduleUrl('export class TransportError extends Error {}'),
 };
 const { descriptor } = parse(await readFile(new URL('../resources/js/sources/ProviderReportRequest.vue', import.meta.url), 'utf8'));
@@ -64,7 +64,7 @@ function mount(provider = 'google', retain = false) {
     transport.gets = []; transport.posts = [];
     transport.get = async () => ({ generation: 0, timezone: 'Asia/Amman', deadline: new Date(Date.now() + 300000).toISOString(), last_run: null });
     transport.post = async () => ({ queued: true });
-    const props = reactive({ workspaceId: 'workspace', sourceId: 'source', version: 1, allowed: true, provider });
+    const props = reactive({ businessId: 'workspace', sourceId: 'source', version: 1, allowed: true, provider });
     const root = element('root');
     const app = renderer.createApp({ render: () => h(component, props) }); app.mount(root);
     return { root, props, unmount: () => app.unmount() };
@@ -148,10 +148,10 @@ for (const provider of ['meta', 'google', 'tiktok', 'snapchat', 'x']) test(`${pr
 test('completed Google snapshot renders an accessible download link and period changes remove it', async () => {
     const view = mount(); await dates(view.root);
     transport.get = async () => ({ generation: 1, timezone: 'Asia/Amman', deadline: new Date(Date.now() + 300000).toISOString(),
-        last_run: { coverage: 'COMPLETE' }, download: { generation: 1, url: '/workspaces/workspace/providers/google/source/report/1/download?stream=bound' } });
+        last_run: { coverage: 'COMPLETE' }, download: { generation: 1, url: '/businesses/workspace/providers/google/source/report/1/download?stream=bound' } });
     await refresh(view.root); await nextTick();
     const link = nodes(view.root, n => n.tag === 'a')[0];
-    assert.equal(link.props.href, '/workspaces/workspace/providers/google/source/report/1/download?stream=bound');
+    assert.equal(link.props.href, '/businesses/workspace/providers/google/source/report/1/download?stream=bound');
     assert.match(text(link), /تنزيل تقرير حملات Google/);
     const input = nodes(view.root, n => n.tag === 'input' && n.props.type === 'date')[0];
     input.value = '2026-09-02'; input.listeners.input({ target: input }); await nextTick();

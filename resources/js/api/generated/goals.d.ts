@@ -50,7 +50,7 @@ export interface components {
             visibility: components["schemas"]["Visibility"];
         };
         GoalsContext: {
-            workspace: {
+            beneficiary: {
                 /** Format: uuid */
                 public_id: string;
                 name: string;

@@ -25,7 +25,7 @@ final class DataUseSurfaceTest extends TestCase
 
     private function selection(string $kind, int $grant): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => $kind, 'leaf_grant_id' => $grant]]];
+        return ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => $kind, 'leaf_grant_id' => $grant]]];
     }
 
     private function coverage(array $scope, array $business): void

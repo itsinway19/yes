@@ -3,209 +3,84 @@
 namespace Tests\Feature\Security;
 
 use App\Models\User;
-use App\Security\GrantAuthority;
-use App\Security\LifecycleAuthority;
-use App\Security\ServiceWorkspaceContext;
+use App\Security\ServiceBusinessContext;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class ServiceAuthorityTest extends TestCase
 {
-    public function test_application_service_scope_acknowledgements_use_the_original_authority_and_revocation(): void
+    public function test_business_metadata_requires_exact_independent_approval_and_administration_for_each_consent_version(): void
     {
         $owner = User::factory()->create();
-        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($owner, 1);
-        $this->actingAs($owner)->legacyWorkspace(['name' => 'Service SPA scope', 'slug' => 'service-spa-scope'])->assertRedirect();
-        $database = DB::connection('pgsql_migrations');
-        $workspace = $database->table('workspaces')->sole();
         $manager = $this->serviceManager();
-        $this->actingAsInternal($manager)->get('/internal/security/devices')->assertOk();
-        $secret = $this->serviceCredentialFrom($this->post('/internal/services', ['name' => 'Synthetic SPA service'])->assertRedirect());
-        $path = '/workspaces/'.$workspace->public_id.'/services';
-        $this->actingAs($owner)->postJson($path, ['service' => $secret['public_id'], 'purpose' => 'short'])->assertUnprocessable();
-        $this->postJson($path, ['service' => $secret['public_id'], 'purpose' => 'Explicit synthetic service scope'])
-            ->assertOk()->assertJsonPath('redirect', '/workspaces/'.$workspace->public_id);
-        $scope = $database->table('service_workspace_scopes')->sole();
-        $this->assertSame('active', $scope->status);
-        $this->assertSame('Explicit synthetic service scope', $scope->purpose);
-        $this->assertDenied(fn () => app(ServiceWorkspaceContext::class)->run($secret['public_id'], $secret['credential'], $workspace->public_id, fn () => null));
-        $this->deleteJson($path.'/'.$secret['public_id'])->assertOk()->assertJsonPath('redirect', '/workspaces/'.$workspace->public_id);
-        $this->assertSame('revoked', $database->table('service_workspace_scopes')->sole()->status);
-        $this->actingAs(User::factory()->create());
-        $business = $this->postJson('/api/businesses', [
-            'command_id' => (string) Str::uuid(), 'name' => 'Independent advertiser',
-        ])->assertCreated()->json('data');
-        $this->getJson('/api/businesses/'.$business['business_public_id'].'/surface?access='.$business['grant_refs']['business.context.read'])
-            ->assertOk();
-        $this->postJson($path, ['service' => $secret['public_id'], 'purpose' => 'Forbidden cross-Workspace scope'])->assertForbidden();
-        $this->deleteJson($path.'/'.$secret['public_id'])->assertForbidden();
-        $this->assertSame('revoked', $database->table('service_workspace_scopes')->sole()->status);
-    }
+        $this->actingAsInternal($manager);
+        $service = $this->postJson('/internal/services', ['name' => 'Bounded metadata reader'])->assertOk()->json();
+        $business = $this->actingAs($owner)->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Bounded Business'])
+            ->assertCreated()->json('data');
+        $target = $business['business_public_id'];
+        $path = '/businesses/'.$target.'/services';
+        $api = '/api/businesses/'.$target;
+        $selection = static fn ($grant) => ['realm_kind' => 'direct', 'requirements' => [
+            ['requirement_kind' => 'business', 'leaf_grant_id' => (int) $grant],
+        ]];
+        $basis = $selection($business['grant_refs']['business.context.read']);
+        $purpose = 'Explicit bounded metadata purpose';
+        $metadata = fn (?string $requested = null, ?string $credential = null) => app(ServiceBusinessContext::class)
+            ->metadata($service['public_id'], $credential ?? $service['credential'], $target, $requested ?? $purpose);
+        $this->assertDenied($metadata);
+        $command = ['command_id' => (string) Str::uuid(), 'service' => $service['public_id'], 'purpose' => $purpose,
+            'expected_revision' => 0, 'business_revision' => 0, 'authority_selection' => $selection($business['grant_refs']['business.context.manage'])];
+        $this->postJson($path, $command)->assertForbidden();
+        $mandate = $this->postJson($api.'/operating-mandate', ['command_id' => (string) Str::uuid(), 'confirmed' => true,
+            'capacity' => 'responsible_business', 'authority_reference' => 'Explicit responsibility for this Business',
+            'valid_until' => now()->addHour()->toIso8601String(), 'previous_grant' => '0', 'authority_selection' => $basis])
+            ->assertOk()->json('data.grant_refs')['business.data.use'];
+        $enrollment = ['command_id' => (string) Str::uuid(), 'confirmed' => true, 'authority_reference' => 'Explicit limited metadata service responsibility',
+            'expires_at' => now()->addMinutes(30)->toIso8601String(), 'mandate_grant_id' => (string) $mandate, 'authority_selection' => $basis];
+        $approval = $this->postJson($api.'/service-approval/enrollment', $enrollment)->assertOk()->json('data');
+        $this->postJson($api.'/service-approval/enrollment', $enrollment)->assertOk()->assertJsonPath('data.grant_id', $approval['grant_id']);
+        $command['authority_selection'] = $selection($approval['grant_id']);
+        $command['business_revision'] = $approval['revision'];
+        $consent = $this->postJson($path, $command)->assertOk()->json('versions');
+        $this->postJson($path, $command)->assertOk()->assertJsonPath('versions', $consent);
+        $this->assertDenied($metadata);
+        $grant = ['service' => $service['public_id'], 'business' => $target, 'reason' => 'Approve only Business metadata'];
+        $this->actingAsInternal($manager)->postJson('/internal/service-grants', $grant)->assertOk();
+        $this->postJson('/internal/service-grants', $grant)->assertOk();
+        $this->assertSame(['public_id' => $target, 'lifecycle' => 'declared_draft', 'display_name' => 'Bounded Business'],
+            array_replace(array_fill_keys(['public_id', 'lifecycle', 'display_name'], null), $metadata()));
+        $this->assertDenied(fn () => $metadata('Another metadata purpose'));
+        $revoke = [...$command, 'command_id' => (string) Str::uuid(), 'expected_revision' => $consent['consent'], 'business_revision' => $consent['business']];
+        $revoked = $this->actingAs($owner)->deleteJson($path.'/'.$service['public_id'], $revoke)->assertOk()->json('versions');
+        $this->assertDenied($metadata);
+        $this->postJson($path, [...$command, 'command_id' => (string) Str::uuid(),
+            'expected_revision' => $revoked['consent'], 'business_revision' => $revoked['business']])->assertOk();
+        $this->assertDenied($metadata);
+        $this->actingAsInternal($manager)->postJson('/internal/service-grants', $grant)->assertOk();
+        $this->assertSame($target, $metadata()['public_id']);
+        $rotated = $this->postJson('/internal/services/'.$service['public_id'].'/rotate')->assertOk()->json();
+        $this->assertDenied($metadata);
+        $this->assertEquals(['public_id' => $target, 'lifecycle' => 'declared_draft', 'display_name' => 'Bounded Business'],
+            $metadata(credential: $rotated['credential']));
+        $this->assertDenied(fn () => $metadata('Another metadata purpose', $rotated['credential']));
 
-    public function test_service_requires_independent_identity_owner_scope_and_action_grant(): void
-    {
-        $owner = User::factory()->create();
-        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($owner, 1);
-        $this->actingAs($owner)->legacyWorkspace([
-            'name' => 'Owner Workspace', 'slug' => 'owner-workspace',
-        ])->assertRedirect();
-        $workspace = DB::connection('pgsql_migrations')->table('workspaces')->first();
+        $suspension = ['command_id' => (string) Str::uuid7(), 'kind' => 'businesses', 'target' => $target,
+            'decision' => 'suspend', 'reason' => 'Test administrative Business suspension', 'expected_status' => 'declared_draft', 'expected_revision' => 0];
+        $this->postJson('/internal/administration/customers/status', $suspension)->assertOk();
+        $this->assertDenied(fn () => $metadata(credential: $rotated['credential']));
+        $this->postJson('/internal/administration/customers/status', [...$suspension, 'command_id' => (string) Str::uuid7(),
+            'decision' => 'reactivate', 'expected_status' => 'suspended', 'expected_revision' => 1])->assertOk();
+        $this->assertSame($target, $metadata(credential: $rotated['credential'])['public_id']);
 
-        $manager = $this->serviceManager();
-        $this->actingAsInternal($manager)->get('/internal/security/devices')->assertOk();
-        $created = $this->post('/internal/services', ['name' => 'Report Reader'])
-            ->assertRedirect();
-        $this->assertDatabaseCount('service_identities', 1);
-        $secret = $this->serviceCredentialFrom($created);
-        $this->assertNotEmpty($secret['credential']);
-        $service = DB::table('service_identities')->where('public_id', $secret['public_id'])->first();
-        $this->assertNotSame($secret['credential'], $service->credential_hash);
-        $this->assertSame(0, DB::table('service_action_grants')->count());
-
-        $context = app(ServiceWorkspaceContext::class);
-        $this->assertDenied(fn () => $context->run($secret['public_id'], $secret['credential'],
-            $workspace->public_id, fn () => null));
-
-        $this->actingAs($owner)->post('/workspaces/'.$workspace->public_id.'/services', [
-            'service' => $secret['public_id'], 'purpose' => 'Scoped reporting for this Workspace',
-        ])->assertRedirect();
-        $this->assertDenied(fn () => $context->run($secret['public_id'], $secret['credential'],
-            $workspace->public_id, fn () => null));
-
-        $this->actingAsInternal($manager)->post('/internal/service-grants', [
-            'service' => $secret['public_id'],
-            'workspace' => $workspace->public_id,
-            'reason' => 'Owner approved metadata reporting',
-        ])->assertRedirect();
-        $visible = $context->run($secret['public_id'], $secret['credential'],
-            $workspace->public_id, fn () => DB::table('workspaces')->pluck('id')->all());
-        $this->assertSame([$workspace->id], $visible);
-        $this->assertSame(0, DB::table('workspaces')->count());
-
-        DB::transaction(function () use ($secret, $service, $workspace): void {
-            DB::selectOne("SELECT set_config('app.service_identity_id', ?, true)", [(string) $service->id]);
-            DB::selectOne("SELECT set_config('app.service_credential', ?, true)", [$secret['credential']]);
-            DB::selectOne("SELECT set_config('app.workspace_id', ?, true)", [(string) $workspace->id]);
-            DB::selectOne("SELECT set_config('app.authorization_phase', 'service', true)");
-            DB::selectOne("SELECT set_config('app.signed_service_context', 'forged', true)");
-            $this->assertSame(0, DB::table('workspaces')->count());
-        });
-
-        $this->assertInFlightEffectSerializesWithScopeRevocation(
-            $context, $secret, $workspace->public_id, $service->id, $workspace->id,
-        );
-
-        $grantId = DB::table('service_action_grants')->where('service_identity_id', $service->id)
-            ->where('workspace_id', $workspace->id)->where('status', 'active')->value('id');
-        $this->actingAsInternal($manager)->delete('/internal/service-grants/'.$grantId)->assertRedirect();
-        $this->assertDenied(fn () => $context->run($secret['public_id'], $secret['credential'],
-            $workspace->public_id, fn () => null));
-        $this->actingAsInternal($manager)->post('/internal/service-grants', [
-            'service' => $secret['public_id'], 'workspace' => $workspace->public_id,
-            'reason' => 'Owner approved metadata reporting',
-        ])->assertRedirect();
-
-        $rotatedResponse = $this->actingAsInternal($manager)->post('/internal/services/'.$secret['public_id'].'/rotate')
-            ->assertRedirect();
-        $rotated = $this->serviceCredentialFrom($rotatedResponse);
-        $this->assertNotSame($secret['credential'], $rotated['credential']);
-        $this->assertDenied(fn () => $context->run($secret['public_id'], $secret['credential'],
-            $workspace->public_id, fn () => null));
-        $secret = $rotated;
-        $this->assertSame([$workspace->id], $context->run($secret['public_id'], $secret['credential'],
-            $workspace->public_id, fn () => DB::table('workspaces')->pluck('id')->all()));
-
-        app(LifecycleAuthority::class)->disable($manager, $manager->id, 'service_manager_no_longer_eligible');
-        $this->assertSame([$workspace->id], $context->run(
-            $secret['public_id'], $secret['credential'], $workspace->public_id,
-            fn () => DB::table('workspaces')->pluck('id')->all(),
-        ));
-
-        $this->actingAs($owner)->delete('/workspaces/'.$workspace->public_id.'/services/'.$secret['public_id'])
-            ->assertRedirect();
-        $this->assertDenied(fn () => $context->run($secret['public_id'], $secret['credential'],
-            $workspace->public_id, fn () => null));
-        $this->assertDatabaseHas('service_audit_events', [
-            'service_identity_id' => $service->id,
-            'workspace_id' => $workspace->id,
-            'event' => 'service_scope_revoked',
-        ]);
-    }
-
-    public function test_revoked_service_identity_cannot_access_approved_workspace(): void
-    {
-        $owner = User::factory()->create();
-        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($owner, 1);
-        $this->actingAs($owner)->legacyWorkspace([
-            'name' => 'Revocation Workspace', 'slug' => 'revocation-workspace',
-        ])->assertRedirect();
-        $workspace = DB::connection('pgsql_migrations')->table('workspaces')->first();
-        $manager = $this->serviceManager();
-        $this->actingAsInternal($manager)->get('/internal/security/devices')->assertOk();
-        $created = $this->post('/internal/services', ['name' => 'Revocable Reader'])
-            ->assertRedirect();
-        $this->assertDatabaseCount('service_identities', 1);
-        $secret = $this->serviceCredentialFrom($created);
-        $this->actingAs($owner)->post('/workspaces/'.$workspace->public_id.'/services', [
-            'service' => $secret['public_id'], 'purpose' => 'Owner-approved metadata read',
-        ])->assertRedirect();
-        $this->actingAsInternal($manager)->post('/internal/service-grants', [
-            'service' => $secret['public_id'], 'workspace' => $workspace->public_id,
-            'reason' => 'Owner approved metadata reporting',
-        ])->assertRedirect();
-        $context = app(ServiceWorkspaceContext::class);
-        $this->assertSame($workspace->id, $context->run($secret['public_id'], $secret['credential'],
-            $workspace->public_id, fn ($active) => $active->id));
-
-        DB::connection('pgsql_migrations')->table('principal_lifecycles')->where('user_id', $owner->id)
-            ->update(['principal_class' => 'staff']);
-        $this->assertDenied(fn () => $context->run($secret['public_id'], $secret['credential'],
-            $workspace->public_id, fn () => null));
-        $serviceId = DB::table('service_identities')
-            ->where('public_id', $secret['public_id'])->value('id');
-        DB::transaction(function () use ($serviceId, $secret, $workspace): void {
-            DB::selectOne("SELECT set_config('app.service_identity_id', ?, true)", [(string) $serviceId]);
-            DB::selectOne("SELECT set_config('app.service_credential', ?, true)", [$secret['credential']]);
-            DB::selectOne("SELECT set_config('app.workspace_id', ?, true)", [(string) $workspace->id]);
-            DB::selectOne("SELECT set_config('app.authorization_phase', 'service', true)");
-            $this->assertSame(0, DB::table('workspaces')->count());
-        });
-        DB::connection('pgsql_migrations')->table('principal_lifecycles')->where('user_id', $owner->id)
-            ->update(['principal_class' => 'advertiser']);
-
-        $this->actingAsInternal($manager)->post('/internal/services/'.$secret['public_id'].'/revoke')
-            ->assertRedirect();
-        $this->assertDenied(fn () => $context->run($secret['public_id'], $secret['credential'],
-            $workspace->public_id, fn () => null));
-    }
-
-    private function assertInFlightEffectSerializesWithScopeRevocation(
-        ServiceWorkspaceContext $context, array $secret, string $workspacePublicId,
-        int $serviceId, int $workspaceId,
-    ): void {
-        config()->set('database.connections.pgsql_concurrent', config('database.connections.pgsql_authority'));
-        $other = DB::connection('pgsql_concurrent');
-        try {
-            $other->statement("SET lock_timeout = '150ms'");
-            $context->run($secret['public_id'], $secret['credential'], $workspacePublicId,
-                function () use ($other, $serviceId, $workspaceId): void {
-                    try {
-                        $other->table('service_workspace_scopes')
-                            ->where('service_identity_id', $serviceId)
-                            ->where('workspace_id', $workspaceId)
-                            ->update(['purpose' => 'Concurrent scope revocation probe']);
-                        $this->fail('An in-flight service effect must hold the scope row lock.');
-                    } catch (QueryException $exception) {
-                        $this->assertSame('55P03', $exception->getCode());
-                    }
-                });
-        } finally {
-            DB::purge('pgsql_concurrent');
-        }
+        $db = DB::connection('pgsql_migrations');
+        $this->assertSame(2, $db->table('service_audit_events')->where('event', 'service_business_consent_approved')->count());
+        $this->assertSame(1, $db->table('service_audit_events')->where('event', 'service_business_consent_revoked')->count());
+        $db->table('service_action_grants')->where('consent_version', 3)->update(['expires_at' => now()->subMinute()]);
+        $this->assertDenied(fn () => $metadata(credential: $rotated['credential']));
+        $this->actingAsInternal($manager)->postJson('/internal/service-grants', $grant)->assertForbidden();
+        self::assertSame(2, $db->table('service_audit_events')->where('event', 'service_grant_issued')->count());
     }
 
     private function serviceManager(): User
@@ -233,15 +108,6 @@ class ServiceAuthorityTest extends TestCase
         ]);
 
         return $manager;
-    }
-
-    /** @return array{public_id: string, credential: string} */
-    private function serviceCredentialFrom(TestResponse $response): array
-    {
-        $credential = $response->baseResponse->getSession()?->get('serviceCredential');
-        $this->assertIsArray($credential);
-
-        return $credential;
     }
 
     private function assertDenied(callable $effect): void

@@ -35,7 +35,7 @@ final readonly class MetaOAuthState
         return $state;
     }
 
-    /** Locate the fixed callback's Workspace without consuming state or granting access. */
+    /** Locate the fixed callback's Business without consuming state or granting access. */
     public function locate(Request $request, string $configuration, #[\SensitiveParameter] string $state): array
     {
         $cipher = $this->cache->get($this->key($state));

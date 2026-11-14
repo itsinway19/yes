@@ -5,29 +5,26 @@ namespace Tests\Feature\Providers;
 use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderReportingEvidence;
 use App\Providers\Ads\ProviderScope;
+use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Tests\TestCase;
 
 final class ReportingEvidenceCommandTest extends TestCase
 {
     public static function scopes(): iterable
     {
         foreach (Provider::cases() as $provider) {
-            foreach (['workspace', 'business'] as $owner) {
-                yield $provider->value.'-'.$owner => [$provider, $owner];
-            }
+            yield $provider->value => [$provider];
         }
     }
 
     #[DataProvider('scopes')]
-    public function test_operator_command_preserves_exact_scope_through_configuration_admission_and_withdrawal(Provider $provider, string $owner): void
+    public function test_operator_command_preserves_exact_scope_through_configuration_admission_and_withdrawal(Provider $provider): void
     {
+        config(['app.key' => 'base64:'.base64_encode(random_bytes(32))]);
         $source = (string) Str::uuid7();
-        $scope = $owner === 'business'
-            ? ProviderScope::forBusiness(17, $source, $provider, 'synthetic-account', 'report.read', 'advertising_analysis')
-            : new ProviderScope(17, $source, $provider, 'synthetic-account', 'report.read', 'advertising_analysis');
+        $scope = ProviderScope::forBusiness(17, $source, $provider, 'synthetic-account', 'report.read', 'advertising_analysis');
         $service = app(ProviderReportingEvidence::class);
         $root = storage_path('framework/testing/reporting-command-'.Str::uuid());
         mkdir($root, 0700, true);
@@ -46,6 +43,13 @@ final class ReportingEvidenceCommandTest extends TestCase
         $options = ['--operator' => 'synthetic-operator', '--support-artifact' => $root.'/provider_support',
             '--privacy-artifact' => $root.'/privacy_purpose', '--attest-reviewed-approvals' => true];
         try {
+            $legacy = $record;
+            $legacy['scope'] = ['workspace_id' => 17, 'source_id' => $source, 'provider' => $provider->value,
+                'account_id' => $scope->accountId, 'operation' => $scope->operation, 'purpose' => $scope->purpose];
+            $write($legacy);
+            foreach ([['--show-configuration' => true], $options, ['--withdraw' => true, '--operator' => 'synthetic-operator']] as $action) {
+                $this->assertSame(1, $call($action));
+            }
             $write($record);
             $this->assertSame(0, $call(['--show-configuration' => true]));
             $this->assertSame($record['configuration'], trim(Artisan::output()));
@@ -63,7 +67,7 @@ final class ReportingEvidenceCommandTest extends TestCase
             $invalid['configuration'] = str_repeat('0', 64);
             $write($invalid);
             $this->assertSame(1, $call($options));
-            foreach ([['workspace_id' => 17, 'business_id' => 17], [$owner === 'business' ? 'business_id' : 'workspace_id' => null]] as $fields) {
+            foreach ([['workspace_id' => 17, 'business_id' => 17], ['business_id' => null]] as $fields) {
                 $invalid = $record;
                 $invalid['scope'] = [...$invalid['scope'], ...$fields];
                 $write($invalid);
@@ -77,12 +81,10 @@ final class ReportingEvidenceCommandTest extends TestCase
             $this->assertSame('VERIFIED', $native['provider_support']['state']);
             $this->assertSame('VERIFIED', $native['privacy_purpose']['state']);
             $this->assertArrayNotHasKey('credentials', $native);
-            $foreign = $owner === 'business'
-                ? new ProviderScope(17, $source, $provider, $scope->accountId, $scope->operation, $scope->purpose)
-                : ProviderScope::forBusiness(17, $source, $provider, $scope->accountId, $scope->operation, $scope->purpose);
+            $foreign = ProviderScope::forBusiness(18, $source, $provider, $scope->accountId, $scope->operation, $scope->purpose);
             $this->assertNotSame($scope->key('reporting-evidence'), $foreign->key('reporting-evidence'));
             $this->assertSame('UNKNOWN', $service->apply($foreign, [])['privacy_purpose']['state']);
-            $otherSource = new ProviderScope($scope->workspaceId, (string) Str::uuid7(), $provider, $scope->accountId, $scope->operation, $scope->purpose, $scope->businessId);
+            $otherSource = ProviderScope::forBusiness($scope->businessId, (string) Str::uuid7(), $provider, $scope->accountId, $scope->operation, $scope->purpose);
             $this->assertSame('UNKNOWN', $service->apply($otherSource, [])['privacy_purpose']['state']);
             $this->assertSame($native, $service->applicable($scope, $native));
             $this->assertSame(1, $call(['--withdraw' => true, '--operator' => '']));

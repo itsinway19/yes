@@ -18,7 +18,7 @@ class GoogleAccessAdapterTest extends TestCase
 {
     private function scope(): ProviderScope
     {
-        return new ProviderScope(1, '019a0022-0000-7000-8000-000000000001', Provider::Google,
+        return ProviderScope::forBusiness(1, '019a0022-0000-7000-8000-000000000001', Provider::Google,
             '1234567890', 'report.read', 'advertising_analysis');
     }
 

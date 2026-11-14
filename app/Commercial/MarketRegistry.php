@@ -21,7 +21,7 @@ final class MarketRegistry
                 ->map(CommercialMarketConfigurationVersion::fromRecord(...))->all(),
             'catalogReferences' => DB::table('commercial_catalog_references')->orderBy('recorded_at')
                 ->get(['id', 'market_id', 'catalog_identity', 'catalog_version', 'approval_reference', 'source_sha256', 'recorded_at'])->all(),
-            'founderWorkspaces' => DB::select('SELECT * FROM builderad_sa01_founder_workspaces()'),
+            'founderBusinesses' => DB::select('SELECT * FROM builderad_sa01_founder_businesses()'),
         ]);
     }
 

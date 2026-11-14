@@ -69,7 +69,7 @@ final class InternalAdministrationController extends Controller
         ]);
     }
 
-    /** Installation checks only; no provider approval, policy acceptance or Workspace access is inferred. */
+    /** Reports the results of installation checks. */
     private function metaOperatorStatus(): array
     {
         $applicationConfigured = false;

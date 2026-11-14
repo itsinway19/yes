@@ -10,6 +10,7 @@ if (process.env.GOALS_SPA_PROOF !== 'enabled' || process.env.DB_DATABASE !== 'bu
 const require = createRequire('C:/Users/stoma/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json');
 const { chromium } = require('playwright');
 const run = process.env.GOALS_SPA_RUN, mode = process.env.ADMIN_UI_CAPTURE ?? 'after';
+const capture = (target, options) => process.env.GOALS_SPA_CAPTURE_IMAGES === '1' ? target.screenshot(options) : Promise.resolve();
 const delta = process.env.ADMIN_UI_DELTA === '1';
 const output = path.join(run, 'admin-ui-'+mode); await mkdir(output, { recursive: true });
 const fixture = spawnSync('C:/tools/php85/php.exe', ['tests/Support/AdminUiBrowserFixture.php'], { env: { ...process.env, APP_ENV: 'testing' }, encoding: 'utf8' });
@@ -81,7 +82,18 @@ if (delta) pages.push(
     { key:'security',route:'/internal/security/devices',selector:'[data-account-page]' },
     { key:'maintenance',route:'/internal/administration/maintenance',selector:'[data-maintenance-settings]' },
 );
-const check = async (name, action) => { await action(); results.push({name,status:'PASS'}); console.log('PASS '+name); };
+const check = async (name, action) => {
+    if (process.env.ADMIN_UI_CASE_FILTER && !new RegExp(process.env.ADMIN_UI_CASE_FILTER).test(name)) return;
+    try {
+        await action();
+        results.push({name, status:'PASS'});
+        console.log('PASS '+name);
+    } catch (error) {
+        results.push({name, status:'FAIL', error:error.stack});
+        if (!process.env.ADMIN_UI_CASE_FILTER) throw error;
+        console.error(error);
+    }
+};
 try {
     browser = await chromium.launch({ headless:true, executablePath:'C:/Users/stoma/AppData/Local/ms-playwright/chromium-1208/chrome-win64/chrome.exe' });
     page = await session();
@@ -118,7 +130,7 @@ try {
         await writeFile(path.join(output,'retained-functional-results.json'),JSON.stringify(retained,null,2));
         screenshots.push(...retained.screenshots);results.push(...retained.results.map(result=>({...result,status:'RETAINED'})));
         for(const target of pages) await visit(page,target.route,target.selector);
-        const advertiser=await session('advertiser');await visit(advertiser,'/workspaces','[data-workspaces="index"]');
+        const advertiser=await session('advertiser');await visit(advertiser,'/businesses','[data-business-list], [data-business-empty]');
     } else {
     if(process.env.ADMIN_UI_SKIP_MATRIX==='1') {
         const retained=JSON.parse(await readFile(path.join(output,'results.json'),'utf8'));
@@ -132,7 +144,7 @@ try {
             for (const target of pages) {
                 await visit(matrixPage,target.route,target.selector); await direction(matrixPage,dir);
                 const file=`${target.key}-${width}-${dir}.png`;
-                await matrixPage.screenshot({path:path.join(output,file),fullPage:true});
+                await capture(matrixPage, {path:path.join(output,file),fullPage:true});
                 const measurement=await matrixPage.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,dir:document.documentElement.dir,primary:getComputedStyle(document.documentElement).getPropertyValue('--ba-brand-primary').trim()}));
                 screenshots.push({file,route:target.route,...measurement});
                 assert.ok(measurement.scrollWidth<=width,`${target.key} ${dir} overflow ${width}: ${measurement.scrollWidth}`);
@@ -150,7 +162,7 @@ try {
             await page.setViewportSize({width,height:1000});
             for (const target of pages) {
                 await visit(page,target.route,target.selector); await direction(page,'rtl');
-                const file = `${target.key}-${width}-rtl.png`; await page.screenshot({path:path.join(output,file),fullPage:true});
+                const file = `${target.key}-${width}-rtl.png`; await capture(page, {path:path.join(output,file),fullPage:true});
                 const measurement = await page.evaluate(() => ({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,dir:document.documentElement.dir,primary:getComputedStyle(document.documentElement).getPropertyValue('--ba-brand-primary').trim()}));
                 screenshots.push({file,route:target.route,...measurement});
                 if(mode!=='before') assert.ok(measurement.scrollWidth<=width,`${target.key} overflow ${width}: ${measurement.scrollWidth}`);
@@ -159,7 +171,7 @@ try {
         await page.setViewportSize({width:1280,height:1000});
         for(const target of pages) {
             await visit(page,target.route,target.selector); await direction(page,'ltr');
-            const file=`${target.key}-1280-ltr.png`; await page.screenshot({path:path.join(output,file),fullPage:true}); screenshots.push({file,route:target.route,width:1280,dir:'ltr',primary:'#155f53'});
+            const file=`${target.key}-1280-ltr.png`; await capture(page, {path:path.join(output,file),fullPage:true}); screenshots.push({file,route:target.route,width:1280,dir:'ltr',primary:'#155f53'});
             if(mode!=='before') assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
         }
     });
@@ -184,16 +196,17 @@ try {
                 const surfaces=await page.evaluate(()=>['[data-admin-header]','[data-administration] .admin-section','[data-administration] .admin-action[href="/internal/administration/commercial-markets"]'].map(selector=>getComputedStyle(document.querySelector(selector)).backgroundColor));
                 assert.equal(surfaces[0],surfaces[1]);assert.notEqual(surfaces[1],'rgb(255, 255, 255)');
                 assert.equal(surfaces[2],surfaces[1],'The market shortcut must use the same dark surface as its panel');
-                await page.screenshot({path:path.join(output,'administration-dark-1440-rtl.png'),fullPage:true});
+                await capture(page, {path:path.join(output,'administration-dark-1440-rtl.png'),fullPage:true});
                 await page.locator('[data-theme-toggle]').click();
                 await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');
             }
-            const advertiser=await session('advertiser'); await visit(advertiser,'/workspaces','[data-workspaces="index"]');
-            assert.equal(await advertiser.locator('[data-admin-shell]').count(),0); await advertiser.screenshot({path:path.join(output,'advertiser-1440-rtl.png'),fullPage:true});
+            const advertiser=await session('advertiser'); await visit(advertiser,'/businesses','[data-business-list], [data-business-empty]');
+            assert.equal(await advertiser.locator('[data-admin-shell]').count(),0); await capture(advertiser, {path:path.join(output,'advertiser-1440-rtl.png'),fullPage:true});
         });
         const navigation = page => page.locator('[data-admin-sidebar] [data-admin-nav]');
         await check('Grouped active navigation preserves routes and Back/Forward', async () => {
-            assert.equal(await navigation(page).locator('a').count(),9);
+            await visit(page,'/internal/administration','[data-administration]');
+            assert.equal(await navigation(page).locator('a').count(),14);
             assert.equal(await navigation(page).locator('a[aria-current="page"]').count(),1);
             const documentTime=await page.evaluate(()=>performance.timeOrigin);
             await page.locator('[data-administration] a[href="/internal/administration/commercial-markets"]').click();
@@ -210,6 +223,7 @@ try {
             assert.equal(requests.slice(initial).filter(request=>request.path==='/internal/administration/appearance').length,0,'Ordinary nav must not fetch appearance');
         });
         await check('Real customer records, query filters and details remain usable', async () => {
+            await visit(page,'/internal/administration/customers','[data-customers]');
             await page.locator('#customer-search').fill('Admin UI advertiser');
             const response=page.waitForResponse(response=>new URL(response.url()).pathname==='/internal/administration/customers'&&response.request().headers().accept?.includes('json')&&!response.request().headers()['x-builderad-witness']);
             await page.locator('.customer-filters button[type=submit]').click(); const filtered=await response; assert.equal(filtered.status(),200);
@@ -243,10 +257,10 @@ try {
             assert.equal(await page.locator('#service-name').inputValue(),'Unsubmitted mobile service');
             await direction(page,'ltr'); await toggle.click(); await dialog.waitFor({state:'visible'});
             const ltrBox=await dialog.boundingBox(); assert.ok(ltrBox.x<10,'LTR drawer must align left');
-            await page.screenshot({path:path.join(output,'drawer-390-ltr.png'),fullPage:true}); await page.keyboard.press('Escape'); await dialog.waitFor({state:'hidden'});
+            await capture(page, {path:path.join(output,'drawer-390-ltr.png'),fullPage:true}); await page.keyboard.press('Escape'); await dialog.waitFor({state:'hidden'});
             await direction(page,'rtl'); await toggle.click(); await dialog.waitFor({state:'visible'});
             const rtlBox=await dialog.boundingBox(); assert.ok(rtlBox.x>10,'RTL drawer must align right');
-            await page.screenshot({path:path.join(output,'drawer-390-rtl.png'),fullPage:true}); await page.setViewportSize({width:1440,height:1000}); await dialog.waitFor({state:'hidden'});
+            await capture(page, {path:path.join(output,'drawer-390-rtl.png'),fullPage:true}); await page.setViewportSize({width:1440,height:1000}); await dialog.waitFor({state:'hidden'});
         });
         await check('Existing staff form retains validation, draft and successful invitation', async () => {
             await visit(page,'/internal/administration','[data-administration]');
@@ -291,6 +305,7 @@ try {
     }
     results.push({name:'Served production assets match final checkout',status:'PASS'});
     assert.equal(errors.length,0,errors.join('\n'));
+    assert.equal(results.some(entry=>entry.status==='FAIL'),false,'A selected administration journey failed');
     await writeFile(path.join(output,'results.json'),JSON.stringify({mode,delta,results,errors,screenshots,responses,assets:[...assets.keys()],productionAssets:true,syntheticSessions:true},null,2));
 } catch(error) {
     const presentation=await page?.evaluate(()=>({path:location.pathname,state:document.querySelector('#application-spa')?.dataset.state,navigationError:document.querySelector('[data-spa="navigation-error"]')?.textContent,heading:document.querySelector('h1')?.textContent})).catch(()=>null);

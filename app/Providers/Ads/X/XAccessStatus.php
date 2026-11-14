@@ -22,12 +22,12 @@ final class XAccessStatus
     public function snapshot(Request $request, ProviderScope $scope): array
     {
         if (DB::connection()->transactionLevel() !== 1 || $scope->provider !== Provider::X) {
-            throw new LogicException('X status requires a signed current Workspace transaction.');
+            throw new LogicException('X status requires a signed current Business transaction.');
         }
         app(ProviderRequestGuard::class)->requireCustody($request, $scope, 'source.read');
-        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$scope->workspaceId,
+        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$scope->businessId,
             SessionAuthority::sessionKey($request), $scope->sourceId, $scope->accountId, $scope->operation, $scope->purpose]);
-        $access = DB::table('provider_access')->where('workspace_id', $scope->workspaceId)->where('source_id', $scope->sourceId)
+        $access = DB::table('provider_access')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $scope->businessId))->where('source_id', $scope->sourceId)
             ->where('provider', 'x')->where('resource', $scope->accountId)->where('operation', $scope->operation)->where('purpose', $scope->purpose)
             ->first(['version', 'local_state', 'native_state', 'credential_expires_at', 'verification', 'recorded_at']);
         $axes = array_fill_keys(EffectiveCapability::AXES, 'UNKNOWN');
@@ -53,7 +53,7 @@ final class XAccessStatus
         } else {
             // Immutable denial facts survive failed/partial reads. Reconnect's new recorded_at excludes older epochs.
             $denial = DB::table('provider_observation_runs as r')->join('provider_observation_streams as s', 's.namespace', '=', 'r.namespace')
-                ->where('s.workspace_id', $scope->workspaceId)->where('s.source_id', $scope->sourceId)->where('s.provider', 'x')
+                ->whereIn('s.source_id', DB::table('source_registry')->select('id')->where('business_id', $scope->businessId))->where('s.source_id', $scope->sourceId)->where('s.provider', 'x')
                 ->where('s.resource', $scope->accountId)->where('s.operation', $scope->operation)->where('s.purpose', $scope->purpose)
                 ->where('r.recorded_at', '>=', $access->recorded_at)
                 ->whereIn('r.failure', ['x_credential_denied', 'x_access_denied', 'x_reauthorization_required'])->orderByDesc('r.recorded_at')->first(['r.failure', 'r.recorded_at']);

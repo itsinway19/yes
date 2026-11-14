@@ -17,7 +17,7 @@ type Access = { reporting?: { can_report: boolean; why_not: string | null }; ver
 type Connection = { source_id: string; label: string; declared_account_id: string; access: Access };
 type Snapshot = ProviderSnapshot;
 type Account = { account_id: string; label: string; selection_handle: string };
-const props = defineProps<{ workspaceId?: string; businessId?: string; canManage: boolean }>();
+const props = defineProps<{ businessId?: string; canManage: boolean }>();
 const owner = nativeSourceReference(props);
 const emit = defineEmits<{ summary: [summary: ProviderSummary] }>();
 const snapshot = ref<Snapshot | null>(null);
@@ -143,7 +143,7 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
 
 <template>
     <section :dir="locale === 'ar' ? 'rtl' : 'ltr'" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="snapchat-connection-heading" :aria-busy="busy">
-        <PendingCommands :workspace-id="workspaceId" :business-id="businessId" provider="snapchat" @settled="refresh()" />
+        <PendingCommands :business-id="businessId" provider="snapchat" @settled="refresh()" />
         <fieldset class="min-w-0 border-0 p-0" :disabled="commandsFor(owner, 'snapchat').length > 0">
         <h2 id="snapchat-connection-heading" class="text-xl font-semibold text-slate-900 flex items-center gap-3"><ProviderBrand provider="snapchat" :size="40" />{{ providerCopy("ربط Snapchat Ads") }}</h2>
         <p class="mt-2 text-sm leading-7 text-slate-600">{{ providerCopy("ابدأ التفويض عبر منصة Snapchat الرسمية، ثم اختر حساب المعلن لهذا الربط.") }}</p>
@@ -168,7 +168,7 @@ onBeforeUnmount(() => { active = false; cancellation.abort(); });
                 <li v-for="connection in snapshot.connections" :key="connection.source_id" class="py-4">
                     <p class="font-medium">{{ connection.label }}</p><p dir="ltr" class="text-xs text-slate-500">{{ connection.declared_account_id }}</p>
                     <p class="mt-2 text-sm text-slate-600">{{ stateLabel(connection.access.connection) }}</p>
-                    <ProviderReportRequest provider="snapchat" :workspace-id="workspaceId" :business-id="businessId" :source-id="connection.source_id" :version="connection.access.version"
+                    <ProviderReportRequest provider="snapchat" :business-id="businessId" :source-id="connection.source_id" :version="connection.access.version"
                         :allowed="canManage && connection.access.reporting?.can_report === true" />
                     <button v-if="canManage && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED'" type="button" :disabled="busy" data-source-disconnect @click="confirming = connection.source_id" class="mt-3 text-sm text-red-700 underline">{{ providerCopy("فصل المصدر محليًا") }}</button>
                     <button v-if="canManage && snapshot.availability === 'CONNECT_AVAILABLE' && connection.access.version > 0 && connection.access.connection !== 'LOCALLY_DISCONNECTED'" type="button" :disabled="busy" data-source-renew @click="renew(connection)" class="mt-3 me-4 text-sm text-[var(--ba-primary-ink)] underline">{{ providerCopy("تجديد الربط والتحقق من الحساب") }}</button>

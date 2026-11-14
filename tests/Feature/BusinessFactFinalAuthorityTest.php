@@ -61,7 +61,7 @@ final class BusinessFactFinalAuthorityTest extends TestCase
         };
         $grant = $a['grant_refs'][$action] ?? null;
         if ($kind === 'purpose') {
-            $basisSelection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+            $basisSelection = ['realm_kind' => 'direct',
                 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs']['business.context.read']]]];
             $enrollment = $this->postJson('/api/businesses/'.$a['business_public_id'].'/purpose-enrollment', ['command_id' => (string) Str::uuid(),
                 'confirmed' => true, 'previous_grant' => '0', 'authority_selection' => $basisSelection])->assertOk()->json('data');
@@ -80,11 +80,11 @@ final class BusinessFactFinalAuthorityTest extends TestCase
             // Purpose rows even while the new declaration grant itself is live.
             $qualification = $db->table('security_action_grants')->where('id', $a['grant_refs']['business.context.read'])->value('qualification_id');
         }
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
+        $selection = ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
         if ($kind === 'grant_revoke') {
             $issued = $this->postJson('/api/businesses/'.$a['business_public_id'].'/grants', ['command_id' => (string) Str::uuid(),
                 'effect' => 'issue', 'grantee_public_id' => $recipient->public_id, 'action' => $action, 'parent_grant_id' => $grant,
-                'grant_id' => null, 'expected_grant' => 0, 'expires_at' => null, 'delegable' => false, 'realm_workspace_public_id' => null,
+                'grant_id' => null, 'expected_grant' => 0, 'expires_at' => null, 'delegable' => false,
                 'authority_selection' => $selection])->assertOk()->json('data.grant_id');
         }
         $request = Request::create('/api/businesses');

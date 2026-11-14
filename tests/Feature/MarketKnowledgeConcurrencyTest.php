@@ -106,7 +106,7 @@ final class MarketKnowledgeConcurrencyTest extends TestCase
             'recipient_ref' => $consumer['user']->public_id, 'authority_selection' => $consumer['selection']])->assertOk();
         $artifact = (string) Str::uuid();
         $output = $this->knowledgeRight($consumer['user'], $originals['source'], $artifact, 'market.business_finding', 'display', ['finding']);
-        $continuation = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => []];
+        $continuation = ['realm_kind' => 'direct', 'requirements' => []];
         foreach ($originals['records'] as $record) {
             foreach (['forward', 'retain'] as $operation) {
                 $right = $this->marketRight($consumer['user'], $record['source'], $record['evidence'], $operation, array_keys($record['payload']['fields']));

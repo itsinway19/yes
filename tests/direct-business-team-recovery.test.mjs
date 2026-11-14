@@ -35,7 +35,7 @@ const all = root => [root, ...root.children.flatMap(all)];
 const find = (root, key) => all(root).find(target => key in target.props);
 const text = root => root.text + root.children.map(text).join('');
 const surface = (id = 'business-a', eligible = true) => ({ business: { business_public_id: id }, direct_team_enrollment_available: eligible,
-    authority_selection: { realm_kind: 'direct', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: 51 }] } });
+    authority_selection: { realm_kind: 'direct',  requirements: [{ requirement_kind: 'business', leaf_grant_id: 51 }] } });
 function mount(initial = surface(), reset = true) {
     if (reset) { drafts.directTeamDrafts.clear(); api.calls.length = 0; api.pending.length = 0; transport.context.scope = 'document-a'; }
     const selected = ref(initial), refreshing = ref(false), refreshes = [], root = node('root');

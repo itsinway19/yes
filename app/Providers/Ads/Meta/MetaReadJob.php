@@ -46,8 +46,8 @@ final class MetaReadJob implements ShouldBeEncrypted, ShouldQueue
     private bool $asynchronous = false;
 
     private function __construct(private int $actorId, private int $actorGeneration,
-        #[\SensitiveParameter] private string $sessionId, /* Serialized field retained for existing queued organizational work; holds the exact native owner public ID. */
-        private string $workspacePublicId,
+        #[\SensitiveParameter] private string $sessionId, /* Exact Business locator; the worker requalifies current Source authority. */
+        private string $businessPublicId,
         private ProviderScope $scope, private ReportWindow $window, private string $stream, private string $command,
         private int $generation, private int $accessVersion, private string $version,
         private ?MetaReportTask $task, private DateTimeImmutable $deadline, private string $configuration, bool $asynchronous = false)
@@ -114,7 +114,7 @@ final class MetaReadJob implements ShouldBeEncrypted, ShouldQueue
             throw new AuthorizationException('Meta queued API configuration changed.');
         }
         $actor = User::findOrFail($this->actorId);
-        $request = Request::create(($this->scope->businessId === null ? '/workspaces/' : '/businesses/').$this->workspacePublicId);
+        $request = Request::create('/businesses/'.$this->businessPublicId);
         $request->setUserResolver(fn () => $actor);
         $session = new Store('bb2-meta-worker', new ArraySessionHandler(120));
         $session->setId($this->sessionId);
@@ -122,7 +122,7 @@ final class MetaReadJob implements ShouldBeEncrypted, ShouldQueue
         $request->setLaravelSession($session);
         DB::transaction(function () use ($request, $actor, $principals, $reader, $execution, $settings): void {
             $principals->activate($actor);
-            NativeSourceQueueContext::restore($request, $this->scope, $this->workspacePublicId, $this->actorGeneration);
+            NativeSourceQueueContext::restore($request, $this->scope, $this->businessPublicId, $this->actorGeneration);
             MetaCacheBinding::context(Cache::store(), $request, $this->scope, $this->accessVersion, hash('sha256', $this->version));
             $fingerprintFields = [$this->window->jsonSerialize(), $this->version, $this->configuration, $this->task,
                 $this->rootCommand, $this->number, $this->deadline->format(DATE_ATOM)];

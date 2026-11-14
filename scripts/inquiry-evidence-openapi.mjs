@@ -3,7 +3,7 @@ export function inquiryEvidenceContracts({ref,text,uuid,object,list,nullable,jso
  const integer={type:'integer',minimum:0,maximum:1000000000000};
  const positive={type:'integer',minimum:1};
  const grant={type:'string',pattern:'^[1-9][0-9]{0,17}$'};
- const selection=object({realm_kind:{const:'direct'},realm_workspace_public_id:nullable(uuid),requirements:{...list(object({requirement_kind:{const:'business'},leaf_grant_id:grant})),minItems:1,maxItems:1}});
+ const selection=object({realm_kind:{const:'direct'},requirements:{...list(object({requirement_kind:{const:'business'},leaf_grant_id:grant})),minItems:1,maxItems:1}});
  const value=object({
   cohort:object({channel_kind:{enum:['form','call','message','crm','other']},definition_version:positive,country_code:nullable({type:'string',pattern:'^[A-Z]{2}$'}),population:{const:'recorded_inquiries'},counting_policy:{const:'distinct_inquiries'}}),
   observation:object({period_start:text,period_end:text,as_of:text,timezone:text}),

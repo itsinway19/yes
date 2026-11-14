@@ -47,8 +47,8 @@ export async function readCommercialReceipt(command: string, signal?: AbortSigna
     if (!result.data) throw Error('Missing commercial receipt');
     return result.data;
 }
-export async function readCommercialWorkspace(scope_id: string, workspace_public_id: string, signal?: AbortSignal) {
-    const result = await api.GET('/internal/commercial/workspace-reference', { params: { query: { scope_id, workspace_public_id } }, signal });
+export async function readCommercialBusiness(scope_id: string, business_public_id: string, signal?: AbortSignal) {
+    const result = await api.GET('/internal/commercial/business-reference', { params: { query: { scope_id, business_public_id } }, signal });
     return result.data;
 }
 export async function readCommercialContext(scope: string, signal?: AbortSignal) {

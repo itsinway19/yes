@@ -99,14 +99,14 @@ final readonly class XAuthorizationCoordinator
         if ($selected->provider !== Provider::X || ! $selected->sameCustodyAs($installation)
             || $selected->sourceId === $installation->sourceId || $selected->operation !== 'report.read'
             || $selected->purpose !== $installation->purpose) {
-            throw new InvalidArgumentException('Selected X account requires its own exact Workspace/source/report scope.');
+            throw new InvalidArgumentException('Selected X account requires its own exact Business/source/report scope.');
         }
-        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$selected->workspaceId,
+        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$selected->businessId,
             SessionAuthority::sessionKey($request), $selected->sourceId, $selected->accountId, $selected->operation, $selected->purpose]);
         if (DB::table('source_registry')->where('id', $selected->sourceId)->value('namespace') !== 'ad_account') {
             throw new AuthorizationException('X selection must use an explicitly registered advertising account.');
         }
-        $previous = DB::table('provider_access_receipts')->where('workspace_id', $selected->workspaceId)->where('source_id', $selected->sourceId)
+        $previous = DB::table('provider_access_receipts')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $selected->businessId))->where('source_id', $selected->sourceId)
             ->where('provider', 'x')->where('resource', $selected->accountId)->where('operation', $selected->operation)
             ->where('purpose', $selected->purpose)->where('command_id', $command)->value('result');
         if ($previous !== null) {

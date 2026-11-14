@@ -21,18 +21,18 @@ final class InternalServiceController
         return new SpaPage([
             'services' => DB::table('service_identities')->orderBy('name')
                 ->get(['public_id', 'name', 'status', 'version']),
-            'scopes' => DB::table('service_workspace_scopes as scope')
+            'scopes' => DB::table('service_business_admin_scopes as scope')
                 ->join('service_identities as identity', 'identity.id', '=', 'scope.service_identity_id')
                 ->where('scope.status', 'active')
                 ->orderBy('identity.name')
                 ->get(['identity.public_id as service_public_id', 'identity.name as service_name',
-                    'scope.purpose', DB::raw('builderad_workspace_public_by_id(scope.workspace_id) AS workspace_public_id')]),
+                    'scope.purpose', DB::raw('builderad_service_business_public_by_id(scope.business_id) AS business_public_id')]),
             'grants' => DB::table('service_action_grants as grant_record')
                 ->join('service_identities as identity', 'identity.id', '=', 'grant_record.service_identity_id')
                 ->where('grant_record.status', 'active')
                 ->orderBy('identity.name')
                 ->get(['grant_record.id', 'identity.name as service_name', 'grant_record.reason',
-                    DB::raw('builderad_workspace_public_by_id(grant_record.workspace_id) AS workspace_public_id')]),
+                    DB::raw('builderad_service_business_public_by_id(grant_record.business_id) AS business_public_id')]),
         ]);
     }
 
@@ -68,11 +68,11 @@ final class InternalServiceController
     {
         $input = $request->validate([
             'service' => ['required', 'uuid'],
-            'workspace' => ['required', 'uuid'],
+            'business' => ['required', 'uuid'],
             'reason' => ['required', 'string', 'min:10', 'max:128'],
         ]);
-        DB::connection('pgsql_authority')->transaction(fn () => $grants->issueServiceWorkspaceView(
-            $request, $input['service'], $input['workspace'], $input['reason'],
+        DB::connection('pgsql_authority')->transaction(fn () => $grants->issueServiceBusinessView(
+            $request, $input['service'], $input['business'], $input['reason'],
         ));
 
         return $request->expectsJson()

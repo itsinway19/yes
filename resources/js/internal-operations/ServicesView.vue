@@ -14,7 +14,7 @@ type Scope = components['schemas']['InternalServicesData']['scopes'][number];
 type Credential = components['schemas']['InternalServiceCredential'];
 const newCredential = shallowRef<Credential | null>(null);
 const create = reactive({ name: '', errors: {} as Record<string, string>, processing: false });
-const grant = reactive({ service: '', workspace: '', reason: '', errors: {} as Record<string, string>, processing: false });
+const grant = reactive({ service: '', business: '', reason: '', errors: {} as Record<string, string>, processing: false });
 const busy = ref(''), error = ref(''), readbackFailed = ref(false), reviewed = ref(false);
 const locked = computed(() => !!busy.value || outcome.value === 'unknown' || readbackFailed.value);
 const cancellation = new AbortController(); let active = true;
@@ -24,7 +24,7 @@ confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave); onBeforeRouteUp
 function beforeUnload(event: BeforeUnloadEvent) { clearSecret(); if (['pending', 'unknown'].includes(outcome.value)) { event.preventDefault(); event.returnValue = ''; } }
 function visibility() { if (document.visibilityState !== 'visible') clearSecret(); }
 window.addEventListener('beforeunload', beforeUnload); window.addEventListener('pagehide', clearSecret); document.addEventListener('visibilitychange', visibility);
-const clearPrivate = () => { clearSecret(); create.name = ''; grant.service = ''; grant.workspace = ''; grant.reason = ''; error.value = ''; };
+const clearPrivate = () => { clearSecret(); create.name = ''; grant.service = ''; grant.business = ''; grant.reason = ''; error.value = ''; };
 const closures = onClose(clearPrivate);
 onBeforeUnmount(() => { active = false; cancellation.abort(); clearPrivate(); if (outcome.value === 'pending') outcome.value = 'unknown'; closures.delete(clearPrivate); if (confirmDeparture.value === canLeave) confirmDeparture.value = () => true; window.removeEventListener('beforeunload', beforeUnload); window.removeEventListener('pagehide', clearSecret); document.removeEventListener('visibilitychange', visibility); });
 async function review() {
@@ -53,9 +53,9 @@ async function perform(key: string, operation: () => Promise<Credential | compon
 }
 async function createService() { create.processing = true; try { await perform('create', () => commands.createService({ name: create.name }, cancellation.signal), () => { create.name = ''; }); } finally { create.processing = false; } }
 const action = (service: string, kind: 'rotate' | 'revoke') => perform(service, () => kind === 'rotate' ? commands.rotateService(service, cancellation.signal) : commands.revokeService(service, cancellation.signal));
-async function issueGrant() { grant.processing = true; try { await perform('grant', () => commands.issueServiceGrant({ service: grant.service, workspace: grant.workspace, reason: grant.reason }, cancellation.signal), () => { grant.service = ''; grant.workspace = ''; grant.reason = ''; }); } finally { grant.processing = false; } }
+async function issueGrant() { grant.processing = true; try { await perform('grant', () => commands.issueServiceGrant({ service: grant.service, business: grant.business, reason: grant.reason }, cancellation.signal), () => { grant.service = ''; grant.business = ''; grant.reason = ''; }); } finally { grant.processing = false; } }
 const revokeGrant = (id: number) => perform('grant:' + id, () => commands.revokeServiceGrant(id, cancellation.signal));
-function selectScope(scope: Scope) { grant.service = scope.service_public_id; grant.workspace = scope.workspace_public_id; }
+function selectScope(scope: Scope) { grant.service = scope.service_public_id; grant.business = scope.business_public_id; }
 </script>
 <template>
     <OperationsShell>
@@ -83,7 +83,7 @@ function selectScope(scope: Scope) { grant.service = scope.service_public_id; gr
             <fieldset :disabled="locked">
                 <section class="admin-section" aria-labelledby="service-create-title">
                     <h2 id="service-create-title">{{ copy('هوية خدمة جديدة', 'New service identity') }}</h2>
-                    <p>{{ copy('الهوية وحدها لا تمنح وصولًا إلى أي مساحة. يوافق مالك المساحة على نطاقها، ثم تُصدر الإدارة منحة الفعل.', 'An identity alone grants no workspace access. The workspace owner approves its scope, then administration issues the action grant.') }}</p>
+                    <p>{{ copy('الهوية وحدها لا تمنح وصولًا إلى النشاط. تصدر الموافقة من صاحب صلاحية مؤهلة للنشاط، ثم تُصدر الإدارة منحة مستقلة للفعل.', 'An identity alone grants no business access. A qualified Business approver approves its scope, then administration issues the action grant.') }}</p>
                     <form class="admin-form service-create-form" @submit.prevent="createService">
                         <div class="admin-field"><label for="service-name">{{ copy('اسم الخدمة', 'Service name') }}</label><input id="service-name" v-model="create.name" required minlength="2" maxlength="120" :aria-invalid="!!create.errors.name" :aria-describedby="create.errors.name ? 'service-name-error' : undefined" /><p v-if="create.errors.name" id="service-name-error" role="alert" class="admin-error">{{ create.errors.name }}</p></div>
                         <button type="submit" :disabled="create.processing" class="admin-action admin-action-primary">{{ create.processing ? copy('جارٍ الإنشاء…', 'Creating…') : copy('إنشاء الهوية', 'Create identity') }}</button>
@@ -98,17 +98,17 @@ function selectScope(scope: Scope) { grant.service = scope.service_public_id; gr
                 </section>
                 <section class="admin-section" aria-labelledby="scopes-title">
                     <h2 id="scopes-title">{{ copy('نطاقات وافق عليها المالكون', 'Owner-approved scopes') }}</h2>
-                    <ul class="service-list"><li v-for="scope in scopes" :key="`${scope.service_public_id}:${scope.workspace_public_id}`"><div><strong>{{ scope.service_name }}</strong><p dir="ltr">{{ scope.workspace_public_id }}</p><p class="admin-description">{{ scope.purpose }}</p></div><button type="button" class="admin-action" @click="selectScope(scope)">{{ copy('اختيار للمنحة', 'Select for grant') }}</button></li><li v-if="!scopes.length" class="admin-empty">{{ copy('لم يوافق أي مالك على نطاق خدمة بعد.', 'No owner has approved a service scope yet.') }}</li></ul>
+                    <ul class="service-list"><li v-for="scope in scopes" :key="`${scope.service_public_id}:${scope.business_public_id}`"><div><strong>{{ scope.service_name }}</strong><p dir="ltr">{{ scope.business_public_id }}</p><p class="admin-description">{{ scope.purpose }}</p></div><button type="button" class="admin-action" @click="selectScope(scope)">{{ copy('اختيار للمنحة', 'Select for grant') }}</button></li><li v-if="!scopes.length" class="admin-empty">{{ copy('لم يوافق أي مالك على نطاق خدمة بعد.', 'No owner has approved a service scope yet.') }}</li></ul>
                 </section>
                 <section class="admin-section" aria-labelledby="service-grants-title">
-                    <h2 id="service-grants-title">{{ copy('منحة عرض مساحة للخدمة', 'Workspace view grant') }}</h2>
+                    <h2 id="service-grants-title">{{ copy('منحة عرض بيانات تعريف النشاط للخدمة', 'Business view grant') }}</h2>
                     <form class="admin-form service-grant-form" @submit.prevent="issueGrant">
                         <div class="admin-field"><label for="grant-service">{{ copy('الخدمة', 'Service') }}</label><input id="grant-service" v-model="grant.service" required dir="ltr" :aria-invalid="!!grant.errors.service" :aria-describedby="grant.errors.service ? 'service-grant-service-error' : undefined" /><p v-if="grant.errors.service" id="service-grant-service-error" role="alert" class="admin-error">{{ grant.errors.service }}</p></div>
-                        <div class="admin-field"><label for="grant-workspace">{{ copy('المساحة', 'Workspace') }}</label><input id="grant-workspace" v-model="grant.workspace" required dir="ltr" :aria-invalid="!!grant.errors.workspace" :aria-describedby="grant.errors.workspace ? 'service-grant-workspace-error' : undefined" /><p v-if="grant.errors.workspace" id="service-grant-workspace-error" role="alert" class="admin-error">{{ grant.errors.workspace }}</p></div>
+                        <div class="admin-field"><label for="grant-business">{{ copy('النشاط التجاري', 'Business') }}</label><input id="grant-business" v-model="grant.business" required dir="ltr" :aria-invalid="!!grant.errors.business" :aria-describedby="grant.errors.business ? 'service-grant-business-error' : undefined" /><p v-if="grant.errors.business" id="service-grant-business-error" role="alert" class="admin-error">{{ grant.errors.business }}</p></div>
                         <div class="admin-field"><label for="grant-reason">{{ copy('السبب', 'Reason') }}</label><input id="grant-reason" v-model="grant.reason" required minlength="10" maxlength="128" :aria-invalid="!!grant.errors.reason" :aria-describedby="grant.errors.reason ? 'service-grant-reason-error' : undefined" /><p v-if="grant.errors.reason" id="service-grant-reason-error" role="alert" class="admin-error">{{ grant.errors.reason }}</p></div>
                         <button type="submit" :disabled="grant.processing" class="admin-action admin-action-primary">{{ grant.processing ? copy('جارٍ المنح…', 'Granting…') : copy('إصدار المنحة', 'Issue grant') }}</button>
                     </form>
-                    <ul class="service-list"><li v-for="item in grants" :key="item.id"><div><strong>{{ item.service_name }}</strong><p dir="ltr">{{ item.workspace_public_id }}</p><p class="admin-description">{{ item.reason }}</p></div><button type="button" :disabled="!!busy" class="admin-action admin-action-danger" @click="revokeGrant(item.id)">{{ copy('سحب المنحة', 'Revoke grant') }}</button></li><li v-if="!grants.length" class="admin-empty">{{ copy('لا توجد منح خدمة نشطة.', 'No active service grants.') }}</li></ul>
+                    <ul class="service-list"><li v-for="item in grants" :key="item.id"><div><strong>{{ item.service_name }}</strong><p dir="ltr">{{ item.business_public_id }}</p><p class="admin-description">{{ item.reason }}</p></div><button type="button" :disabled="!!busy" class="admin-action admin-action-danger" @click="revokeGrant(item.id)">{{ copy('سحب المنحة', 'Revoke grant') }}</button></li><li v-if="!grants.length" class="admin-empty">{{ copy('لا توجد منح خدمة نشطة.', 'No active service grants.') }}</li></ul>
                 </section>
             </fieldset>
         </div>

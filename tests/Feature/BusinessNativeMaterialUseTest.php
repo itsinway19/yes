@@ -54,7 +54,7 @@ final class BusinessNativeMaterialUseTest extends TestCase
         DB::disconnect();
         $this->assertSame($response->json(), $this->readNative($f)->assertOk()->json());
         $this->assertSame($grants, $owner->table('security_action_grants')->count());
-        $this->assertSame(0, $owner->table('workspaces')->count());
+        $this->assertNull($owner->scalar("SELECT to_regclass('public.workspaces')"));
         $receipt = $owner->table('business_command_receipts')->where('command_id', $f['body']['command_id'])->sole();
         $this->assertStringNotContainsString('native_value', $receipt->result_ref);
         foreach ([0, 1, 2] as $missing) {
@@ -72,7 +72,7 @@ final class BusinessNativeMaterialUseTest extends TestCase
         $owner = DB::connection('pgsql_migrations');
         $this->assertSame(0, $owner->table('data_use_scopes')->count());
         $this->assertSame(0, $owner->table('business_data_use_bindings')->count());
-        $this->assertSame(0, $owner->table('workspaces')->count());
+        $this->assertNull($owner->scalar("SELECT to_regclass('public.workspaces')"));
     }
 
     public function test_a_second_qualified_business_binding_cannot_retarget_a_business_native_original(): void
@@ -84,7 +84,7 @@ final class BusinessNativeMaterialUseTest extends TestCase
         $id = (int) $owner->table('businesses')->where('public_id', $other['business_public_id'])->value('id');
         $manager = BusinessAuthorityFixture::root($id, $f['user']->id, 'business.link.manage');
         $data = BusinessAuthorityFixture::root($id, $f['user']->id, 'business.data.use');
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+        $selection = ['realm_kind' => 'direct', 'requirements' => [
             ['requirement_kind' => 'business', 'leaf_grant_id' => $manager->id],
             ['requirement_kind' => 'client_data', 'leaf_grant_id' => $f['boundary']['grant_id']],
         ]];
@@ -151,7 +151,7 @@ final class BusinessNativeMaterialUseTest extends TestCase
                 'family' => 'meta', 'namespace' => 'ad_account', 'external_id' => '124', 'label' => 'Different native source',
                 'resource' => '124', 'operation' => 'report.read', 'purpose' => 'advertising_analysis',
                 'expected_version' => 0, 'reason' => 'explicit_other_source',
-            ], ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            ], ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => (int) $f['business']['grant_refs']['business.context.read']],
             ]]
         ));
@@ -166,7 +166,7 @@ final class BusinessNativeMaterialUseTest extends TestCase
         $this->actingAs($f['user']);
         $this->postJson('/api/data-rights/commands', ['command_id' => (string) Str::uuid(), 'target_kind' => 'source', 'target_ref' => $f['source'],
             'effect' => 'revoke', 'payload' => ['grant_id' => (string) $f['native']], 'expected_revision' => 1,
-            'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+            'authority_selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'native_source', 'leaf_grant_id' => (int) $f['custody']['grant_refs']['source.manage']],
             ]]])->assertOk();
         $this->readNative($f)->assertForbidden();

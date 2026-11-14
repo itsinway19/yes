@@ -14,7 +14,7 @@ final class DisposableDatabaseReset
     {
         $this->clear();
         if (Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]) !== 0) {
-            throw new RuntimeException('Disposable installation failed.');
+            throw new RuntimeException('Disposable installation failed: '.Artisan::output());
         }
         $this->assertInstalledCatalog();
     }
@@ -26,7 +26,7 @@ final class DisposableDatabaseReset
         $sealed = $owner->transaction(function () use ($owner): bool {
             $owner->statement('SET LOCAL ROLE builderad_scope_executor');
 
-            return (bool) $owner->scalar('SELECT builderad_private.legacy_catalog_digest() = builderad_private.legacy_installation_digest()');
+            return (bool) $owner->scalar('SELECT builderad_private.catalog_digest() = builderad_private.installation_digest()');
         });
         if (! $sealed) {
             throw new RuntimeException('Disposable installation catalog seal does not match the actual catalog.');
@@ -38,19 +38,11 @@ final class DisposableDatabaseReset
         app(DisposableTestDatabaseGuard::class)->assertSafe();
         DB::disconnect('pgsql');
         DB::disconnect('pgsql_authority');
-        // This declared read-only projection is owned by the isolated executor;
-        // db:wipe's table cleanup does not remove views or executor-owned objects.
-        $resetOwner = DB::connection('pgsql_migrations');
-        $resetOwner->statement('SET ROLE builderad_scope_executor');
-        try {
-            $resetOwner->statement('DROP VIEW IF EXISTS public.organization_workspaces RESTRICT');
-        } finally {
-            $resetOwner->statement('RESET ROLE');
-        }
+        $owner = DB::connection('pgsql_migrations');
+        $owner->statement('DROP VIEW IF EXISTS public.service_business_admin_scopes');
         if (Artisan::call('db:wipe', ['--database' => 'pgsql_migrations', '--force' => true]) !== 0) {
             throw new RuntimeException('Disposable table reset failed.');
         }
-        $owner = DB::connection('pgsql_migrations');
         // Only the guarded disposable target is reachable here. Private admission
         // state and non-login-owned functions must not survive a fresh install.
         $owner->statement('DROP SCHEMA IF EXISTS builderad_private CASCADE');

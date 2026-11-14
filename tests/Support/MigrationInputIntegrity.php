@@ -8,6 +8,10 @@ use Symfony\Component\Process\Process;
 /** Build-time SQL migration convention and Git history check; never executes migration PHP. */
 final class MigrationInputIntegrity
 {
+    public const REBASELINE_FROM = 'd5d93ed73f20f5e81972e8b5d19cb5cb95db3fe4';
+
+    public const REBASELINE_ID = 'workspace-retirement-clean-postgresql-v1';
+
     private static array $snapshots = [];
 
     public function __construct(private string $repository, private ?string $database = null)
@@ -41,6 +45,9 @@ final class MigrationInputIntegrity
     public function verify(array $lock, string $sha): array
     {
         $trusted = $this->snapshot($sha);
+        if ($sha === self::REBASELINE_FROM && ($lock['baseline'] ?? null) === self::REBASELINE_ID) {
+            return $this->verifyRebaseline($lock);
+        }
         $errors = [];
         if (($lock['baseline'] ?? null) !== $trusted['baseline']) {
             $errors[] = 'Manifest baseline differs from trusted Git history metadata';
@@ -94,6 +101,42 @@ final class MigrationInputIntegrity
             || self::set(array_keys($lock['readers'] ?? [])) !== self::set($names)
             || self::set(array_keys($lock['inputs'] ?? [])) !== self::set(array_keys($expectedInputs))) {
             $errors[] = 'Manifest migration/reader/input membership differs from actual sources';
+        }
+
+        return $errors;
+    }
+
+    /** Review this complete digest, then configure the repository variable outside the candidate. */
+    public static function rebaselineApproval(array $lock): string
+    {
+        return hash('sha256', json_encode(['from_sha' => self::REBASELINE_FROM, 'manifest' => $lock], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+    }
+
+    private function verifyRebaseline(array $lock): array
+    {
+        $approval = getenv('BUILDERAD_MIGRATION_REBASELINE_APPROVAL');
+        if (! is_string($approval) || ! preg_match('/^[a-f0-9]{64}$/D', $approval)
+            || ! hash_equals(self::rebaselineApproval($lock), $approval)) {
+            return ['One-time migration rebaseline requires independent approval of the exact predecessor and manifest'];
+        }
+        $actual = ['baseline' => self::REBASELINE_ID, 'historical' => [], 'readers' => [], 'inputs' => []];
+        $errors = [];
+        foreach (glob($this->database.'/migrations/*.php') as $path) {
+            $name = basename($path);
+            $source = file_get_contents($path);
+            $inspection = self::inspectForward($name, $source);
+            foreach ($inspection['violations'] as $violation) {
+                $errors[] = $name.': '.$violation;
+            }
+            $actual['historical'][$name] = self::digest($source);
+            $actual['readers'][$name] = $inspection['inputs'];
+            foreach ($inspection['inputs'] as $input) {
+                $actual['inputs'][$input] = is_file($this->database.'/'.$input)
+                    ? self::digest(file_get_contents($this->database.'/'.$input)) : null;
+            }
+        }
+        if ($actual['historical'] === [] || in_array(null, $actual['inputs'], true) || $lock != $actual) {
+            $errors[] = 'Approved rebaseline manifest differs from actual migration hashes, readers, or SQL inputs';
         }
 
         return $errors;

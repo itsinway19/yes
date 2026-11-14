@@ -41,7 +41,7 @@ final class GoogleHttpFailureTest extends TestCase
         $http = new Factory;
         $http->preventStrayRequests();
         $http->fake(['*' => $http->response($body, $status, ['Retry-After' => $hint])]);
-        $scope = new ProviderScope(7, '11111111-1111-7111-8111-111111111111', Provider::Google,
+        $scope = ProviderScope::forBusiness(7, '11111111-1111-7111-8111-111111111111', Provider::Google,
             '1234567890', 'discovery.read', 'advertising_analysis');
 
         return (new GoogleAdsClient($http, 'v25', '', static fn () => null, 'provider.connect'))->accessible(

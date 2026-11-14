@@ -11,7 +11,7 @@ test('Business mandate withdrawal exposes bounded paginated groups and preserves
     const schema = spec.components.schemas.BusinessAgencyMandatesCommand;
     assert.equal(schema.additionalProperties, false); assert.equal(schema.properties.expected_grants.maxItems, 256);
     assert.equal(schema.properties.authority_selection.$ref, '#/components/schemas/BusinessAuthoritySelection');
-    const body = { command_id: crypto.randomUUID(), authority_selection: { realm_kind: 'direct', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: 42 }] }, agency_business_public_id: agency, expected_grants: [{ grant_id: '81', version: 3 }, { grant_id: '82', version: 4 }], confirmed: true };
+    const body = { command_id: crypto.randomUUID(), authority_selection: { realm_kind: 'direct',  requirements: [{ requirement_kind: 'business', leaf_grant_id: 42 }] }, agency_business_public_id: agency, expected_grants: [{ grant_id: '81', version: 3 }, { grant_id: '82', version: 4 }], confirmed: true };
     const calls = [];
     const client = createApplicationClient('https://builderad.test', async request => {
         calls.push(request.method);
@@ -39,7 +39,8 @@ test('Business agency commands expose finite explicit Business authority and pre
     assert.equal(schema.properties.expires_at.format, 'date-time');
     assert.equal(schema.properties.workspace_public_id, undefined);
     assert.equal(schema.properties.authority_selection.$ref, '#/components/schemas/BusinessAuthoritySelection');
-    assert.match(operation.description, /realm_workspace_public_id JSON null/);
+    assert.match(operation.description, /exactly one Business requirement matching parent_grant_id/);
+    assert.equal(spec.components.schemas.BusinessAuthoritySelection.properties.realm_workspace_public_id,undefined);
     const discovery = spec.paths['/api/businesses/{business}/agency-options'].get;
     assert.deepEqual(discovery.parameters.filter(parameter => parameter.in === 'query').map(parameter => [parameter.name, parameter.required === true]),
         [['access', true], ['agency', true], ['recipient', false]]);
@@ -53,7 +54,7 @@ test('Business agency commands expose finite explicit Business authority and pre
     const body = { command_id: '22222222-2222-4222-8222-222222222222', effect: 'assign',
         agency_business_public_id: '33333333-3333-7333-8333-333333333333', recipient_public_id: '44444444-4444-7444-8444-444444444444',
         membership_grant_id: 47, action: 'business.context.read', parent_grant_id: 42, expires_at: '2030-01-01T00:00:00Z', confirmed: true,
-        authority_selection: { realm_kind: 'direct', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: 42 }] } };
+        authority_selection: { realm_kind: 'direct',  requirements: [{ requirement_kind: 'business', leaf_grant_id: 42 }] } };
     let calls = 0;
     const client = createApplicationClient('https://builderad.test', async request => {
         calls++;
@@ -90,7 +91,7 @@ test('native document destinations remain on the application origin and identity
 test('independent Business commands retain the exact subject and selected realm without Workspace inference or unknown-write retry', async () => {
     const business = '11111111-1111-7111-8111-111111111111';
     const body = { command_id: '22222222-2222-4222-8222-222222222222', name: 'Explicit business', business_type_id: null, expected_context: 7,
-        authority_selection: { realm_kind: 'agency', realm_workspace_public_id: '33333333-3333-7333-8333-333333333333', requirements: [{ requirement_kind: 'business', leaf_grant_id: 42 }] } };
+        authority_selection: { realm_realm_scope_id: '33333333-3333-7333-8333-333333333333', requirements: [{ requirement_kind: 'business', leaf_grant_id: 42 }] } };
     let calls = 0;
     const client = createApplicationClient('https://builderad.test', async request => {
         calls++;
@@ -114,7 +115,7 @@ test('Business fact delivery preserves each selected action, declaration and ori
     ];
     for (const [kind, fact] of commands) {
         const body = { command_id: '22222222-2222-4222-8222-222222222222', ...fact,
-            authority_selection: { realm_kind: 'direct', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: 42 }] } };
+            authority_selection: { realm_kind: 'direct',  requirements: [{ requirement_kind: 'business', leaf_grant_id: 42 }] } };
         let calls = 0;
         const client = createApplicationClient('https://builderad.test', async request => {
             calls++;
@@ -130,24 +131,24 @@ test('Business fact delivery preserves each selected action, declaration and ori
 
 test('relationship transport keeps the exact target and monotonic revision and never retries an uncertain end', async () => {
     const business = '11111111-1111-7111-8111-111111111111';
-    const body = { command_id: '22222222-2222-4222-8222-222222222222', workspace_public_id: '33333333-3333-7333-8333-333333333333',
-        kind: 'agency', effect: 'end', expected_revision: 7, authority_selection: { realm_kind: 'direct', realm_workspace_public_id: null,
+    const body = { command_id: '22222222-2222-4222-8222-222222222222', scope_id: '33333333-3333-7333-8333-333333333333',
+        effect: 'end', expected_revision: 7, authority_selection: { realm_kind: 'direct',
             requirements: [{ requirement_kind: 'business', leaf_grant_id: 42 }] } };
     let calls = 0;
     const client = createApplicationClient('https://builderad.test', async request => {
-        calls++; assert.equal(request.url, `https://builderad.test/api/businesses/${business}/workspace-links`);
+        calls++; assert.equal(request.url, `https://builderad.test/api/businesses/${business}/data-use-bindings`);
         assert.deepEqual(await request.json(), body); throw Error('uncertain relationship outcome');
     });
-    await assert.rejects(client.POST('/api/businesses/{business}/workspace-links', { params: { path: { business } }, body }), /uncertain relationship outcome/);
+    await assert.rejects(client.POST('/api/businesses/{business}/data-use-bindings', { params: { path: { business } }, body }), /uncertain relationship outcome/);
     assert.equal(calls, 1);
 });
 
 test('a typed pre-effect revision rejection stays distinguishable from a generic unknown command conflict', async () => {
     for (const error of ['business_relation_revision_rejected','business_conflict']) {
         const client = createApplicationClient('https://builderad.test', async () => Response.json({ error }, { status: 409 }));
-        const result = await client.POST('/api/businesses/{business}/workspace-links', { params: { path: { business: '11111111-1111-7111-8111-111111111111' } },
-            body: { command_id: '22222222-2222-4222-8222-222222222222', workspace_public_id: '33333333-3333-7333-8333-333333333333',
-                effect: 'add', expected_revision: 2, authority_selection: { realm_kind: 'direct', realm_workspace_public_id: null, requirements: [{ requirement_kind: 'business', leaf_grant_id: 42 }] } } });
+        const result = await client.POST('/api/businesses/{business}/data-use-bindings', { params: { path: { business: '11111111-1111-7111-8111-111111111111' } },
+            body: { command_id: '22222222-2222-4222-8222-222222222222', scope_id: '33333333-3333-7333-8333-333333333333',
+                effect: 'end', expected_revision: 2, authority_selection: { realm_kind: 'direct',  requirements: [{ requirement_kind: 'business', leaf_grant_id: 42 }] } } });
         assert.equal(result.response.status, 409); assert.equal(result.error.error, error); assert.equal(result.data, undefined);
     }
 });

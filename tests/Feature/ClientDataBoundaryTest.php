@@ -33,7 +33,7 @@ final class ClientDataBoundaryTest extends TestCase
             $req[] = ['requirement_kind' => 'business', 'leaf_grant_id' => $business['grant_refs']['business.link.manage']];
         }
 
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => $req];
+        return ['realm_kind' => 'direct', 'requirements' => $req];
     }
 
     private function command(Request $r, array $boundary, string $business, string $effect, int $version, array $selection): array
@@ -121,7 +121,7 @@ final class ClientDataBoundaryTest extends TestCase
         $this->assertSame(1, $db->table('resource_right_fences')->where('fence_id', $second['fence_id'])->value('rights_epoch'));
         $this->assertSame(1, $db->table('business_authority_fences')->where('business_id', $b)->value('auth_epoch'));
         $this->assertSame('Customer', app(BusinessScope::class)->read($this->request($owner), $a['business_public_id'],
-            ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs']['business.context.read']]]])['name']);
+            ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs']['business.context.read']]]])['name']);
     }
 
     public function test_raw_boundary_dml_and_caller_root_qualification_are_denied(): void
@@ -243,8 +243,8 @@ final class ClientDataBoundaryTest extends TestCase
         $b = $owner->table('businesses')->where('public_id', $business['business_public_id'])->value('id');
         $root = Fixture::root($b, $issuer->id, 'business.link.manage');
         $delegated = app(BusinessScope::class)->grant($this->request($issuer), $business['business_public_id'], (string) Str::uuid(), 'issue', $actor->public_id,
-            'business.link.manage', $root->id, null, 0, null, false, null,
-            ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $root->id]]]);
+            'business.link.manage', $root->id, null, 0, null, false,
+            ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $root->id]]]);
         $boundary = Fixture::boundary($actor->id);
         $business['grant_refs']['business.link.manage'] = $delegated['grant_id'];
         $request = $this->request($actor);

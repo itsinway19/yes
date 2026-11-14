@@ -2,68 +2,12 @@
 
 namespace App\Business;
 
-use App\Models\Workspace;
-use App\Security\SessionAuthority;
 use DateTimeImmutable;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
-/** Canonical declaration access, within WorkspaceContext::run's signed transaction. */
+/** Canonical declaration access within the signed Business transaction. */
 final class ObjectPurpose
 {
-    public function reviseOriginalHistory(Request $request, Workspace $workspace, array $command): array
-    {
-        return json_decode(DB::scalar('SELECT builderad_v2_legacy_purpose_history_revise(?,?,?::jsonb)', [
-            $workspace->id, SessionAuthority::sessionKey($request), json_encode($command, JSON_THROW_ON_ERROR),
-        ]), true, flags: JSON_THROW_ON_ERROR);
-    }
-
-    /** The same domain admission as projection, without reconstructing business history. */
-    public function assertReadable(Request $request, Workspace $workspace, ?string $purposeId = null, ?DateTimeImmutable $knownAt = null): void
-    {
-        $this->readableHeads($request, $workspace, $purposeId, $knownAt);
-    }
-
-    private function readableHeads(Request $request, Workspace $workspace, ?string $purposeId, ?DateTimeImmutable $knownAt): array
-    {
-        $this->authorize($request, $workspace);
-        $now = new DateTimeImmutable(DB::scalar('SELECT clock_timestamp()'));
-        $knownAt ??= $now;
-        if ($knownAt > $now) {
-            throw ValidationException::withMessages(['known_at' => 'Knowledge time cannot be in the future.']);
-        }
-        $heads = DB::table('object_purposes')->where('workspace_id', $workspace->id)
-            ->when($purposeId !== null, fn ($query) => $query->where('id', $purposeId))->orderBy('id')->get();
-        if ($purposeId !== null && $heads->isEmpty()) {
-            abort(404);
-        }
-
-        return [$heads, $now];
-    }
-
-    public function projection(Request $request, Workspace $workspace, ?string $purposeId = null,
-        ?DateTimeImmutable $effectiveAt = null, ?DateTimeImmutable $knownAt = null, ?array $object = null): array
-    {
-        [$heads, $now] = $this->readableHeads($request, $workspace, $purposeId, $knownAt);
-        $effectiveAt ??= $now;
-        $knownAt ??= $now;
-        $contextVersion = (int) DB::table('workspaces')->where('id', $workspace->id)->value('business_context_version');
-        // Existing DTM events are immutable and prohibit no-op transitions.
-        $dtmTransitionVersion = (int) DB::table('business_target_market_events')->where('workspace_id', $workspace->id)
-            ->where('version', '<=', $contextVersion)->max('version');
-        foreach ($heads as $head) {
-            $head->history = DB::table('object_purpose_revisions')->where('workspace_id', $workspace->id)->where('purpose_id', $head->id)
-                ->where('accepted_at', '<=', $knownAt->format('Y-m-d H:i:s.uP'))->orderBy('version')->get()
-                ->map(fn ($row) => $this->revisionArray($row))->all();
-        }
-        $result = $this->projectHistory($heads->all(), $contextVersion, $dtmTransitionVersion, $effectiveAt, $knownAt, $object);
-        $this->authorize($request, $workspace);
-
-        return $result;
-    }
-
-    /** Pure native temporal owner; both admitted namespaces supply qualified rows. */
+    /** Pure native temporal owner; consumes only qualified Business rows. */
     public function projectHistory(array $heads, int $contextVersion, int $dtmTransitionVersion, DateTimeImmutable $effectiveAt, DateTimeImmutable $knownAt, ?array $object = null, bool $historyAvailable = true): array
     {
         $items = [];
@@ -125,33 +69,6 @@ final class ObjectPurpose
         return ['state' => $hasDeclaredConflict ? 'CONFLICTING' : (count($applicable) > 1 ? 'MULTIPLE_APPLICABLE' : ($applicable === [] ? 'UNKNOWN' : 'DECLARED')),
             'items' => $items, 'current_context_version' => $contextVersion, 'latest_dtm_event_context_version' => $dtmTransitionVersion,
             'effective_at' => $effectiveAt->format('Y-m-d\TH:i:s.uP'), 'known_at' => $knownAt->format('Y-m-d\TH:i:s.uP')];
-    }
-
-    public function revision(Request $request, Workspace $workspace, string $revisionId): array
-    {
-        $this->authorize($request, $workspace);
-        $row = DB::table('object_purpose_revisions')->where('workspace_id', $workspace->id)->where('revision_id', $revisionId)->first();
-        abort_if($row === null, 404);
-        $result = $this->revisionArray($row);
-        $this->authorize($request, $workspace);
-
-        return $result;
-    }
-
-    private function authorize(Request $request, Workspace $workspace): void
-    {
-        DB::scalar('SELECT builderad_object_purpose_read_begin(?,?)', [$workspace->id, SessionAuthority::sessionKey($request)]);
-    }
-
-    private function revisionArray(object $row): array
-    {
-        $result = (array) $row;
-        unset($result['business_id'], $result['business_authority_epoch']);
-        foreach (['snapshot', 'confirmations', 'affected_revision_ids'] as $field) {
-            $result[$field] = json_decode($result[$field], true, flags: JSON_THROW_ON_ERROR);
-        }
-
-        return $result;
     }
 
     private function covers(array $snapshot, array $object): bool

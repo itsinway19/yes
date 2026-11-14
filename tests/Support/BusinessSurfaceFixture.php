@@ -1,14 +1,15 @@
 <?php
 
 use App\Foundation\Business\BusinessScope;
+use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
 use App\Security\DisposableTestDatabaseGuard;
+use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Session\ArraySessionHandler;
 use Illuminate\Session\Store;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -37,10 +38,8 @@ $session->save();
 $scope = app(BusinessScope::class);
 $path = $run.'/business-surface-fixture.json';
 $mode = $argv[1] ?? 'setup';
-$select = fn (int $grant) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
-if (str_starts_with($mode, 'historical-links-')) {
-    require __DIR__.'/HistoricalBusinessLinksBrowserFixture.php';
-} elseif (in_array($mode, ['business-agency-setup', 'business-agency-audit'], true)) {
+$select = fn (int $grant) => ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
+if (in_array($mode, ['business-agency-setup', 'business-agency-audit'], true)) {
     require __DIR__.'/BusinessAgencyBrowserFixture.php';
 } elseif (in_array($mode, ['activity-knowledge-setup', 'activity-knowledge-withdraw'], true)) {
     require __DIR__.'/BusinessActivityBrowserFixture.php';
@@ -53,22 +52,8 @@ if (str_starts_with($mode, 'historical-links-')) {
 } elseif ($mode === 'team-identities') {
     file_put_contents($run.'/team-identities.json', json_encode(['manager' => $recipient->public_id, 'staff' => $owner->public_id,
         'qualification' => 'IDENTITY FIXTURES ONLY; NO MEMBERSHIP OR BUSINESS GRANT INSERTED'], JSON_THROW_ON_ERROR));
-} elseif ($mode === 'internal-team-setup') {
-    // Created on the real <=760 installation by GoalsSpaFixture, then forward
-    // migrated before either PHP server or the browser starts. Never reinstall
-    // a retired writer into this already-running final-schema candidate.
-    $historicalPath = $run.'/internal-team-browser-fixture.json';
-    if (! is_file($historicalPath) || ! DB::connection('pgsql_migrations')->table('migrations')->where('migration', 'like', '0001_01_01_000770_%')->exists()) {
-        throw new RuntimeException('Forward-upgraded historical internal-team browser fixture required; create a fresh guarded browser fixture.');
-    }
-    $historical = json_decode(file_get_contents($historicalPath), true, flags: JSON_THROW_ON_ERROR);
-    if (! isset($historical['rights'], $historical['creator_email'], $historical['staff_email'])) {
-        throw new RuntimeException('The retained fixture must contain actual historical rights and isolated actors.');
-    }
 } elseif (in_array($mode, ['purpose-setup', 'purpose-revoke-read', 'purpose-revoke-write'], true)) {
     require __DIR__.'/BusinessPurposeBrowserFixture.php';
-} elseif (in_array($mode, ['legacy-history-setup', 'legacy-history-withdraw'], true)) {
-    require __DIR__.'/LegacyHistoryBrowserFixture.php';
 } elseif ($mode === 'history-withdraw') {
     $out = json_decode(file_get_contents($run.'/business-history-fixture.json'), true, flags: JSON_THROW_ON_ERROR);
     $q = DB::connection('pgsql_migrations')->table('security_action_grants')->where('id', $out['a']['grant_refs']['business.context.read'])->value('qualification_id');
@@ -89,7 +74,7 @@ if (str_starts_with($mode, 'historical-links-')) {
         $business = $scope->create($requestB, (string) Str::uuid(), $name, null);
         $data = DataUseSurfaceFixture::scope($recipient, $shared);
         $shared = $data['source'];
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [
+        $selection = ['realm_kind' => 'direct', 'requirements' => [
             ['requirement_kind' => 'client_data', 'leaf_grant_id' => $data['boundary']['grant_id']],
             ['requirement_kind' => 'business', 'leaf_grant_id' => $business['grant_refs']['business.link.manage']]]];
         $scope->resourceRight($requestB, (string) Str::uuid(), 'boundary_subject', $data['boundary']['boundary_id'], 'attach_subject',
@@ -110,57 +95,26 @@ if (str_starts_with($mode, 'historical-links-')) {
     $out = ['qualification' => 'SYNTHETIC EXISTING NATIVE OWNER RIGHTS; NOT A LIVE PROVIDER'];
     foreach (['a' => 'مصدر العميل الأول', 'b' => 'مصدر العميل الثاني', 'foreign' => 'مصدر غير مؤهل'] as $key => $name) {
         $actor = $key === 'foreign' ? $owner : $recipient;
-        $workspace = $db->table('workspaces')->insertGetId(['name' => 'Synthetic source custody', 'slug' => 'source-custody-'.Str::uuid(),
-            'status' => 'active', 'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()]);
-        $db->table('workspace_memberships')->insert(['workspace_id' => $workspace, 'user_id' => $actor->id, 'role' => 'owner', 'status' => 'active', 'created_at' => now()]);
-        $db->table('workspace_ownerships')->insert(['workspace_id' => $workspace, 'responsible_owner_user_id' => $actor->id, 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
-        $db->table('security_action_grants')->insert(['subject_user_id' => $actor->id, 'subject_generation' => 1, 'source' => 'system_workspace_creation',
-            'scope_kind' => 'workspace', 'workspace_id' => $workspace, 'action' => 'workspace.view', 'status' => 'active', 'version' => 1,
-            'reason' => 'synthetic_source_fixture', 'created_at' => now(), 'updated_at' => now()]);
+        $actorStore = new Store('source-fixture-'.$key, new ArraySessionHandler(120));
+        $actorStore->start();
+        $actorRequest = Request::create('/api/businesses');
+        $actorRequest->setLaravelSession($actorStore);
+        $actorRequest->setUserResolver(fn () => $actor);
+        app(SessionAuthority::class)->issue($actorRequest, $actor);
+        $actorStore->save();
+        $business = $scope->create($actorRequest, (string) Str::uuid7(), $name, null);
         $source = (string) Str::uuid7();
-        $db->table('source_registry')->insert(['id' => $source, 'workspace_id' => $workspace, 'family' => 'business', 'namespace' => 'synthetic',
-            'declared_external_id' => 'private-'.$key, 'label' => $name, 'version' => 1, 'status' => 'UNVERIFIED']);
-        $db->table('source_capabilities')->insert(['source_id' => $source, 'workspace_id' => $workspace, 'resource' => 'synthetic-records', 'operation' => 'report.read', 'purpose' => 'capture']);
-        $out[$key] = ['source' => $source, 'workspace' => $workspace, 'name' => $name, 'grants' => []];
-        foreach (['source.manage', 'source.read', 'source.audit.recover'] as $action) {
-            $out[$key]['grants'][$action] = $db->table('security_action_grants')->insertGetId(['subject_user_id' => $actor->id, 'subject_generation' => 1, 'granted_by' => $actor->id,
-                'source' => 'source_owner_request', 'scope_kind' => 'source', 'workspace_id' => $workspace, 'source_target_id' => $source,
-                'source_resource' => 'synthetic-records', 'source_operation' => 'report.read', 'source_purpose' => 'capture', 'action' => $action,
-                'status' => 'active', 'version' => 1, 'reason' => 'synthetic_source_fixture', 'created_at' => now(), 'updated_at' => now()]);
-        }
+        $custody = DB::transaction(function () use ($actor, $actorRequest, $business, $source, $key, $name, $select) {
+            app(PrincipalContext::class)->activate($actor);
+
+            return app(GrantAuthority::class)->bootstrapBusinessSource($actorRequest, $business['business_public_id'], $source,
+                (string) Str::uuid7(), ['family' => 'business', 'namespace' => 'synthetic', 'external_id' => 'private-'.$key,
+                    'label' => $name, 'resource' => 'synthetic-records', 'operation' => 'report.read', 'purpose' => 'capture',
+                    'expected_version' => 0, 'reason' => 'synthetic_source_fixture'], $select((int) $business['grant_refs']['business.context.read']));
+        });
+        $out[$key] = ['source' => $source, 'business' => $business, 'name' => $name, 'grants' => $custody['grant_refs']];
     }
     file_put_contents($run.'/business-source-fixture.json', json_encode($out, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
-} elseif ($mode === 'shared-return-setup') {
-    $sources = json_decode(file_get_contents($run.'/business-source-fixture.json'), true, flags: JSON_THROW_ON_ERROR);
-    $db = DB::connection('pgsql_migrations');
-    $draft = $scope->create($request, (string) Str::uuid(), 'نشاط العودة المستقلة', null);
-    $out = ['business' => $draft['business_public_id']];
-    $id = $db->table('businesses')->where('public_id', $out['business'])->value('id');
-    $readRoot = BusinessAuthorityFixture::root($id, $owner->id, 'business.context.read');
-    $read = $scope->grant($request, $out['business'], (string) Str::uuid(), 'issue', $recipient->public_id,
-        'business.context.read', $readRoot->id, null, 0, null, false, null, $select($readRoot->id));
-    $root = BusinessAuthorityFixture::root($id, $owner->id, 'business.link.manage');
-    $issued = $scope->grant($request, $out['business'], (string) Str::uuid(), 'issue', $recipient->public_id,
-        'business.link.manage', $root->id, null, 0, null, false, null, $select($root->id));
-    $request->setUserResolver(fn () => $recipient);
-    $session->regenerate();
-    app(SessionAuthority::class)->issue($request, $recipient);
-    $session->save();
-    $workspace = $db->table('workspaces')->where('id', $sources['a']['workspace'])->value('public_id');
-    $businessId = $db->table('businesses')->where('public_id', $out['business'])->value('id');
-    $linkAuthority = $db->table('security_action_grants')->where('id', $issued['grant_id'])->sole();
-    BusinessAuthorityFixture::legacyWorkspaceLink($businessId, $sources['a']['workspace'], $linkAuthority, $recipient->id, 'collaboration');
-    file_put_contents($run.'/shared-return-fixture.json', json_encode(['business' => $out['business'],
-        'access' => $read['grant_id'], 'read_issuer' => $readRoot->id, 'workspace' => $workspace, 'other_workspace' => $base['b']['workspaces'][0]['public_id'],
-        'other_identity_workspace' => $base['a']['workspaces'][0]['public_id'],
-        'qualification' => 'ISOLATED SYNTHETIC HISTORICAL RELATIONSHIP; NO OPERATING LINK WRITER OR LIVE PROVIDER'], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
-    Cache::store('redis')->put('shared-source-return-runtime', true, 600);
-} elseif ($mode === 'shared-return-revoke') {
-    $out = json_decode(file_get_contents($run.'/shared-return-fixture.json'), true, flags: JSON_THROW_ON_ERROR);
-    $scope->grant($request, $out['business'], (string) Str::uuid(), 'revoke', $recipient->public_id,
-        'business.context.read', null, $out['access'], 1, null, false, null, $select($out['read_issuer']));
-} elseif ($mode === 'shared-return-finish') {
-    Cache::store('redis')->forget('shared-source-return-runtime');
 } elseif ($mode === 'source-add-scope') {
     $out = json_decode(file_get_contents($run.'/business-source-fixture.json'), true, flags: JSON_THROW_ON_ERROR);
     $db = DB::connection('pgsql_migrations');
@@ -173,7 +127,7 @@ if (str_starts_with($mode, 'historical-links-')) {
     file_put_contents($run.'/business-source-fixture.json', json_encode($out, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
 } elseif ($mode === 'source-withdraw-owner') {
     $out = json_decode(file_get_contents($run.'/business-source-fixture.json'), true, flags: JSON_THROW_ON_ERROR);
-    DB::connection('pgsql_migrations')->table('workspace_ownerships')->where('workspace_id', $out['a']['workspace'])->update(['responsible_owner_user_id' => $owner->id, 'version' => 2]);
+    BusinessAuthorityFixture::revokeQualification(DB::connection('pgsql_migrations')->table('security_action_grants')->where('id', $out['a']['business']['grant_refs']['business.context.read'])->value('qualification_id'), $recipient->id);
 } elseif ($mode === 'boundary-setup') {
     $out = ['qualification' => 'SYNTHETIC EXISTING BOUNDARIES; NO OPERATING ROOT ISSUER'];
     foreach (['a' => 'عميل نطاق البيانات الأول', 'b' => 'عميل نطاق البيانات الثاني'] as $key => $name) {
@@ -182,7 +136,7 @@ if (str_starts_with($mode, 'historical-links-')) {
         $out[$key] = ['business' => $draft['business_public_id'], 'name' => $name, 'boundary' => BusinessAuthorityFixture::boundary($recipient->id)];
         foreach (['read' => 'business.context.read', 'link' => 'business.link.manage'] as $label => $action) {
             $root = BusinessAuthorityFixture::root($id, $owner->id, $action);
-            $issued = $scope->grant($request, $draft['business_public_id'], (string) Str::uuid(), 'issue', $recipient->public_id, $action, $root->id, null, 0, null, false, null, $select($root->id));
+            $issued = $scope->grant($request, $draft['business_public_id'], (string) Str::uuid(), 'issue', $recipient->public_id, $action, $root->id, null, 0, null, false, $select($root->id));
             $out[$key][$label] = ['issuer' => $root->id, 'leaf' => $issued['grant_id'], 'action' => $action];
         }
     }
@@ -192,7 +146,7 @@ if (str_starts_with($mode, 'historical-links-')) {
     $out = json_decode(file_get_contents($run.'/business-boundary-fixture.json'), true, flags: JSON_THROW_ON_ERROR);
     foreach (['read', 'link'] as $label) {
         $grant = $out['a'][$label];
-        $scope->grant($request, $out['a']['business'], (string) Str::uuid(), 'revoke', $recipient->public_id, $grant['action'], null, $grant['leaf'], 1, null, false, null, $select($grant['issuer']));
+        $scope->grant($request, $out['a']['business'], (string) Str::uuid(), 'revoke', $recipient->public_id, $grant['action'], null, $grant['leaf'], 1, null, false, $select($grant['issuer']));
     }
 } elseif ($mode === 'boundary-withdraw-manager') {
     $out = json_decode(file_get_contents($run.'/business-boundary-fixture.json'), true, flags: JSON_THROW_ON_ERROR);
@@ -208,16 +162,16 @@ if (str_starts_with($mode, 'historical-links-')) {
         $id = DB::connection('pgsql_migrations')->table('businesses')->where('public_id', $draft['business_public_id'])->value('id');
         $root = BusinessAuthorityFixture::root($id, $owner->id, 'business.context.read');
         $parent = $scope->grant($request, $draft['business_public_id'], (string) Str::uuid(), 'issue', $recipient->public_id,
-            'business.context.read', $root->id, null, 0, null, true, null, $select($root->id));
+            'business.context.read', $root->id, null, 0, null, true, $select($root->id));
         $independent = $scope->grant($request, $draft['business_public_id'], (string) Str::uuid(), 'issue', $recipient->public_id,
-            'business.context.read', $root->id, null, 0, null, false, null, $select($root->id));
+            'business.context.read', $root->id, null, 0, null, false, $select($root->id));
         $out[$key] = ['business' => $draft['business_public_id'], 'issuer' => $root->id, 'parent' => $parent['grant_id'], 'read' => $independent['grant_id']];
     }
     file_put_contents($run.'/business-delegation-fixture.json', json_encode($out, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
 } elseif ($mode === 'delegation-revoke-parent') {
     $out = json_decode(file_get_contents($run.'/business-delegation-fixture.json'), true, flags: JSON_THROW_ON_ERROR);
     $scope->grant($request, $out['a']['business'], (string) Str::uuid(), 'revoke', $recipient->public_id, 'business.context.read',
-        null, $out['a']['parent'], 1, null, false, null, $select($out['a']['issuer']));
+        null, $out['a']['parent'], 1, null, false, $select($out['a']['issuer']));
 } elseif (in_array($mode, ['setup', 'agency-setup'], true)) {
     if ($mode === 'agency-setup') {
         $path = $run.'/business-agency-fixture.json';
@@ -226,12 +180,14 @@ if (str_starts_with($mode, 'historical-links-')) {
     $id = DB::connection('pgsql_migrations')->table('businesses')->where('public_id', $draft['business_public_id'])->value('id');
     $out = ['business' => $draft['business_public_id'], 'actor_public_id' => $recipient->public_id,
         'qualification' => 'SYNTHETIC TEST ROOT; NOT AN OPERATING ISSUER POLICY'];
+    $team = $mode === 'setup' ? $scope->enrollDirectTeam($request, $draft['business_public_id'], (string) Str::uuid(),
+        $select($draft['grant_refs']['business.context.read']))['grant_refs'] : null;
     $actions = $mode === 'agency-setup' ? ['read' => 'business.context.read', 'link' => 'business.link.manage']
         : ['read' => 'business.context.read', 'edit' => 'business.context.manage'];
     foreach ($actions as $label => $action) {
-        $root = BusinessAuthorityFixture::root($id, $owner->id, $action);
-        $issued = $scope->grant($request, $draft['business_public_id'], (string) Str::uuid(), 'issue', $recipient->public_id, $action, $root->id, null, 0, null, false, null, $select($root->id));
-        $out[$label] = ['issuer' => $root->id, 'leaf' => $issued['grant_id'], 'action' => $action];
+        $root = (int) ($team[$action] ?? BusinessAuthorityFixture::root($id, $owner->id, $action)->id);
+        $issued = $scope->grant($request, $draft['business_public_id'], (string) Str::uuid(), 'issue', $recipient->public_id, $action, $root, null, 0, null, false, $select($root));
+        $out[$label] = ['issuer' => $root, 'leaf' => $issued['grant_id'], 'action' => $action];
     }
     $out['grant_count'] = DB::connection('pgsql_migrations')->table('security_action_grants')->where('business_id', $id)->count();
     file_put_contents($path, json_encode($out, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
@@ -241,17 +197,11 @@ if (str_starts_with($mode, 'historical-links-')) {
     if (DB::connection('pgsql_migrations')->table('security_action_grants')->where('business_id', $id)->count() !== $out['grant_count']) {
         throw new RuntimeException('A collaboration relationship must not issue Business grants.');
     }
-} elseif ($mode === 'withdraw-workspace') {
-    // Synthetic independent withdrawal only; no operating issuer or new authority path.
-    $workspace = $base['b']['workspaces'][0]['id'];
-    DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $recipient->id)
-        ->where('scope_kind', 'workspace')->where('workspace_id', $workspace)->where('action', 'workspace.view')
-        ->update(['status' => 'revoked', 'revoked_at' => now(), 'version' => 2]);
 } else {
     $out = json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
     $label = match ($mode) {
         'revoke-edit' => 'edit', 'revoke-read' => 'read', default => throw new RuntimeException('Unknown Business fixture command')
     };
-    $scope->grant($request, $out['business'], (string) Str::uuid(), 'revoke', $recipient->public_id, $out[$label]['action'], null, $out[$label]['leaf'], 1, null, false, null, $select($out[$label]['issuer']));
+    $scope->grant($request, $out['business'], (string) Str::uuid(), 'revoke', $recipient->public_id, $out[$label]['action'], null, $out[$label]['leaf'], 1, null, false, $select($out[$label]['issuer']));
 }
 echo json_encode(['mode' => $mode, 'status' => 'completed', 'qualification' => 'synthetic-test-only'], JSON_THROW_ON_ERROR).PHP_EOL;

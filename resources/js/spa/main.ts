@@ -7,9 +7,7 @@ import { bootstrap, documentStatus, departure, startLease, logout, internalBound
 import { confirmDeparture, status, admittedRoute, navigating, navigationError, conceal, prepare, commitRoute, failed } from './presentation';
 import { installBrowserLifecycle } from './browserLifecycle';
 import { createApplicationRouter } from './router';
-import { workspaceRoutes } from '../workspaces/routes';
 import { independentBusinessRoutes } from '../business-foundation/routes';
-import { objectPurposeRoutes } from '../object-purpose/routes';
 import { sourceRoutes } from '../sources/routes';
 import { accountRoutes } from '../account/routes';
 import { authEntryRoutes } from '../auth-entry/routes';
@@ -28,7 +26,7 @@ watch(status, value => { root.dataset.state = value; }, { immediate: true, flush
 const concealment = document.createElement('style');
 concealment.textContent = '[data-application-spa]:not([data-state="ready"]) :is([data-spa-view], [data-spa-private]){display:none!important}';
 document.head.append(concealment);
-const router = createApplicationRouter([...independentBusinessRoutes, ...workspaceRoutes, ...objectPurposeRoutes, ...sourceRoutes, ...accountRoutes, ...authEntryRoutes, ...staffEnrollmentRoutes, ...internalOperationsRoutes, ...commercialRoutes, ...contentRoutes], {
+const router = createApplicationRouter([...independentBusinessRoutes, ...sourceRoutes, ...accountRoutes, ...authEntryRoutes, ...staffEnrollmentRoutes, ...internalOperationsRoutes, ...commercialRoutes, ...contentRoutes], {
     pending: (active, passive) => { if (active && passive) conceal(); navigating.value = active; if (active) navigationError.value = false; },
     prepare, commit: commitRoute, failed,
 });
@@ -56,11 +54,7 @@ const app = createApp(defineComponent({ setup: () => () => {
     const headerItems = [h(BrandLogo, { to: administrationHome }), h(ThemeToggle),
         administrationLayout ? h('span', { 'data-admin-context': true }, copy('الإدارة المركزية', 'Central administration')) : null,
         !internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 && !advertiserHeader ? h(RouterLink, { to: '/businesses' }, () => copy('أنشطتي', 'My businesses')) : null,
-        !advertiserHeader && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/business` }, () => copy('سياق النشاط', 'Business context')) : null,
-        !advertiserHeader && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/goals` }, () => copy('الأهداف', 'Goals')) : null,
-        !advertiserHeader && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}/object-purposes` }, () => copy('الغرض الإعلاني', 'Object purpose')) : null,
         !internalBoundary && !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: '/profile' }, () => copy('الحساب', 'Account')) : null,
-        !advertiserHeader && typeof router.currentRoute.value.params.workspace === 'string' ? h(RouterLink, { to: `/workspaces/${encodeURIComponent(router.currentRoute.value.params.workspace)}` }, () => copy('المصادر', 'Sources')) : null,
         !bootstrap.staffEnrollment && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: internalBoundary ? '/internal/security/devices' : '/security/devices' }, () => copy('الأمان', 'Security')) : null,
         internalBoundary && bootstrap.identity.binding.principal > 0 ? h(RouterLink, { to: '/internal/identity/switch', ...(administrationLayout ? { class: 'ba-admin-identity-switch', 'aria-label': copy('تبديل الهوية الداخلية', 'Switch internal identity') } : {}) }, () => administrationLayout ? copy('تبديل الهوية', 'Switch identity') : copy('تبديل الهوية الداخلية', 'Switch internal identity')) : null,
         h('button', { disabled: localeBusy.value || status.value !== 'ready', 'data-application': 'locale', onClick: async () => { localeError.value = false; try { await switchLocale(); } catch { localeError.value = true; } } }, locale.value === 'ar' ? 'English' : 'العربية'),

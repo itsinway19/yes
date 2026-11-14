@@ -27,7 +27,7 @@ final class BusinessLifecycleTest extends TestCase
 
     private function selected(int $grant): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
+        return ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $grant]]];
     }
 
     private function command(Request $r, string $business, string $effect, ?string $target, object $payload, int $expected, array $selection): array

@@ -182,7 +182,7 @@ try {
   $proofGateName=$null
  }
  if($Phase -in @('Focused','Affected','Acceptance')) {
-  $proofFilter=if($Phase -in @('Acceptance','Affected')){'WorkspaceCommercialRetirementTest|BusinessFoundationContractTest|LegacyPurposeHistoryTest|ProductionIdentityTest|IdentityRenewalTest|IdentityDocumentTest|SessionAuthorityTest|DatabaseAuthorityBoundaryTest|CoreDependencyBoundaryTest|ArchitectureSourceOptionalityTest'}else{'WorkspaceCommercialRetirementTest'}
+  $proofFilter=if($Phase -in @('Acceptance','Affected')){'WorkspaceCommercialRetirementTest|BusinessFoundationContractTest|BusinessHistoryTest|ProductionIdentityTest|IdentityRenewalTest|IdentityDocumentTest|SessionAuthorityTest|DatabaseAuthorityBoundaryTest|CoreDependencyBoundaryTest|ArchitectureSourceOptionalityTest'}else{'WorkspaceCommercialRetirementTest'}
   if($TestFilter){$proofFilter=$TestFilter}
   $proofJunit='storage/framework/testing/'+(Split-Path -Leaf $proofRun)+'/tests.xml'
   $proofEvents='storage/framework/testing/'+(Split-Path -Leaf $proofRun)+'/events.log'

@@ -32,7 +32,7 @@ final class BusinessCommercialCompositionTest extends TestCase
             // an invented plan, a billing account or an invented metered unit.
             $this->putJson('/api/businesses/'.$business['business_public_id'].'/context', [
                 'command_id' => (string) Str::uuid(), 'name' => 'Still an authorized local declaration', 'business_type_id' => null, 'expected_context' => 0,
-                'authority_selection' => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+                'authority_selection' => ['realm_kind' => 'direct',
                     'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $business['grant_refs']['business.context.manage']]]],
             ])->assertOk();
         }

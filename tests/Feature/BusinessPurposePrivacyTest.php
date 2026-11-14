@@ -4,53 +4,34 @@ namespace Tests\Feature;
 
 use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
-use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\ApplicationContractAssertions;
-use Tests\Support\Pre770BusinessAuthority;
 use Tests\Support\PurposeDeclarationFixture;
 use Tests\TestCase;
 
 final class BusinessPurposePrivacyTest extends TestCase
 {
     use ApplicationContractAssertions;
-    use Pre770BusinessAuthority;
 
-    private function selection(int|string $grant, ?string $workspace = null): array
+    private function selection(int|string $grant): array
     {
-        return ['realm_kind' => $workspace === null ? 'direct' : 'internal_team', 'realm_workspace_public_id' => $workspace,
+        return ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (int) $grant]]];
     }
 
     public function test_direct_team_reads_current_purpose_without_creator_private_history(): void
     {
-        $this->privacyScenario(false);
+        $this->privacyScenario();
     }
 
-    public function test_internal_team_reads_current_purpose_without_creator_private_history(): void
+    private function privacyScenario(): void
     {
-        $this->privacyScenario(true);
-    }
-
-    private function privacyScenario(bool $internal): void
-    {
-        if ($internal) {
-            $this->installPre770BusinessAuthority();
-        }
         $creator = User::factory()->create();
         $employee = User::factory()->create();
         $this->actingAs($creator);
-        $workspace = null;
-        if ($internal) {
-            app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($creator, 1);
-            $this->legacyWorkspace(['name' => 'Previous Purpose privacy team', 'slug' => 'purpose-privacy-team'])->assertRedirect();
-            $workspace = DB::connection('pgsql_migrations')->table('workspaces')->sole();
-            DB::connection('pgsql_migrations')->table('workspace_memberships')->insert(['workspace_id' => $workspace->id,
-                'user_id' => $employee->id, 'role' => 'member', 'status' => 'active', 'created_at' => now()]);
-        }
         $file = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Purpose privacy subject'])->assertCreated()->json('data');
         $base = '/api/businesses/'.$file['business_public_id'];
         $creatorRead = $file['grant_refs']['business.context.read'];
@@ -76,22 +57,13 @@ final class BusinessPurposePrivacyTest extends TestCase
         $command['declaration']['meaning'] = 'Private future purpose before delegation';
         $scheduled = $write($command);
 
-        if ($internal) {
-            $roots = $this->postJson($base.'/internal-team', ['command_id' => (string) Str::uuid(),
-                'workspace_public_id' => $workspace->public_id, 'effect' => 'enroll', 'recipient_public_id' => $creator->public_id,
-                'expected_revision' => 0, 'authority_selection' => $this->selection($creatorRead)])->assertOk()->json('data.grant_refs');
-        } else {
-            $roots = $this->postJson($base.'/direct-team', ['command_id' => (string) Str::uuid(),
-                'authority_selection' => $this->selection($creatorRead)])->assertOk()->json('data.grant_refs');
-        }
+        $roots = $this->postJson($base.'/direct-team', ['command_id' => (string) Str::uuid(),
+            'authority_selection' => $this->selection($creatorRead)])->assertOk()->json('data.grant_refs');
         $read = $this->postJson($base.'/grants', ['command_id' => (string) Str::uuid(),
-            'authority_selection' => $this->selection($roots['business.context.read'], $workspace?->public_id),
+            'authority_selection' => $this->selection($roots['business.context.read']),
             'effect' => 'issue', 'grantee_public_id' => $employee->public_id, 'action' => 'business.context.read',
             'parent_grant_id' => (int) $roots['business.context.read'], 'grant_id' => null, 'expected_grant' => 0,
-            'expires_at' => null, 'delegable' => false, 'realm_workspace_public_id' => $workspace?->public_id])->assertOk()->json('data.grant_id');
-        if ($internal) {
-            $this->upgradeBusinessAuthority();
-        }
+            'expires_at' => null, 'delegable' => false])->assertOk()->json('data.grant_id');
         $this->actingAs($employee);
         $surface = $this->getJson($base.'/surface?access='.$read)->assertOk()->assertJsonPath('data.private_history_available', false);
         $this->assertApplicationContract('BusinessSurfaceResult', $surface->json());
@@ -111,7 +83,7 @@ final class BusinessPurposePrivacyTest extends TestCase
         foreach (['context', 'markets', 'intent', 'preferences'] as $kind) {
             $this->getJson($base.'/history?access='.$read.'&kind='.$kind.'&after=1')->assertForbidden();
         }
-        $this->getJson($base.'/legacy-history?access='.$read.'&kind=object_purpose&after='.$first['revision_id'])->assertForbidden();
+        $this->getJson($base.'/legacy-history?access='.$read.'&kind=object_purpose&after='.$first['revision_id'])->assertNotFound();
         $this->getJson($base.'/purposes?access='.$creatorRead)->assertForbidden();
 
         // Exercise the app-executable SECURITY DEFINER boundary directly: PHP

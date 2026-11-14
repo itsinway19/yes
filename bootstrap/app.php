@@ -4,7 +4,6 @@ use App\Http\Middleware\AdmitIdentityDocument;
 use App\Http\Middleware\CaptureIdentityInput;
 use App\Http\Middleware\EnforcePlatformMaintenance;
 use App\Http\Middleware\ResolveLocale;
-use App\Http\Middleware\RetireWorkspaceBrowserNavigation;
 use App\Http\Middleware\SanitizeProviderCallback;
 use App\Http\Middleware\SelectSessionContext;
 use App\Http\Middleware\SpaPresentation;
@@ -41,7 +40,6 @@ return Application::configure(basePath: dirname(__DIR__))
             AdmitIdentityDocument::class,
             ResolveLocale::class,
             EnforcePlatformMaintenance::class,
-            RetireWorkspaceBrowserNavigation::class,
             SpaPresentation::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);

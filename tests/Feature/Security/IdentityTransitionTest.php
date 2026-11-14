@@ -306,9 +306,7 @@ class IdentityTransitionTest extends TestCase
     public function test_migration_runner_is_repeatable_and_permissions_are_scoped(): void
     {
         $fingerprint = $this->canonicalFingerprint();
-        // Upgrade an existing schema, then confirm a second migration run is a no-op.
-        $this->assertSame(0, Artisan::call('migrate:rollback', ['--database' => 'pgsql_migrations', '--path' => 'database/migrations/0001_01_01_000380_create_browser_identity_transitions.php', '--step' => 1, '--force' => true]));
-        $this->assertSame($fingerprint, $this->canonicalFingerprint());
+        // Repeated installation must preserve the current migration and permissions.
         $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
         $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_migrations', '--force' => true]));
         $this->assertSame($fingerprint, $this->canonicalFingerprint());

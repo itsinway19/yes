@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-export async function runRestorationAcceptance({browser,check,login,get,post,target,fixture,foreign,command,wire,before,until,result}) {
+export async function runRestorationAcceptance({browser,check,login,get,post,target,workspace,command,wire,before,until,result}) {
  const origin='http://localhost:8138';
  const hidden=page=>page.locator('[data-spa-private]').evaluateAll(elements=>elements.every(element=>!element.getClientRects().length||getComputedStyle(element).visibility==='hidden'));
  const context=await browser.newContext();
@@ -62,14 +62,14 @@ export async function runRestorationAcceptance({browser,check,login,get,post,tar
      return {requestStatus:request.status,finalStatus:response.status(),scope:'Forced fresh HTTP document with JavaScript disabled; does not establish native BFCache'};
     } finally {await fresh.close();}
    });
-  } finally {if(transition==='deny-business-view')command('restore-business-view');await active.close();}
+  } finally {await active.close();}
  }
  const isolated=await browser.newContext();const outsider=await isolated.newPage();outsider.on('dialog',dialog=>dialog.accept());
  try {
-  await login(outsider,'spa');
+  await login(outsider,'spa','b');
   await check('production foreign Business shell and projection both deny access','spa',async()=>{
-   const read=await get(outsider,target('spa',foreign));assert.equal(read.status,403);
-   const response=await outsider.goto(origin+target('spa',foreign));assert.equal(response.status(),403);
+   const read=await get(outsider,target('spa',workspace));assert.equal(read.status,403);
+   const response=await outsider.goto(origin+target('spa',workspace));assert.equal(response.status(),403);
    assert.equal(await outsider.locator('[data-spa-private]').count(),0);
    return {shell:response.status(),projection:read.status,scope:'Foreign shell and projection with current cookie and valid document receipt'};
   });

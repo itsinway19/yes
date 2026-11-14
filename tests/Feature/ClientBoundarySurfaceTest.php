@@ -30,7 +30,7 @@ final class ClientBoundarySurfaceTest extends TestCase
             $requirements[] = ['requirement_kind' => 'business', 'leaf_grant_id' => $business['grant_refs']['business.link.manage']];
         }
 
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => $requirements];
+        return ['realm_kind' => 'direct', 'requirements' => $requirements];
     }
 
     private function attach(array $boundary, array $business, int $revision = 0): array

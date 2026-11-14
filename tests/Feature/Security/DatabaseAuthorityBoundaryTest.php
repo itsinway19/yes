@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Security;
 
-use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -11,58 +10,6 @@ use Tests\TestCase;
 
 class DatabaseAuthorityBoundaryTest extends TestCase
 {
-    public function test_workspace_reader_is_denied_when_responsible_owner_loses_advertiser_eligibility(): void
-    {
-        $ownerId = $this->seedCurrentAdvertiser('owner');
-        $viewerId = $this->seedCurrentAdvertiser('viewer');
-        $databaseOwner = DB::connection('pgsql_migrations');
-        $workspaceId = $databaseOwner->table('workspaces')->insertGetId([
-            'name' => 'Owner Continuity', 'slug' => 'owner-continuity',
-            'status' => 'active', 'timezone' => 'UTC',
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
-        $databaseOwner->table('workspace_ownerships')->insert([
-            'workspace_id' => $workspaceId, 'responsible_owner_user_id' => $ownerId,
-            'version' => 1, 'created_at' => now(), 'updated_at' => now(),
-        ]);
-        foreach ([[$ownerId, 'owner'], [$viewerId, 'member']] as [$userId, $role]) {
-            $databaseOwner->table('workspace_memberships')->insert([
-                'workspace_id' => $workspaceId, 'user_id' => $userId,
-                'role' => $role, 'status' => 'active', 'created_at' => now(),
-            ]);
-        }
-        $databaseOwner->table('security_action_grants')->insert([
-            'subject_user_id' => $viewerId, 'source' => 'system_workspace_creation',
-            'action' => 'workspace.view', 'scope_kind' => 'workspace',
-            'workspace_id' => $workspaceId, 'subject_generation' => 1,
-            'reason' => 'security_fixture', 'status' => 'active', 'version' => 1,
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
-
-        $runtime = DB::connection('pgsql');
-        $viewer = User::findOrFail($viewerId);
-        $runtime->transaction(function () use ($runtime, $viewer, $workspaceId): void {
-            app(PrincipalContext::class)->activate($viewer);
-            $runtime->selectOne('SELECT builderad_v2_legacy_enter((SELECT public_id FROM workspaces WHERE id=?))', [$workspaceId]);
-            $runtime->selectOne('SELECT builderad_select_workspace_context(?)', [$workspaceId]);
-            $this->assertSame(1, $runtime->table('workspaces')->count());
-        });
-
-        $databaseOwner->table('principal_lifecycles')->where('user_id', $ownerId)
-            ->update(['principal_class' => 'staff']);
-        $runtime->beginTransaction();
-        try {
-            app(PrincipalContext::class)->activate($viewer);
-            $runtime->selectOne('SELECT builderad_v2_legacy_enter((SELECT public_id FROM workspaces WHERE id=?))', [$workspaceId]);
-            $runtime->selectOne('SELECT builderad_select_workspace_context(?)', [$workspaceId]);
-            $this->fail('Workspace access survived loss of responsible Owner eligibility.');
-        } catch (QueryException $exception) {
-            $this->assertSame('42501', $exception->getCode());
-        } finally {
-            $runtime->rollBack();
-        }
-    }
-
     public function test_runtime_role_cannot_mutate_authority_tables_or_audit_directly(): void
     {
         $columns = [
@@ -76,7 +23,7 @@ class DatabaseAuthorityBoundaryTest extends TestCase
             'security_audit_events' => 'event',
             'service_identities' => 'status',
             'service_action_grants' => 'status',
-            'service_workspace_scopes' => 'status',
+            'service_business_admin_scopes' => 'status',
             'service_audit_events' => 'event',
         ];
         $runtime = DB::connection('pgsql');
@@ -104,9 +51,8 @@ class DatabaseAuthorityBoundaryTest extends TestCase
     {
         $runtime = DB::connection('pgsql');
         foreach ([
-            'SELECT builderad_lock_and_has_active_workspace_membership(1)',
+            'SELECT * FROM builderad_service_grant_target(NULL::uuid,NULL::uuid)',
             "SELECT builderad_activate_principal_context('forged')",
-            'SELECT builderad_record_service_workspace_access()',
         ] as $statement) {
             $runtime->beginTransaction();
             try {
@@ -142,62 +88,32 @@ class DatabaseAuthorityBoundaryTest extends TestCase
         ], 'pgsql_migrations');
     }
 
-    public function test_caller_controlled_transaction_settings_cannot_reveal_another_principals_workspace(): void
+    public function test_forged_settings_and_reused_session_cannot_read_or_write_another_business(): void
     {
-        $userId = $this->seedCurrentAdvertiser();
+        $user = User::factory()->create();
+        $business = $this->actingAs($user)->postJson('/api/businesses', [
+            'command_id' => (string) Str::uuid7(), 'name' => 'Private Business',
+        ])->assertCreated()->json('data');
         $owner = DB::connection('pgsql_migrations');
-        $workspaceId = $owner->table('workspaces')->insertGetId([
-            'name' => 'Private Workspace', 'slug' => 'authority-boundary-private',
-            'status' => 'active', 'timezone' => 'UTC',
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
-        $owner->table('workspace_memberships')->insert([
-            'workspace_id' => $workspaceId, 'user_id' => $userId,
-            'role' => 'owner', 'status' => 'active', 'created_at' => now(),
-        ]);
-
+        $sessionHash = $owner->table('security_sessions')->where('user_id', $user->id)->value('session_key_hash');
         $runtime = DB::connection('pgsql');
-        $runtime->transaction(function () use ($runtime, $userId): void {
-            $this->assertSame(0, $runtime->table('workspaces')->count());
-            $runtime->selectOne("SELECT set_config('app.authorization_phase', 'principal', true)");
-            $runtime->selectOne("SELECT set_config('app.principal_user_id', ?, true)", [(string) $userId]);
-            $runtime->selectOne("SELECT set_config('app.workspace_id', '', true)");
-            $this->assertSame(0, $runtime->table('workspaces')->count());
-        });
-    }
-
-    public function test_runtime_role_cannot_invoke_workspace_writer_with_reused_session_hash(): void
-    {
-        $userId = $this->seedCurrentAdvertiser();
-        $owner = DB::connection('pgsql_migrations');
-        $sessionHash = str_repeat('a', 64);
-        $owner->table('security_sessions')->insert([
-            'user_id' => $userId, 'session_key_hash' => $sessionHash,
-            'lifecycle_generation' => 1, 'auth_method' => 'password',
-            'authenticated_at' => now(), 'last_seen_at' => now(),
-            'idle_expires_at' => now()->addHour(), 'absolute_expires_at' => now()->addHours(2),
-        ]);
-        $owner->table('security_action_grants')->insert([
-            'subject_user_id' => $userId, 'source' => 'system_registration',
-            'action' => 'workspace.create', 'scope_kind' => 'platform',
-            'subject_generation' => 1, 'reason' => 'fixture', 'status' => 'active',
-            'version' => 1, 'created_at' => now(), 'updated_at' => now(),
-        ]);
-
-        $runtime = DB::connection('pgsql');
-        $runtime->beginTransaction();
-        try {
-            $runtime->scalar('SELECT builderad_create_workspace(?, ?, ?, ?)', [
-                $userId, $sessionHash, 'Forged Workspace', 'authority-boundary-forged',
-            ]);
-            $this->fail('The restricted runtime role invoked the privileged Workspace writer.');
-        } catch (QueryException $exception) {
-            $this->assertSame('42501', $exception->getCode());
-        } finally {
-            $runtime->rollBack();
+        $forged = (string) Str::uuid7();
+        foreach ([
+            ['SELECT builderad_v2_business_surface(?,?::uuid,?)', [$sessionHash, $business['business_public_id'], $business['grant_refs']['business.context.read']], '42501'],
+            ['SELECT builderad_v2_business_create_draft(?,?::uuid,?,?)', [$sessionHash, $forged, 'Forged Business', null], '22023'],
+        ] as [$sql, $bindings, $denial]) {
+            try {
+                $runtime->transaction(function () use ($runtime, $user, $sql, $bindings): void {
+                    $runtime->selectOne("SELECT set_config('app.authorization_phase','principal',true),set_config('app.principal_user_id',?,true)", [(string) $user->id]);
+                    $runtime->scalar($sql, $bindings);
+                });
+                $this->fail('Caller-supplied settings established Business authority.');
+            } catch (QueryException $exception) {
+                $this->assertSame($denial, $exception->getCode());
+            }
         }
-
-        $this->assertDatabaseMissing('workspaces', ['slug' => 'authority-boundary-forged'], 'pgsql_migrations');
+        $this->assertSame(1, $owner->table('businesses')->count());
+        $this->assertFalse($owner->table('business_command_receipts')->where('command_id', $forged)->exists());
     }
 
     private function seedCurrentAdvertiser(string $suffix = 'default'): int

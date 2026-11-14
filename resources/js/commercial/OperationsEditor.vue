@@ -4,14 +4,14 @@ import { RouterLink, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { bootstrap, close, logout, onClose, owned, stamp, TransportError } from '../spa/transport';
 import { confirmDeparture } from '../spa/presentation';
 import { locale } from '../spa/locale';
-import { readOperations, writeCommercial, readCommercialWorkspace, readCommercialReceipt, readCommercialContext, recoverCommercialAudit, type CommercialCommand } from './operationsState';
+import { readOperations, writeCommercial, readCommercialBusiness, readCommercialReceipt, readCommercialContext, recoverCommercialAudit, type CommercialCommand } from './operationsState';
 import { matchesOriginalReceipt } from './receiptProvenance';
 import InternalLayout from '../internal-operations/OperationsShell.vue';
 type Market = { country_code?: string | null; id: string; label: string; configuration_id: string | null; revision: number };
 type Configuration = { id: string; market_id: string; version: number; catalog_reference_id: string | null; denomination_code: string | null };
 type Catalog = { id: string; market_id: string; catalog_identity: string; catalog_version: string; approval_reference: string; source_sha256: string; recorded_at?: string };
-type Target = { action: string; target_id: string; version_id: string | null; workspace_public_id: string | null; label?: string | null };
-const props = defineProps<{ countryOptions?: Record<string, { ar: string; en: string; currency: string }>; currencyOptions?: string[]; currencyNames?: Record<string, { ar: string; en: string }>; markets: Market[]; configurations: Configuration[]; catalogReferences: Catalog[]; targets: Target[]; newMarketTargets?: Target[]; obligations: { id: string; command_id: string; state: string; attempts: number; target_id?: string; workspace_public_id?: string | null; acknowledgment_id?: string | null }[]; newConfigurationId: string; result: Record<string, unknown> | null; freshAuthentication?: boolean; founderAccess?: boolean; newCatalogReferenceId?: string }>();
+type Target = { action: string; target_id: string; version_id: string | null; business_public_id: string | null; label?: string | null };
+const props = defineProps<{ countryOptions?: Record<string, { ar: string; en: string; currency: string }>; currencyOptions?: string[]; currencyNames?: Record<string, { ar: string; en: string }>; markets: Market[]; configurations: Configuration[]; catalogReferences: Catalog[]; targets: Target[]; newMarketTargets?: Target[]; obligations: { id: string; command_id: string; state: string; attempts: number; target_id?: string; business_public_id?: string | null; acknowledgment_id?: string | null }[]; newConfigurationId: string; result: Record<string, unknown> | null; freshAuthentication?: boolean; founderAccess?: boolean; newCatalogReferenceId?: string }>();
 const english = computed(() => locale.value === 'en');
 const c = (ar: string, en: string) => english.value ? en : ar;
 function currencyName(code: string) { const name = props.currencyNames?.[code]; return name ? `${c(name.ar, name.en)} · ${code}` : code; }
@@ -20,12 +20,12 @@ const operations = {
     catalog: { label: 'توثيق مرجع Catalog المعتمد', fields: ['market_id', 'catalog_reference_id', 'catalog_identity', 'catalog_version', 'approval_reference', 'source_sha256'] },
     configuration: { label: 'إنشاء إصدار إعدادات ثابت', fields: ['market_id', 'configuration_id', 'catalog_reference_id', 'denomination_code'] },
     assignability: { label: 'تحديد الإتاحة للإسنادات الجديدة', fields: ['market_id', 'configuration_id', 'expected_revision'] },
-    register: { label: 'تسجيل نطاق تجاري', fields: ['scope_id', 'workspace_public_id', 'market_id', 'configuration_id', 'catalog_reference_id', 'denomination_code'] },
+    register: { label: 'تسجيل نطاق تجاري', fields: ['scope_id', 'business_public_id', 'market_id', 'configuration_id', 'catalog_reference_id', 'denomination_code'] },
 };
 type Operation = keyof typeof operations;
 const operation = ref<Operation>('configuration');
-const labels: Record<string, string> = { market_id: 'هوية السوق', label: 'اسم العرض', scope_id: 'هوية النطاق المشمولة بالمنحة', workspace_public_id: 'هوية مساحة العمل المستفيدة', configuration_id: 'هوية إصدار الإعدادات المحدد', catalog_reference_id: 'هوية مرجع Catalog', catalog_identity: 'هوية Catalog', catalog_version: 'إصدار Catalog', approval_reference: 'مرجع الموافقة المعتمد', source_sha256: 'SHA-256 للمصدر المعتمد', denomination_code: 'سياق العملة الصريح (3 أحرف)', expected_revision: 'المراجعة الحالية للإتاحة' };
-const fields = reactive<Record<string, string>>({ market_id: '', label: '', scope_id: '', workspace_public_id: '', configuration_id: props.newConfigurationId, catalog_reference_id: '', catalog_identity: '', catalog_version: '', approval_reference: '', source_sha256: '', denomination_code: '', expected_revision: '' });
+const labels: Record<string, string> = { market_id: 'هوية السوق', label: 'اسم العرض', scope_id: 'هوية النطاق المشمولة بالمنحة', business_public_id: 'هوية النشاط التجاري المستفيد', configuration_id: 'هوية إصدار الإعدادات المحدد', catalog_reference_id: 'هوية مرجع Catalog', catalog_identity: 'هوية Catalog', catalog_version: 'إصدار Catalog', approval_reference: 'مرجع الموافقة المعتمد', source_sha256: 'SHA-256 للمصدر المعتمد', denomination_code: 'سياق العملة الصريح (3 أحرف)', expected_revision: 'المراجعة الحالية للإتاحة' };
+const fields = reactive<Record<string, string>>({ market_id: '', label: '', scope_id: '', business_public_id: '', configuration_id: props.newConfigurationId, catalog_reference_id: '', catalog_identity: '', catalog_version: '', approval_reference: '', source_sha256: '', denomination_code: '', expected_revision: '' });
 const reasonCodes: Record<Operation, string> = { market: 'commercial_market', catalog: 'commercial_reference', configuration: 'commercial_configuration', assignability: 'commercial_assignability', register: 'commercial_registration' };
 const reason = computed(() => reasonCodes[operation.value]); const command = ref(crypto.randomUUID());
 const cancellation = new AbortController(); let active = true, selectionEpoch = 0, scopeRead = 0, namesRead = 0;
@@ -53,15 +53,15 @@ function handleFailure(failure: unknown) {
 }
 const scopeSelection = ref('');
 const beneficiaryNames = ref<Record<string, string>>({});
-const scopeKey = (target: Target) => `${target.target_id}|${target.workspace_public_id ?? ''}`;
-const workspace = ref<{ name: string; public_id: string } | null>(null);
+const scopeKey = (target: Target) => `${target.target_id}|${target.business_public_id ?? ''}`;
+const business = ref<{ name: string; public_id: string } | null>(null);
 const scopeTargets = computed(() => props.targets.filter(t => t.action === 'RegisterCommercialScope'));
 watch(scopeTargets, async targets => {
     const captured = captureEditor(), attempt = ++namesRead;
     for (const target of targets) {
-        if (!target.workspace_public_id) continue;
+        if (!target.business_public_id) continue;
         try {
-            const response = await readCommercialWorkspace(target.target_id, target.workspace_public_id, cancellation.signal);
+            const response = await readCommercialBusiness(target.target_id, target.business_public_id, cancellation.signal);
             if (!ownsEditor(captured) || attempt !== namesRead) return;
             if (response?.name && scopeTargets.value.some(current => scopeKey(current) === scopeKey(target))) beneficiaryNames.value[scopeKey(target)] = response.name;
         } catch { if (ownsEditor(captured) && attempt === namesRead) delete beneficiaryNames.value[scopeKey(target)]; }
@@ -91,10 +91,10 @@ function selectMarket(reset = true) {
 }
 const assignabilityDecision = ref<'select' | 'disable'>('select');
 watch(assignabilityDecision, () => { fields.configuration_id = ''; });
-const authorizedReferences = computed(() => props.founderAccess && props.newCatalogReferenceId ? [{ action: 'RecordOrVerifyApprovedMarketReference', target_id: fields.market_id, version_id: props.newCatalogReferenceId, workspace_public_id: null, label: c('مرجع جديد', 'New reference') }] : props.targets.filter(t => t.action === 'RecordOrVerifyApprovedMarketReference' && t.target_id === fields.market_id && t.version_id && !props.catalogReferences.some(r => r.id === t.version_id)));
+const authorizedReferences = computed(() => props.founderAccess && props.newCatalogReferenceId ? [{ action: 'RecordOrVerifyApprovedMarketReference', target_id: fields.market_id, version_id: props.newCatalogReferenceId, business_public_id: null, label: c('مرجع جديد', 'New reference') }] : props.targets.filter(t => t.action === 'RecordOrVerifyApprovedMarketReference' && t.target_id === fields.market_id && t.version_id && !props.catalogReferences.some(r => r.id === t.version_id)));
 const lifecycle = ref<'idle' | 'inflight' | 'uncertain' | 'completed'>('idle');
 let original: { operation: Operation; input: Record<string, unknown> } | null = null;
-const pendingKey = `commercial-command:v1:${bootstrap.identity.binding.principal}`;
+const pendingKey = `commercial-command:v2:${bootstrap.identity.binding.principal}:${bootstrap.identity.binding.lifecycle}`;
 const renewing = ref(false);
 const refreshing = ref(false);
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -109,7 +109,7 @@ function parseCommand(saved: string | null): { operation: Operation; input: Reco
     for (const [key, value] of Object.entries(payload)) {
         if (key === 'expected_revision') { if (!Number.isSafeInteger(value) || Number(value) < 0) return null; }
         else if (value !== null && (typeof value !== 'string' || value.length > 1024)) return null;
-        if (value !== null && (key.endsWith('_id') || key === 'workspace_public_id') && (typeof value !== 'string' || !uuidPattern.test(value))) return null;
+        if (value !== null && (key.endsWith('_id') || key === 'business_public_id') && (typeof value !== 'string' || !uuidPattern.test(value))) return null;
     }
     return { operation: action, input: { ...payload } };
 }
@@ -127,7 +127,7 @@ const canLeave = () => !(busy.value || lifecycle.value === 'uncertain') || confi
 confirmDeparture.value = canLeave; onBeforeRouteLeave(canLeave); onBeforeRouteUpdate(canLeave);
 function beforeUnload(event: BeforeUnloadEvent) { if ((busy.value || lifecycle.value === 'uncertain') && !renewing.value) { event.preventDefault(); event.returnValue = ''; } }
 if (typeof window !== 'undefined') window.addEventListener('beforeunload', beforeUnload);
-const clearPrivate = () => { for (const key of Object.keys(fields)) fields[key] = ''; beneficiaryNames.value = {}; workspace.value = null; result.value = null; receiptResult.value = null; contextResult.value = null; deliveryResult.value = null; original = null; };
+const clearPrivate = () => { for (const key of Object.keys(fields)) fields[key] = ''; beneficiaryNames.value = {}; business.value = null; result.value = null; receiptResult.value = null; contextResult.value = null; deliveryResult.value = null; original = null; };
 const closures = onClose(clearPrivate);
 onBeforeUnmount(() => { active = false; selectionEpoch++; cancellation.abort(); clearPrivate(); closures.delete(clearPrivate); if (confirmDeparture.value === canLeave) confirmDeparture.value = () => true; window.removeEventListener('beforeunload', beforeUnload); });
 watch(() => fields.market_id, () => { selectionEpoch++; selectMarket(); }, { flush: 'sync' });
@@ -135,9 +135,9 @@ watch(() => fields.market_id, () => { selectionEpoch++; selectMarket(); }, { flu
 async function selectScope(event: Event) {
     const captured = captureEditor(), attempt = ++scopeRead;
     const selection = (event.target as HTMLSelectElement).value;
-    const target = scopeTargets.value.find(t => scopeKey(t) === selection); workspace.value = null; fields.scope_id = ''; fields.workspace_public_id = ''; if (!target) return;
-    fields.scope_id = target.target_id; fields.workspace_public_id = target.workspace_public_id ?? '';
-    try { const response = await readCommercialWorkspace(target.target_id, target.workspace_public_id ?? '', cancellation.signal); if (ownsEditor(captured) && attempt === scopeRead && fields.scope_id === target.target_id && fields.workspace_public_id === target.workspace_public_id) workspace.value = response ?? null; }
+    const target = scopeTargets.value.find(t => scopeKey(t) === selection); business.value = null; fields.scope_id = ''; fields.business_public_id = ''; if (!target) return;
+    fields.scope_id = target.target_id; fields.business_public_id = target.business_public_id ?? '';
+    try { const response = await readCommercialBusiness(target.target_id, target.business_public_id ?? '', cancellation.signal); if (ownsEditor(captured) && attempt === scopeRead && fields.scope_id === target.target_id && fields.business_public_id === target.business_public_id) business.value = response ?? null; }
     catch { if (ownsEditor(captured) && attempt === scopeRead) error.value = 'تعذّر التحقق من المستفيد ضمن صلاحيتك الحالية.'; }
 }
 async function execute() {
@@ -187,7 +187,7 @@ const conflictReviewReady = ref(false);
 const contextScope = ref('');
 watch(contextScope, () => { selectionEpoch++; contextResult.value = null; }, { flush: 'sync' });
 watch(receipt, () => { selectionEpoch++; receiptResult.value = null; reconciled.value = false; }, { flush: 'sync' });
-watch(scopeSelection, () => { selectionEpoch++; workspace.value = null; }, { flush: 'sync' });
+watch(scopeSelection, () => { selectionEpoch++; business.value = null; }, { flush: 'sync' });
 async function lookupContext() {
     const captured = captureEditor(), scope = contextScope.value; busy.value = true; error.value = '';
     try { const response = await readCommercialContext(scope, cancellation.signal); if (ownsEditor(captured) && contextScope.value === scope) contextResult.value = response ?? null; }
@@ -199,7 +199,7 @@ function newCommand() {
     if (!confirm(c('التخلص من المسودة الحالية وتحميل الحالة المعروضة لأمر جديد؟', 'Discard this draft and load displayed state for a new command?'))) return;
     selectionEpoch++; clearCommand(); original = null; result.value = null; lifecycle.value = 'idle'; command.value = crypto.randomUUID(); selectMarket();
 }
-watch(operation, () => { selectionEpoch++; if (lifecycle.value === 'uncertain') return; scopeSelection.value = ''; workspace.value = null; fields.scope_id = ''; fields.workspace_public_id = ''; fieldErrors.value = {}; error.value = ''; selectMarket(); }, { flush: 'sync' });
+watch(operation, () => { selectionEpoch++; if (lifecycle.value === 'uncertain') return; scopeSelection.value = ''; business.value = null; fields.scope_id = ''; fields.business_public_id = ''; fieldErrors.value = {}; error.value = ''; selectMarket(); }, { flush: 'sync' });
 async function lookup() {
     const captured = captureEditor(), requested = receipt.value, attempt = original;
     busy.value = true; error.value = '';
@@ -232,7 +232,7 @@ const actionButtonNames: Record<Operation, [string, string]> = { market: ['تس�
 const fieldNames: Record<string, [string, string]> = { label: ['اسم السوق', 'Market name'], catalog_identity: ['معرّف المصدر المعتمد', 'Approved source identifier'], catalog_version: ['إصدار المرجع', 'Reference version'], approval_reference: ['مرجع الموافقة', 'Approval reference'], source_sha256: ['بصمة الملف المعتمد', 'Approved file checksum'], denomination_code: ['عملة الإعداد', 'Configuration denomination'] };
 const decisionFields = computed(() => operations[operation.value].fields.filter(field => ['label','catalog_identity','catalog_version','approval_reference','source_sha256'].includes(field) || (field === 'denomination_code' && operation.value === 'configuration')));
 const locked = computed(() => busy.value || lifecycle.value === 'uncertain' || readbackFailed.value);
-const hiddenMarketKey = computed(() => `commercial:hidden-markets:${bootstrap.identity.binding.principal}`);
+const hiddenMarketKey = computed(() => `commercial:hidden-markets:${bootstrap.identity.binding.principal}:${bootstrap.identity.binding.lifecycle}`);
 function readHiddenMarkets(): string[] { try { const ids = JSON.parse(localStorage.getItem(hiddenMarketKey.value) ?? '[]'); return Array.isArray(ids) ? ids.filter(id => typeof id === 'string') : []; } catch { return []; } }
 const hiddenMarketIds = ref<string[]>(readHiddenMarkets());
 watch(hiddenMarketKey, () => { hiddenMarketIds.value = readHiddenMarkets(); });
@@ -261,7 +261,7 @@ function restoreMarket(id: string) { if (locked.value) return; hiddenMarketIds.v
 function saveHiddenMarkets() { try { localStorage.setItem(hiddenMarketKey.value, JSON.stringify(hiddenMarketIds.value)); } catch { /* The current list still works when storage is unavailable. */ } }
 const setupGuidance = computed(() => operation.value === 'catalog' ? c('أضف المرجع المعتمد أولًا، ثم أنشئ إعداد السوق.', 'Add the approved reference first, then create the market configuration.') : operation.value === 'configuration' ? c('اختر المرجع المعتمد والعملة لإكمال الإعداد. يجب اكتماله قبل تفعيل السوق أو تسجيل مستفيد.', 'Choose an approved reference and currency to complete setup. Complete setup before activating the market or registering a beneficiary.') : operation.value === 'assignability' ? c('لتفعيل الاستخدام الجديد، اختر إعدادًا مكتملًا بمرجع معتمد وعملة. إيقاف الاستخدام الجديد لا يغير التسجيلات السابقة.', 'To activate new usage, choose a complete configuration with an approved reference and currency. Stopping new usage preserves existing registrations.') : operation.value === 'register' ? c('فعّل إعداد السوق المكتمل أولًا، ثم اختر المستفيد المصرح لك بتسجيله.', 'Activate the completed market configuration first, then choose a beneficiary you are authorized to register.') : c('اختر السوق الجديد الذي أُعد لك ضمن صلاحيتك.', 'Choose the new market prepared under your permission.'));
 
-function grant(action: string, target: string, workspace: string | null = null, version: string | null = null) { if (props.founderAccess && target) return true; return props.targets.some(t => t.action === action && t.target_id === target && t.workspace_public_id === workspace && t.version_id === version); }
+function grant(action: string, target: string, business: string | null = null, version: string | null = null) { if (props.founderAccess && target) return true; return props.targets.some(t => t.action === action && t.target_id === target && t.business_public_id === business && t.version_id === version); }
 const authority = computed(() => {
     if (!fields.market_id) return 'PREREQUISITE_MISSING';
     if (props.freshAuthentication === false) return 'PREREQUISITE_MISSING';
@@ -281,8 +281,8 @@ const authority = computed(() => {
             if (assignabilityDecision.value === 'select' && !configurations.value.some(conf => conf.id === fields.configuration_id && conf.catalog_reference_id && conf.denomination_code && catalogs.value.some(r => r.id === conf.catalog_reference_id))) return 'PREREQUISITE_MISSING';
             authorized = grant(assignabilityDecision.value === 'disable' ? 'DisableCommercialMarket' : 'EnableCommercialMarket', fields.market_id); break;
         case 'register':
-            if (!workspace.value || !currentConfiguration.value?.catalog_reference_id || !currentConfiguration.value.denomination_code) return 'PREREQUISITE_MISSING';
-            authorized = grant('RegisterCommercialScope', fields.scope_id, fields.workspace_public_id) && grant('RecordBeneficiaryBinding', fields.scope_id, fields.workspace_public_id) && grant('AssignCommercialMarket', fields.scope_id, fields.workspace_public_id, fields.configuration_id); break;
+            if (!business.value || !currentConfiguration.value?.catalog_reference_id || !currentConfiguration.value.denomination_code) return 'PREREQUISITE_MISSING';
+            authorized = grant('RegisterCommercialScope', fields.scope_id, fields.business_public_id) && grant('RecordBeneficiaryBinding', fields.scope_id, fields.business_public_id) && grant('AssignCommercialMarket', fields.scope_id, fields.business_public_id, fields.configuration_id); break;
     }
     return authorized ? 'EXECUTABLE' : selectedMarket.value ? 'VISIBLE_BUT_READ_ONLY' : 'PREREQUISITE_MISSING';
 });
@@ -304,7 +304,7 @@ const authorityCopy = computed(() => {
 });
 function labelConfiguration(conf: Configuration | undefined) { return conf ? `${c('إصدار', 'Version')} ${conf.version} · ${conf.denomination_code ?? c('عملة غير مثبتة', 'No denomination')} · ${conf.catalog_reference_id ? c('مرجع مثبت', 'Reference pinned') : c('مرجع غير مثبت', 'No reference')}` : c('لا يوجد إعداد متاح للإسناد', 'No assignable configuration'); }
 function deliveryLabel(state: string) { const labels: Record<string, [string,string]> = { pending: ['بانتظار التسليم','Pending'], failed: ['تعذّر التسليم','Failed'], unknown: ['غير مؤكد','Unknown'], acknowledged: ['تم إقرار الحفظ','Acknowledged'] }; return labels[state.toLowerCase()] ? c(...labels[state.toLowerCase()]) : c('حالة غير معروفة','Unknown state'); }
-function canRecover(item: typeof props.obligations[number]) { return props.freshAuthentication === true && !!item.target_id && grant('RetryOrRecoverExistingAuditDelivery', item.target_id, item.workspace_public_id ?? null); }
+function canRecover(item: typeof props.obligations[number]) { return props.freshAuthentication === true && !!item.target_id && grant('RetryOrRecoverExistingAuditDelivery', item.target_id, item.business_public_id ?? null); }
 function descriptions(field: string) { return fieldErrors.value[field] ? `error-${field}` : undefined; }
 function acknowledgeReconciliation() { if (!reconciled.value || busy.value) return; lifecycle.value = 'completed'; conflictReview.value = false; error.value = ''; newCommand(); }
 function acknowledgeConflict() { if (!conflictReviewReady.value || busy.value) return; lifecycle.value = 'completed'; conflictReview.value = false; conflictReviewReady.value = false; error.value = ''; newCommand(); }
@@ -342,7 +342,7 @@ try {
                             <div v-if="operation === 'assignability'" class="admin-field"><label for="assignability-decision">{{ c('قرار الإسناد', 'Assignability decision') }}</label><select id="assignability-decision" v-model="assignabilityDecision"><option value="select">{{ c('السماح بتسجيل عملاء جدد', 'Allow new customer registrations') }}</option><option value="disable">{{ c('إيقاف تسجيل عملاء جدد', 'Stop new customer registrations') }}</option></select><p class="admin-description">{{ c('هذا القرار يؤثر في التسجيلات الجديدة فقط.', 'This decision affects new registrations only.') }}</p></div>
                             <div v-if="operation === 'assignability' && assignabilityDecision === 'select'" class="admin-field"><label for="commercial-configuration_id">{{ c('الإعداد الجديد المختار', 'Selected new configuration') }}</label><select id="commercial-configuration_id" v-model="fields.configuration_id" :aria-describedby="descriptions('configuration_id')" :aria-invalid="!!fieldErrors.configuration_id"><option value="">{{ c('اختر إعدادًا جديدًا', 'Select a new configuration') }}</option><option v-for="conf in completeConfigurations" :key="conf.id" :value="conf.id">{{ labelConfiguration(conf) }}</option></select><p v-if="fieldErrors.configuration_id" id="error-configuration_id" class="admin-error">{{ fieldErrors.configuration_id.join(' ') }}</p></div>
                             <div v-if="operation === 'catalog'" class="admin-field"><label for="commercial-catalog_reference_id">{{ c('المرجع المصرح بتوثيقه', 'Reference authorized for recording') }}</label><select id="commercial-catalog_reference_id" v-model="fields.catalog_reference_id"><option value="">{{ c('اختر الهوية المصرح بها', 'Select an authorized identity') }}</option><option v-for="(target, index) in authorizedReferences" :key="target.version_id!" :value="target.version_id">{{ c('مرجع مصرح', 'Authorized reference') }} {{ index + 1 }}</option></select><p class="admin-description">{{ c('الخيارات محددة بصلاحيتك؛ اختر المرجع المعتمد.', 'Your permissions determine these choices; select the approved reference.') }}</p></div>
-                            <div v-if="operation === 'register'" class="admin-field"><label for="scope-select">{{ c('المستفيد المصرح بتسجيله', 'Beneficiary authorized for registration') }}</label><select id="scope-select" v-model="scopeSelection" @change="selectScope"><option value="">{{ c('اختر المستفيد', 'Select beneficiary') }}</option><option v-for="(target, index) in scopeTargets" :key="target.target_id + target.workspace_public_id" :value="scopeKey(target)">{{ beneficiaryNames[scopeKey(target)] ?? `${c('مستفيد مصرح', 'Authorized beneficiary')} ${index + 1}` }}</option></select><p v-if="workspace" class="commercial-beneficiary">{{ workspace.name }}</p></div>
+                            <div v-if="operation === 'register'" class="admin-field"><label for="scope-select">{{ c('المستفيد المصرح بتسجيله', 'Beneficiary authorized for registration') }}</label><select id="scope-select" v-model="scopeSelection" @change="selectScope"><option value="">{{ c('اختر المستفيد', 'Select beneficiary') }}</option><option v-for="(target, index) in scopeTargets" :key="target.target_id + target.business_public_id" :value="scopeKey(target)">{{ beneficiaryNames[scopeKey(target)] ?? `${c('مستفيد مصرح', 'Authorized beneficiary')} ${index + 1}` }}</option></select><p v-if="business" class="commercial-beneficiary">{{ business.name }}</p></div>
                             <div v-for="field in decisionFields.filter(field => !['catalog_identity', 'source_sha256', 'denomination_code'].includes(field))" :key="field" class="admin-field"><label :for="`commercial-${field}`">{{ c(...fieldNames[field]) }}</label><input :id="`commercial-${field}`" v-model="fields[field]" :dir="field === 'label' ? undefined : 'ltr'" :aria-describedby="descriptions(field)" :aria-invalid="!!fieldErrors[field]" /><p v-if="fieldErrors[field]" :id="`error-${field}`" class="admin-error">{{ fieldErrors[field].join(' ') }}</p></div>
                             <details v-if="operation === 'catalog'" class="commercial-source admin-detail" :open="!!fieldErrors.catalog_identity || !!fieldErrors.source_sha256"><summary>{{ c('بيانات المصدر المعتمد', 'Approved source details') }}</summary><p class="admin-description">{{ c('انسخ معرّف المصدر وبصمة الملف من مستند اعتماد المرجع كما هما؛ لا تنشئ قيمًا بديلة.', 'Copy the source identifier and file checksum exactly from the reference approval document; do not invent replacements.') }}</p><div v-for="field in ['catalog_identity', 'source_sha256']" :key="field" class="admin-field"><label :for="`commercial-${field}`">{{ c(...fieldNames[field]) }}</label><input :id="`commercial-${field}`" v-model="fields[field]" dir="ltr" :aria-describedby="descriptions(field)" :aria-invalid="!!fieldErrors[field]" /><p v-if="fieldErrors[field]" :id="`error-${field}`" class="admin-error">{{ fieldErrors[field].join(' ') }}</p></div></details>
                             <p v-if="fieldErrors.reason_code" class="admin-error">{{ fieldErrors.reason_code.join(' ') }}</p>
@@ -362,7 +362,7 @@ try {
             <section aria-labelledby="context-heading" class="commercial-evidence-row"><details><summary><h3 id="context-heading">{{ c('السياق التجاري المسجل', 'Recorded commercial context') }}</h3><span>{{ contextResult ? c('سياق مقروء', 'Context read') : c('قراءة مستقلة', 'Independent read') }}</span></summary><div class="commercial-evidence-body"><form class="commercial-lookup" @submit.prevent="lookupContext"><div class="admin-field"><label for="context-scope">{{ c('رقم التسجيل للبحث', 'Registration number to look up') }}</label><input id="context-scope" v-model="contextScope" dir="ltr" /></div><button class="admin-action" :disabled="busy">{{ c('قراءة السياق', 'Read context') }}</button></form><details v-if="contextResult" class="admin-detail"><summary>{{ c('تفاصيل السياق', 'Context details') }}</summary><pre>{{ JSON.stringify(contextResult, null, 2) }}</pre></details></div></details></section>
             <section aria-labelledby="audit-heading" class="commercial-evidence-row"><details><summary><h3 id="audit-heading">{{ c('تسليم التدقيق', 'Audit delivery') }}</h3><span>{{ deliveryResult ? deliveryLabel(String(deliveryResult.state ?? 'unknown')) : obligations.length ? c('التزامات مقروءة', 'Readable obligations') : c('لا توجد بيانات مقروءة', 'No readable data') }}</span></summary><div class="commercial-evidence-body"><p class="admin-description">{{ c('نتيجة الاستعادة تُقرأ من حالة التسليم؛ استجابة HTTP ناجحة لا تثبت إقرار الحفظ.', 'Recovery outcome follows delivery state; a successful HTTP response does not establish custody acknowledgment.') }}</p><p v-if="!obligations.length" class="admin-description">{{ c('لا توجد التزامات متاحة للقراءة ضمن الصلاحيات الحالية.', 'No obligations are readable under current permissions.') }}</p><ul class="commercial-records"><li v-for="item in obligations" :key="item.id"><div><strong>{{ c('حالة التسليم', 'Delivery state') }}: {{ deliveryLabel(item.state) }}</strong><p>{{ c('المحاولات', 'Attempts') }}: {{ item.attempts }}</p><details class="admin-detail"><summary>{{ c('هوية الالتزام والأمر', 'Obligation and command identities') }}</summary><p dir="ltr">{{ item.id }} / {{ item.command_id }}</p></details></div><button type="button" class="admin-action" :disabled="busy || !canRecover(item)" @click="recover(item.id)">{{ c('محاولة استعادة مصرح بها', 'Request authorized recovery') }}</button></li></ul><div v-if="deliveryResult"><p role="status">{{ c('حالة الاستعادة', 'Recovery state') }}: {{ deliveryLabel(String(deliveryResult.state ?? 'unknown')) }}</p><details class="admin-detail"><summary>{{ c('تفاصيل التسليم والحفظ', 'Delivery and custody details') }}</summary><pre>{{ JSON.stringify(deliveryResult, null, 2) }}</pre></details></div></div></details></section>
             </div></details></div>
-            <details v-if="fields.market_id" class="admin-disclosure"><summary>{{ c('الأدلة التقنية للاختيار الحالي', 'Technical evidence for the current selection') }}</summary><div class="admin-disclosure-body commercial-fields"><div v-for="field in ['market_id','scope_id','workspace_public_id','configuration_id','catalog_reference_id','expected_revision','reason_code']" :key="field" class="admin-field"><label :for="field === 'expected_revision' ? 'commercial-expected_revision' : `evidence-${field}`"><bdi dir="ltr">{{ field }}</bdi></label><input :id="field === 'expected_revision' ? 'commercial-expected_revision' : `evidence-${field}`" :value="field === 'reason_code' ? reason : fields[field]" readonly dir="ltr" /></div></div></details>
+            <details v-if="fields.market_id" class="admin-disclosure"><summary>{{ c('الأدلة التقنية للاختيار الحالي', 'Technical evidence for the current selection') }}</summary><div class="admin-disclosure-body commercial-fields"><div v-for="field in ['market_id','scope_id','business_public_id','configuration_id','catalog_reference_id','expected_revision','reason_code']" :key="field" class="admin-field"><label :for="field === 'expected_revision' ? 'commercial-expected_revision' : `evidence-${field}`"><bdi dir="ltr">{{ field }}</bdi></label><input :id="field === 'expected_revision' ? 'commercial-expected_revision' : `evidence-${field}`" :value="field === 'reason_code' ? reason : fields[field]" readonly dir="ltr" /></div></div></details>
         </div>
     </InternalLayout>
 </template>

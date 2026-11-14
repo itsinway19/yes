@@ -5,7 +5,7 @@ export async function runFocusedAcceptance(harness) {
     const { browser, check, login, fixture, result, until, held, command, target } = harness;
     const wire = result.wire;
     const origin = 'http://localhost:8138';
-    const a = fixture.a.workspaces[0].public_id, b = fixture.a.workspaces[1].public_id;
+    const a = fixture.a.businesses[0].business_public_id, b = fixture.a.businesses[1].business_public_id;
     const path = workspace => target('application', workspace);
     const pathname = workspace => new URL(path(workspace), origin).pathname;
     const ready = (page, workspace = a) => page.waitForFunction(workspace =>

@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Foundation\Business\BusinessScope;
 use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
-use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -13,7 +12,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
-use Tests\Support\BusinessAuthorityFixture;
 use Tests\TestCase;
 
 final class BusinessScopeFoundationTest extends TestCase
@@ -40,7 +38,7 @@ final class BusinessScopeFoundationTest extends TestCase
 
     private function selection(array $draft, string $action = 'business.context.read'): array
     {
-        return ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        return ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $draft['grant_refs'][$action]]]];
     }
 
@@ -61,7 +59,7 @@ final class BusinessScopeFoundationTest extends TestCase
         $this->assertTrue(Str::isUuid($result['business_public_id']));
         $this->assertSame('declared_draft', $result['state']);
         $this->assertSame(1, $this->owner()->table('businesses')->count());
-        $this->assertSame(0, $this->owner()->table('workspaces')->count());
+        $this->assertNull($this->owner()->scalar("SELECT to_regclass('public.workspaces')"));
         $this->assertSame(0, $this->owner()->table('business_goal_preferences')->count());
         $this->assertSame(1, $this->owner()->table('business_current_intents')->whereNull('value')->count());
         $this->assertSame(1, $this->owner()->table('migration_cohort_control')->where('mode', 'V2_ACTIVE')->count());
@@ -156,7 +154,7 @@ final class BusinessScopeFoundationTest extends TestCase
         $this->assertSame(0, $connection->transactionLevel());
         $this->assertSame($pid, $connection->scalar('SELECT pg_backend_pid()'));
         $this->assertSame('builderad_app', $connection->scalar('SELECT current_user'));
-        $this->assertSame(0, $connection->scalar("SELECT count(*) FROM unnest(ARRAY['app.authorization_phase','app.principal_user_id','app.workspace_id','app.signed_context']) AS settings(key) WHERE nullif(current_setting(key,true),'') IS NOT NULL"));
+        $this->assertSame(0, $connection->scalar("SELECT count(*) FROM unnest(ARRAY['app.authorization_phase','app.principal_user_id','app.signed_context']) AS settings(key) WHERE nullif(current_setting(key,true),'') IS NOT NULL"));
         $this->denied(fn () => $scope->read($this->request($bob), $a['business_public_id'], $this->selection($a)));
         $this->assertSame('Bob on reused backend', $scope->read($this->request($bob), $b['business_public_id'], $this->selection($b))['name']);
         $this->assertSame($pid, $connection->scalar('SELECT pg_backend_pid()'));
@@ -191,30 +189,6 @@ final class BusinessScopeFoundationTest extends TestCase
         $this->postJson('/api/businesses/'.$result['business_public_id'].'/read', ['authority_selection' => $this->selection($result)])
             ->assertOk()->assertJsonPath('data.name', 'HTTP business');
         $this->actingAs(User::factory()->create())->postJson('/api/businesses/'.$result['business_public_id'].'/read', ['authority_selection' => $this->selection($result)])->assertForbidden();
-    }
-
-    public function test_two_businesses_link_to_same_workspace_without_merging_identity_or_authority(): void
-    {
-        $alice = User::factory()->create();
-        $request = $this->request($alice);
-        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($alice, 1);
-        $this->legacyWorkspace(['name' => 'Collaboration label', 'slug' => 'shared-team'])->assertRedirect();
-        $workspace = $this->owner()->table('workspaces')->where('slug', 'shared-team')->first();
-        $a = $this->draft($alice, 'Business A');
-        $b = $this->draft($alice, 'Business B');
-        $request = $this->request($alice);
-        foreach ([$a, $b] as $draft) {
-            $this->denied(fn () => app(BusinessScope::class)->link($request, $draft['business_public_id'], $workspace->public_id, (string) Str::uuid(), 'add', 0, $this->selection($draft, 'business.link.manage')));
-            $root = $this->owner()->table('security_action_grants')->where('id', $draft['grant_refs']['business.link.manage'])->sole();
-            BusinessAuthorityFixture::legacyWorkspaceLink($root->business_id, $workspace->id, $root, $alice->id, 'collaboration');
-        }
-        $this->assertSame(2, $this->owner()->table('business_workspace_links')->where('workspace_id', $workspace->id)->count());
-        $this->assertSame('Collaboration label', $this->owner()->table('workspaces')->where('id', $workspace->id)->value('name'));
-        $this->assertNotSame($workspace->public_id, $a['business_public_id']);
-        $this->assertSame('Business A', app(BusinessScope::class)->read($request, $a['business_public_id'], $this->selection($a))['name']);
-        $bob = User::factory()->create();
-        $this->owner()->table('workspace_memberships')->insert(['workspace_id' => $workspace->id, 'user_id' => $bob->id, 'role' => 'member', 'status' => 'active', 'created_at' => now()]);
-        $this->denied(fn () => app(BusinessScope::class)->read($this->request($bob), $a['business_public_id'], $this->selection($a)));
     }
 
     private function intentValue(): array

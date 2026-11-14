@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Security\GrantAuthority;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -26,7 +25,7 @@ class ArchitectureSourceOptionalityTest extends TestCase
         $this->actingAs($actor);
         $file = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Source-optional Business'])->assertCreated()->json('data');
         $base = '/api/businesses/'.$file['business_public_id'];
-        $selection = fn ($grant) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (int) $grant]]];
+        $selection = fn ($grant) => ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => (int) $grant]]];
         $command = fn ($action) => ['command_id' => (string) Str::uuid(), 'authority_selection' => $selection($file['grant_refs'][$action])];
         $this->putJson($base.'/context', $command('business.context.manage') + ['name' => 'Confirmed independent Business', 'business_type_id' => null, 'expected_context' => 0])->assertOk();
         $this->putJson($base.'/markets', $command('business.markets.declare') + ['codes' => ['SA', 'AE'], 'expected_context' => 1])->assertOk();
@@ -36,7 +35,7 @@ class ArchitectureSourceOptionalityTest extends TestCase
             'confirmations' => ['declaration' => true, 'business_wide' => true, 'outcome' => true, 'acceptance_clear' => true]])->assertOk();
         $this->putJson($base.'/preferences', $command('business.preferences.manage') + ['value' => ['goals' => ['sales'], 'priority' => 'sales', 'results' => (object) []], 'expected_preference' => 0])->assertOk();
         $db = DB::connection('pgsql_migrations');
-        $this->assertSame(0, $db->table('workspaces')->count());
+        $this->assertNull($db->scalar("SELECT to_regclass('public.workspaces')"));
         // Synthetic qualification tests source independence, not an operating
         // Purpose issuer or evidence of real external object rights.
         $id = $db->table('businesses')->where('public_id', $file['business_public_id'])->value('id');
@@ -48,11 +47,10 @@ class ArchitectureSourceOptionalityTest extends TestCase
         $body['command']['declaration']['included_objects'] = [];
         $this->postJson($base.'/purposes', $body)->assertUnprocessable();
         $this->assertSame(1, $db->table('object_purpose_revisions')->count());
-        app(GrantAuthority::class)->issueAdvertiserWorkspaceCreation($actor, 1);
-        $this->get('/organizations/new')->assertRedirect('/businesses/new');
-        $this->postJson('/organizations', ['name' => 'Retired parallel organization'])->assertStatus(410);
-        $this->assertSame(0, $db->table('workspaces')->count());
-        foreach (['business_context_events', 'business_current_intent_events', 'business_target_markets', 'advertiser_goal_preferences', 'source_registry', 'provider_access'] as $table) {
+        $this->get('/organizations/new')->assertNotFound();
+        $this->postJson('/organizations', ['name' => 'Retired parallel organization'])->assertNotFound();
+        $this->assertNull($db->scalar("SELECT to_regclass('public.workspaces')"));
+        foreach (['source_registry', 'provider_access'] as $table) {
             $this->assertSame(0, $db->table($table)->count(), $table);
         }
         Http::assertNothingSent();

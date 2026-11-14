@@ -1,96 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, access } from 'node:fs/promises';
-
-const read = path => readFile(new URL('../' + path, import.meta.url), 'utf8');
-
-test('retired Workspace business onboarding cannot be reintroduced through routes, contracts or the creation controller', async () => {
-    const [routes, contract, creation, navigation] = await Promise.all([
-        read('routes/web.php'), read('contracts/application.openapi.json'),
-        read('app/Http/Controllers/RetiredWorkspaceCreationController.php'), read('resources/js/workspaces/routes.ts'),
-    ]);
-    assert.match(routes, /Route::post\('\/business\/start',[^\n]+410/);
-    for (const path of ['app/Http/Controllers/BusinessContextController.php', 'app/Http/Controllers/OrganizationController.php', 'resources/js/workspaces/OrganizationCreate.vue']) {
-        await assert.rejects(access(new URL('../' + path, import.meta.url)), { code: 'ENOENT' });
-    }
-    assert.equal(JSON.parse(contract).paths['/business/start'], undefined);
-    for (const path of ['/organizations', '/workspaces']) {
-        const writers = routes.split('\n').filter(line => line.includes(`Route::post('${path}',`));
-        assert.equal(writers.length, 1, `${path} must have exactly one retired POST owner`);
-        assert.match(writers[0], /RetiredWorkspaceCreationController::class/);
-        const operation = JSON.parse(contract).paths[path].post;
-        assert.equal(operation.deprecated, true);
-        assert.equal(operation.operationId, path === '/organizations' ? 'rejectRetiredOrganizationCreation' : 'rejectRetiredWorkspaceCreation');
-        assert.deepEqual(Object.keys(operation.responses).filter(status => /^2\d\d$/.test(status)), []);
-        assert.equal(operation.responses['410'].content['application/json'].schema.$ref, '#/components/schemas/RetiredWorkspaceCreation');
-    }
-    assert.match(creation, /response\(\)->json\(\['error' => 'workspace_creation_retired', 'next' => '\/businesses\/new'\], 410\)/);
-    assert.doesNotMatch(creation, /BusinessContext|WorkspaceAuthority|DB::|->(?:create|write|replaceCurrentIntent|replaceTargetMarkets)\(/);
-    assert.match(navigation, /path: '\/workspaces\/:pathMatch\(\.\*\)\*', redirect: '\/businesses'/);
-    for (const path of ['/organizations/new', '/business/start']) {
-        assert.ok(navigation.includes(`{ path: '${path}', redirect: '/businesses/new' }`));
-    }
-    assert.doesNotMatch(navigation, /\bcomponent[s]?\s*:|OrganizationCreate|WorkspaceIndex/);
+import { spec } from '../scripts/application-openapi.mjs';
+import Ajv from 'ajv/dist/2020.js';
+test('retired model has no routes or placeholder contracts',async()=>{
+ assert.doesNotMatch(JSON.stringify(spec),/workspace_public_id|realm_workspace|workspace_id|\/workspaces/);
+ for(const file of ['resources/js/workspaces/routes.ts','resources/js/sources/SourceView.vue','resources/js/object-purpose/PurposeView.vue'])await assert.rejects(access(file),{code:'ENOENT'});
+ const shell=await readFile('resources/js/spa/main.ts','utf8');assert.doesNotMatch(shell,/workspaceRoutes|params\.workspace|\/workspaces/);
+});
+test('only direct Business selectors are admitted; exact grant paths remain required',()=>{
+ const valid=new Ajv({strict:false,validateFormats:false}).compile({...spec,$ref:'#/components/schemas/BusinessAuthoritySelection'});
+ const selection={realm_kind:'direct',requirements:[{requirement_kind:'business',leaf_grant_id:7}]};
+ assert.equal(valid(selection),true);
+ for(const invalid of [{...selection,realm_workspace_public_id:null},{...selection,realm_kind:'agency'},{...selection,realm_kind:'internal_team'},{...selection,requirements:[]}])assert.equal(valid(invalid),false);
+});
+test('commercial registration uses Business beneficiary while uncertainty stays explicit',()=>{
+ const schema=spec.components.schemas.CommercialRegistrationCommand;
+ assert.ok(schema.properties.business_public_id);assert.equal(schema.properties.workspace_public_id,undefined);
+ assert.equal(spec.components.schemas.CommercialContextResult.properties.agreement_state.const,'UNKNOWN');
+ assert.equal(spec.components.schemas.CommercialContextResult.properties.amount_state.const,'UNKNOWN');
 });
 
-test('retired commercial contracts and editors cannot return alongside Business owners', async () => {
-    const contract = JSON.parse(await read('contracts/application.openapi.json'));
-    for (const path of Object.keys(contract.paths)) assert.doesNotMatch(path, /^\/workspaces\/\{workspace\}\/(?:business|goals|object-purposes)(?:\/|$)/);
-    assert.deepEqual(JSON.parse(await read('contracts/goals.openapi.json')).paths, {});
-    for (const path of ['resources/js/business-context/BusinessContext.vue', 'resources/js/business-context/ContextForm.vue', 'resources/js/goals-spa/GoalsEditor.vue', 'resources/js/goals-spa/GoalsReview.vue', 'resources/js/Components/Business/TargetMarketsEditor.vue', 'resources/js/Components/Business/CurrentIntentEditor.vue']) {
-        await assert.rejects(access(new URL('../' + path, import.meta.url)), { code: 'ENOENT' });
-    }
-    const main = await read('resources/js/spa/main.ts');
-    assert.doesNotMatch(main, /businessContextRoutes|goalsRoutes/);
-    const facts = await read('database/sql/business_scope/commercial_retirement.sql');
-    for (const name of ['builderad_business_context_write', 'builderad_business_target_markets_write', 'builderad_current_intent_write', 'builderad_advertiser_goals_write', 'builderad_business_context_begin', 'builderad_business_context_require_prepared']) assert.ok(facts.includes('DROP FUNCTION public.' + name + '('));
-    assert.match(facts, /WORKSPACE_COMMERCIAL_WRITER_RETIRED/);
-    const purpose = await read('database/sql/business_scope/purpose_retirement.sql');
-    assert.match(purpose, /w IS NOT NULL AND coalesce\(c->>'operation',''\) NOT IN\('correct','withdraw'\)/);
-    assert.doesNotMatch(purpose, /IF b IS NOT NULL THEN PERFORM builderad_private\.permit/);
-});
-
-test('source background work and organizational consumers use metadata rather than commercial legacy entry', async () => {
-    const [context, owner] = await Promise.all([read('app/Providers/Ads/NativeSourceQueueContext.php'), read('app/Providers/Ads/NativeSourceOwner.php')]);
-    for (const source of [context, owner]) assert.doesNotMatch(source, /builderad_v2_legacy_enter|table\('workspaces'\)/);
-    assert.match(owner, /organization_workspaces/);
-    assert.match(context, /organization_workspaces/);
-    assert.match(context, /builderad_select_workspace_context/);
-    assert.match(context, /builderad_v2_business_source_owner/);
-    assert.match(context, /\$owner\['business_id'\] !== \$scope->businessId/);
-    for (const path of ['app/Providers/Ads/PersistObservationJob.php', ...['Meta', 'Google', 'TikTok', 'Snapchat', 'X'].map(provider => `app/Providers/Ads/${provider}/${provider}ReadJob.php`)]) {
-        const source = await read(path);
-        assert.doesNotMatch(source, /builderad_v2_legacy_enter|table\('workspaces'\)/);
-        assert.match(source, /NativeSourceQueueContext::capture\(/);
-        assert.match(source, /NativeSourceQueueContext::restore\(/);
-    }
-    assert.doesNotMatch(await read('database/sql/business_scope/organization_resources.sql'), /business_type_id|business_context_version|current_intent|LEGACY_ACTIVE|legacy_admitted/);
-});
-
-test('organizational source administration cannot consume legacy commercial facts or require their setup gate', async () => {
-    const [controller, source, routes, contract] = await Promise.all([
-        read('app/Http/Controllers/WorkspaceController.php'), read('resources/js/sources/Sources.vue'),
-        read('routes/web.php'), read('contracts/application.openapi.json'),
-    ]);
-    assert.doesNotMatch(controller, /BusinessContext|->guidance\(/);
-    assert.doesNotMatch(source, /props\.guidance|guidance\.priors|business\.type|business\.targetMarkets/);
-    assert.doesNotMatch(routes, /EnsureBusinessContext/);
-    const schema = JSON.parse(contract).components.schemas.WorkspaceSourcesData;
-    assert.equal(schema.properties.business, undefined);
-    assert.equal(schema.properties.guidance, undefined);
-});
-
-test('source-management inventory explicitly establishes no Business data-use right', async () => {
-    const contract = JSON.parse(await read('contracts/application.openapi.json'));
-    const fields = contract.components.schemas.BusinessSources.properties;
-    assert.equal(fields.inventory_kind.const, 'manageable_sources');
-    assert.equal(fields.establishes_business_data_use.const, false);
-    const sql = await read('database/sql/business_scope/business_source_visibility.sql');
-    assert.match(sql, /'establishes_business_data_use',false/);
-});
-
-test('the mandatory JavaScript CI selection retains the retirement guards', async () => {
-    const pkg = JSON.parse(await read('package.json'));
-    assert.ok(pkg.scripts.test.split(' ').includes('tests/workspace-commercial-retirement.test.mjs'));
-    assert.match(await read('.github/workflows/foundation.yml'), /npm test/);
+test('administration command admits declared drafts and active Business suspension without archival revival',()=>{
+ const valid=new Ajv({strict:false,validateFormats:false}).compile({...spec,$ref:'#/components/schemas/InternalCustomerStatusCommand'});
+ const command={command_id:'command',kind:'businesses',target:'business',decision:'suspend',reason:'Owner administration',expected_status:'declared_draft',expected_revision:2};
+ assert.equal(valid(command),true);assert.equal(valid({...command,expected_status:'active'}),true);
+ assert.equal(valid({...command,expected_status:'archived'}),false);assert.equal(valid({...command,kind:'workspaces'}),false);
 });

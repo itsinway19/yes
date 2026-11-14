@@ -29,13 +29,13 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit bounded Google report requests; no implicit grants, secrets or inline native HTTP. */
 final class GoogleReportController extends Controller
 {
-    public function status(Request $request, string $workspace, string $source, NativeSourceContext $context): JsonResponse
+    public function status(Request $request, string $business, string $source, NativeSourceContext $context): JsonResponse
     {
         $input = $this->input($request);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $source, $input): array {
+        return $this->respond(fn () => $context->run($request->user(), $business, function (NativeSourceOwner $w) use ($request, $source, $input): array {
             [$scope, $window, $stream] = $this->reportContext($request, $w, $source, $input);
-            $record = DB::table('provider_observation_streams')->where('workspace_id', $w->workspaceId)->where('source_id', $source)
+            $record = DB::table('provider_observation_streams')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $w->businessId))->where('source_id', $source)
                 ->where('provider', 'google')->where('resource', $scope->accountId)->where('operation', 'report.read')
                 ->where('purpose', 'advertising_analysis')->where('stream', $stream)->first(['namespace', 'generation']);
             $run = $record === null ? null : DB::table('provider_observation_runs')->where('namespace', $record->namespace)
@@ -44,13 +44,13 @@ final class GoogleReportController extends Controller
             return ['source_id' => $source, 'timezone' => $window->timezone, 'generation' => (int) ($record->generation ?? 0),
                 'deadline' => CarbonImmutable::now()->addMinutes(5)->format(DATE_ATOM),
                 'download' => $run?->coverage !== 'COMPLETE' ? null : ['generation' => (int) $record->generation,
-                    'url' => route(($w->businessId === null ? 'workspaces' : 'businesses').'.providers.google.report.download', [$w->businessId === null ? 'workspace' : 'business' => $w->publicId,
+                    'url' => route('businesses.providers.google.report.download', ['business' => $w->publicId,
                         'source' => $source, 'generation' => $record->generation, 'stream' => $stream], absolute: false)],
                 'last_run' => $run === null ? null : (array) $run];
         }, $request));
     }
 
-    public function download(Request $request, string $workspace, string $source, string $generation, NativeSourceContext $context): Response
+    public function download(Request $request, string $business, string $source, string $generation, NativeSourceContext $context): Response
     {
         if (array_diff(array_keys($request->query()), ['stream', 'metrics'])) {
             throw ValidationException::withMessages(['report' => 'Unknown download fields.']);
@@ -63,12 +63,12 @@ final class GoogleReportController extends Controller
         } catch (\InvalidArgumentException) {
             throw ValidationException::withMessages(['metrics' => 'Invalid Google metric selection.']);
         }
-        $csv = $this->guarded(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $source, $generation, $input, $metrics): string {
+        $csv = $this->guarded(fn () => $context->run($request->user(), $business, function (NativeSourceOwner $w) use ($request, $source, $generation, $input, $metrics): string {
             $scope = $this->sourceScope($request, $w, $source);
             $authorize = static fn () => DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)',
-                [$w->workspaceId, SessionAuthority::sessionKey($request), $source, $scope->accountId, $scope->operation, $scope->purpose]);
+                [$w->businessId, SessionAuthority::sessionKey($request), $source, $scope->accountId, $scope->operation, $scope->purpose]);
             $authorize();
-            $namespace = DB::table('provider_observation_streams')->where('workspace_id', $w->workspaceId)->where('source_id', $source)
+            $namespace = DB::table('provider_observation_streams')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $w->businessId))->where('source_id', $source)
                 ->where('provider', 'google')->where('resource', $scope->accountId)->where('operation', $scope->operation)
                 ->where('purpose', $scope->purpose)->where('stream', $input['stream'])->value('namespace');
             $run = $namespace === null ? null : DB::table('provider_observation_runs')->where('namespace', $namespace)
@@ -101,11 +101,11 @@ final class GoogleReportController extends Controller
             ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer')->header('X-Content-Type-Options', 'nosniff');
     }
 
-    public function store(Request $request, string $workspace, string $source, NativeSourceContext $context): JsonResponse
+    public function store(Request $request, string $business, string $source, NativeSourceContext $context): JsonResponse
     {
         $input = $this->input($request, true);
 
-        return $this->respond(fn () => $context->run($request->user(), $workspace, function (NativeSourceOwner $w) use ($request, $source, $input): array {
+        return $this->respond(fn () => $context->run($request->user(), $business, function (NativeSourceOwner $w) use ($request, $source, $input): array {
             [$scope, $window, $stream] = $this->reportContext($request, $w, $source, $input, (int) $input['expected_version']);
             try {
                 GoogleReadSettings::configured();
@@ -114,16 +114,16 @@ final class GoogleReportController extends Controller
             }
             $job = GoogleReadJob::capture($request, $scope, $window, $stream, $input['command_id'],
                 (int) $input['expected_generation'], (int) $input['expected_version'], new DateTimeImmutable($input['deadline']));
-            // The durable database queue is pushed after Workspace commit. Never run HTTP inline.
+            // The durable database queue is pushed after Business commit. Never run HTTP inline.
             Bus::dispatch($job->onConnection('database'));
 
             return ['queued' => true, 'command_id' => $input['command_id'], 'source_id' => $source];
         }, $request), 202);
     }
 
-    private function reportContext(Request $request, NativeSourceOwner $workspace, string $source, array $input, ?int $version = null): array
+    private function reportContext(Request $request, NativeSourceOwner $business, string $source, array $input, ?int $version = null): array
     {
-        $scope = $this->sourceScope($request, $workspace, $source);
+        $scope = $this->sourceScope($request, $business, $source);
         $status = (new GoogleAccessStatus)->snapshot($request, $scope);
         (new GoogleAccessStatus)->requireReport($request, $scope);
         app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', $version ?? (int) $status['version']);
@@ -136,14 +136,14 @@ final class GoogleReportController extends Controller
         return [$scope, $window, $stream];
     }
 
-    private function sourceScope(Request $request, NativeSourceOwner $workspace, string $source): ProviderScope
+    private function sourceScope(Request $request, NativeSourceOwner $business, string $source): ProviderScope
     {
-        DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$workspace->workspaceId, SessionAuthority::sessionKey($request)]);
-        $identity = $workspace->sources()->where('id', $source)
+        DB::selectOne('SELECT builderad_source_begin_read(?, ?)', [$business->businessId, SessionAuthority::sessionKey($request)]);
+        $identity = $business->sources()->where('id', $source)
             ->where('family', 'google')->where('namespace', 'ad_account')->first(['declared_external_id']);
         abort_if($identity === null, 404);
 
-        return $workspace->scope($source, Provider::Google, $identity->declared_external_id, 'report.read', 'advertising_analysis');
+        return $business->scope($source, Provider::Google, $identity->declared_external_id, 'report.read', 'advertising_analysis');
     }
 
     private function input(Request $request, bool $command = false): array

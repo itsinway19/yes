@@ -11,10 +11,10 @@ import TikTokConnectionPanel from './TikTokConnectionPanel.vue';
 import SnapchatConnectionPanel from './SnapchatConnectionPanel.vue';
 import XConnectionPanel from './XConnectionPanel.vue';
 
-const props = defineProps<{ workspaceId?: string; businessId?: string; canManage?: boolean; initialProvider?: AdvertisingPlatform }>();
-const hasOwner = computed(() => Boolean(props.workspaceId || props.businessId));
-const ownerId = computed(() => props.businessId ? 'business:' + props.businessId : props.workspaceId);
-const emit = defineEmits<{ chooseWorkspace: [provider: AdvertisingPlatform]; selected: [provider: AdvertisingPlatform] }>();
+const props = defineProps<{ businessId?: string; canManage?: boolean; initialProvider?: AdvertisingPlatform }>();
+const hasOwner = computed(() => Boolean(props.businessId));
+const ownerId = computed(() => props.businessId ? 'business:' + props.businessId : undefined);
+const emit = defineEmits<{ chooseBusiness: [provider: AdvertisingPlatform]; selected: [provider: AdvertisingPlatform] }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 const panels = { meta: MetaConnectionPanel, google: GoogleConnectionPanel, tiktok: TikTokConnectionPanel, snapchat: SnapchatConnectionPanel, x: XConnectionPanel };
 const summaries = ref<Partial<Record<AdvertisingPlatform, ProviderSummary>>>({});
@@ -52,7 +52,7 @@ function accountAction(provider: AdvertisingPlatform) {
 async function open(provider: AdvertisingPlatform, event?: MouseEvent) {
     activeButton.value = event?.currentTarget as HTMLElement | undefined ?? platformButtons.get(provider) ?? activeButton.value;
     emit('selected', provider);
-    if (!hasOwner.value) { emit('chooseWorkspace', provider); return; }
+    if (!hasOwner.value) { emit('chooseBusiness', provider); return; }
     selected.value = provider;
     await nextTick();
     dialog.value?.showModal();
@@ -95,7 +95,7 @@ onBeforeUnmount(() => { mounted.value = false; });
             <header class="advertising-dialog-heading"><strong>{{ selectedLabel }}</strong><button type="button" @click="close(true)">{{ t('إغلاق', 'Close') }} <span aria-hidden="true">×</span></button></header>
             <template v-if="hasOwner && mounted">
                 <div v-for="platform in advertisingPlatforms" v-show="selected === platform.id" :key="`${ownerId}:${platform.id}`">
-                    <component :is="panels[platform.id]" :workspace-id="workspaceId" :business-id="businessId" :can-manage="canManage === true" @summary="value => summaries[platform.id] = value" />
+                    <component :is="panels[platform.id]" :business-id="businessId" :can-manage="canManage === true" @summary="value => summaries[platform.id] = value" />
                 </div>
             </template>
         </dialog>

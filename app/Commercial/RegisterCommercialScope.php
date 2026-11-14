@@ -14,7 +14,7 @@ final class RegisterCommercialScope
     {
         return $this->context->run($request, static fn () => json_decode(DB::scalar(
             'SELECT builderad_register_commercial_scope(?,?,?,?,?,?,?,?)', [
-                $input['command_id'], $input['scope_id'], $input['workspace_public_id'],
+                $input['command_id'], $input['scope_id'], $input['business_public_id'],
                 $input['market_id'], $input['configuration_id'], $input['catalog_reference_id'],
                 $input['denomination_code'], $input['reason_code'],
             ],
@@ -26,9 +26,9 @@ final class RegisterCommercialScope
         return $this->context->run($request, static fn () => DB::table('commercial_command_results')->where('command_id', $command)->first());
     }
 
-    public function workspaceReference(Request $request, string $scope, string $workspace): ?object
+    public function businessReference(Request $request, string $scope, string $business): ?object
     {
-        return $this->context->run($request, static fn () => DB::selectOne('SELECT * FROM builderad_commercial_workspace_reference(?,?)', [$scope, $workspace]));
+        return $this->context->run($request, static fn () => DB::selectOne('SELECT * FROM builderad_commercial_business_reference(?,?)', [$scope, $business]));
     }
 
     public function internalProjection(Request $request, string $scope): ?object
@@ -39,40 +39,27 @@ final class RegisterCommercialScope
             ->where('a.scope_id', $scope)->first(['a.scope_id', 'a.market_id', 'm.label as market_label',
                 'a.configuration_id', 'c.catalog_identity', 'c.catalog_version', 'a.denomination_code',
                 'a.decided_at', 'a.effective_at', 'a.recorded_at',
-                DB::raw('builderad_workspace_public_by_id(a.workspace_id) AS workspace_public_id')]));
+                DB::raw('builderad_commercial_business_public_by_id(a.business_id) AS business_public_id')]));
     }
 
     /**
-     * Business is the prospective beneficiary, never its collaboration Workspace.
+     * Business is the prospective beneficiary, never its collaboration Business.
      * SA-01 records market/catalog provenance; it has no operating subscription,
-     * entitlement, quota, payer or coverage contract. Do not relabel its Workspace
+     * entitlement, quota, payer or coverage contract. Do not relabel its Business
      * binding as a Business agreement. Unknown blocks conditioned products; local
      * foundation declarations remain unconditional (S02 D07/D08/D09 and G3-F §8).
      * Called only after BusinessScope has admitted the exact current read path.
      */
     public function businessProjection(string $business): array
     {
+        $context = DB::selectOne('SELECT * FROM builderad_commercial_advertiser_context(?::uuid)', [$business]);
+
         return ['beneficiary' => ['kind' => 'business', 'public_id' => $business],
-            'context_state' => 'QUALIFIED_BUSINESS_BINDING_UNAVAILABLE', 'context' => null,
+            'context_state' => $context ? 'CONTEXT_RECORDED' : 'QUALIFIED_BUSINESS_BINDING_UNAVAILABLE', 'context' => $context,
             'subscription_state' => 'UNKNOWN', 'entitlement_state' => 'UNKNOWN', 'quota_state' => 'UNKNOWN',
             'payer_state' => 'UNKNOWN', 'coverage_state' => 'UNKNOWN', 'amount_state' => 'UNKNOWN',
             'conditioned_feature_admission' => 'HOLD', 'usage_reservation' => 'NOT_CREATED',
             'foundation_declarations' => ['entitlement' => 'NOT_APPLICABLE', 'quota' => 'NOT_APPLICABLE', 'billing' => 'NOT_APPLICABLE'],
             'limitation' => 'NO_OPERATING_SUBSCRIPTION_OR_METERING_POLICY'];
-    }
-
-    /** Call only within the already-selected Foundation Workspace transaction. */
-    public function advertiserProjection(int $workspace): array
-    {
-        $record = DB::table('commercial_market_assignments as a')
-            ->join('commercial_markets as m', 'm.id', '=', 'a.market_id')
-            ->join('commercial_catalog_references as c', 'c.id', '=', 'a.catalog_reference_id')
-            ->where('a.workspace_id', $workspace)->first([
-                'a.scope_id', 'a.market_id', 'm.label as market_label', 'a.configuration_id',
-                'c.catalog_identity', 'c.catalog_version', 'a.denomination_code', 'a.effective_at',
-            ]);
-
-        return ['state' => $record ? 'CONTEXT_RECORDED' : 'UNAVAILABLE', 'context' => $record,
-            'agreement_state' => 'UNKNOWN', 'amount_state' => 'UNKNOWN'];
     }
 }

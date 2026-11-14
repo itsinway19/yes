@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
-/** Server orchestration only. Routes must provide signed Workspace transactions and explicit source grants. */
+/** Server orchestration only. Routes must provide signed Business transactions and explicit source grants. */
 final readonly class TikTokAuthorizationCoordinator
 {
     public function __construct(private Factory $http, private TikTokAccessAdapter $configuration,
@@ -71,14 +71,14 @@ final readonly class TikTokAuthorizationCoordinator
         if ($selected->provider !== Provider::TikTok || ! $selected->sameCustodyAs($installation)
             || $selected->sourceId === $installation->sourceId || $selected->operation !== 'report.read'
             || $selected->purpose !== $installation->purpose) {
-            throw new InvalidArgumentException('Selected TikTok account requires its own exact Workspace/source/report scope.');
+            throw new InvalidArgumentException('Selected TikTok account requires its own exact Business/source/report scope.');
         }
-        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$selected->workspaceId,
+        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$selected->businessId,
             SessionAuthority::sessionKey($request), $selected->sourceId, $selected->accountId, $selected->operation, $selected->purpose]);
         if (DB::table('source_registry')->where('id', $selected->sourceId)->value('namespace') !== 'ad_account') {
             throw new AuthorizationException('Selection must bind an explicitly declared advertising account source.');
         }
-        $previous = DB::table('provider_access_receipts')->where('workspace_id', $selected->workspaceId)
+        $previous = DB::table('provider_access_receipts')->whereIn('source_id', DB::table('source_registry')->select('id')->where('business_id', $selected->businessId))
             ->where('source_id', $selected->sourceId)->where('provider', 'tiktok')->where('resource', $selected->accountId)
             ->where('operation', $selected->operation)->where('purpose', $selected->purpose)->where('command_id', $command)->value('result');
         if ($previous !== null) {
@@ -114,7 +114,7 @@ final readonly class TikTokAuthorizationCoordinator
             || $scope->operation !== 'discovery.read' || $scope->purpose !== 'advertising_analysis') {
             throw new InvalidArgumentException('TikTok discovery must bind its exact configured OAuth client.');
         }
-        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$scope->workspaceId,
+        DB::selectOne('SELECT builderad_source_read_scope(?, ?, ?::uuid, ?, ?, ?)', [$scope->businessId,
             SessionAuthority::sessionKey($request), $scope->sourceId, $scope->accountId, $scope->operation, $scope->purpose]);
         if (DB::table('source_registry')->where('id', $scope->sourceId)->value('namespace') !== 'developer_app') {
             throw new AuthorizationException('TikTok OAuth requires an explicitly declared client source.');

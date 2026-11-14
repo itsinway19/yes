@@ -19,7 +19,7 @@ final class BusinessFoundationContractTest extends TestCase
         $types = $db->table('business_types')->orderBy('id')->limit(2)->pluck('id');
         $db->table('business_types')->whereIn('id', $types)->update(['active' => true]);
         $file = $this->postJson('/api/businesses', ['command_id' => (string) Str::uuid(), 'name' => 'Type continuity', 'business_type_id' => $types[0]])->assertCreated()->json('data');
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null, 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.context.manage']]]];
+        $selection = ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $file['grant_refs']['business.context.manage']]]];
         $body = ['command_id' => (string) Str::uuid(), 'name' => 'Type continuity', 'business_type_id' => $types[0], 'expected_context' => 0, 'authority_selection' => $selection];
         $db->table('business_types')->where('id', $types[0])->update(['active' => false]);
         $base = '/api/businesses/'.$file['business_public_id'].'/context';
@@ -29,7 +29,7 @@ final class BusinessFoundationContractTest extends TestCase
         $this->assertSame(1, $db->table('business_context_transitions')->count());
         $before = json_decode($db->table('business_context_transitions')->value('before_value'), true);
         $this->assertSame($types[0], $before['business_type_id']);
-        $this->assertSame(0, $db->table('workspaces')->count());
+        $this->assertNull($db->scalar("SELECT to_regclass('public.workspaces')"));
     }
 
     public function test_implemented_http_contracts_preserve_independent_identity_versions_and_explicit_authority(): void
@@ -40,7 +40,7 @@ final class BusinessFoundationContractTest extends TestCase
         $this->assertApplicationContract('BusinessDraftResult', $created->json());
         $a = $created->json('data');
         $base = '/api/businesses/'.$a['business_public_id'];
-        $selection = fn (string $action) => ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        $selection = fn (string $action) => ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs'][$action]]]];
         $body = fn (string $action) => ['command_id' => (string) Str::uuid(), 'authority_selection' => $selection($action)];
         $read = $this->postJson($base.'/read', ['authority_selection' => $selection('business.context.read')])->assertOk();
@@ -55,10 +55,11 @@ final class BusinessFoundationContractTest extends TestCase
         $this->assertApplicationContract('BusinessIntentWriteResult', $intent->json());
         $this->assertCount(7, $a['grant_refs']);
         $this->assertArrayHasKey('business.link.manage', $a['grant_refs']);
+        $this->assertArrayNotHasKey('business.service.approve', $a['grant_refs']);
         $team = $this->postJson($base.'/direct-team', $body('business.context.read'))->assertOk()->json('data');
         $this->assertCount(5, $team['grant_refs']);
         $this->assertApplicationContract('BusinessSurface', $this->getJson($base.'/surface?access='.$a['grant_refs']['business.context.read'])->assertOk()->json('data'));
-        $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
+        $this->assertNull(DB::connection('pgsql_migrations')->scalar("SELECT to_regclass('public.workspaces')"));
         $this->assertApplicationContract('BusinessFoundationProjection', $this->postJson($base.'/read', ['authority_selection' => $selection('business.context.read')])->assertOk()->json());
         $this->assertSame('no-store, private', $context->headers->get('Cache-Control'));
         $denied = $this->actingAs(User::factory()->create())->postJson($base.'/read', ['authority_selection' => $selection('business.context.read')])->assertForbidden();
@@ -67,7 +68,7 @@ final class BusinessFoundationContractTest extends TestCase
         $archive = $this->postJson($base.'/lifecycle', $body('business.draft.archive') + ['effect' => 'archive', 'target_ref' => null, 'payload' => (object) [], 'expected_revision' => 0])->assertOk();
         $this->assertApplicationContract('BusinessLifecycleWriteResult', $archive->json());
         $this->assertSame(1, DB::connection('pgsql_migrations')->table('businesses')->count());
-        $this->assertSame(0, DB::connection('pgsql_migrations')->table('workspaces')->count());
+        $this->assertNull(DB::connection('pgsql_migrations')->scalar("SELECT to_regclass('public.workspaces')"));
     }
 
     public function test_business_entry_rejects_uncontracted_workspace_and_authority_claims_instead_of_discarding_them(): void
@@ -79,12 +80,12 @@ final class BusinessFoundationContractTest extends TestCase
         }
         $this->assertSame(0, DB::connection('pgsql_migrations')->table('businesses')->count());
         $a = $this->postJson('/api/businesses', $command)->assertCreated()->json('data');
-        $selection = ['realm_kind' => 'direct', 'realm_workspace_public_id' => null,
+        $selection = ['realm_kind' => 'direct',
             'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $a['grant_refs']['business.context.read']]]];
         $this->postJson('/api/businesses/'.$a['business_public_id'].'/read', ['authority_selection' => $selection, 'workspace_id' => 1])->assertUnprocessable();
         $this->postJson('/api/businesses/'.$a['business_public_id'].'/workspace-links', ['command_id' => (string) Str::uuid(), 'authority_selection' => $selection,
-            'workspace_public_id' => (string) Str::uuid7(), 'effect' => 'add', 'expected_revision' => 0, 'grant_owner' => true])->assertUnprocessable();
-        $this->assertSame(0, DB::connection('pgsql_migrations')->table('business_workspace_links')->count());
+            'workspace_public_id' => (string) Str::uuid7(), 'effect' => 'add', 'expected_revision' => 0, 'grant_owner' => true])->assertNotFound();
+        $this->assertNull(DB::connection('pgsql_migrations')->scalar("SELECT to_regclass('public.business_workspace_links')"));
         $this->assertSame(7, DB::connection('pgsql_migrations')->table('security_action_grants')->where('scope_kind', 'business')->count());
     }
 }
