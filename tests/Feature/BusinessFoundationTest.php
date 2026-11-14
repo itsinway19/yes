@@ -84,7 +84,7 @@ class BusinessFoundationTest extends TestCase
         app('session')->forgetDrivers();
         app()->forgetInstance('session.store');
         $business = $this->business(User::factory()->create());
-        $this->get('/businesses/'.$business->public_id)->assertUnprocessable();
+        $this->getJson('/businesses/'.$business->public_id)->assertUnprocessable();
         $this->getJson('/businesses')->assertOk();
         $this->get('/profile')->assertOk();
         $this->get('/security/devices')->assertOk();

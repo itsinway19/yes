@@ -418,16 +418,6 @@ END $_$;
 ALTER FUNCTION public.builderad_v2_business_purpose_write(p_session text, p_business uuid, p_command jsonb, p_expected_context bigint, p_selection jsonb) OWNER TO builderad_scope_executor;
 
 -- Preserve accepted function privileges.
-REVOKE ALL ON FUNCTION builderad_private.apply_object_purpose(b bigint, a bigint, c jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION builderad_private.apply_object_purpose(b bigint, a bigint, c jsonb) TO builderad_owner;
-REVOKE ALL ON FUNCTION builderad_private.purpose_context_exists(b bigint, v bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION builderad_private.purpose_context_exists(b bigint, v bigint) TO builderad_owner;
-REVOKE ALL ON FUNCTION builderad_private.purpose_intent_at(b bigint, v bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION builderad_private.purpose_intent_at(b bigint, v bigint) TO builderad_owner;
-REVOKE ALL ON FUNCTION builderad_private.purpose_latest_markets(b bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION builderad_private.purpose_latest_markets(b bigint) TO builderad_owner;
-REVOKE ALL ON FUNCTION builderad_private.purpose_markets_at(b bigint, v bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION builderad_private.purpose_markets_at(b bigint, v bigint) TO builderad_owner;
 REVOKE ALL ON FUNCTION public.builderad_object_purpose_instant(v jsonb) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.builderad_object_purpose_instant(v jsonb) TO builderad_scope_executor;
 REVOKE ALL ON FUNCTION public.builderad_object_purpose_keys(v jsonb, expected text[]) FROM PUBLIC;
@@ -436,9 +426,3 @@ REVOKE ALL ON FUNCTION public.builderad_object_purpose_normalize(v jsonb) FROM P
 GRANT ALL ON FUNCTION public.builderad_object_purpose_normalize(v jsonb) TO builderad_scope_executor;
 REVOKE ALL ON FUNCTION public.builderad_object_purpose_text(v jsonb, maximum integer, required boolean) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.builderad_object_purpose_text(v jsonb, maximum integer, required boolean) TO builderad_scope_executor;
-REVOKE ALL ON FUNCTION public.builderad_v2_business_purpose_enroll(p_session text, p_business uuid, p_command uuid, p_confirmed boolean, p_expected_previous bigint, p_selection jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.builderad_v2_business_purpose_enroll(p_session text, p_business uuid, p_command uuid, p_confirmed boolean, p_expected_previous bigint, p_selection jsonb) TO builderad_app;
-REVOKE ALL ON FUNCTION public.builderad_v2_business_purpose_snapshot(p_session text, p_business uuid, p_read bigint, p_purpose uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.builderad_v2_business_purpose_snapshot(p_session text, p_business uuid, p_read bigint, p_purpose uuid) TO builderad_app;
-REVOKE ALL ON FUNCTION public.builderad_v2_business_purpose_write(p_session text, p_business uuid, p_command jsonb, p_expected_context bigint, p_selection jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.builderad_v2_business_purpose_write(p_session text, p_business uuid, p_command jsonb, p_expected_context bigint, p_selection jsonb) TO builderad_app;

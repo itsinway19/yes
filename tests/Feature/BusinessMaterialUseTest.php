@@ -146,6 +146,7 @@ final class BusinessMaterialUseTest extends TestCase
     {
         $f = $this->original();
         $db = DB::connection('pgsql_migrations');
+        $sourceEpoch = $db->table('resource_right_fences')->where('source_id', $f['source'])->value('rights_epoch');
         $run = 'material-use-'.Str::uuid();
         $release = storage_path('framework/testing/'.$run.'.release');
         $path = storage_path('framework/testing/'.$run.'.json');
@@ -209,7 +210,7 @@ final class BusinessMaterialUseTest extends TestCase
             $this->assertSame(0, $db->table('business_command_receipts')->where('command_id', $body['command_id'])->count());
             if ($mode === 'source_freshness') {
                 $this->assertSame('active', $db->table('security_action_grants')->where('id', $f['native'])->value('status'));
-                $this->assertSame(0, $db->table('resource_right_fences')->where('source_id', $f['source'])->value('rights_epoch'));
+                $this->assertSame($sourceEpoch, $db->table('resource_right_fences')->where('source_id', $f['source'])->value('rights_epoch'));
             }
         } finally {
             if ($db->transactionLevel() > 0) {

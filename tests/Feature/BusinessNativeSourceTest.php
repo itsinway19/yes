@@ -284,7 +284,7 @@ final class BusinessNativeSourceTest extends TestCase
                 clearstatcache(true, $workerInput['ready']);
 
                 return is_file($workerInput['ready']) ? json_decode(file_get_contents($workerInput['ready']), true) : null;
-            });
+            }, startup: true);
             DB::beginTransaction();
             app(PrincipalContext::class)->activate($creator);
             $blocker = (int) DB::scalar('SELECT pg_backend_pid()');
@@ -397,7 +397,7 @@ final class BusinessNativeSourceTest extends TestCase
                 clearstatcache(true, $input['ready']);
 
                 return is_file($input['ready']) ? json_decode(file_get_contents($input['ready']), true) : null;
-            });
+            }, startup: true);
             $db->beginTransaction();
             $blocker = $db->scalar('SELECT pg_backend_pid()');
             $db->selectOne("SELECT fence_id FROM resource_right_fences WHERE kind='source' AND source_id=?::uuid FOR UPDATE", [$source]);
@@ -437,10 +437,11 @@ final class BusinessNativeSourceTest extends TestCase
         }
     }
 
-    private function observeSourceWorker(Process $worker, callable $probe): mixed
+    private function observeSourceWorker(Process $worker, callable $probe, bool $startup = false): mixed
     {
         $deadline = microtime(true) + 15;
         do {
+            $worker->checkTimeout();
             if ($value = $probe()) {
                 return $value;
             }
@@ -448,7 +449,7 @@ final class BusinessNativeSourceTest extends TestCase
                 self::fail('Source participant stopped: '.$worker->getOutput().$worker->getErrorOutput());
             }
             usleep(10000);
-        } while (microtime(true) < $deadline);
+        } while ($startup || microtime(true) < $deadline);
         self::fail('Required Source worker condition was not observed.');
     }
 

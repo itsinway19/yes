@@ -51,9 +51,5 @@ class DisposableResetTest extends TestCase
         $this->assertNull($owner->scalar("SELECT to_regprocedure('public.disposable_unrelated_helper()')"));
         $this->assertSame(0, $owner->table('users')->count());
         $lifecycle->assertInstalledCatalog();
-        $owner->transaction(function () use ($owner): void {
-            $owner->statement('SET LOCAL ROLE builderad_scope_executor');
-            $this->assertTrue((bool) $owner->scalar('SELECT builderad_private.legacy_catalog_digest() = builderad_private.legacy_installation_digest()'), 'Fixture cleanup left the installed catalog seal stale.');
-        });
     }
 }

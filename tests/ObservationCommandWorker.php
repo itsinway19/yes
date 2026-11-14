@@ -2,6 +2,7 @@
 
 use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
+use App\Providers\Ads\ProviderScope;
 use App\Security\DisposableTestDatabaseGuard;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\QueryException;
@@ -47,7 +48,7 @@ if (isset($fixture['entry_external_gate'])) {
 try {
     $result = DB::transaction(function () use ($fixture) {
         app(PrincipalContext::class)->activate(User::findOrFail($fixture['actor']));
-        $scope = App\Providers\Ads\ProviderScope::fromArray($fixture['scope']);
+        $scope = ProviderScope::fromArray($fixture['scope']);
         $s = $scope->jsonSerialize();
 
         return DB::scalar('SELECT builderad_observation_accept(?, ?, ?::uuid, ?, ?, ?, ?, ?, ?::uuid, ?, ?, ?::jsonb)', [

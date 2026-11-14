@@ -15,6 +15,7 @@ use Tests\TestCase;
 final class BusinessPurposePrivacyTest extends TestCase
 {
     use ApplicationContractAssertions;
+
     private function selection(int|string $grant): array
     {
         return ['realm_kind' => 'direct',

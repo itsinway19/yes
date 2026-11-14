@@ -9,6 +9,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
@@ -84,16 +85,17 @@ final class ContentManagementTest extends TestCase
         $admin = $this->administrator();
         $payload = ['name_ar' => 'Category', 'name_en' => 'Category', 'visible' => true];
         $db = DB::connection();
+        $gate = storage_path('framework/testing/category-create-'.Str::uuid());
         $worker = new Process([PHP_BINARY, base_path('tests/Support/ContentCategoryCreateWorker.php'),
-            (string) $admin->id, json_encode($payload + ['slug_ar' => 'other-ar', 'slug_en' => 'shared'], JSON_THROW_ON_ERROR)], base_path());
+            (string) $admin->id, json_encode($payload + ['slug_ar' => 'other-ar', 'slug_en' => 'shared'], JSON_THROW_ON_ERROR), $gate], base_path());
         $worker->setTimeout(25);
 
         $holder = (int) $db->scalar('SELECT pg_backend_pid()');
-        $db->listen(function (QueryExecuted $query) use ($worker, $holder): void {
+        $db->listen(function (QueryExecuted $query) use ($worker, $holder, $gate): void {
             if (! str_starts_with($query->sql, 'insert into "content_categories"')) {
                 return;
             }
-            $worker->start();
+            file_put_contents($gate.'.release', 'go', LOCK_EX);
             $deadline = microtime(true) + 10;
             $blocked = false;
             do {
@@ -111,6 +113,18 @@ final class ContentManagementTest extends TestCase
         });
 
         try {
+            // Bootstrap before the holder transaction; its original watchdog remains 25s.
+            $worker->start();
+            do {
+                $worker->checkTimeout();
+                $this->assertTrue($worker->isRunning(), $worker->getOutput().$worker->getErrorOutput());
+                clearstatcache(true, $gate.'.ready');
+                $ready = is_file($gate.'.ready') ? json_decode(file_get_contents($gate.'.ready'), true) : null;
+                if (is_array($ready) && ($ready['pid'] ?? 0) > 0) {
+                    break;
+                }
+                usleep(10000);
+            } while (true);
             $this->postJson('/internal/administration/content/categories',
                 $payload + ['slug_ar' => 'shared', 'slug_en' => 'winner-en'])->assertOk();
             $this->assertSame(0, $worker->wait(), $worker->getErrorOutput());
@@ -122,6 +136,11 @@ final class ContentManagementTest extends TestCase
             $this->assertSame(1, $this->categorySaveCount($admin));
         } finally {
             $worker->stop();
+            foreach ([$gate.'.ready', $gate.'.release'] as $file) {
+                if (is_file($file)) {
+                    unlink($file);
+                }
+            }
         }
     }
 
@@ -305,7 +324,6 @@ final class ContentManagementTest extends TestCase
         $this->assertSame(1, DB::connection('pgsql_migrations')->table('security_audit_events')
             ->where('event', 'content_page_unpublished')->count());
     }
-
 
     public function test_content_grant_read_lock_serializes_with_revocation(): void
     {
@@ -654,5 +672,4 @@ final class ContentManagementTest extends TestCase
             DB::disconnect('content_parallel');
         }
     }
-
 }

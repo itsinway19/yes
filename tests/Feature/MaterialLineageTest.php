@@ -7,6 +7,7 @@ use App\Security\DisposableTestDatabaseGuard;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Support\BusinessAuthorityFixture;
 use Tests\TestCase;
 
 final class MaterialLineageTest extends TestCase
@@ -184,9 +185,9 @@ final class MaterialLineageTest extends TestCase
         $ns = hash('sha256', 'test:native-entry-stream');
         $identity = 'bb2:'.hash('sha256', 'test:native-entry');
         $hash = hash('sha256', 'synthetic immutable observation content');
-        $db->table('source_registry')->insert(['id' => $source, 'business_id' => $businessId, 'custody_kind' => 'business_native', 'family' => 'meta', 'namespace' => 'test.native',
-            'declared_external_id' => 'synthetic', 'label' => 'Fixture', 'version' => 1, 'status' => 'UNVERIFIED']);
-        $db->table('source_capabilities')->insert(['source_id' => $source, 'resource' => 'account-1', 'operation' => 'report.read', 'purpose' => 'review']);
+        BusinessAuthorityFixture::insert('source_registry', ['id' => $source, 'business_id' => $businessId, 'custody_kind' => 'business_native', 'family' => 'meta', 'namespace' => 'test.native',
+            'declared_external_id' => 'synthetic', 'label' => 'Fixture', 'version' => 1, 'status' => 'UNVERIFIED'], $u->id);
+        BusinessAuthorityFixture::insert('source_capabilities', ['source_id' => $source, 'resource' => 'account-1', 'operation' => 'report.read', 'purpose' => 'review'], $u->id);
         $db->table('provider_observation_streams')->insert(['namespace' => $ns, 'source_id' => $source, 'provider' => 'meta',
             'resource' => 'account-1', 'operation' => 'report.read', 'purpose' => 'review', 'stream' => 'campaign', 'generation' => 1, 'access_version' => 1,
             'encrypted_progress' => 'test-only-progress-must-not-be-readable', 'progress_generation' => 1]);

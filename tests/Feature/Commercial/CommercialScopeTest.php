@@ -5,7 +5,6 @@ namespace Tests\Feature\Commercial;
 use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
 use App\Security\CommercialAuditCustody;
-use App\Security\GrantAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -497,7 +496,7 @@ class CommercialScopeTest extends TestCase
         $ownerId = $this->owner()->table('businesses')->where('id', $workspace)->value('created_by');
         $other = DB::build(config('database.connections.pgsql_migrations'));
         try {
-            DB::transaction(function () use ($input, $workspace, $ownerId, $other): void {
+            DB::transaction(function () use ($input, $ownerId, $other): void {
                 app(PrincipalContext::class)->activate($this->operator);
                 $this->registerSql($input);
                 foreach ([['principal_lifecycles', 'user_id', $ownerId, ['status' => 'disabled', 'generation' => 2]],

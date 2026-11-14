@@ -5,7 +5,6 @@ namespace Tests\Support;
 use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
 use App\Security\GrantAuthority;
-use App\Security\SessionAuthority;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;

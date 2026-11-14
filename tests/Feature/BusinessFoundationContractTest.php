@@ -53,8 +53,9 @@ final class BusinessFoundationContractTest extends TestCase
         $this->assertApplicationContract('BusinessPreferenceWriteResult', $preferences->json());
         $intent = $this->putJson($base.'/intent', $body('business.intent.declare') + ['value' => null, 'confirmations' => ['declaration' => true], 'expected_context' => 2, 'expected_intent' => 0])->assertOk();
         $this->assertApplicationContract('BusinessIntentWriteResult', $intent->json());
-        $this->assertCount(6, $a['grant_refs']);
-        $this->assertArrayNotHasKey('business.link.manage', $a['grant_refs']);
+        $this->assertCount(7, $a['grant_refs']);
+        $this->assertArrayHasKey('business.link.manage', $a['grant_refs']);
+        $this->assertArrayNotHasKey('business.service.approve', $a['grant_refs']);
         $team = $this->postJson($base.'/direct-team', $body('business.context.read'))->assertOk()->json('data');
         $this->assertCount(5, $team['grant_refs']);
         $this->assertApplicationContract('BusinessSurface', $this->getJson($base.'/surface?access='.$a['grant_refs']['business.context.read'])->assertOk()->json('data'));
@@ -85,6 +86,6 @@ final class BusinessFoundationContractTest extends TestCase
         $this->postJson('/api/businesses/'.$a['business_public_id'].'/workspace-links', ['command_id' => (string) Str::uuid(), 'authority_selection' => $selection,
             'workspace_public_id' => (string) Str::uuid7(), 'effect' => 'add', 'expected_revision' => 0, 'grant_owner' => true])->assertNotFound();
         $this->assertNull(DB::connection('pgsql_migrations')->scalar("SELECT to_regclass('public.business_workspace_links')"));
-        $this->assertSame(6, DB::connection('pgsql_migrations')->table('security_action_grants')->where('scope_kind', 'business')->count());
+        $this->assertSame(7, DB::connection('pgsql_migrations')->table('security_action_grants')->where('scope_kind', 'business')->count());
     }
 }

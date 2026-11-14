@@ -1,14 +1,15 @@
 <?php
 
 use App\Foundation\Business\BusinessScope;
+use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
 use App\Security\DisposableTestDatabaseGuard;
+use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Session\ArraySessionHandler;
 use Illuminate\Session\Store;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -104,8 +105,9 @@ if (in_array($mode, ['business-agency-setup', 'business-agency-audit'], true)) {
         $business = $scope->create($actorRequest, (string) Str::uuid7(), $name, null);
         $source = (string) Str::uuid7();
         $custody = DB::transaction(function () use ($actor, $actorRequest, $business, $source, $key, $name, $select) {
-            app(\App\Foundation\Tenancy\PrincipalContext::class)->activate($actor);
-            return app(\App\Security\GrantAuthority::class)->bootstrapBusinessSource($actorRequest, $business['business_public_id'], $source,
+            app(PrincipalContext::class)->activate($actor);
+
+            return app(GrantAuthority::class)->bootstrapBusinessSource($actorRequest, $business['business_public_id'], $source,
                 (string) Str::uuid7(), ['family' => 'business', 'namespace' => 'synthetic', 'external_id' => 'private-'.$key,
                     'label' => $name, 'resource' => 'synthetic-records', 'operation' => 'report.read', 'purpose' => 'capture',
                     'expected_version' => 0, 'reason' => 'synthetic_source_fixture'], $select((int) $business['grant_refs']['business.context.read']));

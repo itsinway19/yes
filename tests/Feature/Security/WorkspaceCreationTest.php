@@ -5,6 +5,7 @@ namespace Tests\Feature\Security;
 use App\Models\User;
 use App\Providers\Ads\NativeSourceContext;
 use App\Security\LifecycleAuthority;
+use App\Security\SessionAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -75,7 +76,14 @@ final class WorkspaceCreationTest extends TestCase
         try {
             $other->statement("SET lock_timeout = '150ms'");
             app(NativeSourceContext::class)->run($owner, $business['business_public_id'],
-                function () use ($other, $owner): void {
+                function () use ($other, $owner, $business, $request): void {
+                    $selection = ['realm_kind' => 'direct', 'requirements' => [[
+                        'requirement_kind' => 'business', 'leaf_grant_id' => $business['grant_refs']['business.context.read'],
+                    ]]];
+                    $read = DB::scalar('SELECT builderad_v2_business_read(?,?::uuid,?::jsonb)', [
+                        SessionAuthority::sessionKey($request), $business['business_public_id'], json_encode($selection, JSON_THROW_ON_ERROR),
+                    ]);
+                    $this->assertSame($business['business_public_id'], json_decode($read, true, flags: JSON_THROW_ON_ERROR)['business_public_id']);
                     try {
                         $other->table('principal_lifecycles')->where('user_id', $owner->id)
                             ->update(['status' => 'disabled', 'generation' => 2, 'cause' => 'concurrent_invalidation']);

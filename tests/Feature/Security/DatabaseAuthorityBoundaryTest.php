@@ -51,7 +51,7 @@ class DatabaseAuthorityBoundaryTest extends TestCase
     {
         $runtime = DB::connection('pgsql');
         foreach ([
-            "SELECT * FROM builderad_service_grant_target(NULL::uuid,NULL::uuid)",
+            'SELECT * FROM builderad_service_grant_target(NULL::uuid,NULL::uuid)',
             "SELECT builderad_activate_principal_context('forged')",
         ] as $statement) {
             $runtime->beginTransaction();

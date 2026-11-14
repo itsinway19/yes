@@ -11,8 +11,8 @@ use Illuminate\Session\Store;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Tests\Support\ProofRedis;
 use Tests\Support\BusinessAuthorityFixture;
+use Tests\Support\ProofRedis;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';

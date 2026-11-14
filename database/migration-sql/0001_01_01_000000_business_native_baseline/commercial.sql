@@ -127,8 +127,6 @@ BEGIN
  RETURN false;
 END $$;
 ALTER FUNCTION builderad_private.commercial_business_reader(bigint,bigint) OWNER TO builderad_scope_executor;
-REVOKE ALL ON FUNCTION builderad_private.commercial_business_reader(bigint,bigint) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION builderad_private.commercial_business_reader(bigint,bigint) TO builderad_owner;
 
 
 -- Name: builderad_sa01_exact_grant(text, uuid, bigint, uuid); Type: FUNCTION; Schema: public; Owner: builderad_owner

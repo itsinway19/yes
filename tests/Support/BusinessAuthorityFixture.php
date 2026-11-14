@@ -13,7 +13,7 @@ final class BusinessAuthorityFixture
     {
         app(DisposableTestDatabaseGuard::class)->assertSafe();
         if (! in_array($table, ['authority_qualification_receipts', 'security_action_grants',
-            'business_command_receipts', 'client_data_boundaries', 'resource_right_fences', 'boundary_subjects', 'data_use_scopes', 'business_data_use_bindings'], true)) {
+            'business_command_receipts', 'client_data_boundaries', 'resource_right_fences', 'boundary_subjects', 'data_use_scopes', 'business_data_use_bindings', 'source_registry', 'source_capabilities'], true)) {
             throw new \LogicException('Unregistered synthetic fixture relation.');
         }
         $owner = DB::connection('pgsql_migrations');
@@ -21,6 +21,12 @@ final class BusinessAuthorityFixture
         // defaults, so synthetic client licences supply their domain explicitly.
         if ($table === 'data_use_scopes' && ! array_key_exists('rights_domain', $values)) {
             $values['rights_domain'] = 'client';
+        }
+        if ($table === 'source_registry') {
+            $values += ['created_at' => now()->toIso8601String(), 'scope_lock_marker' => false];
+        }
+        if ($table === 'source_capabilities') {
+            $values += ['declared_at' => now()->toIso8601String()];
         }
 
         return $owner->transaction(function () use ($owner, $table, $values, $actor): object {

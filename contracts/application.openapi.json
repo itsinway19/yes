@@ -27201,12 +27201,6 @@
                             "history_scope": {
                               "const": "native_business_transitions"
                             },
-                            "has_imported_baseline": {
-                              "type": "boolean"
-                            },
-                            "legacy_history": {
-                              "const": "not_included"
-                            },
                             "page_limit": {
                               "const": 32
                             }
@@ -27217,8 +27211,6 @@
                             "entries",
                             "next_cursor",
                             "history_scope",
-                            "has_imported_baseline",
-                            "legacy_history",
                             "page_limit"
                           ],
                           "additionalProperties": false
@@ -27316,12 +27308,6 @@
                             "history_scope": {
                               "const": "native_business_transitions"
                             },
-                            "has_imported_baseline": {
-                              "type": "boolean"
-                            },
-                            "legacy_history": {
-                              "const": "not_included"
-                            },
                             "page_limit": {
                               "const": 32
                             }
@@ -27332,8 +27318,6 @@
                             "entries",
                             "next_cursor",
                             "history_scope",
-                            "has_imported_baseline",
-                            "legacy_history",
                             "page_limit"
                           ],
                           "additionalProperties": false
@@ -27439,12 +27423,6 @@
                             "history_scope": {
                               "const": "native_business_transitions"
                             },
-                            "has_imported_baseline": {
-                              "type": "boolean"
-                            },
-                            "legacy_history": {
-                              "const": "not_included"
-                            },
                             "page_limit": {
                               "const": 32
                             }
@@ -27455,8 +27433,6 @@
                             "entries",
                             "next_cursor",
                             "history_scope",
-                            "has_imported_baseline",
-                            "legacy_history",
                             "page_limit"
                           ],
                           "additionalProperties": false
@@ -27555,12 +27531,6 @@
                             "history_scope": {
                               "const": "native_business_transitions"
                             },
-                            "has_imported_baseline": {
-                              "type": "boolean"
-                            },
-                            "legacy_history": {
-                              "const": "not_included"
-                            },
                             "page_limit": {
                               "const": 32
                             }
@@ -27571,8 +27541,6 @@
                             "entries",
                             "next_cursor",
                             "history_scope",
-                            "has_imported_baseline",
-                            "legacy_history",
                             "page_limit"
                           ],
                           "additionalProperties": false
@@ -49667,12 +49635,6 @@
               "history_scope": {
                 "const": "native_business_transitions"
               },
-              "has_imported_baseline": {
-                "type": "boolean"
-              },
-              "legacy_history": {
-                "const": "not_included"
-              },
               "page_limit": {
                 "const": 32
               }
@@ -49683,8 +49645,6 @@
               "entries",
               "next_cursor",
               "history_scope",
-              "has_imported_baseline",
-              "legacy_history",
               "page_limit"
             ],
             "additionalProperties": false
@@ -49782,12 +49742,6 @@
               "history_scope": {
                 "const": "native_business_transitions"
               },
-              "has_imported_baseline": {
-                "type": "boolean"
-              },
-              "legacy_history": {
-                "const": "not_included"
-              },
               "page_limit": {
                 "const": 32
               }
@@ -49798,8 +49752,6 @@
               "entries",
               "next_cursor",
               "history_scope",
-              "has_imported_baseline",
-              "legacy_history",
               "page_limit"
             ],
             "additionalProperties": false
@@ -49905,12 +49857,6 @@
               "history_scope": {
                 "const": "native_business_transitions"
               },
-              "has_imported_baseline": {
-                "type": "boolean"
-              },
-              "legacy_history": {
-                "const": "not_included"
-              },
               "page_limit": {
                 "const": 32
               }
@@ -49921,8 +49867,6 @@
               "entries",
               "next_cursor",
               "history_scope",
-              "has_imported_baseline",
-              "legacy_history",
               "page_limit"
             ],
             "additionalProperties": false
@@ -50021,12 +49965,6 @@
               "history_scope": {
                 "const": "native_business_transitions"
               },
-              "has_imported_baseline": {
-                "type": "boolean"
-              },
-              "legacy_history": {
-                "const": "not_included"
-              },
               "page_limit": {
                 "const": 32
               }
@@ -50037,8 +49975,6 @@
               "entries",
               "next_cursor",
               "history_scope",
-              "has_imported_baseline",
-              "legacy_history",
               "page_limit"
             ],
             "additionalProperties": false
@@ -50179,12 +50115,6 @@
                   "history_scope": {
                     "const": "native_business_transitions"
                   },
-                  "has_imported_baseline": {
-                    "type": "boolean"
-                  },
-                  "legacy_history": {
-                    "const": "not_included"
-                  },
                   "page_limit": {
                     "const": 32
                   }
@@ -50195,8 +50125,6 @@
                   "entries",
                   "next_cursor",
                   "history_scope",
-                  "has_imported_baseline",
-                  "legacy_history",
                   "page_limit"
                 ],
                 "additionalProperties": false
@@ -50294,12 +50222,6 @@
                   "history_scope": {
                     "const": "native_business_transitions"
                   },
-                  "has_imported_baseline": {
-                    "type": "boolean"
-                  },
-                  "legacy_history": {
-                    "const": "not_included"
-                  },
                   "page_limit": {
                     "const": 32
                   }
@@ -50310,8 +50232,6 @@
                   "entries",
                   "next_cursor",
                   "history_scope",
-                  "has_imported_baseline",
-                  "legacy_history",
                   "page_limit"
                 ],
                 "additionalProperties": false
@@ -50417,12 +50337,6 @@
                   "history_scope": {
                     "const": "native_business_transitions"
                   },
-                  "has_imported_baseline": {
-                    "type": "boolean"
-                  },
-                  "legacy_history": {
-                    "const": "not_included"
-                  },
                   "page_limit": {
                     "const": 32
                   }
@@ -50433,8 +50347,6 @@
                   "entries",
                   "next_cursor",
                   "history_scope",
-                  "has_imported_baseline",
-                  "legacy_history",
                   "page_limit"
                 ],
                 "additionalProperties": false
@@ -50533,12 +50445,6 @@
                   "history_scope": {
                     "const": "native_business_transitions"
                   },
-                  "has_imported_baseline": {
-                    "type": "boolean"
-                  },
-                  "legacy_history": {
-                    "const": "not_included"
-                  },
                   "page_limit": {
                     "const": 32
                   }
@@ -50549,8 +50455,6 @@
                   "entries",
                   "next_cursor",
                   "history_scope",
-                  "has_imported_baseline",
-                  "legacy_history",
                   "page_limit"
                 ],
                 "additionalProperties": false

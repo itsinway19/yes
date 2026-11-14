@@ -963,14 +963,6 @@ $$;
 ALTER FUNCTION public.builderad_source_require(p_action text, p_source uuid, p_business bigint, p_resource text, p_operation text, p_purpose text, p_session text) OWNER TO builderad_owner;
 
 -- Preserve accepted function privileges.
-REVOKE ALL ON FUNCTION builderad_private.apply_native_source(p_actor bigint, p_generation bigint, p_business bigint, p_command uuid, p_source uuid, p_effect text, p_payload jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION builderad_private.apply_native_source(p_actor bigint, p_generation bigint, p_business bigint, p_command uuid, p_source uuid, p_effect text, p_payload jsonb) TO builderad_owner;
-REVOKE ALL ON FUNCTION builderad_private.native_source_append(p_relation regclass, p_row jsonb, p_adopted boolean) FROM PUBLIC;
-GRANT ALL ON FUNCTION builderad_private.native_source_append(p_relation regclass, p_row jsonb, p_adopted boolean) TO builderad_owner;
-REVOKE ALL ON FUNCTION builderad_private.native_source_gate_held(p_source uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.native_source_payload(p_effect text, p_payload jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION builderad_private.native_source_payload(p_effect text, p_payload jsonb) TO builderad_owner;
-REVOKE ALL ON FUNCTION builderad_private.source_custody_integrity() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.builderad_google_attempt_begin(w bigint, se text, s uuid, r text, u text, t text, c uuid, av bigint, expected bigint, fp text) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.builderad_google_attempt_begin(w bigint, se text, s uuid, r text, u text, t text, c uuid, av bigint, expected bigint, fp text) TO builderad_app;
 REVOKE ALL ON FUNCTION public.builderad_google_attempt_finish(w bigint, se text, s uuid, r text, u text, t text, c uuid, av bigint, expected bigint, fp text, result_fp text, cipher text) FROM PUBLIC;

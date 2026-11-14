@@ -184,6 +184,12 @@ final class BusinessSurfaceTest extends TestCase
     {
         $actor = User::factory()->create();
         $other = User::factory()->create();
+        $db = DB::connection('pgsql_migrations');
+        $db->table('principal_lifecycles')->where('user_id', $actor->id)->update(['principal_class' => 'staff']);
+        $db->table('internal_personnel')->insert([
+            'user_id' => $actor->id, 'kind' => 'founder', 'status' => 'active',
+            'attested_by' => $actor->id, 'attested_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
         app(GrantAuthority::class)->issueFounderBootstrapGrants($actor, 1);
         $authority = app(GrantAuthority::class);
         $this->assertSame(0, DB::table('security_action_grants')->count());

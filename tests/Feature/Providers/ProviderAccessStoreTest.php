@@ -3,8 +3,6 @@
 namespace Tests\Feature\Providers;
 
 use App\Foundation\Tenancy\PrincipalContext;
-use App\Providers\Ads\NativeSourceContext;
-use App\Providers\Ads\NativeSourceOwner;
 use App\Models\User;
 use App\Providers\Ads\AdObservation;
 use App\Providers\Ads\Google\GoogleAccessAdapter;
@@ -32,6 +30,8 @@ use App\Providers\Ads\Meta\MetaReportTask;
 use App\Providers\Ads\Meta\MetaRequestFailed;
 use App\Providers\Ads\NativeAmount;
 use App\Providers\Ads\NativeProgress;
+use App\Providers\Ads\NativeSourceContext;
+use App\Providers\Ads\NativeSourceOwner;
 use App\Providers\Ads\ObservationBatch;
 use App\Providers\Ads\ObservationJournal;
 use App\Providers\Ads\PersistObservationJob;
@@ -73,10 +73,8 @@ use App\Providers\Ads\X\XReadExecution;
 use App\Providers\Ads\X\XReadJob;
 use App\Providers\Ads\X\XRequestFailed;
 use App\Providers\Ads\X\XSourceBootstrap;
-use App\Security\GrantAuthority;
 use App\Security\SessionAuthority;
 use App\Sources\EffectiveCapability;
-use App\Sources\SourceRegistry;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Dotenv\Dotenv;
@@ -99,6 +97,7 @@ use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
 use Tests\Support\ApplicationContractAssertions;
+use Tests\Support\BusinessAuthorityFixture;
 use Tests\TestCase;
 
 class ProviderAccessStoreTest extends TestCase
@@ -345,10 +344,15 @@ class ProviderAccessStoreTest extends TestCase
         $deadline=microtime(true)+5; $wait=false;
         do { $q->execute([$xid,$argv[2]]); $wait=in_array($q->fetchColumn(),[true,1,'1','t'],true); if($wait) break; usleep(20000); } while(microtime(true)<$deadline);
         if(!$wait) { $db->rollBack(); exit(1); } echo 'WAIT_OBSERVED'; fflush(STDOUT);
-        $q=$db->prepare("SELECT expires_at<clock_timestamp() FROM security_action_grants WHERE source_target_id=?::uuid AND action='provider.read'");
-        $deadline=microtime(true)+3; $expired=false;
+        $q=$db->prepare("SELECT clock_timestamp()::text AS wait_observed_at, expires_at::text, expires_at>clock_timestamp() AS live_at_wait FROM security_action_grants WHERE source_target_id=?::uuid AND action='provider.read' AND status='active'");
+        $q->execute([$argv[1]]); $timing=$q->fetch(PDO::FETCH_ASSOC);
+        if(!$timing || !in_array($timing['live_at_wait'],[true,1,'1','t'],true)) { $db->rollBack(); exit(3); }
+        $q=$db->prepare("SELECT expires_at<clock_timestamp() FROM security_action_grants WHERE source_target_id=?::uuid AND action='provider.read' AND status='active'");
+        $deadline=microtime(true)+5; $expired=false;
         do { $q->execute([$argv[1]]); $expired=in_array($q->fetchColumn(),[true,1,'1','t'],true); if($expired) break; usleep(20000); } while(microtime(true)<$deadline);
-        if(!$expired) { $db->rollBack(); exit(2); } echo 'EXPIRED_BEFORE_RELEASE'; fflush(STDOUT); $db->commit();
+        if(!$expired) { $db->rollBack(); exit(2); }
+        $timing['release_at']=$db->query('SELECT clock_timestamp()::text')->fetchColumn();
+        echo 'EXPIRED_BEFORE_RELEASE'.PHP_EOL.'DB_TIMING='.json_encode($timing,JSON_THROW_ON_ERROR).PHP_EOL; fflush(STDOUT); $db->commit();
         PHP;
         $holder = new Process([PHP_BINARY, '-r', $code, $scope->sourceId, (string) $pid], base_path());
         $holder->setTimeout(10);
@@ -373,13 +377,17 @@ class ProviderAccessStoreTest extends TestCase
             $ready = $lockReady && $holder->isRunning();
             $this->assertTrue($ready,
                 'Credential-row holder did not publish readiness; exit='.(string) $holder->getExitCode().'; stderr_bytes='.strlen($holder->getErrorOutput()));
-            $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
-                ->where('action', 'provider.read')->update(['expires_at' => DB::raw("clock_timestamp()+interval '2 seconds'")]);
+            $this->replaceProviderRightWithExpiringGrant($scope, 'provider.read', 2);
             $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->credentials($r, $scope)), '42501');
             $holder->wait();
             $this->assertTrue($holder->isSuccessful(), $holder->getErrorOutput());
             $this->assertStringContainsString('WAIT_OBSERVED', $holder->getOutput());
             $this->assertStringContainsString('EXPIRED_BEFORE_RELEASE', $holder->getOutput());
+            preg_match('/DB_TIMING=(.+)/', $holder->getOutput(), $timingMatch);
+            $timing = json_decode($timingMatch[1], true, flags: JSON_THROW_ON_ERROR);
+            $this->assertLessThan(new DateTimeImmutable($timing['expires_at']), new DateTimeImmutable($timing['wait_observed_at']));
+            $this->assertGreaterThanOrEqual(new DateTimeImmutable($timing['expires_at']), new DateTimeImmutable($timing['release_at']));
+            fwrite(STDERR, 'Credential expiry real-wait '.json_encode($timing, JSON_THROW_ON_ERROR).PHP_EOL);
         } finally {
             if ($holder->isRunning()) {
                 $holder->stop();
@@ -426,8 +434,7 @@ class ProviderAccessStoreTest extends TestCase
             $this->withinBusiness(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', 1));
             $this->denied(fn () => $this->withinBusiness(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', 0)), '42501');
             $this->denied(fn () => $this->withinBusiness(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.revoke', 1)), '42501');
-            $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
-                ->where('action', 'provider.read')->update(['expires_at' => now()->subSecond()]);
+            $this->awaitProviderRightExpiry($this->replaceProviderRightWithExpiringGrant($scope, 'provider.read'));
             $this->denied(fn () => $this->withinBusiness(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.read', 1)), '42501');
             // A read denial does not revoke independently authorized local connection authority.
             $this->withinBusiness(fn ($request) => app(ProviderRequestGuard::class)->requireCurrent($request, $scope, 'provider.connect', 1));
@@ -558,9 +565,22 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertCount(1, array_filter($out, fn ($value) => str_starts_with($value, 'RESULT=')));
         $this->assertCount(1, array_filter($out, fn ($value) => $value === 'DENIED=23505'));
         $before = $this->owner()->table('provider_observation_entries')->get()->toJson();
+        $expiry = null;
         $out = $this->journalRace($scope, [(string) Str::uuid(), (string) Str::uuid()], 2,
-            fn () => $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
-                ->where('action', 'provider.read')->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]));
+            function () use (&$expiry): void {
+                // journalRace invokes this only after observing both real advisory waiters.
+                $timing = (array) $this->owner()->selectOne('SELECT clock_timestamp()::text AS wait_observed_at, ?::timestamptz::text AS expires_at, clock_timestamp()<?::timestamptz AS live_at_wait', [$expiry, $expiry]);
+                $this->assertTrue($timing['live_at_wait'], 'The grant must still be live at the witnessed contention.');
+                $this->awaitProviderRightExpiry($expiry);
+                $timing['release_at'] = $this->owner()->scalar('SELECT clock_timestamp()::text');
+                $this->assertGreaterThanOrEqual(new DateTimeImmutable($expiry), new DateTimeImmutable($timing['release_at']));
+                fwrite(STDERR, 'Journal expiry real-wait '.json_encode($timing, JSON_THROW_ON_ERROR).PHP_EOL);
+            },
+            function () use ($scope, &$expiry): void {
+                // Establish the short lifetime after both workers finish bootstrap,
+                // so expiry occurs during the real wait within the unchanged 3s lock budget.
+                $expiry = $this->replaceProviderRightWithExpiringGrant($scope, 'provider.read', 2);
+            });
         $this->assertSame(['DENIED=42501', 'DENIED=42501'], $out);
         $this->assertSame($before, $this->owner()->table('provider_observation_entries')->get()->toJson());
         $this->assertSame(2, $this->owner()->table('provider_observation_streams')->value('generation'));
@@ -615,8 +635,7 @@ class ProviderAccessStoreTest extends TestCase
                     new NativeProgress('synthetic_marker', 'synthetic:basis', 'private-progress')));
             });
         }
-        $this->owner()->table('security_action_grants')->where('source_target_id', $this->scopes['meta']->sourceId)
-            ->where('action', 'provider.read')->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->awaitProviderRightExpiry($this->replaceProviderRightWithExpiringGrant($this->scopes['meta'], 'provider.read'));
         $queued = Queue::connection('database')->pop('bb2.provider.meta');
         $this->denied(fn () => $queued->fire(), '42501');
         $this->assertSame(0, $this->owner()->table('provider_observation_streams')->count());
@@ -674,8 +693,7 @@ class ProviderAccessStoreTest extends TestCase
         $history = $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'synthetic-range'));
         $this->assertCount(1, $history);
         $this->assertSame('meta', $history[0]['observation']['scope']['provider']);
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'source.read')
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->awaitProviderRightExpiry($this->replaceProviderRightWithExpiringGrant($scope, 'source.read'));
         $this->assertSame(4, $readCount());
         $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->history($r, $scope, 'synthetic-range')), '42501');
         foreach (['provider_observation_streams', 'provider_observation_runs', 'provider_observation_entries'] as $table) {
@@ -686,11 +704,12 @@ class ProviderAccessStoreTest extends TestCase
         $this->denied(fn () => $this->journal($other, (string) Str::uuid(), 0, '10'), '42501');
     }
 
-    private function journalRace(ProviderScope $scope, array $commands, int $generation, ?callable $whileBlocked = null): array
+    private function journalRace(ProviderScope $scope, array $commands, int $generation, ?callable $whileBlocked = null, ?callable $beforeRelease = null): array
     {
         $run = 'bb2-journal-race-'.Str::uuid();
         $holder = DB::build(config('database.connections.pgsql_migrations'));
         $workers = [];
+        $gates = [];
         $observation = $this->journalObservation($scope, '10');
         $payload = ['coverage' => 'COMPLETE', 'failure' => null, 'provenance' => $observation->provenance,
             'encrypted_progress' => null, 'progress_fingerprint' => null,
@@ -702,7 +721,11 @@ class ProviderAccessStoreTest extends TestCase
         $request->setLaravelSession($this->app['session']->driver());
         try {
             foreach ($commands as $command) {
+                $gate = ['ready' => storage_path('framework/testing/'.$run.'-'.$command.'.ready'),
+                    'release' => storage_path('framework/testing/'.$run.'-'.$command.'.release')];
+                $gates[] = $gate;
                 $worker = new Process([PHP_BINARY, base_path('tests/ObservationCommandWorker.php'), json_encode([
+                    'entry_external_gate' => $gate,
                     'run' => $run, 'actor' => $this->actor->id, 'scope' => $scope->jsonSerialize(),
                     'session' => SessionAuthority::sessionKey($request), 'command' => $command, 'generation' => $generation, 'payload' => $payload,
                 ], JSON_THROW_ON_ERROR)], base_path());
@@ -713,17 +736,23 @@ class ProviderAccessStoreTest extends TestCase
             // Process/bootstrap latency is separate from the database lock-wait proof.
             $startupDeadline = microtime(true) + 60;
             do {
-                $ready = (int) DB::scalar('SELECT count(*) FROM pg_stat_activity WHERE application_name=?', [$run]);
+                $ready = count(array_filter(array_map(fn ($gate, $command) => $this->readObservationEntry($gate['ready'], $run, $command), $gates, $commands)));
                 if ($ready === 2 || count(array_filter($workers, fn ($worker) => $worker->isTerminated())) > 0) {
                     break;
                 }
                 usleep(20000);
             } while (microtime(true) < $startupDeadline);
             $this->assertSame(2, $ready, 'Independent journal workers did not finish bootstrap.');
+            if ($beforeRelease) {
+                $beforeRelease();
+            }
+            foreach ($gates as $gate) {
+                file_put_contents($gate['release'], 'go', LOCK_EX);
+            }
             $deadline = microtime(true) + 30;
             do {
                 $waiters = (int) DB::scalar("SELECT count(*) FROM pg_stat_activity WHERE application_name=? AND lower(wait_event)='advisory'", [$run]);
-                if ($waiters === 2) {
+                if ($waiters === 2 || array_any($workers, fn ($worker) => $worker->isTerminated())) {
                     break;
                 }
                 usleep(20000);
@@ -737,7 +766,7 @@ class ProviderAccessStoreTest extends TestCase
             foreach ($workers as $worker) {
                 $worker->wait();
                 $this->assertTrue($worker->isSuccessful(), $worker->getErrorOutput());
-                $output[] = $worker->getOutput();
+                $output[] = preg_replace('/^ENTRY_READY\r?\n/', '', $worker->getOutput());
             }
 
             return $output;
@@ -749,6 +778,13 @@ class ProviderAccessStoreTest extends TestCase
             foreach ($workers as $worker) {
                 if ($worker->isRunning()) {
                     $worker->stop();
+                }
+            }
+            foreach ($gates as $gate) {
+                foreach ($gate as $path) {
+                    if (is_file($path)) {
+                        unlink($path);
+                    }
                 }
             }
         }
@@ -773,22 +809,11 @@ class ProviderAccessStoreTest extends TestCase
     public function test_meta_native_read_denies_expired_authority_before_second_page_and_rolls_back(): void
     {
         $scope = $this->metaReaderScope();
-        $grantId = $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
-            ->where('action', 'provider.read')->value('id');
-        $this->owner()->table('security_action_grants')->where('id', $grantId)
-            ->update(['expires_at' => DB::raw("clock_timestamp()+interval '2 seconds'")]);
+        $expiry = $this->replaceProviderRightWithExpiringGrant($scope, 'provider.read');
         $http = new Factory;
         $http->preventStrayRequests();
-        $http->fake(function () use ($http, $grantId) {
-            $deadline = microtime(true) + 5;
-            do {
-                $expired = $this->owner()->scalar('SELECT expires_at <= clock_timestamp() FROM security_action_grants WHERE id=?', [$grantId]);
-                if ($expired) {
-                    break;
-                }
-                usleep(20000);
-            } while (microtime(true) < $deadline);
-            $this->assertTrue((bool) $expired, 'Authority must actually expire before the next native request.');
+        $http->fake(function () use ($http, $expiry) {
+            $this->awaitProviderRightExpiry($expiry);
 
             return $http->response(['data' => [$this->metaReaderRow()], 'paging' => ['next' => 'https://untrusted.invalid/',
                 'cursors' => ['after' => 'synthetic-next']]], 200);
@@ -878,8 +903,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertNotNull($rolledBack);
         $this->assertNull(Cache::get('bb2.meta.oauth.'.hash('sha256', $rolledBack)));
         $state = $this->withinBusiness(fn ($r) => $states->issue($r, $scope, 0, $configuration));
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->awaitProviderRightExpiry($this->replaceProviderRightWithExpiringGrant($scope, 'provider.connect'));
         $this->denied(fn () => $this->withinBusiness(fn ($r) => $states->consume($r, $scope, 0, $configuration, $state)), '42501');
         $this->assertIsString(Cache::get('bb2.meta.oauth.'.hash('sha256', $state)));
         $this->assertSame(0, $this->owner()->table('provider_access_events')->count());
@@ -929,8 +953,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertNotNull($rolledBack);
         $this->assertNull(Cache::get('bb2.meta.pending.'.hash('sha256', $rolledBack)));
         $handle = $this->withinBusiness(fn ($r) => $pending->stage($r, $material, 0, $configuration));
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->awaitProviderRightExpiry($this->replaceProviderRightWithExpiringGrant($scope, 'provider.connect'));
         $this->denied(fn () => $this->withinBusiness(fn ($r) => $pending->material($r, $scope, 0, $configuration, $handle)), '42501');
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
     }
@@ -948,9 +971,22 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame('999', $source->declared_external_id);
         $this->assertSame('UNVERIFIED', $source->status);
         $actions = $this->owner()->table('security_action_grants')->where('source_target_id', $sourceId)->orderBy('action')->pluck('action')->all();
-        $this->assertSame(['provider.connect', 'source.read', 'source.register'], $actions);
-        $this->assertSame(3, $this->owner()->table('security_audit_events')->where('event', 'source_grant_authorize')
-            ->where('reason', 'like', '%'.$sourceId)->count());
+        $this->assertSame(['provider.connect', 'source.audit.recover', 'source.read', 'source.register'], $actions);
+        $db = $this->owner();
+        $receipt = $db->table('business_command_receipts')->where('command_id', $commandId)->sole();
+        $this->assertSame('source.business.bootstrap', $receipt->action);
+        $this->assertSame($this->businessId, (int) $receipt->business_id);
+        $this->assertSame($this->actor->id, (int) $receipt->actor_user_id);
+        $this->assertSame('committed', $receipt->state);
+        $result = json_decode($receipt->result_ref, true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame($sourceId, $result['source_id']);
+        $this->assertEquals(
+            $db->table('security_action_grants')->where('source_target_id', $sourceId)->pluck('id', 'action')->map(strval(...))->all(),
+            $result['grant_refs'],
+        );
+        $proof = $db->table('authority_qualification_receipts')->where('target_kind', 'source')->where('target_ref', $sourceId)->sole();
+        $this->assertSame('command:'.$commandId, $proof->evidence_ref);
+        $this->assertSame('business_native_source_custody_v1', $proof->policy_id);
         $again = $this->withinBusiness(fn ($r) => $bootstrap->requestConnection($r, $model, '999', $sourceId, $commandId));
         $this->assertSame($scope->jsonSerialize(), $again->jsonSerialize());
         $this->assertSame(1, $this->owner()->table('source_command_receipts')->where('source_id', $sourceId)->count());
@@ -1033,8 +1069,7 @@ class ProviderAccessStoreTest extends TestCase
         [$coordinator, $installation] = $this->metaAuthorizationFixture($http);
         $url = $this->withinBusiness(fn ($r) => $coordinator->authorizationUrl($r, $installation));
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
-        $this->owner()->table('security_action_grants')->where('source_target_id', $installation->sourceId)->where('action', 'provider.connect')
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->expireInstallationQualification($installation);
         $this->denied(fn () => $this->withinBusiness(fn ($r) => $coordinator->callback($r, $installation, 0, $query['state'], 'synthetic-code')), '42501');
         $http->assertSentCount(0);
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
@@ -1326,8 +1361,7 @@ class ProviderAccessStoreTest extends TestCase
                 'synthetic-range', (string) Str::uuid(), 0, 1, $o->provenance));
         });
         Queue::connection('database')->pop('bb2.provider.meta')->fire();
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.read')
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->awaitProviderRightExpiry($this->replaceProviderRightWithExpiringGrant($scope, 'provider.read'));
         $this->travel(45)->seconds();
         $queued = Queue::connection('database')->pop('bb2.provider.meta');
         $this->denied(fn () => $queued->fire(), '42501');
@@ -1499,7 +1533,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame('UNVERIFIED', $source->status);
         $this->assertSame(1, (int) $source->version);
         $this->assertSame(1, $this->owner()->table('source_command_receipts')->where('source_id', $source->id)->count());
-        $this->assertSame(['provider.connect', 'source.read', 'source.register'], $this->owner()->table('security_action_grants')
+        $this->assertSame(['provider.connect', 'source.audit.recover', 'source.read', 'source.register'], $this->owner()->table('security_action_grants')
             ->where('source_target_id', $source->id)->where('status', 'active')->orderBy('action')->pluck('action')->all());
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
         $http->assertNothingSent();
@@ -1512,20 +1546,51 @@ class ProviderAccessStoreTest extends TestCase
         $http = new Factory;
         $http->preventStrayRequests();
         $this->configureMetaWeb($http);
-        $base = '/businesses/'.$this->business.'/providers/meta';
+        $other = $this->postJson('/api/businesses', [
+            'command_id' => (string) Str::uuid7(), 'name' => 'Independent Meta connection',
+        ])->assertCreated()->json('data.business_public_id');
+        $business = '/businesses/'.$this->business;
+        $otherBusiness = '/businesses/'.$other;
+        $base = $business.'/providers/meta';
+        $otherBase = $otherBusiness.'/providers/meta';
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
         $this->postJson($base.'/connect', ['intent' => $intent])->assertOk();
-        $source = $this->owner()->table('source_registry')->where('namespace', 'facebook_login_configuration')->sole();
-        $this->postJson('/businesses/'.$this->business.'/sources', [
-            'source_id' => $source->id, 'command_id' => (string) Str::uuid7(), 'effect' => 'revoke',
-            'resource' => '999', 'operation' => 'discovery.read', 'purpose' => 'advertising_analysis',
-            'expected_version' => 1, 'reason' => 'synthetic_explicit_login_revocation',
-        ])->assertOk();
+        $otherIntent = $this->getJson($otherBase)->assertOk()->json('connect_intent');
+        $this->postJson($otherBase.'/connect', ['intent' => $otherIntent])->assertOk();
+
+        $db = $this->owner();
+        $source = $db->table('source_registry')->where('namespace', 'facebook_login_configuration')->where('business_id', $this->businessId)->sole();
+        $otherSource = $db->table('source_registry')->where('namespace', 'facebook_login_configuration')->where('business_id', '<>', $this->businessId)->sole();
+        $scope = ['source_id' => $source->id, 'resource' => '999', 'operation' => 'discovery.read', 'purpose' => 'advertising_analysis'];
+        $retire = $scope + ['command_id' => (string) Str::uuid7(), 'effect' => 'revoke',
+            'expected_version' => 1, 'reason' => 'synthetic_explicit_login_revocation'];
+        $this->postJson($business.'/sources', $retire)->assertForbidden();
+
+        $grant = $scope + ['command_id' => (string) Str::uuid7(), 'action' => 'source.manage',
+            'decision' => 'authorize', 'reason' => 'synthetic_explicit_source_management'];
+        $this->postJson($otherBusiness.'/source-grants', $grant)->assertForbidden();
+        $this->postJson($business.'/source-grants', [...$grant, 'action' => 'provider.revoke'])->assertForbidden();
+        $receipt = $this->postJson($business.'/source-grants', $grant)->assertOk()->json('receipt');
+        $this->postJson($business.'/source-grants', $grant)->assertOk()->assertJsonPath('receipt', $receipt);
+        $qualification = $db->table('security_action_grants')->where('id', $receipt['grant_id'])->value('qualification_id');
+        $this->assertSame('{source.manage}', $db->table('authority_qualification_receipts')->where('qualification_id', $qualification)->value('allowed_actions'));
+
+        $retired = $this->postJson($business.'/sources', $retire)->assertOk()->assertJsonPath('version', 2)->json();
+        $this->postJson($business.'/sources', $retire)->assertOk()->assertExactJson($retired);
+        $this->postJson($business.'/sources', [...$retire, 'reason' => 'different_reason'])->assertConflict();
+        $this->postJson($business.'/source-grants', [
+            ...$grant, 'command_id' => (string) Str::uuid7(), 'action' => 'source.manage',
+        ])->assertForbidden();
+
+        $grants = $db->table('security_action_grants')->where('source_target_id', $source->id)->orderBy('id')->get()->toArray();
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
         $this->postJson($base.'/connect', ['intent' => $intent])->assertForbidden();
-        $this->assertSame('REVOKED', $this->owner()->table('source_registry')->where('id', $source->id)->value('status'));
-        $this->assertSame(2, $this->owner()->table('source_command_receipts')->where('source_id', $source->id)->count());
-        $this->assertSame(0, $this->owner()->table('provider_access')->count());
+        $this->assertEquals($grants, $db->table('security_action_grants')->where('source_target_id', $source->id)->orderBy('id')->get()->toArray());
+        $this->assertSame('REVOKED', $db->table('source_registry')->where('id', $source->id)->value('status'));
+        $this->assertSame(2, $db->table('source_command_receipts')->where('source_id', $source->id)->count());
+        $this->assertEquals($otherSource, $db->table('source_registry')->where('id', $otherSource->id)->sole());
+        $this->assertSame(0, $db->table('security_action_grants')->where('source_target_id', $otherSource->id)->where('action', 'source.manage')->count());
+        $this->assertSame(0, $db->table('provider_access')->count());
         $http->assertNothingSent();
     }
 
@@ -1677,22 +1742,11 @@ class ProviderAccessStoreTest extends TestCase
     public function test_google_native_reader_expired_authority_between_requests_rolls_back(): void
     {
         $scope = $this->googleReaderScope();
-        $grantId = $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
-            ->where('action', 'provider.read')->value('id');
-        $this->owner()->table('security_action_grants')->where('id', $grantId)
-            ->update(['expires_at' => DB::raw("clock_timestamp()+interval '2 seconds'")]);
+        $expiry = $this->replaceProviderRightWithExpiringGrant($scope, 'provider.read');
         $http = new Factory;
         $http->preventStrayRequests();
-        $http->fake(function () use ($http, $grantId) {
-            $deadline = microtime(true) + 5;
-            do {
-                $expired = $this->owner()->scalar('SELECT expires_at <= clock_timestamp() FROM security_action_grants WHERE id=?', [$grantId]);
-                if ($expired) {
-                    break;
-                }
-                usleep(20000);
-            } while (microtime(true) < $deadline);
-            $this->assertTrue((bool) $expired);
+        $http->fake(function () use ($http, $expiry) {
+            $this->awaitProviderRightExpiry($expiry);
 
             return $http->response($this->googleReaderMetadata());
         });
@@ -1831,8 +1885,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertNotNull($rolledBack);
         $this->assertNull(Cache::get('bb2.google.oauth.'.hash('sha256', $rolledBack)));
         $state = $this->withinBusiness(fn ($r) => $states->issue($r, $scope, 0, $configuration));
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->awaitProviderRightExpiry($this->replaceProviderRightWithExpiringGrant($scope, 'provider.connect'));
         $this->denied(fn () => $this->withinBusiness(fn ($r) => $states->consume($r, $scope, 0, $configuration, $state)), '42501');
         $this->assertIsString(Cache::get('bb2.google.oauth.'.hash('sha256', $state)));
         $this->assertSame(0, $this->owner()->table('provider_access_events')->count());
@@ -1882,8 +1935,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertNotNull($rolledBack);
         $this->assertNull(Cache::get('bb2.google.pending.'.hash('sha256', $rolledBack)));
         $handle = $this->withinBusiness(fn ($r) => $pending->stage($r, $material, 0, $configuration));
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->awaitProviderRightExpiry($this->replaceProviderRightWithExpiringGrant($scope, 'provider.connect'));
         $this->denied(fn () => $this->withinBusiness(fn ($r) => $pending->material($r, $scope, 0, $configuration, $handle)), '42501');
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
     }
@@ -2016,8 +2068,7 @@ class ProviderAccessStoreTest extends TestCase
         $record = $this->withinBusiness(fn ($r) => $flow->load($r, $configuration, 'hierarchy', $handle));
         $this->assertSame($scope->jsonSerialize(), $record['scope']->jsonSerialize());
         $this->assertSame($data, $record['data']);
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
-            ->where('action', 'provider.connect')->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->expireInstallationQualification($scope);
         $this->denied(fn () => $this->withinBusiness(fn ($r) => $flow->load($r, $configuration, 'hierarchy', $handle)), '42501');
         $this->assertSame($cipher, Cache::get($key));
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
@@ -2201,7 +2252,7 @@ class ProviderAccessStoreTest extends TestCase
         $intent = $this->getJson($base)->assertOk()->json('connect_intent');
         $this->postJson($base.'/connect', ['intent' => $intent, 'source_id' => $this->scopes['google']->sourceId, 'expected_version' => 0])->assertUnprocessable();
         $qualification = $this->owner()->table('security_action_grants')->where('id', $this->businessReadGrant)->value('qualification_id');
-        \Tests\Support\BusinessAuthorityFixture::revokeQualification($qualification, $this->actor->id);
+        BusinessAuthorityFixture::revokeQualification($qualification, $this->actor->id);
         $before = $this->owner()->table('security_action_grants')->count();
         $this->getJson($base)->assertForbidden();
         $this->postJson($base.'/connect', ['intent' => $intent])->assertForbidden();
@@ -2630,8 +2681,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->getJson($url.'&access_token=injected')->assertUnprocessable();
         $this->get(str_replace('/report/1/download', '/report/2/download', $url))->assertNotFound();
         $this->get(str_replace($this->business, (string) Str::uuid(), $url))->assertForbidden();
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
-            ->where('action', 'source.read')->update(['status' => 'revoked']);
+        $this->decideProviderRight($scope, 'source.read', 'revoke');
         $this->get($url)->assertNotFound();
         $this->get($selectedUrl)->assertNotFound();
         $http->assertSentCount(2);
@@ -2775,8 +2825,7 @@ class ProviderAccessStoreTest extends TestCase
         } catch (AuthorizationException) {
             $http->assertNothingSent();
         }
-        $this->owner()->table('security_action_grants')->where('source_target_id', $installation->sourceId)->where('action', 'provider.connect')
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->expireInstallationQualification($installation);
         $this->denied(fn () => $this->withinBusiness(fn ($r) => $flow->callback($r, $installation, 0, $query['state'], 'synthetic-code')), '42501');
         $http->assertNothingSent();
         $this->assertIsString(Cache::get('bb2.snapchat.oauth.'.hash('sha256', $query['state'])));
@@ -3063,8 +3112,7 @@ class ProviderAccessStoreTest extends TestCase
                 new ReportWindow('2026-09-01', '2026-09-02', 'INCLUSIVE_DATES', 'TOTAL', 'Asia/Amman', 'synthetic:native'),
                 'snapchat-revoked', (string) Str::uuid(), 0, 2)->onConnection('database'));
         });
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.read')
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->awaitProviderRightExpiry($this->replaceProviderRightWithExpiringGrant($scope, 'provider.read'));
         $this->denied(fn () => Queue::connection('database')->pop('bb2.provider.snapchat')->fire(), '42501');
         $http->assertNothingSent();
         $this->assertSame(0, $this->owner()->table('snapchat_read_attempts')->count());
@@ -3174,11 +3222,33 @@ class ProviderAccessStoreTest extends TestCase
         $this->withinBusiness(fn ($request) => $capture($request, $command));
         $this->withinBusiness(fn ($request) => $capture($request, $stale ? (string) Str::uuid() : $command));
         $fixture = ['mode' => 'snapchat-execution', 'report' => $this->snapchatReportPayload()];
-        $holder = $this->runtimeProcess([...$fixture, 'application_name' => $run.'-holder', 'release' => $release]);
-        $waiter = $this->runtimeProcess([...$fixture, 'application_name' => $run.'-waiter']);
+        $holder = $this->runtimeProcess([...$fixture, 'application_name' => $run.'-holder', 'release' => $release, 'entry_gate' => $release.'-holder']);
+        $waiter = $this->runtimeProcess([...$fixture, 'application_name' => $run.'-waiter', 'entry_gate' => $release.'-waiter']);
         $evidence = ['killed' => $kill, 'stale' => $stale];
         try {
             $holder->start();
+            $waiter->start();
+            // Both workers bootstrap before the holder enters transport. The
+            // original 50s watchdog and the 8s contention proof stay independent.
+            do {
+                $ready = [];
+                foreach (['holder' => $holder, 'waiter' => $waiter] as $name => $worker) {
+                    $worker->checkTimeout();
+                    $this->assertTrue($worker->isRunning(), $worker->getOutput().$worker->getErrorOutput());
+                    $path = $release.'-'.$name.'.ready';
+                    clearstatcache(true, $path);
+                    $state = is_file($path) ? json_decode(file_get_contents($path), true) : null;
+                    if (is_array($state) && ($state['run'] ?? null) === $run.'-'.$name && ($state['pid'] ?? 0) > 0) {
+                        $ready[$name] = $state;
+                    }
+                }
+                if (count($ready) === 2) {
+                    break;
+                }
+                usleep(10000);
+            } while (true);
+            $evidence['entry'] = $ready;
+            file_put_contents($release.'-holder.release', 'go', LOCK_EX);
             $until = hrtime(true) + 8_000_000_000;
             while (! str_contains($holder->getOutput(), 'TRANSPORT=') && $holder->isRunning() && hrtime(true) < $until) {
                 usleep(10000);
@@ -3186,7 +3256,7 @@ class ProviderAccessStoreTest extends TestCase
             $this->assertStringContainsString('TRANSPORT=', $holder->getOutput(), $holder->getErrorOutput());
             $holderPid = $owner->scalar('SELECT pid FROM pg_stat_activity WHERE application_name=?', [$run.'-holder']);
             $this->assertNotNull($holderPid);
-            $waiter->start();
+            file_put_contents($release.'-waiter.release', 'go', LOCK_EX);
             $started = hrtime(true);
             $until = $started + 8_000_000_000;
             do {
@@ -3231,10 +3301,18 @@ class ProviderAccessStoreTest extends TestCase
                 if ($worker->isRunning()) {
                     $worker->stop(0);
                 }
-                $evidence['workers'][] = ['exit' => $worker->getExitCode(), 'stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput()];
+                $evidence['workers'][] = ['exit' => $worker->getExitCode(), 'stdout' => $worker->isStarted() ? $worker->getOutput() : null, 'stderr' => $worker->isStarted() ? $worker->getErrorOutput() : null];
             }
             if (is_file($release)) {
                 unlink($release);
+            }
+            foreach (['holder', 'waiter'] as $name) {
+                foreach (['ready', 'release'] as $extension) {
+                    $path = $release.'-'.$name.'.'.$extension;
+                    if (is_file($path)) {
+                        unlink($path);
+                    }
+                }
             }
             fwrite(STDERR, 'Snapchat competing execution '.json_encode($evidence, JSON_THROW_ON_ERROR).PHP_EOL);
         }
@@ -3448,8 +3526,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame(1, count(array_filter($http->recorded()->all(), fn ($record) => ($record[0]->data()['async'] ?? null) === 'true')));
         $this->assertSame(0, $this->owner()->table('provider_observation_runs')->count());
         $this->assertSame(0, $this->owner()->table('provider_observation_streams')->count());
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.read')
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->awaitProviderRightExpiry($this->replaceProviderRightWithExpiringGrant($scope, 'provider.read'));
         $this->denied(fn () => $this->withinBusiness($advance), '42501');
         $http->assertSentCount(3);
     }
@@ -3912,7 +3989,7 @@ class ProviderAccessStoreTest extends TestCase
                     return [$state, $key];
                 };
                 [$state, $key] = $issue();
-                $fixture = ['mode' => 'redis', 'prefix' => $prefix, 'actor' => $this->actor->id, 'scope' => $scope->jsonSerialize(),
+                $fixture = ['mode' => 'redis', 'prefix' => $prefix, 'actor' => $this->actor->id, 'business' => $this->business, 'scope' => $scope->jsonSerialize(),
                     'session' => $this->app['session']->driver()->getId(), 'generation' => 1, 'configuration' => $configuration, 'state' => $state];
                 $wrong = $this->runtimeProcess([...$fixture, 'configuration' => hash('sha256', 'synthetic-wrong')]);
                 $wrong->mustRun();
@@ -4032,8 +4109,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->postJson($base, [...$period, 'command_id' => (string) Str::uuid(), 'expected_version' => 1,
             'expected_generation' => 0, 'deadline' => $status->json('deadline')])->assertAccepted();
         if ($case === 'authority') {
-            $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.read')
-                ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+            $this->awaitProviderRightExpiry($this->replaceProviderRightWithExpiringGrant($scope, 'provider.read'));
         } elseif ($case === 'epoch') {
             $this->withinBusiness(fn ($r) => app(ProviderAccessStore::class)->store($r, $scope, (string) Str::uuid(), 1,
                 new ProviderCredentials(['access_token' => 'synthetic-rotated-token']), null, 'CONNECTED', $this->evidence(), true));
@@ -4297,8 +4373,7 @@ class ProviderAccessStoreTest extends TestCase
         // Issue explicitly without another native token request, using the synthetic fixture pair.
         $this->withinBusiness(fn ($r) => $states->issue($r, $scope, 0, $flow->configurationBinding(),
             new ProviderCredentials(['oauth_token' => $token, 'oauth_token_secret' => 'synthetic-temporary-secret'])));
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->expireInstallationQualification($scope);
         $this->denied(fn () => $this->withinBusiness(fn ($r) => $flow->callback($r, $scope, 0, $token, 'synthetic-verifier')), '42501');
         $http->assertSentCount(1);
         $this->assertIsString(Cache::get('bb2.x.oauth.'.hash('sha256', $token)));
@@ -4373,10 +4448,6 @@ class ProviderAccessStoreTest extends TestCase
         } catch (AuthorizationException) {
             $this->addToAssertionCount(1);
         }
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
-        $this->denied(fn () => $this->withinBusiness(fn ($r) => $pending->credentials($r, $scope, 0, $flow->configurationBinding(), $handle)), '42501');
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')->update(['expires_at' => null]);
         $cipher = Cache::get('bb2.x.pending.'.hash('sha256', $handle));
         $this->assertIsString($cipher);
         Cache::put('bb2.x.pending.'.hash('sha256', $handle), 'tampered-cipher', 300);
@@ -4394,6 +4465,11 @@ class ProviderAccessStoreTest extends TestCase
         } catch (AuthorizationException) {
             $this->addToAssertionCount(1);
         }
+        $this->travelBack();
+        Cache::put('bb2.x.pending.'.hash('sha256', $handle), $cipher, 600);
+        $qualification = $this->installationQualification($scope);
+        BusinessAuthorityFixture::revokeQualification($qualification, $this->actor->id);
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => $pending->credentials($r, $scope, 0, $flow->configurationBinding(), $handle)), '42501');
         $http->assertSentCount(2);
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
     }
@@ -4419,8 +4495,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame('COMPLETE', $second->coverage);
         $this->assertSame('def456', $second->accounts[0]['id']);
         $this->assertNull($second->continuation);
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
-            ->update(['expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
+        $this->expireInstallationQualification($scope);
         $this->denied(fn () => $this->withinBusiness(fn ($r) => $flow->discover($r, $scope, 0, $handle)), '42501');
         $http->assertSentCount(4);
         $this->assertSame($sourceCount, $this->owner()->table('source_registry')->count());
@@ -4620,8 +4695,7 @@ class ProviderAccessStoreTest extends TestCase
             $this->assertSame('X queued signing configuration changed.', $error->getMessage());
         }
         config()->set('services.x_ads.consumer_secret', 'synthetic-x-app-secret');
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.read')
-            ->update(['expires_at' => now()->subMinute()]);
+        $this->awaitProviderRightExpiry($this->replaceProviderRightWithExpiringGrant($scope, 'provider.read'));
         $this->denied(fn () => $this->app->call([$job, 'handle']), '42501');
         $http->assertSentCount(2);
         $this->assertSame(1, $this->owner()->table('provider_observation_runs')->count());
@@ -4797,8 +4871,7 @@ class ProviderAccessStoreTest extends TestCase
         $http->assertSentCount(4);
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
         $this->assertSame(0, $this->owner()->table('provider_observation_runs')->count());
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
-            ->update(['expires_at' => now()->subMinute()]);
+        $this->expireInstallationQualification($scope);
         $this->denied(fn () => $this->withinBusiness(fn ($r) => $store->restore($r, $scope, 0, $flow->configurationBinding(), $pending, $handle)), '42501');
     }
 
@@ -4870,8 +4943,7 @@ class ProviderAccessStoreTest extends TestCase
         $this->assertSame('COMPLETE', $second['coverage']);
         $this->assertNull($second['continuation']);
         $http->assertSentCount(4);
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.connect')
-            ->update(['expires_at' => now()->subMinute()]);
+        $this->expireInstallationQualification($scope);
         $this->denied(fn () => $this->withinBusiness(fn ($r) => $flow->discoverPage($r, $scope, 0, $pending, $first['continuation'])), '42501');
         $http->assertSentCount(4);
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
@@ -4886,21 +4958,21 @@ class ProviderAccessStoreTest extends TestCase
         $command = (string) Str::uuid();
         $installation = $this->withinBusiness(fn ($r) => $bootstrap->requestConnection($r, $model, 'synthetic-x-key', $installationId, $command));
         $this->assertSame('developer_app', $this->owner()->table('source_registry')->where('id', $installationId)->value('namespace'));
-        $this->assertSame(['provider.connect', 'source.read', 'source.register'], $this->owner()->table('security_action_grants')
+        $this->assertSame(['provider.connect', 'source.audit.recover', 'source.read', 'source.register'], $this->owner()->table('security_action_grants')
             ->where('source_target_id', $installationId)->orderBy('action')->pluck('action')->all());
         $this->assertSame($installation->jsonSerialize(), $this->withinBusiness(fn ($r) => $bootstrap->requestConnection($r, $model, 'synthetic-x-key', $installationId, $command))->jsonSerialize());
         $selected = ProviderScope::forBusiness($this->businessId, (string) Str::uuid7(), Provider::X, 'abc123', 'report.read', 'advertising_analysis');
         $selectCommand = (string) Str::uuid();
         $this->withinBusiness(fn ($r) => $bootstrap->requestAccount($r, $model, $selected, $selectCommand));
         $this->assertSame('ad_account', $this->owner()->table('source_registry')->where('id', $selected->sourceId)->value('namespace'));
-        $this->assertSame(['provider.connect', 'provider.read', 'source.read', 'source.register'], $this->owner()->table('security_action_grants')
+        $this->assertSame(['provider.connect', 'provider.read', 'provider.revoke', 'source.audit.recover', 'source.manage', 'source.read', 'source.register'], $this->owner()->table('security_action_grants')
             ->where('source_target_id', $selected->sourceId)->orderBy('action')->pluck('action')->all());
         $this->assertSame(0, $this->owner()->table('provider_access')->count());
         $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $selected, 'provider.read', 0)), '42501');
         $this->assertSame(0, $this->owner()->table('provider_observation_runs')->count());
     }
 
-    public function test_x_explicit_bootstrap_denies_stale_owner_and_preserves_independent_explicit_grants_after_source_rollback(): void
+    public function test_x_explicit_bootstrap_denies_stale_owner_and_rolls_back_source_and_grants_atomically(): void
     {
         $model = $this->nativeOwner();
         $bootstrap = app(XSourceBootstrap::class);
@@ -4914,7 +4986,7 @@ class ProviderAccessStoreTest extends TestCase
             $this->assertSame('synthetic-bootstrap-rollback', $error->getMessage());
         }
         $this->assertSame(0, $this->owner()->table('source_registry')->where('id', $sourceId)->count());
-        $this->assertSame(3, $this->owner()->table('security_action_grants')->where('source_target_id', $sourceId)->count());
+        $this->assertSame(0, $this->owner()->table('security_action_grants')->where('source_target_id', $sourceId)->count());
         $this->owner()->table('security_sessions')->where('user_id', $this->actor->id)->update(['authenticated_at' => now()->subHour()]);
         try {
             $this->withinBusiness(fn ($r) => $bootstrap->requestConnection($r, $model, 'synthetic-x-key', $sourceId, (string) Str::uuid()));
@@ -4923,7 +4995,7 @@ class ProviderAccessStoreTest extends TestCase
             $this->addToAssertionCount(1);
         }
         $this->assertSame(0, $this->owner()->table('source_registry')->where('id', $sourceId)->count());
-        $this->assertSame(3, $this->owner()->table('security_action_grants')->where('source_target_id', $sourceId)->count());
+        $this->assertSame(0, $this->owner()->table('security_action_grants')->where('source_target_id', $sourceId)->count());
     }
 
     private function configureXWeb(Factory $http): void
@@ -5207,8 +5279,8 @@ class ProviderAccessStoreTest extends TestCase
             }
             $facts = array_fill_keys(EffectiveCapability::AXES, $fresh);
             $this->owner()->table('provider_access')->where('source_id', $scope->sourceId)->update(['verification' => json_encode($facts, JSON_THROW_ON_ERROR)]);
-            $grants = $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.read');
-            $this->assertSame(1, $grants->update(['status' => 'revoked', 'revoked_at' => now()]));
+            $grant = $this->decideProviderRight($scope, 'provider.read', 'revoke');
+            $this->assertSame('revoked', $this->owner()->table('security_action_grants')->where('id', $grant)->value('status'));
             $snapshot = $this->withinBusiness(fn ($r) => $status->snapshot($r, $scope));
             $this->assertTrue($snapshot['reporting']['can_report']);
             $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ProviderRequestGuard::class)->requireCurrent($r, $scope, 'provider.read', 1)), '42501');
@@ -5302,8 +5374,7 @@ class ProviderAccessStoreTest extends TestCase
         $scope = $this->scopes['meta'];
         $this->store($scope, (string) Str::uuid());
         $this->journal($scope, (string) Str::uuid(), 0, '10');
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'provider.read')
-            ->update(['status' => 'revoked', 'revoked_at' => now()]);
+        $this->decideProviderRight($scope, 'provider.read', 'revoke');
         $this->assertSame('10', $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range'))['claims'][0]['expenditure']['amount']);
         foreach ([ProviderScope::forBusiness($scope->businessId + 1, $scope->sourceId, Provider::Meta, $scope->accountId, $scope->operation, $scope->purpose),
             ProviderScope::forBusiness($scope->businessId, (string) Str::uuid7(), Provider::Meta, $scope->accountId, $scope->operation, $scope->purpose),
@@ -5311,15 +5382,9 @@ class ProviderAccessStoreTest extends TestCase
             ProviderScope::forBusiness($scope->businessId, $scope->sourceId, Provider::Meta, $scope->accountId, $scope->operation, 'wrong_purpose')] as $wrong) {
             $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $wrong, 'synthetic-range')), '42501');
         }
-        try {
-            $wrong = ProviderScope::forBusiness($scope->businessId, $scope->sourceId, Provider::Google, $scope->accountId, $scope->operation, $scope->purpose);
-            $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $wrong, 'synthetic-range'));
-            $this->fail('Wrong registered provider was released.');
-        } catch (AuthorizationException) {
-            $this->assertTrue(true);
-        }
-        $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'source.read')
-            ->update(['status' => 'revoked', 'revoked_at' => now()]);
+        $wrong = ProviderScope::forBusiness($scope->businessId, $scope->sourceId, Provider::Google, $scope->accountId, $scope->operation, $scope->purpose);
+        $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $wrong, 'synthetic-range')), '42501');
+        $this->decideProviderRight($scope, 'source.read', 'revoke');
         $this->denied(fn () => $this->withinBusiness(fn ($r) => app(ObservationJournal::class)->snapshot($r, $scope, 'synthetic-range')), '42501');
     }
 
@@ -5329,9 +5394,10 @@ class ProviderAccessStoreTest extends TestCase
         $this->store($scope, (string) Str::uuid());
         foreach (['populated', 'empty', 'missing'] as $index => $case) {
             $this->journal($scope, (string) Str::uuid(), $index, $case === 'populated' ? '10' : null);
-            $grants = $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)->where('action', 'source.read');
-            $grants->update(['expires_at' => DB::raw("clock_timestamp()+interval '2 seconds'")]);
-            $expired = fn () => (bool) $grants->selectRaw('expires_at <= clock_timestamp() AS expired')->value('expired');
+            $expiry = $this->replaceProviderRightWithExpiringGrant($scope, 'source.read');
+            $expired = fn () => (int) $this->owner()->scalar(
+                'SELECT CASE WHEN clock_timestamp()>=?::timestamptz THEN 1 ELSE 0 END', [$expiry],
+            ) === 1;
             $double = new class($expired) extends SharedRealityInterpretation
             {
                 public bool $interpreted = false;
@@ -5368,7 +5434,8 @@ class ProviderAccessStoreTest extends TestCase
                 $this->assertFalse($released);
             } finally {
                 $this->app->forgetInstance(SharedRealityInterpretation::class);
-                $grants->update(['expires_at' => null]);
+                $this->decideProviderRight($scope, 'source.read', 'revoke');
+                $this->decideProviderRight($scope, 'source.read', 'authorize');
             }
         }
     }
@@ -5500,8 +5567,13 @@ class ProviderAccessStoreTest extends TestCase
 
     private function bootstrapScope(ProviderScope $scope): void
     {
+        $namespace = $scope->operation === 'discovery.read' ? match ($scope->provider) {
+            Provider::Google => 'oauth_client',
+            Provider::Meta => 'facebook_login_configuration',
+            default => 'developer_app',
+        } : 'ad_account';
         $this->withinBusiness(fn (Request $request) => $this->nativeOwner()->bootstrap($request, $scope,
-            (string) Str::uuid(), $scope->operation === 'discovery.read' ? 'developer_app' : 'ad_account',
+            (string) Str::uuid(), $namespace,
             'Synthetic '.$scope->provider->value));
     }
 
@@ -5514,10 +5586,10 @@ class ProviderAccessStoreTest extends TestCase
         ])->assertOk()->json('receipt.grant_id');
     }
 
-    private function replaceProviderRightWithExpiringGrant(ProviderScope $scope, string $action): string
+    private function replaceProviderRightWithExpiringGrant(ProviderScope $scope, string $action, int $seconds = 4): string
     {
         $old = $this->decideProviderRight($scope, $action, 'revoke');
-        $deadline = $this->owner()->scalar("SELECT (date_trunc('second',clock_timestamp())+interval '4 seconds')::text");
+        $deadline = $this->owner()->scalar("SELECT (date_trunc('second',clock_timestamp())+make_interval(secs=>?::integer))::text", [$seconds]);
         $expiry = (new DateTimeImmutable($deadline))->format('Y-m-d\TH:i:s.uP');
         $replacement = $this->decideProviderRight($scope, $action, 'authorize', $expiry);
         $this->assertNotSame($old, $replacement);
@@ -5529,9 +5601,20 @@ class ProviderAccessStoreTest extends TestCase
         return $grant->expires_at;
     }
 
-    private function awaitProviderRightExpiry(string $expiry): void
+    private function expireInstallationQualification(ProviderScope $scope): void
     {
-        $deadline = microtime(true) + 7;
+        $this->awaitProviderRightExpiry(BusinessAuthorityFixture::expireQualificationSoon($this->installationQualification($scope), $this->actor->id));
+    }
+
+    private function installationQualification(ProviderScope $scope): string
+    {
+        return $this->owner()->table('security_action_grants')->where('source_target_id', $scope->sourceId)
+            ->where('action', 'provider.connect')->where('status', 'active')->sole()->qualification_id;
+    }
+
+    private function awaitProviderRightExpiry(string $expiry, int $timeout = 7): void
+    {
+        $deadline = microtime(true) + $timeout;
         do {
             if ((int) $this->owner()->scalar('SELECT CASE WHEN clock_timestamp()>=?::timestamptz THEN 1 ELSE 0 END', [$expiry]) === 1) {
                 return;

@@ -156,7 +156,6 @@ final class PlatformMaintenanceTest extends TestCase
         }
     }
 
-
     public function test_independent_connection_observes_real_state_contention_and_rechecks_revision_and_expiry(): void
     {
         foreach (['revision', 'expiry'] as $case) {
@@ -168,16 +167,28 @@ final class PlatformMaintenanceTest extends TestCase
                 mkdir($directory, 0700, true);
             }
             $file = $directory.'/worker-'.Str::uuid().'.json';
-            file_put_contents($file, json_encode(['actor' => $user->id, 'session_id' => app('session')->driver()->getId(), 'body' => $this->command()], JSON_THROW_ON_ERROR));
+            file_put_contents($file, json_encode(['actor' => $user->id, 'session_id' => app('session')->driver()->getId(), 'body' => $this->command(),
+                'ready' => $file.'.ready', 'release' => $file.'.release'], JSON_THROW_ON_ERROR));
             $worker = new Process([PHP_BINARY, 'tests/Support/PlatformMaintenanceWorker.php', $file], base_path());
             $worker->setTimeout(25);
-            $owner->beginTransaction();
-            $blocker = (int) $owner->scalar('SELECT pg_backend_pid()');
-            $owner->table('platform_maintenance')->where('id', 1)->lockForUpdate()->sole();
             $worker->start();
             try {
+                do {
+                    $worker->checkTimeout(); // Bootstrap retains the original 25s watchdog.
+                    $this->assertTrue($worker->isRunning(), $worker->getOutput().$worker->getErrorOutput());
+                    clearstatcache(true, $file.'.ready');
+                    $ready = is_file($file.'.ready') ? json_decode(file_get_contents($file.'.ready'), true) : null;
+                    if (is_array($ready) && ($ready['pid'] ?? 0) > 0) {
+                        break;
+                    }
+                    usleep(10000);
+                } while (true);
+                $owner->beginTransaction();
+                $blocker = (int) $owner->scalar('SELECT pg_backend_pid()');
+                $owner->table('platform_maintenance')->where('id', 1)->lockForUpdate()->sole();
+                file_put_contents($file.'.release', 'go', LOCK_EX);
                 $deadline = microtime(true) + 15;
-                $pid = null;
+                $pid = $ready['pid'];
                 do {
                     if (preg_match('/READY_PID=(\d+)/', $worker->getOutput(), $match)) {
                         $pid = (int) $match[1];
@@ -213,6 +224,8 @@ final class PlatformMaintenanceTest extends TestCase
                     $worker->stop();
                 }
                 @unlink($file);
+                @unlink($file.'.ready');
+                @unlink($file.'.release');
             }
         }
     }

@@ -167,18 +167,33 @@ final class BusinessPurposeTest extends TestCase
             foreach ([0, 1] as $index) {
                 file_put_contents($base.'-'.$index.'.json', json_encode(['run' => $run.'-'.$index, 'actor' => $actor->id,
                     'session' => SessionAuthority::sessionKey($request), 'business' => $b['business_public_id'], 'operation' => 'purpose', 'command' => $command['command_id'],
-                    'purpose_command' => $command, 'expected' => 0, 'selection' => $selection, 'release' => $release], JSON_THROW_ON_ERROR));
+                    'purpose_command' => $command, 'expected' => 0, 'selection' => $selection, 'release' => $release,
+                    'ready' => $base.'-'.$index.'.ready'], JSON_THROW_ON_ERROR));
                 $worker = new Process([PHP_BINARY, base_path('tests/BusinessScopeCommandWorker.php'), $base.'-'.$index.'.json'], base_path());
                 $worker->setTimeout(40);
                 $worker->start();
                 $workers[] = $worker;
             }
-            $deadline = microtime(true) + 15;
-            while (! array_all($workers, fn ($worker) => str_contains($worker->getOutput(), 'READY_PID='))) {
-                $this->assertLessThan($deadline, microtime(true), 'Real workers must be ready before release.');
+            do {
+                $ready = [];
+                foreach ($workers as $index => $worker) {
+                    $worker->checkTimeout(); // Bootstrap keeps the original 40s watchdog.
+                    $this->assertTrue($worker->isRunning(), $worker->getOutput().$worker->getErrorOutput());
+                    $file = $base.'-'.$index.'.ready';
+                    clearstatcache(true, $file);
+                    $state = is_file($file) ? json_decode(file_get_contents($file), true) : null;
+                    if (is_array($state) && ($state['run'] ?? null) === $run.'-'.$index && ($state['pid'] ?? 0) > 0) {
+                        $ready[] = $state;
+                    }
+                }
+                if (count($ready) === 2) {
+                    break;
+                }
                 usleep(10000);
-            }
+            } while (true);
+            $evidence['ready'] = $ready;
             file_put_contents($release, 'ready');
+            $deadline = microtime(true) + 15;
             do {
                 // A second row-lock waiter can queue behind the first waiter's
                 // tuple lock. Observe the real blocking graph, not only direct
@@ -219,7 +234,7 @@ final class BusinessPurposeTest extends TestCase
                 } $evidence['workers'][] = ['out' => $worker->getOutput(), 'error' => $worker->getErrorOutput(), 'exit' => $worker->getExitCode()];
             }
             file_put_contents($base.'-evidence.json', json_encode($evidence, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
-            foreach ([$base.'-0.json', $base.'-1.json', $release] as $file) {
+            foreach ([$base.'-0.json', $base.'-1.json', $base.'-0.ready', $base.'-1.ready', $release] as $file) {
                 if (is_file($file)) {
                     unlink($file);
                 }

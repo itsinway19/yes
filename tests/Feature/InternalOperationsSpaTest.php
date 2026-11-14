@@ -57,7 +57,7 @@ class InternalOperationsSpaTest extends TestCase
         $actor = $this->operator();
         $this->actingAsInternal($actor)->get('/internal/administration/customers')->assertOk()->assertViewIs('spa')
             ->assertDontSee($customer->email)->assertDontSee('data-page=', false);
-        foreach (['?kind=users&search=Customer%20Projection&selected='.$customer->public_id, '?kind=users&search=missing-customer', '?kind=workspaces'] as $query) {
+        foreach (['?kind=users&search=Customer%20Projection&selected='.$customer->public_id, '?kind=users&search=missing-customer', '?kind=businesses'] as $query) {
             $resource = $this->getJson('/internal/administration/customers'.$query)->assertOk()->json();
             $this->assertApplicationContract('InternalCustomersResource', $resource);
             $this->assertSame('/internal/administration/customers'.$query, $resource['visibility']['path']);
@@ -65,6 +65,7 @@ class InternalOperationsSpaTest extends TestCase
                 ->assertExactJson(['visibility' => $resource['visibility']]);
         }
         $this->getJson('/internal/administration/customers?page=0')->assertUnprocessable();
+        $this->getJson('/internal/administration/customers?kind=workspaces')->assertUnprocessable();
         $this->getJson('/internal/administration/customers?kind=unknown')->assertUnprocessable();
     }
 

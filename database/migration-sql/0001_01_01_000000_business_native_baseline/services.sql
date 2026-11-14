@@ -38,7 +38,6 @@ BEGIN
  RETURN builderad_private.verify_scope_path('business',p_business::text,p_actor,basis.action,builderad_private.business_selection(p_mandate),NULL,'{}',false);
 END $$;
 ALTER FUNCTION builderad_private.service_mandate(bigint,bigint,bigint) OWNER TO builderad_scope_executor;
-REVOKE ALL ON FUNCTION builderad_private.service_mandate(bigint,bigint,bigint) FROM PUBLIC;
 
 CREATE FUNCTION builderad_private.service_approval_proof(p_business bigint,p_actor bigint,p_grant bigint) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
@@ -55,8 +54,6 @@ BEGIN
  RETURN proof||jsonb_build_object('service_mandate',builderad_private.service_mandate(p_business,p_actor,qualification.issuer_grant_id));
 END $$;
 ALTER FUNCTION builderad_private.service_approval_proof(bigint,bigint,bigint) OWNER TO builderad_scope_executor;
-REVOKE ALL ON FUNCTION builderad_private.service_approval_proof(bigint,bigint,bigint) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION builderad_private.service_approval_proof(bigint,bigint,bigint) TO builderad_owner;
 
 CREATE FUNCTION public.builderad_business_service_enroll(p_session text,p_business uuid,p_command uuid,p_confirmed boolean,p_reference text,p_expiry timestamptz,p_mandate bigint,p_selection jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
@@ -106,8 +103,6 @@ BEGIN
  PERFORM builderad_private.finish_command(); RETURN result;
 END $$;
 ALTER FUNCTION public.builderad_business_service_enroll(text,uuid,uuid,boolean,text,timestamptz,bigint,jsonb) OWNER TO builderad_scope_executor;
-REVOKE ALL ON FUNCTION public.builderad_business_service_enroll(text,uuid,uuid,boolean,text,timestamptz,bigint,jsonb) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.builderad_business_service_enroll(text,uuid,uuid,boolean,text,timestamptz,bigint,jsonb) TO builderad_app;
 
 CREATE FUNCTION public.builderad_business_service_approval(p_session text,p_business uuid,p_read bigint) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
@@ -136,8 +131,6 @@ BEGIN
   'business_revision',(SELECT auth_epoch FROM public.business_authority_fences WHERE business_id=b),'scopes',scopes);
 END $$;
 ALTER FUNCTION public.builderad_business_service_approval(text,uuid,bigint) OWNER TO builderad_scope_executor;
-REVOKE ALL ON FUNCTION public.builderad_business_service_approval(text,uuid,bigint) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.builderad_business_service_approval(text,uuid,bigint) TO builderad_app;
 
 CREATE FUNCTION public.builderad_business_service_consent(p_session text,p_business uuid,p_command uuid,p_service uuid,p_purpose text,p_expected bigint,p_epoch bigint,p_selection jsonb,p_revoke boolean) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
@@ -187,8 +180,6 @@ BEGIN
  PERFORM builderad_private.finish_command(); RETURN result;
 END $$;
 ALTER FUNCTION public.builderad_business_service_consent(text,uuid,uuid,uuid,text,bigint,bigint,jsonb,boolean) OWNER TO builderad_scope_executor;
-REVOKE ALL ON FUNCTION public.builderad_business_service_consent(text,uuid,uuid,uuid,text,bigint,bigint,jsonb,boolean) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.builderad_business_service_consent(text,uuid,uuid,uuid,text,bigint,bigint,jsonb,boolean) TO builderad_app;
 
 CREATE FUNCTION public.builderad_service_business_metadata(p_service uuid,p_secret text,p_business uuid,p_purpose text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,builderad_private,pg_temp AS $$

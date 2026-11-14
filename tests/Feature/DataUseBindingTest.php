@@ -32,8 +32,8 @@ final class DataUseBindingTest extends TestCase
         $businessId = $db->table('businesses')->where('public_id', $a['business_public_id'])->value('id');
         $source = (string) Str::uuid7();
         // Registered native metadata only; no credential, live provider, or production source-adoption claim.
-        $db->table('source_registry')->insert(['id' => $source, 'business_id' => $businessId, 'custody_kind' => 'business_native', 'family' => 'test', 'namespace' => 'test.synthetic',
-            'declared_external_id' => 'fixture-only', 'label' => 'Synthetic source', 'version' => 1, 'status' => 'UNVERIFIED']);
+        Fixture::insert('source_registry', ['id' => $source, 'business_id' => $businessId, 'custody_kind' => 'business_native', 'family' => 'test', 'namespace' => 'test.synthetic',
+            'declared_external_id' => 'fixture-only', 'label' => 'Synthetic source', 'version' => 1, 'status' => 'UNVERIFIED'], $u->id);
         $boundary = Fixture::boundary($u->id);
         $scope = (string) Str::uuid7();
         $selection = ['native_namespaces' => ['test.synthetic'], 'native_keys' => ['record-1'], 'field_keys' => ['city'], 'partition_ref' => null];

@@ -144,8 +144,7 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
     const history = { oneOf: Object.entries(historyValues).map(([kind, [before, after]]) => fact({ kind: { const: kind },
         entries: list(object({ event_id: uuid, before_version: historyVersion, version: historyVersion,
             before_context_version: nullable(historyVersion), context_version: nullable(historyVersion), before, after, recorded_at: { type: 'string', format: 'date-time' } })),
-        next_cursor: nullable(historyVersion), history_scope: { const: 'native_business_transitions' }, has_imported_baseline: { type: 'boolean' },
-        legacy_history: { const: 'not_included' }, page_limit: { const: 32 } })) };
+        next_cursor: nullable(historyVersion), history_scope: { const: 'native_business_transitions' }, page_limit: { const: 32 } })) };
     const query = (name, required = false) => ({ in: 'query', name, required, schema: { type: 'integer', minimum: name === 'after' ? 0 : 1 } });
     const read = (operationId, schema, parameters = []) => ({ operationId, security, parameters, responses: { 200: response(schema), ...errors } });
     const page = schema => ({ oneOf: [object({ data: schema, locale: { enum: ['ar', 'en'] }, visibility: ref('Visibility') }), ref('GoalsWitness')] });

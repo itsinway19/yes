@@ -41,9 +41,10 @@ final class BusinessPreferenceVariantsTest extends TestCase
         }
         $this->assertEquals($before, $db->table('business_goal_preferences')->sole());
         $this->assertSame($events, $db->table('business_preference_transitions')->count());
-        foreach (['workspaces', 'advertiser_goal_preferences', 'advertiser_goal_preference_events', 'object_purposes'] as $table) {
-            $this->assertSame(0, $db->table($table)->count(), $table);
+        foreach (['workspaces', 'advertiser_goal_preferences', 'advertiser_goal_preference_events'] as $table) {
+            $this->assertNull($db->scalar('SELECT to_regclass(?)', ['public.'.$table]), $table);
         }
+        $this->assertSame(0, $db->table('object_purposes')->count());
         $this->assertSame(0, $db->table('business_context_heads')->value('context_version'));
         $this->assertSame(0, $db->table('business_current_intents')->value('intent_revision'));
     }

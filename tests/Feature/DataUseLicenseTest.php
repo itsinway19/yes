@@ -5,9 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Providers\Ads\Provider;
 use App\Security\SessionAuthority;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -15,7 +13,6 @@ use Symfony\Component\Process\Process;
 use Tests\Support\ApplicationContractAssertions;
 use Tests\Support\BusinessAuthorityFixture;
 use Tests\Support\BusinessNativeMaterialFixture;
-use Tests\Support\DisposableDatabaseReset;
 use Tests\Support\NativeMaterialFixture;
 use Tests\TestCase;
 
@@ -254,9 +251,10 @@ final class DataUseLicenseTest extends TestCase
         $worker->setTimeout(45);
         $owner = DB::connection('pgsql_migrations');
         $evidence = [];
-        $wait = function (callable $probe) use ($worker) {
+        $wait = function (callable $probe, bool $startup = false) use ($worker) {
             $deadline = microtime(true) + 15;
             do {
+                $worker->checkTimeout();
                 if ($value = $probe()) {
                     return $value;
                 }
@@ -264,20 +262,21 @@ final class DataUseLicenseTest extends TestCase
                     throw new \RuntimeException($worker->getOutput().$worker->getErrorOutput());
                 }
                 usleep(10000);
-            } while (microtime(true) < $deadline);
+            } while ($startup || microtime(true) < $deadline);
             throw new \RuntimeException('Actual licence issuer lock wait was not witnessed.');
         };
         try {
             $this->assertFileDoesNotExist($ready);
             $worker->start();
             $evidence['ready'] = $wait(function () use ($ready, $run) {
+                clearstatcache(true, $ready);
                 if (! is_file($ready)) {
                     return null;
                 }
                 $value = json_decode(file_get_contents($ready), true);
 
                 return is_array($value) && ($value['run'] ?? null) === $run && is_int($value['pid'] ?? null) && $value['pid'] > 0 ? $value : null;
-            });
+            }, startup: true);
             if ($freshness) {
                 // Set and capture the committed fixture deadline in one round trip.
                 // The receipt wait must cross it before PostgreSQL's 3s lock timeout.

@@ -3,13 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\ApplicationContractAssertions;
 use Tests\Support\BusinessAuthorityFixture as Fixture;
-use Tests\Support\DisposableDatabaseReset;
 use Tests\Support\MarketEvidenceFixture;
 use Tests\TestCase;
 
@@ -327,5 +324,4 @@ final class MarketEvidenceOriginTest extends TestCase
         }
         $this->assertSame(1, $owner->table('market_evidence_revisions')->where('evidence_id', $f['evidence'])->count());
     }
-
 }

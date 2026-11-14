@@ -1,7 +1,7 @@
 <?php
 
-use App\Providers\Ads\NativeSourceContext;
 use App\Models\User;
+use App\Providers\Ads\NativeSourceContext;
 use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderRequestGuard;
 use App\Providers\Ads\ProviderScope;
@@ -58,6 +58,22 @@ $app->instance(Factory::class, $http);
 config()->set('services.google_ads', $fixture['google_configuration'] ?? []);
 
 if ($fixture['mode'] === 'snapchat-execution') {
+    if (isset($fixture['entry_gate'])) {
+        $gate = $fixture['entry_gate'];
+        file_put_contents($gate.'.ready', json_encode(['pid' => (int) DB::scalar('SELECT pg_backend_pid()'),
+            'run' => $fixture['application_name']], JSON_THROW_ON_ERROR), LOCK_EX);
+        $deadline = hrtime(true) + 30_000_000_000;
+        do {
+            clearstatcache(true, $gate.'.release');
+            if (is_file($gate.'.release')) {
+                break;
+            }
+            if (hrtime(true) >= $deadline) {
+                throw new RuntimeException('Snapchat entry release not observed.');
+            }
+            usleep(10000);
+        } while (true);
+    }
     // Deliberately exercise the SQL execution fence below the optional queue mutex.
     // This is real queue reservation/deserialization/ACK, not queue middleware proof.
     try {

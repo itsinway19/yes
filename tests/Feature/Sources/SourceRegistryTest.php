@@ -18,7 +18,9 @@ use Tests\TestCase;
 final class SourceRegistryTest extends TestCase
 {
     private User $actor;
+
     private string $base;
+
     private array $input;
 
     protected function setUp(): void
@@ -88,14 +90,16 @@ final class SourceRegistryTest extends TestCase
     {
         $receipt = $this->command($this->input)->assertOk()->json();
         $url = $this->base.'/source-audit/'.$receipt['obligation_id'].'/recover';
-        $this->app->instance(SourceAuditCustody::class, new class extends SourceAuditCustody {
+        $this->app->instance(SourceAuditCustody::class, new class extends SourceAuditCustody
+        {
             public function accept(string $obligation, string $fingerprint, string $envelope): string
             {
                 throw new RuntimeException('Synthetic custody outage');
             }
         });
         $this->postJson($url)->assertOk()->assertJsonPath('delivery_state', 'FAILED');
-        $this->app->instance(SourceAuditCustody::class, new class extends SourceAuditCustody {
+        $this->app->instance(SourceAuditCustody::class, new class extends SourceAuditCustody
+        {
             public function accept(string $obligation, string $fingerprint, string $envelope): string
             {
                 parent::accept($obligation, $fingerprint, $envelope);
@@ -152,7 +156,9 @@ final class SourceRegistryTest extends TestCase
             self::assertStringContainsString('WAIT_OBSERVED', $holder->getOutput());
             self::assertStringContainsString('EXPIRED_BEFORE_RELEASE', $holder->getOutput());
         } finally {
-            if ($holder->isRunning()) $holder->stop();
+            if ($holder->isRunning()) {
+                $holder->stop();
+            }
         }
         self::assertSame('PENDING', $db->table('source_audit_delivery')->value('state'));
         self::assertSame(0, $db->table('source_audit_delivery')->value('attempts'));
@@ -203,9 +209,13 @@ final class SourceRegistryTest extends TestCase
                 $ready = [];
                 foreach ($paths as $path) {
                     clearstatcache(true, $path.'.ready');
-                    if (is_file($path.'.ready')) $ready[] = json_decode(file_get_contents($path.'.ready'), true, flags: JSON_THROW_ON_ERROR);
+                    if (is_file($path.'.ready')) {
+                        $ready[] = json_decode(file_get_contents($path.'.ready'), true, flags: JSON_THROW_ON_ERROR);
+                    }
                 }
-                if (count($ready) === 2) break;
+                if (count($ready) === 2) {
+                    break;
+                }
                 usleep(20000);
             } while (microtime(true) < $deadline);
             self::assertCount(2, $ready, implode("\n", array_map(fn ($p) => $p->getOutput().$p->getErrorOutput(), $workers)));
@@ -218,30 +228,51 @@ final class SourceRegistryTest extends TestCase
                 // Observe outside the holder transaction: its statistics snapshot
                 // can predate the workers' lock attempts and remain cached.
                 $evidence = DB::select("SELECT pid,wait_event_type,pg_blocking_pids(pid)::text AS blockers FROM pg_stat_activity WHERE application_name=? AND wait_event_type='Lock'", [$run]);
-                if (count($evidence) === 2) break;
+                if (count($evidence) === 2) {
+                    break;
+                }
                 usleep(20000);
             } while (microtime(true) < $deadline);
             self::assertCount(2, $evidence, 'Both ready transactions must overlap under actual database locks.');
             self::assertTrue((bool) array_filter($evidence, fn ($row) => in_array($blocker,
                 json_decode(str_replace(['{', '}'], ['[', ']'], $row->blockers), true), true)), 'Observe the held Source fence in the wait chain.');
             $db->commit();
-            foreach ($workers as $worker) $worker->wait();
+            foreach ($workers as $worker) {
+                $worker->wait();
+            }
             $codes = array_map(fn ($p) => $p->getExitCode(), $workers);
             sort($codes);
             self::assertSame($conflicting ? [0, 2] : [0, 0], $codes, implode("\n", array_map(fn ($p) => $p->getOutput().$p->getErrorOutput(), $workers)));
-            if ($conflicting) self::assertStringContainsString('DENIED_STATE=40001', implode("\n", array_map(fn ($p) => $p->getOutput(), $workers)));
-            else self::assertSame($this->workerResult($workers[0]), $this->workerResult($workers[1]));
+            if ($conflicting) {
+                self::assertStringContainsString('DENIED_STATE=40001', implode("\n", array_map(fn ($p) => $p->getOutput(), $workers)));
+            } else {
+                self::assertSame($this->workerResult($workers[0]), $this->workerResult($workers[1]));
+            }
             self::assertSame(2, $db->table('source_versions')->count());
             self::assertSame(2, $db->table('source_command_receipts')->count());
             self::assertSame(2, $db->table('source_audit_obligations')->count());
             self::assertSame(1, $db->table('business_command_receipts')->where('command_id', $command)->count());
         } finally {
-            if ($db->transactionLevel()) $db->rollBack();
-            foreach ($workers as $worker) if ($worker->isRunning()) $worker->stop();
+            if ($db->transactionLevel()) {
+                $db->rollBack();
+            }
+            foreach ($workers as $worker) {
+                if ($worker->isRunning()) {
+                    $worker->stop();
+                }
+            }
             file_put_contents(storage_path('framework/testing/'.$run.'.evidence.json'), json_encode(['conflicting' => $conflicting, 'ready' => $ready, 'waits' => $evidence,
                 'workers' => array_map(fn ($p) => ['exit' => $p->getExitCode(), 'output' => $p->getOutput(), 'error' => $p->getErrorOutput()], $workers)], JSON_THROW_ON_ERROR));
-            foreach ($paths as $path) foreach ([$path, $path.'.ready'] as $file) if (is_file($file)) unlink($file);
-            if (is_file($release)) unlink($release);
+            foreach ($paths as $path) {
+                foreach ([$path, $path.'.ready'] as $file) {
+                    if (is_file($file)) {
+                        unlink($file);
+                    }
+                }
+            }
+            if (is_file($release)) {
+                unlink($release);
+            }
         }
     }
 

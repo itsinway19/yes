@@ -392,12 +392,18 @@ class CommercialMarketPreparationTest extends TestCase
         $first = new Process([PHP_BINARY, $worker, (string) $operator->id, $target, (string) Str::uuid7(), 'hold', $release]);
         $second = new Process([PHP_BINARY, $worker, (string) $otherOperator->id, $target, (string) Str::uuid7(), 'race', $release]);
         foreach ([$first, $second] as $process) {
-            $process->setTimeout(20);
+            // Recorded Windows bootstrap exceeded 21s before authority issuance.
+            // Keep the active proof's 20s budget separate from process startup.
+            $process->setTimeout(60);
         }
-        $waitForOutput = function (Process $process, string $marker): void {
+        $activeDeadline = null;
+        $waitForOutput = function (Process $process, string $marker) use (&$activeDeadline): void {
             // On Windows, Process status polling may already have buffered the marker.
             while (! str_contains($process->getOutput(), $marker) && $process->isRunning()) {
                 $process->checkTimeout();
+                if ($activeDeadline !== null) {
+                    $this->assertLessThan($activeDeadline, microtime(true), 'Active commercial proof exceeded its original 20s budget.');
+                }
                 usleep(1000);
             }
             $this->assertStringContainsString($marker, $process->getOutput(), $process->getErrorOutput());
@@ -413,6 +419,7 @@ class CommercialMarketPreparationTest extends TestCase
             $launch['secondLauncherPid'] = $second->getPid();
             $waitForOutput($first, 'PID=');
             $waitForOutput($second, 'PID=');
+            $activeDeadline = microtime(true) + 20;
             file_put_contents($release.'-hold-start', 'start');
             $waitForOutput($first, 'INSERT_READY');
             $this->assertTrue($first->isRunning(), $first->getOutput().' / '.$first->getErrorOutput());

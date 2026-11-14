@@ -150,6 +150,4 @@ BEGIN
  PERFORM builderad_private.finish_command();
 END $$;
 ALTER FUNCTION builderad_private.admin_business_status(bigint,text,uuid,bigint,text) OWNER TO builderad_scope_executor;
-REVOKE ALL ON FUNCTION builderad_private.admin_business_status(bigint,text,uuid,bigint,text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION builderad_private.admin_business_status(bigint,text,uuid,bigint,text) TO builderad_owner;
 GRANT EXECUTE ON FUNCTION public.builderad_customer_administrator(text) TO builderad_scope_executor;

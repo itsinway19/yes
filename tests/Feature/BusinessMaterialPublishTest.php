@@ -19,13 +19,13 @@ final class BusinessMaterialPublishTest extends TestCase
     use ApplicationContractAssertions;
     use NativeMaterialFixture;
 
-    private bool $producerInstalled = false;
+    private array $producerDefinitions = [];
 
     protected function tearDown(): void
     {
         try {
-            if ($this->producerInstalled) {
-                RegisteredProducerFixture::uninstall();
+            if ($this->producerDefinitions !== []) {
+                RegisteredProducerFixture::uninstall($this->producerDefinitions);
             }
         } finally {
             parent::tearDown();
@@ -36,8 +36,7 @@ final class BusinessMaterialPublishTest extends TestCase
     private function prepared(int $count = 1): array
     {
         $f = $this->original('process', ['spend'], $count);
-        RegisteredProducerFixture::install();
-        $this->producerInstalled = true;
+        $this->producerDefinitions = RegisteredProducerFixture::install();
 
         return $this->captureOutput($f, $f['body']);
     }
@@ -52,7 +51,7 @@ final class BusinessMaterialPublishTest extends TestCase
         $version = $db->scalar("SELECT encode(sha256(convert_to(?::jsonb::text,'UTF8')),'hex')", [json_encode($payload)]);
         $ref = ['namespace' => 'test.fixture_report', 'key' => (string) Str::uuid7(), 'version' => $version];
         $outSource = (string) Str::uuid7();
-        $db->table('source_registry')->insert(['id' => $outSource, 'custody_kind' => 'business_native', 'business_id' => $f['business'], 'family' => 'test', 'namespace' => 'test.fixture_report', 'declared_external_id' => $ref['key'], 'label' => 'SYNTHETIC OUTPUT CUSTODY', 'version' => 1, 'status' => 'UNVERIFIED']);
+        Fixture::insert('source_registry', ['id' => $outSource, 'custody_kind' => 'business_native', 'business_id' => $f['business'], 'family' => 'test', 'namespace' => 'test.fixture_report', 'declared_external_id' => $ref['key'], 'label' => 'SYNTHETIC OUTPUT CUSTODY', 'version' => 1, 'status' => 'UNVERIFIED'], $f['user']->id);
         Fixture::insert('resource_right_fences', ['fence_id' => (string) Str::uuid7(), 'kind' => 'source', 'source_id' => $outSource, 'boundary_id' => null, 'rights_epoch' => 0, 'adoption_state' => 'v2_adopted'], $f['user']->id);
         $selector = ['native_namespaces' => [$ref['namespace']], 'native_keys' => [$ref['key']], 'field_keys' => ['summary'], 'partition_ref' => null];
         $scope = (string) Str::uuid7();
@@ -319,8 +318,8 @@ final class BusinessMaterialPublishTest extends TestCase
     public function test_no_production_producer_or_synthetic_namespace_is_registered_by_the_foundation(): void
     {
         $f = $this->prepared();
-        RegisteredProducerFixture::uninstall();
-        $this->producerInstalled = false;
+        RegisteredProducerFixture::uninstall($this->producerDefinitions);
+        $this->producerDefinitions = [];
         $this->publish($f)->assertForbidden();
         $this->assertSame(0, DB::connection('pgsql_migrations')->table('material_lineage_manifests')->count());
         $this->assertSame(0, DB::connection('pgsql_migrations')->table('material_use_dependencies')->count());

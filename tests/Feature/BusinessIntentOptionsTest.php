@@ -70,6 +70,11 @@ final class BusinessIntentOptionsTest extends BusinessIntentOptionsTestCase
         $this->assertLessThan(15000, $plan[0]['Execution Time']);
         $candidates = array_values(array_unique([...\DateTimeZone::listIdentifiers(\DateTimeZone::ALL), 'UTC']));
         $catalog = DB::select('SELECT name,builderad_current_intent_timezone_name_allowed(name) AS allowed FROM pg_timezone_names');
+        $reference = DB::connection('pgsql_migrations')->table('current_intent_timezone_catalog')->sole();
+        $nativeNames = array_values(array_unique(array_column($catalog, 'name')));
+        sort($nativeNames, SORT_STRING);
+        $this->assertSame($nativeNames, json_decode($reference->names, true, flags: JSON_THROW_ON_ERROR));
+        $this->assertSame((int) DB::scalar("SELECT current_setting('server_version_num')"), (int) $reference->postgres_version);
         $supported = array_values(array_map(fn ($row) => $row->name, array_filter($catalog, fn ($row) => $row->allowed)));
         $expected = array_values(array_intersect($candidates, $supported));
         $this->assertSame([], array_values(array_diff($options, $expected)));

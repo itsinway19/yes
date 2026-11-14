@@ -1728,7 +1728,7 @@ CREATE FUNCTION builderad_private.source_grant_issue(p_session text, p_command u
     SET search_path TO 'pg_catalog', 'builderad_private', 'pg_temp'
     AS $_$
 DECLARE actor bigint;selected_id bigint;proof jsonb;manager public.security_action_grants;g public.security_action_grants;
- f public.resource_right_fences;result jsonb;payload bytea;expiry timestamptz;reason text;
+ f public.resource_right_fences;q public.authority_qualification_receipts;result jsonb;payload bytea;expiry timestamptz;reason text;enroll boolean;
 BEGIN
  IF p_expected<>0 OR (SELECT array_agg(k ORDER BY k COLLATE "C") FROM jsonb_object_keys(p_payload) k) IS DISTINCT FROM ARRAY['action','expires_at','reason']::text[]
  OR jsonb_typeof(p_payload->'action') IS DISTINCT FROM 'string' OR p_payload->>'action' NOT IN('source.register','source.read','source.manage','source.audit.recover','provider.connect','provider.read','provider.revoke')
@@ -1741,16 +1741,21 @@ BEGIN
  expiry:=(p_payload->>'expires_at')::timestamptz;reason:=p_payload->>'reason';
  selected_id:=(p_selection#>>'{requirements,0,leaf_grant_id}')::bigint;
  SELECT c.actor_user_id INTO actor FROM public.builderad_signed_context() c JOIN public.security_action_grants own ON own.subject_user_id=c.actor_user_id
-  WHERE c.phase='principal' AND own.id=selected_id AND own.scope_kind='source' AND own.source_target_id=p_source AND own.action='source.manage';
+  WHERE c.phase='principal' AND own.id=selected_id AND own.scope_kind='source' AND own.source_target_id=p_source
+   AND (own.action='source.manage' OR (own.action='source.register' AND p_payload->>'action'='source.manage'));
  IF actor IS NULL THEN RAISE EXCEPTION 'Native manager preflight denied' USING ERRCODE='42501'; END IF;
  SELECT * INTO f FROM public.resource_right_fences WHERE kind='source' AND source_id=p_source AND adoption_state='v2_adopted' FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_ADOPTION_REQUIRED' USING ERRCODE='42501'; END IF;
  proof:=builderad_private.require_native_source_grant(selected_id,actor,p_session,p_selection,true,true);
  SELECT * INTO STRICT manager FROM public.security_action_grants WHERE id=selected_id;
- IF manager.source_target_id IS DISTINCT FROM p_source OR manager.action IS DISTINCT FROM 'source.manage'
- THEN RAISE EXCEPTION 'Exact current native source manager required after admission wait' USING ERRCODE='42501'; END IF;
+ enroll:=manager.action='source.register' AND p_payload->>'action'='source.manage';
+ IF manager.source_target_id IS DISTINCT FROM p_source OR (manager.action<>'source.manage' AND NOT enroll)
+ THEN RAISE EXCEPTION 'Exact current native source issuer required after admission wait' USING ERRCODE='42501'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.source_registry s JOIN public.source_capabilities c ON c.source_id=s.id
-  WHERE s.id=p_source AND s.custody_kind='business_native' AND s.business_id=manager.business_id AND c.resource=manager.source_resource AND c.operation=manager.source_operation AND c.purpose=manager.source_purpose)
+  WHERE s.id=p_source AND s.custody_kind='business_native' AND s.business_id=manager.business_id
+   AND c.resource=manager.source_resource AND c.operation=manager.source_operation AND c.purpose=manager.source_purpose
+   AND (NOT enroll OR (s.family='meta' AND s.namespace='facebook_login_configuration' AND s.declared_external_id=c.resource
+    AND c.operation='discovery.read' AND c.purpose='advertising_analysis')))
  THEN RAISE EXCEPTION 'Current exact native capability required' USING ERRCODE='42501'; END IF;
  -- The selected grant is authority; its exact capability is part of the command's
  -- meaning. An existing receipt must not acknowledge a different capability.
@@ -1759,6 +1764,11 @@ BEGIN
  SELECT r.result_ref INTO result FROM public.business_command_receipts r WHERE r.command_id=p_command AND r.actor_user_id=actor AND r.action='resource.qualify_issue' AND r.payload_digest=payload;
  IF FOUND THEN RETURN result; END IF;
  IF EXISTS(SELECT 1 FROM public.business_command_receipts WHERE command_id=p_command) THEN RAISE EXCEPTION 'Command identity conflict' USING ERRCODE='40001'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.source_registry WHERE id=p_source AND status<>'REVOKED')
+ THEN RAISE EXCEPTION 'A retired Source cannot issue rights' USING ERRCODE='42501'; END IF;
+ IF enroll AND EXISTS(SELECT 1 FROM public.security_action_grants old_manager
+  WHERE old_manager.scope_kind='source' AND old_manager.source_target_id=p_source AND old_manager.action='source.manage')
+ THEN RAISE EXCEPTION 'A previous Source manager must not be replaced by enrollment' USING ERRCODE='42501'; END IF;
  IF expiry IS NOT NULL AND expiry<=clock_timestamp() THEN RAISE EXCEPTION 'Future native grant expiry required' USING ERRCODE='22023'; END IF;
  IF EXISTS(SELECT 1 FROM public.security_action_grants WHERE scope_kind='source' AND subject_user_id=actor AND subject_generation=manager.subject_generation
   AND business_id=manager.business_id AND source_target_id=p_source AND source_resource=manager.source_resource AND source_operation=manager.source_operation AND source_purpose=manager.source_purpose AND action=p_payload->>'action' AND status='active')
@@ -1767,10 +1777,18 @@ BEGIN
  PERFORM builderad_private.start_command(actor,p_session,p_command,'resource.qualify_issue',jsonb_build_object('source_id',p_source),proof);
  g.id:=nextval('public.security_action_grants_id_seq');g.subject_user_id:=actor;g.subject_generation:=manager.subject_generation;g.granted_by:=actor;
  g.source:='source_owner_request';g.scope_kind:='source';g.source_target_id:=p_source;
-  IF NOT EXISTS(SELECT 1 FROM public.authority_qualification_receipts q WHERE q.qualification_id=manager.qualification_id AND (p_payload->>'action')=ANY(q.allowed_actions))
-   OR(manager.expires_at IS NOT NULL AND(expiry IS NULL OR expiry>manager.expires_at))
-  THEN RAISE EXCEPTION 'Reissued Source right cannot exceed its qualified issuer' USING ERRCODE='42501'; END IF;
-  g.business_id:=manager.business_id;g.qualification_id:=manager.qualification_id;
+ SELECT * INTO STRICT q FROM public.authority_qualification_receipts WHERE qualification_id=manager.qualification_id;
+ IF (NOT enroll AND NOT (p_payload->>'action')=ANY(q.allowed_actions))
+  OR(manager.expires_at IS NOT NULL AND(expiry IS NULL OR expiry>manager.expires_at))
+ THEN RAISE EXCEPTION 'Source right cannot exceed its qualified issuer' USING ERRCODE='42501'; END IF;
+ IF enroll THEN
+  q.qualification_id:=uuidv7();q.allowed_actions:=ARRAY['source.manage'];
+  q.evidence_ref:='command:'||p_command::text;q.evidence_digest:=payload;q.revision:=1;q.valid_from:=clock_timestamp();
+  q.provenance:='Explicit original Business creator decision to manage this exact Meta login Source';
+  PERFORM builderad_private.permit('public.authority_qualification_receipts','insert',NULL,to_jsonb(q));
+  INSERT INTO public.authority_qualification_receipts SELECT(q).*;
+ END IF;
+ g.business_id:=manager.business_id;g.qualification_id:=q.qualification_id;
  g.source_resource:=manager.source_resource;g.source_operation:=manager.source_operation;g.source_purpose:=manager.source_purpose;g.action:=p_payload->>'action';
  g.reason:=reason;g.status:='active';g.version:=1;g.expires_at:=expiry;g.delegable:=false;g.runtime_lock_marker:=false;g.created_at:=clock_timestamp();g.updated_at:=g.created_at;
  PERFORM builderad_private.permit('public.security_action_grants','insert',NULL,to_jsonb(g));INSERT INTO public.security_action_grants SELECT(g).*;
@@ -1787,57 +1805,3 @@ END $_$;
 ALTER FUNCTION builderad_private.source_grant_issue(p_session text, p_command uuid, p_source uuid, p_payload jsonb, p_expected bigint, p_selection jsonb) OWNER TO builderad_scope_executor;
 
 -- Preserve accepted function privileges.
-REVOKE ALL ON FUNCTION builderad_private.business_source_audit_delivery(p_session text, p_obligation uuid, p_ack uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION builderad_private.business_source_audit_delivery(p_session text, p_obligation uuid, p_ack uuid) TO builderad_owner;
-REVOKE ALL ON FUNCTION builderad_private.business_source_basis_current(p_grant bigint, p_actor bigint) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.business_source_grant_current(p_grant bigint, p_actor bigint, p_session text, p_fresh boolean) FROM PUBLIC;
-GRANT ALL ON FUNCTION builderad_private.business_source_grant_current(p_grant bigint, p_actor bigint, p_session text, p_fresh boolean) TO builderad_owner;
-REVOKE ALL ON FUNCTION builderad_private.business_source_proof(p_grant bigint, p_actor bigint, p_session text, p_fresh boolean) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.business_source_require(p_action text, p_source uuid, p_resource text, p_operation text, p_purpose text, p_session text) FROM PUBLIC;
-GRANT ALL ON FUNCTION builderad_private.business_source_require(p_action text, p_source uuid, p_resource text, p_operation text, p_purpose text, p_session text) TO builderad_owner;
-REVOKE ALL ON FUNCTION builderad_private.expenditure_summary_constraints(p_ref jsonb, p_operation text, p_purpose text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.expenditure_summary_descriptor(p_ref jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.expenditure_summary_publish(p_ref jsonb, p_manifest uuid, p_closure bytea) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.expenditure_summary_value(p_input jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.guard_expenditure_summary() FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.lineage_cb1(v jsonb, field_name text, depth integer) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.lineage_digest(domain text, value jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.lock_material_resources(p_plan jsonb, p_output_scope jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.material_closure(p_refs jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.material_reference(v jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.material_use_plan(p_actor bigint, p_business uuid, p_refs jsonb, p_operation text, p_purpose text, p_selection jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.native_source_read_lock(p_sources uuid[]) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.native_source_selection(p_grant bigint) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.producer_dependencies(p_descriptor jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.producer_descriptor(p_ref jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.producer_material(p_ref jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.registered_producer(p_ref jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.registered_producer_fields(p_ref jsonb, p_fields jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.registered_producer_fields_before_activity(p_ref jsonb, p_fields jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.registered_producer_publish(p_ref jsonb, p_manifest uuid, p_closure bytea) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.require_business_source_creator(p_business bigint, p_actor bigint, p_session text, p_selection jsonb, p_fresh boolean) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.require_material_use(p_actor bigint, p_business bigint, p_session text, p_operation text, p_plan jsonb, p_selection jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.require_native_source_grant(p_grant bigint, p_actor bigint, p_session text, p_selection jsonb, p_owner boolean, p_fresh boolean) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.resolve_material(p_ref jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.resource_dependency_digest(v jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.source_fact_command(p_session text, p_command uuid, p_source uuid, p_effect text, p_payload jsonb, p_expected bigint, p_selection jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.source_grant_issue(p_session text, p_command uuid, p_source uuid, p_payload jsonb, p_expected bigint, p_selection jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION builderad_private.source_right_command(p_session text, p_command uuid, p_source uuid, p_effect text, p_payload jsonb, p_expected bigint, p_selection jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.builderad_v2_business_source_bootstrap(p_session text, p_business uuid, p_command uuid, p_source uuid, p_payload jsonb, p_selection jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.builderad_v2_business_source_bootstrap(p_session text, p_business uuid, p_command uuid, p_source uuid, p_payload jsonb, p_selection jsonb) TO builderad_app;
-REVOKE ALL ON FUNCTION public.builderad_v2_business_source_choices(p_session text, p_business uuid, p_read bigint, p_after bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.builderad_v2_business_source_choices(p_session text, p_business uuid, p_read bigint, p_after bigint) TO builderad_app;
-REVOKE ALL ON FUNCTION public.builderad_v2_business_source_owner(p_session text, p_business uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.builderad_v2_business_source_owner(p_session text, p_business uuid) TO builderad_app;
-REVOKE ALL ON FUNCTION public.builderad_v2_data_license_journey(p_session text, p_business uuid, p_access bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.builderad_v2_data_license_journey(p_session text, p_business uuid, p_access bigint) TO builderad_app;
-REVOKE ALL ON FUNCTION public.builderad_v2_expenditure_summary(p_session text, p_business uuid, p_command uuid, p_summary uuid, p_input jsonb, p_license uuid, p_read uuid, p_confirmed boolean, p_until timestamp with time zone, p_consent jsonb, p_selection jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.builderad_v2_expenditure_summary(p_session text, p_business uuid, p_command uuid, p_summary uuid, p_input jsonb, p_license uuid, p_read uuid, p_confirmed boolean, p_until timestamp with time zone, p_consent jsonb, p_selection jsonb) TO builderad_app;
-REVOKE ALL ON FUNCTION public.builderad_v2_scoped_material_publish(p_session text, p_business uuid, p_command uuid, p_ref jsonb, p_dependencies jsonb, p_purpose text, p_recipient uuid, p_selection jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.builderad_v2_scoped_material_publish(p_session text, p_business uuid, p_command uuid, p_ref jsonb, p_dependencies jsonb, p_purpose text, p_recipient uuid, p_selection jsonb) TO builderad_app;
-REVOKE ALL ON FUNCTION public.builderad_v2_scoped_material_read(p_session text, p_business uuid, p_command uuid, p_refs jsonb, p_operation text, p_purpose text, p_recipient uuid, p_selection jsonb) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.builderad_v2_scoped_material_read(p_session text, p_business uuid, p_command uuid, p_refs jsonb, p_operation text, p_purpose text, p_recipient uuid, p_selection jsonb) TO builderad_app;
-REVOKE ALL ON FUNCTION public.builderad_v2_source_choices(p_session text, p_after bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.builderad_v2_source_choices(p_session text, p_after bigint) TO builderad_app;
-REVOKE ALL ON FUNCTION public.builderad_v2_source_surface(p_session text, p_source uuid, p_access bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.builderad_v2_source_surface(p_session text, p_source uuid, p_access bigint) TO builderad_app;

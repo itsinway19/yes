@@ -5585,9 +5585,6 @@ export interface components {
             next_cursor: string | null;
             /** @constant */
             history_scope: "native_business_transitions";
-            has_imported_baseline: boolean;
-            /** @constant */
-            legacy_history: "not_included";
             /** @constant */
             page_limit: 32;
         } | {
@@ -5610,9 +5607,6 @@ export interface components {
             next_cursor: string | null;
             /** @constant */
             history_scope: "native_business_transitions";
-            has_imported_baseline: boolean;
-            /** @constant */
-            legacy_history: "not_included";
             /** @constant */
             page_limit: 32;
         } | {
@@ -5635,9 +5629,6 @@ export interface components {
             next_cursor: string | null;
             /** @constant */
             history_scope: "native_business_transitions";
-            has_imported_baseline: boolean;
-            /** @constant */
-            legacy_history: "not_included";
             /** @constant */
             page_limit: 32;
         } | {
@@ -5660,9 +5651,6 @@ export interface components {
             next_cursor: string | null;
             /** @constant */
             history_scope: "native_business_transitions";
-            has_imported_baseline: boolean;
-            /** @constant */
-            legacy_history: "not_included";
             /** @constant */
             page_limit: 32;
         };
@@ -5693,9 +5681,6 @@ export interface components {
                 next_cursor: string | null;
                 /** @constant */
                 history_scope: "native_business_transitions";
-                has_imported_baseline: boolean;
-                /** @constant */
-                legacy_history: "not_included";
                 /** @constant */
                 page_limit: 32;
             } | {
@@ -5718,9 +5703,6 @@ export interface components {
                 next_cursor: string | null;
                 /** @constant */
                 history_scope: "native_business_transitions";
-                has_imported_baseline: boolean;
-                /** @constant */
-                legacy_history: "not_included";
                 /** @constant */
                 page_limit: 32;
             } | {
@@ -5743,9 +5725,6 @@ export interface components {
                 next_cursor: string | null;
                 /** @constant */
                 history_scope: "native_business_transitions";
-                has_imported_baseline: boolean;
-                /** @constant */
-                legacy_history: "not_included";
                 /** @constant */
                 page_limit: 32;
             } | {
@@ -5768,9 +5747,6 @@ export interface components {
                 next_cursor: string | null;
                 /** @constant */
                 history_scope: "native_business_transitions";
-                has_imported_baseline: boolean;
-                /** @constant */
-                legacy_history: "not_included";
                 /** @constant */
                 page_limit: 32;
             };
@@ -26085,9 +26061,6 @@ export interface operations {
                             next_cursor: string | null;
                             /** @constant */
                             history_scope: "native_business_transitions";
-                            has_imported_baseline: boolean;
-                            /** @constant */
-                            legacy_history: "not_included";
                             /** @constant */
                             page_limit: 32;
                         } | {
@@ -26110,9 +26083,6 @@ export interface operations {
                             next_cursor: string | null;
                             /** @constant */
                             history_scope: "native_business_transitions";
-                            has_imported_baseline: boolean;
-                            /** @constant */
-                            legacy_history: "not_included";
                             /** @constant */
                             page_limit: 32;
                         } | {
@@ -26135,9 +26105,6 @@ export interface operations {
                             next_cursor: string | null;
                             /** @constant */
                             history_scope: "native_business_transitions";
-                            has_imported_baseline: boolean;
-                            /** @constant */
-                            legacy_history: "not_included";
                             /** @constant */
                             page_limit: 32;
                         } | {
@@ -26160,9 +26127,6 @@ export interface operations {
                             next_cursor: string | null;
                             /** @constant */
                             history_scope: "native_business_transitions";
-                            has_imported_baseline: boolean;
-                            /** @constant */
-                            legacy_history: "not_included";
                             /** @constant */
                             page_limit: 32;
                         };

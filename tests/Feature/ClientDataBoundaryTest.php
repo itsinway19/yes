@@ -243,7 +243,7 @@ final class ClientDataBoundaryTest extends TestCase
         $b = $owner->table('businesses')->where('public_id', $business['business_public_id'])->value('id');
         $root = Fixture::root($b, $issuer->id, 'business.link.manage');
         $delegated = app(BusinessScope::class)->grant($this->request($issuer), $business['business_public_id'], (string) Str::uuid(), 'issue', $actor->public_id,
-            'business.link.manage', $root->id, null, 0, null, false, null,
+            'business.link.manage', $root->id, null, 0, null, false,
             ['realm_kind' => 'direct', 'requirements' => [['requirement_kind' => 'business', 'leaf_grant_id' => $root->id]]]);
         $boundary = Fixture::boundary($actor->id);
         $business['grant_refs']['business.link.manage'] = $delegated['grant_id'];

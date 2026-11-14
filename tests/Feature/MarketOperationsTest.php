@@ -5,9 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Security\GrantAuthority;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Tests\Support\DisposableDatabaseReset;
 use Tests\Support\MarketProcessingFixture;
 use Tests\TestCase;
 
@@ -104,7 +102,6 @@ final class MarketOperationsTest extends TestCase
             $this->assertStringNotContainsString($consumer['user']->public_id, json_encode($after));
         }
     }
-
 
     public function test_runtime_has_no_raw_market_table_access_or_unsigned_projection_access(): void
     {

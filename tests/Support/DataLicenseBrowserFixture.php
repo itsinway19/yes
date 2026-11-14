@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\User;
-use App\Providers\Ads\NativeAmount;
 use App\Providers\Ads\Provider;
 use App\Providers\Ads\ProviderReportingEvidence;
 use App\Providers\Ads\ProviderScope;
@@ -12,7 +11,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
-use Tests\Support\BusinessAuthorityFixture;
 use Tests\Support\ProofRedis;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';

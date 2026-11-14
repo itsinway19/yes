@@ -6,16 +6,13 @@ use App\Models\User;
 use App\Providers\Ads\NativeAmount;
 use App\Providers\Ads\Provider;
 use App\Security\SessionAuthority;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
 use Tests\Support\BusinessAuthorityFixture;
 use Tests\Support\BusinessNativeMaterialFixture;
-use Tests\Support\DisposableDatabaseReset;
 use Tests\TestCase;
 
 final class ExpenditureSummaryTest extends TestCase
@@ -34,7 +31,6 @@ final class ExpenditureSummaryTest extends TestCase
         ksort($actual);
         $this->assertSame($expected, $actual);
     }
-
 
     #[DataProvider('providers')]
     public function test_declared_summary_reaches_named_recipient_without_source_rights_and_stops_on_withdrawal(Provider $provider): void

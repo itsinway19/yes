@@ -126,10 +126,10 @@ final class GoogleConnectionController extends Controller
         $response = $this->respond(function () use ($request, $context, $http, $code, $state, $cancelled, &$returnOwner): array {
             [$coordinator, $states, $flows] = $this->configured($http);
             $route = $states->locate($request, $coordinator->configurationBinding(), $state);
-            $returnOwner = $route;
 
-            return $context->runForReference($request, $route, function (NativeSourceOwner $w) use ($request, $coordinator, $states, $flows, $route, $code, $state, $cancelled): array {
+            return $context->runForReference($request, $route, function (NativeSourceOwner $w) use ($request, $coordinator, $states, $flows, $route, $code, $state, $cancelled, &$returnOwner): array {
                 $w->assertBound($route);
+                $returnOwner = $w->reference();
                 if ($cancelled) {
                     $states->consume($request, $route['scope'], $route['access_version'], $coordinator->configurationBinding(), $state);
 

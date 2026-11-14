@@ -1,5 +1,9 @@
 <?php
 
+use Illuminate\Cache\RedisStore;
+use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Session\CacheBasedSessionHandler;
+
 // Used only by the loopback PHP development server, never by public/index.php.
 $root = dirname(__DIR__);
 $public = $root.DIRECTORY_SEPARATOR.'public';
@@ -18,11 +22,13 @@ if ($uri === '/__builderad_local_preview_status') {
         define('LARAVEL_START', microtime(true));
         require $root.'/vendor/autoload.php';
         $app = require $root.'/bootstrap/app.php';
-        $app->make(Illuminate\Contracts\Http\Kernel::class)->bootstrap();
+        $app->make(Kernel::class)->bootstrap();
         $expected = json_decode(file_get_contents($private.'/environment.json'), true, flags: JSON_THROW_ON_ERROR);
         $mismatch = [];
         foreach ($expected as $key => $value) {
-            if ((string) getenv($key) !== (string) $value) $mismatch[] = $key;
+            if ((string) getenv($key) !== (string) $value) {
+                $mismatch[] = $key;
+            }
         }
         $actual = ['APP_KEY' => config('app.key'), 'APP_URL' => config('app.url'), 'APP_ENV' => config('app.env'),
             'PASSKEYS_USER_HANDLE_SECRET' => config('passkeys.user_handle_secret'),
@@ -33,18 +39,26 @@ if ($uri === '/__builderad_local_preview_status') {
             'SESSION_COOKIE' => config('session.cookie'), 'INTERNAL_SESSION_COOKIE' => config('session.internal_cookie'),
             'REDIS_HOST' => config('database.redis.default.host'), 'REDIS_PORT' => config('database.redis.default.port'),
             'REDIS_PREFIX' => config('database.redis.options.prefix'), 'CACHE_STORE' => config('cache.default'), 'QUEUE_CONNECTION' => config('queue.default')];
-        foreach ($actual as $key => $value) if ((string) $value !== (string) ($expected[$key] ?? '')) $mismatch[] = $key;
+        foreach ($actual as $key => $value) {
+            if ((string) $value !== (string) ($expected[$key] ?? '')) {
+                $mismatch[] = $key;
+            }
+        }
         $roles = [];
         foreach (['pgsql' => 'builderad_app', 'pgsql_authority' => 'builderad_authority', 'pgsql_migrations' => 'builderad_owner'] as $name => $role) {
             $connection = $app['db']->connection($name);
             if ($connection->getConfig('database') !== 'builderad_dev' || (string) $connection->getConfig('port') !== '5432'
-                || $connection->getConfig('host') !== '127.0.0.1') throw new RuntimeException('Unexpected database target');
+                || $connection->getConfig('host') !== '127.0.0.1') {
+                throw new RuntimeException('Unexpected database target');
+            }
             $roles[$name] = $connection->transaction(function () use ($connection) {
                 $connection->statement('SET TRANSACTION READ ONLY');
 
                 return $connection->selectOne('SELECT current_user AS role,current_database() AS database,inet_server_addr()::text AS host,inet_server_port() AS port');
             });
-            if ($roles[$name]->role !== $role || $roles[$name]->database !== 'builderad_dev' || (int) $roles[$name]->port !== 5432) throw new RuntimeException('Unexpected database identity');
+            if ($roles[$name]->role !== $role || $roles[$name]->database !== 'builderad_dev' || (int) $roles[$name]->port !== 5432) {
+                throw new RuntimeException('Unexpected database identity');
+            }
         }
         $redis = $app['redis']->connection();
         $redis->ping();
@@ -52,9 +66,9 @@ if ($uri === '/__builderad_local_preview_status') {
         $info = $redis->client()->executeRaw(['INFO', 'server']);
         preg_match('/^process_id:(\d+)/m', $info, $redisPid);
         $session = $app['session']->driver()->getHandler();
-        $stores = $session instanceof Illuminate\Session\CacheBasedSessionHandler
-            && $session->getCache()->getStore() instanceof Illuminate\Cache\RedisStore
-            && $app['cache']->store()->getStore() instanceof Illuminate\Cache\RedisStore;
+        $stores = $session instanceof CacheBasedSessionHandler
+            && $session->getCache()->getStore() instanceof RedisStore
+            && $app['cache']->store()->getStore() instanceof RedisStore;
         $rp = config('passkeys.relying_party_id');
         $origins = config('passkeys.allowed_origins');
         $valid = $mismatch === [] && $stores && $rp === 'localhost' && $origins === ['http://localhost:8038'];
@@ -71,5 +85,7 @@ if ($uri === '/__builderad_local_preview_status') {
     exit;
 }
 $file = realpath($public.$uri);
-if ($uri !== '/' && $file !== false && str_starts_with($file, $public.DIRECTORY_SEPARATOR) && is_file($file)) return false;
+if ($uri !== '/' && $file !== false && str_starts_with($file, $public.DIRECTORY_SEPARATOR) && is_file($file)) {
+    return false;
+}
 require $public.DIRECTORY_SEPARATOR.'index.php';

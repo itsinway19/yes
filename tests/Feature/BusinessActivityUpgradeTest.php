@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\DisposableDatabaseReset;
@@ -43,5 +42,4 @@ final class BusinessActivityUpgradeTest extends TestCase
         $this->assertNotNull($owner->scalar("SELECT to_regclass('public.business_practice_assessments')"));
         app(DisposableDatabaseReset::class)->assertInstalledCatalog();
     }
-
 }

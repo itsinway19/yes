@@ -39,8 +39,6 @@ BEGIN
   p_payload-ARRAY['resource','operation','purpose','expected_version'],(p_payload->>'expected_version')::bigint,selection);
 END $$;
 ALTER FUNCTION public.builderad_business_source_effect(bigint,text,uuid,uuid,text,jsonb) OWNER TO builderad_scope_executor;
-REVOKE ALL ON FUNCTION public.builderad_business_source_effect(bigint,text,uuid,uuid,text,jsonb) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.builderad_business_source_effect(bigint,text,uuid,uuid,text,jsonb) TO builderad_app;
 
 CREATE FUNCTION public.builderad_business_source_authority(p_business bigint,p_session text,p_payload jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
@@ -53,6 +51,16 @@ BEGIN
  SELECT id INTO manager FROM public.security_action_grants WHERE business_id=p_business AND subject_user_id=actor AND scope_kind='source'
   AND source_target_id=bound_source AND action='source.manage' AND source_resource=p_payload->>'resource'
   AND source_operation=p_payload->>'operation' AND source_purpose=p_payload->>'purpose' AND status='active' AND revoked_at IS NULL;
+ IF manager IS NULL AND p_payload->>'decision'='authorize' AND p_payload->>'action'='source.manage' THEN
+  -- Explicit custody enrollment for a Meta login source does not follow from Connect.
+  SELECT g.id INTO manager FROM public.security_action_grants g JOIN public.source_registry s ON s.id=g.source_target_id
+  WHERE g.business_id=p_business AND g.subject_user_id=actor AND g.scope_kind='source'
+   AND g.source_target_id=bound_source AND g.action='source.register' AND g.status='active' AND g.revoked_at IS NULL
+   AND g.source_resource=p_payload->>'resource' AND g.source_operation=p_payload->>'operation' AND g.source_purpose=p_payload->>'purpose'
+   AND s.business_id=p_business AND s.custody_kind='business_native' AND s.family='meta'
+   AND s.namespace='facebook_login_configuration' AND s.declared_external_id=g.source_resource
+   AND g.source_operation='discovery.read' AND g.source_purpose='advertising_analysis';
+ END IF;
  IF manager IS NULL THEN RAISE EXCEPTION 'Explicit source management authority required' USING ERRCODE='42501'; END IF;
  selection:=builderad_private.native_source_selection(manager);
  SELECT * INTO prior_command FROM public.business_command_receipts WHERE command_id=decision_command;
@@ -83,5 +91,3 @@ BEGIN
  RETURN result;
 END $$;
 ALTER FUNCTION public.builderad_business_source_authority(bigint,text,jsonb) OWNER TO builderad_scope_executor;
-REVOKE ALL ON FUNCTION public.builderad_business_source_authority(bigint,text,jsonb) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.builderad_business_source_authority(bigint,text,jsonb) TO builderad_app;

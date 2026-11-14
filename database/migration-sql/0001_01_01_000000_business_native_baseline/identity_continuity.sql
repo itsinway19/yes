@@ -24,7 +24,6 @@ BEGIN
  RETURN NOT pending;
 END $$;
 ALTER FUNCTION builderad_private.identity_generation_continuity(bigint,bigint,bigint) OWNER TO builderad_scope_executor;
-REVOKE ALL ON FUNCTION builderad_private.identity_generation_continuity(bigint,bigint,bigint) FROM PUBLIC;
 
 CREATE FUNCTION builderad_private.requalify_business_identity(p_session text)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,builderad_private,pg_temp AS $$
@@ -109,7 +108,6 @@ BEGIN
  END LOOP;
 END $$;
 ALTER FUNCTION builderad_private.requalify_business_identity(text) OWNER TO builderad_scope_executor;
-REVOKE ALL ON FUNCTION builderad_private.requalify_business_identity(text) FROM PUBLIC;
 
 CREATE FUNCTION public.builderad_founder_bootstrap_guard(p_user bigint)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,builderad_private,pg_temp AS $$

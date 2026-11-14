@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\InquiryEvidenceFixture;
@@ -19,7 +20,7 @@ final class InquiryEvidenceUpgradeTest extends TestCase
         try {
             DB::usingConnection('pgsql_migrations', fn () => DB::connection('pgsql_migrations')->transaction(fn () => $migration->down()));
             $this->fail('Populated evidence was destructively rolled back.');
-        } catch (\Illuminate\Database\QueryException $error) {
+        } catch (QueryException $error) {
             $this->assertStringContainsString('forward recovery', $error->getMessage());
         }
         $this->assertSame(1, DB::connection('pgsql_migrations')->table('inquiry_evidence_revisions')->count());

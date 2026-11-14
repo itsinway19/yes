@@ -2,14 +2,18 @@
 
 namespace Tests\Feature\Security;
 
+use App\Foundation\Tenancy\PrincipalContext;
 use App\Models\User;
 use App\Security\LifecycleAuthority;
+use App\Security\SessionAuthority;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Symfony\Component\Process\Process;
 use Tests\Support\ApplicationContractAssertions;
+use Tests\Support\BusinessAuthorityFixture;
 use Tests\Support\DisposableDatabaseReset;
 use Tests\TestCase;
 
@@ -109,7 +113,7 @@ class CustomerAdministrationTest extends TestCase
         [$customer, $business] = $this->business();
         $target = $business['business_public_id'];
         $businessId = DB::connection('pgsql_migrations')->table('businesses')->where('public_id', $target)->value('id');
-        $lifecycle = \Tests\Support\BusinessAuthorityFixture::root($businessId, $customer->id, 'business.lifecycle.manage');
+        $lifecycle = BusinessAuthorityFixture::root($businessId, $customer->id, 'business.lifecycle.manage');
         $selection = ['realm_kind' => 'direct', 'requirements' => [[
             'requirement_kind' => 'business', 'leaf_grant_id' => (int) $lifecycle->id,
         ]]];
@@ -145,24 +149,28 @@ class CustomerAdministrationTest extends TestCase
         [$customer, $business] = $this->business();
         $db = DB::connection('pgsql_migrations');
         $id = $db->table('businesses')->where('public_id', $business['business_public_id'])->value('id');
-        $grant = \Tests\Support\BusinessAuthorityFixture::root($id, $customer->id, 'business.lifecycle.manage');
-        $request = \Illuminate\Http\Request::create('/api/businesses');
+        $grant = BusinessAuthorityFixture::root($id, $customer->id, 'business.lifecycle.manage');
+        $request = Request::create('/api/businesses');
         $request->setLaravelSession(app('session')->driver());
         $run = 'founder-wait-'.Str::uuid7();
         $path = storage_path('framework/testing/'.$run.'.json');
         $input = ['run' => $run, 'ready' => $path.'.ready', 'release' => $path.'.release',
             'operation' => 'lifecycle', 'actor' => $customer->id, 'business' => $business['business_public_id'],
-            'session' => \App\Security\SessionAuthority::sessionKey($request), 'command' => (string) Str::uuid7(),
+            'session' => SessionAuthority::sessionKey($request), 'command' => (string) Str::uuid7(),
             'effect' => 'archive', 'expected' => 1, 'selection' => ['realm_kind' => 'direct', 'requirements' => [
                 ['requirement_kind' => 'business', 'leaf_grant_id' => $grant->id]]]];
         file_put_contents($path, json_encode($input, JSON_THROW_ON_ERROR));
-        $worker = new \Symfony\Component\Process\Process([PHP_BINARY, base_path('tests/BusinessScopeCommandWorker.php'), $path], base_path());
+        $worker = new Process([PHP_BINARY, base_path('tests/BusinessScopeCommandWorker.php'), $path], base_path());
         $worker->setTimeout(45);
         $wait = function (callable $probe) use ($worker) {
             $until = microtime(true) + 15;
             do {
-                if ($value = $probe()) { return $value; }
-                if (! $worker->isRunning()) { throw new \RuntimeException($worker->getOutput().$worker->getErrorOutput()); }
+                if ($value = $probe()) {
+                    return $value;
+                }
+                if (! $worker->isRunning()) {
+                    throw new \RuntimeException($worker->getOutput().$worker->getErrorOutput());
+                }
                 usleep(10000);
             } while (microtime(true) < $until);
             throw new \RuntimeException('Required Founder row contention was not observed.');
@@ -170,16 +178,20 @@ class CustomerAdministrationTest extends TestCase
         $evidence = [];
         try {
             $worker->start();
-            $ready = $wait(function () use ($input) { clearstatcache(true, $input['ready']); return is_file($input['ready']) ? json_decode(file_get_contents($input['ready']), true) : false; });
+            $ready = $wait(function () use ($input) {
+                clearstatcache(true, $input['ready']);
+
+                return is_file($input['ready']) ? json_decode(file_get_contents($input['ready']), true) : false;
+            });
             $founder = $this->staff('founder');
             $this->actingAsInternal($founder);
             DB::beginTransaction();
             $blocker = (int) DB::scalar('SELECT pg_backend_pid()');
-            app(\App\Foundation\Tenancy\PrincipalContext::class)->activate($founder);
-            $founderRequest = \Illuminate\Http\Request::create('/internal/administration/customers/status');
+            app(PrincipalContext::class)->activate($founder);
+            $founderRequest = Request::create('/internal/administration/customers/status');
             $founderRequest->setLaravelSession(app('session')->driver());
             $result = json_decode(DB::scalar('SELECT builderad_customer_status(?,?::uuid,?,?::uuid,?,?,?,?)', [
-                \App\Security\SessionAuthority::sessionKey($founderRequest), (string) Str::uuid7(), 'businesses',
+                SessionAuthority::sessionKey($founderRequest), (string) Str::uuid7(), 'businesses',
                 $business['business_public_id'], 'suspend', 'concurrent_founder_decision', 'declared_draft', 0]), true, flags: JSON_THROW_ON_ERROR);
             $this->assertSame('suspended', $result['status']);
             file_put_contents($input['release'], 'go');
@@ -196,11 +208,19 @@ class CustomerAdministrationTest extends TestCase
             $this->assertSame(1, $db->table('customer_administration_events')->where('business_id', $id)->count());
             $this->assertSame('active', $db->table('security_action_grants')->where('id', $grant->id)->value('status'));
         } finally {
-            if (DB::transactionLevel()) { DB::rollBack(); }
-            if ($worker->isRunning()) { $worker->stop(); }
+            if (DB::transactionLevel()) {
+                DB::rollBack();
+            }
+            if ($worker->isRunning()) {
+                $worker->stop();
+            }
             $evidence['worker'] = ['stdout' => $worker->getOutput(), 'stderr' => $worker->getErrorOutput(), 'exit' => $worker->getExitCode()];
             file_put_contents($path.'.evidence.json', json_encode($evidence, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
-            foreach ([$path, $input['ready'], $input['release']] as $file) { if (is_file($file)) { unlink($file); } }
+            foreach ([$path, $input['ready'], $input['release']] as $file) {
+                if (is_file($file)) {
+                    unlink($file);
+                }
+            }
         }
     }
 
