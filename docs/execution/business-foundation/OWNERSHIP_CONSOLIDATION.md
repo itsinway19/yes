@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # Business-first ownership consolidation — 2026-11-10
 
 Owner authorization: the current chat accepts Business as the work unit, including an agency Business, and authorizes closing dependencies then incremental implementation in the existing dirty tree. Codex execution was explicitly accepted. No publication, main merge or production migration is authorized.

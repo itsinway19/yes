@@ -1,67 +1,29 @@
-# BuilderAd visual context
+# BuilderAd — runtime appearance context
 
-## Governing clean-product clarification — 2026-11-10
+**RETAIN_TECHNICAL_CONTRACT.** This file records existing presentation owners for UI work. It is not product governance, a screen backlog or a continuation of historical navigation plans. [Governing architecture](docs/architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) owns design; [current implementation](docs/architecture/CURRENT_IMPLEMENTATION.md) owns source/evidence claims; [engineering standards](docs/engineering/ENGINEERING_STANDARDS.md#user-experience-and-lifecycle) owns lifecycle and verification guidance.
 
-There is no public Workspace or previous-record area. Former `/workspaces/**` HTML entry points redirect to the Business list. Business owns the visible team, client assignments and native source tasks. Keep technical historical custody out of ordinary advertiser navigation. This supersedes the conditional previous-resource entry described below. No database history is deleted or inferred ownership migrated by this presentation change.
+## Audience and structure
 
-## Unified Business product — Owner clarification 2026-11-10
+The public entry is Arabic-first marketing; advertiser and internal administration are task-oriented applications. Arabic RTL and English LTR share behavior. Public copy distinguishes available capabilities from development; no fabricated metrics, testimonials, provider readiness or commercial claims.
 
-One advertiser surface serves all Businesses, including agencies. Business mandates are available through current qualified rights, without an agency account type or separate agency dashboard. Use “التفويض بين الأنشطة” in the shared access task and distinguish delegated paths in the Business switcher. Employee job titles do not imply unimplemented advertising, sales, private-data or Source permissions. Future commercial plans may limit creation counts or external management, independently of employee/resource authority; no undefined quota or unlimited offering is presented now. Previous Workspace resources retain qualified historical access and a conditional entry, without a parallel public creation flow.
+Business is the advertiser's selected operating context. Internal administration has its own navigation. A public Workspace or previous-record navigation area must not be recreated from an old prototype. A visible task, logo, job title, agency declaration or Source connection grants no data access. Current routes and server projections determine what can be shown.
 
-## Advertiser internal experience — Owner direction 2026-11-09
+## Existing owners
 
-The Owner's internal redesign direction supersedes the earlier overview-only orientation. The existing qualified Business is presented through four connected destinations. Overview combines the declared business brief, a state-dependent next task and preparation gaps. Markets and goals starts with saved summaries and opens one edit task at a time. Intent editing advances through outcome, optional time/detail and the required confirmations. Sources presents the five actual platform states with contextual data-permission and shared-source tasks. Daily business information and practices lead Management, while history has its own intentional destination.
+| Concern | Runtime owner |
+|---|---|
+| Published appearance | [GlobalAppearance](app/Appearance/GlobalAppearance.php), existing color administration, published CSS variables. Do not create another color/settings store. |
+| Brand | [BuilderAd mark](public/brand/builderad-mark.svg), [BrandLogo](resources/js/Components/BrandLogo.vue) and [public brand partial](resources/views/public/brand.blade.php). |
+| Light/dark preference | [theme.js](public/brand/theme.js) and [theme.css](public/brand/theme.css). Preference is appearance only, not identity or protected data. System preference applies until explicit choice; storage denial must not break rendering. |
+| Advertiser layout/tasks | Existing Business views, shared controls and [workspace.css](resources/js/business-foundation/workspace.css). Reuse tokens/layout instead of a new design system or historical section count. |
+| Identity/navigation/private-state lifetime | Existing SPA transport/router/presentation/browser lifecycle and server authority, as mapped in Engineering standards. |
 
-BusinessTaskRow and workspace.css provide the shared task/action treatment using the established appearance tokens, 14px body, 22–24px headings and 44px mobile actions. Natural document scrolling, the bounded sidebar and the existing mobile drawer remain the layout owners. Actual account connection, data-use and publication states retain their independent contracts. Preparation is a summary of declared details rather than a performance score.
+## Appearance and interaction constraints
 
-## Accepted Vue integration — 2026-11-05
+Preserve the compact application typography (14px body, 22–24px headings), natural document scrolling, bounded sidebar/mobile drawer and 44px primary mobile targets. Use the existing Arabic-capable system fonts, logical layout properties, visible focus, keyboard/native semantics and reduced-motion behavior. Preserve readable light/dark contrast and shared scrollbars. Do not add a display font or dependency just to restyle an existing task.
 
-The Owner accepted `builderad-ui-concept-20261105` as the visual/navigation reference; actual implemented capabilities and server authority govern content. The Business switcher belongs directly beneath the sidebar brand; mobile shows the selected name and opens the qualified picker in the navigation drawer. The overview presents available work and review without repeating the Business profile. Internal administration retains independent navigation and no Business switcher. Keep the existing theme/token path, compact14px body,22–24px headings, natural page scrolling, RTL/LTR and44px primary mobile targets.
+Keep evidence limits, unavailable/denied/unknown states, pending command identity and recovery visible in both locales. Preparation is a summary of declared context, not a performance score. Forms preserve original edit baselines and private drafts only within the existing qualification/lifecycle rules. Returning to a panel is not permission to redisplay retained protected data.
 
-Current source ownership supersedes earlier organizational-only descriptions below: qualified Business-native administration works without creating a Workspace; shared organizational sources retain their Workspace owner and separately qualified return path. Provider connection, source administration/read rights and Business data-use remain separate. A logo, shared membership or successful connection grants no other right. No prototype personas, fabricated metrics or future integrations enter production. Stage evidence lives in `docs/execution/structural-foundation/VUE_UI_INTEGRATION.md`.
+For a changed user job, verify actual placement, audience/Business context, authority, entitlement where applicable, RTL/LTR, relevant viewports, focus and failure/recovery. Backend/API proof alone is not browser acceptance. Do not generate images or screenshots without Owner approval.
 
-## Advertiser task shell — Owner implementation mandate 2026-11-04
-
-The current mandate supersedes the earlier prototype freeze for the bounded implemented advertiser surfaces. One quiet, compact Vue shell keeps Business as the selected work context; organizational team/resource administration is secondary. Existing markets, declared goals, information, qualified team, Purpose, history and data owners remain intact. All five supported advertising-platform entries and existing brands appear inside the Business even before a connection exists. Their status and operational actions require a current server-qualified account-administration resource; a platform logo is never evidence of connection, data-use permission, readiness, or results.
-
-Use the existing14px body and22–24px headings, restrained dividers and brand tokens; no new display font, decorative imagery, metric cards or color system. The signature is the clear Business identity and recognizable platform entries alongside actual available work. `GlobalAppearance → public/brand/theme.css → advertiser.css/workspace.css → shared controls` remains the runtime token path (runtime ownership model B). Arabic RTL and English LTR share behavior, including focus, failure and recovery. Mobile navigation collapses; content keeps natural document scrolling. Primary touch actions retain44px targets.
-
-The former seven-section product map remains a capability-direction reference, not a claim that all destinations have been delivered. Current navigation names implemented work. Organization/platform navigation retains an explicit return to the re-qualified Business. Durable behavior is in UX-CONTRACT.md; actual evidence is in the execution progress record.
-
-## Canonical Business and previous Workspace records — 2026-11-03
-
-Current Business Sources reads only source metadata the operator can manage in a Workspace explicitly linked to the selected Business. Connection custody and provider actions stay in that Workspace; customer-data use still needs its independent qualified scope. A Business-only agency client sees no private agency source metadata. Advanced scope administration and unresolved-command reopening remain available. Connection readiness is never inferred from source registration.
-
-Independent Business is the commercial fact surface. Its source/data-use and advertising-purpose owners remain the existing qualified components, now discoverable as Sources and data and Business settings → Advertising purposes. Workspace connections remain operational under their existing owner. Previous Workspace commercial profile/goals/purposes stay reachable in a collapsed Previous workspace records group, open for its active route, with a shared notice explaining that edits do not automatically update an independent Business. No inferred mapping, migration, retirement, duplicate writer or shared-source authority is implied. Reuse the compact theme, sidebar and native details elements.
-
-## Actual advertiser presentation — 2026-11-03 continuation
-
-The native Vue Business list/create/workspace and source/data-rights pages now use `AdvertiserWorkspaceLayout.vue` and scoped `advertiser.css`, with compact shared utility controls in `spa/main.ts`. Typography is 14px base, 22–24px page headings, readable secondary text and compact desktop controls, retaining 44px mobile targets. Existing brand/theme/locale and private presentation owners remain authoritative. The seven-plus-two map uses real destinations and a collapsed informative future group; no unavailable commercial service is fabricated. BF03 lives under Business settings → Data and declarations. See the [current execution evidence](docs/execution/structural-foundation/IMPLEMENTATION_PROGRESS.md); rendered visual acceptance remains separate.
-
-## Advertiser baseline freeze — 2026-11-03
-
-The latest Owner-supplied `BuilderAd_Advertiser_Workspace_Prototype_AR(3).html` is the retained visual source for the [advertiser target contract](docs/execution/structural-foundation/ADVERTISER_UX_BASELINE.md). Its [corrected local reference](designs/builderad-ux-baseline-v1/index.html) preserves the compact layout while aligning exact navigation names and removing prototype behaviors that contradict current semantics. Source and final provenance/verification are [recorded separately](designs/builderad-ux-baseline-v1/VERIFICATION.md). Earlier design variants remain historical alternatives, not concurrent implementation references.
-
-The implementation contract uses shared typography/spacing/control roles, one navigation hierarchy, existing brand/theme owners, accessible local navigation and explicit evidence states. Do not improvise per-page styles or rename/redistribute sections for visual preference. This freeze is a design direction and reviewable artifact; rendered quality, real Vue integration and browser acceptance remain separate pending evidence. Existing runtime ownership and already verified behavior below remain unchanged by this documentary stage.
-
-## Register and audience
-Hybrid: `/` is a public Arabic-first marketing entry; authenticated advertiser and internal administration remain task-oriented applications. Arabic RTL and complete English LTR are peers. The public page makes availability explicit; domain internals are not product copy.
-
-## Identity and token ownership
-`App/Appearance/GlobalAppearance.php` owns published primary `#155f53` and secondary `#334b73`, their contrast-tested foregrounds and inks. Existing color administration stays authoritative; no second color settings store. The new shared mark is `public/brand/builderad-mark.svg`, paired with the BuilderAd wordmark in `BrandLogo.vue` and `public/brand.blade.php`. Never use the framework's ApplicationLogo as BuilderAd branding.
-
-`public/brand/theme.css` adapts existing tokens for light/dark display: daytime paper `#ffffff`, pale canvas `#f4f8f9`, ink `#182f39`; night canvas `#101d26`, surface `#192832`, text `#e7eef2`, muted `#b5c6cf`. Published button colors retain their contrast-calculated foregrounds. Night wordmark uses `#b5e4d3` and `#b4c9ed`; the same mark becomes light without changing its geometry. `theme.js` is the sole preference owner, initialized before paint. System preference applies until explicit choice; storage denial does not break rendering. Preference contains no identity or protected state.
-
-## Composition
-Public hero uses a real advertiser reasoning sequence, not fabricated product charts: understand the business, qualify evidence, choose a step. Generous whitespace and a quiet decision-path panel; upcoming capabilities explicitly say in development. No generated imagery, unverified logos/testimonials/numbers or provider promises. Existing administration layout, navigation and form components are retained.
-
-## Typography and accessibility
-Public display: bold Segoe UI/Tahoma; body: Tahoma/Segoe UI/Arial with full Arabic coverage. Wordmark uses Segoe UI; no external font request. Logical layout properties, 390px mobile baseline, no horizontal overflow, visible focus, native semantic controls, reduced-motion support. Shared styles own scrollbars and theme controls. Preserve errors, unknown outcomes and authority denials in both locales.
-
-## Canonical owners
-Runtime appearance: GlobalAppearance → published CSS variables → public styles / app styles / theme adapter. Display preference: public/brand/theme.js. Brand: BrandLogo and public brand partial, same static asset. Application behavior: UX-CONTRACT.md and the existing SPA identity/presentation protocol. Visual changes do not grant authority or advertise future capabilities as available.
-
-
-## Business workspace task organization — 2026-11-01
-
-The advertiser Business detail uses a true activity header and five bounded local task destinations; overview introduces the work, other destinations omit repeated orientation. Inquiry evidence collection stays compact; complete authorized meaning and version history live in an explicit detail view with back/focus context. Forms group business inputs before progressive definition/precision metadata. Existing brand/theme/font owners remain unchanged; `resources/js/business-foundation/workspace.css` consumes their tokens, with wide shell and task-specific form width. No new design system, dependency or global navigation.
+Relevant existing checks: [appearance](tests/appearance.test.mjs), [advertiser workspace](tests/advertiser-workspace.test.mjs), [admin UI](tests/admin-ui.test.mjs), [SPA presentation](tests/spa-presentation.test.mjs), and the separate guarded browser selections. Their presence is not a claim that this documentation task reran them.

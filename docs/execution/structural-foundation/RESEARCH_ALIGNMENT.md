@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # مطابقة حصيلة البحث مع رؤية BuilderAd — دفعة تراكمية أولى
 
 **1 نوفمبر 2026 · ضمن BA-STRUCTURAL-FOUNDATION-001، وليس برنامجًا معماريًا جديدًا.**
@@ -71,4 +74,4 @@ BF03-I01 تبقى توصية غير مفوضة، ولا يستنتج من هذه
 
 ## قبول الدفعة وتطبيق أثرها — 1 نوفمبر 2026
 
-قبل المالك الدفعة الأولى باعتبارها مطابقة جزئية، لا تغطية كل الأصول ولا جاهزية تنفيذ. أُغلقت هذه الدفعة بأعدادها17/188/171، دون فرض مراجعة الملفات المتبقية قبل البناء أو ادعاء أن المراجع التجميعية تستنفد الأبحاث الأصلية. [§8 من مرشح BF03](NEXT_IMPLEMENTATION_PACKAGE.md#8-research-consumption-and-authority-decision-proposal--2026-11-01) يطبق الربط فعليًا على نتائج محددة وعقد السلطة والاختبارات المقترحة، لا يضيف مراجع لزيادة العدد. المراجع المؤثرة خارج العينة تستدعى عند السؤال المرتبط بها، وتبقى خارج أي ادعاء مراجعة شاملة هنا. صلاحيات الحزمة وأولويتها وتنفيذها لم تُعتمد بهذه الإضافة.
+قبل المالك الدفعة الأولى باعتبارها مطابقة جزئية، لا تغطية كل الأصول ولا جاهزية تنفيذ. أُغلقت هذه الدفعة بأعدادها17/188/171، دون فرض مراجعة الملفات المتبقية قبل البناء أو ادعاء أن المراجع التجميعية تستنفد الأبحاث الأصلية. [§8 من مرشح BF03](https://github.com/42Huss/builderad/blob/df863866154f9f723e56cbc7655407e007e964db/docs/execution/structural-foundation/NEXT_IMPLEMENTATION_PACKAGE.md#8-research-consumption-and-authority-decision-proposal--2026-11-01) يطبق الربط فعليًا على نتائج محددة وعقد السلطة والاختبارات المقترحة، لا يضيف مراجع لزيادة العدد. المراجع المؤثرة خارج العينة تستدعى عند السؤال المرتبط بها، وتبقى خارج أي ادعاء مراجعة شاملة هنا. صلاحيات الحزمة وأولويتها وتنفيذها لم تُعتمد بهذه الإضافة.

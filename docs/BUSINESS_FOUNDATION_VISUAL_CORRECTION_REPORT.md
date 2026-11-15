@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # Owner visual correction — 2026-10-03
 
 The user approved reference 2's recognizable provider identity/action hierarchy with reference 1's restrained composition. This pass changes presentation, installs the exact supplied assets, and documents the existing legitimate internal grant path. Source, business type, prior, OAuth and authority semantics remain unchanged. No commit, push or merge.

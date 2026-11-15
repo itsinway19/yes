@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # Business / Workspace authority closure — 2026-11-11
 
 Scope: the Owner's authority-closure brief and mandatory historical-rights/custodian annex. Same dirty worktree and existing authority graph; no preview/shared-data writes, publication or Foundation rerun. Earlier remediation and Foundation evidence keep their original source scope.

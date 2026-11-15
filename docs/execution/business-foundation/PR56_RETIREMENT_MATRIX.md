@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # PR56 — مصفوفة تقاعد Workspace التجاري
 
 مرجع المقارنة: `881091bfd1b33dca86e8c6d7187c0d7ded6a8268`؛ التنفيذ على شجرة العمل المحلية اللاحقة غير الملتزم بها. هذا سجل تحقق، وليس تفويضًا لحذف البيانات أو افتراض مطابقة بين Workspace وBusiness.

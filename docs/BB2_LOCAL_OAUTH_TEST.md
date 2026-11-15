@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # اختبار OAuth من الجهاز المحلي
 
 المعاينة الحالية على `http://localhost:8128` تبقى كما هي. مشغّل الاختبار المنفصل `storage/framework/testing/LocalOAuthPreview.php` يستمع على `127.0.0.1:8130` ويستعمل قاعدة المعاينة الصحيحة `builderad_test`، **وليس قاعدة اختبار جديدة معزولة**. يتحقق من هويتي `builderad_app` و`builderad_authority` دون ترحيل أو إنشاء حساب أو تغيير مفاتيح قاعدة البيانات. الاستخدام الفعلي للتطبيق قد يكتب جلسات/حسابات/سجلات ربط في هذه القاعدة؛ فحص `--check` وحده لا يكتب إليها.

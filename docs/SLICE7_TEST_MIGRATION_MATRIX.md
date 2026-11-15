@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # Slice 7 test migration ledger
 
 Checkpoint: `24ffeb843325588c3db53685ee32da5a45d12088`. No production edits authorized by this ledger.

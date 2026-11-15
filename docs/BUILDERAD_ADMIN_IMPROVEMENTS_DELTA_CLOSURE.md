@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # Administration improvements delta closure
 
 Date: 2026-10-21. Baseline: `4fa894c9e72ee4e9f01d5edaf38b01d50cbbeb64`.

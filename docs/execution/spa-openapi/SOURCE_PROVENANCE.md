@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # SOURCE_PROVENANCE
 
 Base/current/source HEAD: `580837d334ac703209644ffff54bb6d05a62a0c0`. Base tree: `5706ebc15adcb0bda4ae2a1c53f7ba335ecbc3ac`. Current branch: `codex/ba-spa-openapi-001`. All three trees initially clean except the recorded source WIP. Base checkout read-only inspection confirmed HEAD/tree and clean status. No fetch/reset/commit/staging/push/merge/PR.

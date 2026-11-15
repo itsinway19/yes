@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # D2 â€” bounded market processing
 
 Baseline: `129846fd9da37b6095a95241da7fb5839322f2d0` (merged PR #50), clean detached D2 worktree. Owner requested evaluation of the supplied opinions and implementation here. D1 packaging/review-before-commit proposals describe an obsolete pre-merge state. No external plan edits, D3, real acquisition, publication or deployment are authorized by this record.

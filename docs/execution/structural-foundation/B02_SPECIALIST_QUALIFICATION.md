@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # B02 — تأهيل المعرفة المتخصصة لقراءة إعداد الاستهداف وتفسيره
 
 **الإصدار:** v1.1 / 1 نوفمبر 2026 / Europe/Istanbul. **المرجع:** البرنامج المقبول v1.2 وتوجيه المالك بحماية الرؤية الإقليمية وعمق البحث. **الشجرة:** ba-commercial-expertise-001، HEAD `c747f6d8a8f2011fa5dcc368da2aa4e8449e0565`.

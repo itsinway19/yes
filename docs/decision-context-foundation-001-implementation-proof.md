@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # Decision Context Foundation 001 — implementation and lock-repair evidence
 
 Date: 2026-10-04. Current status: IMPLEMENTED_AND_PROVEN — all13 approved tasks and bounded lock-order repair complete; fresh independent final review PASS. Ready for Owner patch review. Original STOP and failed candidates below are historical evidence, not current blockers.
@@ -63,11 +66,11 @@ Thus two signed transactions can each hold the shared Workspace row before eithe
 
 All paths are inside this worktree:
 
-- [PID, transaction, lock and final-state evidence](../storage/framework/testing/dtm-lock-a59a5741-5cef-4086-9f0b-224cdc5ddcf6.json).
-- [JUnit results](../storage/framework/testing/dtm-db-66854db9-47dd-4afa-a386-4fe6e9f59064/results.xml).
-- [PostgreSQL deadlock log](../storage/framework/testing/dtm-db-66854db9-47dd-4afa-a386-4fe6e9f59064/postgres.log).
-- [Focused combined run log](../.superpowers/sdd/2026-10-04-declared-target-markets/task1-lock-proof.log).
-- [Execution ledger](../.superpowers/sdd/2026-10-04-declared-target-markets/progress.md).
+- PID, transaction, lock and final-state evidence — `UNKNOWN: historical artifact unavailable here; ../storage/framework/testing/dtm-lock-a59a5741-5cef-4086-9f0b-224cdc5ddcf6.json`.
+- JUnit results — `UNKNOWN: historical artifact unavailable here; ../storage/framework/testing/dtm-db-66854db9-47dd-4afa-a386-4fe6e9f59064/results.xml`.
+- PostgreSQL deadlock log — `UNKNOWN: historical artifact unavailable here; ../storage/framework/testing/dtm-db-66854db9-47dd-4afa-a386-4fe6e9f59064/postgres.log`.
+- Focused combined run log — `UNKNOWN: historical artifact unavailable here; ../.superpowers/sdd/2026-10-04-declared-target-markets/task1-lock-proof.log`.
+- Execution ledger — `UNKNOWN: historical artifact unavailable here; ../.superpowers/sdd/2026-10-04-declared-target-markets/progress.md`.
 
 Raw records contain synthetic test-session identifiers only; fixture files passed to workers were removed after the test. Cluster data directories were cleaned; logs/evidence retained.
 

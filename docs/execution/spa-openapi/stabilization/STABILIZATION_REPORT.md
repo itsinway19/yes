@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # تثبيت ومراجعة دفعة Goals SPA + OpenAPI
 
 التاريخ: 2026-10-17. التنفيذ: `C:/dev/builderad-worktrees/ba-spa-openapi-001`، الفرع `codex/ba-spa-openapi-001`. المرجع `C:/dev/builderad-worktrees/ba-vue-spa-001` ظل للقراءة فقط.
@@ -78,6 +81,6 @@ B/C محجوبتان للأسباب الأصلية،وA محلي ضمن نطاق
 
 ## Draft PR وCI والإذن المتبقي
 
-مسودة [DRAFT_PR.md](DRAFT_PR.md) وخطة [CI_PLAN.md](CI_PLAN.md) جاهزتان محليًا. لا يوجد PR جديد على GitHub ولا CI جديد للـCommits. يلزم إذن صريح لـ**Push الفرع وإنشاء Draft PR خاص**؛ولا يلزم فتح Commit جديد أو تعديل التطبيق للحصول على تلك الموافقة.
+مسودة [DRAFT_PR.md](DRAFT_PR.md) وخطة [CI_PLAN.md](https://github.com/42Huss/builderad/blob/df863866154f9f723e56cbc7655407e007e964db/docs/execution/spa-openapi/stabilization/CI_PLAN.md) جاهزتان محليًا. لا يوجد PR جديد على GitHub ولا CI جديد للـCommits. يلزم إذن صريح لـ**Push الفرع وإنشاء Draft PR خاص**؛ولا يلزم فتح Commit جديد أو تعديل التطبيق للحصول على تلك الموافقة.
 
 Workflow الحالي يعمل على PR نحو main،بينما push لهذا الفرع وحده لا يطابق push-to-main trigger. بعد الإذن يجب التحقق من private visibility والـhead/base الحاليين ومتطلبات secrets/services ثم تسجيل run URL والـcheckout/merge SHA الفعلي. إعداد workflow محلي لا يعد تشغيل CI،ونجاح merge-ref لا يثبت تلقائيًا future main أو الإنتاج. لا Merge أو نشر أو تعديل branch protection أو waiver لـB/C ضمن هذا التكليف.

@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # FOUNDATION-FAILURES-CLOSURE-01 — 2026-11-11
 
 **TARGETED_FAILURES_VERIFIED** — final official `-Phase Focused` run: **18 passed, 388 assertions, 0 failures/errors/skips**, 282.11s. All11 original class/method pairs occur exactly once and pass;7 directly affected checks also pass. Source unchanged during the final run: `True`. This is not `FOUNDATION_PASS`.
