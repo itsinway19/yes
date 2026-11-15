@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 Goals can run through an opt-in Vue Router/TanStack Query interface using an OpenAPI-generated TypeScript client, while preserving the existing Laravel Goals writer, CAS, WorkspaceContext, identity admission and RLS. Existing Inertia routes remain available; `GOALS_SPA_ENABLED` defaults to false. The internal specification stays outside public assets and no documentation endpoint is registered.
 
 The coupled session correction makes renewal cookie-free and bounds owned login cookie retention by the canonical absolute deadline. It preserves legacy conservative bounds and SQL/Redis authority. Drafts, late-read rejection, explicit conflict review and uncertain-save messaging remain in place; writes are never automatically retried.

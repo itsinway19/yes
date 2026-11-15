@@ -1,0 +1,2697 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>BuilderAd | المرجع الهندسي الحاكم الموحّد · 2026-11-15</title><meta name="description" content="المواصفة الهندسية الحاكمة الموحدة لـBuilderAd: ملكية المجالات، 18 قيمة، 15 رافعة، 30 وظيفة مرشحة، عقود القدرات والبيانات والتشغيل."><style>/* Design tokens: architectural reading room, deep slate / calibrated turquoise / copper */
+:root{color-scheme:light;--bg:#edf2f5;--paper:#fff;--ink:#172c3d;--muted:#566e7a;--edge:#d7e2e7;--nav:#102a3b;--nav2:#19394c;--navtext:#d7e9ee;--accent:#13776f;--a-soft:#e6f4f0;--copper:#ad7942;--code:#eaf0f3;--tablehead:#ebf3f5;--shadow:0 12px 40px rgba(18,49,65,.04)}
+html[data-theme=dark]{color-scheme:dark;--bg:#0e1b27;--paper:#172a38;--ink:#e9f2f4;--muted:#b0c4cd;--edge:#324956;--nav:#091722;--nav2:#142e3c;--navtext:#e0f2f3;--accent:#77d9ce;--a-soft:#1b3b3f;--copper:#e5b37b;--code:#213845;--tablehead:#233b47;--shadow:none}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:84px}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.95 'Noto Sans Arabic','Segoe UI',Tahoma,sans-serif}button,input{font:inherit}a{color:var(--accent)}button{cursor:pointer}a:focus-visible,button:focus-visible,input:focus-visible,.table-scroll:focus-visible{outline:3px solid var(--copper);outline-offset:3px}
+.layout{display:grid;grid-template-columns:278px minmax(0,1fr);min-height:100vh}.rail{height:100vh;position:sticky;top:0;background:var(--nav);color:var(--navtext);display:flex;flex-direction:column;min-width:0;z-index:21;box-shadow:var(--shadow)}.rail-header{padding:28px 21px 17px;border-bottom:1px solid #446171}.identity{display:flex;align-items:center;gap:12px}.mark{border:1px solid #62bdb2;color:#abf4e9;width:40px;height:40px;display:grid;place-items:center;border-radius:12px;font-weight:900;font-family:system-ui;font-size:20px}.identity h2{margin:0;color:#fff;font:850 19px/1.4 'Noto Kufi Arabic',Tahoma,sans-serif}.identity small{display:block;color:#9ab8c3;font:11px/1.7 system-ui}.rail-title{padding:20px 21px 7px;color:#95b6c3;font-size:11px;letter-spacing:.12em;font-weight:800}.toc{flex:1;overflow-y:auto;padding:0 11px 25px}.toc-item{color:#c3d8e1;text-decoration:none;display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-radius:9px;margin:1px 0;font-size:11.5px;line-height:1.7}.toc-dot{border:1px solid #5d8593;border-radius:50%;width:7px;height:7px;margin-top:8px;flex-shrink:0}.toc-item:hover,.toc-item.active{color:#fff;background:var(--nav2)}.toc-item.active .toc-dot{background:#75ded0;border-color:#75ded0}.rail-bottom{border-top:1px solid #375365;padding:13px 20px 17px;font-size:10px;color:#a9c4ce}
+.content{min-width:0}.toolbar{height:70px;position:sticky;top:0;z-index:15;border-bottom:1px solid var(--edge);background:var(--paper);display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 clamp(17px,3.2vw,53px)}.crumb{font-size:12px;color:var(--muted);white-space:nowrap}.crumb strong{color:var(--ink)}.buttons{display:flex;align-items:center;gap:8px}.icon-button{background:transparent;color:var(--ink);padding:7px 12px;border:1px solid var(--edge);border-radius:9px;font-size:11px}.icon-button:hover{background:var(--a-soft)}#menuToggle{display:none}.doc-shell{max-width:1660px;margin:auto;padding:0 clamp(15px,3.5vw,58px) 75px}.context-band{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap;margin:33px 0 12px}.context-band span{border:1px solid var(--edge);border-radius:8px;padding:6px 11px;background:var(--paper);font-size:11px;color:var(--muted)}.context-band .strong{color:var(--accent);border-color:var(--accent);font-weight:800}.route{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;margin:22px 0 10px;background:var(--nav);border-radius:14px;overflow:hidden}.route span{color:#fff;padding:15px 10px;position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;font-size:11px;font-weight:700;gap:2px;min-height:65px;border-left:1px solid #3f6772}.route span:last-child{border-left:0}.route small{font:11px system-ui;color:#8ad7c8;font-weight:600}
+.searchbar{background:var(--paper);border:1px solid var(--edge);border-radius:14px;padding:13px 15px;margin:19px 0 24px;position:relative}.search-row{display:flex;align-items:center;gap:10px}.search-row label{font-size:12px;font-weight:700;white-space:nowrap}.search-row input{width:100%;min-width:0;border:0;outline:none;color:var(--ink);background:transparent;font-size:13px}.search-row input:focus-visible{outline:none}.searchhint{font-size:10px;color:var(--muted);margin-top:4px}.search-results{display:none;border-top:1px solid var(--edge);margin-top:12px;padding-top:8px;max-height:330px;overflow:auto}.search-results.open{display:block}.search-result{display:block;color:var(--ink);background:var(--bg);padding:9px 12px;margin:5px 0;text-decoration:none;font-size:12px;border-radius:8px}.search-result:hover{background:var(--a-soft)}.search-result em{color:var(--accent);display:block;font-size:10px;font-style:normal}
+.document>section.level1>h1{font:850 clamp(29px,3vw,44px)/1.55 'Noto Kufi Arabic','Noto Sans Arabic',sans-serif;letter-spacing:-.03em;max-width:1100px;margin:28px 0 18px}.document>section.level1>p:first-of-type{border-right:4px solid var(--accent);padding:15px 19px;background:var(--paper);border-radius:10px;margin-bottom:23px;font-size:13px;color:var(--muted)}.document h2{font:800 clamp(20px,2vw,26px)/1.5 'Noto Kufi Arabic','Noto Sans Arabic',sans-serif;color:var(--ink);border-bottom:1px solid var(--edge);padding-bottom:13px;margin:48px 0 19px}.document h3{font:750 17px/1.6 'Noto Kufi Arabic','Noto Sans Arabic',sans-serif;color:var(--ink);margin:29px 0 13px}.document h4{font-size:15px}.document p{margin:12px 0 19px}.document ul,.document ol{padding-right:27px;padding-left:5px}.document li{margin-bottom:5px}.document strong{font-weight:800;color:var(--ink)}.document blockquote{margin:24px 0;background:var(--a-soft);border-right:4px solid var(--accent);padding:14px 25px;border-radius:9px;color:var(--ink)}.document blockquote p{margin:0}.document code{direction:ltr;unicode-bidi:embed;background:var(--code);color:var(--accent);padding:2px 5px;border-radius:5px;font:12px/1.8 ui-monospace,Consolas,monospace;overflow-wrap:anywhere}.document pre{border-radius:12px;border:1px solid var(--edge);background:var(--nav);color:#dff3f1;direction:ltr;text-align:left;overflow:auto;padding:17px 20px;margin:19px 0}.document pre code{background:transparent;color:inherit;padding:0;direction:ltr;white-space:pre;overflow-wrap:normal}.document a{overflow-wrap:anywhere}.document hr{border:0;border-top:1px solid var(--edge);margin:45px 0}.document .table-scroll{min-width:0;overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--edge);border-radius:12px;background:var(--paper);margin:18px 0 26px}.document table{border-collapse:collapse;width:100%;min-width:700px;font-size:12.3px;line-height:1.9}.document thead{background:var(--tablehead)}.document th{font-weight:800;white-space:nowrap;color:var(--ink);text-align:right}.document td,.document th{border-bottom:1px solid var(--edge);padding:11px 13px;vertical-align:top;min-width:95px}.document tbody tr:last-child td{border-bottom:0}.document tbody tr:hover{background:var(--a-soft)}.document .table-scroll:after{content:''}.document section{scroll-margin-top:94px}::selection{background:#abdacf;color:#0b2834}.foot{margin-top:45px;text-align:center;font-size:11px;color:var(--muted);border-top:1px solid var(--edge);padding-top:24px}#up{position:fixed;left:22px;bottom:22px;z-index:10;border:1px solid var(--edge);background:var(--paper);color:var(--accent);padding:9px 15px;border-radius:12px;box-shadow:var(--shadow)}
+@media(max-width:980px){.layout{grid-template-columns:minmax(0,1fr)}.rail{position:fixed;right:0;top:0;width:min(305px,86vw);transform:translateX(105%);transition:transform .22s ease}.rail.open{transform:translateX(0)}#menuToggle{display:inline-block}.doc-shell{padding-right:clamp(14px,3vw,25px);padding-left:clamp(14px,3vw,25px)}.toolbar{padding-inline:17px}.route span{padding:11px 4px}.buttons .print-text{display:none}}
+@media(max-width:540px){body{font-size:13px;line-height:1.85}.crumb{max-width:150px;overflow:hidden;text-overflow:ellipsis}.toolbar{height:64px}.buttons{gap:4px}.icon-button{padding:7px 9px}.context-band{margin-top:18px}.context-band span{font-size:9px;padding:5px 7px}.route{grid-template-columns:repeat(5,minmax(0,1fr));margin:16px 0}.route span{font-size:9px;word-break:normal;line-height:1.5;min-height:74px}.route small{font-size:9px}.document>section.level1>h1{font-size:25px}.document h2{font-size:18px}.document .table-scroll{margin-left:-3px;margin-right:-3px}.document table{font-size:11px}.document td,.document th{padding:8px 9px}.search-row{flex-wrap:wrap}.search-row label{width:100%}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.rail{transition:none}}
+@media print{.rail,.toolbar,.context-band,.route,.searchbar,#up{display:none!important}.layout{display:block}.doc-shell{max-width:none;padding:0}.document h2{page-break-after:avoid}.document .table-scroll{overflow:visible;border:0}.document table{font-size:9pt;min-width:0}.document blockquote{border:1px solid #aaa}.document section{break-inside:auto}body{background:white;color:black;font-size:10pt}}
+</style></head>
+<body><div class="layout">
+<aside class="rail" id="sidebar" aria-label="فهرس الوثيقة"><div class="rail-header"><div class="identity"><div class="mark">BA</div><div><h2>BuilderAd</h2><small>ENGINEERING REFERENCE / 2026.11.15</small></div></div></div><div class="rail-title">الأقسام والملاحق</div><nav class="toc"><a class="toc-item" href="#0-قرار-البناء-في-صفحة-واحدة"><span class="toc-dot"></span><span>0. قرار البناء في صفحة واحدة</span></a>
+<a class="toc-item" href="#1-قاموس-المعاني-والحدود"><span class="toc-dot"></span><span>1. قاموس المعاني والحدود</span></a>
+<a class="toc-item" href="#2-خريطة-الملكية-البرمجية"><span class="toc-dot"></span><span>2. خريطة الملكية البرمجية</span></a>
+<a class="toc-item" href="#3-ترابط-الهدف-والقيمة-والوظيفة-والقدرة-والرافعة"><span class="toc-dot"></span><span>3. ترابط الهدف والقيمة والوظيفة والقدرة والرافعة</span></a>
+<a class="toc-item" href="#4-العقد-الذي-يحوّل-قيمة-إلى-عمل-قابل-للتنفيذ"><span class="toc-dot"></span><span>4. العقد الذي يحوّل «قيمة» إلى عمل قابل للتنفيذ</span></a>
+<a class="toc-item" href="#5-تغطية-القيم-الـ18--من-الوعد-إلى-المصدر-والتوظيف-والنتيجة"><span class="toc-dot"></span><span>5. تغطية القيم الـ18 — من الوعد إلى المصدر والتوظيف والنتيجة</span></a>
+<a class="toc-item" href="#6-الرافعات-الـ15--مواضع-التأثير-لا-ملاك-البرامج"><span class="toc-dot"></span><span>6. الرافعات الـ15 — مواضع التأثير لا ملاك البرامج</span></a>
+<a class="toc-item" href="#7-سجل-الوظائف-المقترحة--30-حالة-استعمال-لا-30-التزامًا-بالتنفيذ"><span class="toc-dot"></span><span>7. سجل الوظائف المقترحة — 30 حالة استعمال لا 30 التزامًا بالتنفيذ</span></a>
+<a class="toc-item" href="#8-تخصص-فهم-المشتري-والطلب-والوصول--قرار-مملوك-لا-محرك-استهداف"><span class="toc-dot"></span><span>8. تخصص فهم المشتري والطلب والوصول — قرار مملوك لا محرك استهداف</span></a>
+<a class="toc-item" href="#9-عقود-التنفيذ-في-laravel--postgresql--vue"><span class="toc-dot"></span><span>9. عقود التنفيذ في Laravel / PostgreSQL / Vue</span></a>
+<a class="toc-item" href="#10-الترتيب-البرمجي-الحاسم--من-الوثيقة-إلى-إثبات-فعلي"><span class="toc-dot"></span><span>10. الترتيب البرمجي الحاسم — من الوثيقة إلى إثبات فعلي</span></a>
+<a class="toc-item" href="#11-حالات-القبول-التي-تميز-بنية-صحيحة-عن-بنية-شكلية"><span class="toc-dot"></span><span>11. حالات القبول التي تميز بنية صحيحة عن بنية شكلية</span></a>
+<a class="toc-item" href="#12-التعامل-مع-وثائق-المستودع-القديمة-وتصحيح-الكود"><span class="toc-dot"></span><span>12. التعامل مع وثائق المستودع القديمة وتصحيح الكود</span></a>
+<a class="toc-item" href="#13-حدود-المصالحة-مع-اللقطة-البرمجية"><span class="toc-dot"></span><span>13. حدود المصالحة مع اللقطة البرمجية</span></a>
+<a class="toc-item" href="#14-ماذا-تعني-نهائية-وما-الذي-لا-ندّعيه"><span class="toc-dot"></span><span>14. ماذا تعني «نهائية» وما الذي لا ندّعيه؟</span></a>
+<a class="toc-item" href="#الملحق-أ--القدرات-المصدرية-الـ104-الأطلس-v3"><span class="toc-dot"></span><span>الملحق أ — القدرات المصدرية الـ104 (الأطلس v3)</span></a>
+<a class="toc-item" href="#الملحق-ب--الأهداف-الـ37-المرجعية-خيارات-دراسة-لا-واجهة-منفذة"><span class="toc-dot"></span><span>الملحق ب — الأهداف الـ37 المرجعية (خيارات دراسة لا واجهة منفذة)</span></a>
+<a class="toc-item" href="#الملحق-ج--العلاقات-العابرة-الـ26-فرضيات-اعتمادتأثير"><span class="toc-dot"></span><span>الملحق ج — العلاقات العابرة الـ26 (فرضيات اعتماد/تأثير)</span></a>
+<a class="toc-item" href="#الملحق-د--القدرات-الـ24-من-دراسة-الفرص-namespace-مستقل-researchcxx"><span class="toc-dot"></span><span>الملحق د — القدرات الـ24 من دراسة الفرص (namespace مستقل RESEARCH:Cxx )</span></a>
+<a class="toc-item" href="#الملحق-هـ--34-مسارًا-مرشحًا-للوصول-والتأثير"><span class="toc-dot"></span><span>الملحق هـ — 34 مسارًا مرشحًا للوصول والتأثير</span></a>
+<a class="toc-item" href="#الملحق-و--نتائج-مصالحة-المستندات-الخمسة-والصيغ-العشر"><span class="toc-dot"></span><span>الملحق و — نتائج مصالحة المستندات الخمسة (والصيغ العشر)</span></a></nav><div class="rail-bottom">وثيقة تصميم معتمدة لهذه الجولة · ليست شهادة تشغيل أو نشر.</div></aside>
+<div class="content"><header class="toolbar"><div class="crumb"><strong>BuilderAd</strong> / الوثيقة الحاكمة / مرجع موحّد</div><div class="buttons"><button class="icon-button" id="menuToggle" aria-controls="sidebar" aria-expanded="false">الفهرس</button><button class="icon-button" id="themeToggle">ليلي</button><button class="icon-button" id="printBtn">طباعة <span class="print-text">المرجع</span></button></div></header>
+<main class="doc-shell"><div class="context-band"><span class="strong">DESIGN BASELINE</span><span>15 رافعة</span><span>18 قيمة</span><span>104 قدرات بحثية</span><span>العقود والحقوق أولًا</span></div><div class="route" aria-label="سلسلة تحقيق القيمة"><span><small>01</small>غاية</span><span><small>02</small>دليل</span><span><small>03</small>قدرة</span><span><small>04</small>توظيف</span><span><small>05</small>تحقق</span></div>
+<div class="searchbar"><div class="search-row"><label for="findInput">بحث في المرجع</label><input id="findInput" type="search" placeholder="القيم، المناهج، الوصول، صلاحية البيانات، الاسم أو الرمز..." autocomplete="off"></div><div id="searchCount" class="searchhint">ابحث في كامل المتن والملاحق</div><div id="searchResults" class="search-results" aria-live="polite"></div></div>
+<article class="document"><section class="level1" id="builderad--المرجع-الهندسي-الحاكم-الموحّد">
+<h1>BuilderAd — المرجع الهندسي الحاكم الموحّد</h1>
+<p><strong>القرار النهائي للتصميم وتنظيم البرمجة وتحقيق القيمة · 15 نوفمبر 2026</strong><br/>
+<strong>الحالة:</strong> <code>DESIGN_BASELINE / IMPLEMENTATION_RECONCILIATION_REQUIRED</code><br/>
+<strong>النطاق:</strong> المنتج التجاري · المجالات · الرافعات · القيم · الوظائف · القدرات · الأدلة · طرق تحقيق القيمة · العقود · الاختبارات · التوالي البرمجي.<br/>
+<strong>المصدر:</strong> تنقيح انتقائي للملفات العشرة في مجلد المكتبة «الحاكم» (خمس وثائق Markdown وخمس نسخ HTML). هذه المواصفة <strong>لا</strong> تثبت اكتمال الوظائف أو نجاح اختبارات أحدث نسخة كود.<br/>
+<strong>قاعدة الاعتماد:</strong> القرار أدناه هو المرجع <strong>التصميمي الوحيد لهذه الجولة</strong>؛ يجوز تعديله بدليل هندسي وتجاري أقوى. لا تكتسب وثيقة سلطة على حق بيانات أو صلاحية أو حقيقة تاريخية صحيحة بمجرد أن اسمها «نهائي».</p>
+<blockquote>
+<p><strong>الخلاصة التنفيذية:</strong> لا نبرمج قيمة لأنها اسم في الأطلس، ولا ننشئ محركًا لكل رافعة. نحدد ما الذي يريد النشاط تحقيقه؛ وما الدليل الضروري ومصدره وحق استعماله؛ وما القدرة التي تنتج تقييمًا منضبطًا؛ وكيف تُوظَّف النتيجة في تدخل أو قرار ممكن؛ وكيف نعرف ما تحقق وبأي مستوى من اليقين. <strong>كل وظيفة فعلية لها مالك واحد، وكل قدرة تخصصية لها عقد ومالك، وكل حقيقة لها مصدر وحقوق، وكل إجراء له إذن، وكل نتيجة لها معنى وتاريخ.</strong></p>
+</blockquote>
+<section class="level2" id="0-قرار-البناء-في-صفحة-واحدة">
+<h2>0. قرار البناء في صفحة واحدة</h2>
+<ol type="1">
+<li><strong>المعمارية:</strong> <code>Modular Monolith</code> في Laravel / PostgreSQL / Vue / TypeScript مع وحدات مملوكة بالمعنى وقواعد العمل، ما دام لا يظهر سبب قابل للقياس يبرر التوزيع. SQL/RLS والسلطات الفعلية لا تُنقل إلى Vue أو أسماء المجلدات.</li>
+<li><strong>أربع هويات مختلفة:</strong> <code>Goal</code> نتيجة يطلبها النشاط؛ <code>Value</code> المنفعة التي يقدمها BuilderAd؛ <code>Function/Use Case</code> العملية التي تقدمها؛ <code>Capability</code> عمل تخصصي تعيد الوظائف استخدامه. <code>Lever</code> موضع تأثير، و<code>Method</code> طريقة تنفيذ قدرة. لا ندمج الهويات أو ننشئ Class لكل عنصر بحثي.</li>
+<li><strong>ثلاثة مسارات أدلة مستقلّة تتلاقى:</strong> إثبات المعرفة المطلوبة؛ وإثبات وجود طريق توظيف/تدخل مؤهل؛ وإثبات النتيجة بمرجع موثوق. وجود أحدها لا يثبت الآخرين.</li>
+<li><strong>العلاقات متعددة الأطراف:</strong> قدرة تخدم عدة قيم ورافعات، ووظيفة تستهلك عدة قدرات، ومعرفة تُستهلك عبر أكثر من مجال. المالك واحد للواقعة/المنهج/العملية، وليس بالضرورة «مديرًا» واحدًا لكل واجهات المنتج.</li>
+<li><strong>القرار التجاري ليس اختزالًا في الإعلانات:</strong> قد تكون أفضل خطوة تحسين العرض أو السعة أو المتابعة أو الاقتصاديات أو عدم التدخل، أو سؤالًا واحدًا مرتفع القيمة قبل الإنفاق.</li>
+<li><strong>الأمن حد تنفيذي:</strong> <code>Authorization ≠ Data Rights ≠ Feature Entitlement ≠ Quota ≠ Technical Eligibility ≠ External Action Approval</code>؛ يُعاد فحص المطلوب في وقت استخدامه وعند التنفيذ المؤجل.</li>
+<li><strong>الحاضر ليس سقف التصميم:</strong> نحتفظ بالكود الصحيح، ونغير حدودًا أو واجهات أو وظائف حين تبرر أدلة الجودة ذلك. لا ننشئ مخزنًا أو نظام سلطات موازيًا.</li>
+<li><strong>المخزون البحثي ليس Backlog:</strong> الرافعات 15، القيم 18، الأهداف المرشحة 37، القدرات 104، العلاقات 26، والمرشحات الأخرى ذات نطاقات تعريف مستقلة. ليست أعدادًا مستهدفة للمجلدات أو الجداول أو الإصدارات.</li>
+<li><strong>المرحلة التالية محددة:</strong> مطابقة المالكين والعقود المحلية؛ تصحيح الموانع التأسيسية المثبتة؛ تنفيذ مسار قيمة كامل؛ ثم مسار من مجال مختلف يعيد استخدام قدرة أو دليلًا دون نسخه؛ وإغلاق بأدلة اختبار.</li>
+<li><strong>لا تعقيد احترازي:</strong> لا Microservices أو Plugin Runtime أو Universal Capability/Lever/Workflow Engine أو Graph عالمي أو Event Store عام أو منصة AI Agents قبل الحاجة المبررة والمستهلك الفعلي.</li>
+</ol>
+</section>
+<section class="level2" id="1-قاموس-المعاني-والحدود">
+<h2>1. قاموس المعاني والحدود</h2>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>المفهوم</th>
+<th>المعنى اللازم للبرمجة</th>
+<th>ما لا يعنيه</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Business / Practice / Offering</td>
+<td>هوية النشاط، ممارسته، عرضه، تصريحه، سوقه وقدرته المعلنة؛ مع النسخ</td>
+<td>حقائق السوق المستقلة أو نتائج مبيعات لم يثبتها مصدر</td>
+</tr>
+<tr class="even">
+<td>Goal / Goal Revision</td>
+<td>ناتج مقصود، تعريف قبول، نطاق، زمن ومقياس اختياري</td>
+<td>هدف منصة الإعلان أو KPI غامض</td>
+</tr>
+<tr class="odd">
+<td>Outcome / Measurement</td>
+<td>واقعة مقبولة من مالكها، وفترة نضجها وتصحيحها</td>
+<td>نسبة أثر سببي بمجرد الارتباط</td>
+</tr>
+<tr class="even">
+<td>Value</td>
+<td>منفعة تجارية أو قرار أفضل يُقدمه المنتج، مع معيار فحص</td>
+<td>مخزن بيانات أو محرك تنفيذي خاص</td>
+</tr>
+<tr class="odd">
+<td>Function / Feature / Use Case</td>
+<td>عملية معلومة المالك تُنسق قدرات وتعيد نتيجة أو امتناعًا</td>
+<td>قدرة فريدة دائمًا، أو نفس الشيء كالصفحة</td>
+</tr>
+<tr class="even">
+<td>Capability</td>
+<td>سلوك تخصصي بمدخلات ومخرجات وحالات رفض وعقد</td>
+<td>تسمية لرافعة أو مزود أو خوارزمية</td>
+</tr>
+<tr class="odd">
+<td>Method / Validator</td>
+<td>تنفيذ قدرة محددة، ومدقق مستقل عند حساسية الصحة</td>
+<td>إذن بالتصرف أو شهادة المنهج على نفسه</td>
+</tr>
+<tr class="even">
+<td>Lever</td>
+<td>متغير/عائلة تأثير في الواقع التجاري</td>
+<td>مالك المعرفة أو التنفيذ أو سجل دائم إلزامي</td>
+</tr>
+<tr class="odd">
+<td>Qualified Evidence</td>
+<td>تصريح/واقعة/مؤشر/استنتاج مع المصدر والنطاق والزمن والحقوق والصلاحية</td>
+<td>حقيقة عابرة لجميع المجالات أو جمهور جاهز للاستهداف</td>
+</tr>
+<tr class="even">
+<td>Route / Intervention</td>
+<td>طريق تأثير: بحث أو محتوى أو بيع أو شريك أو تحسين عرض/وفاء أو تجربة</td>
+<td>تفعيل مزود جاهز تلقائيًا</td>
+</tr>
+<tr class="odd">
+<td>Decision</td>
+<td>اختيار/امتناع وبدائل وأسباب وشروط ضمن سياق وإصدار</td>
+<td>أمر تنفيذ أو ادعاء أن الخيار «الأفضل عالميًا»</td>
+</tr>
+<tr class="even">
+<td>Execution</td>
+<td>إذن مستقل وأمر فريد وإيصال وحالة ومصالحة</td>
+<td>نجاح API مساويًا لتحقق قيمة</td>
+</tr>
+<tr class="odd">
+<td>Evaluation / Learning</td>
+<td>مقارنة مقيّدة لما حدث وتعلم ضمن حقوقه وحدود القياس</td>
+<td>تدريب عام على بيانات العملاء افتراضيًا</td>
+</tr>
+<tr class="even">
+<td>Product Entitlement</td>
+<td>استحقاق استعمال منتج وقيود الحصص والتكلفة</td>
+<td>إذن قراءة بيانات الغير أو تنفيذ إنفاق</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>الهوية الدلالية:</strong> معرفات الأطلس <code>Vxx/Lxx/Lxx-Cxx</code> ومحليّات <code>F01–F30</code> و<code>F01–F22</code> و<code>C01–C24</code> بحثية ذات <em>namespaces</em> مختلفة. لا تُستعمل كهوية API/DB/Subscription فعلية. لكل عقد تشغيلي يُنفَّذ لاحقًا اسم وظيفي وإصدار معجمي ومطابقة <code>source_namespace + source_id → runtime_contract / decision</code>؛ ولا تُعاد تسمية واقعة تاريخية لتتوافق مع فهرس بحثي جديد.</p>
+</section>
+<section class="level2" id="2-خريطة-الملكية-البرمجية">
+<h2>2. خريطة الملكية البرمجية</h2>
+<p><strong>المالك هو الجهة التي تملك قواعد صحة الحقيقة أو العملية وتقبل تغييرها</strong>؛ ليس بالضرورة مجلدًا موجودًا اليوم. لا تُنشأ المجالات الخالية لمجرد حجز مكان.</p>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>المجال / مسؤولية المالك</th>
+<th>يملك</th>
+<th>لا يملك / العلاقة الصحيحة</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Business &amp; Goals</strong></td>
+<td>Business/Practice/Offering، تصريحات المستفيد، الغاية وإصداراتها والقيود المعلنة</td>
+<td>لا يقرر وجود طلب سوقي أو بيع مكتمل من تلقاء نفسه</td>
+</tr>
+<tr class="even">
+<td><strong>Sources &amp; Rights</strong></td>
+<td>ارتباط المصادر، إتاحتها ونسخها وحقوق/أغراض الاستخدام، قدرات المزود الفنية</td>
+<td>لا يمنح صلاحية Business ولا يحلل جدوى المنتج التجاري</td>
+</tr>
+<tr class="odd">
+<td><strong>MarketKnowledge</strong></td>
+<td>دليل سوق مرخص، مصدره وفترته ومناهج سوق متخصصة وتصحيحاتها</td>
+<td>ليس مخزنًا عامًا لحقائق CRM/ERP أو سجل حقيقي لكل المبيعات</td>
+</tr>
+<tr class="even">
+<td><strong>MarketOpportunity</strong></td>
+<td>تقييم الطلب والحاجة والفرص والملاءمة التجارية الأولية</td>
+<td>لا يحوز حسابات المشترين الشخصية ولا يعلن جدوى وفاء دون قيود</td>
+</tr>
+<tr class="odd">
+<td><strong>DemandReach</strong></td>
+<td>مرشحات طرق الوصول وأهلية القناة وشروط المقارنة وتخطيط الوصول</td>
+<td>لا يمتلك كل حقائق المشتري ولا ينفذ APIs المزود ولا يحل محل الإعلانات</td>
+</tr>
+<tr class="even">
+<td><strong>OfferStrategy</strong></td>
+<td>مقارنة العرض والتسعير والرسالة ومقترحات تجارب التحسين</td>
+<td>لا يمتلك التكلفة المحاسبية الأصلية أو قرار تعديل سعر مأذون</td>
+</tr>
+<tr class="odd">
+<td><strong>AdvertisingPerformance</strong></td>
+<td>أداء الحملات وإشارات التحويل المؤهلة واستراتيجيات الإنفاق</td>
+<td>لا يمتلك أصل البيع والتحصيل ولا جميع طرق الوصول</td>
+</tr>
+<tr class="even">
+<td><strong>SalesConversion</strong></td>
+<td>تأهيل ومتابعة وتحويل واستجابة وشراء وحجز ووظائف تشخيص الفقد</td>
+<td>الإفادات تبقى عند مالك واقعها؛ ليس CRM شاملًا مفروضًا</td>
+</tr>
+<tr class="odd">
+<td><strong>FulfillmentFit</strong></td>
+<td>قدرة خدمة الطلب والموعد والتغطية والوفاء وقيود السعة</td>
+<td>ليس ERP ثانيًا ولا يملك هامش الربح</td>
+</tr>
+<tr class="even">
+<td><strong>BusinessEconomics</strong></td>
+<td>حساب السيناريوهات وهوامش المساهمة وتكلفة الوسيلة والتحصيل المؤهل</td>
+<td>لا يخلق تكلفة أو إيرادًا دون مصدر ويجب ألا يساوي ROAS ربحًا</td>
+</tr>
+<tr class="odd">
+<td><strong>CustomerRetention</strong></td>
+<td>تشخيص الأفواج والتجديد والاستعادة والإحالات</td>
+<td>لا يكرر سجلات البيع أو العملاء</td>
+</tr>
+<tr class="even">
+<td><strong>CommercialDecisions</strong></td>
+<td>تنسيق البدائل العابرة للمجالات، قرار أو سؤال أو امتناع وتسجيل أسبابه</td>
+<td>لا يملك خوارزميات كل المجالات ولا سلطة تنفيذ</td>
+</tr>
+<tr class="odd">
+<td><strong>Execution &amp; Security</strong></td>
+<td>سلطة تنفيذ، أوامر وإيصالات ومصالحة وعزل ووصول مؤهل</td>
+<td>لا تجعل نتيجة تحليل أو اشتراك منحًا ذاتيًا للصلاحية</td>
+</tr>
+<tr class="even">
+<td><strong>Outcomes &amp; Evaluation</strong></td>
+<td>تعريف قبول النتيجة وربطها بقرار/تدخل وتقييم أثر مؤهل</td>
+<td>مصدر الواقعة يحتفظ بملكيتها؛ لا أثر سببي بلا منهج إثبات</td>
+</tr>
+<tr class="odd">
+<td><strong>Product Access</strong></td>
+<td>استحقاقات المنتج المدفوع/المجاني والحصص والاستهلاك والمحاسبة المستقبلية</td>
+<td>لا يمنح حقوق البيانات أو تفويض Business</td>
+</tr>
+<tr class="even">
+<td><strong>AI / Provider Adapters</strong></td>
+<td>اتصال مقيد بنموذج/مزود/أداة وترجمة قدرة متاحة وتكلفتها</td>
+<td>لا يقرر الحقيقة التجارية أو يدير سلطة مستقلة</td>
+</tr>
+<tr class="odd">
+<td><strong>Advertiser Experience</strong></td>
+<td>التنقل والأسئلة التدريجية وعرض النتائج والبدائل وZero-Setup</td>
+<td>لا يملك السياسة أو نتائج التحليل أو الحقيقة التشغيلية</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>فصل L01 الحاسم:</strong> «العميل/العقد» في الأطلس قد يشير إلى علاقة BuilderAd التجارية بالوكالة أو المستفيد، وليس دائمًا إلى مشتري منتجات المعلن. لا تخلط Customer/Payer/Beneficiary في منتجنا مع Buyer/Prospect لدى نشاط المعلن.</p>
+<p><strong>اتجاه الارتباط:</strong> <code>UI → Domain Use Case → owning domain contracts → validated results</code>؛ وتتم القراءة المؤهلة بواسطة مالك الحقيقة؛ و<code>Method + independent validator</code> داخل المجال؛ وإجراء خارجي يمر عبر <code>Execution + provider-specific adapter</code>؛ ويُقرأ تحقق النتيجة من مالكها. لا استعلام عابر مباشر إلى SQL خاص بمجال آخر إلا عبر عقد عمومي معتمد ومقيد الحقوق. لا اعتماد دوري وقتي غير مضبوط: تُدار النتائج المرجعية بنسخ وتوقيت بدل الاستدعاء الدائري.</p>
+</section>
+<section class="level2" id="3-ترابط-الهدف-والقيمة-والوظيفة-والقدرة-والرافعة">
+<h2>3. ترابط الهدف والقيمة والوظيفة والقدرة والرافعة</h2>
+<pre class="text"><code>Business / Practice / Offering / Goal Revision
+                 │ asks
+                 ▼
+Value (product promise; not runtime authority)
+                 │ delivered by [many-to-many]
+                 ▼
+Domain Use Case / Function ──consumes──&gt; Domain Capability ──uses──&gt; Method
+      │                                │                       │
+      │                                └─qualified evidence───┘ + Validator
+      │                                         │
+      └──── findings / alternatives / missing proof / abstention
+                       │
+             [Decision only when needed]
+                       │
+           Authorized/eligible intervention ───&gt; Execution receipt
+                       │
+                Accepted Outcome ───&gt; Evaluation (bounded learning)
+
+Lever = typed association to capability/intervention/outcome;
+        never automatic owner, permission, universal execution dependency.</code></pre>
+<p>أشكال العلاقات الأربع الأساسية ليست مترادفة: <code>DATA_DEPENDENCY</code> = الاستهلاك المؤهل لمعلومة؛ <code>EXECUTION_DEPENDENCY</code> = شرط تشغيل؛ <code>POTENTIAL_INFLUENCE</code> = فرضية تأثير تحتاج اختبارًا؛ <code>VERIFIED_CAUSALITY</code> = علاقة سببية مثبتة وفق تصميم مناسب. وقد نحتاج <code>RESOURCE_CONFLICT</code> عند تنازع ميزانية أو مخزون أو موظف؛ لا تختزل جميعها في <code>depends_on=true</code> أو Graph عام.</p>
+<p><strong>البرمجة لا تفرض هذا الرسم كسلسلة تمر بها كل وظيفة.</strong> قد تقدم قدرة معلومات فقط، أو تدعم خطوة يدوية، أو تمتنع، وقد تستهلك نتائج متخصصة دون قضية Commercial Case شاملة. يسجل سياق القرار المؤثر حين يوجد قرار أو خطة مؤثرة، ولا تُخلق سجلات وهمية عند كل قراءة بسيطة.</p>
+</section>
+<section class="level2" id="4-العقد-الذي-يحوّل-قيمة-إلى-عمل-قابل-للتنفيذ">
+<h2>4. العقد الذي يحوّل «قيمة» إلى عمل قابل للتنفيذ</h2>
+<p>كل وظيفة تستحق التنفيذ تُعرَّف في بطاقة قصيرة <strong>Value Delivery Specification</strong>؛ هذه هي الشروط المهمة، وليست التزامًا بإنشاء جدول باسمها:</p>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>البند</th>
+<th>المطلوب</th>
+<th>علامة عدم الاكتمال</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Value / Goal</td>
+<td>مستخدم مستفيد، سؤال، نتيجة مرغوبة أو قرار يتحسن، نطاق وزمن</td>
+<td>قيمة بلا مستفيد أو معنى نتيجة</td>
+</tr>
+<tr class="even">
+<td>Business Context</td>
+<td>عرض/Practice وسوق وقيود القدرة والتكلفة والحقوق</td>
+<td>لا نعرف لمن ينطبق التقييم</td>
+</tr>
+<tr class="odd">
+<td>Knowledge Requirements</td>
+<td>الأدلة اللازمة لكل فرضية وقبولها وفترة صلاحيتها</td>
+<td>مصدر مفقود أو حق غير مؤهل</td>
+</tr>
+<tr class="even">
+<td>Evidence Acquisition</td>
+<td><strong>من أين نحصل على الدليل؟</strong> تصريح، سجل مملوك، مزود مرخص، مصدر عام، مقابلة/تجربة؛ تكلفة وتغطية</td>
+<td>اسم مصدر افتراضي أو API لا يتيح المعلومة</td>
+</tr>
+<tr class="odd">
+<td>Capabilities &amp; Methods</td>
+<td>نتائج تخصصية ومدققات وحدود تفسير، بدائل منهجية مناسبة</td>
+<td>خوارزمية بلا أساس اختبار أو تحيز/دقة معلومة</td>
+</tr>
+<tr class="even">
+<td>Practical Route</td>
+<td><strong>كيف نوظف المعرفة؟</strong> خيار، إجراء بشري أو آلي، تواصل مأذون، تعديل عرض أو سعة؛ أهلية فنية/مالية</td>
+<td>وصول نظري بلا طريق فعل قابل للاختبار</td>
+</tr>
+<tr class="odd">
+<td>Alternative</td>
+<td>عدم التدخل، إجراء أبسط، تحسين آخر، أو طلب المعلومة الأعلى قيمة</td>
+<td>«إعلان إضافي» افتراضي بلا مقارنة</td>
+</tr>
+<tr class="even">
+<td>Authorization &amp; Entitlement</td>
+<td>حق القراءة، تفويض العملية، ترخيص المصدر، أهلية المزود، استحقاق إن لزم</td>
+<td>أي حاجز مجهول لعملية مشروطة = HOLD</td>
+</tr>
+<tr class="odd">
+<td>Outcome &amp; Verification</td>
+<td><strong>من أين نعرف النتيجة؟</strong> واقعة مقبولة ومصدر/نضج/توقيت وقاعدة مقارنة</td>
+<td>لا توجد طريقة لإثبات «مبيعات/عائد» موثوقين</td>
+</tr>
+<tr class="even">
+<td>Abstention &amp; Failure</td>
+<td>ما الذي يمتنع عنه النظام؟ وكيف يصلح النقص؟</td>
+<td>نتيجة واثقة رغم نقص جوهري</td>
+</tr>
+<tr class="odd">
+<td>Tests &amp; Cost</td>
+<td>فحص صحة وسلامة وتوافق وأثر وكلفة المصدر/الحساب</td>
+<td>نجاح واجهة فقط دون إثبات المنفعة</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>درجات المنفعة:</strong> <code>INSIGHT_DELIVERED</code> قراءة أو تقييم صحيح ضمن حدوده، <code>ACTIONABLE_OPTION</code> بديل مؤهل، <code>ACTION_EXECUTED</code> فعل مؤكد، <code>OUTCOME_OBSERVED</code> نتيجة ناضجة، <code>IMPACT_EVALUATED</code> تقييم أثر بحسب الدليل. لا يجوز رفع الأولى إلى الخامسة آليًا. عدم توافر النتيجة يعني <code>VERIFICATION_NOT_AVAILABLE</code>، وليس أن القيمة «لم تحدث» أو أنها «تحققت».</p>
+<p><strong>مصادر الإثبات ثلاثة:</strong> (أ) مصدر المعلومة وحق استخدامها؛ (ب) إثبات صلاحية الوسيلة وتأهيلها؛ (ج) مصدر واقعة النتيجة. عند غياب أحدها، تتوقف المطالبة عند المستوى المثبت وتحدد السؤال التالي، لا تختلق مصدرًا أو حساب عميل أو موافقة أو أثرًا سببيًا.</p>
+</section>
+<section class="level2" id="5-تغطية-القيم-الـ18--من-الوعد-إلى-المصدر-والتوظيف-والنتيجة">
+<h2>5. تغطية القيم الـ18 — من الوعد إلى المصدر والتوظيف والنتيجة</h2>
+<p>الجدول التالي <strong>تغطية تصميمية</strong>؛ القائمة لم تثبت كتالوج وظائف منفذة. <code>BF:Fxx</code> هو مرجع الوظيفة في ملف Blueprint الأصلي، وليس Function ID إنتاجيًا.</p>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>القيمة</th>
+<th>مالك التنسيق</th>
+<th>وظائف Blueprint المرشحة</th>
+<th>المعرفة/مصدرها اللازم</th>
+<th>طريقة توظيفها</th>
+<th>مصدر/معيار التحقق</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>V01</code> معرفة العملاء والفرص</td>
+<td><code>MarketOpportunity</code></td>
+<td><code>BF:F01 BF:F02 BF:F03</code></td>
+<td>سجلات النشاط وإشارات طلب مرخصة/بحث مؤهل</td>
+<td>فحص ملاءمة شريحة وفرصة قابلة للخدمة</td>
+<td>فرصة/طلب مؤهل أو تغير قرار مدعوم</td>
+</tr>
+<tr class="even">
+<td><code>V02</code> معرفة المنافسين والتفوق بميزة حقيقية</td>
+<td><code>OfferStrategy</code></td>
+<td><code>BF:F04</code></td>
+<td>عروض منافسة قابلة للمقارنة وشروط الخدمة</td>
+<td>اختبار سد فجوة عرض أو ضمان أو رسالة</td>
+<td>مقارنة موثقة وتجربة تغير سلوك شراء</td>
+</tr>
+<tr class="odd">
+<td><code>V03</code> تحسين المنتج والعرض والتسعير</td>
+<td><code>OfferStrategy</code></td>
+<td><code>BF:F05 BF:F06</code></td>
+<td>حاجة وسعر وتكلفة وهامش ومبيعات</td>
+<td>تجربة باقة/سعر/شرط مع قدرة وفاء</td>
+<td>قيمة بيع ومساهمة بعد الكلفة والإرجاع</td>
+</tr>
+<tr class="even">
+<td><code>V04</code> الوصول إلى الطلب المناسب</td>
+<td><code>DemandReach</code></td>
+<td><code>BF:F07 BF:F08 BF:F09 BF:F10</code></td>
+<td>إشارات حاجة/نية/جغرافيا + إتاحة قناة</td>
+<td>مقارنة بحث/شريك/بيع/محتوى/إعلان مؤهل</td>
+<td>طلبات/فرص مؤهلة وتكلفة الوصول</td>
+</tr>
+<tr class="odd">
+<td><code>V05</code> حماية الإنفاق والقيمة</td>
+<td><code>BusinessEconomics</code></td>
+<td><code>BF:F11 BF:F12 BF:F22</code></td>
+<td>تكلفة موارد/إنفاق ونتائج أعمال مصححة</td>
+<td>إبقاء أو تعديل أو اختبار إنفاق مأذون</td>
+<td>مساهمة/هدر قابل للتفسير دون ادعاء الإضافية</td>
+</tr>
+<tr class="even">
+<td><code>V06</code> زيادة فرص الحجز والحضور</td>
+<td><code>SalesConversion</code></td>
+<td><code>BF:F18 BF:F20</code></td>
+<td>طلب حجز وتأكيد وحضور ومواعيد</td>
+<td>معالجة تأكيد/تذكير/توزيع مواعيد</td>
+<td>الحضور والغياب وفق تعريف ومصدر</td>
+</tr>
+<tr class="odd">
+<td><code>V07</code> إنقاذ فرص التواصل والاستجابة</td>
+<td><code>SalesConversion</code></td>
+<td><code>BF:F14 BF:F15</code></td>
+<td>سجلات استفسار ومكالمة وزمن استجابة</td>
+<td>تصحيح فاقد رد أو متابعة مأذونة</td>
+<td>استجابة/تحويل/بيع مؤهل</td>
+</tr>
+<tr class="even">
+<td><code>V08</code> رفع جودة العملاء وفرص البيع</td>
+<td><code>SalesConversion</code></td>
+<td><code>BF:F02 BF:F14 BF:F16</code></td>
+<td>معايير أهلية وأفواج فرص ونتائج قبول</td>
+<td>تحسين فرز الفرص وتوزيع متابعة</td>
+<td>دقة التأهيل ونتائج البيع لا عدد الاتصالات</td>
+</tr>
+<tr class="odd">
+<td><code>V09</code> تعزيز الثقة وقوة الرسالة</td>
+<td><code>OfferStrategy</code></td>
+<td><code>BF:F04 BF:F05</code></td>
+<td>اعتراضات موثقة/مقارنة عرض/دليل ثقة</td>
+<td>اختبار رسالة ووعد قابلين للإثبات</td>
+<td>تغير الاعتراض أو القبول مع نتيجة مؤهلة</td>
+</tr>
+<tr class="even">
+<td><code>V10</code> رفع جودة التحويل وإتمام الشراء</td>
+<td><code>SalesConversion</code></td>
+<td><code>BF:F16 BF:F17</code></td>
+<td>أحداث طلب/دفع/تسليم/إلغاء</td>
+<td>إزالة اختناق مسار الشراء</td>
+<td>مبيعات مدفوعة/مكتملة لا بدء الطلب</td>
+</tr>
+<tr class="odd">
+<td><code>V11</code> تغذية الإعلانات بإشارات تحويل نظيفة</td>
+<td><code>AdvertisingPerformance</code></td>
+<td><code>BF:F13</code></td>
+<td>تحويل تجاري مصحح وحق إرسال ومطابقة</td>
+<td>إرسال إشارة مشروعة إلى مزود مهيأ</td>
+<td>إيصال/مصالحة وإثبات جودة الإشارة</td>
+</tr>
+<tr class="even">
+<td><code>V12</code> تحسين الربحية والتحصيل والاقتصاديات</td>
+<td><code>BusinessEconomics</code></td>
+<td><code>BF:F06 BF:F21 BF:F22 BF:F30</code></td>
+<td>إيراد/تكاليف/رسوم/استرداد/عملة</td>
+<td>مقارنة هامش أو سعر أو قناة</td>
+<td>مساهمة ونتيجة مالية مؤهلة</td>
+</tr>
+<tr class="odd">
+<td><code>V13</code> تطابق الطلب مع السعة وجودة الوفاء</td>
+<td><code>FulfillmentFit</code></td>
+<td><code>BF:F19 BF:F20</code></td>
+<td>سعة ومخزون/موعد/تغطية وقيد خدمة</td>
+<td>تأجيل جذب الطلب أو تعديل خطة الوفاء</td>
+<td>نسبة وفاء وتأخير ونتائج خدمة</td>
+</tr>
+<tr class="even">
+<td><code>V14</code> زيادة الاستبقاء وقيمة العلاقة</td>
+<td><code>CustomerRetention</code></td>
+<td><code>BF:F23 BF:F24</code></td>
+<td>أفواج وشراء متكرر وتفضيلات موافقة</td>
+<td>تجربة احتفاظ أو استعادة/إحالة</td>
+<td>تجديد/تكرار/هامش مع نضج الأفواج</td>
+</tr>
+<tr class="odd">
+<td><code>V15</code> اكتشاف مصادر نمو وتوسع جديدة</td>
+<td><code>MarketOpportunity</code></td>
+<td><code>BF:F01 BF:F03 BF:F29</code></td>
+<td>طلب سوق جديد وسعة وقيود وصول وتكلفة</td>
+<td>اختبار توسع أو عرض أو شراكة محدودة</td>
+<td>فرص/مبيعات/جدوى اختبار مشروطة</td>
+</tr>
+<tr class="even">
+<td><code>V16</code> تحسين جودة القرار وإثبات أثره</td>
+<td><code>CommercialDecisions</code></td>
+<td><code>BF:F25 BF:F26 BF:F27 BF:F30</code></td>
+<td>بدائل ونتائج قدرات ومجهولات وتكاليف</td>
+<td>اختيار تجربة/قرار/لا تغيّر/سؤال حاسم</td>
+<td>تحسن جودة القرار أو أثر مؤهل</td>
+</tr>
+<tr class="odd">
+<td><code>V17</code> فتح قنوات توزيع وشراكات مجدية</td>
+<td><code>DemandReach</code></td>
+<td><code>BF:F09 BF:F24</code></td>
+<td>شركاء/تغطية/شروط عمولة/نتائج</td>
+<td>مقارنة موزع أو شريك مع قناة أخرى</td>
+<td>صفقات/إحالات مؤهلة بعد التكلفة</td>
+</tr>
+<tr class="even">
+<td><code>V18</code> بدء تحقيق القيمة دون تكاملات إلزامية</td>
+<td><code>Experience / CommercialDecisions</code></td>
+<td><code>BF:F26 BF:F28</code></td>
+<td>تصريحات نشاط وعرض وهدف + معلومات عامة مؤهلة</td>
+<td>سؤال حاسم أو خطة/تجربة أولى دون تكامل</td>
+<td>منفعة محددة صادقة بلا أرقام إعلان مخترعة</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>المنهج لا يُختزل في عدد الروابط.</strong> القيمة V18 قيمة بدء تجربة دون حسابات إعلانية، وليست نظام بيانات أو قدرة عالمية جديدة. والقيم V06/V07/V08/V10 تستخدم الاستفسارات في <code>SalesConversion</code> دون جعل «الاستفسارات» مركزًا لكل محصول تجاري. V05 أوسع من خفض تكلفة إعلان: قد تعالج اقتصاديات التسعير أو التوزيع أو الوفاء.</p>
+</section>
+<section class="level2" id="6-الرافعات-الـ15--مواضع-التأثير-لا-ملاك-البرامج">
+<h2>6. الرافعات الـ15 — مواضع التأثير لا ملاك البرامج</h2>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>الرافعة المصدرية</th>
+<th>المعنى</th>
+<th>جهات التنسيق المحتملة</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>L01</code></td>
+<td>اختيار العميل والفرصة والعقد</td>
+<td><code>Business + Commercial Governance</code></td>
+</tr>
+<tr class="even">
+<td><code>L02</code></td>
+<td>اكتشاف الطلب والفرص السوقية</td>
+<td><code>MarketOpportunity</code></td>
+</tr>
+<tr class="odd">
+<td><code>L03</code></td>
+<td>اختيار العملاء والشرائح والمطابقة</td>
+<td><code>MarketOpportunity / SalesConversion</code></td>
+</tr>
+<tr class="even">
+<td><code>L04</code></td>
+<td>المنتج والخدمة والعرض والقيمة المدركة</td>
+<td><code>OfferStrategy</code></td>
+</tr>
+<tr class="odd">
+<td><code>L05</code></td>
+<td>التسعير والشروط والحوافز الاقتصادية</td>
+<td><code>OfferStrategy + BusinessEconomics</code></td>
+</tr>
+<tr class="even">
+<td><code>L06</code></td>
+<td>الظهور العضوي والوصول غير المدفوع</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="odd">
+<td><code>L07</code></td>
+<td>الشراكات وقنوات التوزيع والإحالات</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="even">
+<td><code>L08</code></td>
+<td>الإعلانات المدفوعة والمزايدات والميزانيات والإشارات</td>
+<td><code>AdvertisingPerformance</code></td>
+</tr>
+<tr class="odd">
+<td><code>L09</code></td>
+<td>الإبداع الإعلاني وتجربة العرض والثقة</td>
+<td><code>OfferStrategy / AdvertisingPerformance</code></td>
+</tr>
+<tr class="even">
+<td><code>L10</code></td>
+<td>الاستفسارات والمحادثات والتأهيل والمتابعة</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="odd">
+<td><code>L11</code></td>
+<td>إتمام التحويل: الشراء والحجز والبيع والتعاقد</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="even">
+<td><code>L12</code></td>
+<td>القدرة التشغيلية والوفاء والجودة</td>
+<td><code>FulfillmentFit</code></td>
+</tr>
+<tr class="odd">
+<td><code>L13</code></td>
+<td>الاقتصاديات والتحصيل والاستردادات والسيولة</td>
+<td><code>BusinessEconomics</code></td>
+</tr>
+<tr class="even">
+<td><code>L14</code></td>
+<td>الاحتفاظ والولاء والسمعة والإحالات</td>
+<td><code>CustomerRetention</code></td>
+</tr>
+<tr class="odd">
+<td><code>L15</code></td>
+<td>التوسع والابتكار وتنمية محفظة القيمة</td>
+<td><code>MarketOpportunity + CommercialDecisions</code></td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>تصنيف <code>BA-LV-01…18</code> في الأطلس البديل حيز بحثي مختلف. لا تُنشأ جداول إضافية للمساواة بينه وبين <code>L01…15</code> قبل مطابقة المعنى.</li>
+<li>لا يستدعي إلحاق قدرة برافعتين إنشاء نسختين منها؛ العلاقة فهرسة/تأثير مع شرط انطباق، وليست ملكية أو إذنًا.</li>
+<li>إذا احتاج قرار تجاري إلى ربط متعدد الرافعات، تظل نتائج القدرات منفصلة ويجمعها Use Case/Commercial Decision في سياق ذي إصدار.</li>
+</ul>
+</section>
+<section class="level2" id="7-سجل-الوظائف-المقترحة--30-حالة-استعمال-لا-30-التزامًا-بالتنفيذ">
+<h2>7. سجل الوظائف المقترحة — 30 حالة استعمال لا 30 التزامًا بالتنفيذ</h2>
+<p><strong>قاعدة المعرّفات:</strong> <code>BF:F01</code> إلى <code>BF:F30</code> أسماء محلية لهذا الجرد، وقد يوجد <code>MAP:F01</code> مختلف المعنى في خريطة v1.5؛ لا يُسمح بتسريب المعرف المحلي إلى قاعدة الإنتاج. عند إنشاء وظيفة حقيقية: يختار مالك مجالها معرفًا دلاليًا مستقرًا مثل <code>commercial.reach.assess_options</code> ويربطه بالسجل البحثي.</p>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>الوظيفة المرجعية</th>
+<th>مالك الاستخدام</th>
+<th>قيم</th>
+<th>المعلومة المطلوبة</th>
+<th>نتيجة الوظيفة / التوظيف</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>BF:F01</code> فحص الفرصة التجارية المناسبة</td>
+<td><code>MarketOpportunity</code></td>
+<td><code>V01 V15</code></td>
+<td>طلب مؤهل + قدرة خدمة + بديل</td>
+<td>فرصة مشروطة أو سبب الرفض/السؤال التالي</td>
+</tr>
+<tr class="even">
+<td><code>BF:F02</code> فهم سياق المشتري والملاءمة</td>
+<td><code>MarketOpportunity</code></td>
+<td><code>V01 V08</code></td>
+<td>تصريح العرض + أدلة الحاجة/الأهلية</td>
+<td>شريحة شراء مرشحة وحدودها</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F03</code> قراءة تغير الطلب والموسمية</td>
+<td><code>MarketOpportunity</code></td>
+<td><code>V01 V15</code></td>
+<td>مؤشرات قابلة للمقارنة مرخصة</td>
+<td>اتجاه مع حدود وليس عدد مشترين</td>
+</tr>
+<tr class="even">
+<td><code>BF:F04</code> مقارنة العرض بالمنافس</td>
+<td><code>OfferStrategy</code></td>
+<td><code>V02 V09</code></td>
+<td>هوية عروض متكافئة وحقوق</td>
+<td>فجوة مقارنة مؤهلة أو امتناع</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F05</code> تقييم تجربة تحسين العرض</td>
+<td><code>OfferStrategy</code></td>
+<td><code>V03 V09</code></td>
+<td>حاجة + عرض + تكلفة + قياس</td>
+<td>تغيير محدود واختبار ملائم</td>
+</tr>
+<tr class="even">
+<td><code>BF:F06</code> تقييم تعديل السعر والشروط</td>
+<td><code>OfferStrategy</code></td>
+<td><code>V03 V12</code></td>
+<td>تكلفة + هامش + شروط + قبول</td>
+<td>سيناريو مؤهل لا خصم تلقائي</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F07</code> توصيف مسارات الوصول الممكنة</td>
+<td><code>DemandReach</code></td>
+<td><code>V04 V17</code></td>
+<td>سياق شراء + خيارات قنوات</td>
+<td>بدائل وصول وشروط التأهل</td>
+</tr>
+<tr class="even">
+<td><code>BF:F08</code> التحقق من إتاحة مسار الوصول</td>
+<td><code>DemandReach</code></td>
+<td><code>V04 V17</code></td>
+<td>حق المصدر + قدرة القناة + نطاقها</td>
+<td>READY أو UNKNOWN أو BLOCKED مع سبب</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F09</code> مقارنة الوصول المباشر والموزع</td>
+<td><code>DemandReach</code></td>
+<td><code>V04 V17</code></td>
+<td>تغطية + سعر + عمولة + سعة</td>
+<td>مسار أو تجربة محددة أو امتناع</td>
+</tr>
+<tr class="even">
+<td><code>BF:F10</code> تقييم وصول عضوي مناسب</td>
+<td><code>DemandReach</code></td>
+<td><code>V04</code></td>
+<td>بحث/محتوى قابل للاستعمال</td>
+<td>خطة/تجربة ظهور غير مدفوع</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F11</code> تشخيص كفاءة إنفاق حملة</td>
+<td><code>AdvertisingPerformance</code></td>
+<td><code>V05 V16</code></td>
+<td>تكلفة + نتائج مؤهلة + قيود</td>
+<td>مقارنة خيار إبقاء/تعديل/اختبار</td>
+</tr>
+<tr class="even">
+<td><code>BF:F12</code> تقييم تعديل ميزانية مأذون</td>
+<td><code>AdvertisingPerformance</code></td>
+<td><code>V05</code></td>
+<td>نتائج + سعة + صلاحية تعديل</td>
+<td>مقترح إجراء، لا تنفيذ ضمني</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F13</code> إرسال إشارة تحويل مؤهلة</td>
+<td><code>AdvertisingPerformance</code></td>
+<td><code>V11</code></td>
+<td>واقعة نتيجة مقبولة + حق + مطابقة</td>
+<td>إرسال/إيصال/مصالحة أو رفض</td>
+</tr>
+<tr class="even">
+<td><code>BF:F14</code> تشخيص فاقد الاستفسارات</td>
+<td><code>SalesConversion</code></td>
+<td><code>V07 V08</code></td>
+<td>إفادات/سجلات اتصال مرخصة</td>
+<td>موضع فاقد قابل للتدقيق</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F15</code> تقييم تحسين المتابعة والرد</td>
+<td><code>SalesConversion</code></td>
+<td><code>V07 V08</code></td>
+<td>أوقات استجابة + سعة + إذن</td>
+<td>تجربة متابعة أو تعديل تشغيل</td>
+</tr>
+<tr class="even">
+<td><code>BF:F16</code> تحويل الاستفسار إلى فرصة بيع</td>
+<td><code>SalesConversion</code></td>
+<td><code>V08 V10</code></td>
+<td>تأهيل الاستفسار + حالة بيع</td>
+<td>تقدم رحلة موثوق أو نقص دليل</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F17</code> تحسين رحلة الشراء والدفع</td>
+<td><code>SalesConversion</code></td>
+<td><code>V10</code></td>
+<td>أحداث دفع ومبيعات مصححة</td>
+<td>تشخيص اختناق/تدخل قابل للاختبار</td>
+</tr>
+<tr class="even">
+<td><code>BF:F18</code> تقييم الحجز والتأكيد والحضور</td>
+<td><code>SalesConversion</code></td>
+<td><code>V06</code></td>
+<td>طلب/تأكيد/حضور كلٌ على حدة</td>
+<td>خطوة تخفيف تعثر قابلة للقياس</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F19</code> فحص القدرة على الوفاء بالطلب</td>
+<td><code>FulfillmentFit</code></td>
+<td><code>V13 V15</code></td>
+<td>سعة + موقع خدمة + التزام + تاريخ</td>
+<td>WITHIN / OUTSIDE / UNKNOWN بلا ادعاء ربحية</td>
+</tr>
+<tr class="even">
+<td><code>BF:F20</code> تقييم تأخير/إلغاء الوفاء</td>
+<td><code>FulfillmentFit</code></td>
+<td><code>V13 V06</code></td>
+<td>سجلات خدمة/توفر مؤهلة</td>
+<td>سبب وبديل خدمة/عرض محدود</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F21</code> حساب اقتصاديات النتيجة المقبولة</td>
+<td><code>BusinessEconomics</code></td>
+<td><code>V12 V05</code></td>
+<td>إيراد + رسوم + تكلفة + رد + عملة</td>
+<td>مساهمة/سيناريو مع عدم يقين</td>
+</tr>
+<tr class="even">
+<td><code>BF:F22</code> مقارنة اقتصاديات قنوات/تدخلات</td>
+<td><code>BusinessEconomics</code></td>
+<td><code>V05 V12 V17</code></td>
+<td>تكلفة طريق + هامش + سعة</td>
+<td>مقارنة لا تنسب الإضافية بلا تصميم</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F23</code> فحص فرصة الاحتفاظ والتجديد</td>
+<td><code>CustomerRetention</code></td>
+<td><code>V14</code></td>
+<td>أفواج ونتائج ناضجة مرخصة</td>
+<td>تجربة احتفاظ مؤهلة أو امتناع</td>
+</tr>
+<tr class="even">
+<td><code>BF:F24</code> تقييم الإحالات وإعادة الشراء</td>
+<td><code>CustomerRetention</code></td>
+<td><code>V14 V17</code></td>
+<td>تاريخ عميل + أذونات + نتيجة</td>
+<td>بديل برنامج إحالة مع قياس</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F25</code> تركيب بدائل تدخل تجاري</td>
+<td><code>CommercialDecisions</code></td>
+<td><code>V16</code></td>
+<td>نتائج تخصصية + هدف + قيود</td>
+<td>قرار/اختبر/اسأل/لا تغيّر</td>
+</tr>
+<tr class="even">
+<td><code>BF:F26</code> تحديد السؤال الأعلى قيمة</td>
+<td><code>CommercialDecisions</code></td>
+<td><code>V16 V18</code></td>
+<td>بدائل غير محسومة + مجهول مؤثر</td>
+<td>معلومة محددة تغير القرار</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F27</code> تسجيل أسباب القرار والتحقق</td>
+<td><code>CommercialDecisions</code></td>
+<td><code>V16</code></td>
+<td>مرجع هدف/نسخة دليل/بديل/منهج</td>
+<td>سجل قابل للمراجعة وربط نتيجة</td>
+</tr>
+<tr class="even">
+<td><code>BF:F28</code> قيمة أولى دون حسابات إعلانية</td>
+<td><code>Experience / CommercialDecisions</code></td>
+<td><code>V18</code></td>
+<td>Business/Practice + مصادر عامة مأذونة</td>
+<td>سؤال أو خطوة مفيدة بلا أرقام مختلقة</td>
+</tr>
+<tr class="odd">
+<td><code>BF:F29</code> اختبار توسع سوق أو عرض</td>
+<td><code>MarketOpportunity</code></td>
+<td><code>V15</code></td>
+<td>تأهيل سوق+مورد+اقتصاديات</td>
+<td>تجربة GO/NO-GO/UNKNOWN</td>
+</tr>
+<tr class="even">
+<td><code>BF:F30</code> فحص منفعة العلاقة التعاقدية</td>
+<td><code>Business / Commercial Governance</code></td>
+<td><code>V12 V16</code></td>
+<td>حقوق واشتراطات تعاقد ومدفوعات</td>
+<td>قرار عقد مع حماية تضارب المصالح</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>تحديد الأولويات ليس بترتيب F01…F30.</strong> وظيفة واحدة قد تُنفذ باستهلاك قدرة موجودة؛ وأخرى قد تتطلب مصدرًا غير متاح ولا يحق لها إعلان الجاهزية. وظيفة المعلن ليست محركًا عامًا، وعند وجود قدرة مشتركة يظل لها مالك واحد مع واجهة استهلاك محددة.</p>
+</section>
+<section class="level2" id="8-تخصص-فهم-المشتري-والطلب-والوصول--قرار-مملوك-لا-محرك-استهداف">
+<h2>8. تخصص فهم المشتري والطلب والوصول — قرار مملوك لا محرك استهداف</h2>
+<p><code>DemandReach</code> يملك <strong>تقييم طرق الوصول</strong> لا حقائق جميع المشترين ولا تنفيذ مزود إعلانات. فصل خمس أسئلة:</p>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>السؤال</th>
+<th>المالك / مصدر الحقيقة</th>
+<th>مخرج مشروع / قيد</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>ماذا نبيع ولمن نعتقد أنه مناسب؟</td>
+<td>Business/Practice/Offering + تصريحات المستخدم</td>
+<td>Buyer hypothesis بإصدار، لا «عميل مثبت»</td>
+</tr>
+<tr class="even">
+<td>ما الحاجة والطلب والنية وسلوك الشراء؟</td>
+<td>بيانات أو مقابلات مؤهلة، MarketKnowledge عند الأدلة السوقية، مالك نتائج البيع عند واقعتها</td>
+<td>إشارات/فئات/أدوار بنطاق؛ لا حسابات أفراد تلقائية</td>
+</tr>
+<tr class="odd">
+<td>ما الطرق التي قد تصل إلى الطلب؟</td>
+<td>DemandReach يستهلك الأدلة والسعة والتغطية والجدوى</td>
+<td>خيارات: بحث، شراكة، موزع، محتوى، فعالية، إعلان، بيع مؤسسي، غيرها</td>
+</tr>
+<tr class="even">
+<td>هل تفعيل الطريق متاح ومأذون؟</td>
+<td>Sources + مزود/اتفاق + Execution + حقوق/امتثال</td>
+<td>READY/UNKNOWN/BLOCKED/HUMAN_HANDOFF؛ تختلف إمكانات كل مزود</td>
+</tr>
+<tr class="odd">
+<td>هل أنتج الطريق نتيجة مجدية؟</td>
+<td>Outcome owner + BusinessEconomics + Evaluation</td>
+<td>عقود/مبيعات/حجوزات/فرص مؤهلة مقابل التكلفة؛ لا دليل سببية تلقائيًا</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>عقد وصول متخصص (دلاليًا لا جدول JSON عام):</strong> <code>OfferingRef+Version</code>, <code>GoalRef+Version</code>, <code>BuyerContext</code> مع منشأ فرضية/دليل، <code>QualifiedDemandRefs</code>, <code>RouteCandidates</code>, <code>RouteEligibility</code> حسب البلد والمزود والحق والقدرة والسعة والتكلفة، <code>Choice/Abstention/NextQuestion</code>, <code>VerificationPlan</code>. يحافظ المنسق على مصادر الأدلة ونسخها ولا ينسخها، ويترجم موائم المزود فقط الخصائص التي يدعمها رسميًا عند وقت التفعيل.</p>
+<p><strong>فصل فئات البيع:</strong> النشاط قد يبيع لأفراد أو شركات أو متاجر أو طلاب أو موزعين أو مؤسسات متعددة الأطراف، وقد يبيع لأكثر من فئة في العرض نفسه. لا نخلط «فئة مشترٍ» بـ«شخص طبيعي قابل للاستهداف»، ولا نستنتج حساب الموظف أو المدير أو نراسل أشخاصًا اعتمادًا على معلومات غير مرخصة. تُراعى القوانين والحقوق وشروط المنصات وحماية القُصّر. قد يكون الطريق الأجدى <strong>موزعًا أو تسعيرًا أفضل أو قدرة وفاء أعلى</strong> لا استهدافًا رقميًا.</p>
+<p><strong>العائلات البحثية الـ34 ليست كلها وصولًا جديدًا:</strong> A التقاط طلب قائم، B تكوين معرفة وثقة، C بيع مؤسسي/قنوات، D علاقة مع عملاء حاليين، E إزالة عوائق التحويل بعد الوصول. عائلة E تعيش وظيفيًا لدى <code>OfferStrategy/SalesConversion/FulfillmentFit</code> حسب المالك، ولا نحبسها في <code>DemandReach</code>. الفهرس المختصر في الملحق هـ.</p>
+</section>
+<section class="level2" id="9-عقود-التنفيذ-في-laravel--postgresql--vue">
+<h2>9. عقود التنفيذ في Laravel / PostgreSQL / Vue</h2>
+<section class="level3" id="91-هيكل-مبدئي--مسؤوليات-لا-أمر-بإنشاء-مجلدات-فارغة">
+<h3>9.1 هيكل مبدئي — مسؤوليات، لا أمر بإنشاء مجلدات فارغة</h3>
+<pre class="text"><code>app/
+  Business/                   # هوية النشاط والممارسة والعرض والهدف
+  Foundation/Business/        # سلطات Business وعقود القراءة المؤهلة الموجودة
+  Sources/                    # اتصال المصدر وإتاحته وحقوقه
+  MarketKnowledge/            # أدلة ومناهج السوق ومدققاتها
+  Commercial/
+    [MarketOpportunity]/      # عند أول مستهلك فعلي
+    [DemandReach]/             # تخطيط طرق الوصول وشروط التأهيل
+    [OfferStrategy]/
+    [AdvertisingPerformance]/
+    [SalesConversion]/
+    [FulfillmentFit]/
+    [BusinessEconomics]/
+    [CustomerRetention]/
+    [CommercialDecisions]/
+  Security/                   # سلطة وأمن قائم لا نظام بديل
+  Providers/                  # موائمات مزودين بمستويات قدرات واضحة
+resources/js/                 # واجهة تستهلك Use Cases، لا مالكة للمعنى
+contracts/                    # عقود عامة منشورة فقط عند وجود مستهلك
+sql / migrations/             # محفوظة وفق مسارات المصدر المعتمدة</code></pre>
+<p><strong>عند إضافة وظيفة:</strong> (1) توثيق سؤالها وقيمة النتيجة؛ (2) مالك المجال وعقد الاستهلاك؛ (3) أدلة ومدققات وحقوق؛ (4) حالات <code>UNKNOWN/BLOCKED/INCONCLUSIVE</code> الصريحة؛ (5) تنفيذ أو خطوة يدوية أو امتناع؛ (6) نتيجة/إيصال أو بيان عدم القدرة على التحقق؛ (7) اختبارات سلوك/حقوق/توافق. المكونات المشتركة تُستخلص بعد وجود مستهلكين متشابهين، لا بوعد مستقبلي فقط.</p>
+</section>
+<section class="level3" id="92-شكل-العقد-عند-الحد--مثال-تصور-وليس-api-صالحًا-للنشر">
+<h3>9.2 شكل العقد عند الحد — مثال تصور، وليس API صالحًا للنشر</h3>
+<div class="sourceCode" id="cb3"><pre class="sourceCode php"><code class="sourceCode php"><span id="cb3-1"><a aria-hidden="true" href="#cb3-1" tabindex="-1"></a><span class="co">// PSEUDOCODE: maintain these semantic boundaries without inventing</span></span>
+<span id="cb3-2"><a aria-hidden="true" href="#cb3-2" tabindex="-1"></a><span class="co">// a universal interface, storage table, or alternate authority model.</span></span>
+<span id="cb3-3"><a aria-hidden="true" href="#cb3-3" tabindex="-1"></a><span class="kw">function</span> assessReach(AuthorizedContext <span class="va">$ctx</span><span class="ot">,</span> OfferingRef <span class="va">$offer</span><span class="ot">,</span> GoalRef <span class="va">$goal</span>)<span class="ot">:</span> ReachAssessment {</span>
+<span id="cb3-4"><a aria-hidden="true" href="#cb3-4" tabindex="-1"></a>    <span class="va">$facts</span>    <span class="op">=</span> businessOwner()-&gt;readQualifiedContext(<span class="va">$ctx</span><span class="ot">,</span> <span class="va">$offer</span><span class="ot">,</span> <span class="va">$goal</span>)<span class="ot">;</span></span>
+<span id="cb3-5"><a aria-hidden="true" href="#cb3-5" tabindex="-1"></a>    <span class="va">$evidence</span> <span class="op">=</span> knowledgeOwners()-&gt;readForPurpose(<span class="va">$ctx</span><span class="ot">,</span> <span class="st">'reach_assessment'</span><span class="ot">,</span> <span class="va">$facts</span>)<span class="ot">;</span></span>
+<span id="cb3-6"><a aria-hidden="true" href="#cb3-6" tabindex="-1"></a>    <span class="va">$options</span>  <span class="op">=</span> reachCapability()-&gt;assess(<span class="va">$facts</span><span class="ot">,</span> <span class="va">$evidence</span>)<span class="ot">;</span></span>
+<span id="cb3-7"><a aria-hidden="true" href="#cb3-7" tabindex="-1"></a>    <span class="va">$verified</span> <span class="op">=</span> independentValidator()-&gt;validate(<span class="va">$options</span><span class="ot">,</span> <span class="va">$facts</span><span class="ot">,</span> <span class="va">$evidence</span>)<span class="ot">;</span></span>
+<span id="cb3-8"><a aria-hidden="true" href="#cb3-8" tabindex="-1"></a>    <span class="cf">return</span> reachUseCase()-&gt;presentEligibleOptionsOrMissingEvidence(<span class="va">$verified</span>)<span class="ot">;</span></span>
+<span id="cb3-9"><a aria-hidden="true" href="#cb3-9" tabindex="-1"></a>}</span>
+<span id="cb3-10"><a aria-hidden="true" href="#cb3-10" tabindex="-1"></a><span class="co">// An actual external command would run in a separate authorization</span></span>
+<span id="cb3-11"><a aria-hidden="true" href="#cb3-11" tabindex="-1"></a><span class="co">// boundary with fresh rights, entitlement, provider eligibility and receipt.</span></span></code></pre></div>
+<p><strong>قواعد الدقة:</strong> لغة العقد تخصصية ومحددة المجال؛ لا اجتهاد لحساب حقوق البيانات من الـDTO؛ لا SQL عبر وحدات مملوكة إلا عبر واجهات مؤهلة؛ لا مدقق ينقل إلى داخل تنفيذ المنهج إذا كان بذلك سيلغي التحقق المستقل. تستند عمليات القراءة والكتابة الأمنية إلى سلطات Business/RLS الموجودة، وتؤخذ لقطة مرجعية مصرح بها من نسخة هدف وممارسة ودليل عند القرار؛ لا إعادة كتابة للتاريخ عند التصحيح.</p>
+</section>
+<section class="level3" id="93-حالات-الفشل-والسلطة-الفعلية">
+<h3>9.3 حالات الفشل والسلطة الفعلية</h3>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>الحد</th>
+<th>شرط السلامة</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Business / Agency</td>
+<td>عزل النشاط والتفويض والموظف، وسحب الصلاحية يمنع استعمالًا جديدًا غير مصرح</td>
+</tr>
+<tr class="even">
+<td>Qualified knowledge</td>
+<td>غرض وحقوق وسياق ونطاق وتغطية وإصدار وصلاحية؛ تصحيح/سحب يعيدان تأهيل المستهلك</td>
+</tr>
+<tr class="odd">
+<td>Capability / Method</td>
+<td>تسجيل محكوم برمجيًا؛ مدخل صالح، مخرجات محددة، مدقق متخصص مستقل عندما تلزم صحة حسابية/دلالية</td>
+</tr>
+<tr class="even">
+<td>Decision</td>
+<td>بدائل مقبولة ومجهولات واضحة، مع مرجع هدف/سياق/منهج/أدلة وإصداراتها</td>
+</tr>
+<tr class="odd">
+<td>External action</td>
+<td>تفويض جديد وقت التنفيذ، command_id ثابت، مخارج <code>UNKNOWN</code> ومصالحة مزود؛ لا إرسال مكرر بسبب ضياع الرد</td>
+</tr>
+<tr class="even">
+<td>Product feature</td>
+<td>استحقاق منفصل عن حق البيانات والتفويض؛ الغائب <code>HOLD</code> للوظائف المشروطة لا ALLOW</td>
+</tr>
+<tr class="odd">
+<td>AI / Automation</td>
+<td>أداة محدودة الحق والتكلفة والمدخل والمخرج؛ مخرج النموذج لا يوافق بنفسه على إجراء</td>
+</tr>
+<tr class="even">
+<td>Outcomes</td>
+<td>البيع/الحجز/التحصيل مثبت من مالكه؛ الإسناد ≠ الإضافية؛ تصحيح لاحق لا يمحو ما سُجل تاريخيًا</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="level3" id="94-تعليمات-تصميم-التشغيل">
+<h3>9.4 تعليمات تصميم التشغيل</h3>
+<ul>
+<li><strong>التخزين:</strong> PostgreSQL وعقود SQL الحالية ومفاتيح إصدار/معاملة، دون Graph أو قاعدة ثانية مسبقًا؛ توضع قيود Unique/FK/Check وRLS عند ملكية الجدول. لا نغير هجرات تاريخية منشورة دون خطة انتقال متوافقة.</li>
+<li><strong>التكاملات:</strong> موائم مزود وفق قدرات محددة (<code>read</code>, <code>report</code>, <code>create</code>, <code>edit</code>, <code>verify</code>) وليس حالة «متصل» العامة؛ المسار البشري أيضًا خيار عملي يحتاج معيار متابعة نتيجة ولا يُعلن API-ready.</li>
+<li><strong>الطوابير:</strong> لا إطلاق أثر اعتمادًا على معاملات غير ملتزمة؛ لا ثقة في إكمال أداة دون إيصال أو إعادة قراءة/مصالحة. إعادة المحاولة تحترم المعرف الفريد والسلطة الحالية.</li>
+<li><strong>الواجهة:</strong> «السوق والعملاء» يعرض قيمة فهم المشتري والوصول دون عشرات حقول الاستهداف؛ «المبيعات والتحويل» يعرض وظائف الاستفسارات والتأهيل والبيع؛ «النتائج والعائد» يستهلك نتيجة مؤهلة؛ «القرارات والتحسين» يعرض البدائل/الأثر. إخفاء عنصر واجهة لا يمثل رفضًا أمنيًا.</li>
+<li><strong>Zero-Setup:</strong> يبدأ من بيانات نشاط قليلة وهدف معقول وتوصية مشروطة أو سؤال عالِ القيمة؛ لا أرقام إعلانية أو «ذكاء سوق» بلا مصدر.</li>
+</ul>
+</section>
+</section>
+<section class="level2" id="10-الترتيب-البرمجي-الحاسم--من-الوثيقة-إلى-إثبات-فعلي">
+<h2>10. الترتيب البرمجي الحاسم — من الوثيقة إلى إثبات فعلي</h2>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>التتابع</th>
+<th>العمل التنفيذي</th>
+<th>شرط الإغلاق</th>
+<th>تجنّب</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>A — Version &amp; Source</strong></td>
+<td>تحقق من مسار Codex وGit HEAD وحالة العمل المحلية؛ طابق النسخ المنشورة بالمصدر المرفق؛ احتفظ بالتعديلات غير المنشورة</td>
+<td>سجل النسخة/التغييرات والمستهلكين الحقيقيين</td>
+<td>لا شجرة/Commit/PR أو مسح جديد بلا سبب</td>
+</tr>
+<tr class="even">
+<td><strong>B — Ownership Reconciliation</strong></td>
+<td>عرّف مالك كل معنى/حق/نتيجة موجود، وقارن الكود بهذا المرجع؛ عالج خطأ تصنيفي أو ازدواجًا ماديًا مثبتًا فقط</td>
+<td>خريطة <code>REUSE / REFACTOR / REQUIRED / DEFER / REJECT</code> بمراجع ملفات</td>
+<td>لا نقل كود لغرض المطابقة الشكلية</td>
+</tr>
+<tr class="odd">
+<td><strong>C — Critical seams</strong></td>
+<td>عالج حدود القراءة والمؤشرات والقدرات والمدقق/القرار عند أول مستهلك حقيقي</td>
+<td>اختبارات إثبات اقتران مفكوك، وعزل وإصدار وحالات فشل</td>
+<td>لا واجهات عامة لا مستهلك لها</td>
+</tr>
+<tr class="even">
+<td><strong>D — Real vertical slice</strong></td>
+<td>اختر قدرة تقدم قيمة فعلية بالأدلة والحقوق ووسيلة توظيف ونتيجة/نقص معلن؛ نفذها في مالكها</td>
+<td>من سياق Business إلى نتيجة مؤهلة/خطوة عملية أو امتناع صحيح</td>
+<td>لا اختيار «الوصول» تلقائيًا لمجرد كثرة دراسة وصوله</td>
+</tr>
+<tr class="odd">
+<td><strong>E — Cross-domain proof</strong></td>
+<td>وظيفة ثانية في مجال آخر تستهلك دليلًا أو قدرة مشتركة من الأولى دون نسخ أو سلطة إضافية</td>
+<td>تحقق التصحيح والسحب، النسخ، تغيير الهدف، عدم تغير غير المعنيين</td>
+<td>لا محرك Composition عالمي</td>
+</tr>
+<tr class="even">
+<td><strong>F — Closure</strong></td>
+<td>تقاعد تعليمات وثائق متعارضة بعد تتبع مراجعها، وتقرير ما نُفذ وما أُجّل وحدود الاختبار</td>
+<td><code>VERIFIED_WITH_SCOPE</code> أو <code>SPECIFIC_BLOCKER</code> أو <code>VERIFICATION_INCOMPLETE</code></td>
+<td>لا نجاح Foundation مبهم ولا فتح جولة تأسيس بلا نهاية</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>اختيار أول وظيفة ليس تصويتًا على اسم رافعة:</strong> درجة الملاءمة = (قيمة المستخدم المحتملة + حقوق/تغطية الدليل + وسيلة التفعيل الواقعية + إمكانية القياس + كلفة التنفيذ والمخاطر + وضوح البديل). لا نحولها إلى «نقاط» دقيقة بلا معايرة؛ استخدم مقارنة مكتوبة قابلة للمراجعة، وجرّب أولًا ما يملك أدلة يمكن الوصول إليها بحق.</p>
+<p><strong>نطاق الصلاحيات عند إسناد التنفيذ:</strong> الفحص والتعديل والاختبارات المحلية؛ لا Commit أو Push أو PR أو دمج أو نشر أو بيانات إنتاجية دون تفويض صريح. لا تشغيل Foundation محلي شامل تلقائيًا؛ التشغيل الموجه ثم بوابات CI بحسب أثر التغيير، و<code>PENDING</code> للبوابات التي لم تتوفر.</p>
+</section>
+<section class="level2" id="11-حالات-القبول-التي-تميز-بنية-صحيحة-عن-بنية-شكلية">
+<h2>11. حالات القبول التي تميز بنية صحيحة عن بنية شكلية</h2>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>سيناريو إثبات</th>
+<th>السلوك المطلوب / علامة الفشل</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>قدرة جديدة تستخدم نتيجة مجال آخر</td>
+<td>عقد مالك واحد، لا نسخ جدول أو نتيجة أو استخدام SDK داخلي بلا تفويض</td>
+</tr>
+<tr class="even">
+<td>منهج جديد لنتيجة سوقية</td>
+<td>مدقق متخصص مستقل، تسجيل محكوم، لا كسر نتائج الإصدارات القديمة</td>
+</tr>
+<tr class="odd">
+<td>قدرة في قيمتين ورافعتين</td>
+<td>لا توأمان منفصلان للقدرة ولا إعادة كتابة التاريخ بسبب إعادة التصنيف</td>
+</tr>
+<tr class="even">
+<td>دليل واحد يستهلكه تحليلان</td>
+<td>أهلية مستقلة لكل قراءة؛ التصحيح/السحب يوقف استعمالًا لاحقًا غير مؤهل</td>
+</tr>
+<tr class="odd">
+<td>تمييز فئات مشتري وشركة وشخص</td>
+<td>تصريح مقابل دليل سوق مقابل هوية وحقوق تواصل؛ لا جمهور فردي مختلق</td>
+</tr>
+<tr class="even">
+<td>فرصة سوق خارج تغطية الخدمة</td>
+<td>نتيجتها غير قابلة للتفعيل، ولو مؤشرات الاهتمام مرتفعة</td>
+</tr>
+<tr class="odd">
+<td>قناة مزود غير قادرة على الاستهداف المراد</td>
+<td><code>BLOCKED/UNKNOWN</code> دون إعداد unsupported؛ بديل أو سؤال لا تفعيل كاذب</td>
+</tr>
+<tr class="even">
+<td>عرض أو هدف تغير بعد التقييم</td>
+<td>القرار القديم يُراجع بإصدار سياقه، ولا يُزوّر؛ المفتوح يعاد تأهيله</td>
+</tr>
+<tr class="odd">
+<td>دفع/رسالة/إنفاق بعد فقد رد المزود</td>
+<td><code>UNKNOWN</code> ثم مصالحة؛ لا retry أعمى يكرر الأثر</td>
+</tr>
+<tr class="even">
+<td>خفض الاشتراك أو سحب تفويض وكالة</td>
+<td>لا تُحذف بيانات النشاط، ويُمنع استعمال الحق المسحوب/الميزة غير المستحقة</td>
+</tr>
+<tr class="odd">
+<td>AI خرج بتوصية أو محتوى ضار/غير مؤهل</td>
+<td>لا يصبح حقيقة أو أمرًا؛ يراجع الحد التخصصي والحقوق والتكلفة</td>
+</tr>
+<tr class="even">
+<td>إشارات تحويل ونتائج تجارية</td>
+<td>لا تُساوى API success بمبيعات أو إسناد منصة بأثر إضافي</td>
+</tr>
+<tr class="odd">
+<td>تحليل فقد الاستفسارات</td>
+<td>موضعه المقدم ضمن <code>SalesConversion</code> مع حفظ مالك الإفادة الحالي</td>
+</tr>
+<tr class="even">
+<td>Zero-Setup بنشاط بلا حساب إعلاني</td>
+<td>سؤال/منفعة مدعومة أو حالة نقص صادقة، لا لوحة بأرقام مزيفة</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>الأدلة:</strong> اختبار PHP/SQL لـRLS/العزل/الحقوق/التزامن، واختبار TypeScript/API للعقود، وسيناريو متصفح للوظيفتين كما يراهما المعلن، واختبار تغير/سحب يميز الكود المعدّل. تُوثّق نسخة الكود والأمر والنتيجة؛ Mock فقط لا يكفي لإثبات مصدر/SQL/مزود فعلي.</p>
+</section>
+<section class="level2" id="12-التعامل-مع-وثائق-المستودع-القديمة-وتصحيح-الكود">
+<h2>12. التعامل مع وثائق المستودع القديمة وتصحيح الكود</h2>
+<ul>
+<li><strong>المراجعة ليست ترحيلًا آليًا لوثائق «FINAL»</strong>: افحص <code>AGENTS.md</code> وعقود API و<code>docs/</code> وسجلات التنفيذ ومراجع الاختبارات. صنّف <code>CURRENT_SECURITY_CONTRACT</code>, <code>CURRENT_DOMAIN_CONTRACT</code>, <code>HISTORICAL_EVIDENCE</code>, <code>SUPERSEDED_INSTRUCTION</code>, <code>CONFLICTING_OBSOLETE</code>, <code>REDUNDANT</code>.</li>
+<li>ما يثبت أنه ضمان أمني/حقوق/عزل/تاريخ معتمد يبقى نافذًا حتى إذا تغير الاسم أو السياق. أما تعليمات فرض شجرة عمل/خطة/مجال أو معمارية متقادمة فتُصحح أو يُزال إلزامها بعد تتبع مستهلكيها وتأثير ذلك على الاختبارات.</li>
+<li><strong>الكود الحالي لا يحدد تصميم المستقبل:</strong> يجوز تعديل وظيفة أو فصلها أو إعادة موضعتها إذا ثبتت مصلحة المعمارية وعُرفت كلفة الاستبدال والتوافق. مثال: إفادات الاستفسارات تبقى دليلًا مملوكًا لجهتها الحالية، لكن وظيفتها وتجربتها وعلاقتها بقيمة التحويل تقع في <code>SalesConversion</code>؛ لا CRM آخر ولا حذف تاريخ.</li>
+<li>لا يُنقل مصدر حقيقة أو تفويض إلى Domain آخر لأن اسمًا في الخطة تغيّر؛ القرار بحاجة إلى أثر مدقق على SQL وAPI والتصحيحات والحقوق والمستهلكين.</li>
+</ul>
+</section>
+<section class="level2" id="13-حدود-المصالحة-مع-اللقطة-البرمجية">
+<h2>13. حدود المصالحة مع اللقطة البرمجية</h2>
+<p><strong>المصدر البرمجي الذي تستند إليه بعض المراجع:</strong> الأرشيف <code>BuilderAd_Source_Code(8).zip</code> في النسخة التي خضعت لمراجعة مستقلة سابقة؛ هذه الوثيقة الجديدة لم تنفذ تغييرات على <code>42Huss/builderad</code> ولم تُعد تشغيل اختبارات المستودع. الملفات التالية <strong>مواضع تحقق عند التنفيذ</strong> لا شهادات كمال:</p>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>موضع معروف</th>
+<th>سبب أهميته / قاعدة القرار</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>app/Foundation/Business/BusinessScope.php</code></td>
+<td>سلطة Business والقراءات المؤهلة وحقوق بيانات النشاط؛ أعد الاستعمال لا نظام تفويض موازٍ</td>
+</tr>
+<tr class="even">
+<td><code>app/Business/AdvertiserGoalPreferences.php</code></td>
+<td>هدف النشاط وسياقه؛ لا تتولد Goals جديدة نسخًا من الواجهة</td>
+</tr>
+<tr class="odd">
+<td><code>app/MarketKnowledge/QualifiedKnowledgeReader.php</code></td>
+<td>قراءة معرفة مؤهلة من مالكها؛ لا تمرر Findings من طلب المستخدم على أنها حقيقة</td>
+</tr>
+<tr class="even">
+<td><code>app/MarketKnowledge/Processing/MarketMethodSelector.php</code></td>
+<td>مناهج محددة مخولة؛ لا فائدة من Dynamic Plugins بلا حاجة حقيقية</td>
+</tr>
+<tr class="odd">
+<td><code>app/MarketKnowledge/Processing/Findings.php</code> و<code>*Result.php</code></td>
+<td>فصل تحقق تخصصي كان موجودًا في لقطة <code>(8)</code>، فيُتحقق منه قبل اقتراح إصلاح تمت معالجته</td>
+</tr>
+<tr class="even">
+<td><code>app/Commercial/InquiryEvidence.php</code></td>
+<td>مصدر إفادات الاستفسارات والتصحيحات؛ يستهلكها SalesConversion دون نسخ</td>
+</tr>
+<tr class="odd">
+<td><code>app/Commercial/RegisterCommercialScope.php</code></td>
+<td>سياق تجاري لا يساوي استحقاق/اشتراك تشغيلي؛ الغائب HOLD للميزات المشروطة</td>
+</tr>
+<tr class="even">
+<td><code>resources/js/business-foundation/advertiserNavigation.ts</code></td>
+<td>العرض والتنقل لا يغيران صلاحيات أو مجال الحقيقة</td>
+</tr>
+<tr class="odd">
+<td><code>resources/js/business-foundation/BusinessWorkspace.vue</code></td>
+<td>موقع عرض الاستفسارات الحالي قد لا يوافق موضع قيمتها في SalesConversion</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>بوابة الحالة:</strong> تأكيد Git المحلي والبعيد ونسخ SQL وملفات التعديل قبل أي قرار إعادة تنظيم؛ لا مساواة بين الكود في ZIP وبين HEAD منشور أو تعديلات محلية غير مرئية.</p>
+</section>
+<section class="level2" id="14-ماذا-تعني-نهائية-وما-الذي-لا-ندّعيه">
+<h2>14. ماذا تعني «نهائية» وما الذي لا ندّعيه؟</h2>
+<p>نهائية هذا المرجع تعني <strong>حسم التصنيف والملكية وآلية إنشاء الوظيفة وإثبات القيمة وحدود الربط والاختبارات</strong>. لا تعني اكتمال 104 قدرات، أو توافر 34 قناة، أو جاهزية 37 هدفًا في الواجهة، أو تحقق جميع العلاقات البحثية، أو وجود خوارزمية تمنح «أفضل قرار» دائمًا.</p>
+<p><strong>قرارات مفتوحة عمدًا حتى وجود دليل فعلي:</strong> أول وظيفة ذات أفضل اقتصاديات، المصدر المرخص الذي يملك بياناتها، شكل أول عقد اشتراك مدفوع وتسعيره، النموذج/الخوارزمية الأنسب لكل مجال، مستوى التفعيل المتاح عند كل مزود، والنتائج التجريبية التي تثبت الأثر. هذا ليس نقصًا في التنظيم؛ هو منع الالتزام بتصميم لم تُثبت مستلزماته.</p>
+<p><strong>نتيجة العمل البرمجي المطلوبة:</strong> <code>READY_FOR_TARGETED_IMPLEMENTATION</code> مع عقود ومستهلكين معلومين، أو <code>SPECIFIC_CAPABILITY_BLOCKER</code> بمالك وسبب ومصدر/حق/اختبار ناقص. وبعد التنفيذ: <code>VERIFIED_WITH_SCOPE</code> فقط لما اجتاز الأدلة. لا مراجعات دائرية ولا شهادات شمول مستقبلي غير قابلة للإثبات.</p>
+<hr/>
+</section>
+</section>
+<section class="level1" id="الملاحق-المرجعية-المختصرة--التتبع-دون-تحويل-البحث-إلى-كود">
+<h1>الملاحق المرجعية المختصرة — التتبع دون تحويل البحث إلى كود</h1>
+<section class="level2" id="الملحق-أ--القدرات-المصدرية-الـ104-الأطلس-v3">
+<h2>الملحق أ — القدرات المصدرية الـ104 (الأطلس v3)</h2>
+<p>الفهرس التالي <strong>بحثي فقط</strong>. يُراجع عند اختيار وظيفة حقيقية، وتُعرَّف هويتها التشغيلية مستقلة. يحدد «موضع التنسيق المبدئي» أين نبحث عن الملكية، لا أين يُنشأ ملف تلقائيًا.</p>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>معرّف الأطلس</th>
+<th>القدرة المرشحة</th>
+<th>القيم المرتبطة في المصدر</th>
+<th>مجال المراجعة الأولي</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>L01-C01</code></td>
+<td>تأهيل مناسبة العميل والهدف</td>
+<td>V18</td>
+<td><code>Business + Commercial Governance</code></td>
+</tr>
+<tr class="even">
+<td><code>L01-C02</code></td>
+<td>دراسة اقتصاديات العقد والاستحقاق</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>Business + Commercial Governance</code></td>
+</tr>
+<tr class="odd">
+<td><code>L01-C03</code></td>
+<td>تحليل قدرة العميل على الوفاء</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>Business + Commercial Governance</code></td>
+</tr>
+<tr class="even">
+<td><code>L01-C04</code></td>
+<td>تقييم المخاطر والتأخر في التحصيل</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>Business + Commercial Governance</code></td>
+</tr>
+<tr class="odd">
+<td><code>L01-C05</code></td>
+<td>تضارب المصالح والتفويض</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>Business + Commercial Governance</code></td>
+</tr>
+<tr class="even">
+<td><code>L01-C06</code></td>
+<td>اختيار تجربة قبل التزام طويل</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>Business + Commercial Governance</code></td>
+</tr>
+<tr class="odd">
+<td><code>L02-C01</code></td>
+<td>إشارات الطلب واتجاهاته</td>
+<td>V01</td>
+<td><code>MarketOpportunity</code></td>
+</tr>
+<tr class="even">
+<td><code>L02-C02</code></td>
+<td>الطلب الجغرافي ونطاق الخدمة</td>
+<td>V01</td>
+<td><code>MarketOpportunity</code></td>
+</tr>
+<tr class="odd">
+<td><code>L02-C03</code></td>
+<td>الموسمية وتوقيت الفرصة</td>
+<td>V04</td>
+<td><code>MarketOpportunity</code></td>
+</tr>
+<tr class="even">
+<td><code>L02-C04</code></td>
+<td>كشف الاحتياجات غير المخدومة</td>
+<td>V01, V15</td>
+<td><code>MarketOpportunity</code></td>
+</tr>
+<tr class="odd">
+<td><code>L02-C05</code></td>
+<td>استخبارات نية شراء المؤسسات</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>MarketOpportunity</code></td>
+</tr>
+<tr class="even">
+<td><code>L02-C06</code></td>
+<td>فحص جدوى الفرصة المقيدة</td>
+<td>V15</td>
+<td><code>MarketOpportunity</code></td>
+</tr>
+<tr class="odd">
+<td><code>L02-C07</code></td>
+<td>اختيار المعلومة/التجربة التالية</td>
+<td>V15, V16, V18</td>
+<td><code>MarketOpportunity</code></td>
+</tr>
+<tr class="even">
+<td><code>L03-C01</code></td>
+<td>التقسيم حسب الاحتياج والسلوك</td>
+<td>V01</td>
+<td><code>MarketOpportunity / SalesConversion</code></td>
+</tr>
+<tr class="odd">
+<td><code>L03-C02</code></td>
+<td>توصيف العميل المثالي</td>
+<td>V01, V08, V18</td>
+<td><code>MarketOpportunity / SalesConversion</code></td>
+</tr>
+<tr class="even">
+<td><code>L03-C03</code></td>
+<td>أفواج وقيمة الشرائح</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>MarketOpportunity / SalesConversion</code></td>
+</tr>
+<tr class="odd">
+<td><code>L03-C04</code></td>
+<td>ملاءمة الطلب للخدمة أو العقار</td>
+<td>V01, V08</td>
+<td><code>MarketOpportunity / SalesConversion</code></td>
+</tr>
+<tr class="even">
+<td><code>L03-C05</code></td>
+<td>الاستجابة/الشراء المتوقع</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>MarketOpportunity / SalesConversion</code></td>
+</tr>
+<tr class="odd">
+<td><code>L03-C06</code></td>
+<td>فحص التغطية والانحياز</td>
+<td>V08, V16</td>
+<td><code>MarketOpportunity / SalesConversion</code></td>
+</tr>
+<tr class="even">
+<td><code>L04-C01</code></td>
+<td>ملاءمة المنتج/الخدمة للسوق</td>
+<td>V03, V18</td>
+<td><code>OfferStrategy</code></td>
+</tr>
+<tr class="odd">
+<td><code>L04-C02</code></td>
+<td>استخبارات التمايز والمنافسة</td>
+<td>V02, V09</td>
+<td><code>OfferStrategy</code></td>
+</tr>
+<tr class="even">
+<td><code>L04-C03</code></td>
+<td>تصميم باقات وعروض</td>
+<td>V03</td>
+<td><code>OfferStrategy</code></td>
+</tr>
+<tr class="odd">
+<td><code>L04-C04</code></td>
+<td>تحليل الاعتراضات والشكاوى</td>
+<td>V02, V09</td>
+<td><code>OfferStrategy</code></td>
+</tr>
+<tr class="even">
+<td><code>L04-C05</code></td>
+<td>فحص تطابق الوعد والتوفر</td>
+<td>V03, V09, V18</td>
+<td><code>OfferStrategy</code></td>
+</tr>
+<tr class="odd">
+<td><code>L04-C06</code></td>
+<td>تجربة نسخ العرض</td>
+<td>V03</td>
+<td><code>OfferStrategy</code></td>
+</tr>
+<tr class="even">
+<td><code>L04-C07</code></td>
+<td>اكتشاف خدمة/منتج جديد</td>
+<td>V15</td>
+<td><code>OfferStrategy</code></td>
+</tr>
+<tr class="odd">
+<td><code>L05-C01</code></td>
+<td>اقتصاديات السعر وهامش المساهمة</td>
+<td>V03, V05, V12</td>
+<td><code>OfferStrategy + BusinessEconomics</code></td>
+</tr>
+<tr class="even">
+<td><code>L05-C02</code></td>
+<td>مرونة الطلب واختبار السعر</td>
+<td>V03</td>
+<td><code>OfferStrategy + BusinessEconomics</code></td>
+</tr>
+<tr class="odd">
+<td><code>L05-C03</code></td>
+<td>الخصومات والعروض المحدودة</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>OfferStrategy + BusinessEconomics</code></td>
+</tr>
+<tr class="even">
+<td><code>L05-C04</code></td>
+<td>التقسيط وشروط السداد</td>
+<td>V12</td>
+<td><code>OfferStrategy + BusinessEconomics</code></td>
+</tr>
+<tr class="odd">
+<td><code>L05-C05</code></td>
+<td>التسعير المقيد بالسعة</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>OfferStrategy + BusinessEconomics</code></td>
+</tr>
+<tr class="even">
+<td><code>L05-C06</code></td>
+<td>شروط الشريك والعمولات</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>OfferStrategy + BusinessEconomics</code></td>
+</tr>
+<tr class="odd">
+<td><code>L06-C01</code></td>
+<td>SEO التقني والفهرسة</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="even">
+<td><code>L06-C02</code></td>
+<td>الظهور المحلي ومعلومات الفرع</td>
+<td>V04</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="odd">
+<td><code>L06-C03</code></td>
+<td>هيكلة صفحات الخدمات والمنتجات</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="even">
+<td><code>L06-C04</code></td>
+<td>فهم استفسارات البحث ذات النية</td>
+<td>V04</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="odd">
+<td><code>L06-C05</code></td>
+<td>فحص الروابط والنماذج</td>
+<td>V10</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="even">
+<td><code>L06-C06</code></td>
+<td>قياس الوصول العضوي وإحالاته</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="odd">
+<td><code>L07-C01</code></td>
+<td>اكتشاف وتقييم شريك مناسب</td>
+<td>V04, V17</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="even">
+<td><code>L07-C02</code></td>
+<td>اقتصاديات العمولة والقناة</td>
+<td>V17</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="odd">
+<td><code>L07-C03</code></td>
+<td>ربط الإحالات المؤهلة</td>
+<td>V17</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="even">
+<td><code>L07-C04</code></td>
+<td>عقود واستحقاقات التوزيع</td>
+<td>V17</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="odd">
+<td><code>L07-C05</code></td>
+<td>تقييم المؤثرين والشراكات</td>
+<td>V17</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="even">
+<td><code>L07-C06</code></td>
+<td>الأسواق متعددة الأطراف عند الانطباق</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>DemandReach</code></td>
+</tr>
+<tr class="odd">
+<td><code>L08-C01</code></td>
+<td>فحص جاهزية الحساب والحملة</td>
+<td>V11</td>
+<td><code>AdvertisingPerformance</code></td>
+</tr>
+<tr class="even">
+<td><code>L08-C02</code></td>
+<td>هدف التحسين وإعدادات الاستهداف</td>
+<td>V04, V11</td>
+<td><code>AdvertisingPerformance</code></td>
+</tr>
+<tr class="odd">
+<td><code>L08-C03</code></td>
+<td>المزايدة والتسليم والتشبع</td>
+<td>V04</td>
+<td><code>AdvertisingPerformance</code></td>
+</tr>
+<tr class="even">
+<td><code>L08-C04</code></td>
+<td>الإبداع والتحقق من تنفيذه</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>AdvertisingPerformance</code></td>
+</tr>
+<tr class="odd">
+<td><code>L08-C05</code></td>
+<td>تأهيل إشارة التحويل اللاحقة</td>
+<td>V11</td>
+<td><code>AdvertisingPerformance</code></td>
+</tr>
+<tr class="even">
+<td><code>L08-C06</code></td>
+<td>تقسيم الموارد والميزانيات</td>
+<td>V05</td>
+<td><code>AdvertisingPerformance</code></td>
+</tr>
+<tr class="odd">
+<td><code>L08-C07</code></td>
+<td>اختبارات التغيير والأثر</td>
+<td>V05, V11, V16</td>
+<td><code>AdvertisingPerformance</code></td>
+</tr>
+<tr class="even">
+<td><code>L08-C08</code></td>
+<td>سلامة أوامر الإعلان</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>AdvertisingPerformance</code></td>
+</tr>
+<tr class="odd">
+<td><code>L08-C09</code></td>
+<td>توافق الإنفاق مع السعة</td>
+<td>V05</td>
+<td><code>AdvertisingPerformance</code></td>
+</tr>
+<tr class="even">
+<td><code>L09-C01</code></td>
+<td>تحليل الرسالة وزاوية الإقناع</td>
+<td>V02, V09</td>
+<td><code>OfferStrategy / AdvertisingPerformance</code></td>
+</tr>
+<tr class="odd">
+<td><code>L09-C02</code></td>
+<td>تحليل اعتراضات العملاء</td>
+<td>V09</td>
+<td><code>OfferStrategy / AdvertisingPerformance</code></td>
+</tr>
+<tr class="even">
+<td><code>L09-C03</code></td>
+<td>فحص صفحة الهبوط والمحتوى</td>
+<td>V10</td>
+<td><code>OfferStrategy / AdvertisingPerformance</code></td>
+</tr>
+<tr class="odd">
+<td><code>L09-C04</code></td>
+<td>القياس التجريبي للمحتوى</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>OfferStrategy / AdvertisingPerformance</code></td>
+</tr>
+<tr class="even">
+<td><code>L09-C05</code></td>
+<td>الضمانات والإثبات الاجتماعي</td>
+<td>V02, V09</td>
+<td><code>OfferStrategy / AdvertisingPerformance</code></td>
+</tr>
+<tr class="odd">
+<td><code>L09-C06</code></td>
+<td>مساعدة إنتاج مواد تجريبية</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>OfferStrategy / AdvertisingPerformance</code></td>
+</tr>
+<tr class="even">
+<td><code>L10-C01</code></td>
+<td>استقبال قنوات الاتصال</td>
+<td>V07</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="odd">
+<td><code>L10-C02</code></td>
+<td>أول استجابة وزمن الانتظار</td>
+<td>V07</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="even">
+<td><code>L10-C03</code></td>
+<td>تحويل قناة إلى استفسار تجاري</td>
+<td>V08</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="odd">
+<td><code>L10-C04</code></td>
+<td>تأهيل جودة الفرصة</td>
+<td>V06, V08, V11</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="even">
+<td><code>L10-C05</code></td>
+<td>توزيع المحادثات وفرص البيع</td>
+<td>V06, V07</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="odd">
+<td><code>L10-C06</code></td>
+<td>فهم احتياج واعتراض</td>
+<td>V08</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="even">
+<td><code>L10-C07</code></td>
+<td>المتابعة والاستعادة المأذونة</td>
+<td>V06, V07</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="odd">
+<td><code>L10-C08</code></td>
+<td>تحليل تسرب الاستفسارات</td>
+<td>V07</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="even">
+<td><code>L10-C09</code></td>
+<td>الامتثال والأذونات للمراسلة</td>
+<td>V07</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="odd">
+<td><code>L11-C01</code></td>
+<td>التحويل داخل المتجر والسلة</td>
+<td>V10</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="even">
+<td><code>L11-C02</code></td>
+<td>فشل الدفع وخياراته</td>
+<td>V10</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="odd">
+<td><code>L11-C03</code></td>
+<td>الحجوزات والحضور</td>
+<td>V06</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="even">
+<td><code>L11-C04</code></td>
+<td>عروض الأسعار والتفاوض</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="odd">
+<td><code>L11-C05</code></td>
+<td>مراحل B2B والعقارات</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="even">
+<td><code>L11-C06</code></td>
+<td>البيع الإضافي والمتقاطع</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="odd">
+<td><code>L11-C07</code></td>
+<td>استعادة السلات/الحجوزات</td>
+<td>V10</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="even">
+<td><code>L11-C08</code></td>
+<td>ربط النتيجة والكيانات</td>
+<td>V10, V11</td>
+<td><code>SalesConversion</code></td>
+</tr>
+<tr class="odd">
+<td><code>L12-C01</code></td>
+<td>توصيف الموارد والقيود</td>
+<td>V13</td>
+<td><code>FulfillmentFit</code></td>
+</tr>
+<tr class="even">
+<td><code>L12-C02</code></td>
+<td>تحليل الطوابير والاختناقات</td>
+<td>V06, V13</td>
+<td><code>FulfillmentFit</code></td>
+</tr>
+<tr class="odd">
+<td><code>L12-C03</code></td>
+<td>جدولة الموارد والمواعيد</td>
+<td>V06, V13</td>
+<td><code>FulfillmentFit</code></td>
+</tr>
+<tr class="even">
+<td><code>L12-C04</code></td>
+<td>إدارة المخزون والتوفر</td>
+<td>V13</td>
+<td><code>FulfillmentFit</code></td>
+</tr>
+<tr class="odd">
+<td><code>L12-C05</code></td>
+<td>التنفيذ والتسليم والقبول</td>
+<td>V13</td>
+<td><code>FulfillmentFit</code></td>
+</tr>
+<tr class="even">
+<td><code>L12-C06</code></td>
+<td>جودة التنفيذ وإعادة العمل</td>
+<td>V13</td>
+<td><code>FulfillmentFit</code></td>
+</tr>
+<tr class="odd">
+<td><code>L12-C07</code></td>
+<td>سيناريوهات إضافة قدرة</td>
+<td>V13</td>
+<td><code>FulfillmentFit</code></td>
+</tr>
+<tr class="even">
+<td><code>L13-C01</code></td>
+<td>فواتير ومستحقات</td>
+<td>V12</td>
+<td><code>BusinessEconomics</code></td>
+</tr>
+<tr class="odd">
+<td><code>L13-C02</code></td>
+<td>مدفوعات وتسوية فعلية</td>
+<td>V12</td>
+<td><code>BusinessEconomics</code></td>
+</tr>
+<tr class="even">
+<td><code>L13-C03</code></td>
+<td>إلغاءات ومرتجعات وتصحيحات</td>
+<td>V11, V12, V16</td>
+<td><code>BusinessEconomics</code></td>
+</tr>
+<tr class="odd">
+<td><code>L13-C04</code></td>
+<td>حساب مساهمة اقتصادية</td>
+<td>V05, V12</td>
+<td><code>BusinessEconomics</code></td>
+</tr>
+<tr class="even">
+<td><code>L13-C05</code></td>
+<td>اقتصاديات COD/RTO</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>BusinessEconomics</code></td>
+</tr>
+<tr class="odd">
+<td><code>L13-C06</code></td>
+<td>التقسيط والرسوم</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>BusinessEconomics</code></td>
+</tr>
+<tr class="even">
+<td><code>L13-C07</code></td>
+<td>السيولة ورأس المال العامل</td>
+<td>V12</td>
+<td><code>BusinessEconomics</code></td>
+</tr>
+<tr class="odd">
+<td><code>L13-C08</code></td>
+<td>العائد المؤهل حسب قناة</td>
+<td>V05, V12, V16</td>
+<td><code>BusinessEconomics</code></td>
+</tr>
+<tr class="even">
+<td><code>L14-C01</code></td>
+<td>أفواج الاحتفاظ والتكرار</td>
+<td>V14</td>
+<td><code>CustomerRetention</code></td>
+</tr>
+<tr class="odd">
+<td><code>L14-C02</code></td>
+<td>التجديد وإلغاء الاشتراك</td>
+<td>V14</td>
+<td><code>CustomerRetention</code></td>
+</tr>
+<tr class="even">
+<td><code>L14-C03</code></td>
+<td>تحليل الشكاوى والسمعة</td>
+<td>V14</td>
+<td><code>CustomerRetention</code></td>
+</tr>
+<tr class="odd">
+<td><code>L14-C04</code></td>
+<td>تقدير مخاطر التسرب</td>
+<td>V14</td>
+<td><code>CustomerRetention</code></td>
+</tr>
+<tr class="even">
+<td><code>L14-C05</code></td>
+<td>الاستعادة والعودة</td>
+<td>V14</td>
+<td><code>CustomerRetention</code></td>
+</tr>
+<tr class="odd">
+<td><code>L14-C06</code></td>
+<td>القيمة المستقبلية للعلاقة</td>
+<td>V14</td>
+<td><code>CustomerRetention</code></td>
+</tr>
+<tr class="even">
+<td><code>L14-C07</code></td>
+<td>الإحالات والسمعة</td>
+<td>V14</td>
+<td><code>CustomerRetention</code></td>
+</tr>
+<tr class="odd">
+<td><code>L15-C01</code></td>
+<td>استكشاف أسواق وقطاعات جديدة</td>
+<td>V15, V18</td>
+<td><code>MarketOpportunity + CommercialDecisions</code></td>
+</tr>
+<tr class="even">
+<td><code>L15-C02</code></td>
+<td>ابتكار خدمة أو منتج</td>
+<td>V15</td>
+<td><code>MarketOpportunity + CommercialDecisions</code></td>
+</tr>
+<tr class="odd">
+<td><code>L15-C03</code></td>
+<td>نطاق جغرافي وفرع</td>
+<td>V15</td>
+<td><code>MarketOpportunity + CommercialDecisions</code></td>
+</tr>
+<tr class="even">
+<td><code>L15-C04</code></td>
+<td>التوسع عبر شريك أو قناة</td>
+<td>V17</td>
+<td><code>MarketOpportunity + CommercialDecisions</code></td>
+</tr>
+<tr class="odd">
+<td><code>L15-C05</code></td>
+<td>محاكاة أثر التوسع</td>
+<td>V15, V16</td>
+<td><code>MarketOpportunity + CommercialDecisions</code></td>
+</tr>
+<tr class="even">
+<td><code>L15-C06</code></td>
+<td>إعادة استخدام المعرفة بين الأنشطة</td>
+<td>غير منصوص في جدول قيم الأطلس</td>
+<td><code>MarketOpportunity + CommercialDecisions</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="level2" id="الملحق-ب--الأهداف-الـ37-المرجعية-خيارات-دراسة-لا-واجهة-منفذة">
+<h2>الملحق ب — الأهداف الـ37 المرجعية (خيارات دراسة لا واجهة منفذة)</h2>
+<p>العناوين ودلالات النتيجة من الأطلس. يمكن للهدف ألا يحتوي مستهدفًا كميًا؛ لا تعني القائمة أن Current Intent يدعمها كلها.</p>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>معرّف الهدف البحثي</th>
+<th>ما يُعد نتيجة مقبولة</th>
+<th>قيم مرتبطة في المصدر</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>qualified_inquiries</code> — <strong>عملاء جادون / استفسارات مؤهلة</strong></td>
+<td>نتيجة تأهيل بمقياس أهلية واضح، وليس مجرد رسائل</td>
+<td><code>V01</code>, <code>V02</code>, <code>V04</code>, <code>V08</code>, <code>V09</code>, <code>V11</code>, <code>V16</code></td>
+</tr>
+<tr class="even">
+<td><code>purchase_requests</code> — <strong>طلبات شراء</strong></td>
+<td>طلب بيع فريد مؤهل؛ الدفع والتسليم منفصلان</td>
+<td><code>V01</code>, <code>V02</code>, <code>V03</code>, <code>V04</code>, <code>V05</code>, <code>V08</code>, <code>V10</code>, <code>V11</code>, <code>V12</code>, <code>V13</code>, <code>V16</code></td>
+</tr>
+<tr class="odd">
+<td><code>completed_sales</code> — <strong>مبيعات فعلية مكتملة</strong></td>
+<td>بيع مكتمل وفق سياسة إثباته؛ ليس بدء الطلب أو إسناد المنصة</td>
+<td><code>V01</code>, <code>V02</code>, <code>V03</code>, <code>V04</code>, <code>V05</code>, <code>V08</code>, <code>V10</code>, <code>V11</code>, <code>V12</code>, <code>V13</code></td>
+</tr>
+<tr class="even">
+<td><code>profitable_sales</code> — <strong>مبيعات مجدية اقتصاديًا</strong></td>
+<td>نتائج بيع تستوفي عتبة مساهمة اقتصادية محددة ومؤهلة</td>
+<td><code>V03</code>, <code>V05</code>, <code>V08</code>, <code>V10</code>, <code>V11</code>, <code>V12</code>, <code>V13</code>, <code>V16</code></td>
+</tr>
+<tr class="odd">
+<td><code>paid_orders</code> — <strong>طلبات مدفوعة</strong></td>
+<td>مدفوعات مرتبطة بطلبات فريدة؛ لا تساوي الطلب المُنشأ</td>
+<td><code>V03</code>, <code>V04</code>, <code>V10</code>, <code>V11</code>, <code>V12</code></td>
+</tr>
+<tr class="even">
+<td><code>booking_requests</code> — <strong>طلبات حجز</strong></td>
+<td>طلب حجز مقدم؛ لا يعني حجزًا مؤكدًا</td>
+<td><code>V01</code>, <code>V03</code>, <code>V04</code>, <code>V06</code>, <code>V07</code>, <code>V08</code>, <code>V13</code>, <code>V16</code></td>
+</tr>
+<tr class="odd">
+<td><code>confirmed_bookings</code> — <strong>حجوزات مؤكدة</strong></td>
+<td>تأكيد صالح، لا مجرد طلب حجز أو حضور</td>
+<td><code>V01</code>, <code>V03</code>, <code>V04</code>, <code>V06</code>, <code>V07</code>, <code>V08</code>, <code>V13</code>, <code>V16</code></td>
+</tr>
+<tr class="even">
+<td><code>attendance</code> — <strong>حضور فعلي</strong></td>
+<td>حضور مؤكد من مصدر أو إقرار مؤهل</td>
+<td><code>V04</code>, <code>V06</code>, <code>V07</code>, <code>V09</code>, <code>V13</code>, <code>V16</code></td>
+</tr>
+<tr class="odd">
+<td><code>verified_visits</code> — <strong>زيارات أو معاينات فعلية</strong></td>
+<td>زيارة أو معاينة موثقة لا تساوي حجز موعد</td>
+<td><code>V01</code>, <code>V04</code>, <code>V06</code>, <code>V07</code>, <code>V13</code>, <code>V16</code></td>
+</tr>
+<tr class="even">
+<td><code>less_no_show</code> — <strong>خفض عدم الحضور</strong></td>
+<td>خفض نسبة أو عدد المواعيد المؤكدة التي لم يحضر أصحابها</td>
+<td><code>V06</code>, <code>V07</code>, <code>V09</code>, <code>V13</code>, <code>V16</code></td>
+</tr>
+<tr class="odd">
+<td><code>phone_calls</code> — <strong>اتصالات</strong></td>
+<td>حدد معيار الاتصال: وارد أم مجاب أم مؤهل</td>
+<td><code>V01</code>, <code>V04</code>, <code>V07</code>, <code>V09</code>, <code>V16</code></td>
+</tr>
+<tr class="even">
+<td><code>answered_calls</code> — <strong>مكالمات مجابة</strong></td>
+<td>مكالمة أجاب عنها شخص أو نظام وفق تعريف مقبول</td>
+<td><code>V04</code>, <code>V07</code>, <code>V08</code>, <code>V13</code></td>
+</tr>
+<tr class="odd">
+<td><code>qualified_calls</code> — <strong>مكالمات ذات قيمة</strong></td>
+<td>مكالمة تستوفي معنى التأهيل لهذا النشاط</td>
+<td><code>V01</code>, <code>V04</code>, <code>V07</code>, <code>V08</code>, <code>V11</code></td>
+</tr>
+<tr class="even">
+<td><code>qualified_whatsapp</code> — <strong>محادثات WhatsApp مؤهلة</strong></td>
+<td>محادثة ليست رسالة وحيدة، ومؤهلة وفق سياق النشاط</td>
+<td><code>V01</code>, <code>V04</code>, <code>V07</code>, <code>V08</code>, <code>V09</code>, <code>V11</code></td>
+</tr>
+<tr class="odd">
+<td><code>subscriptions</code> — <strong>اشتراكات</strong></td>
+<td>تفعيل أو اشتراك مدفوع وفق سياسة قبول</td>
+<td><code>V01</code>, <code>V03</code>, <code>V04</code>, <code>V08</code>, <code>V10</code>, <code>V11</code>, <code>V12</code>, <code>V14</code>, <code>V16</code></td>
+</tr>
+<tr class="even">
+<td><code>contracts</code> — <strong>عقود وصفقات</strong></td>
+<td>عقد مستوفٍ للشروط، منفصل عن إرسال العرض</td>
+<td><code>V01</code>, <code>V02</code>, <code>V03</code>, <code>V08</code>, <code>V09</code>, <code>V12</code>, <code>V16</code>, <code>V17</code></td>
+</tr>
+<tr class="odd">
+<td><code>paid_subscriptions</code> — <strong>اشتراكات مدفوعة ومفعّلة</strong></td>
+<td>اشتراك مدفوع ومفعّل وفق السياسة وليس مجرد تسجيل</td>
+<td><code>V03</code>, <code>V04</code>, <code>V08</code>, <code>V10</code>, <code>V11</code>, <code>V12</code>, <code>V14</code></td>
+</tr>
+<tr class="even">
+<td><code>completed_jobs</code> — <strong>أعمال مكتملة</strong></td>
+<td>عمل اكتمل وقُبل وفق سياسة الخدمة</td>
+<td><code>V03</code>, <code>V06</code>, <code>V07</code>, <code>V10</code>, <code>V12</code>, <code>V13</code>, <code>V16</code></td>
+</tr>
+<tr class="odd">
+<td><code>lower_cancellations</code> — <strong>تقليل الإلغاءات والاستردادات</strong></td>
+<td>خفض نتائج ملغاة أو مرتجعة وفق تعريف الفترة والمقام</td>
+<td><code>V03</code>, <code>V05</code>, <code>V09</code>, <code>V10</code>, <code>V12</code>, <code>V13</code>, <code>V16</code></td>
+</tr>
+<tr class="even">
+<td><code>improve_capacity</code> — <strong>تحسين إشغال السعة المتاحة</strong></td>
+<td>تحسين استخدام السعة بما لا يضر جودة الخدمة</td>
+<td><code>V05</code>, <code>V06</code>, <code>V12</code>, <code>V13</code></td>
+</tr>
+<tr class="odd">
+<td><code>collected_revenue</code> — <strong>تحصيل / إيرادات</strong></td>
+<td>نتيجة مالية مصالحة وليست مجرد ROAS منسوب</td>
+<td><code>V03</code>, <code>V05</code>, <code>V10</code>, <code>V11</code>, <code>V12</code>, <code>V14</code>, <code>V16</code></td>
+</tr>
+<tr class="even">
+<td><code>contribution_margin</code> — <strong>هامش مساهمة</strong></td>
+<td>قيمة اقتصادية تتضمن التكاليف المحددة</td>
+<td><code>V03</code>, <code>V05</code>, <code>V12</code>, <code>V13</code>, <code>V16</code></td>
+</tr>
+<tr class="odd">
+<td><code>reduce_waste</code> — <strong>تقليل الإنفاق الإعلاني غير المجدي</strong></td>
+<td>هدف مالي عندما يختاره المعلن صراحةً؛ أما حماية الإنفاق فهي قيمة تخدم أهدافًا أخرى</td>
+<td><code>V05</code>, <code>V11</code>, <code>V12</code>, <code>V16</code></td>
+</tr>
+<tr class="even">
+<td><code>improve_budget_return</code> — <strong>تحسين عائد الموارد الإعلانية</strong></td>
+<td>تحسين قيمة النتائج نسبةً إلى الإنفاق، لا مجرد خفض التكلفة</td>
+<td><code>V03</code>, <code>V05</code>, <code>V10</code>, <code>V11</code>, <code>V12</code>, <code>V16</code></td>
+</tr>
+<tr class="odd">
+<td><code>protect_value</code> — <strong>الحفاظ على النتائج الاقتصادية المجدية</strong></td>
+<td>الحفاظ على نتائج ذات قيمة عند تغير الظروف والإنفاق</td>
+<td><code>V03</code>, <code>V05</code>, <code>V11</code>, <code>V12</code>, <code>V13</code>, <code>V16</code></td>
+</tr>
+<tr class="even">
+<td><code>lower_qualified_cost</code> — <strong>خفض تكلفة النتيجة المؤهلة</strong></td>
+<td>خفض تكلفة النتيجة دون إضعاف نوعيتها أو جدواها</td>
+<td><code>V05</code>, <code>V08</code>, <code>V11</code>, <code>V12</code>, <code>V16</code></td>
+</tr>
+<tr class="odd">
+<td><code>retention</code> — <strong>احتفاظ وتجديد</strong></td>
+<td>نسبة احتفاظ أو تجديد محدد بفوج وفترة</td>
+<td><code>V08</code>, <code>V09</code>, <code>V12</code>, <code>V14</code>, <code>V16</code></td>
+</tr>
+<tr class="even">
+<td><code>renewals</code> — <strong>تجديد الاشتراكات</strong></td>
+<td>تجديد مؤهل مثبت وليس تذكيرًا مرسلًا</td>
+<td><code>V03</code>, <code>V07</code>, <code>V09</code>, <code>V12</code>, <code>V14</code></td>
+</tr>
+<tr class="odd">
+<td><code>repeat_orders</code> — <strong>زيادة الشراء المتكرر</strong></td>
+<td>شراء إضافي من عميل سبق تأكيد شرائه</td>
+<td><code>V03</code>, <code>V08</code>, <code>V12</code>, <code>V14</code></td>
+</tr>
+<tr class="even">
+<td><code>qualified_referrals</code> — <strong>إحالات عملاء مؤهلة</strong></td>
+<td>عميل إحالة مؤهل وليس مشاركة رابط</td>
+<td><code>V01</code>, <code>V04</code>, <code>V14</code>, <code>V17</code></td>
+</tr>
+<tr class="odd">
+<td><code>recovered_customers</code> — <strong>استعادة عملاء منقطعين</strong></td>
+<td>عودة عميل فقد نشاطه وفق تعريف انقطاع صريح</td>
+<td><code>V08</code>, <code>V09</code>, <code>V12</code>, <code>V14</code></td>
+</tr>
+<tr class="even">
+<td><code>market_entry</code> — <strong>دخول سوق أو قناة</strong></td>
+<td>هدف استكشافي؛ تعريف معيار تجربة قبل إضافة رقم</td>
+<td><code>V01</code>, <code>V02</code>, <code>V04</code>, <code>V15</code>, <code>V16</code>, <code>V17</code>, <code>V18</code></td>
+</tr>
+<tr class="odd">
+<td><code>qualified_organic</code> — <strong>زيادة الظهور العضوي المؤهل</strong></td>
+<td>زيادة اكتشاف النشاط من قنوات غير مدفوعة بشرط الملاءمة</td>
+<td><code>V01</code>, <code>V02</code>, <code>V04</code>, <code>V09</code>, <code>V15</code>, <code>V16</code></td>
+</tr>
+<tr class="even">
+<td><code>brand_awareness</code> — <strong>زيادة الوعي بالعلامة لدى الجمهور المناسب</strong></td>
+<td>رفع الوعي لدى شريحة ملائمة؛ لا يساوي عدد مرات الظهور مبيعات</td>
+<td><code>V01</code>, <code>V02</code>, <code>V04</code>, <code>V09</code>, <code>V16</code></td>
+</tr>
+<tr class="odd">
+<td><code>qualified_partners</code> — <strong>قنوات وشراكات توزيع مجدية</strong></td>
+<td>شراكات تسهم بفرص أو معاملات ذات قيمة اقتصادية</td>
+<td><code>V01</code>, <code>V05</code>, <code>V15</code>, <code>V16</code>, <code>V17</code></td>
+</tr>
+<tr class="even">
+<td><code>app_activations</code> — <strong>تفعيل مستخدمي التطبيقات</strong></td>
+<td>إتمام إجراء تفعيل ذي معنى داخل التطبيق وليس تنزيلًا فقط</td>
+<td><code>V01</code>, <code>V04</code>, <code>V08</code>, <code>V10</code>, <code>V11</code>, <code>V14</code>, <code>V16</code></td>
+</tr>
+<tr class="odd">
+<td><code>test_new_offer</code> — <strong>اختبار جدوى منتج أو خدمة جديدة</strong></td>
+<td>هدف استكشافي لقرار دخول/رفض، وليس وعدًا بمبيعات غير مرصودة</td>
+<td><code>V01</code>, <code>V02</code>, <code>V03</code>, <code>V15</code>, <code>V16</code>, <code>V18</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="level2" id="الملحق-ج--العلاقات-العابرة-الـ26-فرضيات-اعتمادتأثير">
+<h2>الملحق ج — العلاقات العابرة الـ26 (فرضيات اعتماد/تأثير)</h2>
+<p>لا تتحول هذه الروابط إلى صلاحيات قراءة أو سببية أو calls تلقائية؛ يحدد كل مستهلك نوع العلاقة وشرطها.</p>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>المصدر</th>
+<th>المستهلك</th>
+<th>حالة/دليل</th>
+<th>نوع العلاقة الأصلي</th>
+<th>استعمال ممكن</th>
+<th>القيد</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>L02</td>
+<td>L04</td>
+<td>فرصة سوق غير مخدومة</td>
+<td>تغذية معرفة/فرضية</td>
+<td>اختبار عرض ملائم؛ لا إطلاق تلقائي</td>
+<td>التغطية والترخيص والتوفر والتكلفة</td>
+</tr>
+<tr class="even">
+<td>L02</td>
+<td>L08</td>
+<td>منطقة مرشحة</td>
+<td>توجيه استكشاف</td>
+<td>تجربة وصول مؤهلة</td>
+<td>الطلب قابل للخدمة وحقوق استهداف</td>
+</tr>
+<tr class="odd">
+<td>L03</td>
+<td>L10</td>
+<td>معايير ملاءمة شريحة</td>
+<td>تعريف أهلية</td>
+<td>تعديل تأهيل الاستفسار</td>
+<td>مراجعة التحيز وصحة الانطباق</td>
+</tr>
+<tr class="even">
+<td>L04</td>
+<td>L09</td>
+<td>تغيير مزايا أو ضمان</td>
+<td>اعتماد/تبعّية</td>
+<td>فحص اتساق رسالة الإعلان مع العرض</td>
+<td>نسخة عرض منشورة وتاريخها</td>
+</tr>
+<tr class="odd">
+<td>L04</td>
+<td>L12</td>
+<td>وعد تسليم أو ضمان جديد</td>
+<td>قيد تشغيلي</td>
+<td>تقييم كلفة الوفاء</td>
+<td>السعة وحقوق الوعد</td>
+</tr>
+<tr class="even">
+<td>L05</td>
+<td>L11</td>
+<td>تغير سعر أو شرط دفع</td>
+<td>فرضية تأثير</td>
+<td>تحليل قبول العرض/الدفع</td>
+<td>فرق محكوم بموسمية/شريحة</td>
+</tr>
+<tr class="odd">
+<td>L05</td>
+<td>L13</td>
+<td>خصم أو تقسيط</td>
+<td>قيد اقتصادي</td>
+<td>إعادة احتساب هامش وتكلفة</td>
+<td>رسوم/استردادات متاحة</td>
+</tr>
+<tr class="even">
+<td>L06</td>
+<td>L08</td>
+<td>تغير زيارات عضوية</td>
+<td>معلومة/إحلال محتمل</td>
+<td>مراجعة جدوى الإنفاق المدفوع</td>
+<td>لا تفترض سببية إحلال عضوي</td>
+</tr>
+<tr class="odd">
+<td>L07</td>
+<td>L13</td>
+<td>إحالة شريك وعمولة</td>
+<td>التزام مالي</td>
+<td>مصالحة استحقاق/قيمة</td>
+<td>العقد والحقوق وتصحيح النتائج</td>
+</tr>
+<tr class="even">
+<td>L08</td>
+<td>L10</td>
+<td>زيادة الرسائل بعد حملة</td>
+<td>ضغط/تغذية</td>
+<td>تقييم زمن الرد وتوزيع الفريق</td>
+<td>تمييز مصدر وارتباط بإعلان من دليل</td>
+</tr>
+<tr class="odd">
+<td>L09</td>
+<td>L10</td>
+<td>تغيير وعد رسالة</td>
+<td>فرضية تأثير</td>
+<td>رصد اعتراضات وجودة فرص</td>
+<td>لا تعتبر CTR دليل بيع</td>
+</tr>
+<tr class="even">
+<td>L10</td>
+<td>L08</td>
+<td>استفسار مؤهل</td>
+<td>تغذية إشارة</td>
+<td>فحص أهلية إرساله للمزود</td>
+<td>موافقة/سياسة المزود/معرّف صالح/نوع حدث</td>
+</tr>
+<tr class="odd">
+<td>L10</td>
+<td>L04</td>
+<td>اعتراض متكرر موثق</td>
+<td>تغذية معرفة</td>
+<td>مراجعة العرض/الرسالة</td>
+<td>تغطية كافية وحقوق النص</td>
+</tr>
+<tr class="even">
+<td>L11</td>
+<td>L12</td>
+<td>حجز أو طلب مقبول</td>
+<td>التزام/استهلاك سعة</td>
+<td>حجز موارد وفحص قدرة الوفاء</td>
+<td>عدم ازدواج الحجز والمخزون</td>
+</tr>
+<tr class="odd">
+<td>L12</td>
+<td>L08</td>
+<td>نفاد مخزون/سعة</td>
+<td>قيد</td>
+<td>إعادة تقييم حملة أو جدولها</td>
+<td>لا إيقاف مالي دون تفويض</td>
+</tr>
+<tr class="even">
+<td>L12</td>
+<td>L14</td>
+<td>تأخير أو شكوى جودة</td>
+<td>فرضية تأثير</td>
+<td>دراسة الاحتفاظ والسمعة</td>
+<td>الارتباط لا يثبت سبب مغادرة</td>
+</tr>
+<tr class="odd">
+<td>L13</td>
+<td>L08</td>
+<td>هامش/سيولة تغيّرا</td>
+<td>قيد اقتصادي</td>
+<td>مراجعة تخصيص ميزانيات</td>
+<td>لا استخدام ربح تقديري كنقد محصل</td>
+</tr>
+<tr class="even">
+<td>L13</td>
+<td>L01</td>
+<td>نتائج غير قابلة للتحصيل</td>
+<td>مراجعة شروط</td>
+<td>إعادة تقييم عقد النتائج</td>
+<td>عدم محو الاستحقاقات السابقة</td>
+</tr>
+<tr class="odd">
+<td>L14</td>
+<td>L03</td>
+<td>أفواج عملاء مستمرة</td>
+<td>تغذية تحليل</td>
+<td>فحص اختيار الشرائح</td>
+<td>فرق قيمة مستقبلية عن محصلة</td>
+</tr>
+<tr class="even">
+<td>L14</td>
+<td>L07</td>
+<td>إحالات موثقة</td>
+<td>قناة جديدة</td>
+<td>مقارنة جدوى برنامج إحالة</td>
+<td>الأذونات وحقوق استخدام المصدر</td>
+</tr>
+<tr class="odd">
+<td>L15</td>
+<td>L12</td>
+<td>خطة توسع سوق</td>
+<td>احتياج سعة</td>
+<td>مقارنة توفير موارد قبل إطلاق</td>
+<td>تأخير الاستثمار وتكلفة الفرصة البديلة</td>
+</tr>
+<tr class="even">
+<td>L08</td>
+<td>L13</td>
+<td>إنفاق وتكاليف حملة</td>
+<td>بيانات قياس</td>
+<td>تحليل مساهمة بعد التكلفة</td>
+<td>الإسناد غير مساوي للإضافية</td>
+</tr>
+<tr class="odd">
+<td>L11</td>
+<td>L13</td>
+<td>بيع/عقد/طلب</td>
+<td>انتقال اقتصاديات</td>
+<td>استحقاق ثم تحصيل/إلغاء</td>
+<td>النتيجة المقبولة وفق تعريف النشاط</td>
+</tr>
+<tr class="even">
+<td>L13</td>
+<td>L04</td>
+<td>زيادة مرتجعات</td>
+<td>فرضية تصحيح</td>
+<td>فحص المنتج والوعد</td>
+<td>لا إرجاع السبب للعرض دون اختبار</td>
+</tr>
+<tr class="odd">
+<td>L03</td>
+<td>L12</td>
+<td>طلب شريحة لخدمة معينة</td>
+<td>مطابقة مورد</td>
+<td>اختبار قدرة الخدمة في منطقة</td>
+<td>سعة ومهارات ومناطق معلومة</td>
+</tr>
+<tr class="even">
+<td>L15</td>
+<td>L02</td>
+<td>تجربة سوق جديدة</td>
+<td>معرفة مؤهلة</td>
+<td>تحديث تقدير فرصة المنطقة</td>
+<td>الحجية والتغطية والموسمية</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="level2" id="الملحق-د--القدرات-الـ24-من-دراسة-الفرص-namespace-مستقل-researchcxx">
+<h2>الملحق د — القدرات الـ24 من دراسة الفرص (namespace مستقل <code>RESEARCH:Cxx</code>)</h2>
+<p>لا تُجمع آليًا مع <code>Lxx-Cxx</code> ولا تتحول تسميات الأولوية البحثية إلى خطة تنفيذ مُلزِمة.</p>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>المرجع</th>
+<th>القدرة المرشحة</th>
+<th>المدخل/المعلومة الأدنى</th>
+<th>الخرج المتوقع</th>
+<th>قرار الدراسة الأصلي</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>RESEARCH:C01</code></td>
+<td>كشف الفئة/الحاجة الأكثر ملاءمة</td>
+<td>سياق عرض+احتياج/فرضية</td>
+<td>مسارات فئات قابلة للاختبار</td>
+<td><code>PILOT</code></td>
+</tr>
+<tr class="even">
+<td><code>RESEARCH:C02</code></td>
+<td>اكتشاف الطلب الحالي/المتغير</td>
+<td>بحث مرخص ومؤشرات قطاع</td>
+<td>طلب محتمل وحدود التغطية</td>
+<td><code>RESEARCH</code></td>
+</tr>
+<tr class="odd">
+<td><code>RESEARCH:C03</code></td>
+<td>اختبار الطلب غير المخدوم</td>
+<td>مقابلات/اعتراضات/تجارب</td>
+<td>فرضيات عرض ووسائل تحقق</td>
+<td><code>PILOT</code></td>
+</tr>
+<tr class="even">
+<td><code>RESEARCH:C04</code></td>
+<td>معرفة قوة المنافس مقابل عرضنا</td>
+<td>عرض مقارن موثق</td>
+<td>فجوة قابلة للفعل</td>
+<td><code>PILOT</code></td>
+</tr>
+<tr class="odd">
+<td><code>RESEARCH:C05</code></td>
+<td>تقاطع الجمهور والقدرة على خدمته</td>
+<td>السعة والتكلفة والنطاق</td>
+<td>أهلية فرصة لا حجم خام</td>
+<td><code>FOUNDATION_CONSUMER</code></td>
+</tr>
+<tr class="even">
+<td><code>RESEARCH:C06</code></td>
+<td>خريطة طرق الوصول البديلة</td>
+<td>أدلة القنوات والعقود</td>
+<td>خيارات وتوابع</td>
+<td><code>PILOT</code></td>
+</tr>
+<tr class="odd">
+<td><code>RESEARCH:C07</code></td>
+<td>التحقق من قناة فعلية</td>
+<td>أهلية API/تواصل/اتفاق</td>
+<td>READY/UNKNOWN/BLOCKED</td>
+<td><code>FOUNDATION_CONSUMER</code></td>
+</tr>
+<tr class="even">
+<td><code>RESEARCH:C08</code></td>
+<td>اختيار شريك أو موزع</td>
+<td>هامش/تغطية/شروط</td>
+<td>شريك/مسار مؤهل</td>
+<td><code>RESEARCH</code></td>
+</tr>
+<tr class="odd">
+<td><code>RESEARCH:C09</code></td>
+<td>فرصة مشتريات مؤسسية</td>
+<td>مناقصة وشروط تأهيل</td>
+<td>استحقاق تقدم أو رفض</td>
+<td><code>RESEARCH</code></td>
+</tr>
+<tr class="even">
+<td><code>RESEARCH:C10</code></td>
+<td>تصميم عرض حسب الحاجة</td>
+<td>اعتراض/اقتصاديات/بدائل</td>
+<td>تجربة باقة/سعر</td>
+<td><code>PILOT</code></td>
+</tr>
+<tr class="odd">
+<td><code>RESEARCH:C11</code></td>
+<td>تحديد عائق التحويل الأكثر أثرًا</td>
+<td>أحداث طلب ورفض ودفع</td>
+<td>تدخل تحويل مرشح</td>
+<td><code>PILOT</code></td>
+</tr>
+<tr class="even">
+<td><code>RESEARCH:C12</code></td>
+<td>استعادة المكالمات والطلبات الضائعة</td>
+<td>CRM/هاتف/رسائل مؤهلة</td>
+<td>متابعة محدودة مأذونة</td>
+<td><code>PILOT</code></td>
+</tr>
+<tr class="odd">
+<td><code>RESEARCH:C13</code></td>
+<td>تخصيص سعة حسب نوع الطلب</td>
+<td>مواعيد/تكلفة وحدة</td>
+<td>تعديل سعة/وقت/عرض</td>
+<td><code>PILOT</code></td>
+</tr>
+<tr class="even">
+<td><code>RESEARCH:C14</code></td>
+<td>إشارات تحويلات مؤهلة للإعلانات</td>
+<td>أحداث شراء/تحصيل مصححة</td>
+<td>signal adapter</td>
+<td><code>INTEGRATION_LATER</code></td>
+</tr>
+<tr class="odd">
+<td><code>RESEARCH:C15</code></td>
+<td>اقتصاديات المسار الهامشي</td>
+<td>نتيجة ناضجة وتكلفة وسعة</td>
+<td>مقارنة مساهمة</td>
+<td><code>FOUNDATION_CONSUMER</code></td>
+</tr>
+<tr class="even">
+<td><code>RESEARCH:C16</code></td>
+<td>سؤال المعلومة الذي يغير القرار</td>
+<td>بدائل وافتراضات</td>
+<td>طلب دليل واحد حاسم</td>
+<td><code>EARLY_PILOT</code></td>
+</tr>
+<tr class="odd">
+<td><code>RESEARCH:C17</code></td>
+<td>اختيار تدخل مقابل البديل القائم</td>
+<td>خيارات وكلفة ومخاطرة</td>
+<td>خيار/لا تغيّر/اختبر</td>
+<td><code>EARLY_PILOT</code></td>
+</tr>
+<tr class="even">
+<td><code>RESEARCH:C18</code></td>
+<td>تقييم نتيجة المسار وربط التصحيحات</td>
+<td>سجل نتائج/إصدار</td>
+<td>تقرير وصف/أثر مؤهل</td>
+<td><code>FOUNDATION_CONSUMER</code></td>
+</tr>
+<tr class="odd">
+<td><code>RESEARCH:C19</code></td>
+<td>التعلم المقيد بنطاق الانطباق</td>
+<td>قرارات ونتائج مصححة</td>
+<td>توصية نسخة جديدة</td>
+<td><code>LATER</code></td>
+</tr>
+<tr class="even">
+<td><code>RESEARCH:C20</code></td>
+<td>التوجيه متعدد الأطراف للقرار</td>
+<td>مراحل موافقة وشروط</td>
+<td>قائمة مهام/محتوى ثقة</td>
+<td><code>RESEARCH</code></td>
+</tr>
+<tr class="odd">
+<td><code>RESEARCH:C21</code></td>
+<td>فرص الاحتفاظ وإعادة الشراء</td>
+<td>مبيعات متكررة/استرداد</td>
+<td>توقيت عرض/احتفاظ</td>
+<td><code>INTEGRATE_OR_PILOT</code></td>
+</tr>
+<tr class="even">
+<td><code>RESEARCH:C22</code></td>
+<td>معرفة الفرص بدون أي تكاملات</td>
+<td>تصريح منظّم ومصادر عامة مشروعة</td>
+<td>سؤال/تجربة أو خطة صادقة</td>
+<td><code>FIRST_WAVE</code></td>
+</tr>
+<tr class="odd">
+<td><code>RESEARCH:C23</code></td>
+<td>اكتشاف محتوى موثوق يحرك قرار الشراء</td>
+<td>أسئلة واحتياج وفجوة</td>
+<td>محتوى/توضيح عرض</td>
+<td><code>PILOT</code></td>
+</tr>
+<tr class="even">
+<td><code>RESEARCH:C24</code></td>
+<td>تقييم نقطة بيع أو معرض ميداني</td>
+<td>جغرافيا/تكلفة/وقت</td>
+<td>اختبار محلي محدود</td>
+<td><code>RESEARCH</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="level2" id="الملحق-هـ--34-مسارًا-مرشحًا-للوصول-والتأثير">
+<h2>الملحق هـ — 34 مسارًا مرشحًا للوصول والتأثير</h2>
+<p>الفئات A–D طرق وصول/علاقات، والفئة E تحسينات للتحويل والوفاء والعرض بعد الوصول. كلها <strong>مرشحات مشروطة</strong> ببلد ونشاط ومصدر/حق وسعة وتكلفة وتكامل فعلي.</p>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>مرجع المصدر</th>
+<th>الفئة</th>
+<th>وسيلة مرشحة</th>
+<th>القيد الأساسي</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>A01</code> البحث العضوي SEO</td>
+<td>التقاط طلب قائم / اكتشاف</td>
+<td>البحث العضوي SEO</td>
+<td>موقع وحقوق قراءته؛ النتائج تتأخر ولا ضمان ترتيب</td>
+</tr>
+<tr class="even">
+<td><code>A02</code> البحث الإعلاني Search Ads</td>
+<td>التقاط طلب قائم / اكتشاف</td>
+<td>البحث الإعلاني Search Ads</td>
+<td>حساب/ميزانية/أهلية، جودة الكلمات، اختلاف القصد</td>
+</tr>
+<tr class="odd">
+<td><code>A03</code> الخرائط والبحث المحلي</td>
+<td>التقاط طلب قائم / اكتشاف</td>
+<td>الخرائط والبحث المحلي</td>
+<td>ملف موثّق، مناطق الخدمة، قيود بيانات الخرائط</td>
+</tr>
+<tr class="even">
+<td><code>A04</code> تسوق/قوائم منتجات مجانية</td>
+<td>التقاط طلب قائم / اكتشاف</td>
+<td>تسوق/قوائم منتجات مجانية</td>
+<td>متجر/موجز منتجات، بلد أهلية، دقة المخزون</td>
+</tr>
+<tr class="odd">
+<td><code>A05</code> الأسواق والمنصات المتخصصة</td>
+<td>التقاط طلب قائم / اكتشاف</td>
+<td>الأسواق والمنصات المتخصصة</td>
+<td>عمولات وسياسات وسوق/بلد/فئة مؤهلة</td>
+</tr>
+<tr class="even">
+<td><code>A06</code> أدلة ومواقع مراجعات متخصصة</td>
+<td>التقاط طلب قائم / اكتشاف</td>
+<td>أدلة ومواقع مراجعات متخصصة</td>
+<td>حقوق البيانات وصدق التقييمات</td>
+</tr>
+<tr class="odd">
+<td><code>A07</code> البحث المدعوم بالذكاء الاصطناعي</td>
+<td>التقاط طلب قائم / اكتشاف</td>
+<td>البحث المدعوم بالذكاء الاصطناعي</td>
+<td>لا ضمان اقتباس أو تحكم في إجابات المحركات</td>
+</tr>
+<tr class="even">
+<td><code>B01</code> محتوى تعليمي/خبير</td>
+<td>تكوين اهتمام وثقة</td>
+<td>محتوى تعليمي/خبير</td>
+<td>وقت إنتاج وجودة وفترات تأثير طويلة</td>
+</tr>
+<tr class="odd">
+<td><code>B02</code> حملات اجتماعية/فيديو</td>
+<td>تكوين اهتمام وثقة</td>
+<td>حملات اجتماعية/فيديو</td>
+<td>المشاهدة ≠ نية شراء؛ تكلفة ومنافسة</td>
+</tr>
+<tr class="even">
+<td><code>B03</code> مجتمعات ومنتديات</td>
+<td>تكوين اهتمام وثقة</td>
+<td>مجتمعات ومنتديات</td>
+<td>منع السبام، اختلاف المعايير، أثر غير مباشر</td>
+</tr>
+<tr class="odd">
+<td><code>B04</code> خبراء ومؤثرون وCreators</td>
+<td>تكوين اهتمام وثقة</td>
+<td>خبراء ومؤثرون وCreators</td>
+<td>المصداقية وحقوق المحتوى والإفصاح التجاري</td>
+</tr>
+<tr class="even">
+<td><code>B05</code> الندوات والفعاليات والمعارض</td>
+<td>تكوين اهتمام وثقة</td>
+<td>الندوات والفعاليات والمعارض</td>
+<td>كلفة عالية نسبيًا، زمن طويل، قياس إسناد محدود</td>
+</tr>
+<tr class="odd">
+<td><code>B06</code> وسائل الإعلام والنشر المتخصص</td>
+<td>تكوين اهتمام وثقة</td>
+<td>وسائل الإعلام والنشر المتخصص</td>
+<td>لا ضمان للنشر أو لجدوى جمهور كبير</td>
+</tr>
+<tr class="even">
+<td><code>B07</code> تجارب المنتج/المعاينة</td>
+<td>تكوين اهتمام وثقة</td>
+<td>تجارب المنتج/المعاينة</td>
+<td>سعة وتكلفة وخطر استغلال المجاني</td>
+</tr>
+<tr class="odd">
+<td><code>C01</code> مبيعات مباشرة مؤهلة</td>
+<td>بيع مؤسسي وشراكات</td>
+<td>مبيعات مباشرة مؤهلة</td>
+<td>قانون التواصل، عدم جمع بيانات فردية بلا حق</td>
+</tr>
+<tr class="even">
+<td><code>C02</code> شركاء إحالة وتعاون</td>
+<td>بيع مؤسسي وشراكات</td>
+<td>شركاء إحالة وتعاون</td>
+<td>ملاءمة الشريك، تعارض مصالح، قابلية تتبع الإحالة</td>
+</tr>
+<tr class="odd">
+<td><code>C03</code> موزعون/تجار جملة/متاجر</td>
+<td>بيع مؤسسي وشراكات</td>
+<td>موزعون/تجار جملة/متاجر</td>
+<td>شروط التوريد والمخزون والجغرافيا والدفع</td>
+</tr>
+<tr class="even">
+<td><code>C04</code> موردون مكملون/تجميع عروض</td>
+<td>بيع مؤسسي وشراكات</td>
+<td>موردون مكملون/تجميع عروض</td>
+<td>الاقتصاديات وتوحيد الضمان والمساءلة</td>
+</tr>
+<tr class="odd">
+<td><code>C05</code> مناقصات ومشتريات مؤسسية</td>
+<td>بيع مؤسسي وشراكات</td>
+<td>مناقصات ومشتريات مؤسسية</td>
+<td>التسجيل وشروط التأهيل والضمانات وحق البيانات</td>
+</tr>
+<tr class="even">
+<td><code>C06</code> وسطاء ووكلاء متخصصون</td>
+<td>بيع مؤسسي وشراكات</td>
+<td>وسطاء ووكلاء متخصصون</td>
+<td>التفويض والتضارب ومصدر العميل</td>
+</tr>
+<tr class="odd">
+<td><code>C07</code> فروع ومندوبون ونقاط بيع</td>
+<td>بيع مؤسسي وشراكات</td>
+<td>فروع ومندوبون ونقاط بيع</td>
+<td>التكاليف الثابتة والسعة والجغرافيا</td>
+</tr>
+<tr class="even">
+<td><code>C08</code> اجتماعات/اتصال/رسائل واردة</td>
+<td>بيع مؤسسي وشراكات</td>
+<td>اجتماعات/اتصال/رسائل واردة</td>
+<td>حقوق الاتصال، السعة، توافر الموظفين</td>
+</tr>
+<tr class="odd">
+<td><code>D01</code> الإحالات من عملاء قائمين</td>
+<td>عملاء حاليون واستعادة</td>
+<td>الإحالات من عملاء قائمين</td>
+<td>تكلفة الحافز/التلاعب/موافقة التواصل</td>
+</tr>
+<tr class="even">
+<td><code>D02</code> إعادة الشراء أو الاشتراك</td>
+<td>عملاء حاليون واستعادة</td>
+<td>إعادة الشراء أو الاشتراك</td>
+<td>تاريخ تعامل مؤهل وموافقة اتصال</td>
+</tr>
+<tr class="odd">
+<td><code>D03</code> استعادة فرص متوقفة</td>
+<td>عملاء حاليون واستعادة</td>
+<td>استعادة فرص متوقفة</td>
+<td>سبب عدم الإغلاق وتفضيلات العميل</td>
+</tr>
+<tr class="even">
+<td><code>D04</code> إعادة الاستهداف المأذونة</td>
+<td>عملاء حاليون واستعادة</td>
+<td>إعادة الاستهداف المأذونة</td>
+<td>موافقة/أهلية الحساب/الحد الأدنى للحجم</td>
+</tr>
+<tr class="odd">
+<td><code>D05</code> البيع المتقاطع والترقية</td>
+<td>عملاء حاليون واستعادة</td>
+<td>البيع المتقاطع والترقية</td>
+<td>ملاءمة العرض وهامش وربط شرعي للبيانات</td>
+</tr>
+<tr class="even">
+<td><code>D06</code> شبكة توصيات/مجتمع العملاء</td>
+<td>عملاء حاليون واستعادة</td>
+<td>شبكة توصيات/مجتمع العملاء</td>
+<td>عدم اصطناع مراجعات أو فرض تحفيز مضلل</td>
+</tr>
+<tr class="odd">
+<td><code>E01</code> إعادة تعبئة العرض/الباقة</td>
+<td>عوامل تحويل بعد الوصول</td>
+<td>إعادة تعبئة العرض/الباقة</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>E02</code> تعديل التغطية/موعد الخدمة</td>
+<td>عوامل تحويل بعد الوصول</td>
+<td>تعديل التغطية/موعد الخدمة</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>E03</code> تمويل/دفع/شروط تعاقد</td>
+<td>عوامل تحويل بعد الوصول</td>
+<td>تمويل/دفع/شروط تعاقد</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>E04</code> تحسين إثبات الثقة</td>
+<td>عوامل تحويل بعد الوصول</td>
+<td>تحسين إثبات الثقة</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>E05</code> تحسين مسار الانتقال بين القنوات</td>
+<td>عوامل تحويل بعد الوصول</td>
+<td>تحسين مسار الانتقال بين القنوات</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>E06</code> تحسين ما بعد الوصول</td>
+<td>عوامل تحويل بعد الوصول</td>
+<td>تحسين ما بعد الوصول</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="level2" id="الملحق-و--نتائج-مصالحة-المستندات-الخمسة-والصيغ-العشر">
+<h2>الملحق و — نتائج مصالحة المستندات الخمسة (والصيغ العشر)</h2>
+<div aria-label="جدول قابل للتمرير أفقيًا" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr class="header">
+<th>المرجع</th>
+<th>ما انتُخب منه</th>
+<th>ما أُلغي من المتن الموحد</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Consolidated Engineering Blueprint</td>
+<td>التنظيم، 15 رافعة، 18 قيمة، 30 وظيفة، 104 قدرة، 37 هدفًا، 26 علاقة، ربط الكود</td>
+<td>التكرار في قواعد التنفيذ والاختبارات</td>
+</tr>
+<tr class="even">
+<td>Consolidated Architecture &amp; Value Engineering</td>
+<td>فصل دليل/طريق/نتيجة، رصد 25 قدرة بلا علاقة قيمة مباشرة، العوائق والدراسة التطبيقية</td>
+<td>تكرار 18 شرحًا مطولًا للقيم ودراسات افتراضية بلا اختبار</td>
+</tr>
+<tr class="odd">
+<td>Final Governing Architecture</td>
+<td>فصل أنواع العلاقات، حالة الاستفسارات، سيناريوهات الأعمال، مراقبة استبدال الكود</td>
+<td>ترادف أسماء مجالات واختبارات الوصول الـ52 كشرط إلزامي</td>
+</tr>
+<tr class="even">
+<td>Unified Governing Architecture</td>
+<td>تعريف المستفيد، 22 وظيفة و18 طريقًا ضمن مصدرها، معاني الامتناع والقرارات</td>
+<td>رموز <code>F01–F22</code> المتعارضة مع Blueprint، وعدم تحويلها إلى معرّفات تشغيل</td>
+</tr>
+<tr class="odd">
+<td>Governing Architecture v2.0</td>
+<td>تفاصيل BuyerReach، 34 مسارًا، أهلية القنوات وعدم اختزال الوصول في الإعلان</td>
+<td>نقل طرق تحسين العرض/التحويل إلى «محرك استهداف»</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>الفجوة المفهرسة:</strong> 25 قدرة من الـ104 لا تذكرها علاقة Value–Capability مباشرة في الجدول الأصلي؛ لا تُحذف أو تُرقّى تلقائيًا. تُصنّف عند الاستخدام: <code>FOUNDATIONAL_SUPPORT</code> أو <code>CROSS_VALUE_ENABLER</code> أو <code>MISSING_VALUE_RELATION</code> أو <code>RESEARCH_ONLY</code> أو <code>REJECTED_WITH_REASON</code>. المعرّفات محفوظة فيما يلي لتسهيل التتبع:</p>
+<p><code>L01-C02</code>, <code>L01-C03</code>, <code>L01-C04</code>, <code>L01-C05</code>, <code>L01-C06</code>, <code>L02-C05</code>, <code>L03-C03</code>, <code>L03-C05</code>, <code>L05-C03</code>, <code>L05-C05</code>, <code>L05-C06</code>, <code>L06-C01</code>, <code>L06-C03</code>, <code>L06-C06</code>, <code>L07-C06</code>, <code>L08-C04</code>, <code>L08-C08</code>, <code>L09-C04</code>, <code>L09-C06</code>, <code>L11-C04</code>, <code>L11-C05</code>, <code>L11-C06</code>, <code>L13-C05</code>, <code>L13-C06</code>, <code>L15-C06</code>.</p>
+<p><strong>الحسم:</strong> لا توجد خمسة «مراجع حاكمة» متنافسة في التنفيذ. يُحتفظ بالمصادر الخمسة لأغراض التاريخ والبرهنة، ويُستخدم متن هذه الوثيقة لتصميم التعديلات المقبلة. إذا تعارض مع عقد أمني أو سلوك تشغيلي مثبت، يُوثّق التعارض ويُحسم بالتحقق والتعديل الصحيح، ولا يُكسر عقد قائم اعتمادًا على هذا النص وحده.</p>
+</section>
+</section>
+</article><footer class="foot">BuilderAd · مرجع للتصميم والتنفيذ التدريجي · تعتمد الحقيقة التشغيلية على نسخة كود واختبار محددين.</footer></main></div></div><a href="#builderad--المرجع-الهندسي-الحاكم-الموحّد" id="up" aria-label="العودة إلى أعلى الصفحة">↑ أعلى</a><script>(function(){
+ const d=document,root=d.documentElement,rail=d.querySelector('.rail'),toggle=d.getElementById('menuToggle');
+ function setTheme(t){root.dataset.theme=t;d.getElementById('themeToggle').textContent=t==='dark'?'نهاري':'ليلي';try{localStorage.setItem('ba-doc-theme',t)}catch(e){}}
+ let theme='light';try{theme=localStorage.getItem('ba-doc-theme')||'light'}catch(e){}setTheme(theme);
+ d.getElementById('themeToggle').addEventListener('click',()=>setTheme(root.dataset.theme==='dark'?'light':'dark'));
+ toggle.addEventListener('click',()=>{let open=rail.classList.toggle('open');toggle.setAttribute('aria-expanded',open?'true':'false')});
+ for(const a of d.querySelectorAll('.toc-item'))a.addEventListener('click',()=>{rail.classList.remove('open');toggle.setAttribute('aria-expanded','false')});
+ d.getElementById('printBtn').addEventListener('click',()=>window.print());
+ const toc=[...d.querySelectorAll('.toc-item')];const head=Array.from(d.querySelectorAll('.document h2'));
+ const obs=new IntersectionObserver(entries=>{for(const en of entries){if(en.isIntersecting){const sec=en.target.closest('section[id]');if(!sec)continue;toc.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+sec.id));}}},{rootMargin:'-80px 0px -65% 0px',threshold:0});head.forEach(h=>obs.observe(h));
+ const q=d.getElementById('findInput'),results=d.getElementById('searchResults'),count=d.getElementById('searchCount');
+ const candidates=[...d.querySelectorAll('.document h2,.document h3,.document h4,.document p,.document li,.document td')].filter(e=>e.textContent.trim().length>12);
+ function search(){const needle=q.value.trim().toLocaleLowerCase('ar');results.replaceChildren();if(needle.length<2){results.classList.remove('open');count.textContent='اكتب كلمتين أو أكثر للبحث في كامل الوثيقة';return;}
+ const hits=candidates.filter(e=>e.textContent.toLocaleLowerCase('ar').includes(needle));count.textContent='نتائج المطابقة: '+hits.length;results.classList.add('open');hits.slice(0,25).forEach((e,i)=>{const sec=e.closest('section[id]');const a=d.createElement('a');a.className='search-result';a.href='#'+(sec?.id||'builderad--المرجع-الهندسي-الحاكم-الموحّد');const small=d.createElement('em');small.textContent=(sec?.querySelector('h2,h3,h4')?.textContent||'من متن الوثيقة').slice(0,130);a.append(small);const s=d.createElement('span');let txt=e.textContent.trim().replace(/\s+/g,' ');if(txt.length>210){let pos=txt.toLocaleLowerCase('ar').indexOf(needle);txt=txt.slice(Math.max(0,pos-45),Math.max(0,pos-45)+210)+'…';}s.textContent=txt;a.append(s);a.addEventListener('click',()=>{results.classList.remove('open');q.value='';count.textContent='';});results.append(a)});if(hits.length>25){const small=d.createElement('small');small.textContent='تظهر أول 25 مطابقة؛ خصّص عبارة البحث للوصول لنتيجة أدق.';results.append(small)}}
+ q.addEventListener('input',search);q.addEventListener('keydown',e=>{if(e.key==='Escape'){q.value='';search();q.blur()}});
+})();</script></body></html>

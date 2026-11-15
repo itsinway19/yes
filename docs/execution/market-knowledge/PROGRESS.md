@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # Market knowledge implementation — BA-MARKET-KNOWLEDGE-D3-001
 
 Owner approved local implementation of the final mandate (Downloads/BUILDERAD_MARKET_KNOWLEDGE_D3_FINAL_MANDATE.md), with the positive new-purpose/reanalysis case added to K02. No commit, push, PR, merge, production deployment or real-data migration is authorized. External planning documents stay unchanged.

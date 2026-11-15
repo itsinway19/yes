@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # دمج تصميم واجهتي BuilderAd المقبول
 
 التاريخ: 5 نوفمبر2026. طلب المالك: `28712b9a-3cef-4d50-8eaa-c7dc700bc4d7/Pasted text.txt`. الفرع `codex/vue-ui-integration-001` من `9807a173708a0cd1db867a8fd020fac76bf93417`. Foundation #143 المرجعية تحققت مستضافًا: completed/success؛ لا تثبت المرشح الجديد.

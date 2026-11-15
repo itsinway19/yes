@@ -1,184 +1,29 @@
-# Builderad implementation guidance
+# BuilderAd — working instructions
 
-Use the smallest sufficient execution path. Keep investigation, changes, and verification tightly within the authorized task. Expand scope only when concrete evidence makes it necessary. Reuse valid evidence and stop once the acceptance criteria are met; do not spend time or token budget on speculative audits or repeated comprehensive gates.
+Start with these three documents:
 
-Do not generate images or screenshots without the Owner's approval. Use existing previews and direct inspection for visual checks. This rule does not prevent required browser interaction tests that do not create image files.
+1. [Governing architecture](docs/architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) is the sole product/design authority selected by the Owner. The adjacent HTML is a reading copy.
+2. [Current implementation](docs/architecture/CURRENT_IMPLEMENTATION.md) maps actual owners, contracts, source revisions and evidence. Design direction is not proof of implementation.
+3. [Engineering standards](docs/engineering/ENGINEERING_STANDARDS.md) maps technical protections and verification commands to their code/test owners. [README](README.md) covers setup and operation.
 
-Before material product implementation:
+## Scope and existing work
 
-- Identify the accepted semantic/capability owner and applicable INV-* rules in [Executable Architecture](docs/BUILDERAD_EXECUTABLE_ARCHITECTURE.md).
-- Preserve provider/source optionality; source-dependent conclusions still require their legitimate evidence.
-- Keep provider implementation dependencies outside declared Core boundaries.
-- Do not convert missing/failed/unknown evidence into false certainty.
-- Update applicable invariant protection when accepted landed semantics change; do not invent future capabilities to obtain PASS.
-- Run applicable architecture guards and Foundation gates.
+- Use the smallest sufficient execution path. Define requested behavior, acceptance criteria, affected owners and authorization before editing. Historical mandates, plans and evidence records do not authorize work or choose its order.
+- Inspect the actual worktree, branch, HEAD and staged/unstaged/untracked state. Preserve unrelated work and local verified corrections. Do not reset, clean, switch worktrees or create a branch automatically.
+- Current task instructions determine Git/publication, service and data authorization. Never infer commit, push, PR, merge, deployment or shared-data permission from an old execution record.
+- Change only the authorized surface. For material contract changes, inspect PHP, SQL, API and consumers; preserve fact ownership, isolation, rights, history and independent validation.
+- Do not generate images or screenshots without Owner approval. Interaction tests without image files remain permitted.
 
-Canonical governance/contracts remain authoritative. This file is operational guidance; tests, database authority boundaries and Foundation CI enforce the declared coverage.
+## Verification and closure
 
-### Engineering verification, regression investigation, and database safety
+- Select verification by affected behavior: content/links for documentation; focused positive/negative tests for local behavior; integration, security, concurrency, compatibility and architecture checks for affected shared boundaries. Use official guarded entry points and disposable databases.
+- Do not run full Foundation after every edit or for documentation-only changes. Identify required final gates for the actual candidate; focused tests do not replace them. Hosted Foundation and browser evidence are separate.
+- Reuse passing evidence only when relevant source, dependencies, configuration and test conditions still match. Distinguish `MAIN_VERIFIED`, `LOCAL_VERIFIED_UNMERGED`, `SOURCE_PRESENT_UNVERIFIED`, `NOT_IMPLEMENTED` and `UNKNOWN` as defined in Current implementation.
+- For failures, establish the last relevant passing revision and comparable environment, localize the boundary, and test the leading explanation with a focused probe. Two unproductive diagnostic experiments require an evidence summary and the smallest useful next step before expanding investigation.
+- Never weaken assertions, guards, authority, lock ordering or timeouts merely to get PASS. Stop only task-started processes and clean only task-owned temporary resources. Close when acceptance is met; report pending gates and evidence limits honestly.
 
-This guidance does not override canonical governance, accepted contracts, mandatory gates, or explicit Owner instructions.
+## Conflicting documents or evidence
 
-#### 1. Core principle
+The governing Markdown owns design; code, executable contracts and matching tests own claims about current behavior. A mismatch is a specific reconciliation issue, not permission to erase valid security protection or silently redesign the product. Record the owning boundary and impact, resolve within task authorization, and obtain the applicable decision before sensitive authority or historical-contract changes.
 
-Engineering work must remain correct, secure, efficient, and proportionate to actual risk.
-
-Developers and coding agents are expected to exercise technical judgment within the authorized task. These instructions must not prevent necessary refactoring, SQL optimization, migration work, or legitimate architectural improvements within that scope.
-
-Verification exists to establish correctness, not to create unnecessary execution cycles.
-
-#### 2. Establish the baseline before investigating failures
-
-When a test or required verification gate fails:
-
-- Identify the last authoritative passing revision for the affected gate, including its commit SHA and available CI evidence.
-- Since tasks commonly use separate Git worktrees, establish the current worktree's base revision, subsequent commits, and tracked, staged, and untracked changes.
-- Preserve the existing worktree state and all unrelated work.
-- Compare the failing candidate with the last relevant passing revision before beginning broad investigation.
-- Establish whether baseline and candidate were verified under materially comparable environments, fixtures, test runners, and database configurations. Record differences before attributing causality.
-- Examine changes to implementation, tests, fixtures, dependencies, migrations, configuration, and execution environment.
-- Prioritize changes that plausibly affect the failing behavior or its dependencies.
-
-A previously passing Foundation result is a starting point for regression investigation, not proof that every historical behavior was defect-free.
-
-Do not assume the most recent commit is the passing baseline.
-
-#### 3. Diagnose failures efficiently
-
-Investigate failures through evidence and controlled comparisons:
-
-- Identify the precise failed behavior, error, test, and execution conditions.
-- Use existing CI logs, test artifacts, and repository history before generating new evidence.
-- Distinguish between candidate regressions, baseline defects, environment differences, test or fixture defects, and intermittent failures.
-- Start with the smallest experiment capable of distinguishing the leading explanations.
-- Do not automatically attribute a failure to the latest change, but do not dismiss it as unrelated without evidence.
-- Do not label a failure flaky merely because an isolated retry passes.
-- Before modifying production behavior to resolve a test failure, establish whether the failing expectation and test orchestration reflect the intended product contract. A test failure is evidence requiring investigation, not by itself authorization to change production semantics.
-- Avoid broad performance investigations or unrelated optimizations unless evidence establishes their relevance to the failure.
-
-For concurrency failures, distinguish worker bootstrap/readiness, the actual lock attempt and observed blockers, early worker exit, and timeout. Retain worker output, connection identities, and wait evidence. A timeout alone does not establish a product defect; successful verification must still observe the required real contention.
-
-If two focused diagnostic experiments do not materially narrow the cause, stop unproductive expansion, summarize the evidence, and identify the smallest useful next step. Escalate before starting another prolonged investigation.
-
-This limit applies to unproductive investigation, not to the number of tests required to verify a clearly understood correction or productive work converging toward a solution.
-
-#### 4. SQL and database engineering
-
-SQL and database changes are normal engineering work, not exceptional operations requiring separate permission merely because they modify SQL files.
-
-Within the authorized task, developers may design, refactor, optimize, and implement SQL, database functions, queries, indexes, and migrations using sound technical judgment.
-
-Apply safeguards according to actual impact:
-
-- Understand the affected behavior, database contracts, callers, dependencies, and deployment state.
-- Preserve intended data integrity, authorization, tenant isolation, RLS, transactional guarantees, and concurrency semantics unless changes to those contracts are explicitly authorized.
-- When changing existing database objects, determine whether a migration is required for already-initialized databases. Keep installation definitions and upgrade paths consistent.
-- Prefer safe, appropriately scoped migrations that preserve existing data and permissions. Test upgrades, repeatability, and fresh installation where relevant to the actual change.
-- For meaningful SQL optimizations, verify the required behavior remains correct and measure performance when performance is the reason for the change.
-- Test relevant success cases, failure cases, and database boundaries proportionately to risk.
-- Use approved isolated and disposable test environments. Never run destructive development tests against production, preview, or shared owner data.
-
-Do not introduce unnecessary migrations, compatibility layers, tests, or approval steps for changes that do not require them.
-
-Do not change security contracts, lock ordering, transaction isolation, authority semantics, or critical timeouts merely to make tests pass.
-
-If the authorized task genuinely requires changing such contracts, identify the impact and obtain the applicable architectural or owner decision before proceeding.
-
-The goal is to enable correct database engineering while preventing accidental changes to protected behavior.
-
-#### 5. Verification during development
-
-Select tests according to the impact of the change, not the number or extension of modified files.
-
-- Documentation-only changes: validate affected content, references, and formatting.
-- Visual changes: verify affected screens, relevant viewports, RTL, interactions, and accessibility.
-- Local application behavior: run focused tests covering affected behavior, failure paths, and immediate consumers.
-- Shared contracts, database behavior, authority, tenant isolation, security, schema, migrations, and infrastructure: run applicable focused integration, boundary, and architecture checks.
-- Uncertain or broad impact: expand verification as necessary to establish adequate coverage.
-
-Use official repository test entry points and required environment guards.
-
-`npm test` is the complete JavaScript selection; `npm run test:spa-foundation` and the other `test:*` commands are focused subsets. Run one production `npm run build` per comprehensive gate (`build:goals-spa` is an alias); proof-mode builds remain distinct. See [validated command mapping and evidence](docs/BUILDERAD_TEST_EXECUTION_RATIONALIZATION.md#canonical-verification-commands) for guarded PHP integration and browser entry points.
-
-Do not run the entire Foundation suite automatically after every edit.
-
-#### 6. Reuse valid evidence and avoid redundant testing
-
-Passing evidence applies to the actual tested file state, including uncommitted changes, configuration, dependencies, and relevant test conditions. A commit identifier alone does not establish equivalence for a dirty working tree.
-
-- Reuse passing test evidence when the relevant code, dependencies, configuration, and test conditions remain unchanged.
-- After a correction, rerun the failed or affected checks rather than automatically repeating all previously passing checks.
-- Invalidate earlier evidence only when subsequent changes affect what that evidence establishes.
-- Do not rerun expensive tests merely to produce a fresh log.
-- Do not skip relevant regression or security tests solely to save time.
-
-A focused test failure should lead to a focused investigation, not an automatic full-suite rerun.
-
-#### 7. Final acceptance and CI
-
-Development verification and final acceptance are separate stages.
-
-- Before final acceptance, identify all mandatory gates applicable to the candidate.
-- Run required gates on the final candidate revision, or rely on authoritative CI evidence covering that exact revision under applicable repository policy.
-- Prefer existing official GitHub CI workflows for final comprehensive verification when they provide the required coverage.
-- Do not repeat equivalent comprehensive tests locally without a concrete reason.
-- Focused passing tests do not replace mandatory final gates.
-- A failed, blocked, or unexecuted required gate is not PASS.
-- Do not claim deployment readiness or full acceptance solely from focused test results.
-
-The complete hosted gate is `.github/workflows/foundation.yml`; the isolated Windows entry point is `pwsh -NoProfile -File scripts/Test-GoalsSpa.ps1 -Phase Foundation`. Browser lifecycle checks use a separate phase and are not implied by either Foundation result.
-
-If CI requires a Push or Pull Request, respect the task's Git authorization boundaries. Do not publish or merge without permission.
-
-#### 8. Engineering integrity and execution discipline
-
-- Never weaken assertions, disable guards, bypass permissions, or conceal failures to obtain PASS.
-- Never alter timeouts or concurrency expectations merely to hide an unresolved failure.
-- Preserve unrelated changes and existing worktree state.
-- Avoid speculative fixes, unrelated refactoring, and prolonged trial-and-error without evidence.
-- Stop task-started servers, workers, watchers, and disposable test processes when finished.
-- Do not expand the task's product scope or change protected architectural decisions without authorization.
-
-#### 9. Completion report
-
-Report concisely:
-
-- What changed and why.
-- The relevant baseline and investigated regression, when applicable.
-- Tests executed, results, and the revision they cover.
-- Mandatory gates completed, pending, or blocked.
-- Material unresolved risks or acceptance conditions.
-
-Stop testing when the requested behavior is verified and all applicable acceptance requirements are satisfied.
-
-**Operating rule:** Investigate regressions from the last relevant passing baseline, use the smallest sufficient verification during development, preserve database and security contracts, and establish final acceptance through the required gates—without unnecessary restrictions on legitimate engineering work.
-
-### Current Business foundation implementation acceptance
-
-For the Owner-authorized E01–E05 work, read the continuing acceptance conditions in [the execution authorization record](docs/execution/business-foundation/OWNER_AUTHORIZATION.md#شرط-القبول-المستمر-قدرة-يجدها-المستخدم-ويفهمها-ويستفيد-منها).
-
-A user-facing capability is not complete from Backend/API tests alone. Record its user job, visible surface/audience/context, resource authority and applicable subscription, Arabic/RTL states and the required browser evidence in the existing execution progress record. Keep `BACKEND_VERIFIED`, `UI_INTEGRATED` and `BROWSER_VERIFIED` distinct. The first reference flow is independent Business creation/list/open/edit/switch/revocation; the old Workspace UI is not proof of that flow. Do not invent pages for internal primitives or build future mobile authentication, AI infrastructure or a comprehensive admin redesign under this condition.
-
-
-### Surface completeness for material capabilities
-
-For every material capability, identify its user job and classify public, advertiser, internal administration, internal-only (with a reason), or deferred UI (with a release prerequisite). Maintain the lightweight record in [surface coverage](docs/execution/public-platform/SURFACES.md), including actual placement, current authority/context and applicable entitlement, understandable evidence limits and unavailable/denied/unknown states, next action, and verification. Do not invent screens for internal primitives or present planned capabilities as operational. Keep `BACKEND_VERIFIED`, `UI_INTEGRATED` and `BROWSER_VERIFIED` separate. Reuse existing appearance, locale, navigation and authority owners; exposed controls do not grant data access.
-### Commercial and advertising capability references
-
-Before planning or designing a commercial or advertising capability, read the current plan index at `C:/dev/builderad sections/00_START_HERE/README_FIRST_AR.md`, the selection statement at `C:/dev/builderad sections/09_PRODUCT_BLUEPRINT/COMMERCIAL_ADVERTISING_EXPERTISE/README.md`, and only the task-relevant sections of its linked BA-CAEI-GOV-001 v1.1 reference and Blueprint §11.1 research method. Preserve accepted semantic owners, evidence rights, provider optionality and visible user value. These are design-direction references, not blanket implementation authorization or an automatic choice of the next Product Slice. Reconcile dated plan-status claims against the actual accepted main and its evidence; do not treat historical status as current or silently rewrite external plans.
-
-### Regional platform scale and research adequacy
-
-Treat BuilderAd as a large evolving regional platform: design against its known capability landscape and shared responsibilities, then implement bounded connected packages. Proportional execution must not shrink the product vision or substitute shallow knowledge for necessary specialist research. A shared foundation can be justified by known responsibilities and demonstrated variation before a commercial feature or real customer exists; do not invent frameworks for hypothetical needs. Keep country, language/RTL, currency, time/units, sector and provider assumptions explicit at affected boundaries. Evidence/access blockers gate only the claims that depend on them, not all independent work. Select technology for demonstrated semantic and operational fitness, preserving authority and replaceable tools/providers.
-
-For consequential capability/research work, reuse the existing progress record to name relevant prior studies/sections, what was reused or rejected and why, the material knowledge gap and justified research depth, competing explanations and discriminating checks, the resulting knowledge/contract/method decision, and revalidation triggers. Bound the question, not the depth needed to answer it correctly; do not repeat adequate current research or turn every discovery into code. Strategic exploration can have an approved knowledge objective without an immediate code consumer. Read the dated [Owner quality direction](docs/execution/structural-foundation/OWNER_MANDATE.md#owner-direction--regional-platform-scale-and-research-adequacy--2026-11-01) for material architecture, specialist-method or research tasks. It does not authorize accounts, paid tools, experiments, application edits or publication beyond the current task.
-
-
-### Independent commercial expertise and integration fitness
-
-BuilderAd develops independent commercial and advertising expertise; providers are sources/tools/channels, not the final authority on business strategy. Assess source authority per claim: native API facts and access, practitioner hypotheses, market evidence, business economics and experimental/causal support are distinct. Use relevant prior studies to improve the question, discover capabilities and alternatives, and shape methods/contracts/discriminating tests; do not use research only to confirm a preselected provider implementation. Record the material effect and rejected assumptions in the current package record.
-
-For material extension work, distinguish implemented state from demonstrated fitness for the proposed semantics. Method selection chooses computation, not the business decision; preserve the applicable decision owner and separate approval/execution authority. Test meaningful semantic variation using real logic where available; synthetic fixtures establish contract behavior, not real market truth or future capabilities. Do not force non-advertising diagnoses through Targeting/Spend or expand finite D2 market contracts into a universal expert engine. See [the integration record](docs/execution/structural-foundation/EXPERTISE_INTEGRATION.md) and the dated independent-expertise direction in OWNER_MANDATE.md. These instructions do not widen the task's authorization.
-
-
-For research-backed capability work, use [research-to-vision alignment](docs/execution/structural-foundation/RESEARCH_ALIGNMENT.md) and its bounded source ledger to locate relevant prior knowledge beyond Case A/B. Read the relevant source passages and honor their review limits; the ledger is neither whole-corpus validation nor a closed list of allowed capabilities. Record material reuse/rejection and resulting contract/method/test effects in the current package. Do not require rereading the whole archive or completing unreviewed unrelated files before independent work.
+Retained execution reports and the older executable-architecture record are scoped evidence only. Their instructions, acceptance states, capability inventories and proposed sequences are historical; follow the current task and the three entry documents above.

@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # مراجعة Commercial الحالية — 2026-10-03
 
 نطاق المراجعة: `/internal/commercial` وحدوده المباشرة، على شجرة العمل الحالية بما فيها تغييرات Business Foundation غير الملتزمة. لا تغييرات على كود المنتج أو العقود أو الصلاحيات. معاينة المكوّن الحقيقي ببيانات اصطناعية؛ ليست جلسة إنتاج ولا إثباتًا لتوفر بيانات معتمدة أو منح فعلية في النشر.

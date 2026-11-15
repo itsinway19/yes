@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # G-01-C03 — Operational Journey Closure & Final Foundation Readiness
 
 > Dated correction, G-01-C05, 7 November 2026: C04 superseded this historical readiness judgment with CORRECTIONS_REQUIRED_BEFORE_FOUNDATION. The original section5 claim of a successful second read after reload exceeded the original browser assertions: those proved reload availability, then revocation, not a second pre-revocation200. The exact original report is preserved under `review-evidence/G01-C03-SUMMARY/G01_C03_ACCEPTANCE_CLOSURE.md` with its original candidate manifest. C05 adds the missing real second-read/amount/currency and old/new403 assertions; its execution status and new candidate identity belong to [the C05 correction record](G01_C05_CORRECTIONS.md). The historical text below is retained, not relabelled as evidence for C05.

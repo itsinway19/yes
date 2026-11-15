@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # WORKTREE TARGETED REMEDIATION-01 — 2026-11-11
 
 Owner-authorized corrections to the reviewed local candidate at `db229b44c1f9ad2015bfb39edc48ddc0d8355449`, in the same dirty `ba-business-activity-next-001` tree. Preserve all previous work. Reference: Owner-supplied `BuilderAd-Engineering-Review.md`, dated2026-11-11. The report is evidence to verify, not authority to reopen Business-first, goals semantics or public Workspace retirement.

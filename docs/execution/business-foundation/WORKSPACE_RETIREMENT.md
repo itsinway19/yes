@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # Workspace model final retirement — execution and acceptance
 
 Status: LOCAL_CANDIDATE_READY_FOR_INDEPENDENT_REVIEW (local closure, 2026-11-14). Baseline approval, frozen-SHA Foundation and hosted CI remain pending. The final local closure section supersedes the outstanding-local-work lists below; earlier failures retain their original results.

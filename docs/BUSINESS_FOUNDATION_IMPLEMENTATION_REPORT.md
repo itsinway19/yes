@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # Business-aware foundation implementation — 2026-10-03
 
 Baseline: `a63d713234c51932245f71cea23f0e230eeed10e`. Worktree: `codex/admin-experience-foundation-001`. Prior Admin/CSS/localization changes are user-approved, understood and preserved. No commit, push or merge performed.

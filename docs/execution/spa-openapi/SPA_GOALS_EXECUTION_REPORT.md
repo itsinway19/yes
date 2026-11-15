@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # BuilderAd — إغلاق دفعة Goals SPA + OpenAPI + Typed Client
 
 التاريخ: 2026-10-17. شجرة التنفيذ: `C:/dev/builderad-worktrees/ba-spa-openapi-001`، الفرع `codex/ba-spa-openapi-001`.

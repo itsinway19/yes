@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # Final Inertia/N1 runtime retirement — Slice 7
 
 **Current status: READY FOR TARGETED INDEPENDENT RE-REVIEW — S7-R01.** The reviewed checkpoint received S7-R01/P2; its targeted correction and evidence are recorded at the end. This is not executor acceptance of Slice 7. The Owner limits local evidence to the documented Chromium 145 configuration; no production, other-browser or real-device acceptance. Earlier readiness/blocker narratives remain historical, not the current review verdict. No historical failed run is rewritten as successful.

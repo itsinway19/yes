@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # Independent expertise — integration and extension fitness
 
 2026-11-01 · ba-commercial-expertise-001 · inspected HEAD `c747f6d8a8f2011fa5dcc368da2aa4e8449e0565` plus existing local documentation. Derived construction record under BA-STRUCTURAL-FOUNDATION-001, not a new program or implementation authorization.
@@ -19,7 +22,7 @@ Preserve accepted PROGRAM/CAPABILITY_COVERAGE bytes and prior work; record indep
 | N06/N07/N08 | Accepted decision semantics; executable architecture disclaims implementation | Directed effort, resource use and synthesis remain distinct. Not owners of every future commercial diagnosis. |
 | BF-03/BF-04 | Substantive research; BF-04 explicitly retains cross-domain owner arbitration | Research direction, not shipped diagnosis or settled universal outcome owner. |
 
-Sources: [selector](../../../app/MarketKnowledge/Processing/MarketMethodSelector.php), [validation](../../../app/MarketKnowledge/Processing/Findings.php), [processing](../../../app/MarketKnowledge/Processing/MarketProcessing.php), [schema](../../../database/sql/market_processing/schema.sql), [customer consumer](../../../app/MarketKnowledge/CustomerDiscoveryConsumer.php), [competition consumer](../../../app/MarketKnowledge/CompetitiveIntelligenceConsumer.php), [decision semantics](../../superpowers/specs/2026-10-06-joint-targeting-spend-semantic-design.md), [invariants](../../BUILDERAD_EXECUTABLE_ARCHITECTURE.md). Source hashes are retained in EVIDENCE.json.
+Sources: [selector](../../../app/MarketKnowledge/Processing/MarketMethodSelector.php), [validation](../../../app/MarketKnowledge/Processing/Findings.php), [processing](../../../app/MarketKnowledge/Processing/MarketProcessing.php), [schema](https://github.com/42Huss/builderad/blob/c747f6d8a8f2011fa5dcc368da2aa4e8449e0565/database/sql/market_processing/schema.sql), [customer consumer](../../../app/MarketKnowledge/CustomerDiscoveryConsumer.php), [competition consumer](../../../app/MarketKnowledge/CompetitiveIntelligenceConsumer.php), [decision semantics](https://github.com/42Huss/builderad/blob/df863866154f9f723e56cbc7655407e007e964db/docs/superpowers/specs/2026-10-06-joint-targeting-spend-semantic-design.md), [invariants](../../BUILDERAD_EXECUTABLE_ARCHITECTURE.md). Source hashes are retained in EVIDENCE.json.
 
 Applicable protection: INV-001/002/003 provider independence/isolation, INV-004 ownership, INV-005 honest states, INV-007 decision/authority separation. No landed runtime semantics change or new invariant-coverage claim.
 
@@ -78,7 +81,7 @@ Eight probes executed real `OfferEquivalence`, `QualifiedInterestChange` and `Fi
 
 ## Subsequent bounded qualification — 2026-11-01
 
-[Case A contract v0.2](CASE_A_CONTRACT.md) now separates observed inquiry cost from accepted-inquiry cost, source acceptance from qualification proposals, and descriptive assessment from resource decisions. CRM/provider/goal optionality is explicit. Its priority finding qualifies the earlier next-step wording: the authorized contract task is justified, but no current blocked consumer or demonstrated rework proves first-code precedence. The contract is reviewable; operational evidence admission and consumer integration are not qualified, and no application implementation is authorized or claimed. Two numerical witnesses are contract-oracle checks only, not additional D2 or Case A production tests.
+[Case A contract v0.2](https://github.com/42Huss/builderad/blob/df863866154f9f723e56cbc7655407e007e964db/docs/execution/structural-foundation/CASE_A_CONTRACT.md) now separates observed inquiry cost from accepted-inquiry cost, source acceptance from qualification proposals, and descriptive assessment from resource decisions. CRM/provider/goal optionality is explicit. Its priority finding qualifies the earlier next-step wording: the authorized contract task is justified, but no current blocked consumer or demonstrated rework proves first-code precedence. The contract is reviewable; operational evidence admission and consumer integration are not qualified, and no application implementation is authorized or claimed. Two numerical witnesses are contract-oracle checks only, not additional D2 or Case A production tests.
 
 
 Case A v0.2 closes the bounded contract-review correction: eligibility is per measure and per comparison; descriptive claims do not inherit causal-identification requirements; aggregate disclosure is qualified at the actual consumer boundary. The acceptance inventory is now 20 proposed cases, none executed as application tests. This revision does not change Case A priority or prove its operational integration.
@@ -86,7 +89,7 @@ Case A v0.2 closes the bounded contract-review correction: eligibility is per me
 
 ## Subsequent construction-choice recommendation — 2026-11-01
 
-[BF03-I01 scope recommendation](NEXT_IMPLEMENTATION_PACKAGE.md) selects bounded source-asserted inquiry-cohort admission/readback as the proposed next operational foundation in this path, not a standalone calculator or universal intelligence engine. It preserves source truth limits and defers any claim of validated real events. New operation/custody/display authority remains the exact entry gate; application implementation is not authorized or ready by this documentary choice alone.
+[BF03-I01 scope recommendation](https://github.com/42Huss/builderad/blob/df863866154f9f723e56cbc7655407e007e964db/docs/execution/structural-foundation/NEXT_IMPLEMENTATION_PACKAGE.md) selects bounded source-asserted inquiry-cohort admission/readback as the proposed next operational foundation in this path, not a standalone calculator or universal intelligence engine. It preserves source truth limits and defers any claim of validated real events. New operation/custody/display authority remains the exact entry gate; application implementation is not authorized or ready by this documentary choice alone.
 
 
 ## Subsequent research-to-vision trace — 2026-11-01

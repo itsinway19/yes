@@ -1,119 +1,92 @@
 # Builderad
 
-Builderad is a Laravel 13 modular monolith. The security foundation uses Laravel-native identity and notifications, explicit action grants, and PostgreSQL row-level security for Workspace authority.
+Builderad is a Laravel 13 / PostgreSQL modular monolith with a native Vue SPA. Start from [AGENTS.md](AGENTS.md), the [governing architecture](docs/architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md), [current implementation and evidence](docs/architecture/CURRENT_IMPLEMENTATION.md), and [engineering standards](docs/engineering/ENGINEERING_STANDARDS.md). The [interactive architecture](docs/architecture/BUILDERAD_GOVERNING_ARCHITECTURE.html) is a reading copy of the Markdown, not another authority.
 
-## Runtime
+## Runtime and dependencies
 
-- PHP 8.5.x and Laravel 13
-- PostgreSQL 18.x only
-- Redis for cache, sessions, and queues
-- Vue 3, Vue Router, TypeScript, Tailwind CSS 4, Vite 8, and Node 24.x
+- PHP 8.5.x / Laravel 13; `composer.json` requires `>=8.5.0 <8.6.0`.
+- PostgreSQL 18.x only. Redis supplies configured sessions, cache and queues.
+- Node 24.x (`>=24 <25`), Vue 3, Vue Router, TypeScript, Tailwind CSS 4 and Vite 8.
+- Version ranges, scripts and locked identities come from `composer.json`, `package.json` and their lockfiles. Protection: `tests/Feature/Foundation/BaselineContractTest.php`.
 
-Load the scoped local toolchain before running commands:
+On Windows use the scoped toolchain; do not change machine-wide PATH:
 
 ```powershell
 pwsh -NoProfile -File scripts/builderad.ps1 preflight
 . .\scripts\Enter-BuilderadShell.ps1
 ```
 
-`scripts/builderad.ps1` reads the supported PHP and Node ranges from
-`composer.json` and `package.json`, and the PostgreSQL range from the database
-bootstrap. It uses the approved local executables explicitly, including Node 24
-for npm. Run project tools through the wrapper in Codex or a plain PowerShell
-session:
-
-```powershell
-pwsh -NoProfile -File scripts/builderad.ps1 test --compact
-pwsh -NoProfile -File scripts/builderad.ps1 build
-```
-
-The test action and the PHPUnit base test case both reject the preview database.
-Destructive tests require a separate PostgreSQL 18 cluster on `127.0.0.1:5433`,
-an actual database named `builderad_test_disposable`, and a matching UUIDv4
-database comment and `BUILDERAD_TEST_ISOLATION_TOKEN`. All three resolved Laravel
-connections (`pgsql`, `pgsql_authority`, `pgsql_migrations`) must have the expected
-roles and actual server identity. Connection URL overrides and cached Laravel
-configuration are rejected. Before running tests, initialize the separate cluster
-with `database/bootstrap/postgresql.sql`, set up its authority role with
-`database/bootstrap/test-authority-role.sql`, then run
-`database/bootstrap/disposable-test.sql` from its `postgres` database using
-`psql -v isolation_token=<new-uuid-v4>`. Set the same token and the three
-connection credentials in the ignored `.env.testing` or process environment,
-with the disposable database name and port. Never point this command at the
-preview database on port 5432. The VS Code workspace terminal and tasks use
-the same preflight; no machine-wide `PATH` change is needed.
-
-When package registries are unavailable, prepare a checkout from another local
-checkout whose `composer.lock` and `package-lock.json` match exactly:
+For a matching offline dependency seed:
 
 ```powershell
 pwsh -NoProfile -File scripts/Prepare-BuilderadDependencies.ps1 -Mode Seed -SeedRoot C:\path\to\matching-checkout
 ```
 
-The seed is read only. The command checks installed Composer and npm package
-versions against the locks and copies only missing dependency directories into
-this checkout. On a network-enabled machine, use `-Mode Online` to install from
-the locks with temporary files and caches scoped to this workspace.
+The seed is read-only; lockfiles and installed package identities must match. On a network-enabled machine, the same script's `-Mode Online` installs from the locks. Preparation is not a test result.
 
-## Database authority
+## Local configuration and database authority
 
-Create or reconcile the two local/test databases and their authority model from a PostgreSQL superuser connection:
+Create the ignored `.env` from `.env.example` for an explicitly selected local environment. Set APP_KEY and credentials through protected local configuration; do not commit them. Checked-in defaults select PostgreSQL and Redis. Provision only an authorized local or disposable server:
 
 ```powershell
-psql -X -U postgres -d postgres -f database/bootstrap/postgresql.sql
+pwsh -NoProfile -File scripts/builderad.ps1 psql -X -U postgres -d postgres -f database/bootstrap/postgresql.sql
 ```
 
-The script is deliberately password-free. For local use, assign credentials afterward through PostgreSQL's hidden interactive `\password builderad_owner` and `\password builderad_app` prompts. CI must inject ephemeral credentials through its protected secret mechanism; never place them in this repository or command examples.
+The bootstrap requires a PostgreSQL 18.x superuser and provisions fixed local/test databases and roles. It is not a production provisioning contract. Set passwords using PostgreSQL's hidden interactive `\password` prompt; never put credentials in command examples or the repository.
 
-The artifact is restricted to local Foundation provisioning and CI ephemeral provisioning for the fixed `builderad` and `builderad_test` databases and the `builderad_owner` and `builderad_app` roles. It fails before mutation unless the server is PostgreSQL 18.x and the session identity is a PostgreSQL superuser. This is not the future production provisioning contract. The runtime settings preserved by the artifact are `search_path=public`, `statement_timeout=15s`, `lock_timeout=3s`, and `idle_in_transaction_session_timeout=15s`.
+Application queries use `pgsql` / `builderad_app`; migrations use `pgsql_migrations` / `builderad_owner`; trusted evidence/session issuance uses separately restricted `pgsql_authority`. These roles are not interchangeable; runtime code cannot obtain schema ownership or bypass RLS. Test provisioning also uses `database/bootstrap/test-authority-role.sql` and `database/bootstrap/disposable-test.sql` under the guarded runner. See [authority and rights](docs/engineering/ENGINEERING_STANDARDS.md#authority-and-data-rights).
 
-Normal application queries use `pgsql` as the restricted `builderad_app` role. Schema changes use `pgsql_migrations` as `builderad_owner`:
+Do not run `migrate:fresh` or destructive tests on preview/shared databases. The normal migration wrapper deliberately invokes the disposable-database guard; it is not an instruction to migrate an owner's existing environment. A real installation or upgrade requires its explicitly authorized environment-specific procedure.
+
+## Application entry and local development
+
+`routes/web.php` owns public, advertiser and internal HTTP admission. Vue starts at `resources/js/spa/main.ts`; Vite builds that native SPA. There is no Inertia runtime.
+
+For an already configured, authorized local environment, use separate terminals as needed:
 
 ```powershell
-pwsh -NoProfile -File scripts/builderad.ps1 php artisan migrate --database=pgsql_migrations
+pwsh -NoProfile -File scripts/builderad.ps1 php artisan serve
+pwsh -NoProfile -File scripts/builderad.ps1 npm run dev
+pwsh -NoProfile -File scripts/builderad.ps1 build
 ```
 
-Application code must never use `pgsql_migrations`. The runtime role has no schema `CREATE`, owns no application table, and cannot bypass RLS.
+Track and stop servers/watchers you start. `scripts/Start-StablePreview.ps1` is a separate existing preview lifecycle tool; inspect its target and authorization before starting, stopping or modifying it. Preview is never a disposable test target.
 
-Prepare each schema with `builderad_owner` through the migration connection. Run application and RLS proof through `builderad_app`:
+## Business and historical Workspace terminology
 
-```powershell
-php artisan migrate:fresh --database=pgsql_migrations --force
-php artisan test
-```
+Business is the current operating entity, including practices, employee/agency paths and separately qualified Source/data-use relationships. Public Workspace routes and creation flows are retired. The current fresh PostgreSQL baseline also has explicit absence checks for Workspace objects and authority (`WorkspaceRetirementTest`, `WorkspaceOwnershipRetirementTest`); this is more than hiding navigation.
 
-The policy dependency graph is intentionally non-circular:
-
-```text
-authenticated User
-  -> transaction-local app.principal_user_id
-  -> transaction-local principal authorization phase
-  -> own active workspace_memberships and authorized Workspace candidates
-  -> exact public_id candidate resolution and membership authorization
-  -> transaction-local app.workspace_id
-  -> transaction-local workspace authorization phase
-  -> Workspace-owned rows
-```
-
-`WorkspaceContext` owns the outer transaction. Both PostgreSQL settings are transaction-local and disappear after commit or rollback.
-
-Direct account deletion is intentionally unavailable at Foundation baseline. It remains deferred until an identity/Workspace ownership, transfer, erasure, and retention contract is approved.
+Historical documents, Git revisions, test names and generic UI/file-system uses of “workspace” may remain. They do not reintroduce an operating Workspace or grant access. Valid retained evidence, grant ancestry, receipts and source history keep their own owners and rights. Fresh-install tests do not prove an upgrade or data migration of an existing preview/production database. See [current implementation](docs/architecture/CURRENT_IMPLEMENTATION.md).
 
 ## Verification
 
+Documentation-only changes require content/reference checks and `git diff --check`, not full Foundation. For PHP integration use the isolated entry point and select actual affected classes:
+
 ```powershell
-php artisan test
-npm run build
-composer audit
-npm audit
+pwsh -NoProfile -File scripts/Test-GoalsSpa.ps1 -Phase Focused -TestFilter 'BusinessFoundationTest'
 ```
 
-The RLS proof suite prepares only the disposable test database through the owner connection, then executes application assertions as `builderad_app` without an outer test transaction.
+The runner checks reserved ports, starts owned PostgreSQL/Redis resources, verifies all three database roles and the disposable identity token, retains evidence, and cleans task-owned processes/data. Direct `scripts/builderad.ps1 test` requires an already qualified isolated environment. It rejects preview/shared databases, connection URL overrides and cached configuration.
 
-## Transactional security email
+Other commands, selected according to impact:
 
-Registration verification, password recovery, and necessary account security notices use Laravel Notifications and the configured Laravel mail transport. The default queue remains Redis; security notifications are encrypted in queue payloads, dispatched after commit, and limited to three attempts with short backoff. A worker must be running for messages to leave the queue. For local testing, the disposable test suite uses Laravel's database queue and array mail transport; it never sends to real users.
+```powershell
+pwsh -NoProfile -File scripts/builderad.ps1 npm test
+pwsh -NoProfile -File scripts/builderad.ps1 npm run api:check
+pwsh -NoProfile -File scripts/builderad.ps1 php vendor/bin/pint --test
+pwsh -NoProfile -File scripts/builderad.ps1 build
+```
 
-Configure `MAIL_MAILER`, `MAIL_FROM_ADDRESS`, and provider credentials through protected environment configuration when selecting a transactional mail provider. Do not use the development `log` transport for real delivery. Run a Laravel queue worker under the same scoped toolchain with a process supervisor, for example `pwsh -NoProfile -File scripts/builderad.ps1 php artisan queue:work redis --queue=default --tries=3 --timeout=30`, and monitor Laravel's failed jobs and `security_mail_transport_failed` logs. A successful queue job or provider acceptance is not confirmation of inbox delivery. Recovery messages are rechecked before sending; stale or consumed tokens are skipped.
+`npm test` is the complete JavaScript selection; `test:*` scripts are subsets. `build:goals-spa` aliases the production build; `build:goals-spa:proof` is distinct. Run one production build per comprehensive gate.
 
-Before production mail activation, authenticate the sender domain with the selected provider's SPF and DKIM DNS records, publish a DMARC policy and reporting address, and verify alignment and delivery using provider evidence. Provider selection, DNS changes, and production validation are separate operational steps outside this worktree task.
+The complete hosted gate is `.github/workflows/foundation.yml`. Its isolated Windows counterpart is `scripts/Test-GoalsSpa.ps1 -Phase Foundation`; use it for an applicable comprehensive gate, not automatically. Browser lifecycle uses a separate Browser phase. [Engineering standards](docs/engineering/ENGINEERING_STANDARDS.md#verification-and-evidence) maps selections and evidence rules. A passing baseline does not certify unmerged changes or deployment.
+
+## Security notifications
+
+Laravel Notifications and configured mail transport own security email; Redis is the normal queue. Start a worker only for an authorized environment and delivery configuration, for example:
+
+```powershell
+pwsh -NoProfile -File scripts/builderad.ps1 php artisan queue:work redis --queue=default --tries=3 --timeout=30
+```
+
+Queue completion/provider acceptance does not prove inbox delivery. Do not use development log transport for real messages; sender-domain/provider configuration and production validation are separate work. Disposable tests use non-delivering transports.

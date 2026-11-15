@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](../../architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](../../architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # تسليم Business-first لجلسة المراجعة — 2026-11-10
 
 الحالة: **READY_FOR_REVIEW** ضمن النطاق المثبت أدناه، وليست شهادة قبول شامل. **Foundation: NOT_RUN_OWNER_DEFERRED** بأمر المالك. لا نشر ولا دمج ولا ترحيل إنتاجي. المعاينة وبيانات المالك لم تُرحّل ضمن هذا العمل.

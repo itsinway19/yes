@@ -1,3 +1,6 @@
+<!-- DOCUMENTATION-MODERNIZATION-2026-11-15 -->
+> **RETAIN_VERIFICATION_EVIDENCE — historical scope only.** This record preserves its original dates, source revisions, results and limits. Instructions, proposals, authorization and sequencing below are historical, not current work orders or design authority. Use the [governing architecture](architecture/BUILDERAD_GOVERNING_ARCHITECTURE.md) and [current implementation](architecture/CURRENT_IMPLEMENTATION.md). Retired-document links point to their exact committed provenance.
+
 # Engineering Remediation 001 — Owner handoff
 
 Date: 2026-10-04, Europe/Istanbul. Bounded remediation of the governing `ENGINEERING_QUALITY_GATE_001_REVIEW.md`. This is not a repeat architecture review or production acceptance.
