@@ -1769,6 +1769,114 @@ try {
         assert.equal(await page.getByText('غرض مصحح مؤهل',{exact:true}).count(),0);
         return {operatingUISurrender:true,explicitRequalification:true,writeRevokedReadRetained:true,lateCompletedReplyDiscarded:true,revokedBusinessNotDisplayed:true};
     });
+    await check('V18 first useful step uses declared coverage and preserves overview access', async () => {
+        const proof = await browser.newContext({ viewport: { width: 390, height: 850 }, locale: 'ar-JO' });
+        const tab = await proof.newPage();
+        activePage = tab;
+        tab.on('pageerror', error => result.errors.push(error.message));
+        const card = tab.locator('[data-first-useful-step]');
+        const waitForStep = (reason, status) => tab.waitForFunction(({ reason, status }) => {
+            const panel = document.querySelector('[data-first-useful-step]');
+            return panel?.dataset.stepReason === reason && panel.dataset.stepStatus === status && !!panel.getClientRects().length;
+        }, { reason, status });
+        const create = async name => {
+            const response = await sendFrom(tab, '/api/businesses', 'POST', { command_id: crypto.randomUUID(), name });
+            assert.equal(response.status, 201);
+            return response.body.data;
+        };
+        try {
+            await tab.goto(origin + '/login');
+            const login = await sendFrom(tab, '/login', 'POST', { email: 'goals-b@example.test', password: 'DisposableGoalsProof42!' });
+            assert.equal(login.status, 200);
+            await tab.goto(origin + login.body.redirect);
+            const business = await create('V18 AC maintenance');
+            const other = await create('V18 separate activity');
+            const base = '/businesses/' + business.business_public_id;
+            const access = business.grant_refs['business.context.read'];
+            const path = base + '?access=' + access;
+            const response = await sendFrom(tab, '/api' + base + '/preferences', 'PUT', {
+                command_id: crypto.randomUUID(), expected_preference: 0, value: { goals: ['growth'], priority: 'growth', results: { growth: [] } },
+                authority_selection: { realm_kind: 'direct', requirements: [{ requirement_kind: 'business', leaf_grant_id: business.grant_refs['business.preferences.manage'] }] },
+            });
+            assert.equal(response.status, 200);
+            await tab.goto(origin + path);
+            await waitForStep('add_practice', 'NEEDS_INPUT');
+            assert.equal(await tab.locator('html').getAttribute('dir'), 'rtl');
+            assert.match(await card.innerText(), /[\u0600-\u06ff]/);
+            const action = card.locator('[data-business-review-task]');
+            await action.focus();
+            await tab.keyboard.press('Enter');
+            await tab.locator('[data-business-practices] [data-practice-add]').click();
+            const panel = tab.locator('[data-business-practices]');
+            await panel.locator('#bf-practice-name').fill('صيانة المكيّفات');
+            await panel.locator('#bf-practice-kind').selectOption('service');
+            await panel.locator('#bf-practice-offering').fill('صيانة المكيّفات المنزلية');
+            await panel.locator('#bf-practice-target_markets-status').selectOption('declared');
+            await panel.locator('#bf-practice-target_markets-countries').selectOption('SA');
+            await panel.locator('[data-practice-save]').click();
+            const row = panel.locator('[data-practice-id]');
+            await row.waitFor({ state: 'visible' });
+            await workspaceSection('overview', tab);
+            await waitForStep('declare_fulfillment', 'NEEDS_INPUT');
+            assert.equal(await tab.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+
+            await card.locator('[data-business-review-task]').click();
+            await row.locator('[data-practice-edit]').click();
+            await panel.locator('#bf-practice-fulfillment-status').selectOption('declared');
+            await panel.locator('#bf-practice-fulfillment-countries').selectOption('JO');
+            await panel.locator('[data-practice-save]').click();
+            await panel.locator('[data-practice-form]').waitFor({ state: 'hidden' });
+            await workspaceSection('overview', tab);
+            await waitForStep('clarify_cross_market_handling', 'NEEDS_INPUT');
+            assert.match(await card.innerText(), /كيف سيُتمّ المشتري التعامل من سوقه/);
+            assert.equal(await card.locator('[data-business-review-task]').count(), 0);
+            await workspaceSection('settings', tab);
+            await row.locator('[data-practice-edit]').click();
+            await panel.locator('#bf-practice-fulfillment-countries').selectOption('SA');
+            await panel.locator('[data-practice-save]').click();
+            await panel.locator('[data-practice-form]').waitFor({ state: 'hidden' });
+            await workspaceSection('overview', tab);
+            await waitForStep('test_offer_in_declared_market', 'ACTIONABLE');
+            assert.ok((await card.innerText()).includes('صيانة المكيّفات المنزلية'));
+            await tab.setViewportSize({ width: 1280, height: 850 });
+            const menu = tab.locator('.advertiser-account-menu');
+            if (await menu.getAttribute('open') === null) await menu.locator(':scope > summary').click();
+            await menu.locator('[data-application="locale"]').click();
+            await tab.waitForFunction(() => document.documentElement.lang === 'en' && document.documentElement.dir === 'ltr');
+            await waitForStep('test_offer_in_declared_market', 'ACTIONABLE');
+            assert.match(await card.innerText(), /offer|customer/i);
+            assert.equal(await tab.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+
+            const efficiency = await sendFrom(tab, '/api' + base + '/preferences', 'PUT', {
+                command_id: crypto.randomUUID(), expected_preference: 1, value: { goals: ['efficiency'], priority: 'efficiency', results: { efficiency: [] } },
+                authority_selection: { realm_kind: 'direct', requirements: [{ requirement_kind: 'business', leaf_grant_id: business.grant_refs['business.preferences.manage'] }] },
+            });
+            assert.equal(efficiency.status, 200);
+            await tab.reload();
+            await waitForStep('spend_evidence_required', 'NEEDS_INPUT');
+            assert.match(await card.innerText(), /Gather spend records and actual outcomes/);
+            assert.equal(await card.locator('[data-business-review-task]').count(), 0);
+
+            const otherPath = '/businesses/' + other.business_public_id + '?access=' + other.grant_refs['business.context.read'];
+            const documentOrigin = await tab.evaluate(() => performance.timeOrigin);
+            await tab.locator('[data-advertiser-shell] a[href="/businesses"]').first().click();
+            await tab.locator(`[data-business-list] a[href="${otherPath}"]`).click();
+            await waitForStep('choose_goal', 'NEEDS_INPUT');
+            assert.equal(await tab.evaluate(() => performance.timeOrigin), documentOrigin);
+            assert.equal((await card.innerText()).includes('صيانة المكيّفات المنزلية'), false);
+            const denied = await tab.goto(origin + base + '?access=' + other.grant_refs['business.context.read']);
+            assert.equal(denied.status(), 403);
+            assert.equal(await card.count(), 0);
+            await proof.clearCookies();
+            await tab.goto(origin + path);
+            await tab.waitForURL(url => url.pathname === '/login');
+            assert.equal(await card.count(), 0);
+            return { methodRevision: 2, noIntegration: true, crossMarketClarification: true, missingInputToAction: true, efficiencyNeedsInput: true, locales: ['ar', 'en'], widths: [390, 1280], keyboard: true, crossBusinessDenial: true, unauthenticatedConcealment: true };
+        } finally {
+            await proof.close();
+            activePage = page;
+        }
+    });
     await businessAgencyBrowserProof({ browser, run, origin, fixture, check, sendFrom, errors: result.errors,
         activate: tab => { activePage = tab; }, restore: () => { activePage = page; } });
     assert.deepEqual(result.errors, []);

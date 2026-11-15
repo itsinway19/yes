@@ -4,6 +4,7 @@ namespace App\Foundation\Business;
 
 use App\Business\AdvertiserGoalPreferences;
 use App\Business\ObjectPurpose;
+use App\Commercial\FirstUsefulStep;
 use App\Commercial\RegisterCommercialScope;
 use App\Foundation\Tenancy\PrincipalContext;
 use App\Security\SessionAuthority;
@@ -19,10 +20,15 @@ final class BusinessScope
 
     public function practices(Request $request, string $business, int $access, ?string $practice = null): array
     {
-        return $this->run($request, fn () => $this->decode(DB::scalar(
+        return $this->run($request, fn () => $this->practiceProjection($request, $business, $access, $practice));
+    }
+
+    private function practiceProjection(Request $request, string $business, int $access, ?string $practice = null): array
+    {
+        return $this->decode(DB::scalar(
             'SELECT builderad_v2_business_practices(?,?::uuid,?,?::uuid)',
             [SessionAuthority::sessionKey($request), $business, $access, $practice],
-        )));
+        ));
     }
 
     public function writePractice(Request $request, string $business, array $body): array
@@ -143,19 +149,21 @@ final class BusinessScope
         )));
     }
 
-    public function surface(Request $request, string $business, int $readGrant): array
+    public function surface(Request $request, string $business, int $readGrant, ?string $focusPractice = null): array
     {
-        return $this->run($request, function () use ($request, $business, $readGrant): array {
+        return $this->run($request, function () use ($request, $business, $readGrant, $focusPractice): array {
             $surface = $this->decode(DB::scalar(
                 'SELECT builderad_v2_business_surface(?,?::uuid,?)', [SessionAuthority::sessionKey($request), $business, $readGrant],
             ));
-            // SQL qualifies the resource before catalog reads and rechecks after every wait.
-            // Decoration is in-memory only: no authority-sensitive I/O after that check.
             $surface['catalog'] = $this->decorateCatalog($surface['catalog']);
             $surface['commercial'] = app(RegisterCommercialScope::class)->businessProjection($business);
             $surface['service_approval'] = $this->decode(DB::scalar('SELECT builderad_business_service_approval(?,?::uuid,?)', [
                 SessionAuthority::sessionKey($request), $business, $readGrant,
             ]));
+            // Both owner reads use the same transaction and Business lock. The practice
+            // projection requalifies the same read path before this in-memory judgment.
+            $practices = $this->practiceProjection($request, $business, $readGrant);
+            $surface['first_useful_step'] = app(FirstUsefulStep::class)->evaluate($surface['business'], $practices['practices'], $focusPractice);
 
             return $surface;
         });

@@ -6232,6 +6232,7 @@ export interface components {
                     effective_at: string;
                 } | null;
             };
+            first_useful_step: components["schemas"]["FirstUsefulStep"];
             data_use: {
                 binding_options: {
                     grant_id: string;
@@ -6282,6 +6283,42 @@ export interface components {
                     name_ar: string;
                     name_en: string;
                 }[];
+            }[];
+        };
+        FirstUsefulStep: {
+            /** @constant */
+            function_id: "commercial.first_useful_step";
+            /** @constant */
+            method_revision: 2;
+            /** @enum {unknown} */
+            status: "ACTIONABLE" | "NEEDS_INPUT" | "INAPPLICABLE" | "UNAVAILABLE";
+            /** @enum {unknown} */
+            reason: "choose_goal" | "choose_practice" | "add_practice" | "describe_offering" | "declare_target_market" | "declare_fulfillment" | "check_market_coverage" | "clarify_cross_market_handling" | "test_offer_in_declared_market" | "record_buyer_roles" | "record_brokerage_qualifier" | "record_sale_evidence" | "spend_evidence_required" | "goal_not_supported" | "practice_unavailable" | "business_unavailable";
+            basis: {
+                /** Format: uuid */
+                business_public_id: string;
+                /** @constant */
+                qualification: "business_declared";
+                context_version: number;
+                preference_version: number;
+                goal: string | null;
+                market_check: {
+                    target_countries: string[];
+                    fulfillment_countries: string[];
+                    shared_countries: string[];
+                } | null;
+                practice: {
+                    /** Format: uuid */
+                    practice_id: string;
+                    name: string;
+                    revision: number;
+                    offering: string | null;
+                } | null;
+            };
+            practice_choices: {
+                /** Format: uuid */
+                practice_id: string;
+                name: string;
             }[];
         };
         BusinessPurposes: {
@@ -6738,6 +6775,7 @@ export interface components {
                         effective_at: string;
                     } | null;
                 };
+                first_useful_step: components["schemas"]["FirstUsefulStep"];
                 data_use: {
                     binding_options: {
                         grant_id: string;
@@ -25209,6 +25247,7 @@ export interface operations {
                                     effective_at: string;
                                 } | null;
                             };
+                            first_useful_step: components["schemas"]["FirstUsefulStep"];
                             data_use: {
                                 binding_options: {
                                     grant_id: string;
@@ -25402,6 +25441,7 @@ export interface operations {
         parameters: {
             query: {
                 access: number;
+                focus_practice?: string;
             };
             header?: never;
             path: {
@@ -25622,6 +25662,7 @@ export interface operations {
                                     effective_at: string;
                                 } | null;
                             };
+                            first_useful_step: components["schemas"]["FirstUsefulStep"];
                             data_use: {
                                 binding_options: {
                                     grant_id: string;

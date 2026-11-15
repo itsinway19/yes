@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import { RouterLink, onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, House, Link2, Settings2, Target, Users } from '@lucide/vue';
+import { House, Link2, Settings2, Target, Users } from '@lucide/vue';
 import AdvertiserWorkspaceLayout from './AdvertiserWorkspaceLayout.vue';
+import BusinessFirstUsefulStep from './BusinessFirstUsefulStep.vue';
 import BusinessSources from './BusinessSources.vue';
 import BusinessTaskRow from './BusinessTaskRow.vue';
 import { locale } from '../spa/locale';
-import { status } from '../spa/presentation';
+import { navigating, status } from '../spa/presentation';
 import { readPractices, type Practice } from './activity';
 import { internalTeamDrafts, agencyTeamDrafts, teamMembersDrafts, businessMandatesDrafts, delegationDrafts, key, lifecycleDrafts, purposeEnrollmentDrafts } from './drafts';
 import { hasPendingDataLicense } from './dataLicenseJourney';
@@ -107,12 +108,30 @@ const preparation = computed(() => [
     { label: t('السوق المستهدف', 'Target market'), ready: !!marketLabels.value.length, section: 'direction' as const },
     { label: t('الأولوية التجارية', 'Business priority'), ready: !!goalLabels.value.length, section: 'direction' as const },
 ]);
-const nextTask = computed(() => {
-    if (!marketLabels.value.length) return { section: 'direction' as const, title: t('حدد أين تريد الوصول إلى عملائك', 'Choose where to reach your customers'), description: t('أضف الأسواق التي تخدمها ليصبح نطاق عملك واضحًا في اللوحة.', 'Add the markets you serve so your dashboard reflects your scope of work.'), action: t('تحديد الأسواق', 'Set target markets') };
-    if (!goalLabels.value.length) return { section: 'direction' as const, title: t('اختر أولوية العمل الحالية', 'Choose your current business priority'), description: t('حدد النتيجة التي تهمك، ثم صف كيف ستعرف أنك حققتها.', 'Choose the outcome that matters, then describe how you will recognize success.'), action: t('تحديد الهدف', 'Set your goal') };
-    if (practices.value && !practices.value.length) return { section: 'settings' as const, title: t('وضح ما يقدمه نشاطك', 'Describe what your business offers'), description: t('أضف منتجًا أو خدمة أو ممارسة لتمييز أعمال نشاطك.', 'Add a product, service or practice to describe your work.'), action: t('إضافة ممارسة', 'Add a practice') };
-    return { section: 'direction' as const, title: t('حوّل هدفك إلى نتيجة واضحة', 'Give your goal a clear success definition'), description: t('راجع اتجاهك الحالي وحدد النتيجة والمدة المناسبة لك. يمكنك إنجاز ذلك الآن من معلومات نشاطك.', 'Review your direction and define a useful outcome and time horizon using your business details.'), action: t('مراجعة الهدف والنتيجة', 'Review goal and outcome') };
+const firstStepCard = ref<{ focus: () => void }>();
+const firstStepPending = computed(() => props.refreshing || navigating.value || status.value === 'checking');
+const firstUsefulStep = computed(() => {
+    const { business, first_useful_step: step } = props.surface;
+    if (firstStepPending.value || status.value !== 'ready' || !step || step.method_revision !== 2) return;
+    if (typeof route.params.business !== 'string' || route.params.business.toLowerCase() !== business.business_public_id.toLowerCase()) return;
+    if (step.basis.business_public_id !== business.business_public_id ||
+        step.basis.context_version !== business.versions.context || step.basis.preference_version !== business.versions.preferences) return;
+    const focus = route.query.focus_practice;
+    if (typeof focus === 'string' && step.basis.practice?.practice_id.toLowerCase() !== focus.toLowerCase() &&
+        step.reason !== 'practice_unavailable' && step.reason !== 'business_unavailable') return;
+    return step;
 });
+const firstStepGoal = computed(() => {
+    const goal = props.surface.catalog.goals.find(item => item.id === firstUsefulStep.value?.basis.goal);
+    return goal ? t(goal.name_ar, goal.name_en) : undefined;
+});
+async function selectFirstStepPractice(practice: string) {
+    if (!firstUsefulStep.value?.practice_choices.some(choice => choice.practice_id === practice)) return;
+    const path = route.path;
+    await router.replace({ path, query: { ...route.query, focus_practice: practice } });
+    await nextTick();
+    if (route.path === path && active.value === 'overview') firstStepCard.value?.focus();
+}
 function openSourceData() { sourceToolsVisited.value = true; sourceTask.value = 'data-use'; }
 watch(() => [props.surface, props.refreshing, status.value, active.value] as const, async ([surface, refreshing, readiness, section], _previous, cleanup) => {
     practices.value = undefined;
@@ -192,10 +211,10 @@ async function navigate(section: WorkspaceSection, subview?: WorkspaceSettingsVi
             <h1 ref="heading" class="workspace-section-title" tabindex="-1" data-workspace-heading>{{ active === 'overview' ? surface.business.name : destinations.find(d => d.id === navigationSection)?.label }}<span v-if="navigationSection === 'settings'" class="workspace-location"> / {{ localSettings.find(d => d.id === settingsView)?.label }}</span></h1>
             <section v-show="active === 'overview'" data-workspace-panel="overview">
                 <p class="workspace-intro">{{ sectorLabel }} <span aria-hidden="true">·</span> {{ t('معلومات أضفتها عن نشاطك', 'Details you provided about your business') }}</p>
-                <section class="workspace-next-action" data-current-work>
-                    <div><p class="workspace-overview-label">{{ t('خطوتك التالية', 'Your next step') }}</p><h2>{{ nextTask.title }}</h2><p>{{ nextTask.description }}</p></div>
-                    <button type="button" class="bf-primary" data-business-review-task @click="navigate(nextTask.section)">{{ reviewEditable ? nextTask.action : t('مراجعة المعلومات', 'Review details') }}<ArrowLeft aria-hidden="true" /></button>
-                </section>
+                <BusinessFirstUsefulStep v-if="active === 'overview'" ref="firstStepCard" :step="firstUsefulStep"
+                    :pending="firstStepPending" :goal-label="firstStepGoal" :countries="surface.catalog.countries" :can-edit-goals="surface.fact_write_options.preferences.length > 0"
+                    :can-edit-practice="surface.context_write_options.length > 0"
+                    @navigate="section => navigate(section, 'details')" @select="selectFirstStepPractice" @refresh="emit('refresh')" />
                 <div class="workspace-overview-grid">
                 <section class="workspace-business-brief">
                 <header class="workspace-block-heading"><h2>{{ t('نشاطك في لمحة', 'Your business at a glance') }}</h2><button type="button" class="bf-link" @click="navigate('settings')">{{ t('إدارة المعلومات', 'Manage details') }}</button></header>

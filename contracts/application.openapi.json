@@ -24453,6 +24453,9 @@
                                 }
                               }
                             },
+                            "first_useful_step": {
+                              "$ref": "#/components/schemas/FirstUsefulStep"
+                            },
                             "data_use": {
                               "type": "object",
                               "properties": {
@@ -24574,6 +24577,7 @@
                             "catalog",
                             "scope",
                             "commercial",
+                            "first_useful_step",
                             "data_use"
                           ],
                           "additionalProperties": false
@@ -24915,6 +24919,14 @@
             "schema": {
               "type": "integer",
               "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "focus_practice",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
             }
           }
         ],
@@ -25843,6 +25855,9 @@
                             }
                           }
                         },
+                        "first_useful_step": {
+                          "$ref": "#/components/schemas/FirstUsefulStep"
+                        },
                         "data_use": {
                           "type": "object",
                           "properties": {
@@ -25964,6 +25979,7 @@
                         "catalog",
                         "scope",
                         "commercial",
+                        "first_useful_step",
                         "data_use"
                       ],
                       "additionalProperties": false
@@ -52638,6 +52654,9 @@
               }
             }
           },
+          "first_useful_step": {
+            "$ref": "#/components/schemas/FirstUsefulStep"
+          },
           "data_use": {
             "type": "object",
             "properties": {
@@ -52759,6 +52778,7 @@
           "catalog",
           "scope",
           "commercial",
+          "first_useful_step",
           "data_use"
         ],
         "additionalProperties": false
@@ -52893,6 +52913,190 @@
           "countries",
           "intent_timezones",
           "goals"
+        ],
+        "additionalProperties": false
+      },
+      "FirstUsefulStep": {
+        "type": "object",
+        "properties": {
+          "function_id": {
+            "const": "commercial.first_useful_step"
+          },
+          "method_revision": {
+            "const": 2
+          },
+          "status": {
+            "enum": [
+              "ACTIONABLE",
+              "NEEDS_INPUT",
+              "INAPPLICABLE",
+              "UNAVAILABLE"
+            ]
+          },
+          "reason": {
+            "enum": [
+              "choose_goal",
+              "choose_practice",
+              "add_practice",
+              "describe_offering",
+              "declare_target_market",
+              "declare_fulfillment",
+              "check_market_coverage",
+              "clarify_cross_market_handling",
+              "test_offer_in_declared_market",
+              "record_buyer_roles",
+              "record_brokerage_qualifier",
+              "record_sale_evidence",
+              "spend_evidence_required",
+              "goal_not_supported",
+              "practice_unavailable",
+              "business_unavailable"
+            ]
+          },
+          "basis": {
+            "type": "object",
+            "properties": {
+              "business_public_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "qualification": {
+                "const": "business_declared"
+              },
+              "context_version": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "preference_version": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "goal": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "market_check": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "target_countries": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "fulfillment_countries": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "shared_countries": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "target_countries",
+                      "fulfillment_countries",
+                      "shared_countries"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "practice": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "practice_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "revision": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "offering": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "practice_id",
+                      "name",
+                      "revision",
+                      "offering"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "business_public_id",
+              "qualification",
+              "context_version",
+              "preference_version",
+              "goal",
+              "market_check",
+              "practice"
+            ],
+            "additionalProperties": false
+          },
+          "practice_choices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "practice_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "practice_id",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "function_id",
+          "method_revision",
+          "status",
+          "reason",
+          "basis",
+          "practice_choices"
         ],
         "additionalProperties": false
       },
@@ -55022,6 +55226,9 @@
                   }
                 }
               },
+              "first_useful_step": {
+                "$ref": "#/components/schemas/FirstUsefulStep"
+              },
               "data_use": {
                 "type": "object",
                 "properties": {
@@ -55143,6 +55350,7 @@
               "catalog",
               "scope",
               "commercial",
+              "first_useful_step",
               "data_use"
             ],
             "additionalProperties": false

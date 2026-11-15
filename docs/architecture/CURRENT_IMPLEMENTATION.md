@@ -44,6 +44,12 @@ Recorded before publication: worktree `C:\dev\builderad-worktrees\ba-workspace-r
 
 Authoritative baseline: [PR Foundation 43620633657](https://github.com/42Huss/builderad/actions/runs/43620633657) for `df86386`; [main Foundation 43627883966](https://github.com/42Huss/builderad/actions/runs/43627883966) for `8751344`. Reused CI covers the identical baseline source tree, not the unmerged validators below. No comprehensive or behavioral suite was rerun for the documentation task.
 
+## V18 candidate presentation and operations boundary
+
+The [V18 judgment](../../app/Commercial/FirstUsefulStep.php) is recalculated during the qualified Business surface read. Method revision 2 treats disjoint country declarations as a question about completing the transaction and shared countries as a scope for a conditional manual test. The practice contract carries declared areas and supplies no qualified exclusive attendance, delivery, or cross-border restriction. An efficiency goal needs spend and outcome evidence. A catalog goal outside this method has a separate unsupported reason.
+
+There is no administrative V18 card. [Commercial operations](../../resources/js/commercial/OperationsView.vue) and its [editor](../../resources/js/commercial/OperationsEditor.vue) manage markets, references, configurations, assignability, and registrations through their existing scoped contract. If platform support develops an actual capability-diagnostics workflow, that workflow can display the public function identifier, method revision, supported scope, and evidence requirements. Operational status requires an authorized telemetry source. Business results, goals, and offerings remain within the Business read boundary.
+
 ## Actual owners and extension boundaries
 
 | Responsibility | Source / executable contract / real consumer | State and evidence boundary |
