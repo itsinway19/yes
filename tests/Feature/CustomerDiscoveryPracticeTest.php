@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Security\DisposableTestDatabaseGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\MarketKnowledgeFixture;
 use Tests\TestCase;
 
@@ -101,10 +103,116 @@ final class CustomerDiscoveryPracticeTest extends TestCase
     public function test_finding_only_licence_does_not_gain_subject_projection_and_no_lexical_relation_is_inferred(): void
     {
         $s = $this->scenario();
-        $old = $s['body'];
-        $old['authority_selection']['requirements'][1]['leaf_grant_id'] = $s['consumer']['right']['grant_id'];
-        $this->postJson($s['base'].'/knowledge/customer-discovery/practice', $old)->assertOk()->assertJsonPath('data.assessment', 'inconclusive')->assertJsonPath('data.relation.subject_basis', null);
+        $url = $s['base'].'/knowledge/customer-discovery/practice';
+        $narrow = $s['body'];
+        $narrow['authority_selection']['requirements'][1]['leaf_grant_id'] = $s['consumer']['right']['grant_id'];
+        $first = $this->postJson($url, $narrow)->assertOk()
+            ->assertJsonPath('data.assessment', 'inconclusive')
+            ->assertJsonPath('data.relation.subject_basis', null)
+            ->assertJsonPath('data.relation.subject_binding', null)
+            ->assertJsonPath('data.historical_receipt', false)->json('data');
+        $expectedReplay = [...$first, 'historical_receipt' => true];
+        $this->assertSame($expectedReplay, $this->postJson($url, $narrow)->assertOk()->json('data'));
+        $this->assertSame($expectedReplay, $this->postJson($url, $s['body'])->assertOk()->json('data'));
+        $owner = DB::connection('pgsql_migrations');
+        $assessment = $owner->table('business_practice_assessments')->where('assessment_id', $narrow['command_id'])->sole();
+        $stored = json_decode($assessment->result, true, flags: JSON_THROW_ON_ERROR);
+        $this->assertArrayNotHasKey('subject_basis', $stored['relation']);
+        $this->assertIsString($stored['relation']['subject_binding']);
+        $this->assertMatchesRegularExpression('/\A[0-9a-f]{64}\z/', $stored['relation']['subject_binding']);
+        $this->assertSame(1, $owner->table('business_command_receipts')->where('command_id', $narrow['command_id'])->count());
         $this->getJson($s['base'].'/practices/knowledge?access='.$s['consumer']['business']['grant_refs']['business.context.read'])->assertOk()->assertJsonPath('data.options.0.practice_basis.schema', 'market.practice_basis:1');
+    }
+
+    public function test_exact_replay_requires_the_fields_that_supported_the_saved_assessment(): void
+    {
+        $s = $this->scenario();
+        $url = $s['base'].'/knowledge/customer-discovery/practice';
+        $first = $this->postJson($url, $s['body'])->assertOk()
+            ->assertJsonPath('data.assessment', 'applicable')
+            ->assertJsonPath('data.currentness', 'current')->json('data');
+        $this->assertMatchesRegularExpression('/\A[0-9a-f]{64}\z/', $first['relation']['subject_binding']);
+        $this->assertSame([...$first, 'historical_receipt' => true], $this->postJson($url, $s['body'])->assertOk()->json('data'));
+
+        $this->withdrawKnowledgeRoot($s['right']['grant_id']);
+        $this->actingAs($s['consumer']['user']);
+        $narrow = $s['body'];
+        $narrow['authority_selection']['requirements'][1]['leaf_grant_id'] = $s['consumer']['right']['grant_id'];
+
+        // A display grant for the finding alone cannot release the stored
+        // judgment made with the separately licensed subject/geography basis.
+        $this->postJson($url, $narrow)->assertForbidden();
+        $fresh = [...$narrow, 'command_id' => (string) Str::uuid()];
+        $this->postJson($url, $fresh)->assertOk()
+            ->assertJsonPath('data.assessment', 'inconclusive')
+            ->assertJsonPath('data.relation.subject_basis', null);
+        $this->postJson($url, $fresh)->assertOk()
+            ->assertJsonPath('data.assessment', 'inconclusive')
+            ->assertJsonPath('data.historical_receipt', true);
+        $this->assertSame(1, DB::connection('pgsql_migrations')->table('business_practice_assessments')
+            ->where('assessment_id', $s['body']['command_id'])->count());
+    }
+
+    public static function unverifiableSubjectBindings(): array
+    {
+        return [
+            'missing key' => [false, null],
+            'JSON null' => [true, null],
+            'different digest' => [true, str_repeat('0', 64)],
+        ];
+    }
+
+    #[DataProvider('unverifiableSubjectBindings')]
+    public function test_replay_rejects_a_historical_assessment_with_an_unverifiable_binding(bool $keepKey, ?string $binding): void
+    {
+        $s = $this->scenario();
+        $url = $s['base'].'/knowledge/customer-discovery/practice';
+        $this->postJson($url, $s['body'])->assertOk()->assertJsonPath('data.assessment', 'applicable');
+
+        app(DisposableTestDatabaseGuard::class)->assertSafe();
+        $owner = DB::connection('pgsql_migrations');
+        $assessment = $owner->table('business_practice_assessments')->where('assessment_id', $s['body']['command_id']);
+        $original = $assessment->sole();
+        $malformed = json_decode($original->result, true, flags: JSON_THROW_ON_ERROR);
+        if ($keepKey) {
+            $malformed['relation']['subject_binding'] = $binding;
+        } else {
+            unset($malformed['relation']['subject_binding']);
+        }
+
+        // Commit only the deliberately malformed fixture so the HTTP connection
+        // can see it. The owner policy stays active and the trigger is restored before commit.
+        $owner->transaction(function () use ($owner, $assessment, $malformed): void {
+            $owner->statement('ALTER TABLE public.business_practice_assessments DISABLE TRIGGER zz_assessment_effect');
+            $this->assertSame(1, $assessment->update(['result' => json_encode($malformed, JSON_THROW_ON_ERROR)]));
+            $owner->statement('ALTER TABLE public.business_practice_assessments ENABLE TRIGGER zz_assessment_effect');
+        });
+
+        $before = $assessment->sole();
+        $receipts = $owner->table('business_command_receipts')->where('business_id', $original->business_id);
+        $beforeReceipts = $receipts->count();
+        $this->postJson($url, $s['body'])->assertForbidden();
+        $this->assertEquals($before, $assessment->sole());
+        $this->assertSame($beforeReceipts, $receipts->count());
+        $this->assertSame(1, $receipts->where('command_id', $s['body']['command_id'])->count());
+    }
+
+    public function test_practice_assessment_function_preserves_the_deployed_role_boundary(): void
+    {
+        $routine = DB::connection('pgsql_migrations')->selectOne(<<<'SQL'
+            SELECT pg_get_userbyid(p.proowner) AS owner, p.prosecdef AS security_definer,
+                has_function_privilege('builderad_app', p.oid, 'EXECUTE') AS app_can_execute,
+                has_function_privilege('builderad_authority', p.oid, 'EXECUTE') AS authority_can_execute,
+                EXISTS(SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE') AS public_can_execute
+            FROM pg_proc p
+            WHERE p.oid = 'public.builderad_v2_customer_discovery_practice(text,uuid,uuid,uuid,bigint,jsonb,text,jsonb,jsonb,jsonb,jsonb)'::regprocedure
+            SQL);
+
+        $this->assertSame('builderad_scope_executor', $routine->owner);
+        $this->assertTrue($routine->security_definer);
+        $this->assertTrue($routine->app_can_execute);
+        $this->assertFalse($routine->authority_can_execute);
+        $this->assertFalse($routine->public_can_execute);
     }
 
     public function test_name_only_meaning_change_invalidates_original_assessment_without_rewriting_history(): void
