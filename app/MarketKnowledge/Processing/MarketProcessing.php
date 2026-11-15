@@ -47,11 +47,11 @@ final class MarketProcessing
                     }
                     $task = new MarketProcessingTask($input['run']['question'], $input['materials'], $input['business_context']);
                     $finding = $method->execute($task);
-                    Findings::validate($task, $method, $finding);
+                    $state = Findings::validate($task, $method, $finding);
                     $elapsed = (int) ceil((hrtime(true) - $start) / 1000);
                     $outcome = $elapsed > 2000000
                         ? ['state' => 'failed', 'finding' => null, 'reason_code' => 'LOCAL_COMPUTE_BUDGET_EXCEEDED']
-                        : ['state' => in_array($finding['status'], ['unresolved', 'not_comparable', 'requires_information'], true) ? 'abstained' : 'validated',
+                        : ['state' => $state,
                             'finding' => $finding, 'reason_code' => null];
                 } catch (Throwable) {
                     // No exception message or source payload reaches response/log/receipt.
