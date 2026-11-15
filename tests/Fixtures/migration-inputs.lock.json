@@ -1,7 +1,8 @@
 {
   "baseline": "workspace-retirement-clean-postgresql-v1",
   "historical": {
-    "0001_01_01_000000_business_native_baseline.php": "cc68219c3a5fab8175d5ca319e6e868b17ee863fb5e248396a3798d8fb87e3dd"
+    "0001_01_01_000000_business_native_baseline.php": "cc68219c3a5fab8175d5ca319e6e868b17ee863fb5e248396a3798d8fb87e3dd",
+    "0001_01_01_000001_require_saved_practice_assessment_basis.php": "149691cc9d9d9c9e4de76c4157265fcfea772f8420720eac66789adc29ff3796"
   },
   "readers": {
     "0001_01_01_000000_business_native_baseline.php": [
@@ -23,9 +24,13 @@
       "migration-sql/0001_01_01_000000_business_native_baseline/services.sql",
       "migration-sql/0001_01_01_000000_business_native_baseline/source_http.sql",
       "migration-sql/0001_01_01_000000_business_native_baseline/source_material.sql"
+    ],
+    "0001_01_01_000001_require_saved_practice_assessment_basis.php": [
+      "migration-sql/0001_01_01_000001_require_saved_practice_assessment_basis/requalify_practice_assessment.sql"
     ]
   },
   "inputs": {
+    "migration-sql/0001_01_01_000001_require_saved_practice_assessment_basis/requalify_practice_assessment.sql": "3d1bbe140c01c6eec08d5401c09bbbf24061e22edd86d2b876a61b293bccce63",
     "migration-sql/0001_01_01_000000_business_native_baseline/authority.sql": "5cfe6a018ca04c7da1e614f63fb53832cb18a376ecb1ed6021c6075968d7eb4f",
     "migration-sql/0001_01_01_000000_business_native_baseline/boundaries.sql": "3bd477e95ad89023d3cdd73d265e4c089aa80986740d58998bf5ade117110602",
     "migration-sql/0001_01_01_000000_business_native_baseline/business.sql": "64e07b341a5f4c2a8fb9790a6301af041ff5e6208dc25994b1cef050457d55f6",
