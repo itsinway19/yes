@@ -2,6 +2,7 @@
 
 use App\Security\DisposableTestDatabaseGuard;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Foundation\Vite;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Redis\Events\CommandExecuted;
@@ -51,7 +52,7 @@ $proofHotFile = $proofStorage.'/production-assets-only.hot';
 if (is_file($proofHotFile)) {
     throw new LogicException('A production-asset proof cannot use a hot file.');
 }
-$app->make(\Illuminate\Foundation\Vite::class)->useHotFile($proofHotFile);
+$app->make(Vite::class)->useHotFile($proofHotFile);
 require_once __DIR__.'/ProofRequestTiming.php';
 DB::listen(static function ($event) use (&$proofQueries): void {
     $proofQueries[] = ['connection' => $event->connectionName, 'ms' => $event->time, 'sql' => $event->sql];
