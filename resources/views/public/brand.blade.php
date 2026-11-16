@@ -1,1 +1,2 @@
-<a class="ba-logo" href="/" lang="en" dir="ltr" aria-label="BuilderAd"><img src="/brand/builderad-mark.svg" width="36" height="36" alt="" aria-hidden="true"><span>Builder<b>Ad</b></span></a>
+@php($publicLogo = ($fallbackBrand ?? false) ? null : app(\App\Appearance\GlobalAppearance::class)->current()['logo'])
+<a class="ba-logo" href="/" lang="en" dir="ltr" aria-label="BuilderAd">@if($publicLogo)<img src="{{ $publicLogo['url'] }}" data-published-brand-logo style="width:auto;height:36px;max-width:180px;object-fit:contain" alt="" aria-hidden="true">@else<img src="/brand/builderad-mark.svg" width="36" height="36" alt="" aria-hidden="true"><span>Builder<b>Ad</b></span>@endif</a>

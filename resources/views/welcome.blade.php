@@ -204,6 +204,7 @@ $description = $c('نظّم نشاطك وأهدافك ومصادرك مع Builde
         }
         html[data-theme="light"] .public-footer-band { background: var(--public-canvas); }
     </style>
+@include('public.appearance-assets')
 </head>
 <body>
 <a class="public-skip" href="#main">{{ $c('انتقل إلى المحتوى','Skip to content') }}</a>

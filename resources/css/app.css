@@ -4,8 +4,19 @@
 @custom-variant dark (&:is(.dark *));
 @config "../../tailwind.config.js";
 
+/* OFL-licensed, served locally; no font-provider request at runtime. */
+@font-face {
+    font-family: "Noto Sans Arabic";
+    src: url("../fonts/noto-sans-arabic/NotoSansArabic.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+}
+
+:root { --ba-interface-font: "Noto Sans Arabic", "Segoe UI", Arial, sans-serif; }
+
 @theme inline {
-    --font-sans: "Figtree", sans-serif;
+    --font-sans: var(--ba-interface-font);
     --font-heading: var(--font-sans);
     --color-background: var(--background);
     --color-foreground: var(--foreground);

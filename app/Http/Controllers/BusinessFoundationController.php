@@ -71,9 +71,12 @@ final class BusinessFoundationController
 
     public function surface(Request $request, string $business, BusinessScope $scope): JsonResponse
     {
-        $input = $request->validate(['access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX]]);
+        $input = $request->validate([
+            'access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX],
+            'focus_practice' => ['sometimes', 'required', 'uuid'],
+        ]);
 
-        return $this->respond(fn () => $scope->surface($request, $business, (int) $input['access']));
+        return $this->respond(fn () => $scope->surface($request, $business, (int) $input['access'], $input['focus_practice'] ?? null));
     }
 
     public function history(Request $request, string $business, BusinessScope $scope): JsonResponse

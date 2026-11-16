@@ -123,12 +123,26 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
         then: { properties: { context: { type: 'object' } } },
         else: { properties: { context: { type: 'null' } } },
     };
+    const practiceChoice = { practice_id: uuid, name: text };
+    const firstUsefulStep = object({
+        function_id: { const: 'commercial.first_useful_step' },
+        method_revision: { const: 2 },
+        status: { enum: ['ACTIONABLE', 'NEEDS_INPUT', 'INAPPLICABLE', 'UNAVAILABLE'] },
+        reason: { enum: ['choose_goal', 'choose_practice', 'add_practice', 'describe_offering', 'declare_target_market', 'declare_fulfillment',
+            'check_market_coverage', 'clarify_cross_market_handling', 'test_offer_in_declared_market', 'record_buyer_roles', 'record_brokerage_qualifier',
+            'record_sale_evidence', 'spend_evidence_required', 'goal_not_supported', 'practice_unavailable', 'business_unavailable'] },
+        basis: fact({ qualification: { const: 'business_declared' }, context_version: version, preference_version: version,
+            goal: nullable(text),
+            market_check: nullable(object({ target_countries: list(text), fulfillment_countries: list(text), shared_countries: list(text) })),
+            practice: nullable(object({ ...practiceChoice, revision: id, offering: nullable(text) })) }),
+        practice_choices: list(object(practiceChoice)),
+    });
     const surface = agencyMetadata(object({ service_approval: object({enrollment:object({available:{type:'boolean'},mandate_grant_id:nullable(decimalId)}),available:{type:'boolean'},selection:nullable(authority),business_revision:version,scopes:list(object({public_id:uuid,name:text,purpose:text,revision:version}))}), business: projection, authority_selection: authority, context_write_options: writeOptions,
         lifecycle: object({ revision: version, archive_options: writeOptions }),
         private_history_available: { type: 'boolean' }, direct_team_enrollment_available: { type: 'boolean' },
         purpose_statement: object({ authority_scope: { const: 'own_business_statement_only' }, establishes_external_authority: { const: false }, enrollment_available: { type: 'boolean' }, previous_grant: { type: 'string', pattern: '^(0|[1-9][0-9]{0,18})$' }, current_grant: nullable(object({ id: decimalId, version })) }),
         fact_write_options: object({ markets: writeOptions, intent: writeOptions, preferences: writeOptions, purpose: writeOptions }), delegation, catalog, scope,
-        commercial,
+        commercial, first_useful_step: ref('FirstUsefulStep'),
         data_use: object({ binding_options: list(object({ grant_id: decimalId })), bindings: list(object({ binding_id: uuid, scope_id: uuid, state: { enum: ['active','ended'] }, revision: id })), bindings_limit: { const: 64 }, bindings_more: { type: 'boolean' } }) }));
     surface.properties.agency_task = object({ can_mandate: { type: 'boolean' }, can_assign: { type: 'boolean' }, agency_business_public_id: nullable(uuid) });
     const dataUseChoices = object({ scopes: list(object({ scope_id: uuid, grant_id: decimalId, grant_revision: id,
@@ -228,7 +242,7 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
             NativeSourceChoicesResult: data(sourceChoices), NativeSourceSurfaceResult: data(sourceSurface),
             ClientBoundaryChoices: boundaryChoices, ClientBoundarySurface: boundarySurface,
             ClientBoundaryChoicesResult: data(boundaryChoices), ClientBoundarySurfaceResult: data(boundarySurface),
-            BusinessChoices: choices, BusinessSurface: surface, BusinessCatalog: catalog,
+            BusinessChoices: choices, BusinessSurface: surface, BusinessCatalog: catalog, FirstUsefulStep: firstUsefulStep,
             BusinessPurposes: businessPurposes, BusinessPurposesResult: data(businessPurposes), BusinessPurposeCommand: purposeCommand, BusinessPurposeAcknowledgement: purposeAck,
             BusinessChoicesResult: data(choices), BusinessSurfaceResult: data(surface), BusinessCatalogResult: data(catalog),
             BusinessMaterialPublishResult: data(fact({ artifact_ref: materialRef, manifest_id: uuid, closure_digest: { type: 'string', pattern: '^[0-9a-f]{64}$' }, versions: versions(['manifest']) })),
@@ -276,7 +290,7 @@ export function businessFoundationContracts({ ref, text, uuid, object, list, nul
             } },
             '/businesses/{business}': { get: read('businessDetailPage', page(surface), [business, query('access', true)]) },
             '/api/businesses/catalog': { get: read('independentBusinessCatalog', data(catalog)) },
-            [`${base}/surface`]: { get: read('independentBusinessSurface', data(surface), [business, query('access', true)]) },
+            [`${base}/surface`]: { get: read('independentBusinessSurface', data(surface), [business, query('access', true), { in: 'query', name: 'focus_practice', schema: uuid }]) },
             [`${base}/purposes`]: { get: read('readBusinessPurposes', data(businessPurposes), [business, query('access', true), ...['purpose','effective_at','known_at'].map(name => ({in:'query',name,schema:name==='purpose'?uuid:text}))]), post: endpoint('writeBusinessPurpose',object({command:purposeCommand,expected_context:version,authority_selection:authority}),purposeAck,201) },
             [`${base}/history`]: { get: read('independentBusinessHistory', data(history), [business, query('access', true), { in: 'query', name: 'kind', required: true, schema: historyKind }, query('after')]) },
             '/api/businesses': { get: read('independentBusinessChoices', data(choices), [query('after')]), post: endpoint('createIndependentBusinessDraft', object({ command_id: uuid, name: { type: 'string', minLength: 2, maxLength: 120 }, business_type_id: nullable(id) }, ['command_id', 'name']), draft, 201, false) },

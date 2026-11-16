@@ -122,6 +122,7 @@ try {
         const before = baselineSurface.business;
         const documentOrigin = await page.evaluate(() => performance.timeOrigin);
         const observations = [];
+        await page.evaluate(() => document.fonts.ready);
         async function section(name) {
             await ensureWorkspaceNavigation();
             const start = Date.now();
@@ -132,22 +133,78 @@ try {
                 const main = document.querySelector('#advertiser-content');
                 const heading = document.querySelector('[data-workspace-heading]');
                 const styles = getComputedStyle(main);
+                const colors = value => {
+                    if(!value.startsWith('rgb') && !value.startsWith('color(srgb')){
+                        const probe=document.createElement('span');
+                        probe.style.color=`color(from ${value} srgb r g b / alpha)`;
+                        if(!probe.style.color)throw Error(`Unsupported contrast color: ${value}`);
+                        document.body.append(probe);value=getComputedStyle(probe).color;probe.remove();
+                    }
+                    const srgb = value.startsWith('color(srgb');
+                    const values = value.match(/[\d.]+/g)?.map(Number) ?? [];
+                    return [...values.slice(0,3).map(v => srgb ? v : v / 255), values[3] ?? 1];
+                };
+                const luminance = rgb => rgb.slice(0,3).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4)
+                    .reduce((sum,v,i) => sum + v * [.2126,.7152,.0722][i],0);
+                const contrast = element => {
+                    let parent = element, background;
+                    while(parent){background=colors(getComputedStyle(parent).backgroundColor);if(background[3]===1)break;parent=parent.parentElement;}
+                    const a=luminance(colors(getComputedStyle(element).color)),b=luminance(background ?? [1,1,1]);
+                    return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+                };
+                const visible = selector => [...document.querySelectorAll(selector)].filter(e=>e.getClientRects().length);
+                const samples=visible('.workspace-intro,.workspace-section-title,.business-task-copy p,.workspace-next-action .bf-primary,.workspace-overview-label');
                 return { overflow:document.documentElement.scrollWidth>innerWidth, mainOverflow:styles.overflowY,
+                    contrast:Math.min(...samples.map(contrast)),
+                    fontLoaded:[...document.fonts].some(font=>font.family.includes('Noto Sans Arabic') && font.status==='loaded'),
+                    fontFamily:getComputedStyle(document.querySelector('.advertiser-layout')).fontFamily,
+                    touchTargets:innerWidth>850 || visible('.workspace-button,.workspace-next-action .bf-primary,.workspace-local-navigation button').every(e=>e.getBoundingClientRect().height>=44),
                     bodyFont:parseFloat(getComputedStyle(main).fontSize), headingFont:parseFloat(getComputedStyle(heading).fontSize), headingTop:heading.getBoundingClientRect().top };
             });
             assert.equal(layout.overflow,false);
             assert.ok(!['auto','scroll'].includes(layout.mainOverflow),'Document owns the main page scroll');
             assert.ok(layout.bodyFont>=13 && layout.bodyFont<=15,'Moderate body typography');
-            assert.ok(layout.headingFont<=26,'Moderate page heading');
+            assert.ok(layout.headingFont<=36,'V3 page heading');
+            assert.ok(layout.contrast>=4.5,`Readable text contrast: ${layout.contrast}`);
+            assert.ok(layout.fontLoaded && layout.fontFamily.includes('Noto Sans Arabic'),'Local Arabic font is loaded and selected');
+            assert.ok(layout.touchTargets,`Mobile and tablet actions have 44px touch targets: ${name}, ${await page.evaluate(()=>innerWidth)}px`);
+            const optionalDisclosure = page.locator('details:not(.advertiser-account-menu) > summary:visible').first();
+            if (await optionalDisclosure.count()) {
+                const presentation = await optionalDisclosure.evaluate(node => ({ marker: getComputedStyle(node).listStyleType, action: getComputedStyle(node,'::after').content }));
+                assert.equal(presentation.marker,'none','Optional details use an explicit action instead of a triangle');
+                assert.match(presentation.action,/عرض التفاصيل|إخفاء التفاصيل|Show details|Hide details/);
+            }
             observations.push({name,ms:Date.now()-start,...layout});
         }
         await section('overview');
         await page.locator('[data-current-work]').waitFor();
+        assert.equal(await page.locator('[data-workspace-panel="overview"] button').filter({hasText:/أغراض الإعلان|advertising purposes/i}).count(),0);
+        const brandColors = await page.evaluate(() => {
+            const root = document.documentElement;
+            const shell = document.querySelector('.advertiser-v3');
+            const decision = document.querySelector('.workspace-next-action');
+            const read = () => [getComputedStyle(shell).getPropertyValue('--ad-soft'), getComputedStyle(decision).backgroundColor];
+            const before = read();
+            const previous = root.getAttribute('style');
+            try {
+                root.style.setProperty('--ba-brand-primary', '#eee000');
+                root.style.setProperty('--ba-brand-secondary', '#8528cc');
+                return { before, changed: read() };
+            } finally {
+                if (previous === null) root.removeAttribute('style');
+                else root.setAttribute('style', previous);
+            }
+        });
+        assert.notEqual(brandColors.before[0],brandColors.changed[0],'V3 active surface follows the published primary color');
+        assert.notEqual(brandColors.before[1],brandColors.changed[1],'V3 decision panel follows the published secondary color');
         assert.ok((await page.locator('[data-business-declared-summary]').innerText()).includes(baselineSurface.catalog.countries.find(country=>country.code==='SA').name_ar));
         await section('direction');
         await page.locator('[data-business-direction-summary]').waitFor();
         assert.equal(await page.locator('[data-business-fact-form]:visible').count(),0);
         await page.locator('[data-business-task="markets"]').click();
+        await page.locator('dialog.business-sheet[open]').waitFor();
+        assert.equal(await page.locator('[data-business-fact-current]').evaluate(node=>node.tagName),'SECTION','Current Business information is visible without opening a disclosure');
+        assert.equal(await page.locator('[data-business-facts] details').count(),0,'The focused fact editor adds no disclosure step');
         await page.locator('#bf-market-search').fill('AE');
         await page.locator('#bf-market-codes input[value="AE"]').check();
         await page.locator('[data-business-direction-back]').click();
@@ -168,8 +225,18 @@ try {
         await page.locator('[data-business-task="business-profile"]').click();
         assert.equal(await page.locator('#bf-name').inputValue(),before.name);
         await page.locator('[data-business-profile-back]').click();
-        for (const width of [1440,390]) {
+        for (const width of [360,390,768,1280,1600,1920]) {
             await page.setViewportSize({width,height:900});
+            if (width < 1010) {
+                const mobile = page.locator('.advertiser-bottom-nav');
+                await mobile.waitFor();
+                assert.equal(await mobile.locator('button').count(),5);
+                await mobile.locator('button[aria-controls="advertiser-drawer"]').press('Enter');
+                await page.locator('.advertiser-more-sheet[open]').waitFor();
+                assert.equal(await page.locator('.advertiser-more-sheet [data-workspace-section="access"]').isVisible(),true);
+                await page.keyboard.press('Escape');
+                assert.equal(await mobile.locator('button[aria-controls="advertiser-drawer"]').evaluate(button=>document.activeElement===button),true);
+            }
             for (const language of ['ar','en']) {
                 if(await page.locator('html').getAttribute('lang')!==language){
                     const account=page.locator('.advertiser-account-menu');
@@ -180,7 +247,7 @@ try {
                 }
                 for(const theme of ['light','dark']){
                     if(await page.locator('html').evaluate(node=>node.classList.contains('dark'))!==(theme==='dark'))await page.locator('[data-theme-toggle]').click();
-                    for(const name of ['overview','direction','sources','settings'])await section(name);
+                    for(const name of ['overview','direction','offers','sources','settings','access'])await section(name);
                 }
             }
         }
@@ -195,12 +262,47 @@ try {
         if(await page.locator('html').evaluate(node=>node.classList.contains('dark')))await page.locator('[data-theme-toggle]').click();
         return {actualBusiness:true,noImplicitSave:true,dirtyDraftRetained:true,observations,sameDocument:true};
     });
+    await check('V3 business information shows qualified tabs and advanced declarations on desktop and phone', async () => {
+        await index(); await openCreated();
+        await page.locator('[data-workspace-section="settings"]:visible').click();
+        const navigation = page.locator('.workspace-information-nav:visible');
+        await navigation.waitFor();
+        const tabs = await navigation.locator('[data-workspace-settings]').evaluateAll(buttons => buttons.map(button => button.dataset.workspaceSettings));
+        assert.ok(tabs.includes('details') && tabs.includes('data') && tabs.includes('history'));
+        assert.ok(!tabs.includes('purposes'), 'Advanced declarations stay outside daily navigation');
+        const observations = [];
+        for (const width of [1280,390]) {
+            await page.setViewportSize({width,height:820});
+            for (const tab of tabs) {
+                const button = navigation.locator(`[data-workspace-settings="${tab}"]`);
+                await button.click();
+                await page.locator(`[data-workspace-settings-panel="${tab}"]:visible`).waitFor();
+                if (tab === 'history') {
+                    await page.waitForFunction(() => !!document.querySelector('[data-history-entries], [data-history-empty]'));
+                }
+                assert.equal(await button.getAttribute('aria-current'),'page');
+                assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),false);
+                observations.push({width,tab});
+            }
+            await navigation.locator('[data-workspace-settings="details"]').click();
+            await page.locator('[data-workspace-settings-panel="details"]:visible').waitFor();
+            const advanced = page.locator('[data-business-advanced-purposes]');
+            assert.equal(await advanced.isVisible(),true,'The qualified advanced entry needs no disclosure click');
+            await advanced.click();
+            await page.locator('[data-workspace-settings-panel="purposes"]:visible').waitFor();
+            assert.equal(new URL(page.url()).searchParams.get('settings'),'purposes');
+            assert.equal(await navigation.locator('[data-workspace-settings="details"]').getAttribute('aria-current'),'page');
+        }
+        await page.setViewportSize({width:1280,height:820});
+        return { observations };
+    });
+
     await check('business activities real creation revision history deactivation and bilingual phone layout', async () => {
-        await index(); await openCreated('settings');
+        await index(); await openCreated('offers');
         const panel = page.locator('[data-business-practices]');
         await panel.waitFor();
         await page.waitForFunction(() => document.querySelector('[data-business-practices]')?.getAttribute('aria-busy') === 'false');
-        assert.equal(await page.locator('label[for="bf-type"]').innerText(), 'تصنيف عام أولي');
+        assert.equal(await panel.isVisible(), true);
         const names = ['بيع أجهزة تكييف — اختبار اصطناعي', 'تركيب أجهزة تكييف — اختبار اصطناعي', 'صيانة أجهزة تكييف — اختبار اصطناعي'];
         for (const [index, kind] of ['sale', 'installation', 'maintenance'].entries()) {
             await panel.locator('[data-practice-add]').click();
@@ -208,6 +310,7 @@ try {
             await panel.locator('#bf-practice-kind').selectOption(kind);
             await panel.locator('#bf-practice-description').fill('بيانات اصطناعية لا تثبت طلبًا أو عملاء أو قدرة تشغيلية');
             await panel.locator('#bf-practice-offering').fill(index === 0 ? 'أجهزة جديدة' : index === 1 ? 'خدمة تركيب' : 'خدمة صيانة');
+            await panel.locator('[data-practice-next]').click();
             await panel.locator('#bf-practice-target_markets-status').selectOption('declared');
             await panel.locator('#bf-practice-target_markets-countries').selectOption(['SA']);
             await panel.locator('#bf-practice-fulfillment-status').selectOption('declared');
@@ -223,6 +326,7 @@ try {
         await panel.locator('.bf-practice-details').first().locator('summary').click();
         await panel.locator('#bf-practice-sectors').fill('التجارة، الأجهزة المنزلية');
         await panel.locator('#bf-practice-specializations').fill('التكييف');
+        await panel.locator('[data-practice-next]').click();
         await panel.locator('#bf-practice-operation').selectOption('reclassify');
         await panel.locator('[data-practice-save]').click(); await panel.locator('[data-practice-form]').waitFor({ state: 'hidden' });
         await sale.locator('[data-practice-history]').click();
@@ -230,8 +334,9 @@ try {
         assert.ok((await panel.locator('[data-practice-revisions]').innerText()).includes('إعادة تصنيف'));
         assert.equal(await sale.getAttribute('data-practice-id'), saleId, 'Reclassification preserves activity identity');
         await sale.locator('[data-practice-edit]').click();
-        await panel.locator('#bf-practice-operation').selectOption('correct');
         await panel.locator('#bf-practice-description').fill('وصف مصحح للاختبار الاصطناعي دون ادعاء طلب');
+        await panel.locator('[data-practice-next]').click();
+        await panel.locator('#bf-practice-operation').selectOption('correct');
         await panel.locator('#bf-practice-correction-reason').fill('تصحيح الوصف السابق غير الدقيق');
         const correctionReply = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === `/api/businesses/${result.createdBusiness}/practices`);
         await panel.locator('[data-practice-save]').click();
@@ -245,6 +350,7 @@ try {
         assert.ok((await panel.locator('[data-practice-revisions]').innerText()).includes('تصحيح الوصف السابق غير الدقيق'));
         const maintenance = cards.filter({ has: page.getByRole('heading', { name: names[2], exact: true }) });
         await maintenance.locator('[data-practice-edit]').click();
+        await panel.locator('[data-practice-next]').click();
         await panel.locator('[data-practice-deactivate]').click();
         await panel.locator('[data-practice-form]').waitFor({ state: 'hidden' });
         await page.waitForFunction(name => [...document.querySelectorAll('[data-business-practices] .bf-practice-list > li')].some(item => item.textContent.includes(name) && item.textContent.includes('متوقفة')), names[2]);
@@ -275,16 +381,17 @@ try {
         return { practices: 3, saleId, reclassificationPreservedIdentity: true, deactivationPreservedHistory: true, licensedKnowledgeUnavailable: true, screenshots };
     });
     await check('business activities licensed conditional sale assessment maintenance abstention and withdrawal', async () => {
-        await index(); await openCreated('settings');
+        await index(); await openCreated('offers');
         await writeFile(path.join(run, 'activity-knowledge-request.json'), JSON.stringify({ business_public_id: result.createdBusiness }));
         fixture('activity-knowledge-setup');
-        await page.reload(); await ready('[data-business-public]'); await workspaceSection('settings');
+        await page.reload(); await ready('[data-business-public]'); await workspaceSection('offers');
         const panel = page.locator('[data-business-practices]');
         await page.waitForFunction(() => document.querySelector('[data-business-practices]')?.getAttribute('aria-busy') === 'false');
         await panel.locator('[data-practice-add]').click();
         await panel.locator('#bf-practice-name').fill('صيانة للسؤال — اختبار اصطناعي');
         await panel.locator('#bf-practice-kind').selectOption('maintenance');
         await panel.locator('#bf-practice-offering').fill('خدمة صيانة');
+        await panel.locator('[data-practice-next]').click();
         await panel.locator('[data-practice-save]').click(); await panel.locator('[data-practice-form]').waitFor({ state: 'hidden' });
         const knowledge = panel.locator('[data-practice-knowledge]'); await knowledge.locator(':scope > summary').click();
         await knowledge.locator('#bf-assess-knowledge option').nth(1).waitFor({ state: 'attached' });
@@ -309,13 +416,13 @@ try {
         fixture('activity-knowledge-withdraw');
         const denied = await send(`/api/businesses/${result.createdBusiness}/knowledge/customer-discovery/practice`, 'POST', positive.request().postDataJSON());
         assert.equal(denied.status, 403, 'Saved positive command cannot disclose after licence withdrawal');
-        await page.reload();await ready('[data-business-public]');await workspaceSection('settings');
+        await page.reload();await ready('[data-business-public]');await workspaceSection('offers');
         await page.locator('[data-practice-knowledge] > summary').click();await page.locator('[data-practice-knowledge-empty]').waitFor();
         assert.equal(await page.locator('[data-practice-assessment-result]').count(), 0);
         return { positive: positiveBody.assessment, relationBasis: positiveBody.relation_basis, independentProof: false, maintenance: 'inconclusive', replayAfterWithdrawal: denied.status, syntheticOnly: true };
     });
     await check('business activities lost acknowledgement survives reload and reconciles one committed practice', async () => {
-        await index(); await openCreated('settings');
+        await index(); await openCreated('offers');
         const panel = page.locator('[data-business-practices]');
         await page.waitForFunction(() => document.querySelector('[data-business-practices]')?.getAttribute('aria-busy') === 'false');
         const before = await panel.locator('.bf-practice-list > li').count();
@@ -330,13 +437,14 @@ try {
         try {
             await panel.locator('[data-practice-add]').click();
             await panel.locator('#bf-practice-name').fill('ممارسة اصطناعية لاختبار فقدان الرد');
+            await panel.locator('[data-practice-next]').click();
             await panel.locator('[data-practice-save]').click();
             await panel.locator('[data-practice-unknown]').waitFor();
         } finally { await page.unroute(endpoint); }
         assert.ok(original?.command_id);
         assert.equal(await panel.locator('[data-practice-add]').count(), 0);
         page.once('dialog', dialog => dialog.accept());
-        await page.reload(); await ready('[data-business-public]'); await workspaceSection('settings');
+        await page.reload(); await ready('[data-business-public]'); await workspaceSection('offers');
         await panel.locator('[data-practice-unknown]').waitFor();
         assert.equal(await panel.locator('[data-practice-add]').count(), 0);
         await page.waitForFunction(() => document.querySelector('[data-business-practices]')?.getAttribute('aria-busy') === 'false');
@@ -1689,7 +1797,7 @@ try {
         fixture('purpose-setup');
         const f = JSON.parse(await readFile(path.join(run, 'business-purpose-fixture.json'), 'utf8'));
         await page.goto(`${origin}/businesses/${f.business}?access=${f.read.leaf}`); await ready('[data-business-public]'); await workspaceSection('settings');
-        await page.locator('[data-workspace-settings="purposes"]').click();
+        await page.locator('[data-business-advanced-purposes]').click();
         const panel = page.locator('[data-business-purposes]');
         await panel.locator('summary').first().click(); await panel.locator('[data-purpose-empty]').waitFor();
         await panel.locator('[data-purpose-enrollment-confirm]').check();
@@ -1745,7 +1853,10 @@ try {
         assert.equal(surrender.status(),200);
         await page.waitForFunction(() => !document.querySelector('[data-own-purpose-right]'));
         await page.waitForFunction(() => document.querySelector('[data-business-public]')?.getAttribute('aria-busy') === 'false');
-        await workspaceSection('settings'); await page.locator('[data-workspace-settings="purposes"]').click();
+        await workspaceSection('settings');
+        const advancedPurposes = page.locator('[data-business-advanced-purposes]');
+        await advancedPurposes.waitFor({state:'visible'});
+        await advancedPurposes.click();
         const panel=page.locator('[data-business-purposes]'); await panel.locator('summary').first().click(); await panel.locator('[data-purpose-item]').waitFor();
         assert.equal(await panel.locator('[data-purpose-create], [data-purpose-edit]').count(),0);
         await panel.locator('[data-purpose-enrollment-confirm]').check();
@@ -1768,6 +1879,121 @@ try {
         await page.evaluate(()=>window.__purposeDelay.release());await page.waitForFunction(()=>window.__purposeDelay.delivered);await page.evaluate(()=>window.__purposeDelay.restore());release=undefined;
         assert.equal(await page.getByText('غرض مصحح مؤهل',{exact:true}).count(),0);
         return {operatingUISurrender:true,explicitRequalification:true,writeRevokedReadRetained:true,lateCompletedReplyDiscarded:true,revokedBusinessNotDisplayed:true};
+    });
+    await check('V18 first useful step uses declared coverage and preserves overview access', async () => {
+        const proof = await browser.newContext({ viewport: { width: 390, height: 850 }, locale: 'ar-JO' });
+        const tab = await proof.newPage();
+        activePage = tab;
+        tab.on('pageerror', error => result.errors.push(error.message));
+        const card = tab.locator('[data-first-useful-step]');
+        const waitForStep = (reason, status) => tab.waitForFunction(({ reason, status }) => {
+            const panel = document.querySelector('[data-first-useful-step]');
+            return panel?.dataset.stepReason === reason && panel.dataset.stepStatus === status && !!panel.getClientRects().length;
+        }, { reason, status });
+        const create = async name => {
+            const response = await sendFrom(tab, '/api/businesses', 'POST', { command_id: crypto.randomUUID(), name });
+            assert.equal(response.status, 201);
+            return response.body.data;
+        };
+        try {
+            await tab.goto(origin + '/login');
+            const login = await sendFrom(tab, '/login', 'POST', { email: 'goals-b@example.test', password: 'DisposableGoalsProof42!' });
+            assert.equal(login.status, 200);
+            await tab.goto(origin + login.body.redirect);
+            const business = await create('V18 AC maintenance');
+            const other = await create('V18 separate activity');
+            const base = '/businesses/' + business.business_public_id;
+            const access = business.grant_refs['business.context.read'];
+            const path = base + '?access=' + access;
+            const response = await sendFrom(tab, '/api' + base + '/preferences', 'PUT', {
+                command_id: crypto.randomUUID(), expected_preference: 0, value: { goals: ['growth'], priority: 'growth', results: { growth: [] } },
+                authority_selection: { realm_kind: 'direct', requirements: [{ requirement_kind: 'business', leaf_grant_id: business.grant_refs['business.preferences.manage'] }] },
+            });
+            assert.equal(response.status, 200);
+            await tab.goto(origin + path);
+            await waitForStep('add_practice', 'NEEDS_INPUT');
+            assert.equal(await tab.locator('html').getAttribute('dir'), 'rtl');
+            assert.match(await card.innerText(), /[\u0600-\u06ff]/);
+            const action = card.locator('[data-business-review-task]');
+            await action.focus();
+            await tab.keyboard.press('Enter');
+            await tab.locator('[data-business-practices] [data-practice-add]').click();
+            const panel = tab.locator('[data-business-practices]');
+            await panel.locator('#bf-practice-name').fill('صيانة المكيّفات');
+            await panel.locator('#bf-practice-kind').selectOption('service');
+            await panel.locator('#bf-practice-offering').fill('صيانة المكيّفات المنزلية');
+            await panel.locator('[data-practice-next]').click();
+            await panel.locator('#bf-practice-target_markets-status').selectOption('declared');
+            await panel.locator('#bf-practice-target_markets-countries').selectOption('SA');
+            await panel.locator('[data-practice-back]').click();
+            assert.equal(await panel.locator('#bf-practice-name').inputValue(), 'صيانة المكيّفات');
+            await panel.locator('[data-practice-next]').click();
+            assert.equal(await panel.locator('#bf-practice-target_markets-countries').inputValue(), 'SA');
+            await panel.locator('[data-practice-save]').click();
+            const row = panel.locator('[data-practice-id]');
+            await row.waitFor({ state: 'visible' });
+            await workspaceSection('overview', tab);
+            await waitForStep('declare_fulfillment', 'NEEDS_INPUT');
+            assert.equal(await tab.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+
+            await card.locator('[data-business-review-task]').click();
+            await row.locator('[data-practice-edit]').click();
+            await panel.locator('[data-practice-next]').click();
+            await panel.locator('#bf-practice-fulfillment-status').selectOption('declared');
+            await panel.locator('#bf-practice-fulfillment-countries').selectOption('JO');
+            await panel.locator('[data-practice-save]').click();
+            await panel.locator('[data-practice-form]').waitFor({ state: 'hidden' });
+            await workspaceSection('overview', tab);
+            await waitForStep('clarify_cross_market_handling', 'NEEDS_INPUT');
+            assert.match(await card.innerText(), /كيف سيُتمّ المشتري التعامل من سوقه/);
+            assert.equal(await card.locator('[data-business-review-task]').count(), 0);
+            await workspaceSection('offers', tab);
+            await row.locator('[data-practice-edit]').click();
+            await panel.locator('[data-practice-next]').click();
+            await panel.locator('#bf-practice-fulfillment-countries').selectOption('SA');
+            await panel.locator('[data-practice-save]').click();
+            await panel.locator('[data-practice-form]').waitFor({ state: 'hidden' });
+            await workspaceSection('overview', tab);
+            await waitForStep('test_offer_in_declared_market', 'ACTIONABLE');
+            assert.ok((await card.innerText()).includes('صيانة المكيّفات المنزلية'));
+            await tab.setViewportSize({ width: 1280, height: 850 });
+            const menu = tab.locator('.advertiser-account-menu');
+            if (await menu.getAttribute('open') === null) await menu.locator(':scope > summary').click();
+            await menu.locator('[data-application="locale"]').click();
+            await tab.waitForFunction(() => document.documentElement.lang === 'en' && document.documentElement.dir === 'ltr');
+            await waitForStep('test_offer_in_declared_market', 'ACTIONABLE');
+            assert.match(await card.innerText(), /offer|customer/i);
+            assert.equal(await tab.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+
+            const efficiency = await sendFrom(tab, '/api' + base + '/preferences', 'PUT', {
+                command_id: crypto.randomUUID(), expected_preference: 1, value: { goals: ['efficiency'], priority: 'efficiency', results: { efficiency: [] } },
+                authority_selection: { realm_kind: 'direct', requirements: [{ requirement_kind: 'business', leaf_grant_id: business.grant_refs['business.preferences.manage'] }] },
+            });
+            assert.equal(efficiency.status, 200);
+            await tab.reload();
+            await waitForStep('spend_evidence_required', 'NEEDS_INPUT');
+            assert.match(await card.innerText(), /Gather spend records and actual outcomes/);
+            assert.equal(await card.locator('[data-business-review-task]').count(), 0);
+
+            const otherPath = '/businesses/' + other.business_public_id + '?access=' + other.grant_refs['business.context.read'];
+            const documentOrigin = await tab.evaluate(() => performance.timeOrigin);
+            await tab.locator('[data-advertiser-shell] a[href="/businesses"]').first().click();
+            await tab.locator(`[data-business-list] a[href="${otherPath}"]`).click();
+            await waitForStep('choose_goal', 'NEEDS_INPUT');
+            assert.equal(await tab.evaluate(() => performance.timeOrigin), documentOrigin);
+            assert.equal((await card.innerText()).includes('صيانة المكيّفات المنزلية'), false);
+            const denied = await tab.goto(origin + base + '?access=' + other.grant_refs['business.context.read']);
+            assert.equal(denied.status(), 403);
+            assert.equal(await card.count(), 0);
+            await proof.clearCookies();
+            await tab.goto(origin + path);
+            await tab.waitForURL(url => url.pathname === '/login');
+            assert.equal(await card.count(), 0);
+            return { methodRevision: 2, noIntegration: true, crossMarketClarification: true, missingInputToAction: true, efficiencyNeedsInput: true, locales: ['ar', 'en'], widths: [390, 1280], keyboard: true, crossBusinessDenial: true, unauthenticatedConcealment: true };
+        } finally {
+            await proof.close();
+            activePage = page;
+        }
     });
     await businessAgencyBrowserProof({ browser, run, origin, fixture, check, sendFrom, errors: result.errors,
         activate: tab => { activePage = tab; }, restore: () => { activePage = page; } });

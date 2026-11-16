@@ -71,9 +71,12 @@ final class BusinessSurfaceController
 
     public function show(Request $request, string $business, BusinessScope $scope): SpaPage
     {
-        $input = $request->validate(['access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX]]);
+        $input = $request->validate([
+            'access' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX],
+            'focus_practice' => ['sometimes', 'required', 'uuid'],
+        ]);
 
-        return $this->page($request, fn () => $scope->surface($request, $business, (int) $input['access']));
+        return $this->page($request, fn () => $scope->surface($request, $business, (int) $input['access'], $input['focus_practice'] ?? null));
     }
 
     private function page(Request $request, callable $read): SpaPage

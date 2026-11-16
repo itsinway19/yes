@@ -66,6 +66,20 @@ test('invalid inputs never issue a write; preview is container-scoped', async ()
     assert.match(view, /class="appearance-preview ba-theme-scope" :style="preview"/); assert.doesNotMatch(view, /documentElement|setProperty|localStorage/);
 });
 
+test('image publication is explicit, preserves an unknown payload and uses omission for unchanged images', async () => {
+    const { module: m, runtime, draft } = await state(); await m.readAppearance();
+    const images = JSON.parse(await readFile('tests/Fixtures/brand-images.json','utf8'));
+    draft.logo = images.logo; draft.favicon = images.favicon;
+    assert.equal(runtime.writes.length,0);
+    await m.publishAppearance(draft);
+    assert.equal(draft.outcome,'unknown'); assert.equal(runtime.writes.length,1);
+    assert.equal(runtime.writes[0].logo,images.logo); assert.equal(runtime.writes[0].favicon,images.favicon);
+    await m.publishAppearance(draft); assert.equal(runtime.writes.length,1);
+    m.adoptPublished(draft,runtime.resource);
+    assert.equal(draft.logo,undefined); assert.equal(draft.favicon,undefined);
+    await m.publishAppearance(draft); assert.equal('logo' in runtime.writes[1],false); assert.equal('favicon' in runtime.writes[1],false);
+});
+
 test('each editor owns a fresh draft and leaving aborts any late response without reload', async () => {
     const { module: m, runtime, draft } = await state(); await m.readAppearance();
     draft.primary = '#abcdef';
@@ -87,5 +101,5 @@ test('appearance source preserves UTF8 Arabic and representative preview states'
     assert.equal(source.includes('\ufffd'), false);
     assert.equal((source.match(/data-preview-status/g) ?? []).length, 3);
     assert.match(source, /data-preview-disabled disabled/);
-    assert.ok(source.includes('\u0646\u0638\u0631\u0629 \u0639\u0644\u0649 \u0645\u0633\u0627\u062d\u0629 \u0627\u0644\u0639\u0645\u0644'));
+    assert.ok(source.includes('الخطوة التالية — مثال توضيحي'));
 });

@@ -6,6 +6,24 @@ Start with these three documents:
 2. [Current implementation](docs/architecture/CURRENT_IMPLEMENTATION.md) maps actual owners, contracts, source revisions and evidence. Design direction is not proof of implementation.
 3. [Engineering standards](docs/engineering/ENGINEERING_STANDARDS.md) maps technical protections and verification commands to their code/test owners. [README](README.md) covers setup and operation.
 
+## Commercial Value First — Mandatory Engineering Principle
+
+For each commercial change, identify the advertiser's goal, the problem, the expected effect, the required evidence/capabilities/sources, the useful output, the decision or action it enables, and how its usefulness will be verified.
+
+Use the value cycle appropriate to the task: goal → qualified evidence → diagnosis → alternatives → decision → authorized action → verification. A function need not implement every stage. Reuse existing fact owners, commands and rights. Preserve the distinction between user declarations, qualified evidence and observed commercial results; never invent business outcomes. Foundation work must enable real usage.
+
+Acceptance must trace: **Commercial Goal → Qualified Inputs → Method/Capability → Useful Output → Enabled Decision/Action → Verification**. Apply this principle within existing engineering work, without adding a separate governance system.
+
+### Complete Commercial Value Gate
+
+Before implementing a new commercial value, define its commercial goal, the exact advertiser benefit, the required inputs and evidence with their sources and limits, the capabilities to reuse, and the missing capabilities required to deliver the benefit. Specify the result or judgment, the decision or action it enables, the full user journey including missing inputs and failure, and how to verify the benefit and measure its effect when the promise includes an effect. Start implementation once this scope can be designed, delivered and tested coherently.
+
+Engineering may divide delivery into components and tasks. Approve and present the commercial value only when every capability required by the promised journey works together. If data, rights or technical prerequisites are unavailable, define a narrower benefit that can stand on its own or defer the value. Foundation work must support a specific real use.
+
+Show advertiser-facing results, executable actions, information needed for decisions and prerequisites for available benefits. Place supporting administration in its relevant context with authorized access. Omit technical copy, simulated results and inactive actions presented as available work.
+
+Assign `COMMERCIAL_VALUE_COMPLETE` only after a real end-to-end user journey verifies the result, permissions and failure cases. Match the evidence to the promise. A qualified insight needs evidence of its validity. A sales improvement claim requires evidence of the sales outcome and its attributable effect.
+
 ## Scope and existing work
 
 - Use the smallest sufficient execution path. Define requested behavior, acceptance criteria, affected owners and authorization before editing. Historical mandates, plans and evidence records do not authorize work or choose its order.

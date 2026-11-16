@@ -2,7 +2,8 @@
   "baseline": "workspace-retirement-clean-postgresql-v1",
   "historical": {
     "0001_01_01_000000_business_native_baseline.php": "cc68219c3a5fab8175d5ca319e6e868b17ee863fb5e248396a3798d8fb87e3dd",
-    "0001_01_01_000001_require_saved_practice_assessment_basis.php": "149691cc9d9d9c9e4de76c4157265fcfea772f8420720eac66789adc29ff3796"
+    "0001_01_01_000001_require_saved_practice_assessment_basis.php": "149691cc9d9d9c9e4de76c4157265fcfea772f8420720eac66789adc29ff3796",
+    "0001_01_01_000002_publish_brand_images.php": "54f548f72d0285360c222169e344fb571c908fb87eb65791efcc7171aff918b5"
   },
   "readers": {
     "0001_01_01_000000_business_native_baseline.php": [
@@ -27,6 +28,9 @@
     ],
     "0001_01_01_000001_require_saved_practice_assessment_basis.php": [
       "migration-sql/0001_01_01_000001_require_saved_practice_assessment_basis/requalify_practice_assessment.sql"
+    ],
+    "0001_01_01_000002_publish_brand_images.php": [
+      "migration-sql/0001_01_01_000002_publish_brand_images/images.sql"
     ]
   },
   "inputs": {
@@ -48,6 +52,7 @@
     "migration-sql/0001_01_01_000000_business_native_baseline/seeds.sql": "9fda09cab353082d2a32da410c4a121ceb7fc61b6dc9ec74843757900009c76b",
     "migration-sql/0001_01_01_000000_business_native_baseline/services.sql": "eddafcf063ce269794cd67df1ae71bb2a81ca4603376848c9d463958b061dda9",
     "migration-sql/0001_01_01_000000_business_native_baseline/source_http.sql": "d36309865ac60f561d1a05c0403dc4131e4a073a280cb8e8343c96e76e72ff23",
-    "migration-sql/0001_01_01_000000_business_native_baseline/source_material.sql": "1b6abd4df3cc9122f504d4a57b4f045c6824874311a8a2b5bc55ab56bdbc690a"
+    "migration-sql/0001_01_01_000000_business_native_baseline/source_material.sql": "1b6abd4df3cc9122f504d4a57b4f045c6824874311a8a2b5bc55ab56bdbc690a",
+    "migration-sql/0001_01_01_000002_publish_brand_images/images.sql": "4830a8bb2aa11db7ad55ffdeb3f046a648693aaad9126cd63c77a61e07aad3d7"
   }
 }

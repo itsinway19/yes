@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, Teleport, watch } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref, Teleport, useSlots, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { ChevronDown, Menu, X } from '@lucide/vue';
 import BrandLogo from '../Components/BrandLogo.vue';
@@ -11,15 +11,27 @@ import './advertiser.css';
 
 const props = defineProps<{ context?: string; businessSelected?: boolean; selection?: BusinessChoice }>();
 const route = useRoute(), router = useRouter();
+const slots = useSlots();
 const drawer = ref<HTMLDialogElement>(), menu = ref<HTMLButtonElement>(), content = ref<HTMLElement>();
 const open = ref(false), headerTarget = ref(false), desktop = ref(true);
+const more = ref(false);
+let drawerTrigger: HTMLElement | null = null;
 const choices = createBusinessChoices();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
 let viewport: MediaQueryList | undefined;
 let resizing = false;
 function closeNavigation() { drawer.value?.close(); open.value = false; }
-function openNavigation() { drawer.value?.showModal(); open.value = !!drawer.value?.open; }
-function closed() { open.value = false; if (!desktop.value && !resizing) menu.value?.focus({ preventScroll: true }); }
+async function openNavigation(event?: Event, secondary = false) {
+    drawerTrigger = (event?.currentTarget as HTMLElement | null) ?? menu.value ?? null;
+    more.value = secondary;
+    await nextTick();
+    drawer.value?.showModal();
+    open.value = !!drawer.value?.open;
+}
+function closed() {
+    open.value = false;
+    if (!desktop.value && !resizing) (drawerTrigger ?? menu.value)?.focus({ preventScroll: true });
+}
 function breakpoint() {
     desktop.value = viewport?.matches ?? true;
     if (!viewport?.matches || !drawer.value?.open) return;
@@ -44,19 +56,20 @@ watch(() => route.fullPath, closeNavigation);
 watch(documentStatus, value => { if (value === 'closed') { closeNavigation(); choices.clear(); } }, { flush: 'sync' });
 onMounted(() => {
     headerTarget.value = !!document.getElementById('advertiser-header-context');
-    viewport = window.matchMedia('(min-width: 851px)'); desktop.value = viewport.matches; viewport.addEventListener('change', breakpoint);
+    viewport = window.matchMedia(slots['mobile-navigation'] ? '(min-width: 1010px)' : '(min-width: 851px)');
+    desktop.value = viewport.matches; viewport.addEventListener('change', breakpoint);
     void choices.load();
 });
 onBeforeUnmount(() => { choices.dispose(); viewport?.removeEventListener('change', breakpoint); drawer.value?.close(); });
 </script>
 <template>
-    <div class="advertiser-layout" data-advertiser-shell>
+    <div class="advertiser-layout" data-advertiser-shell :class="{ 'advertiser-v3': !!$slots['mobile-navigation'] }">
         <a class="advertiser-skip" href="#advertiser-content">{{ t('انتقل إلى المحتوى', 'Skip to content') }}</a>
         <Teleport v-if="headerTarget" to="#advertiser-header-context">
-            <div class="advertiser-header-selection" data-spa-private>
+            <div class="advertiser-header-selection" :class="{ 'advertiser-v3-header': !!$slots['mobile-navigation'] }" data-spa-private>
             <button ref="menu" type="button" class="advertiser-menu-toggle" data-advertiser-menu-toggle :aria-label="t('فتح القائمة', 'Open navigation')" :aria-expanded="open" aria-controls="advertiser-drawer" @click="openNavigation"><Menu aria-hidden="true" /></button>
             <button v-if="businessSelected && selection" type="button" class="advertiser-mobile-identity" data-mobile-business-identity data-business-name :aria-label="t('تغيير النشاط الحالي', 'Change current business') + ' · ' + selection.name" :aria-expanded="open" aria-controls="advertiser-drawer" @click="openNavigation"><span>{{ selection.name }}</span><ChevronDown aria-hidden="true" /></button>
-            <span class="advertiser-header-label">{{ t('لوحة المعلن', 'Advertiser dashboard') }}</span>
+            <span class="advertiser-header-label">{{ $slots['mobile-navigation'] && selection ? selection.name : t('لوحة المعلن', 'Advertiser dashboard') }}</span>
             </div>
         </Teleport>
         <aside class="advertiser-sidebar" data-advertiser-sidebar :aria-label="t('التنقل الرئيسي', 'Main navigation')">
@@ -67,13 +80,17 @@ onBeforeUnmount(() => { choices.dispose(); viewport?.removeEventListener('change
                 <RouterLink class="advertiser-account-link" to="/profile">{{ t('الحساب والأمان', 'Account and security') }}</RouterLink>
             </div>
         </aside>
-        <dialog id="advertiser-drawer" ref="drawer" class="advertiser-drawer" data-advertiser-drawer :dir="locale === 'ar' ? 'rtl' : 'ltr'" :aria-label="t('قائمة المعلن', 'Advertiser navigation')" @close="closed" @cancel="open = false" @click="outside">
+        <dialog id="advertiser-drawer" ref="drawer" class="advertiser-drawer" :class="{ 'advertiser-more-sheet': more }" data-advertiser-drawer :dir="locale === 'ar' ? 'rtl' : 'ltr'" :aria-label="more ? t('المزيد', 'More') : t('قائمة المعلن', 'Advertiser navigation')" @close="closed" @cancel="open = false" @click="outside">
             <div v-if="!desktop" class="advertiser-drawer-body" @click="closeForLink">
                 <button type="button" class="advertiser-drawer-close" data-advertiser-drawer-close :aria-label="t('إغلاق القائمة', 'Close navigation')" @click="closeNavigation"><X aria-hidden="true" /></button>
-                <BrandLogo to="/businesses" />
-                <BusinessSwitcher id="drawerBusinessSelect" :items="choices.items.value" :selected="selection" :phase="choices.phase.value" :more="!!choices.nextCursor.value" @select="selectBusiness" @reload="choices.load()" @more="choices.load(true)" />
+                <h2 v-if="more" class="advertiser-more-title">{{ t('المزيد', 'More') }}</h2>
+                <template v-else>
+                    <BrandLogo to="/businesses" />
+                    <BusinessSwitcher id="drawerBusinessSelect" :items="choices.items.value" :selected="selection" :phase="choices.phase.value" :more="!!choices.nextCursor.value" @select="selectBusiness" @reload="choices.load()" @more="choices.load(true)" />
+                </template>
                 <div @click="closeForLink">
-                    <slot name="navigation" />
+                    <slot v-if="more" name="secondary-navigation" />
+                    <slot v-else name="navigation" />
                 </div>
                 <RouterLink class="advertiser-account-link" to="/profile">{{ t('الحساب والأمان', 'Account and security') }}</RouterLink>
             </div>
@@ -81,5 +98,6 @@ onBeforeUnmount(() => { choices.dispose(); viewport?.removeEventListener('change
         <main id="advertiser-content" ref="content" class="bf-main advertiser-content" tabindex="-1">
             <slot />
         </main>
+        <slot v-if="!desktop" name="mobile-navigation" :open-more="(event: Event) => openNavigation(event, true)" :more-open="open && more" />
     </div>
 </template>

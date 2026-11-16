@@ -2,6 +2,7 @@
 
 namespace App\Appearance;
 
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
 
 /** Owns the public visual identity. */
@@ -19,7 +20,19 @@ final class GlobalAppearance
         return ['revision' => (int) ($row->revision ?? 0),
             'primary' => $row->primary_color ?? self::DEFAULTS['primary'],
             'secondary' => $row->secondary_color ?? self::DEFAULTS['secondary'],
-            'defaults' => self::DEFAULTS];
+            'defaults' => self::DEFAULTS,
+            'logo' => $this->imageDescription($row->logo_sha256 ?? null),
+            'favicon' => $this->imageDescription($row->favicon_sha256 ?? null)];
+    }
+
+    public function imageDescription(?string $hash, ?ConnectionInterface $connection = null): ?array
+    {
+        if ($hash === null) {
+            return null;
+        }
+        $image = ($connection ?? DB::connection())->table('global_appearance_images')->where('sha256', $hash)->sole(['width', 'height']);
+
+        return ['url' => '/brand/assets/'.$hash.'.png', 'width' => (int) $image->width, 'height' => (int) $image->height];
     }
 
     public static function tokens(array $appearance): array

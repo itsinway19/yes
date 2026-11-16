@@ -75,16 +75,16 @@ const activityUrl = moduleUrl(`export const state={items:[],reads:[],writes:[],p
 const draftsUrl = moduleUrl('export const key=(business,selection)=>JSON.stringify([business,selection]);');
 const { descriptor } = parse(await readFile('resources/js/business-foundation/BusinessPractices.vue', 'utf8'));
 let componentCode = ts.transpileModule(compileScript(descriptor, { id: 'business-practice-test', inlineTemplate: true }).content, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-for (const [name, url] of Object.entries({ './BusinessPracticeKnowledge.vue': moduleUrl('export default {render(){return null;}}'), vue: vueUrl, '../spa/transport': transportUrl, '../spa/locale': localeUrl, './drafts': draftsUrl, './activityPending': pendingUrl, './activity': activityUrl })) componentCode = componentCode.replaceAll(`from '${name}'`, `from ${JSON.stringify(url)}`).replaceAll(`from "${name}"`, `from ${JSON.stringify(url)}`);
+for (const [name, url] of Object.entries({ '@lucide/vue': import.meta.resolve('@lucide/vue'), './BusinessSheet.vue': moduleUrl('export default {render(){return this.$slots.default?.();}}'), './BusinessPracticeKnowledge.vue': moduleUrl('export default {render(){return null;}}'), vue: vueUrl, '../spa/transport': transportUrl, '../spa/locale': localeUrl, './drafts': draftsUrl, './activityPending': pendingUrl, './activity': activityUrl })) componentCode = componentCode.replaceAll(`from '${name}'`, `from ${JSON.stringify(url)}`).replaceAll(`from "${name}"`, `from ${JSON.stringify(url)}`);
 const Practices = (await import(moduleUrl(componentCode))).default;
 const activity = await import(activityUrl), transport = await import(transportUrl);
 const language = await import(localeUrl);
 globalThis.Document ??= class Document {};
 globalThis.ShadowRoot ??= class ShadowRoot {};
 globalThis.document ??= { activeElement: null };
-function node(tag, text = '') { return markRaw({ tag, tagName: tag.toUpperCase(), text, props: {}, children: [], parent: null, value: '', selectedIndex: -1,
+function node(tag, text = '') { return markRaw({ tag, tagName: tag.toUpperCase(), text, props: {}, style: {}, children: [], parent: null, value: '', selectedIndex: -1,
     get options() { return this.children.filter(item => item.tag === 'option'); },
-    addEventListener() {}, removeEventListener() {}, setAttribute() {}, removeAttribute() {}, getRootNode() { return {}; } }); }
+    addEventListener() {}, removeEventListener() {}, setAttribute() {}, removeAttribute() {}, focus() {}, getRootNode() { return {}; } }); }
 const renderer = createRenderer({ createElement: tag => node(tag), createText: value => node('#text', value), createComment: value => node('#comment', value),
     setText(target, value) { target.text = value; }, setElementText(target, value) { target.text = value; target.children = []; },
     parentNode: target => target.parent, nextSibling: target => target.parent?.children[target.parent.children.indexOf(target) + 1] ?? null,
@@ -105,7 +105,13 @@ function mount(initial = surface(), reset = true) {
 async function create(view) {
     await flush(); find(view.root, 'data-practice-add').props.onClick(); await nextTick();
     find(view.root, 'id', 'bf-practice-name').props['onUpdate:modelValue']('Sell equipment'); await nextTick();
-    return { promise: find(view.root, 'data-practice-form').props.onSubmit({ preventDefault() {} }) };
+    const form = find(view.root, 'data-practice-form');
+    const priorWrites = activity.state.writes.length;
+    await form.props.onSubmit({ preventDefault() {} });
+    await nextTick();
+    assert.equal(activity.state.writes.length, priorWrites, 'Moving to coverage does not write');
+    assert.ok(find(view.root, 'data-practice-save'));
+    return { promise: form.props.onSubmit({ preventDefault() {} }) };
 }
 
 test('real activity form retains exact unknown save across remount and preserves a lost original after 422 retry', async () => {

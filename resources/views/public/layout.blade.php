@@ -14,6 +14,7 @@
     @include('public.content-styles')
     <style id="published-appearance">:root {@foreach($appearanceTokens as $token => $value){{ $token }}:{{ $value }};@endforeach}</style>
     <link rel="stylesheet" href="/brand/theme.css">
+@include('public.appearance-assets')
 </head>
 <body>
 <a class="public-skip" href="#main">{{ $c('انتقل إلى المحتوى', 'Skip to content') }}</a>
