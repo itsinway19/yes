@@ -1,24 +1,31 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { businessHistory, type BusinessHistory, type Surface } from './api';
 import { locale } from '../spa/locale';
 import { owned, stamp } from '../spa/transport';
 import { status } from '../spa/presentation';
-const props = defineProps<{ surface: Surface; refreshing: boolean }>();
+const props = defineProps<{ surface: Surface; refreshing: boolean; expanded?: boolean }>();
 const t = (ar: string, en: string) => locale.value === 'ar' ? ar : en;
-const opened = ref(false), loading = ref(false), failed = ref(false);
+const opened = ref(!!props.expanded), loading = ref(false), failed = ref(false);
 const kind = ref<BusinessHistory['kind']>('context'), page = ref<BusinessHistory>();
 let serial = 0, disposed = false;
 onBeforeUnmount(() => { disposed = true; serial++; });
+onMounted(() => { if (props.expanded) void read(); });
 function clear() { serial++; page.value = undefined; failed.value = false; loading.value = false; }
-watch(() => [props.surface, props.refreshing], () => { clear(); opened.value = false; }, { flush: 'sync' });
-watch(status, value => { if (value !== 'ready') { clear(); opened.value = false; } }, { flush: 'sync' });
+watch(() => [props.surface, props.refreshing], () => {
+    clear(); opened.value = !!props.expanded && !props.refreshing && status.value === 'ready';
+    if (opened.value) void read();
+}, { flush: 'sync' });
+watch(status, value => {
+    if (value !== 'ready') { clear(); opened.value = false; }
+    else if (props.expanded && !props.refreshing) { opened.value = true; void read(); }
+}, { flush: 'sync' });
 watch(kind, () => { clear(); if (opened.value) void read(); }, { flush: 'sync' });
 const choices = computed(() => [
     { id: 'context', label: t('اسم النشاط وتصنيفه', 'Business name and type') },
     { id: 'markets', label: t('الأسواق المعلنة', 'Declared markets') },
-    { id: 'intent', label: t('النية التجارية الحالية', 'Current commercial intent') },
-    { id: 'preferences', label: t('تفضيلات الأهداف', 'Goal preferences') },
+    { id: 'intent', label: t('النتيجة المستهدفة', 'Target outcome') },
+    { id: 'preferences', label: t('الأهداف والأولوية', 'Goals and priority') },
 ]);
 async function read(after?: string) {
     if (props.refreshing || disposed || status.value !== 'ready') return;
@@ -77,18 +84,17 @@ function valueText(value: unknown): string {
 function time(value: string) { return new Date(value).toLocaleString(locale.value === 'ar' ? 'ar-JO' : 'en-GB'); }
 </script>
 <template>
-    <details class="bf-card bf-history" data-business-history :open="opened" @toggle="toggle">
-        <summary>{{ t('تاريخ تصريحات النشاط', 'Business declaration history') }}</summary>
+    <component :is="expanded ? 'section' : 'details'" class="bf-card bf-history" data-business-history :open="expanded ? undefined : opened" @toggle="toggle">
+        <h3 v-if="expanded">{{ t('سجل التعديلات', 'Change history') }}</h3>
+        <summary v-else>{{ t('سجل التعديلات', 'Change history') }}</summary>
         <template v-if="opened">
-            <p>{{ t('سجل التصريحات المحفوظة في أساس النشاط الجديد، وليس دليلًا على تحقق نتائجها. التصحيح يتم بتصريح جديد من محرر النشاط؛ لا يُمحى التاريخ.', 'Declarations saved in the new Business foundation, not proof of their outcomes. Correct through a new declaration in the Business editor; history is not erased.') }}</p>
-            <label for="bf-history-kind">{{ t('نوع التصريح', 'Declaration type') }}</label>
+            <label for="bf-history-kind">{{ t('المعلومات التي تريد مراجعتها', 'Information to review') }}</label>
             <select id="bf-history-kind" v-model="kind" :disabled="refreshing"><option v-for="item in choices" :key="item.id" :value="item.id">{{ item.label }}</option></select>
-            <button type="button" class="bf-secondary" :disabled="loading || refreshing" @click="read()">{{ t('قراءة أحدث سجل', 'Read latest history') }}</button>
-            <p v-if="loading" role="status">{{ t('جارٍ تأهيل قراءة التاريخ…', 'Qualifying history access…') }}</p>
+            <button type="button" class="bf-secondary" :disabled="loading || refreshing" @click="read()">{{ t('تحديث السجل', 'Refresh history') }}</button>
+            <p v-if="loading" role="status">{{ t('جارٍ تحميل السجل…', 'Loading history…') }}</p>
             <p v-else-if="failed" role="alert" data-history-unavailable>{{ t('تعذرت قراءة السجل بحق الوصول الحالي. لم نعتبر ذلك سجلًا فارغًا.', 'History is unavailable under the current access path. This was not interpreted as empty history.') }}</p>
             <template v-else-if="page">
-                <p>{{ t('يعرض هذا السجل انتقالات التصريحات الجديدة فقط، بترتيب إصدارات مالكها.', 'This history contains new declaration transitions only, ordered by their owner revision.') }}</p>
-                <p v-if="!page.entries.length" data-history-empty>{{ t('لا انتقالات محفوظة لهذا النوع في الصفحة المطلوبة. هذا لا يثبت غياب سجل قديم أو نتيجة تجارية.', 'No saved transitions for this kind on the requested page. This proves neither absence of legacy history nor a commercial outcome.') }}</p>
+                <p v-if="!page.entries.length" data-history-empty>{{ t('لا توجد تعديلات مسجّلة لهذا النوع في هذه الصفحة.', 'No changes recorded for this type on this page.') }}</p>
                 <ol v-else class="bf-history-list" data-history-entries>
                     <li v-for="entry in page.entries" :key="entry.event_id">
                         <p><strong>{{ t('الإصدار', 'Revision') }} {{ entry.version }}</strong> · <time :datetime="entry.recorded_at">{{ time(entry.recorded_at) }}</time></p>
@@ -98,5 +104,5 @@ function time(value: string) { return new Date(value).toLocaleString(locale.valu
                 <button v-if="page.next_cursor" class="bf-secondary" type="button" @click="read(page.next_cursor!)">{{ t('الصفحة التالية من السجل', 'Next history page') }}</button>
             </template>
         </template>
-    </details>
+    </component>
 </template>

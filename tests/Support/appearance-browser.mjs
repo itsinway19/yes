@@ -1,4 +1,3 @@
-import http from 'node:http';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -15,24 +14,23 @@ const fixture = spawnSync('C:/tools/php85/php.exe', ['tests/Support/AppearanceBr
 assert.equal(fixture.status, 0, fixture.stderr);
 assert.equal(JSON.parse(fixture.stdout).database.db, 'builderad_test_disposable');
 const cookies = JSON.parse(await readFile(path.join(run, 'appearance-fixture.json'), 'utf8'));
-const proxyFailures = [], unexpectedResponses = [];
-// Same-origin proxy matches the repository browser runner; no runtime route overrides.
-const proxy = http.createServer((req, res) => {
-    const upstream = http.request({ hostname: 'localhost', port: 8136, path: req.url, method: req.method, headers: req.headers }, source => {
-        res.writeHead(source.statusCode, source.headers); source.pipe(res);
-    });
-    upstream.on('error', error => { proxyFailures.push({ path: new URL(req.url, 'http://localhost').pathname, method: req.method, code: error.code, clientGone: res.destroyed }); if (!res.destroyed) { res.writeHead(502); res.end(error.message); } });
-    req.pipe(upstream);
-});
-await new Promise(resolve => proxy.listen(8138, 'localhost', resolve));
+const unexpectedResponses = [];
 const browser = await chromium.launch({ headless: true, executablePath: 'C:/Users/stoma/AppData/Local/ms-playwright/chromium-1208/chrome-win64/chrome.exe' });
 const contexts = [], results = [], errors = [], requests = [], assets = new Map();
-const url = 'http://localhost:8138';
+// Appearance requires a single application origin and uses Playwright to
+// exercise individual request failures. The guarded PHP server already
+// serves both Laravel and the built assets at that origin.
+const url = 'http://localhost:8136';
+assert.equal(process.env.APP_URL, url, 'Appearance proof must use its direct application origin');
 const appearancePath = '/internal/administration/appearance';
+const capture = (page, options) => process.env.GOALS_SPA_CAPTURE_IMAGES === '1' ? page.screenshot(options) : Promise.resolve();
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = async (name, action) => { await action(); results.push({ name, status: 'PASS' }); console.log('PASS '+name); };
 async function session(kind) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } }); contexts.push(context);
+    // Fetch public build assets from the proof server for byte provenance.
+    // Routing passes requests through unchanged and disables Chromium's body cache.
+    await context.route('**/build/**', route => route.continue());
     context.setDefaultTimeout(30000);
     await context.addCookies(cookies[kind]);
     const page = await context.newPage();
@@ -51,9 +49,12 @@ async function session(kind) {
 const ready = page => page.waitForFunction(() => document.getElementById('application-spa')?.dataset.state === 'ready', undefined, { timeout: 30000 });
 const editor = async page => { await page.goto(url+appearancePath); await ready(page); await page.locator('[data-appearance-settings]').waitFor(); };
 const rootColor = page => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ba-brand-primary').trim());
+const secondaryColor = page => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ba-brand-secondary').trim());
 async function publish(page, expected) {
     const response = page.waitForResponse(response => new URL(response.url()).pathname === appearancePath && response.request().method() === 'POST');
+    const navigation = page.waitForNavigation({ waitUntil: 'domcontentloaded' });
     await page.locator('[data-appearance-publish]').click(); assert.equal((await response).status(), 200);
+    await navigation;
     await page.waitForFunction(color => getComputedStyle(document.documentElement).getPropertyValue('--ba-brand-primary').trim() === color, expected);
     await ready(page); await page.locator('[data-appearance-settings]').waitFor();
 }
@@ -80,13 +81,16 @@ try {
         await button.focus(); assert.notEqual(await button.evaluate(el => getComputedStyle(el).outlineStyle), 'none');
         await page.locator('#appearance-primary').fill('#bad'); assert.equal(await page.locator('[data-appearance-publish]').isDisabled(), true);
         await page.locator('#appearance-primary').fill('#ffff00');
-        await page.screenshot({ path: path.join(run, 'appearance-desktop.png'), fullPage: true });
+        await capture(page, { path: path.join(run, 'appearance-desktop.png'), fullPage: true });
     });
     await check('Authorized publication updates fresh advertiser documents only', async () => {
         await publish(page, '#ffff00');
         assert.equal(await rootColor(advertiser), '#155f53');
+        assert.equal(await secondaryColor(advertiser), '#334b73');
         await advertiser.reload(); await ready(advertiser); assert.equal(await rootColor(advertiser), '#ffff00');
+        assert.equal(await secondaryColor(advertiser), '#7c3aed');
         const second = await session('advertiser'); await second.goto(url+'/businesses'); await ready(second); assert.equal(await rootColor(second), '#ffff00');
+        assert.equal(await secondaryColor(second), '#7c3aed');
         assert.equal(await second.locator('#published-appearance').count(), 1);
     });
     await check('Concurrent stale editor cannot silently overwrite publication', async () => {
@@ -128,13 +132,63 @@ try {
     await check('Responsive RTL and semantic states retain fixed meaning', async () => {
         await page.setViewportSize({ width: 390, height: 844 });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        await page.screenshot({ path: path.join(run, 'appearance-mobile-rtl.png'), fullPage: true });
+        await capture(page, { path: path.join(run, 'appearance-mobile-rtl.png'), fullPage: true });
         assert.equal(await page.locator('[data-appearance-preview] [data-preview-status]').count(), 3);
     });
     await check('Restore defaults uses the same explicit publication path', async () => {
         await page.locator('[data-appearance-defaults]').click();
         await advertiser.reload(); await ready(advertiser); assert.equal(await rootColor(advertiser), '#008866');
         await publish(page, '#155f53'); await advertiser.reload(); await ready(advertiser); assert.equal(await rootColor(advertiser), '#155f53');
+    });
+    await check('Founder previews and publishes logo and favicon atomically with public immutable bytes and explicit defaults', async () => {
+        const images = JSON.parse(await readFile('tests/Fixtures/brand-images.json','utf8'));
+        await page.setViewportSize({width:1280,height:900});
+        const count = () => requests.filter(row=>row.path===appearancePath && row.method==='POST').length;
+        const before = count();
+        await page.locator('[data-appearance-image="logo"]').setInputFiles({name:'rejected.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg/>')});
+        await page.waitForFunction(()=>document.querySelector('[data-appearance-image="logo"]')?.getAttribute('aria-invalid')==='true');
+        assert.equal(await page.locator('[data-appearance-publish]').isDisabled(),true);
+        await page.locator('[data-appearance-image-default="logo"]').click();
+        assert.equal(await page.locator('[data-appearance-image="logo"]').getAttribute('aria-invalid'),'false','An invalid selection can be cleared without choosing another file');
+        const original = Buffer.from(images.logo.split(',')[1],'base64');
+        const damaged = Buffer.concat([original.subarray(0,33),original.subarray(original.length-12)]);
+        await page.locator('[data-appearance-image="logo"]').setInputFiles({name:'damaged.png',mimeType:'image/png',buffer:damaged});
+        await page.waitForFunction(()=>document.querySelector('[data-appearance-image="logo"]')?.getAttribute('aria-invalid')==='true');
+        assert.equal(await page.locator('[data-appearance-publish]').isDisabled(),true,'A PNG that cannot decode never becomes publishable');
+        for (const key of ['logo','favicon']) {
+            await page.locator(`[data-appearance-image="${key}"]`).setInputFiles({name:`isolated-${key}.png`,mimeType:'image/png',buffer:Buffer.from(images[key].split(',')[1],'base64')});
+            await page.waitForFunction(({key,value})=>document.querySelector(`[data-appearance-image-preview="${key}"]`)?.getAttribute('src')===value,{key,value:images[key]});
+        }
+        assert.equal(count(),before,'Selecting files never publishes');
+        assert.equal(await page.locator('meta[name="builderad-logo"]').getAttribute('content'),'');
+        await publish(page,'#155f53');
+        const logo = await page.locator('meta[name="builderad-logo"]').getAttribute('content');
+        const favicon = await page.locator('link[rel="icon"]').getAttribute('href');
+        assert.match(logo,/^\/brand\/assets\/[a-f0-9]{64}\.png$/); assert.notEqual(logo,favicon);
+        await page.waitForFunction(()=>[...document.querySelectorAll('[data-published-brand-logo]')].some(image=>image.complete && image.naturalWidth===80));
+        await advertiser.reload(); await ready(advertiser);
+        for (const width of [1280,390]) {
+            await advertiser.setViewportSize({width,height:844});
+            assert.equal(await advertiser.locator('meta[name="builderad-logo"]').getAttribute('content'),logo);
+            assert.equal(await advertiser.locator('link[rel="icon"]').getAttribute('href'),favicon);
+            assert.equal(await advertiser.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+        }
+        const guest = await browser.newContext(); contexts.push(guest);
+        for (const [key,asset] of [['logo',logo],['favicon',favicon]]) {
+            const response = await guest.request.get(url+asset);
+            assert.equal(response.status(),200); assert.equal(response.headers()['content-type'],'image/png');
+            assert.equal(response.headers()['x-builderad-identity'],undefined); assert.equal(response.headers()['set-cookie'],undefined);
+            assert.equal(hash(await response.body()),hash(Buffer.from(images[key].split(',')[1],'base64')));
+        }
+        const homePage = await guest.newPage();
+        const home = await homePage.goto(url+'/'); assert.equal(home.status(),200);
+        assert.ok((await homePage.content()).includes('src="'+logo+'"'));
+        for (const key of ['logo','favicon']) await page.locator(`[data-appearance-image-default="${key}"]`).click();
+        assert.equal(await page.locator('meta[name="builderad-logo"]').getAttribute('content'),logo,'Defaults remain a local draft');
+        await publish(page,'#155f53');
+        assert.equal(await page.locator('meta[name="builderad-logo"]').getAttribute('content'),'');
+        assert.equal(await page.locator('link[rel="icon"]').getAttribute('href'),'/brand/builderad-mark.svg');
+        assert.equal((await guest.request.get(url+logo)).status(),200,'An older open document keeps its immutable image');
     });
     }
     await appearanceReliability({ session, ready, check, run, url, appearancePath });
@@ -144,15 +198,15 @@ try {
         assert.equal(actualHash, hash(await readFile(path.join(process.cwd(), 'public', asset))), asset);
     }
     assert.equal(errors.length, 0, errors.join('\n'));
-    assert.equal(unexpectedResponses.length, 0, JSON.stringify({ unexpectedResponses, proxyFailures }));
-    await writeFile(path.join(run, 'appearance-browser-results.json'), JSON.stringify({ results, errors, unexpectedResponses, proxyFailures, assets: [...assets.keys()], headlessChromium: true, syntheticSessions: true, productionBuild: true }, null, 2));
+    assert.equal(unexpectedResponses.length, 0, JSON.stringify(unexpectedResponses));
+    await writeFile(path.join(run, 'appearance-browser-results.json'), JSON.stringify({ results, errors, unexpectedResponses, origin: url, assets: [...assets.keys()], headlessChromium: true, syntheticSessions: true, productionBuild: true }, null, 2));
 } catch (error) {
     for (const [index, context] of contexts.entries()) for (const page of context.pages()) {
         console.error('FAILED_PAGE '+JSON.stringify({ index, url: page.url(), state: await page.locator('#application-spa').getAttribute('data-state').catch(() => null), text: await page.locator('body').innerText().catch(() => '') }));
-        await page.screenshot({ path: path.join(run, `appearance-failure-${index}.png`), fullPage: true }).catch(() => {});
+        await capture(page, { path: path.join(run, `appearance-failure-${index}.png`), fullPage: true }).catch(() => {});
     }
-    await writeFile(path.join(run, 'appearance-browser-results.json'), JSON.stringify({ results, errors, unexpectedResponses, proxyFailures, failure: error.stack }, null, 2));
+    await writeFile(path.join(run, 'appearance-browser-results.json'), JSON.stringify({ results, errors, unexpectedResponses, origin: url, failure: error.stack }, null, 2));
     throw error;
 } finally {
-    await Promise.all(contexts.map(context => context.close())); await browser.close(); await new Promise(resolve => proxy.close(resolve));
+    await Promise.all(contexts.map(context => context.close())); await browser.close();
 }

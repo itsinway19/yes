@@ -6,6 +6,7 @@ use App\Appearance\GlobalAppearance;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\AppearanceCatalogEvidence;
 use Tests\Support\ApplicationContractAssertions;
 use Tests\TestCase;
 
@@ -14,6 +15,170 @@ class GlobalAppearanceTest extends TestCase
     use ApplicationContractAssertions;
 
     private const PATH = '/internal/administration/appearance';
+
+    private function images(): array
+    {
+        return json_decode(file_get_contents(base_path('tests/Fixtures/brand-images.json')), true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    private function sealFixtureCatalog(): void
+    {
+        // Only the guarded disposable fixture owns this synthetic predecessor.
+        DB::connection('pgsql_migrations')->unprepared(<<<'SQL'
+DO $fixture$
+DECLARE seal bytea;
+BEGIN
+ SET LOCAL ROLE builderad_scope_executor;
+ seal:=builderad_private.catalog_digest();
+ RESET ROLE;
+ EXECUTE format('CREATE OR REPLACE FUNCTION builderad_private.installation_digest() RETURNS bytea LANGUAGE sql IMMUTABLE SECURITY INVOKER SET search_path=pg_catalog,builderad_private,pg_temp AS %L', 'SELECT decode('''||encode(seal,'hex')||''',''hex'')');
+END $fixture$;
+SQL);
+    }
+
+    public function test_pre_image_schema_keeps_color_publication_and_rejects_images_without_any_write(): void
+    {
+        $this->actingAsInternal($this->staff('founder'));
+        $db = DB::connection('pgsql_migrations');
+        $db->statement('ALTER TABLE global_appearance DROP COLUMN logo_sha256, DROP COLUMN favicon_sha256');
+        $db->statement('DROP TABLE global_appearance_images');
+        $this->sealFixtureCatalog();
+        try {
+            $this->postJson(self::PATH, ['revision' => 0, ...GlobalAppearance::DEFAULTS])->assertOk()->assertJsonPath('appearance.revision', 1);
+            $this->postJson(self::PATH, ['revision' => 1, 'primary' => '#123456', 'secondary' => '#654321', ...$this->images()])->assertUnprocessable()->assertJsonValidationErrors('logo');
+            $this->assertSame(1, app(GlobalAppearance::class)->current()['revision']);
+            $this->assertSame(GlobalAppearance::DEFAULTS['primary'], app(GlobalAppearance::class)->current()['primary']);
+        } finally {
+            $db->unprepared(file_get_contents(database_path('migration-sql/0001_01_01_000002_publish_brand_images/images.sql')));
+        }
+    }
+
+    public function test_image_migration_refuses_to_reseal_an_unqualified_predecessor(): void
+    {
+        $db = DB::connection('pgsql_migrations');
+        $db->beginTransaction();
+        try {
+            $db->statement('ALTER TABLE global_appearance DROP COLUMN logo_sha256, DROP COLUMN favicon_sha256');
+            $db->statement('DROP TABLE global_appearance_images');
+            try {
+                $db->unprepared(file_get_contents(database_path('migration-sql/0001_01_01_000002_publish_brand_images/images.sql')));
+                $this->fail('Unsealed predecessor must be rejected');
+            } catch (QueryException $error) {
+                $this->assertStringContainsString('requires a sealed predecessor catalog', $error->getMessage());
+            }
+        } finally {
+            $db->rollBack();
+        }
+    }
+
+    public function test_canonical_baseline_catalog_evidence_for_the_existing_preview(): void
+    {
+        $db = DB::connection('pgsql_migrations');
+        $db->beginTransaction();
+        try {
+            $db->statement('ALTER TABLE global_appearance DROP COLUMN logo_sha256, DROP COLUMN favicon_sha256');
+            $db->statement('DROP TABLE global_appearance_images');
+            preg_match_all("/business_native_baseline\/([^']+\\.sql)/", file_get_contents(database_path('migrations/0001_01_01_000000_business_native_baseline.php')), $inputs);
+            $source = implode("\n", array_map(fn ($name) => file_get_contents(database_path('migration-sql/0001_01_01_000000_business_native_baseline/'.$name)), $inputs[1]));
+            $this->assertGreaterThan(0, preg_match_all('/CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.builderad_v2_customer_discovery_practice\s*\([\s\S]*?\bAS\s+(\$[A-Za-z_0-9]*\$)(.*?)\1;/si', $source, $definitions));
+            $definition = $definitions[0][array_key_last($definitions[0])];
+            $definition = preg_replace('/^CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION/i', 'CREATE OR REPLACE FUNCTION', $definition);
+            $db->unprepared('GRANT CREATE ON SCHEMA public TO builderad_scope_executor; SET LOCAL ROLE builderad_scope_executor;');
+            $db->unprepared($definition);
+            $db->unprepared('RESET ROLE; REVOKE CREATE ON SCHEMA public FROM builderad_scope_executor;');
+            $image = AppearanceCatalogEvidence::read($db);
+            $this->assertNotEmpty($image['functions']);
+            if (getenv('GOALS_SPA_RUN')) {
+                file_put_contents(getenv('GOALS_SPA_RUN').'/canonical-baseline-catalog.json', json_encode($image, JSON_THROW_ON_ERROR));
+            }
+        } finally {
+            $db->rollBack();
+        }
+    }
+
+    public function test_published_images_replace_header_and_favicon_and_public_bytes_contain_no_identity(): void
+    {
+        $this->actingAsInternal($this->staff('founder'));
+        $images = $this->images();
+        $result = $this->postJson(self::PATH, ['revision' => 0, ...GlobalAppearance::DEFAULTS, ...$images])->assertOk()->json();
+        $this->assertApplicationContract('AppearancePublication', $result);
+        $published = $result['appearance'];
+        $this->assertSame(80, $published['logo']['width']);
+        $this->assertSame(32, $published['favicon']['height']);
+        // The real anonymous page is exercised in the browser proof. Do not carry
+        // the internal fixture's document receipt across the public boundary.
+        $this->view('public.brand')->assertSee('data-published-brand-logo', false)->assertSee($published['logo']['url'], false);
+        $this->view('public.appearance-assets')->assertSee($published['favicon']['url'], false);
+        $this->get('/internal/administration/appearance')->assertOk()->assertSee('name="builderad-logo"', false)->assertSee($published['logo']['url'], false);
+        $response = $this->get($published['logo']['url'])->assertOk()->assertHeader('Content-Type', 'image/png')
+            ->assertHeader('X-Content-Type-Options', 'nosniff')->assertHeaderMissing('X-Builderad-Identity')->assertHeaderMissing('Set-Cookie');
+        $this->assertSame(base64_decode(explode(',', $images['logo'], 2)[1]), $response->getContent());
+        $this->assertStringContainsString('immutable', $response->headers->get('Cache-Control'));
+        $this->get($published['logo']['url'], ['If-None-Match' => $response->headers->get('ETag')])->assertStatus(304);
+        $this->get('/brand/assets/'.str_repeat('0', 64).'.png')->assertNotFound();
+        $this->assertDatabaseCount('global_appearance_images', 2);
+    }
+
+    public function test_color_only_clients_preserve_images_and_explicit_defaults_keep_old_urls_valid(): void
+    {
+        $this->actingAsInternal($this->staff('founder'));
+        $first = $this->postJson(self::PATH, ['revision' => 0, ...GlobalAppearance::DEFAULTS, ...$this->images()])->assertOk()->json('appearance');
+        $second = $this->postJson(self::PATH, ['revision' => 1, 'primary' => '#123456', 'secondary' => '#654321'])->assertOk()->json('appearance');
+        $this->assertSame($first['logo'], $second['logo']);
+        $this->assertSame($first['favicon'], $second['favicon']);
+        $this->postJson(self::PATH, ['revision' => 1, ...GlobalAppearance::DEFAULTS, 'logo' => null])->assertConflict();
+        $this->assertSame($first['logo'], app(GlobalAppearance::class)->current()['logo']);
+        $this->postJson(self::PATH, ['revision' => 2, ...GlobalAppearance::DEFAULTS, 'logo' => null, 'favicon' => null])
+            ->assertOk()->assertJsonPath('appearance.logo', null)->assertJsonPath('appearance.favicon', null);
+        $this->get($first['logo']['url'])->assertOk();
+        $this->get($first['favicon']['url'])->assertOk();
+        $this->assertDatabaseCount('global_appearance_images', 2);
+    }
+
+    public function test_image_validation_and_missing_founder_authority_never_store_files(): void
+    {
+        $payload = ['revision' => 0, ...GlobalAppearance::DEFAULTS, ...$this->images()];
+        $this->actingAsInternal($this->staff('employee'))->postJson(self::PATH, $payload)->assertForbidden();
+        $this->actingAsInternal($founder = $this->staff('founder'));
+        foreach (['https://example.test/logo.png', 'data:image/svg+xml;base64,'.base64_encode('<svg onload="alert(1)"/>'), 'data:image/png;base64,'.base64_encode('<?php echo 1;'), 'data:image/png;base64,'.str_repeat('A', 699052), ['content' => 'PNG']] as $invalid) {
+            $this->postJson(self::PATH, [...$payload, 'logo' => $invalid])->assertUnprocessable();
+        }
+        $this->postJson(self::PATH, [...$payload, 'favicon' => $this->images()['logo']])->assertUnprocessable();
+        DB::connection('pgsql_migrations')->table('security_action_grants')->where('subject_user_id', $founder->id)->update(['status' => 'revoked']);
+        $this->postJson(self::PATH, $payload)->assertForbidden();
+        $this->assertDatabaseCount('global_appearance_images', 0);
+        $this->assertDatabaseCount('global_appearance', 0);
+    }
+
+    public function test_brand_image_permissions_are_public_read_and_restricted_immutable_insert(): void
+    {
+        foreach (['INSERT', 'UPDATE', 'DELETE'] as $privilege) {
+            $this->assertFalse((bool) DB::scalar("SELECT has_table_privilege('builderad_app','public.global_appearance_images',?)", [$privilege]));
+        }
+        $this->assertTrue((bool) DB::scalar("SELECT has_table_privilege('builderad_authority','public.global_appearance_images','INSERT')"));
+        $this->assertFalse((bool) DB::scalar("SELECT has_table_privilege('builderad_authority','public.global_appearance_images','UPDATE,DELETE')"));
+    }
+
+    public function test_forward_image_upgrade_preserves_existing_published_colors_and_revision(): void
+    {
+        $db = DB::connection('pgsql_migrations');
+        $db->beginTransaction();
+        try {
+            $db->statement('ALTER TABLE global_appearance DROP COLUMN logo_sha256, DROP COLUMN favicon_sha256');
+            $db->statement('DROP TABLE global_appearance_images');
+            $db->table('global_appearance')->insert(['id' => 1, 'revision' => 4, 'primary_color' => '#123456', 'secondary_color' => '#654321']);
+            $this->sealFixtureCatalog();
+            $db->unprepared(file_get_contents(database_path('migration-sql/0001_01_01_000002_publish_brand_images/images.sql')));
+            $row = $db->table('global_appearance')->sole();
+            $this->assertSame(4, (int) $row->revision);
+            $this->assertSame('#123456', $row->primary_color);
+            $this->assertSame('#654321', $row->secondary_color);
+            $this->assertNull($row->logo_sha256);
+            $this->assertNull($row->favicon_sha256);
+        } finally {
+            $db->rollBack();
+        }
+    }
 
     public function test_expired_freshness_has_a_bound_reauthentication_contract_only_while_founder_authority_survives(): void
     {
@@ -135,8 +300,9 @@ CREATE TRIGGER appearance_test_audit_failure BEFORE INSERT ON security_audit_eve
  FOR EACH ROW EXECUTE FUNCTION appearance_test_audit_failure();
 SQL);
         try {
-            $this->postJson(self::PATH, ['revision' => 0, ...GlobalAppearance::DEFAULTS])->assertStatus(500);
+            $this->postJson(self::PATH, ['revision' => 0, ...GlobalAppearance::DEFAULTS, ...$this->images()])->assertStatus(500);
             $this->assertDatabaseCount('global_appearance', 0);
+            $this->assertDatabaseCount('global_appearance_images', 0);
             $this->assertSame(0, $db->table('security_audit_events')->where('event', 'global_appearance_published')->count());
         } finally {
             $db->unprepared('DROP TRIGGER appearance_test_audit_failure ON security_audit_events; DROP FUNCTION appearance_test_audit_failure()');

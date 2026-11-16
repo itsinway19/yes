@@ -1,5 +1,5 @@
 import { onClose, stamp } from '../spa/transport';
-export type WorkspaceSection = 'overview' | 'inquiries' | 'direction' | 'sources' | 'settings' | 'access';
+export type WorkspaceSection = 'overview' | 'inquiries' | 'direction' | 'offers' | 'sources' | 'settings' | 'access';
 export type WorkspaceSettingsView = 'details' | 'data' | 'purposes' | 'access' | 'lifecycle' | 'history';
 export function workspaceLocation(section: WorkspaceSection, settingsView: WorkspaceSettingsView = 'details') {
     if (section === 'inquiries') return { section: 'settings' as const, settingsView: 'data' as const };

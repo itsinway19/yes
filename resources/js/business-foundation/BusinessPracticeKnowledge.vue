@@ -108,7 +108,7 @@ const coverageLabel = (state: PracticeAssessment['fulfillment']) => state === 'w
 
 <template>
     <details class="bf-practice-knowledge" data-practice-knowledge @toggle="toggle">
-        <summary>{{ t('هل تفيد معرفة السوق إحدى ممارساتي؟', 'Does market knowledge help one of my activities?') }}</summary>
+        <summary>{{ t('مراجعة معلومات السوق', 'Review market information') }}</summary>
         <p>{{ t('اختر العمل المقصود ومعرفة يُسمح لك باستعمالها، ثم وضّح علاقتها به. هذا الفحص لا يثبت وجود مشترين أو ربحية.', 'Choose an activity and knowledge you are permitted to use, then describe their relationship. This check does not establish buyers or profitability.') }}</p>
         <p v-if="!activePractices.length">{{ t('أضف ممارسة نشطة أولًا لتحديد العمل المقصود بالسؤال.', 'Add an active activity first to identify the work this question concerns.') }}</p>
         <p v-if="loading" role="status">{{ t('جارٍ تأهيل المعرفة المتاحة…', 'Qualifying available knowledge…') }}</p>

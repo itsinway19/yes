@@ -4292,11 +4292,18 @@ export interface components {
             primary: string;
             secondary: string;
         };
+        GlobalAppearanceImage: {
+            url: string;
+            width: number;
+            height: number;
+        };
         GlobalAppearanceData: {
             revision: number;
             primary: string;
             secondary: string;
             defaults: components["schemas"]["GlobalAppearanceColors"];
+            logo: components["schemas"]["GlobalAppearanceImage"] | null;
+            favicon: components["schemas"]["GlobalAppearanceImage"] | null;
         };
         GlobalAppearanceResource: {
             data: components["schemas"]["GlobalAppearanceData"];
@@ -4308,6 +4315,8 @@ export interface components {
             revision: number;
             primary: string;
             secondary: string;
+            logo?: string | null;
+            favicon?: string | null;
         };
         AppearancePublication: {
             /** @constant */

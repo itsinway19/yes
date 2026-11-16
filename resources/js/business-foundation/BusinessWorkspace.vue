@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import { RouterLink, onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
-import { House, Link2, Settings2, Target, Users } from '@lucide/vue';
+import { BriefcaseBusiness, Globe, Grid2X2, House, Link2, MessageSquare, Settings2, Target, Users } from '@lucide/vue';
 import AdvertiserWorkspaceLayout from './AdvertiserWorkspaceLayout.vue';
 import BusinessFirstUsefulStep from './BusinessFirstUsefulStep.vue';
 import BusinessSources from './BusinessSources.vue';
@@ -49,7 +49,7 @@ onBeforeUnmount(() => window.removeEventListener?.('beforeunload', guardPurposeU
 const presentationKey = workspacePresentationKey(resource);
 const retained = workspacePresentation.get(presentationKey) ?? { section: 'overview' as WorkspaceSection, settingsView: 'details' as WorkspaceSettingsView, positions: {} as Partial<Record<WorkspaceSection, number>> };
 const route = useRoute(), router = useRouter();
-const allowedSections = ['overview', 'direction', 'sources', 'settings', 'inquiries', 'access'] as const;
+const allowedSections = ['overview', 'direction', 'offers', 'sources', 'settings', 'inquiries', 'access'] as const;
 const allowedSettings = ['details', 'data', 'purposes', 'access', 'lifecycle', 'history'] as const;
 const lifecycleAvailable = computed(() => props.surface.lifecycle.archive_options.length > 0 || !!lifecycleDrafts.get(`${resource}:lifecycle:1`)?.pending);
 function routeLocation() {
@@ -82,7 +82,6 @@ const sourceTask = ref<'accounts' | 'data-use'>('accounts');
 const sourceToolsVisited = ref(true);
 const dataUsePending = ref(false);
 async function reviewSourceSharing() { await navigate('sources'); sourceTask.value = 'data-use'; }
-const reviewEditable = computed(() => ['markets', 'intent', 'preferences'].some(kind => props.surface.fact_write_options[kind as 'markets' | 'intent' | 'preferences'].length > 0));
 const practices = ref<Practice[]>();
 const practicesUnavailable = ref(false);
 const marketLabels = computed(() => props.surface.business.declared_markets.map(code => {
@@ -97,17 +96,10 @@ const goalLabels = computed(() => {
         return goal ? t(goal.name_ar, goal.name_en) : id;
     });
 });
-const declaredChannels = computed(() => [...new Set(practices.value?.flatMap(item => item.value.channels) ?? [])]);
 const sectorLabel = computed(() => {
     const type = props.surface.catalog.business_types.find(item => item.id === props.surface.business.business_type_id);
     return type ? t(type.name_ar, type.name_en) : t('لم يُحدد المجال', 'Sector not specified');
 });
-const preparation = computed(() => [
-    { label: t('المجال', 'Sector'), ready: !!props.surface.business.business_type_id, section: 'settings' as const },
-    { label: t('ما تقدمه للعملاء', 'What you offer'), ready: !!practices.value?.length, unavailable: practicesUnavailable.value, unknown: practices.value === undefined, section: 'settings' as const },
-    { label: t('السوق المستهدف', 'Target market'), ready: !!marketLabels.value.length, section: 'direction' as const },
-    { label: t('الأولوية التجارية', 'Business priority'), ready: !!goalLabels.value.length, section: 'direction' as const },
-]);
 const firstStepCard = ref<{ focus: () => void }>();
 const firstStepPending = computed(() => props.refreshing || navigating.value || status.value === 'checking');
 const firstUsefulStep = computed(() => {
@@ -161,20 +153,40 @@ const selectedBusiness = computed<BusinessChoice | undefined>(() => {
         };
 });
 const inquiryActive = computed(() => active.value === 'settings' && settingsView.value === 'data');
-const destinations = computed(() => [
-    { id: 'overview' as const, label: t('الرئيسية', 'Overview'), description: t('نظرة على معلومات نشاطك وأعماله المتاحة.', 'Your business details and available tasks.'), icon: House },
-    { id: 'direction' as const, label: t('الأسواق والأهداف', 'Markets and goals'), description: t('الأسواق والأهداف المعلنة', 'Declared markets and goals'), icon: Target },
-    { id: 'sources' as const, label: t('المصادر', 'Sources'), description: t('حسابات الإعلان والمصادر المتاحة وحدود استعمال بياناتها', 'Ad accounts, available sources and their data-use boundaries'), icon: Link2 },
+const primaryDestinations = computed(() => [
+    { id: 'overview' as const, label: t('الرئيسية', 'Home'), icon: House },
+    { id: 'direction' as const, label: t('الأهداف', 'Goals'), icon: Target },
+    { id: 'offers' as const, label: t('عروضي', 'Offers'), icon: BriefcaseBusiness },
+    { id: 'sources' as const, label: t('الحسابات', 'Accounts'), icon: Link2 },
+]);
+const secondaryDestinations = computed(() => [
+    ...(props.surface.private_history_available ? [{ id: 'inquiries' as const, label: t('أعداد الاستفسارات', 'Inquiry counts'), icon: MessageSquare }] : []),
     { id: 'access' as const, label: t('الفريق والصلاحيات', 'Team and permissions'), icon: Users },
-    { id: 'settings' as const, label: t('إدارة النشاط', 'Business management'), icon: Settings2 },
+    { id: 'settings' as const, label: t('معلومات النشاط', 'Business information'), icon: Settings2 },
 ]);
+const destinations = computed(() => [...primaryDestinations.value, ...secondaryDestinations.value]);
+const primarySelected = computed(() => primaryDestinations.value.some(item => item.id === navigationSection.value));
+const purposeAccess = computed(() => props.surface.authority_selection.requirements.some(item => item.requirement_kind === 'business'));
+const headingText = computed(() => {
+    if (active.value === 'overview') return props.surface.business.name;
+    if (active.value === 'direction') return t('الأهداف والأسواق', 'Goals and markets');
+    if (active.value === 'offers') return t('ما الذي تقدّمه للعملاء؟', 'What do you offer customers?');
+    if (active.value === 'sources') return t('الحسابات الإعلانية', 'Advertising accounts');
+    if (inquiryActive.value) return t('أعداد الاستفسارات', 'Inquiry counts');
+    if (settingsView.value === 'purposes') return t('تصريحات أغراض الإعلانات', 'Advertising purpose declarations');
+    return destinations.value.find(item => item.id === navigationSection.value)?.label;
+});
 const localSettings = computed(() => [
-    { id: 'details' as const, label: t('معلومات النشاط', 'Business details') },
-    { id: 'data' as const, label: t('البيانات والإفادات', 'Data and declarations') },
-    { id: 'purposes' as const, label: t('الأغراض الإعلانية', 'Advertising purposes') },
-    ...(props.surface.private_history_available ? [{ id: 'history' as const, label: t('السجلات والتاريخ', 'Records and history') }] : []),
-    ...(lifecycleAvailable.value ? [{ id: 'lifecycle' as const, label: t('حالة المسودة', 'Draft status') }] : []),
+    { id: 'details' as const, label: t('بيانات النشاط', 'Business details') },
+    { id: 'data' as const, label: t('أعداد الاستفسارات', 'Inquiry counts') },
+    ...(props.surface.private_history_available ? [{ id: 'history' as const, label: t('سجل التعديلات', 'Change history') }] : []),
+    ...(lifecycleAvailable.value ? [{ id: 'lifecycle' as const, label: t('أرشفة المسودة', 'Archive draft') }] : []),
 ]);
+const informationDirection = computed(() => {
+    const separator = t('، ', ', ');
+    return [marketLabels.value.join(separator), goalLabels.value.join(separator)].filter(Boolean).join(' · ')
+        || t('لم تُحدد بعد', 'Not yet specified');
+});
 async function applyLocation() {
     const next = routeLocation();
     if (active.value === next.section && (next.section !== 'settings' || settingsView.value === next.settingsView)) return;
@@ -202,47 +214,57 @@ async function navigate(section: WorkspaceSection, subview?: WorkspaceSettingsVi
 <AdvertiserWorkspaceLayout :context="surface.business.name" :selection="selectedBusiness" business-selected>
     <template #navigation>
         <nav class="advertiser-navigation" :aria-label="t('أقسام النشاط', 'Business sections')">
-            <button v-for="destination in destinations" :key="destination.id" type="button" :data-workspace-section="destination.id" :aria-current="navigationSection === destination.id ? 'page' : undefined" @click="navigate(destination.id)"><component :is="destination.icon" aria-hidden="true" />{{ destination.label }}</button>
+            <button v-for="destination in primaryDestinations" :key="destination.id" type="button" :data-workspace-section="destination.id" :aria-current="navigationSection === destination.id ? 'page' : undefined" @click="navigate(destination.id)"><component :is="destination.icon" aria-hidden="true" />{{ destination.label }}</button>
+            <p class="advertiser-nav-label">{{ t('إدارة العمل', 'Manage work') }}</p>
+            <button v-for="destination in secondaryDestinations" :key="destination.id" type="button" :data-workspace-section="destination.id === 'inquiries' ? undefined : destination.id" :aria-current="(destination.id === 'inquiries' ? inquiryActive : navigationSection === destination.id && !inquiryActive) ? 'page' : undefined" @click="navigate(destination.id, 'details')"><component :is="destination.icon" aria-hidden="true" />{{ destination.label }}</button>
+        </nav>
+    </template>
+    <template #secondary-navigation>
+        <nav class="advertiser-navigation" :aria-label="t('إدارة العمل', 'Manage work')">
+            <button v-for="destination in secondaryDestinations" :key="destination.id" type="button" :data-workspace-section="destination.id" :aria-current="(destination.id === 'inquiries' ? inquiryActive : navigationSection === destination.id && !inquiryActive) ? 'page' : undefined" @click="navigate(destination.id, 'details')"><component :is="destination.icon" aria-hidden="true" />{{ destination.label }}</button>
+        </nav>
+    </template>
+    <template #mobile-navigation="{ openMore, moreOpen }">
+        <nav class="advertiser-bottom-nav" :aria-label="t('التنقل الرئيسي', 'Main navigation')">
+            <button v-for="destination in primaryDestinations" :key="destination.id" type="button" :data-workspace-mobile-section="destination.id" :aria-current="navigationSection === destination.id ? 'page' : undefined" @click="navigate(destination.id)"><component :is="destination.icon" aria-hidden="true" /><span>{{ destination.label }}</span></button>
+            <button type="button" :aria-current="!primarySelected ? 'page' : undefined" :aria-expanded="moreOpen" aria-controls="advertiser-drawer" @click="openMore"><Grid2X2 aria-hidden="true" /><span>{{ t('المزيد', 'More') }}</span></button>
         </nav>
     </template>
     <section class="business-workspace" data-business-workspace :data-business-public="surface.business.business_public_id" :aria-busy="refreshing">
         <div class="workspace-content">
             <p v-if="active === 'overview'" class="workspace-overview-label">{{ t('لوحة النشاط', 'Business dashboard') }}</p>
-            <h1 ref="heading" class="workspace-section-title" tabindex="-1" data-workspace-heading>{{ active === 'overview' ? surface.business.name : destinations.find(d => d.id === navigationSection)?.label }}<span v-if="navigationSection === 'settings'" class="workspace-location"> / {{ localSettings.find(d => d.id === settingsView)?.label }}</span></h1>
+            <h1 ref="heading" class="workspace-section-title" tabindex="-1" data-workspace-heading>{{ headingText }}</h1>
             <section v-show="active === 'overview'" data-workspace-panel="overview">
                 <p class="workspace-intro">{{ sectorLabel }} <span aria-hidden="true">·</span> {{ t('معلومات أضفتها عن نشاطك', 'Details you provided about your business') }}</p>
                 <BusinessFirstUsefulStep v-if="active === 'overview'" ref="firstStepCard" :step="firstUsefulStep"
                     :pending="firstStepPending" :goal-label="firstStepGoal" :countries="surface.catalog.countries" :can-edit-goals="surface.fact_write_options.preferences.length > 0"
                     :can-edit-practice="surface.context_write_options.length > 0"
-                    @navigate="section => navigate(section, 'details')" @select="selectFirstStepPractice" @refresh="emit('refresh')" />
-                <div class="workspace-overview-grid">
+                    @navigate="section => navigate(section === 'settings' ? 'offers' : section)" @select="selectFirstStepPractice" @refresh="emit('refresh')" />
                 <section class="workspace-business-brief">
-                <header class="workspace-block-heading"><h2>{{ t('نشاطك في لمحة', 'Your business at a glance') }}</h2><button type="button" class="bf-link" @click="navigate('settings')">{{ t('إدارة المعلومات', 'Manage details') }}</button></header>
+                <header class="workspace-block-heading"><h2>{{ t('ما حددته عن نشاطك', 'What you’ve set for your business') }}</h2><button type="button" class="bf-link" @click="navigate('settings', 'details')">{{ t('تعديل المعلومات', 'Manage details') }}</button></header>
                 <dl class="workspace-declared-summary" data-business-declared-summary>
-                    <div><dt>{{ t('ما يقدّمه النشاط', 'What the business offers') }}</dt><dd data-overview-practices>
+                    <div><BriefcaseBusiness aria-hidden="true" /><dt>{{ t('ما يقدّمه النشاط', 'What the business offers') }}</dt><dd data-overview-practices>
                         <template v-if="practices?.length">{{ practices.map(item => item.value.name).join(t('، ', ', ')) }}</template>
                         <template v-else-if="practicesUnavailable">{{ t('تعذّرت قراءة الممارسات', 'Practices unavailable') }}</template>
                         <template v-else-if="practices">{{ t('لم تُسجّل ممارسات نشطة', 'No active practices declared') }}</template>
                         <template v-else>—</template>
                     </dd></div>
-                    <div><dt>{{ t('قنوات العمل المعلنة', 'Declared business channels') }}</dt><dd>{{ declaredChannels.join(t('، ', ', ')) || (practices ? t('لم تُحدد بعد', 'Not yet specified') : '—') }}</dd></div>
-                    <div><dt>{{ t('الأسواق المستهدفة', 'Target markets') }}</dt><dd data-overview-markets>{{ marketLabels.join(t('، ', ', ')) || t('لم تُحدَّد بعد', 'Not yet declared') }}</dd></div>
-                    <div><dt>{{ t('الأولوية التجارية', 'Business priority') }}</dt><dd data-overview-goal>{{ goalLabels.join(t('، ', ', ')) || t('لم تُحدَّد بعد', 'Not yet declared') }}</dd></div>
+                    <div><Globe aria-hidden="true" /><dt>{{ t('الأسواق المستهدفة', 'Target markets') }}</dt><dd data-overview-markets>{{ marketLabels.join(t('، ', ', ')) || t('لم تُحدَّد بعد', 'Not yet declared') }}</dd></div>
+                    <div><Target aria-hidden="true" /><dt>{{ t('الأولوية التجارية', 'Business priority') }}</dt><dd data-overview-goal>{{ goalLabels.join(t('، ', ', ')) || t('لم تُحدَّد بعد', 'Not yet declared') }}</dd></div>
                 </dl>
                 </section>
-                <section class="workspace-preparation"><header class="workspace-block-heading"><h2>{{ t('إعداد النشاط', 'Business preparation') }}</h2><span v-if="!reviewEditable" class="bf-badge" data-current-work-readonly>{{ t('قراءة فقط', 'Read only') }}</span></header>
-                    <ul><li v-for="item in preparation" :key="item.label"><span>{{ item.label }}</span><button type="button" @click="navigate(item.section)">{{ item.unavailable ? t('تعذّرت القراءة', 'Read unavailable') : item.unknown ? t('بانتظار القراءة', 'Awaiting read') : item.ready ? t('مضاف', 'Added') : t('استكمال', 'Complete') }}</button></li></ul>
-                    <p>{{ t('يعكس هذا الإعداد المعلومات المضافة؛ حالة الحسابات والبيانات تُراجع من المصادر.', 'Preparation reflects the details provided. Check account and data states under Sources.') }}</p>
-                </section>
-                </div>
                 <section class="workspace-task-list" :aria-label="t('أعمال متاحة', 'Available work')">
-                    <BusinessTaskRow data-overview-sources :title="t('المصادر والحسابات الإعلانية', 'Sources and advertising accounts')" :value="t('حالة الاتصال لم تُتحقق في هذه الصفحة', 'Connection status is not verified on this page')" :description="t('افتح المصادر للتحقق من الحالة الفعلية لكل منصة والإجراء المتاح لحسابها.', 'Open Sources to check each platform’s actual state and available account action.')" :action="t('مراجعة المصادر', 'Review sources')" @select="navigate('sources')" />
-                    <BusinessTaskRow :title="t('أغراض الإعلان الحالية', 'Current advertising purposes')" :description="t('راجع ما تريد تحقيقه من الإعلان والحدود التي أعلنتها له.', 'Review the purpose and boundaries you have declared for advertising.')" :action="t('فتح الأغراض', 'Open purposes')" @select="navigate('settings', 'purposes')" />
+                    <BusinessTaskRow data-overview-sources :title="t('المصادر والحسابات الإعلانية', 'Sources and advertising accounts')" :value="t('حالة الاتصال تُراجع من المصادر', 'Check connection status in Sources')" :description="t('راجع حالة كل منصة والبيانات المسموح باستخدامها.', 'Review each platform’s status and the data you may use.')" :action="t('مراجعة المصادر', 'Review sources')" @select="navigate('sources')" />
                 </section>
             </section>
+            <section v-if="visited.has('offers')" v-show="active === 'offers'" data-workspace-panel="offers">
+                <p class="workspace-intro">{{ t('عرّف منتجاتك وخدماتك والأسواق التي تستطيع خدمتها.', 'Describe your products, services and the markets you can serve.') }}</p>
+                <BusinessPractices :surface="surface" :refreshing="refreshing" :active="active === 'offers'" @refresh="emit('refresh')" />
+                <div class="workspace-task-list"><BusinessTaskRow :title="t('معلومات النشاط', 'Business information')" :value="sectorLabel" :action="t('عرض المعلومات', 'View details')" @select="navigate('settings', 'details')" /></div>
+            </section>
             <section v-if="visited.has('direction')" v-show="active === 'direction'" data-workspace-panel="direction">
-                <p class="workspace-intro">{{ t('دوّن الأسواق واتجاه العمل الذي تريد التركيز عليه. يمكنك تعديل اختيارك لاحقًا.', 'Record your markets and the direction you want to focus on. You can revise your choices later.') }}</p>
-                <BusinessFacts :surface="surface" :refreshing="refreshing" summary-first @refresh="emit('refresh')" />
+                <p class="workspace-intro">{{ t('حدّد أين تعمل، والنتيجة التي تسعى إليها، وما له الأولوية الآن.', 'Set your markets, the outcome you want, and your current priority.') }}</p>
+                <BusinessFacts :surface="surface" :refreshing="refreshing" :active-panel="active === 'direction'" summary-first @refresh="emit('refresh')" />
             </section>
             <section v-if="visited.has('sources')" v-show="active === 'sources'" data-workspace-panel="sources">
                 <nav class="workspace-local-navigation" :aria-label="t('مهام المصادر', 'Source tasks')"><button type="button" data-source-task="accounts" :aria-current="sourceTask === 'accounts' ? 'page' : undefined" @click="sourceTask = 'accounts'">{{ t('الحسابات والمصادر', 'Accounts and sources') }}</button><button type="button" data-source-task="data-use" :aria-current="sourceTask === 'data-use' ? 'page' : undefined" @click="openSourceData">{{ t('استعمال البيانات', 'Data use') }}</button></nav>
@@ -258,33 +280,47 @@ async function navigate(section: WorkspaceSection, subview?: WorkspaceSettingsVi
                 </nav>
                 </section>
             </section>
-            <section v-if="visited.has('settings')" v-show="active === 'settings'" :data-workspace-panel="teamActive ? undefined : 'settings'">
-                <nav v-if="!teamActive" class="workspace-local-navigation" :aria-label="t('إعدادات النشاط', 'Business settings')">
-                    <button v-for="item in localSettings" :key="item.id" type="button" :data-workspace-settings="item.id" :data-workspace-section="item.id === 'data' ? 'inquiries' : undefined" :aria-current="settingsView === item.id ? 'page' : undefined" @click="navigate('settings', item.id)">{{ item.label }}</button>
-                </nav>
+            <section v-if="visited.has('settings')" v-show="active === 'settings'" :class="{ 'workspace-information': !teamActive }" :data-workspace-panel="teamActive ? undefined : 'settings'">
+                <div v-if="!teamActive" class="workspace-information-header">
+                    <p class="workspace-information-context"><bdi>{{ surface.business.name }}</bdi><span>{{ sectorLabel }}</span></p>
+                    <nav class="workspace-local-navigation workspace-information-nav" :aria-label="t('معلومات النشاط', 'Business information')">
+                        <button v-for="item in localSettings" :key="item.id" type="button" :data-workspace-settings="item.id" :data-workspace-section="item.id === 'data' ? 'inquiries' : undefined" :aria-current="(settingsView === item.id || settingsView === 'purposes' && item.id === 'details') ? 'page' : undefined" @click="navigate('settings', item.id)">{{ item.label }}</button>
+                    </nav>
+                </div>
                 <section v-if="visitedSettings.has('details')" v-show="settingsView === 'details'" data-workspace-settings-panel="details">
-                    <BusinessEditor :surface="surface" :refreshing="refreshing" embedded summary-first @refresh="emit('refresh')" />
-                    <div class="workspace-task-list"><BusinessTaskRow :title="t('الأسواق والأهداف', 'Markets and goals')" :value="[marketLabels.join(t('، ', ', ')), goalLabels.join(t('، ', ', '))].filter(Boolean).join(' · ') || t('لم تُحدد بعد', 'Not yet specified')" :action="t('مراجعة وتعديل', 'Review and edit')" @select="navigate('direction')" /></div>
-                    <BusinessPractices :surface="surface" :refreshing="refreshing" :active="active === 'settings' && settingsView === 'details'" @refresh="emit('refresh')" />
+                    <section class="workspace-information-card">
+                        <BusinessEditor :surface="surface" :refreshing="refreshing" embedded summary-first @refresh="emit('refresh')" />
+                    </section>
+                    <section class="workspace-information-card">
+                        <BusinessTaskRow :title="t('الأسواق والأهداف', 'Markets and goals')" :value="informationDirection" :action="t('مراجعة وتعديل', 'Review and edit')" @select="navigate('direction')" />
+                        <BusinessTaskRow :title="t('عروضي', 'Offers')" :action="t('مراجعة الأعمال', 'Review activities')" @select="navigate('offers')" />
+                    </section>
+                    <section v-if="purposeAccess" class="workspace-information-card workspace-information-disclosure">
+                        <button type="button" class="workspace-button" data-business-advanced-purposes @click="navigate('settings', 'purposes')">{{ t('تصريحات أغراض الإعلانات', 'Advertising purpose declarations') }}</button>
+                    </section>
                 </section>
                 <section v-if="visitedSettings.has('history')" v-show="settingsView === 'history'" data-workspace-settings-panel="history">
-                    <h2 class="workspace-subheading">{{ t('السجلات والتاريخ', 'Records and history') }}</h2>
-                    <p class="workspace-intro">{{ t('راجع المعلومات السابقة وتواريخ تعديلها وفق الصلاحية المتاحة لك.', 'Review earlier details and their changes under your current access.') }}</p>
-                    <details class="workspace-disclosure" data-business-commercial><summary>{{ t('إتاحة الخدمات والاشتراك', 'Service availability and subscription') }}</summary><p>{{ t('لم تُحدد لهذا النشاط تغطية اشتراك أو حصة خدمة بعد. إدارة المصدر أو الدفع لا يفتحان بيانات العملاء.', 'Subscription coverage or a service allowance has not been established for this business. Source management or payment grants no client-data access.') }}</p><p>{{ t('الخدمات المشروطة تحتاج عقد إتاحة وحصة مناسبين. الحصة غير المعروفة لا تعني صفرًا أو استعمالًا غير محدود.', 'Conditioned services need appropriate entitlement and capacity. Unknown capacity means neither zero nor unlimited usage.') }}</p></details>
-                    <BusinessHistory v-if="surface.private_history_available" :surface="surface" :refreshing="refreshing" />
+                    <div v-if="surface.private_history_available" class="workspace-information-card">
+                        <BusinessHistory v-if="active === 'settings' && settingsView === 'history'" :surface="surface" :refreshing="refreshing" expanded />
+                    </div>
+                    <details class="workspace-information-card workspace-information-disclosure" data-business-commercial><summary>{{ t('إتاحة الخدمات والاشتراك', 'Service availability and subscription') }}</summary><p>{{ t('لم تُحدد لهذا النشاط تغطية اشتراك أو حصة خدمة بعد. إدارة المصدر أو الدفع لا يفتحان بيانات العملاء.', 'Subscription coverage or a service allowance has not been established for this business. Source management or payment grants no client-data access.') }}</p><p>{{ t('الخدمات المشروطة تحتاج عقد إتاحة وحصة مناسبين. الحصة غير المعروفة لا تعني صفرًا أو استعمالًا غير محدود.', 'Conditioned services need appropriate entitlement and capacity. Unknown capacity means neither zero nor unlimited usage.') }}</p></details>
                 </section>
                 <section v-if="visitedSettings.has('lifecycle') && lifecycleAvailable" v-show="settingsView === 'lifecycle'" data-workspace-settings-panel="lifecycle">
                     <BusinessLifecycle :surface="surface" :refreshing="refreshing" :active="active === 'settings' && settingsView === 'lifecycle'" @refresh="emit('refresh')" />
                 </section>
                 <section v-if="visitedSettings.has('purposes')" v-show="settingsView === 'purposes'" data-workspace-settings-panel="purposes">
-                    <BusinessPurposes :surface="surface" :refreshing="refreshing" @refresh="emit('refresh')" />
+                    <div class="workspace-information-card">
+                        <BusinessPurposes :surface="surface" :refreshing="refreshing" @refresh="emit('refresh')" />
+                    </div>
                 </section>
                 <section v-if="visited.has('inquiries')" v-show="inquiryActive" data-workspace-panel="inquiries" data-workspace-settings-panel="data">
-                    <InquiryEvidencePanel v-if="surface.private_history_available" embedded :active="inquiryActive" :business="surface.business.business_public_id" :basis-access="String(surface.authority_selection.requirements[0].leaf_grant_id)" />
-                    <p v-else>{{ t('تحتاج الاستفسارات والسجلات الخاصة إلى صلاحية مستقلة.', 'Inquiries and private records require independent authority.') }}</p>
+                    <div class="workspace-information-card">
+                        <InquiryEvidencePanel v-if="surface.private_history_available" embedded :active="inquiryActive" :business="surface.business.business_public_id" :basis-access="String(surface.authority_selection.requirements[0].leaf_grant_id)" />
+                        <p v-else>{{ t('تحتاج الاستفسارات والسجلات الخاصة إلى صلاحية مستقلة.', 'Inquiries and private records require independent authority.') }}</p>
+                    </div>
                 </section>
                 <section v-if="visitedSettings.has('access')" v-show="settingsView === 'access'" data-workspace-panel="access" data-workspace-settings-panel="access">
-                    <p class="workspace-intro">{{ t('حدّد من يعمل على هذا النشاط وما الذي يستطيع فعله. يمكنك إدارة نشاطك منفردًا، أو توزيع العمل على فريقك عند الحاجة.', 'Decide who can work on this business and what they can do. You can manage it yourself or share work with your team when needed.') }}</p>
+                    <p class="workspace-intro">{{ t('أضف أعضاء فريقك وحدّد صلاحيات كل شخص. يمكنك العمل منفردًا دون تفعيل الفريق.', 'Add team members and set each person’s permissions. You can work alone without enabling a team.') }}</p>
                     <DirectBusinessTeam :surface="surface" :refreshing="refreshing" @refresh="emit('refresh')" />
                     <BusinessTeamMembers :surface="surface" :active="teamActive" :refreshing="refreshing" @refresh="emit('refresh')" />
                     <div v-if="mandatesAvailable && !mandatesOpen" class="workspace-task-list">

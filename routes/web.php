@@ -60,6 +60,8 @@ Route::get('/', function (PublicContent $content) {
 });
 
 Route::get('/p/{slug}', [PublicContentController::class, 'page'])->where('slug', '[^/]+')->name('content.page');
+Route::get('/brand/assets/{hash}.png', [GlobalAppearanceController::class, 'image'])->where('hash', '[0-9a-f]{64}')
+    ->withoutMiddleware('web')->name('appearance.image'); // Public immutable PNG bytes carry no session/identity headers.
 Route::get('/articles', [PublicContentController::class, 'articles'])->name('content.articles');
 Route::get('/articles/category/{slug}', [PublicContentController::class, 'category'])->where('slug', '[^/]+')->name('content.category');
 Route::get('/articles/{slug}', [PublicContentController::class, 'article'])->where('slug', '[^/]+')->name('content.article');

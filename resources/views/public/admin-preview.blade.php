@@ -16,6 +16,7 @@
         .preview-banner strong{font-weight:700}.preview-banner a{color:#59451a}
     </style>
     <link rel="stylesheet" href="/brand/theme.css">
+@include('public.appearance-assets')
 </head>
 <body>
 <aside class="preview-banner" role="status">

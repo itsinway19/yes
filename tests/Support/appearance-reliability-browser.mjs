@@ -3,6 +3,8 @@ import { spawnSync } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+const capture = (page, options) => process.env.GOALS_SPA_CAPTURE_IMAGES === '1' ? page.screenshot(options) : Promise.resolve();
+
 export async function appearanceReliability({ session, ready, check, run, url, appearancePath }) {
     const command = action => {
         const result = spawnSync('C:/tools/php85/php.exe', ['tests/Support/AppearanceBrowserFixture.php', action], { env: { ...process.env, APP_ENV: 'testing' }, encoding: 'utf8' });
@@ -48,7 +50,7 @@ export async function appearanceReliability({ session, ready, check, run, url, a
     const state = await page.evaluate(() => ({ state: document.querySelector('[data-application-spa]')?.getAttribute('data-state'), draft: document.querySelector('#appearance-primary')?.value ?? null, text: document.body.innerText, recovery: document.querySelector('[data-appearance-reauthenticate]')?.getAttribute('href') ?? null }));
     const evidence = { samples, restoration, freshAuth: { status: response.status(), code: (await response.json()).code ?? null, state, posts }, environment: { browser: await page.context().browser().version(), productionBuild: true, syntheticSessions: true, physicalPhone: 'NOT OBSERVED' } };
     await writeFile(path.join(run, 'appearance-reliability.json'), JSON.stringify(evidence, null, 2));
-    await page.screenshot({ path: path.join(run, 'appearance-fresh-auth.png'), fullPage: true });
+    await capture(page, { path: path.join(run, 'appearance-fresh-auth.png'), fullPage: true });
     if (process.env.RELIABILITY_BASELINE === '1') {
         assert.equal(state.state, 'closed');
         assert.equal(state.draft, null);
@@ -63,7 +65,7 @@ export async function appearanceReliability({ session, ready, check, run, url, a
         assert.equal(await page.locator('[data-appearance-publish]').isDisabled(), true);
         await page.setViewportSize({ width: 390, height: 844 });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        await page.screenshot({ path: path.join(run, 'appearance-fresh-auth-mobile-rtl.png'), fullPage: true });
+        await capture(page, { path: path.join(run, 'appearance-fresh-auth-mobile-rtl.png'), fullPage: true });
         await page.locator('[data-appearance-reauthenticate]').click(); await ready(page);
         assert.equal(new URL(page.url()).pathname, '/internal/identity/switch');
         assert.equal(await page.locator('[data-auth-passkey]').count(), 1);

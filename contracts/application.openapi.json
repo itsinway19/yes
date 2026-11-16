@@ -43211,6 +43211,29 @@
         ],
         "additionalProperties": false
       },
+      "GlobalAppearanceImage": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "pattern": "^/brand/assets/[0-9a-f]{64}\\.png$"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "url",
+          "width",
+          "height"
+        ],
+        "additionalProperties": false
+      },
       "GlobalAppearanceData": {
         "type": "object",
         "properties": {
@@ -43226,13 +43249,35 @@
           },
           "defaults": {
             "$ref": "#/components/schemas/GlobalAppearanceColors"
+          },
+          "logo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GlobalAppearanceImage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "favicon": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GlobalAppearanceImage"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "revision",
           "primary",
           "secondary",
-          "defaults"
+          "defaults",
+          "logo",
+          "favicon"
         ],
         "additionalProperties": false
       },
@@ -43274,6 +43319,30 @@
           "secondary": {
             "type": "string",
             "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "logo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 699074,
+                "pattern": "^data:image/png;base64,"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "favicon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 699074,
+                "pattern": "^data:image/png;base64,"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

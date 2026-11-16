@@ -20,10 +20,26 @@ Business is the advertiser's selected operating context. Internal administration
 
 ## Appearance and interaction constraints
 
-Preserve the compact application typography (14px body, 22–24px headings), natural document scrolling, bounded sidebar/mobile drawer and 44px primary mobile targets. Use the existing Arabic-capable system fonts, logical layout properties, visible focus, keyboard/native semantics and reduced-motion behavior. Preserve readable light/dark contrast and shared scrollbars. Do not add a display font or dependency just to restyle an existing task.
+Preserve the compact application typography (14px body, 22–24px headings), natural document scrolling, bounded sidebar/mobile drawer and 44px primary mobile targets. Use the locally served OFL-licensed Noto Sans Arabic variable font with Segoe UI/Arial fallbacks, logical layout properties, visible focus, keyboard/native semantics and reduced-motion behavior. Preserve readable light/dark contrast and shared scrollbars. Do not add a display font or dependency just to restyle an existing task.
 
 Keep evidence limits, unavailable/denied/unknown states, pending command identity and recovery visible in both locales. Preparation is a summary of declared context, not a performance score. Forms preserve original edit baselines and private drafts only within the existing qualification/lifecycle rules. Returning to a panel is not permission to redisplay retained protected data.
 
 For a changed user job, verify actual placement, audience/Business context, authority, entitlement where applicable, RTL/LTR, relevant viewports, focus and failure/recovery. Backend/API proof alone is not browser acceptance. Do not generate images or screenshots without Owner approval.
 
 Relevant existing checks: [appearance](tests/appearance.test.mjs), [advertiser workspace](tests/advertiser-workspace.test.mjs), [admin UI](tests/admin-ui.test.mjs), [SPA presentation](tests/spa-presentation.test.mjs), and the separate guarded browser selections. Their presence is not a claim that this documentation task reran them.
+
+## Advertiser experience — V3
+
+The approved V3 HTML is the visual reference for the Business dashboard. The overview leads with the decision supported by V18, followed by tiles for the offer, markets and priority. The Business surface supplies the content. The desktop sidebar and mobile navigation follow real tasks and available access. Put declarations and private history in the advanced Business context.
+
+Keep the visual hierarchy of V3 with a 26–36px page title, 23–30px decision title and 14px reading text. Use the shared Arabic font, logical spacing and restrained borders. The native editing dialogs are centered at wider widths and dock at the bottom below 600px. The bottom navigation reserves space in the document and follows the viewport safe area.
+
+The V3 shell owns its neutral palette: navy `#192b40` text, `#5e7189` supporting text, `#f6f8fc` canvas and `#e5ebf3` surface borders, with corresponding dark values. The supporting text is darker than the prototype to preserve contrast. Use 20px card corners, 12px controls, restrained surface shadows and 650-weight page headings up to 34px. Keep input boundaries visibly defined by the existing control-border token. Existing components inherit the shell palette instead of the global black foreground. Offers are individual compact cards on the canvas; do not place the list inside another white card. Target market and declared service area remain distinct facts.
+
+The administration-published primary color owns filled actions and navigation accents. The secondary color tints the dark decision surface and supporting accents. The neutral canvas and semantic status colors have their own roles. Use the calculated primary foreground with the original primary fill and derive readable inks for light and dark surfaces.
+
+The font lives in `resources/fonts/noto-sans-arabic/`, with its OFL licence in `public/fonts/noto-sans-arabic/`. Vite bundles the font for development and production and loads it from the application asset origin. The appearance settings publish two colors. V3 uses the bundled font and the existing appearance settings.
+
+Current Business facts and the dedicated history view are visible without disclosure controls. Precision fields are visible in their selected intent step. Optional reference/technical details and long secondary histories keep native details semantics, with localized Show details / Hide details text instead of browser triangle markers. The qualified purpose entry is a direct action, without a wrapper disclosure. Menus and native select controls retain their standard indicators.
+
+GlobalAppearance also owns the published site logo and browser tab icon. Founder-only publication uses the same revision, fresh authentication and atomic audit as colors. PNG inputs stay local until explicit publication; each is bounded to 512 KB, logos to 2048x2048, and square icons to 512x512. The uploaded logo replaces the existing header mark and wordmark. Defaults remain available. Public content-addressed image responses carry no session or identity metadata, and older published URLs remain valid for open documents.
